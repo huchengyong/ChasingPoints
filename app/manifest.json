@@ -1,7 +1,7 @@
 {
     "name" : "追分",
-    "appid" : "__UNI__43A7928",
-    "description" : "台球运动相关的垂直类商城以及可实现对局功能的台球战绩助手应用",
+    "appid" : "__UNI__77D0D4A",
+    "description" : "追分是一款面向台球爱好者的对局记录与成长型应用，帮助你把每一场比赛都变成可沉淀、可分享、可复盘的数据资产。",
     "versionName" : "1.0.0",
     "versionCode" : "100",
     "transformPx" : false,
@@ -82,11 +82,11 @@
             }
         },
         "distribute" : {
-            "bundleName" : "hm.dianzaozao.ballmall",
+            "bundleName" : "hm.dianzaozao.zhuifen",
             "modules" : {
                 "uni-oauth" : {
                     "huawei" : {
-                        "client_id" : "6917591791277824968"
+                        "client_id" : "6917600900395032152"
                     },
                     "weixin" : {
                         "appid" : ""
@@ -101,7 +101,7 @@
                     "certpath" : "/Users/wisesearch/Documents/harmony_app_certs/harmony_debug.cer",
                     "keyAlias" : "harmony_debug",
                     "keyPassword" : "0000001E88C4C23D07094D9B3E471AD543B9501F3F072A5B9C05D53CDC9C1C18AAE51AE09CE15F0EF9C6F795C685",
-                    "profile" : "/Users/wisesearch/Documents/harmony_app_certs/chasing_pointsDebug.p7b",
+                    "profile" : "/Users/wisesearch/Documents/harmony_app_certs/zhuifenDebug.p7b",
                     "signAlg" : "SHA256withECDSA",
                     "storeFile" : "/Users/wisesearch/Documents/harmony_app_certs/harmony_debug.p12",
                     "storePassword" : "0000001E07E69C039572310EE48F3D6CD933D8E8D1557E727A2638158652492EE07C5D4A90A271D71E6198CD5C42"
@@ -121,7 +121,7 @@
                 "background" : "/Users/wisesearch/Pictures/chasing_points_icons/backend.png"
             },
             "splashScreens" : {
-                "startWindowBackground" : "#F9F7F2",
+                "startWindowBackground" : "#FFD700",
                 "startWindowIcon" : "/Users/wisesearch/Pictures/chasing_points_icons/boot.png"
             },
             "targetSdkVersion" : "6.0.0(20)",
