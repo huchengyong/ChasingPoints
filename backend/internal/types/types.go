@@ -77,6 +77,11 @@ type AdminEventNewsListResp struct {
 	List    []EventNewsInfo `json:"list"`
 }
 
+type AdminEventNewsPublishReq struct {
+	EventNewsId int64 `json:"event_news_id"`
+	Published   bool  `json:"published"`
+}
+
 type AdminEventNewsUpdateReq struct {
 	EventNewsId int64  `json:"event_news_id"`
 	Title       string `json:"title"`

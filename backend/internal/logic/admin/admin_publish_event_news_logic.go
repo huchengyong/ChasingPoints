@@ -24,7 +24,7 @@ func NewAdminPublishEventNewsLogic(ctx context.Context, svcCtx *svc.ServiceConte
 	}
 }
 
-func (l *AdminPublishEventNewsLogic) AdminPublishEventNews(req *types.AdminEventNewsIdReq) (resp *types.AdminWriteResp, err error) {
+func (l *AdminPublishEventNewsLogic) AdminPublishEventNews(req *types.AdminEventNewsPublishReq) (resp *types.AdminWriteResp, err error) {
 	// todo: add your logic here and delete this line
 
 	return

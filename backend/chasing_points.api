@@ -1521,6 +1521,11 @@ type AdminEventNewsIdReq {
 	EventNewsId int64 `json:"event_news_id"`
 }
 
+type AdminEventNewsPublishReq {
+	EventNewsId int64 `json:"event_news_id"`
+	Published   bool  `json:"published"`
+}
+
 @server (
 	prefix: /api/admin/event-news
 	group:  admin
@@ -1541,7 +1546,7 @@ service chasing_points-api {
 
 	@doc "发布或下线赛事情报"
 	@handler AdminPublishEventNews
-	post /publish (AdminEventNewsIdReq) returns (AdminWriteResp)
+	post /publish (AdminEventNewsPublishReq) returns (AdminWriteResp)
 
 	@doc "删除赛事情报"
 	@handler AdminDeleteEventNews

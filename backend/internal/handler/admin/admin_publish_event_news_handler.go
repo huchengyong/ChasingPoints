@@ -12,7 +12,7 @@ import (
 // 发布或下线赛事情报
 func AdminPublishEventNewsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req types.AdminEventNewsIdReq
+		var req types.AdminEventNewsPublishReq
 		if err := httpx.Parse(r, &req); err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
