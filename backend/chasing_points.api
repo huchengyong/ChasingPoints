@@ -1292,6 +1292,61 @@ type GetTournamentBracketResp {
 	TotalRounds int                      `json:"total_rounds"`
 }
 
+// ==================== 赛事情报模块 ====================
+type EventNewsInfo {
+	Id          int64  `json:"id"`
+	Title       string `json:"title"`
+	GameType    int    `json:"game_type"`
+	SourceType  string `json:"source_type"`
+	SourceName  string `json:"source_name"`
+	SourceUrl   string `json:"source_url"`
+	CoverImage  string `json:"cover_image"`
+	Summary     string `json:"summary"`
+	Content     string `json:"content"`
+	Country     string `json:"country"`
+	City        string `json:"city"`
+	Venue       string `json:"venue"`
+	StartTime   string `json:"start_time"`
+	EndTime     string `json:"end_time"`
+	Status      int    `json:"status"` // 0:即将开始 1:进行中 2:已结束 3:已取消
+	StageText   string `json:"stage_text"`
+	ResultText  string `json:"result_text"`
+	Featured    bool   `json:"featured"`
+	SortTime    string `json:"sort_time"`
+	Published   bool   `json:"published"`
+	PublishedAt string `json:"published_at"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+}
+
+type GetEventNewsListReq {
+	Page     int    `form:"page,default=1"`
+	PageSize int    `form:"page_size,default=20"`
+	Status   int    `form:"status,optional"`
+	GameType int    `form:"game_type,optional"`
+	City     string `form:"city,optional"`
+}
+
+type GetEventNewsListResp {
+	Success bool            `json:"success"`
+	Total   int64           `json:"total"`
+	List    []EventNewsInfo `json:"list"`
+}
+
+type GetEventNewsDetailReq {
+	EventNewsId int64 `form:"event_news_id"`
+}
+
+type GetEventNewsDetailResp {
+	Success   bool           `json:"success"`
+	EventNews *EventNewsInfo `json:"event_news"`
+}
+
+type GetFeaturedEventNewsResp {
+	Success   bool           `json:"success"`
+	EventNews *EventNewsInfo `json:"event_news"`
+}
+
 // 赛事公开接口
 @server (
 	prefix: /api/tournament
@@ -1309,6 +1364,25 @@ service chasing_points-api {
 	@doc "获取赛事对阵图"
 	@handler GetTournamentBracket
 	get /bracket (GetTournamentBracketReq) returns (GetTournamentBracketResp)
+}
+
+// 赛事情报公开接口
+@server (
+	prefix: /api/event-news
+	group:  eventnews
+)
+service chasing_points-api {
+	@doc "获取赛事情报列表"
+	@handler GetEventNewsList
+	get /list (GetEventNewsListReq) returns (GetEventNewsListResp)
+
+	@doc "获取赛事情报详情"
+	@handler GetEventNewsDetail
+	get /detail (GetEventNewsDetailReq) returns (GetEventNewsDetailResp)
+
+	@doc "获取首页焦点赛事情报"
+	@handler GetFeaturedEventNews
+	get /featured returns (GetFeaturedEventNewsResp)
 }
 
 // 赛事需登录接口
@@ -1381,6 +1455,97 @@ service chasing_points-api {
 	@doc "获取我的赛事"
 	@handler GetMyTournaments
 	get /my (GetMyTournamentsReq) returns (GetTournamentListResp)
+}
+
+// ==================== 赛事情报管理 ====================
+type AdminEventNewsListReq {
+	Page      int `form:"page,default=1"`
+	PageSize  int `form:"page_size,default=20"`
+	Status    int `form:"status,optional,default=-1"`
+	GameType  int `form:"game_type,optional,default=-1"`
+	Published int `form:"published,optional,default=-1"` // -1:全部 0:未发布 1:已发布
+}
+
+type AdminEventNewsListResp {
+	Code    int             `json:"code"`
+	Success bool            `json:"success"`
+	Message string          `json:"message"`
+	Total   int64           `json:"total"`
+	List    []EventNewsInfo `json:"list"`
+}
+
+type AdminEventNewsCreateReq {
+	Title      string `json:"title"`
+	GameType   int    `json:"game_type"`
+	SourceType string `json:"source_type,optional"`
+	SourceName string `json:"source_name,optional"`
+	SourceUrl  string `json:"source_url,optional"`
+	CoverImage string `json:"cover_image,optional"`
+	Summary    string `json:"summary,optional"`
+	Content    string `json:"content,optional"`
+	Country    string `json:"country,optional"`
+	City       string `json:"city,optional"`
+	Venue      string `json:"venue,optional"`
+	StartTime  string `json:"start_time"`
+	EndTime    string `json:"end_time,optional"`
+	Status     int    `json:"status"`
+	StageText  string `json:"stage_text,optional"`
+	ResultText string `json:"result_text,optional"`
+	Featured   bool   `json:"featured,optional"`
+	SortTime   string `json:"sort_time,optional"`
+}
+
+type AdminEventNewsUpdateReq {
+	EventNewsId int64  `json:"event_news_id"`
+	Title       string `json:"title"`
+	GameType    int    `json:"game_type"`
+	SourceType  string `json:"source_type,optional"`
+	SourceName  string `json:"source_name,optional"`
+	SourceUrl   string `json:"source_url,optional"`
+	CoverImage  string `json:"cover_image,optional"`
+	Summary     string `json:"summary,optional"`
+	Content     string `json:"content,optional"`
+	Country     string `json:"country,optional"`
+	City        string `json:"city,optional"`
+	Venue       string `json:"venue,optional"`
+	StartTime   string `json:"start_time"`
+	EndTime     string `json:"end_time,optional"`
+	Status      int    `json:"status"`
+	StageText   string `json:"stage_text,optional"`
+	ResultText  string `json:"result_text,optional"`
+	Featured    bool   `json:"featured,optional"`
+	SortTime    string `json:"sort_time,optional"`
+}
+
+type AdminEventNewsIdReq {
+	EventNewsId int64 `json:"event_news_id"`
+}
+
+@server (
+	prefix: /api/admin/event-news
+	group:  admin
+	jwt:    Auth
+)
+service chasing_points-api {
+	@doc "获取赛事情报列表（管理员）"
+	@handler AdminGetEventNewsList
+	get /list (AdminEventNewsListReq) returns (AdminEventNewsListResp)
+
+	@doc "创建赛事情报"
+	@handler AdminCreateEventNews
+	post /create (AdminEventNewsCreateReq) returns (AdminWriteResp)
+
+	@doc "更新赛事情报"
+	@handler AdminUpdateEventNews
+	post /update (AdminEventNewsUpdateReq) returns (AdminWriteResp)
+
+	@doc "发布或下线赛事情报"
+	@handler AdminPublishEventNews
+	post /publish (AdminEventNewsIdReq) returns (AdminWriteResp)
+
+	@doc "删除赛事情报"
+	@handler AdminDeleteEventNews
+	post /delete (AdminEventNewsIdReq) returns (AdminWriteResp)
 }
 
 // ==================== 赛季模块 ====================

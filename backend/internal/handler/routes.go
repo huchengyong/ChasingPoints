@@ -10,6 +10,7 @@ import (
 	admin "chasing_points/internal/handler/admin"
 	auth "chasing_points/internal/handler/auth"
 	challenge "chasing_points/internal/handler/challenge"
+	eventnews "chasing_points/internal/handler/eventnews"
 	follow "chasing_points/internal/handler/follow"
 	friend "chasing_points/internal/handler/friend"
 	match "chasing_points/internal/handler/match"
@@ -60,6 +61,43 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
 		rest.WithPrefix("/api/achievement"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 创建赛事情报
+				Method:  http.MethodPost,
+				Path:    "/create",
+				Handler: admin.AdminCreateEventNewsHandler(serverCtx),
+			},
+			{
+				// 删除赛事情报
+				Method:  http.MethodPost,
+				Path:    "/delete",
+				Handler: admin.AdminDeleteEventNewsHandler(serverCtx),
+			},
+			{
+				// 获取赛事情报列表（管理员）
+				Method:  http.MethodGet,
+				Path:    "/list",
+				Handler: admin.AdminGetEventNewsListHandler(serverCtx),
+			},
+			{
+				// 发布或下线赛事情报
+				Method:  http.MethodPost,
+				Path:    "/publish",
+				Handler: admin.AdminPublishEventNewsHandler(serverCtx),
+			},
+			{
+				// 更新赛事情报
+				Method:  http.MethodPost,
+				Path:    "/update",
+				Handler: admin.AdminUpdateEventNewsHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/admin/event-news"),
 	)
 
 	server.AddRoutes(
@@ -247,6 +285,30 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
 		rest.WithPrefix("/api/challenge"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 获取赛事情报详情
+				Method:  http.MethodGet,
+				Path:    "/detail",
+				Handler: eventnews.GetEventNewsDetailHandler(serverCtx),
+			},
+			{
+				// 获取首页焦点赛事情报
+				Method:  http.MethodGet,
+				Path:    "/featured",
+				Handler: eventnews.GetFeaturedEventNewsHandler(serverCtx),
+			},
+			{
+				// 获取赛事情报列表
+				Method:  http.MethodGet,
+				Path:    "/list",
+				Handler: eventnews.GetEventNewsListHandler(serverCtx),
+			},
+		},
+		rest.WithPrefix("/api/event-news"),
 	)
 
 	server.AddRoutes(
