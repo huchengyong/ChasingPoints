@@ -51,3 +51,4 @@ coverage.out
 backend/etc/*.local.yaml
 backend/etc/*.override.yaml
 docs/plans
+.worktrees/
