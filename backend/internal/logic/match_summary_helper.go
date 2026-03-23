@@ -3,8 +3,8 @@ package logic
 import (
 	"fmt"
 
-	"billiard_master/internal/model"
-	"billiard_master/internal/types"
+	"chasing_points/internal/model"
+	"chasing_points/internal/types"
 )
 
 func buildMatchSummary(gameType int, myActor int, myScore int, opponentScore int, myWinRate float64, opponentWinRate float64, myMaxScore int, opponentMaxScore int, redBallCount int, createdAt string, rounds []model.MatchRound, actions []model.MatchAction, achievements types.MatchAchievement) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {

@@ -3,8 +3,8 @@ package logic
 import (
 	"testing"
 
-	"billiard_master/internal/model"
-	"billiard_master/internal/types"
+	"chasing_points/internal/model"
+	"chasing_points/internal/types"
 )
 
 func TestCalculateAchievementScoreFromItems(t *testing.T) {

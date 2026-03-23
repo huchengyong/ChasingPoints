@@ -1,6 +1,6 @@
 package logic
 
-import "billiard_master/internal/model"
+import "chasing_points/internal/model"
 
 type matchWriteScoreView struct {
 	MyScore                   int

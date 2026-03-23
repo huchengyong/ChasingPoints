@@ -50,3 +50,4 @@ coverage.out
 # Project-specific local backend config overrides
 backend/etc/*.local.yaml
 backend/etc/*.override.yaml
+docs/plans

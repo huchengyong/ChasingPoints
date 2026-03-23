@@ -1,9 +1,9 @@
 package logic
 
 import (
-	"billiard_master/internal/model"
-	"billiard_master/internal/svc"
-	"billiard_master/internal/types"
+	"chasing_points/internal/model"
+	"chasing_points/internal/svc"
+	"chasing_points/internal/types"
 )
 
 type matchWriteState struct {

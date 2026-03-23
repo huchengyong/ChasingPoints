@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"gorm.io/driver/mysql"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -126,10 +126,7 @@ func TestBuildLegacyRankChangeLogRowsOmitsGameTypeColumn(t *testing.T) {
 }
 
 func TestApplyRankChangeLogGameTypeFilterCanSkipGameTypeConstraint(t *testing.T) {
-	db, err := gorm.Open(mysql.New(mysql.Config{
-		DSN:                       "gorm:gorm@tcp(localhost:9910)/gorm?charset=utf8mb4&parseTime=True&loc=Local",
-		SkipInitializeWithVersion: true,
-	}), &gorm.Config{DryRun: true})
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{DryRun: true})
 	if err != nil {
 		t.Fatalf("open dry run gorm db: %v", err)
 	}
@@ -147,10 +144,7 @@ func TestApplyRankChangeLogGameTypeFilterCanSkipGameTypeConstraint(t *testing.T)
 }
 
 func TestApplyRankChangeLogGameTypeFilterAddsGameTypeConstraintWhenEnabled(t *testing.T) {
-	db, err := gorm.Open(mysql.New(mysql.Config{
-		DSN:                       "gorm:gorm@tcp(localhost:9910)/gorm?charset=utf8mb4&parseTime=True&loc=Local",
-		SkipInitializeWithVersion: true,
-	}), &gorm.Config{DryRun: true})
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{DryRun: true})
 	if err != nil {
 		t.Fatalf("open dry run gorm db: %v", err)
 	}

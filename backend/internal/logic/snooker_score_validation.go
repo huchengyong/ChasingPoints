@@ -3,7 +3,7 @@ package logic
 import (
 	"fmt"
 
-	"billiard_master/internal/model"
+	"chasing_points/internal/model"
 )
 
 func validateSnookerScore(state model.SnookerRoundState, score int) error {

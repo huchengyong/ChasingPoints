@@ -3,9 +3,9 @@ package logic
 import (
 	"time"
 
-	"billiard_master/internal/model"
-	"billiard_master/internal/svc"
-	"billiard_master/internal/types"
+	"chasing_points/internal/model"
+	"chasing_points/internal/svc"
+	"chasing_points/internal/types"
 )
 
 func buildCurrentMatchInfo(svcCtx *svc.ServiceContext, userId int64, match *model.Match) *types.CurrentMatchInfo {

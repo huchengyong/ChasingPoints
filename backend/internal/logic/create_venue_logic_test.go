@@ -3,8 +3,8 @@ package logic
 import (
 	"testing"
 
-	"billiard_master/internal/model"
-	"billiard_master/internal/types"
+	"chasing_points/internal/model"
+	"chasing_points/internal/types"
 )
 
 func TestValidateCreateVenueReqRejectsMissingBaseFields(t *testing.T) {
@@ -40,8 +40,8 @@ func TestBuildVenueAndTaskFromReqCreatesAsyncGeocodePayload(t *testing.T) {
 	if venue.FullAddress != "上海市浦东新区东明路街道新达汇" {
 		t.Fatalf("unexpected full address %s", venue.FullAddress)
 	}
-	if venue.Status != model.VenueStatusHidden {
-		t.Fatalf("expected hidden status, got %d", venue.Status)
+	if venue.Status != model.VenueStatusPending {
+		t.Fatalf("expected pending status, got %d", venue.Status)
 	}
 	if venue.GeoStatus != model.VenueGeoStatusPending {
 		t.Fatalf("expected pending geocode status, got %d", venue.GeoStatus)

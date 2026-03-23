@@ -3,8 +3,8 @@ package logic
 import (
 	"encoding/json"
 
-	"billiard_master/internal/model"
-	"billiard_master/internal/types"
+	"chasing_points/internal/model"
+	"chasing_points/internal/types"
 )
 
 const (

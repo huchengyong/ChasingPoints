@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"billiard_master/internal/utils"
+	"chasing_points/internal/utils"
 	"net/http"
 )
 

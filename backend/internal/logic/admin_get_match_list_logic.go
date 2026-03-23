@@ -3,8 +3,8 @@ package logic
 import (
 	"context"
 
-	"billiard_master/internal/svc"
-	"billiard_master/internal/types"
+	"chasing_points/internal/svc"
+	"chasing_points/internal/types"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -40,7 +40,7 @@ func (l *AdminGetMatchListLogic) AdminGetMatchList(req *types.AdminMatchListReq)
 	for _, match := range matches {
 		gameTypeName := getGameTypeName(match.GameType)
 		statusText := getMatchStatusText(match.Status)
-		
+
 		winnerName := "-"
 		if match.Result != nil {
 			if *match.Result == 1 {

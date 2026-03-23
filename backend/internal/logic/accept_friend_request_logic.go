@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"billiard_master/internal/model"
-	"billiard_master/internal/svc"
-	"billiard_master/internal/types"
-	"billiard_master/internal/utils"
+	"chasing_points/internal/model"
+	"chasing_points/internal/svc"
+	"chasing_points/internal/types"
+	"chasing_points/internal/utils"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"billiard_master/internal/model"
+	"chasing_points/internal/model"
 )
 
 func TestUpdateReplaySettlementStateCountsDrawForSameOpponentDailyLimit(t *testing.T) {

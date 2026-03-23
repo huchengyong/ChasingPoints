@@ -1,11 +1,11 @@
 package svc
 
 import (
-	"billiard_master/internal/config"
-	"billiard_master/internal/model"
-	"billiard_master/internal/pkg/geocode"
-	"billiard_master/internal/pkg/push"
-	"billiard_master/internal/sms"
+	"chasing_points/internal/config"
+	"chasing_points/internal/model"
+	"chasing_points/internal/pkg/geocode"
+	"chasing_points/internal/pkg/push"
+	"chasing_points/internal/sms"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -19,7 +19,7 @@ const (
 	defaultQuotaPrefix    = "geo:quota"
 	defaultQuotaTTL       = 70 * time.Second
 	defaultGeocodeSource  = "apihz"
-	defaultGeocodeLocker  = "billiard-master-api"
+	defaultGeocodeLocker  = "chasing_points-api"
 )
 
 type ServiceContext struct {

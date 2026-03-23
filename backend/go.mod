@@ -1,4 +1,4 @@
-module billiard_master
+module chasing_points
 
 go 1.25.0
 

@@ -101,7 +101,7 @@
                     "certpath" : "/Users/wisesearch/Documents/harmony_app_certs/harmony_debug.cer",
                     "keyAlias" : "harmony_debug",
                     "keyPassword" : "0000001E88C4C23D07094D9B3E471AD543B9501F3F072A5B9C05D53CDC9C1C18AAE51AE09CE15F0EF9C6F795C685",
-                    "profile" : "/Users/wisesearch/Documents/harmony_app_certs/billiard_masterDebug.p7b",
+                    "profile" : "/Users/wisesearch/Documents/harmony_app_certs/chasing_pointsDebug.p7b",
                     "signAlg" : "SHA256withECDSA",
                     "storeFile" : "/Users/wisesearch/Documents/harmony_app_certs/harmony_debug.p12",
                     "storePassword" : "0000001E07E69C039572310EE48F3D6CD933D8E8D1557E727A2638158652492EE07C5D4A90A271D71E6198CD5C42"
@@ -117,12 +117,12 @@
                 }
             },
             "icons" : {
-                "foreground" : "/Users/wisesearch/Pictures/billiard_master_icons/frontend.png",
-                "background" : "/Users/wisesearch/Pictures/billiard_master_icons/backend.png"
+                "foreground" : "/Users/wisesearch/Pictures/chasing_points_icons/frontend.png",
+                "background" : "/Users/wisesearch/Pictures/chasing_points_icons/backend.png"
             },
             "splashScreens" : {
                 "startWindowBackground" : "#F9F7F2",
-                "startWindowIcon" : "/Users/wisesearch/Pictures/billiard_master_icons/boot.png"
+                "startWindowIcon" : "/Users/wisesearch/Pictures/chasing_points_icons/boot.png"
             },
             "targetSdkVersion" : "6.0.0(20)",
             "compatibleSdkVersion" : "5.0.0(12)"

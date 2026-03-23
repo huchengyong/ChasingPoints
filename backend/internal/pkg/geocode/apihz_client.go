@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"billiard_master/internal/model"
+	"chasing_points/internal/model"
 )
 
 const defaultApihzEndpoint = "https://cn.apihz.cn/api/other/jwjuhe.php"

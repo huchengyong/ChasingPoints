@@ -3,7 +3,7 @@ package logic
 import (
 	"testing"
 
-	"billiard_master/internal/model"
+	"chasing_points/internal/model"
 )
 
 func TestApplySnookerScoreOnlyUpdatesCurrentFrameScore(t *testing.T) {

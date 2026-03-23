@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"billiard_master/internal/model"
-	"billiard_master/internal/svc"
-	"billiard_master/internal/types"
-	"billiard_master/internal/utils"
+	"chasing_points/internal/model"
+	"chasing_points/internal/svc"
+	"chasing_points/internal/types"
+	"chasing_points/internal/utils"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -70,7 +70,7 @@ func (l *AcceptChallengeLogic) AcceptChallenge(req *types.HandleChallengeReq) (r
 		Content: fmt.Sprintf("%s 接受了你的挑战", myName),
 		IsRead:  0,
 	}); notifyErr != nil {
-	l.Logger.Errorf("创建挑战接受通知失败: from=%d err=%v", challenge.FromUserId, notifyErr)
+		l.Logger.Errorf("创建挑战接受通知失败: from=%d err=%v", challenge.FromUserId, notifyErr)
 	}
 
 	// 推送通知

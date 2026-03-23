@@ -1,6 +1,6 @@
 package logic
 
-import "billiard_master/internal/model"
+import "chasing_points/internal/model"
 
 func applySnookerScore(match *model.Match, actor int, score int) {
 	if match == nil {

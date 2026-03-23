@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"billiard_master/internal/model"
+	"chasing_points/internal/model"
 )
 
 const (

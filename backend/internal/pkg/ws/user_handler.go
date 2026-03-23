@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"billiard_master/internal/svc"
+	"chasing_points/internal/svc"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/zeromicro/go-zero/core/logx"

@@ -4,8 +4,8 @@ import path from 'node:path'
 const pagePath = path.resolve('subPages/notification/index.vue')
 const apiPath = path.resolve('api/notification.js')
 const socialPagePath = path.resolve('pages/social/index.vue')
-const sendFriendRequestLogicPath = path.resolve('backend/billiard_master/internal/logic/send_friend_request_logic.go')
-const finishMatchLogicPath = path.resolve('backend/billiard_master/internal/logic/finish_match_logic.go')
+const sendFriendRequestLogicPath = path.resolve('backend/internal/logic/send_friend_request_logic.go')
+const finishMatchLogicPath = path.resolve('backend/internal/logic/finish_match_logic.go')
 
 const pageSource = fs.readFileSync(pagePath, 'utf8')
 const apiSource = fs.readFileSync(apiPath, 'utf8')

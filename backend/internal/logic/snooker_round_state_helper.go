@@ -1,8 +1,8 @@
 package logic
 
 import (
-	"billiard_master/internal/model"
-	"billiard_master/internal/svc"
+	"chasing_points/internal/model"
+	"chasing_points/internal/svc"
 )
 
 func loadSnookerRoundState(svcCtx *svc.ServiceContext, matchId int64, roundNo int) (model.SnookerRoundState, error) {

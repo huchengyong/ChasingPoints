@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"billiard_master/internal/model"
+	"chasing_points/internal/model"
 )
 
 type fakeQuotaLimiter struct {

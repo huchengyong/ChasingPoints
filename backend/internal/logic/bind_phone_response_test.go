@@ -3,7 +3,7 @@ package logic
 import (
 	"testing"
 
-	"billiard_master/internal/types"
+	"chasing_points/internal/types"
 )
 
 func TestBuildBindPhoneSuccessRespForMergedAccount(t *testing.T) {

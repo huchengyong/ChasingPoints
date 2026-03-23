@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"billiard_master/internal/model"
+	"chasing_points/internal/model"
 )
 
 var (

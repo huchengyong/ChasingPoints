@@ -6,7 +6,26 @@ package handler
 import (
 	"net/http"
 
-	"billiard_master/internal/svc"
+	achievement "chasing_points/internal/handler/achievement"
+	admin "chasing_points/internal/handler/admin"
+	auth "chasing_points/internal/handler/auth"
+	challenge "chasing_points/internal/handler/challenge"
+	follow "chasing_points/internal/handler/follow"
+	friend "chasing_points/internal/handler/friend"
+	match "chasing_points/internal/handler/match"
+	notification "chasing_points/internal/handler/notification"
+	opponent "chasing_points/internal/handler/opponent"
+	public "chasing_points/internal/handler/public"
+	rank "chasing_points/internal/handler/rank"
+	rules "chasing_points/internal/handler/rules"
+	season "chasing_points/internal/handler/season"
+	share "chasing_points/internal/handler/share"
+	social "chasing_points/internal/handler/social"
+	stats "chasing_points/internal/handler/stats"
+	tournament "chasing_points/internal/handler/tournament"
+	user "chasing_points/internal/handler/user"
+	venue "chasing_points/internal/handler/venue"
+	"chasing_points/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest"
 )
@@ -15,249 +34,28 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
-				// 手机号登录/注册
-				Method:  http.MethodPost,
-				Path:    "/login",
-				Handler: LoginHandler(serverCtx),
-			},
-			{
-				// OAuth登录
-				Method:  http.MethodPost,
-				Path:    "/login-by-oauth",
-				Handler: LoginByOauthHandler(serverCtx),
-			},
-			{
-				// 发送短信验证码
-				Method:  http.MethodPost,
-				Path:    "/send-sms",
-				Handler: SendSmsHandler(serverCtx),
-			},
-		},
-		rest.WithPrefix("/api/auth"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 获取公开对局详情
-				Method:  http.MethodGet,
-				Path:    "/match/detail",
-				Handler: GetPublicMatchDetailHandler(serverCtx),
-			},
-			{
-				// 获取正在进行的对局列表
-				Method:  http.MethodGet,
-				Path:    "/matches/ongoing",
-				Handler: GetOngoingMatchesHandler(serverCtx),
-			},
-			{
-				// 获取段位排行榜
-				Method:  http.MethodGet,
-				Path:    "/rank/leaderboard",
-				Handler: GetLeaderboardHandler(serverCtx),
-			},
-		},
-		rest.WithPrefix("/api/public"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 绑定手机号
-				Method:  http.MethodPost,
-				Path:    "/bind-phone",
-				Handler: BindPhoneHandler(serverCtx),
-			},
-		},
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
-		rest.WithPrefix("/api/auth"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 获取当前用户信息
-				Method:  http.MethodGet,
-				Path:    "/info",
-				Handler: GetUserInfoHandler(serverCtx),
-			},
-			{
-				// 更新昵称
-				Method:  http.MethodPost,
-				Path:    "/nickname",
-				Handler: UpdateNicknameHandler(serverCtx),
-			},
-			{
-				// 更新推送令牌
-				Method:  http.MethodPost,
-				Path:    "/push-token",
-				Handler: UpdatePushTokenHandler(serverCtx),
-			},
-			{
-				// 获取用户统计数据
-				Method:  http.MethodGet,
-				Path:    "/stats",
-				Handler: GetUserStatsHandler(serverCtx),
-			},
-		},
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
-		rest.WithPrefix("/api/user"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 取消对局
-				Method:  http.MethodPost,
-				Path:    "/cancel",
-				Handler: CancelMatchHandler(serverCtx),
-			},
-			{
-				// 获取进行中对局
-				Method:  http.MethodGet,
-				Path:    "/current",
-				Handler: GetCurrentMatchHandler(serverCtx),
-			},
-			{
-				// 获取对局详情
-				Method:  http.MethodGet,
-				Path:    "/detail",
-				Handler: GetMatchDetailHandler(serverCtx),
-			},
-			{
-				// 结束对局
-				Method:  http.MethodPost,
-				Path:    "/finish",
-				Handler: FinishMatchHandler(serverCtx),
-			},
-			{
-				// 犯规
-				Method:  http.MethodPost,
-				Path:    "/foul",
-				Handler: MatchFoulHandler(serverCtx),
-			},
-			{
-				// 获取交锋历史
-				Method:  http.MethodGet,
-				Path:    "/h2h/history",
-				Handler: GetH2HHistoryHandler(serverCtx),
-			},
-			{
-				// 获取交锋统计
-				Method:  http.MethodGet,
-				Path:    "/h2h/stats",
-				Handler: GetH2HStatsHandler(serverCtx),
-			},
-			{
-				// 获取对局列表
-				Method:  http.MethodGet,
-				Path:    "/list",
-				Handler: GetMatchListHandler(serverCtx),
-			},
-			{
-				// 获取匹配二维码
-				Method:  http.MethodGet,
-				Path:    "/qrcode",
-				Handler: GetMatchQRCodeHandler(serverCtx),
-			},
-			{
-				// 结束一局
-				Method:  http.MethodPost,
-				Path:    "/round/end",
-				Handler: EndRoundHandler(serverCtx),
-			},
-			{
-				// 开始下一局
-				Method:  http.MethodPost,
-				Path:    "/round/start",
-				Handler: StartNextRoundHandler(serverCtx),
-			},
-			{
-				// 加分
-				Method:  http.MethodPost,
-				Path:    "/score",
-				Handler: MatchScoreHandler(serverCtx),
-			},
-			{
-				// 开始对局
-				Method:  http.MethodPost,
-				Path:    "/start",
-				Handler: StartMatchHandler(serverCtx),
-			},
-			{
-				// 撤销操作
-				Method:  http.MethodPost,
-				Path:    "/undo",
-				Handler: MatchUndoHandler(serverCtx),
-			},
-		},
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
-		rest.WithPrefix("/api/match"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 获取对手列表
-				Method:  http.MethodGet,
-				Path:    "/list",
-				Handler: GetOpponentListHandler(serverCtx),
-			},
-			{
-				// 搜索对手
-				Method:  http.MethodGet,
-				Path:    "/search",
-				Handler: SearchOpponentHandler(serverCtx),
-			},
-		},
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
-		rest.WithPrefix("/api/opponent"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 获取用户段位信息
-				Method:  http.MethodGet,
-				Path:    "/info",
-				Handler: GetUserRankInfoHandler(serverCtx),
-			},
-			{
-				// 获取段位列表
-				Method:  http.MethodGet,
-				Path:    "/list",
-				Handler: GetRankListHandler(serverCtx),
-			},
-		},
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
-		rest.WithPrefix("/api/rank"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
 				// 获取成就列表
 				Method:  http.MethodGet,
 				Path:    "/list",
-				Handler: GetAchievementListHandler(serverCtx),
+				Handler: achievement.GetAchievementListHandler(serverCtx),
 			},
 			{
 				// 装备/卸下称号
 				Method:  http.MethodPost,
 				Path:    "/title/equip",
-				Handler: EquipTitleHandler(serverCtx),
+				Handler: achievement.EquipTitleHandler(serverCtx),
 			},
 			{
 				// 获取用户称号列表
 				Method:  http.MethodGet,
 				Path:    "/titles",
-				Handler: GetUserTitlesHandler(serverCtx),
+				Handler: achievement.GetUserTitlesHandler(serverCtx),
 			},
 			{
 				// 获取已解锁成就
 				Method:  http.MethodGet,
 				Path:    "/unlocked",
-				Handler: GetUserAchievementsHandler(serverCtx),
+				Handler: achievement.GetUserAchievementsHandler(serverCtx),
 			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
@@ -267,488 +65,22 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
-				// 接受好友请求
-				Method:  http.MethodPost,
-				Path:    "/accept",
-				Handler: AcceptFriendRequestHandler(serverCtx),
-			},
-			{
-				// 删除好友
-				Method:  http.MethodPost,
-				Path:    "/delete",
-				Handler: DeleteFriendHandler(serverCtx),
-			},
-			{
-				// 获取好友列表
-				Method:  http.MethodGet,
-				Path:    "/list",
-				Handler: GetFriendListHandler(serverCtx),
-			},
-			{
-				// 拒绝好友请求
-				Method:  http.MethodPost,
-				Path:    "/reject",
-				Handler: RejectFriendRequestHandler(serverCtx),
-			},
-			{
-				// 发送好友请求
-				Method:  http.MethodPost,
-				Path:    "/request",
-				Handler: SendFriendRequestHandler(serverCtx),
-			},
-			{
-				// 获取好友请求列表
-				Method:  http.MethodGet,
-				Path:    "/requests",
-				Handler: GetFriendRequestsHandler(serverCtx),
-			},
-			{
-				// 搜索用户
-				Method:  http.MethodGet,
-				Path:    "/search",
-				Handler: SearchFriendUserHandler(serverCtx),
-			},
-		},
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
-		rest.WithPrefix("/api/friend"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 关注用户
-				Method:  http.MethodPost,
-				Path:    "/follow",
-				Handler: FollowUserHandler(serverCtx),
-			},
-			{
-				// 获取粉丝列表
-				Method:  http.MethodGet,
-				Path:    "/followers",
-				Handler: GetFollowerListHandler(serverCtx),
-			},
-			{
-				// 获取关注列表
-				Method:  http.MethodGet,
-				Path:    "/following",
-				Handler: GetFollowingListHandler(serverCtx),
-			},
-			{
-				// 取消关注
-				Method:  http.MethodPost,
-				Path:    "/unfollow",
-				Handler: UnfollowUserHandler(serverCtx),
-			},
-		},
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
-		rest.WithPrefix("/api/follow"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 获取广场动态
-				Method:  http.MethodGet,
-				Path:    "/public",
-				Handler: GetPublicPostsHandler(serverCtx),
-			},
-		},
-		rest.WithPrefix("/api/social"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 评论动态
-				Method:  http.MethodPost,
-				Path:    "/comment",
-				Handler: CommentPostHandler(serverCtx),
-			},
-			{
-				// 获取动态评论
-				Method:  http.MethodGet,
-				Path:    "/comments",
-				Handler: GetPostCommentsHandler(serverCtx),
-			},
-			{
-				// 删除动态
-				Method:  http.MethodPost,
-				Path:    "/delete",
-				Handler: DeletePostHandler(serverCtx),
-			},
-			{
-				// 获取关注的人的动态
-				Method:  http.MethodGet,
-				Path:    "/feed",
-				Handler: GetPostListHandler(serverCtx),
-			},
-			{
-				// 点赞动态
-				Method:  http.MethodPost,
-				Path:    "/like",
-				Handler: LikePostHandler(serverCtx),
-			},
-			{
-				// 发布动态
-				Method:  http.MethodPost,
-				Path:    "/post",
-				Handler: CreatePostHandler(serverCtx),
-			},
-			{
-				// 取消点赞
-				Method:  http.MethodPost,
-				Path:    "/unlike",
-				Handler: UnlikePostHandler(serverCtx),
-			},
-		},
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
-		rest.WithPrefix("/api/social"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 接受挑战
-				Method:  http.MethodPost,
-				Path:    "/accept",
-				Handler: AcceptChallengeHandler(serverCtx),
-			},
-			{
-				// 获取待处理挑战
-				Method:  http.MethodGet,
-				Path:    "/pending",
-				Handler: GetPendingChallengesHandler(serverCtx),
-			},
-			{
-				// 拒绝挑战
-				Method:  http.MethodPost,
-				Path:    "/reject",
-				Handler: RejectChallengeHandler(serverCtx),
-			},
-			{
-				// 发起挑战
-				Method:  http.MethodPost,
-				Path:    "/send",
-				Handler: SendChallengeHandler(serverCtx),
-			},
-		},
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
-		rest.WithPrefix("/api/challenge"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 获取赛事对阵图
-				Method:  http.MethodGet,
-				Path:    "/bracket",
-				Handler: GetTournamentBracketHandler(serverCtx),
-			},
-			{
-				// 获取赛事详情
-				Method:  http.MethodGet,
-				Path:    "/detail",
-				Handler: GetTournamentDetailHandler(serverCtx),
-			},
-			{
-				// 获取赛事列表
-				Method:  http.MethodGet,
-				Path:    "/list",
-				Handler: GetTournamentListHandler(serverCtx),
-			},
-		},
-		rest.WithPrefix("/api/tournament"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 取消赛事
-				Method:  http.MethodPost,
-				Path:    "/cancel",
-				Handler: CancelTournamentHandler(serverCtx),
-			},
-			{
-				// 签到赛事
-				Method:  http.MethodPost,
-				Path:    "/checkin",
-				Handler: CheckinTournamentHandler(serverCtx),
-			},
-			{
-				// 创建赛事
-				Method:  http.MethodPost,
-				Path:    "/create",
-				Handler: CreateTournamentHandler(serverCtx),
-			},
-			{
-				// 结束赛事
-				Method:  http.MethodPost,
-				Path:    "/finish",
-				Handler: FinishTournamentHandler(serverCtx),
-			},
-			{
-				// 报名赛事
-				Method:  http.MethodPost,
-				Path:    "/join",
-				Handler: JoinTournamentHandler(serverCtx),
-			},
-			{
-				// 退出赛事
-				Method:  http.MethodPost,
-				Path:    "/leave",
-				Handler: LeaveTournamentHandler(serverCtx),
-			},
-			{
-				// 更新赛事对局结果
-				Method:  http.MethodPost,
-				Path:    "/match/update",
-				Handler: UpdateTournamentMatchHandler(serverCtx),
-			},
-			{
-				// 获取我的赛事
-				Method:  http.MethodGet,
-				Path:    "/my",
-				Handler: GetMyTournamentsHandler(serverCtx),
-			},
-		},
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
-		rest.WithPrefix("/api/tournament"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 获取当前赛季
-				Method:  http.MethodGet,
-				Path:    "/current",
-				Handler: GetCurrentSeasonHandler(serverCtx),
-			},
-			{
-				// 获取赛季排行榜
-				Method:  http.MethodGet,
-				Path:    "/leaderboard",
-				Handler: GetSeasonLeaderboardHandler(serverCtx),
-			},
-		},
-		rest.WithPrefix("/api/season"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 获取我的赛季记录
-				Method:  http.MethodGet,
-				Path:    "/my-record",
-				Handler: GetMySeasonRecordHandler(serverCtx),
-			},
-			{
-				// 获取赛季报告
-				Method:  http.MethodGet,
-				Path:    "/report",
-				Handler: GetSeasonReportHandler(serverCtx),
-			},
-		},
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
-		rest.WithPrefix("/api/season"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 获取球馆详情
-				Method:  http.MethodGet,
-				Path:    "/detail",
-				Handler: GetVenueDetailHandler(serverCtx),
-			},
-			{
-				// 获取球馆列表
-				Method:  http.MethodGet,
-				Path:    "/list",
-				Handler: GetVenueListHandler(serverCtx),
-			},
-			{
-				// 获取附近球馆
-				Method:  http.MethodGet,
-				Path:    "/nearby",
-				Handler: GetNearbyVenuesHandler(serverCtx),
-			},
-		},
-		rest.WithPrefix("/api/venue"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 打卡球馆
-				Method:  http.MethodPost,
-				Path:    "/checkin",
-				Handler: CheckinVenueHandler(serverCtx),
-			},
-			{
-				// 创建球馆
-				Method:  http.MethodPost,
-				Path:    "/create",
-				Handler: CreateVenueHandler(serverCtx),
-			},
-			{
-				// 获取我的打卡记录
-				Method:  http.MethodGet,
-				Path:    "/my-checkins",
-				Handler: GetMyCheckinsHandler(serverCtx),
-			},
-		},
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
-		rest.WithPrefix("/api/venue"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 获取规则分类
-				Method:  http.MethodGet,
-				Path:    "/categories",
-				Handler: GetRuleCategoriesHandler(serverCtx),
-			},
-			{
-				// 获取规则内容
-				Method:  http.MethodGet,
-				Path:    "/content",
-				Handler: GetRuleContentHandler(serverCtx),
-			},
-			{
-				// 获取术语词典
-				Method:  http.MethodGet,
-				Path:    "/glossary",
-				Handler: GetGlossaryHandler(serverCtx),
-			},
-			{
-				// 搜索规则
-				Method:  http.MethodGet,
-				Path:    "/search",
-				Handler: SearchRulesHandler(serverCtx),
-			},
-		},
-		rest.WithPrefix("/api/rules"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 删除通知
-				Method:  http.MethodPost,
-				Path:    "/delete",
-				Handler: DeleteNotificationHandler(serverCtx),
-			},
-			{
-				// 获取通知列表
-				Method:  http.MethodGet,
-				Path:    "/list",
-				Handler: GetNotificationListHandler(serverCtx),
-			},
-			{
-				// 标记已读
-				Method:  http.MethodPost,
-				Path:    "/read",
-				Handler: MarkNotificationReadHandler(serverCtx),
-			},
-			{
-				// 全部标记已读
-				Method:  http.MethodPost,
-				Path:    "/read-all",
-				Handler: MarkAllNotificationsReadHandler(serverCtx),
-			},
-			{
-				// 获取未读数量
-				Method:  http.MethodGet,
-				Path:    "/unread-count",
-				Handler: GetUnreadCountHandler(serverCtx),
-			},
-		},
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
-		rest.WithPrefix("/api/notification"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 获取对局分享数据
-				Method:  http.MethodGet,
-				Path:    "/match",
-				Handler: GetMatchShareDataHandler(serverCtx),
-			},
-			{
-				// 获取赛事分享数据
-				Method:  http.MethodGet,
-				Path:    "/tournament",
-				Handler: GetTournamentShareDataHandler(serverCtx),
-			},
-		},
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
-		rest.WithPrefix("/api/share"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 分球种统计
-				Method:  http.MethodGet,
-				Path:    "/by-game-type",
-				Handler: GetStatsByGameTypeHandler(serverCtx),
-			},
-			{
-				// 对局时长统计
-				Method:  http.MethodGet,
-				Path:    "/match-duration",
-				Handler: GetMatchDurationStatsHandler(serverCtx),
-			},
-			{
-				// 强弱对手分析
-				Method:  http.MethodGet,
-				Path:    "/opponent-strength",
-				Handler: GetOpponentStrengthHandler(serverCtx),
-			},
-			{
-				// 段位分变化趋势
-				Method:  http.MethodGet,
-				Path:    "/rank-score-trend",
-				Handler: GetRankScoreTrendHandler(serverCtx),
-			},
-			{
-				// 近N场胜率趋势
-				Method:  http.MethodGet,
-				Path:    "/recent-trend",
-				Handler: GetRecentTrendHandler(serverCtx),
-			},
-			{
-				// 单杆最高分记录
-				Method:  http.MethodGet,
-				Path:    "/single-high-score",
-				Handler: GetSingleHighScoreHandler(serverCtx),
-			},
-		},
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
-		rest.WithPrefix("/api/stats"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
 				// 检查管理员账号是否存在
 				Method:  http.MethodGet,
 				Path:    "/exists",
-				Handler: AdminExistsHandler(serverCtx),
+				Handler: admin.AdminExistsHandler(serverCtx),
 			},
 			{
 				// 初始化管理员账号
 				Method:  http.MethodPost,
 				Path:    "/init",
-				Handler: AdminInitHandler(serverCtx),
+				Handler: admin.AdminInitHandler(serverCtx),
 			},
 			{
 				// 管理员登录
 				Method:  http.MethodPost,
 				Path:    "/login",
-				Handler: AdminLoginHandler(serverCtx),
+				Handler: admin.AdminLoginHandler(serverCtx),
 			},
 		},
 		rest.WithPrefix("/api/admin"),
@@ -760,13 +92,13 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				// 修改管理员密码
 				Method:  http.MethodPost,
 				Path:    "/change-password",
-				Handler: AdminChangePasswordHandler(serverCtx),
+				Handler: admin.AdminChangePasswordHandler(serverCtx),
 			},
 			{
 				// 获取当前管理员信息
 				Method:  http.MethodGet,
 				Path:    "/info",
-				Handler: AdminUserInfoHandler(serverCtx),
+				Handler: admin.AdminUserInfoHandler(serverCtx),
 			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
@@ -779,13 +111,13 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				// 获取球馆列表（管理员）
 				Method:  http.MethodGet,
 				Path:    "/list",
-				Handler: AdminGetVenueListHandler(serverCtx),
+				Handler: admin.AdminGetVenueListHandler(serverCtx),
 			},
 			{
 				// 审核球馆
 				Method:  http.MethodPost,
 				Path:    "/review",
-				Handler: AdminReviewVenueHandler(serverCtx),
+				Handler: admin.AdminReviewVenueHandler(serverCtx),
 			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
@@ -798,13 +130,13 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				// 获取用户列表（管理员）
 				Method:  http.MethodGet,
 				Path:    "/list",
-				Handler: AdminGetUserListHandler(serverCtx),
+				Handler: admin.AdminGetUserListHandler(serverCtx),
 			},
 			{
 				// 更新用户状态
 				Method:  http.MethodPost,
 				Path:    "/update-status",
-				Handler: AdminUpdateUserStatusHandler(serverCtx),
+				Handler: admin.AdminUpdateUserStatusHandler(serverCtx),
 			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
@@ -817,19 +149,19 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				// 获取最近对局
 				Method:  http.MethodGet,
 				Path:    "/recent-matches",
-				Handler: AdminGetRecentMatchesHandler(serverCtx),
+				Handler: admin.AdminGetRecentMatchesHandler(serverCtx),
 			},
 			{
 				// 获取最近注册用户
 				Method:  http.MethodGet,
 				Path:    "/recent-users",
-				Handler: AdminGetRecentUsersHandler(serverCtx),
+				Handler: admin.AdminGetRecentUsersHandler(serverCtx),
 			},
 			{
 				// 获取首页统计数据
 				Method:  http.MethodGet,
 				Path:    "/stats",
-				Handler: AdminGetDashboardStatsHandler(serverCtx),
+				Handler: admin.AdminGetDashboardStatsHandler(serverCtx),
 			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
@@ -842,10 +174,697 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				// 获取对局列表（管理员）
 				Method:  http.MethodGet,
 				Path:    "/list",
-				Handler: AdminGetMatchListHandler(serverCtx),
+				Handler: admin.AdminGetMatchListHandler(serverCtx),
 			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
 		rest.WithPrefix("/api/admin/match"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 手机号登录/注册
+				Method:  http.MethodPost,
+				Path:    "/login",
+				Handler: auth.LoginHandler(serverCtx),
+			},
+			{
+				// OAuth登录
+				Method:  http.MethodPost,
+				Path:    "/login-by-oauth",
+				Handler: auth.LoginByOauthHandler(serverCtx),
+			},
+			{
+				// 发送短信验证码
+				Method:  http.MethodPost,
+				Path:    "/send-sms",
+				Handler: auth.SendSmsHandler(serverCtx),
+			},
+		},
+		rest.WithPrefix("/api/auth"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 绑定手机号
+				Method:  http.MethodPost,
+				Path:    "/bind-phone",
+				Handler: auth.BindPhoneHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/auth"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 接受挑战
+				Method:  http.MethodPost,
+				Path:    "/accept",
+				Handler: challenge.AcceptChallengeHandler(serverCtx),
+			},
+			{
+				// 获取待处理挑战
+				Method:  http.MethodGet,
+				Path:    "/pending",
+				Handler: challenge.GetPendingChallengesHandler(serverCtx),
+			},
+			{
+				// 拒绝挑战
+				Method:  http.MethodPost,
+				Path:    "/reject",
+				Handler: challenge.RejectChallengeHandler(serverCtx),
+			},
+			{
+				// 发起挑战
+				Method:  http.MethodPost,
+				Path:    "/send",
+				Handler: challenge.SendChallengeHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/challenge"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 关注用户
+				Method:  http.MethodPost,
+				Path:    "/follow",
+				Handler: follow.FollowUserHandler(serverCtx),
+			},
+			{
+				// 获取粉丝列表
+				Method:  http.MethodGet,
+				Path:    "/followers",
+				Handler: follow.GetFollowerListHandler(serverCtx),
+			},
+			{
+				// 获取关注列表
+				Method:  http.MethodGet,
+				Path:    "/following",
+				Handler: follow.GetFollowingListHandler(serverCtx),
+			},
+			{
+				// 取消关注
+				Method:  http.MethodPost,
+				Path:    "/unfollow",
+				Handler: follow.UnfollowUserHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/follow"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 接受好友请求
+				Method:  http.MethodPost,
+				Path:    "/accept",
+				Handler: friend.AcceptFriendRequestHandler(serverCtx),
+			},
+			{
+				// 删除好友
+				Method:  http.MethodPost,
+				Path:    "/delete",
+				Handler: friend.DeleteFriendHandler(serverCtx),
+			},
+			{
+				// 获取好友列表
+				Method:  http.MethodGet,
+				Path:    "/list",
+				Handler: friend.GetFriendListHandler(serverCtx),
+			},
+			{
+				// 拒绝好友请求
+				Method:  http.MethodPost,
+				Path:    "/reject",
+				Handler: friend.RejectFriendRequestHandler(serverCtx),
+			},
+			{
+				// 发送好友请求
+				Method:  http.MethodPost,
+				Path:    "/request",
+				Handler: friend.SendFriendRequestHandler(serverCtx),
+			},
+			{
+				// 获取好友请求列表
+				Method:  http.MethodGet,
+				Path:    "/requests",
+				Handler: friend.GetFriendRequestsHandler(serverCtx),
+			},
+			{
+				// 搜索用户
+				Method:  http.MethodGet,
+				Path:    "/search",
+				Handler: friend.SearchFriendUserHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/friend"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 取消对局
+				Method:  http.MethodPost,
+				Path:    "/cancel",
+				Handler: match.CancelMatchHandler(serverCtx),
+			},
+			{
+				// 获取进行中对局
+				Method:  http.MethodGet,
+				Path:    "/current",
+				Handler: match.GetCurrentMatchHandler(serverCtx),
+			},
+			{
+				// 获取对局详情
+				Method:  http.MethodGet,
+				Path:    "/detail",
+				Handler: match.GetMatchDetailHandler(serverCtx),
+			},
+			{
+				// 结束对局
+				Method:  http.MethodPost,
+				Path:    "/finish",
+				Handler: match.FinishMatchHandler(serverCtx),
+			},
+			{
+				// 犯规
+				Method:  http.MethodPost,
+				Path:    "/foul",
+				Handler: match.MatchFoulHandler(serverCtx),
+			},
+			{
+				// 获取交锋历史
+				Method:  http.MethodGet,
+				Path:    "/h2h/history",
+				Handler: match.GetH2HHistoryHandler(serverCtx),
+			},
+			{
+				// 获取交锋统计
+				Method:  http.MethodGet,
+				Path:    "/h2h/stats",
+				Handler: match.GetH2HStatsHandler(serverCtx),
+			},
+			{
+				// 获取对局列表
+				Method:  http.MethodGet,
+				Path:    "/list",
+				Handler: match.GetMatchListHandler(serverCtx),
+			},
+			{
+				// 获取匹配二维码
+				Method:  http.MethodGet,
+				Path:    "/qrcode",
+				Handler: match.GetMatchQRCodeHandler(serverCtx),
+			},
+			{
+				// 结束一局
+				Method:  http.MethodPost,
+				Path:    "/round/end",
+				Handler: match.EndRoundHandler(serverCtx),
+			},
+			{
+				// 开始下一局
+				Method:  http.MethodPost,
+				Path:    "/round/start",
+				Handler: match.StartNextRoundHandler(serverCtx),
+			},
+			{
+				// 加分
+				Method:  http.MethodPost,
+				Path:    "/score",
+				Handler: match.MatchScoreHandler(serverCtx),
+			},
+			{
+				// 开始对局
+				Method:  http.MethodPost,
+				Path:    "/start",
+				Handler: match.StartMatchHandler(serverCtx),
+			},
+			{
+				// 撤销操作
+				Method:  http.MethodPost,
+				Path:    "/undo",
+				Handler: match.MatchUndoHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/match"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 删除通知
+				Method:  http.MethodPost,
+				Path:    "/delete",
+				Handler: notification.DeleteNotificationHandler(serverCtx),
+			},
+			{
+				// 获取通知列表
+				Method:  http.MethodGet,
+				Path:    "/list",
+				Handler: notification.GetNotificationListHandler(serverCtx),
+			},
+			{
+				// 标记已读
+				Method:  http.MethodPost,
+				Path:    "/read",
+				Handler: notification.MarkNotificationReadHandler(serverCtx),
+			},
+			{
+				// 全部标记已读
+				Method:  http.MethodPost,
+				Path:    "/read-all",
+				Handler: notification.MarkAllNotificationsReadHandler(serverCtx),
+			},
+			{
+				// 获取未读数量
+				Method:  http.MethodGet,
+				Path:    "/unread-count",
+				Handler: notification.GetUnreadCountHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/notification"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 获取对手列表
+				Method:  http.MethodGet,
+				Path:    "/list",
+				Handler: opponent.GetOpponentListHandler(serverCtx),
+			},
+			{
+				// 搜索对手
+				Method:  http.MethodGet,
+				Path:    "/search",
+				Handler: opponent.SearchOpponentHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/opponent"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 获取公开对局详情
+				Method:  http.MethodGet,
+				Path:    "/match/detail",
+				Handler: public.GetPublicMatchDetailHandler(serverCtx),
+			},
+			{
+				// 获取正在进行的对局列表
+				Method:  http.MethodGet,
+				Path:    "/matches/ongoing",
+				Handler: public.GetOngoingMatchesHandler(serverCtx),
+			},
+			{
+				// 获取段位排行榜
+				Method:  http.MethodGet,
+				Path:    "/rank/leaderboard",
+				Handler: public.GetLeaderboardHandler(serverCtx),
+			},
+		},
+		rest.WithPrefix("/api/public"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 获取用户段位信息
+				Method:  http.MethodGet,
+				Path:    "/info",
+				Handler: rank.GetUserRankInfoHandler(serverCtx),
+			},
+			{
+				// 获取段位列表
+				Method:  http.MethodGet,
+				Path:    "/list",
+				Handler: rank.GetRankListHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/rank"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 获取规则分类
+				Method:  http.MethodGet,
+				Path:    "/categories",
+				Handler: rules.GetRuleCategoriesHandler(serverCtx),
+			},
+			{
+				// 获取规则内容
+				Method:  http.MethodGet,
+				Path:    "/content",
+				Handler: rules.GetRuleContentHandler(serverCtx),
+			},
+			{
+				// 获取术语词典
+				Method:  http.MethodGet,
+				Path:    "/glossary",
+				Handler: rules.GetGlossaryHandler(serverCtx),
+			},
+			{
+				// 搜索规则
+				Method:  http.MethodGet,
+				Path:    "/search",
+				Handler: rules.SearchRulesHandler(serverCtx),
+			},
+		},
+		rest.WithPrefix("/api/rules"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 获取当前赛季
+				Method:  http.MethodGet,
+				Path:    "/current",
+				Handler: season.GetCurrentSeasonHandler(serverCtx),
+			},
+			{
+				// 获取赛季排行榜
+				Method:  http.MethodGet,
+				Path:    "/leaderboard",
+				Handler: season.GetSeasonLeaderboardHandler(serverCtx),
+			},
+		},
+		rest.WithPrefix("/api/season"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 获取我的赛季记录
+				Method:  http.MethodGet,
+				Path:    "/my-record",
+				Handler: season.GetMySeasonRecordHandler(serverCtx),
+			},
+			{
+				// 获取赛季报告
+				Method:  http.MethodGet,
+				Path:    "/report",
+				Handler: season.GetSeasonReportHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/season"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 获取对局分享数据
+				Method:  http.MethodGet,
+				Path:    "/match",
+				Handler: share.GetMatchShareDataHandler(serverCtx),
+			},
+			{
+				// 获取赛事分享数据
+				Method:  http.MethodGet,
+				Path:    "/tournament",
+				Handler: share.GetTournamentShareDataHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/share"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 获取广场动态
+				Method:  http.MethodGet,
+				Path:    "/public",
+				Handler: social.GetPublicPostsHandler(serverCtx),
+			},
+		},
+		rest.WithPrefix("/api/social"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 评论动态
+				Method:  http.MethodPost,
+				Path:    "/comment",
+				Handler: social.CommentPostHandler(serverCtx),
+			},
+			{
+				// 获取动态评论
+				Method:  http.MethodGet,
+				Path:    "/comments",
+				Handler: social.GetPostCommentsHandler(serverCtx),
+			},
+			{
+				// 删除动态
+				Method:  http.MethodPost,
+				Path:    "/delete",
+				Handler: social.DeletePostHandler(serverCtx),
+			},
+			{
+				// 获取关注的人的动态
+				Method:  http.MethodGet,
+				Path:    "/feed",
+				Handler: social.GetPostListHandler(serverCtx),
+			},
+			{
+				// 点赞动态
+				Method:  http.MethodPost,
+				Path:    "/like",
+				Handler: social.LikePostHandler(serverCtx),
+			},
+			{
+				// 发布动态
+				Method:  http.MethodPost,
+				Path:    "/post",
+				Handler: social.CreatePostHandler(serverCtx),
+			},
+			{
+				// 取消点赞
+				Method:  http.MethodPost,
+				Path:    "/unlike",
+				Handler: social.UnlikePostHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/social"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 分球种统计
+				Method:  http.MethodGet,
+				Path:    "/by-game-type",
+				Handler: stats.GetStatsByGameTypeHandler(serverCtx),
+			},
+			{
+				// 对局时长统计
+				Method:  http.MethodGet,
+				Path:    "/match-duration",
+				Handler: stats.GetMatchDurationStatsHandler(serverCtx),
+			},
+			{
+				// 强弱对手分析
+				Method:  http.MethodGet,
+				Path:    "/opponent-strength",
+				Handler: stats.GetOpponentStrengthHandler(serverCtx),
+			},
+			{
+				// 段位分变化趋势
+				Method:  http.MethodGet,
+				Path:    "/rank-score-trend",
+				Handler: stats.GetRankScoreTrendHandler(serverCtx),
+			},
+			{
+				// 近N场胜率趋势
+				Method:  http.MethodGet,
+				Path:    "/recent-trend",
+				Handler: stats.GetRecentTrendHandler(serverCtx),
+			},
+			{
+				// 单杆最高分记录
+				Method:  http.MethodGet,
+				Path:    "/single-high-score",
+				Handler: stats.GetSingleHighScoreHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/stats"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 获取赛事对阵图
+				Method:  http.MethodGet,
+				Path:    "/bracket",
+				Handler: tournament.GetTournamentBracketHandler(serverCtx),
+			},
+			{
+				// 获取赛事详情
+				Method:  http.MethodGet,
+				Path:    "/detail",
+				Handler: tournament.GetTournamentDetailHandler(serverCtx),
+			},
+			{
+				// 获取赛事列表
+				Method:  http.MethodGet,
+				Path:    "/list",
+				Handler: tournament.GetTournamentListHandler(serverCtx),
+			},
+		},
+		rest.WithPrefix("/api/tournament"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 取消赛事
+				Method:  http.MethodPost,
+				Path:    "/cancel",
+				Handler: tournament.CancelTournamentHandler(serverCtx),
+			},
+			{
+				// 签到赛事
+				Method:  http.MethodPost,
+				Path:    "/checkin",
+				Handler: tournament.CheckinTournamentHandler(serverCtx),
+			},
+			{
+				// 创建赛事
+				Method:  http.MethodPost,
+				Path:    "/create",
+				Handler: tournament.CreateTournamentHandler(serverCtx),
+			},
+			{
+				// 结束赛事
+				Method:  http.MethodPost,
+				Path:    "/finish",
+				Handler: tournament.FinishTournamentHandler(serverCtx),
+			},
+			{
+				// 报名赛事
+				Method:  http.MethodPost,
+				Path:    "/join",
+				Handler: tournament.JoinTournamentHandler(serverCtx),
+			},
+			{
+				// 退出赛事
+				Method:  http.MethodPost,
+				Path:    "/leave",
+				Handler: tournament.LeaveTournamentHandler(serverCtx),
+			},
+			{
+				// 更新赛事对局结果
+				Method:  http.MethodPost,
+				Path:    "/match/update",
+				Handler: tournament.UpdateTournamentMatchHandler(serverCtx),
+			},
+			{
+				// 获取我的赛事
+				Method:  http.MethodGet,
+				Path:    "/my",
+				Handler: tournament.GetMyTournamentsHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/tournament"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 获取当前用户信息
+				Method:  http.MethodGet,
+				Path:    "/info",
+				Handler: user.GetUserInfoHandler(serverCtx),
+			},
+			{
+				// 更新昵称
+				Method:  http.MethodPost,
+				Path:    "/nickname",
+				Handler: user.UpdateNicknameHandler(serverCtx),
+			},
+			{
+				// 更新推送令牌
+				Method:  http.MethodPost,
+				Path:    "/push-token",
+				Handler: user.UpdatePushTokenHandler(serverCtx),
+			},
+			{
+				// 获取用户统计数据
+				Method:  http.MethodGet,
+				Path:    "/stats",
+				Handler: user.GetUserStatsHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/user"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 获取球馆详情
+				Method:  http.MethodGet,
+				Path:    "/detail",
+				Handler: venue.GetVenueDetailHandler(serverCtx),
+			},
+			{
+				// 获取球馆列表
+				Method:  http.MethodGet,
+				Path:    "/list",
+				Handler: venue.GetVenueListHandler(serverCtx),
+			},
+			{
+				// 获取附近球馆
+				Method:  http.MethodGet,
+				Path:    "/nearby",
+				Handler: venue.GetNearbyVenuesHandler(serverCtx),
+			},
+		},
+		rest.WithPrefix("/api/venue"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 打卡球馆
+				Method:  http.MethodPost,
+				Path:    "/checkin",
+				Handler: venue.CheckinVenueHandler(serverCtx),
+			},
+			{
+				// 创建球馆
+				Method:  http.MethodPost,
+				Path:    "/create",
+				Handler: venue.CreateVenueHandler(serverCtx),
+			},
+			{
+				// 获取我的打卡记录
+				Method:  http.MethodGet,
+				Path:    "/my-checkins",
+				Handler: venue.GetMyCheckinsHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/venue"),
 	)
 }

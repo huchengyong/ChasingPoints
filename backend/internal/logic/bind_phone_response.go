@@ -1,6 +1,6 @@
 package logic
 
-import "billiard_master/internal/types"
+import "chasing_points/internal/types"
 
 func buildBindPhoneSuccessResp(mergedAccount bool) *types.BindPhoneResp {
 	resp := &types.BindPhoneResp{

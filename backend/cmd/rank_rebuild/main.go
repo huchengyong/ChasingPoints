@@ -6,16 +6,16 @@ import (
 	"fmt"
 	"log"
 
-	"billiard_master/internal/config"
-	"billiard_master/internal/logic"
-	"billiard_master/internal/svc"
+	"chasing_points/internal/config"
+	"chasing_points/internal/logic"
+	"chasing_points/internal/svc"
 
 	"github.com/joho/godotenv"
 	"github.com/zeromicro/go-zero/core/conf"
 )
 
 var (
-	configFile = flag.String("f", "etc/billiard_master-api.yaml", "the config file")
+	configFile = flag.String("f", "etc/chasing_points-api.yaml", "the config file")
 	dryRun     = flag.Bool("dry-run", false, "only print the rebuild summary")
 )
 

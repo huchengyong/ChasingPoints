@@ -1,8 +1,8 @@
 package logic
 
 import (
-	"billiard_master/internal/model"
-	"billiard_master/internal/types"
+	"chasing_points/internal/model"
+	"chasing_points/internal/types"
 )
 
 func buildMatchSyncSnapshotForUser(userId int64, match *model.Match, completedRoundCount int64, snookerState model.SnookerRoundState) types.MatchSyncSnapshot {

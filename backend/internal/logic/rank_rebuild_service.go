@@ -5,8 +5,8 @@ import (
 	"sort"
 	"time"
 
-	"billiard_master/internal/model"
-	"billiard_master/internal/svc"
+	"chasing_points/internal/model"
+	"chasing_points/internal/svc"
 
 	"gorm.io/gorm"
 )

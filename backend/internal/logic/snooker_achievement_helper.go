@@ -1,6 +1,6 @@
 package logic
 
-import "billiard_master/internal/model"
+import "chasing_points/internal/model"
 
 func calculateSnookerAchievementScoresByActor(actions []model.MatchAction, rewardMap map[string]int) (int, int) {
 	if len(actions) == 0 {

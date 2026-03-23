@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"billiard_master/internal/model"
-	"billiard_master/internal/svc"
-	"billiard_master/internal/types"
-	"billiard_master/internal/utils"
+	"chasing_points/internal/model"
+	"chasing_points/internal/svc"
+	"chasing_points/internal/types"
+	"chasing_points/internal/utils"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -85,7 +85,7 @@ func (l *SendChallengeLogic) SendChallenge(req *types.SendChallengeReq) (resp *t
 		IsRead:  0,
 	}
 	if notifyErr := l.svcCtx.NotificationModel.Create(notification); notifyErr != nil {
-	l.Logger.Errorf("创建挑战通知失败: to=%d err=%v", req.ToUserId, notifyErr)
+		l.Logger.Errorf("创建挑战通知失败: to=%d err=%v", req.ToUserId, notifyErr)
 	}
 
 	// 推送通知
