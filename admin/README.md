@@ -1,4 +1,4 @@
-# 球艺堂管理后台 (mini 版)
+#追分管理后台 (mini 版)
 
 基于 Vue3 + Vite + TypeScript + Element Plus 的轻量级管理后台模板。
 

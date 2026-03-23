@@ -150,7 +150,7 @@ export function generateMatchPoster(canvasId, data) {
     ctx.arc(80, 220, 140, 0, Math.PI * 2)
     ctx.fill()
 
-    drawCenterText(ctx, '球艺堂 · 对局战报', 84, 30, '#cbd5e1')
+    drawCenterText(ctx, '追分 · 对局战报', 84, 30, '#cbd5e1')
     drawCenterText(ctx, gameTypeName, 126, 24, '#94a3b8')
 
     drawRoundRect(ctx, 40, 170, 670, 300, 32)
@@ -225,7 +225,7 @@ export function generateMatchPoster(canvasId, data) {
       drawSummaryCard(ctx, item, 60 + col * 315, statsTop + 56 + row * 170, 275, 146)
     })
 
-    drawCenterText(ctx, '球艺堂', H - 92, 30, '#60a5fa')
+    drawCenterText(ctx, '追分', H - 92, 30, '#60a5fa')
     drawCenterText(ctx, '真实对局数据生成，仅供复盘与分享', H - 54, 20, '#64748b')
 
     // 绘制完成
@@ -260,7 +260,7 @@ export function generatePkReportPoster(canvasId, data) {
     ctx.setFillStyle(grd)
     ctx.fillRect(0, 0, W, H)
 
-    drawCenterText(ctx, '球艺堂 · PK 报表', 86, 28, '#94a3b8')
+    drawCenterText(ctx, '追分 · PK 报表', 86, 28, '#94a3b8')
     drawCenterText(ctx, data.gameTypeLabel || '真实交锋数据', 132, 22, '#64748b')
 
     ctx.setTextAlign('center')

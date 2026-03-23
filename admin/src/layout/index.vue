@@ -4,7 +4,7 @@
     <el-aside width="200px" class="sidebar">
       <div class="logo">
         <el-icon size="24"><Trophy /></el-icon>
-        <span>球艺堂</span>
+        <span>追分</span>
       </div>
       <el-menu
         :default-active="activeMenu"

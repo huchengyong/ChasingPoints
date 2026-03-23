@@ -8,7 +8,7 @@
 						<image src="/static/logo.png" mode="aspectFit" />
 					</view>
 				</view>
-				<text class="title">欢迎来到球艺堂</text>
+				<text class="title">欢迎来到追分</text>
 				<text class="subtitle">记录您的每次精彩击球</text>
 			</view>
 

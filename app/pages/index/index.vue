@@ -5,7 +5,7 @@
     <view class="nav-header">
       <view class="header-content">
         <view class="header-copy">
-          <text class="title">球艺堂</text>
+          <text class="title">追分</text>
           <text class="subtitle">{{ headerSubtitle }}</text>
         </view>
         <view class="header-right" @tap="goNotification">

@@ -1,5 +1,5 @@
 {
-    "name" : "球艺堂",
+    "name" : "追分",
     "appid" : "__UNI__43A7928",
     "description" : "台球运动相关的垂直类商城以及可实现对局功能的台球战绩助手应用",
     "versionName" : "1.0.0",
@@ -110,7 +110,7 @@
                     "certpath" : "/Users/jerichohu/Documents/Hormony证书/cloudcoupon/cloud-coupon-release.cer",
                     "keyAlias" : "cloud-coupon-release",
                     "keyPassword" : "0000001EA68BCF879F9C2B3C7FA2CC622A8E050CA2BAA18B96DFA759E366A13703CB5E97AA98BE7B4946021AD20F",
-                    "profile" : "/Users/jerichohu/Documents/Hormony证书/球艺堂/ballmall-releaseRelease.p7b",
+                    "profile" : "/Users/jerichohu/Documents/Hormony证书/追分/ballmall-releaseRelease.p7b",
                     "signAlg" : "SHA256withECDSA",
                     "storeFile" : "/Users/jerichohu/Documents/Hormony证书/cloudcoupon/cloud-coupon-release.p12",
                     "storePassword" : "0000001E3B3A3E14BB142C40240E6A4E3E24EDB874847B29EE6C5136E8F25D90DF3B1B4CEC407981F3C6A0792789"

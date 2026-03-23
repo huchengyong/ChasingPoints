@@ -3,13 +3,13 @@
 		<!-- 内容区域 -->
 		<scroll-view class="content" scroll-y>
 			<view class="article">
-				<text class="article-title">球艺堂隐私政策</text>
+				<text class="article-title">追分隐私政策</text>
 				<text class="update-time">更新日期：2024年12月1日</text>
 				
 				<view class="section">
 					<text class="section-title">引言</text>
 					<text class="section-content">
-						球艺堂非常重视用户的隐私保护。本隐私政策旨在向您说明我们如何收集、使用、存储和保护您的个人信息。请您仔细阅读本政策，以便更好地了解我们的隐私保护措施。
+						追分非常重视用户的隐私保护。本隐私政策旨在向您说明我们如何收集、使用、存储和保护您的个人信息。请您仔细阅读本政策，以便更好地了解我们的隐私保护措施。
 					</text>
 				</view>
 				
