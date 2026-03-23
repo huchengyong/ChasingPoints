@@ -15,7 +15,7 @@
       </template>
 
       <el-table :data="userList" stripe border v-loading="loading">
-        <el-table-column type="index" width="60" label="序号" :index="(index) => (page - 1) * pageSize + index + 1" />
+        <el-table-column type="index" width="60" label="序号" :index="(index: number) => (page - 1) * pageSize + index + 1" />
         <el-table-column prop="id" label="用户ID" width="100" />
         <el-table-column prop="nickname" label="昵称" min-width="120" />
         <el-table-column prop="phone" label="手机号" min-width="120" />

@@ -24,7 +24,7 @@
       </template>
 
       <el-table :data="matchList" stripe border>
-        <el-table-column type="index" width="60" label="序号" :index="(index) => (page - 1) * pageSize + index + 1" />
+        <el-table-column type="index" width="60" label="序号" :index="(index: number) => (page - 1) * pageSize + index + 1" />
         <el-table-column prop="game_type_name" label="对局类型" width="100" />
         <el-table-column label="选手">
           <template #default="{ row }">

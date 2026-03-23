@@ -53,7 +53,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { UserFilled, User, Trophy, VideoPlay } from '@element-plus/icons-vue'
 import { getDashboardStats, getRecentUsers, getRecentMatches } from '@/api/dashboard'
-import type { DashboardStats, RecentUser, RecentMatch } from '@/api/dashboard'
+import type { RecentUser, RecentMatch } from '@/api/dashboard'
 
 const loadingUsers = ref(false)
 const loadingMatches = ref(false)
