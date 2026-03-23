@@ -2,28 +2,28 @@
 	<view class="tournament-page">
 		<view class="page-hero">
 			<view class="hero-copy">
-				<text class="hero-eyebrow">赛事大厅</text>
-				<text class="hero-title">把正在报名和即将开打的赛事集中看清楚</text>
-				<text class="hero-desc">筛选球种和状态，快速找到适合报名或围观的赛事。</text>
+				<text class="hero-eyebrow">赛事情报</text>
+				<text class="hero-title">最近的赛程、赛况和赛果集中看清楚</text>
+				<text class="hero-desc">按球种和状态筛选，快速锁定正在进行、即将开始和刚更新结果的重点赛事。</text>
 			</view>
 			<view class="hero-stats">
 				<view class="hero-stat">
-					<text class="hero-stat-label">赛事总数</text>
+					<text class="hero-stat-label">已收录</text>
 					<text class="hero-stat-value">{{ totalCount }}</text>
 				</view>
 				<view class="hero-stat">
-					<text class="hero-stat-label">报名中</text>
-					<text class="hero-stat-value">{{ openCount }}</text>
+					<text class="hero-stat-label">进行中</text>
+					<text class="hero-stat-value">{{ liveCount }}</text>
 				</view>
 				<view class="hero-stat">
-					<text class="hero-stat-label">进行中</text>
-					<text class="hero-stat-value">{{ runningCount }}</text>
+					<text class="hero-stat-label">即将开始</text>
+					<text class="hero-stat-value">{{ upcomingCount }}</text>
 				</view>
 			</view>
 		</view>
 
 		<view class="toolbar">
-			<view class="filter-bar" style="flex: 1;">
+			<view class="filter-bar">
 				<picker :range="gameTypes" range-key="label" @change="onGameTypeChange">
 					<view class="filter-item">
 						<view class="filter-copy">
@@ -43,10 +43,12 @@
 					</view>
 				</picker>
 			</view>
-			<!-- 赛事创建已关闭，仅管理员可在后台发布 -->
+			<view class="toolbar-tip">
+				<text>统计基于当前已加载内容，继续下滑可补充更多赛事情报。</text>
+			</view>
 		</view>
 
-		<view v-if="loading && page === 1" class="loading-state">
+		<view v-if="loading && page === 1 && list.length === 0" class="loading-state">
 			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
@@ -69,46 +71,36 @@
 				>
 					<view class="card-topline">
 						<view class="card-chip game-chip">
-							<text>{{ getGameTypeLabel(item.game_type, '未知球种') }}</text>
+							<text>{{ item.gameTypeText }}</text>
 						</view>
 						<view class="status-tag" :class="'status-' + item.status">
-							<text>{{ statusMap[item.status] || '未知状态' }}</text>
+							<text>{{ item.statusText }}</text>
 						</view>
 					</view>
-					<view class="card-header">
-						<text class="card-name">{{ item.name }}</text>
-						<text class="card-subtitle">{{ formatMap[item.format] || '未知赛制' }} · {{ item.max_players }} 人上限</text>
-					</view>
-					<view class="card-progress">
-						<view class="progress-head">
-							<text class="progress-label">报名进度</text>
-							<text class="progress-value">{{ item.current_players || 0 }}/{{ item.max_players || 0 }}</text>
+					<text class="card-title">{{ item.title }}</text>
+					<text class="card-summary">{{ item.summary }}</text>
+
+					<view class="card-meta">
+						<view class="meta-item">
+							<text class="meta-label">时间</text>
+							<text class="meta-value">{{ item.timeText }}</text>
 						</view>
-						<view class="progress-track">
-							<view
-								class="progress-fill"
-								:style="{ width: `${getProgressPercent(item)}%` }"
-							></view>
+						<view class="meta-item" v-if="item.locationText">
+							<text class="meta-label">地点</text>
+							<text class="meta-value">{{ item.locationText }}</text>
 						</view>
-					</view>
-					<view class="card-info">
-						<view class="info-row">
-							<uni-icons type="calendar" size="16" color="#64748b"></uni-icons>
-							<view class="info-copy">
-								<text class="info-label">开始时间</text>
-								<text class="info-value">{{ formatDisplayTime(item.start_time) || '待定' }}</text>
-							</view>
+						<view class="meta-item">
+							<text class="meta-label">当前阶段</text>
+							<text class="meta-value">{{ item.stageText }}</text>
 						</view>
-						<view class="info-row" v-if="item.city">
-							<uni-icons type="location" size="16" color="#64748b"></uni-icons>
-							<view class="info-copy">
-								<text class="info-label">举办城市</text>
-								<text class="info-value">{{ item.city }}</text>
-							</view>
+						<view class="meta-item">
+							<text class="meta-label">最新赛果</text>
+							<text class="meta-value">{{ item.resultText || item.summary }}</text>
 						</view>
 					</view>
+
 					<view class="card-footer">
-						<text class="footer-time">{{ formatRelativeTime(item.start_time) || '时间待定' }}</text>
+						<text class="footer-source">{{ item.sourceText || '手动录入' }}</text>
 						<text class="footer-link">查看详情</text>
 					</view>
 				</view>
@@ -118,8 +110,8 @@
 				<view class="empty-badge">
 					<uni-icons type="calendar" size="28" color="#15803d"></uni-icons>
 				</view>
-				<text class="empty-title">当前筛选下还没有赛事</text>
-				<text class="empty-text">赛事正在筹备中，请稍后再来查看。</text>
+				<text class="empty-title">当前筛选下还没有赛事情报</text>
+				<text class="empty-text">赛事正在更新中，稍后再来刷新，或者换个球种看看。</text>
 			</view>
 
 			<view v-if="list.length > 0 && !hasMore" class="no-more">
@@ -130,22 +122,33 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { getTournamentList } from '@/api/tournament.js'
-import { formatRelativeTime } from '@/utils/format.js'
-import { GAME_TYPE_FILTER_OPTIONS_WITH_ALL, getGameTypeLabel } from '@/utils/game-types.js'
+import { computed, onMounted, ref } from 'vue'
+import { getEventNewsList } from '@/api/event-news.js'
+import { formatEventNewsTime, getEventNewsStatusText } from '@/utils/home-index.js'
 
-const gameTypes = ref(GAME_TYPE_FILTER_OPTIONS_WITH_ALL)
+const gameTypes = ref([
+	{ label: '全部球种', value: 0 },
+	{ label: '斯诺克', value: 1 },
+	{ label: '中式八球', value: 3 },
+	{ label: '中式九球', value: 2 }
+])
+
 const statusList = ref([
 	{ label: '全部状态', value: -1 },
-	{ label: '报名中', value: 0 },
+	{ label: '即将开始', value: 0 },
 	{ label: '进行中', value: 1 },
-	{ label: '已结束', value: 2 }
+	{ label: '已结束', value: 2 },
+	{ label: '已取消', value: 3 }
 ])
+
+const EVENT_GAME_TYPE_LABELS = {
+	1: '斯诺克',
+	2: '中式九球',
+	3: '中式八球'
+}
+
 const selectedGameType = ref(gameTypes.value[0])
 const selectedStatus = ref(statusList.value[0])
-const formatMap = { 1: '单败淘汰', 2: '双败淘汰', 3: '循环赛' }
-const statusMap = { 0: '报名中', 1: '进行中', 2: '已结束', 3: '已取消' }
 
 const list = ref([])
 const loading = ref(false)
@@ -153,19 +156,51 @@ const refreshing = ref(false)
 const page = ref(1)
 const hasMore = ref(true)
 const totalCount = ref(0)
-const openCount = computed(() => list.value.filter(item => item.status === 0).length)
-const runningCount = computed(() => list.value.filter(item => item.status === 1).length)
+
+const liveCount = computed(() => list.value.filter(item => item.status === 1).length)
+const upcomingCount = computed(() => list.value.filter(item => item.status === 0).length)
+
+const getGameTypeText = (gameType) => {
+	return EVENT_GAME_TYPE_LABELS[Number(gameType)] || '台球'
+}
+
+const formatLocationText = (item) => {
+	const city = typeof item.city === 'string' ? item.city.trim() : ''
+	const venue = typeof item.venue === 'string' ? item.venue.trim() : ''
+	if (city && venue) return `${city} · ${venue}`
+	return city || venue || ''
+}
+
+const normalizeEventNewsItem = (item, now = Date.now()) => {
+	const timeSource = item.start_time || item.sort_time || item.end_time || item.published_at || item.created_at
+	return {
+		...item,
+		title: item.title || '赛事情报',
+		summary: item.summary || item.result_text || '最新赛况持续更新中',
+		statusText: getEventNewsStatusText(item.status, '未知状态'),
+		gameTypeText: getGameTypeText(item.game_type),
+		timeText: formatEventNewsTime(timeSource, now),
+		locationText: formatLocationText(item),
+		stageText: item.stage_text || '阶段待更新',
+		resultText: item.result_text || '',
+		sourceText: item.source_name || ''
+	}
+}
 
 const fetchList = async (isRefresh = false) => {
 	if (loading.value) return
 	loading.value = true
 	try {
-		const params = { page: page.value, page_size: 10 }
+		const params = {
+			page: page.value,
+			page_size: 10
+		}
 		if (selectedGameType.value.value > 0) params.game_type = selectedGameType.value.value
 		if (selectedStatus.value.value >= 0) params.status = selectedStatus.value.value
-		const res = await getTournamentList(params)
+
+		const res = await getEventNewsList(params)
 		if (res.success) {
-			const newList = res.list || []
+			const newList = (res.list || []).map((item) => normalizeEventNewsItem(item))
 			if (isRefresh) {
 				list.value = newList
 			} else {
@@ -175,7 +210,7 @@ const fetchList = async (isRefresh = false) => {
 			hasMore.value = list.value.length < (res.total || 0)
 		}
 	} catch (e) {
-		console.error('获取赛事列表失败', e)
+		console.error('获取赛事情报列表失败', e)
 	} finally {
 		loading.value = false
 		refreshing.value = false
@@ -183,41 +218,34 @@ const fetchList = async (isRefresh = false) => {
 }
 
 const onRefresh = () => {
+	if (loading.value) return
 	refreshing.value = true
 	page.value = 1
 	fetchList(true)
 }
+
 const loadMore = () => {
 	if (!hasMore.value || loading.value) return
 	page.value++
 	fetchList()
 }
+
 const onGameTypeChange = (e) => {
+	if (loading.value) return
 	selectedGameType.value = gameTypes.value[e.detail.value]
 	page.value = 1
 	list.value = []
 	fetchList(true)
 }
+
 const onStatusChange = (e) => {
+	if (loading.value) return
 	selectedStatus.value = statusList.value[e.detail.value]
 	page.value = 1
 	list.value = []
 	fetchList(true)
 }
-const getProgressPercent = (item) => {
-	const maxPlayers = Number(item.max_players) || 0
-	if (!maxPlayers) return 0
-	const currentPlayers = Number(item.current_players) || 0
-	return Math.min(100, Math.round((currentPlayers / maxPlayers) * 100))
-}
-const formatDisplayTime = (value) => {
-	if (!value) return ''
-	const relative = formatRelativeTime(value)
-	return relative === '刚刚' ? '今天' : relative
-}
-const goCreate = () => {
-	uni.navigateTo({ url: '/subPages/tournament/create' })
-}
+
 const goDetail = (id) => {
 	uni.navigateTo({ url: '/subPages/tournament/detail?id=' + id })
 }
