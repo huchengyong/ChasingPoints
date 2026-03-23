@@ -1,39 +1,74 @@
-const REPORT_POST_TYPE = 1
-const ENDED_TOURNAMENT_STATUS = 2
-const getTournamentPriority = (status) => {
-  if (status === 1) return 0
-  if (status === 0) return 1
-  return 2
-}
+import { getGameTypeLabel } from './game-types.js'
 
-const getTimestamp = (dateTime) => {
+const REPORT_POST_TYPE = 1
+const EVENT_NEWS_STATUS_MAP = Object.freeze({
+  0: '即将开始',
+  1: '进行中',
+  2: '已结束',
+  3: '已取消'
+})
+
+const formatTimestamp = (dateTime) => {
   if (!dateTime) return Number.POSITIVE_INFINITY
   const parsed = new Date(dateTime).getTime()
   return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed
 }
 
-export const pickFeaturedTournament = (list = [], now = Date.now()) => {
+export const getEventNewsStatusText = (status, fallback = '赛事情报') => {
+  return EVENT_NEWS_STATUS_MAP[Number(status)] || fallback
+}
+
+export const formatEventNewsTime = (dateTime, now = Date.now()) => {
   const currentTime = typeof now === 'string' ? new Date(now).getTime() : now
-  const validList = Array.isArray(list) ? list.filter(Boolean) : []
+  const eventTime = formatTimestamp(dateTime)
 
-  if (!validList.length) return null
+  if (!Number.isFinite(eventTime) || !Number.isFinite(currentTime)) {
+    return '时间待定'
+  }
 
-  const candidates = validList
-    .filter((item) => item.status !== ENDED_TOURNAMENT_STATUS)
-    .sort((left, right) => {
-      const leftPriority = getTournamentPriority(left.status)
-      const rightPriority = getTournamentPriority(right.status)
+  const date = new Date(eventTime)
+  const currentDate = new Date(currentTime)
+  const today = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()).getTime()
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
+  const diffDays = Math.round((target - today) / (24 * 60 * 60 * 1000))
+  const hh = String(date.getHours()).padStart(2, '0')
+  const mm = String(date.getMinutes()).padStart(2, '0')
 
-      if (leftPriority !== rightPriority) {
-        return leftPriority - rightPriority
-      }
+  if (diffDays === 0) return `今天 ${hh}:${mm}`
+  if (diffDays === 1) return `明天 ${hh}:${mm}`
+  if (diffDays === 2) return `后天 ${hh}:${mm}`
 
-      const leftDiff = Math.abs(getTimestamp(left.start_time) - currentTime)
-      const rightDiff = Math.abs(getTimestamp(right.start_time) - currentTime)
-      return leftDiff - rightDiff
-    })
+  return `${date.getMonth() + 1}月${date.getDate()}日 ${hh}:${mm}`
+}
 
-  return candidates[0] || validList[0]
+const getEventNewsLocationText = (item) => {
+  const city = typeof item.city === 'string' ? item.city.trim() : ''
+  const venue = typeof item.venue === 'string' ? item.venue.trim() : ''
+
+  if (city && venue) return `${city} · ${venue}`
+  return city || venue || ''
+}
+
+export const normalizeFeaturedEventNews = (item, now = Date.now()) => {
+  if (!item) return null
+
+  const timeSource = item.start_time || item.sort_time || item.end_time || item.published_at || item.created_at
+  const locationText = getEventNewsLocationText(item)
+  const sourceText = typeof item.source_name === 'string' ? item.source_name.trim() : ''
+
+  return {
+    id: item.id,
+    title: item.title || '赛事情报',
+    summary: item.summary || item.result_text || '查看最新赛程赛况',
+    statusText: getEventNewsStatusText(item.status),
+    timeText: formatEventNewsTime(timeSource, now),
+    typeText: item.game_type != null ? getGameTypeLabel(item.game_type, '台球') : '台球',
+    locationText,
+    sourceText,
+    sourceUrl: item.source_url || '',
+    gameType: item.game_type,
+    status: item.status
+  }
 }
 
 export const buildFeaturedPostTarget = (post) => {

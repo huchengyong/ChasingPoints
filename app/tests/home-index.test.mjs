@@ -3,7 +3,9 @@ import assert from 'node:assert/strict'
 
 import {
   buildFeaturedPostTarget,
-  pickFeaturedTournament
+  formatEventNewsTime,
+  getEventNewsStatusText,
+  normalizeFeaturedEventNews
 } from '../utils/home-index.js'
 import { shouldFetchAuthState } from '../utils/auth-guards.js'
 import { shouldShowMatchPageLoading } from '../utils/match-page.js'
@@ -44,25 +46,42 @@ test('buildFeaturedPostTarget falls back to community for report posts without m
   })
 })
 
-test('pickFeaturedTournament prefers active upcoming tournaments over ended ones', () => {
-  const now = '2026-03-11T12:00:00+08:00'
-  const picked = pickFeaturedTournament([
-    { id: 1, status: 2, start_time: '2026-03-09T20:00:00+08:00' },
-    { id: 2, status: 0, start_time: '2026-03-12T20:00:00+08:00' },
-    { id: 3, status: 1, start_time: '2026-03-11T20:00:00+08:00' }
-  ], now)
-
-  assert.equal(picked.id, 3)
+test('getEventNewsStatusText maps status codes to readable labels', () => {
+  assert.equal(getEventNewsStatusText(0), '即将开始')
+  assert.equal(getEventNewsStatusText(1), '进行中')
+  assert.equal(getEventNewsStatusText(2), '已结束')
+  assert.equal(getEventNewsStatusText(3), '已取消')
 })
 
-test('pickFeaturedTournament falls back to nearest non-ended item when status is mixed', () => {
-  const now = '2026-03-11T12:00:00+08:00'
-  const picked = pickFeaturedTournament([
-    { id: 10, status: 0, start_time: '2026-03-15T20:00:00+08:00' },
-    { id: 11, status: 0, start_time: '2026-03-12T09:00:00+08:00' }
-  ], now)
+test('formatEventNewsTime falls back gracefully for missing or invalid time values', () => {
+  assert.equal(formatEventNewsTime('', '2026-03-11T12:00:00+08:00'), '时间待定')
+  assert.equal(formatEventNewsTime('not-a-date', '2026-03-11T12:00:00+08:00'), '时间待定')
+})
 
-  assert.equal(picked.id, 11)
+test('normalizeFeaturedEventNews maps event news fields without roster copy', () => {
+  const card = normalizeFeaturedEventNews({
+    id: 11,
+    title: '独牙传奇中式九球公开赛',
+    summary: '国内顶级追分赛事今晚开赛',
+    game_type: 2,
+    status: 1,
+    start_time: '2026-03-11T20:00:00+08:00',
+    city: '杭州',
+    venue: '奥体中心',
+    source_name: '独牙传奇',
+    source_url: 'https://example.com/event'
+  }, '2026-03-11T12:00:00+08:00')
+
+  assert.equal(card.id, 11)
+  assert.equal(card.title, '独牙传奇中式九球公开赛')
+  assert.equal(card.summary, '国内顶级追分赛事今晚开赛')
+  assert.equal(card.statusText, '进行中')
+  assert.equal(card.timeText, '今天 20:00')
+  assert.equal(card.typeText, '九球追分')
+  assert.equal(card.locationText, '杭州 · 奥体中心')
+  assert.equal(card.sourceText, '独牙传奇')
+  assert.equal(card.sourceUrl, 'https://example.com/event')
+  assert.equal('playersText' in card, false)
 })
 
 test('shouldFetchUnreadCount skips unread count requests for guests', () => {

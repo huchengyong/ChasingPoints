@@ -81,28 +81,28 @@
 
         <view class="focus-section">
           <view class="section-header">
-            <text class="section-title">赛事焦点</text>
+            <text class="section-title">赛事情报</text>
             <view class="section-more" @tap="goTo('/subPages/tournament/index')">
-              <text>赛事大厅</text>
+              <text>全部情报</text>
               <uni-icons type="right" size="14" :color="isDarkMode ? '#94a3b8' : '#94a3b8'"></uni-icons>
             </view>
           </view>
 
-          <view v-if="featuredTournament" class="focus-card" @tap="goTo(`/subPages/tournament/detail?id=${featuredTournament.id}`)">
+          <view v-if="featuredEventNews" class="focus-card" @tap="goTo(`/subPages/tournament/detail?id=${featuredEventNews.id}`)">
             <view class="focus-card-top">
-              <text class="focus-pill">{{ featuredTournament.statusText }}</text>
-              <text class="focus-aside">{{ featuredTournament.timeText }}</text>
+              <text class="focus-pill">{{ featuredEventNews.statusText }}</text>
+              <text class="focus-aside">{{ featuredEventNews.timeText }}</text>
             </view>
-            <text class="focus-title">{{ featuredTournament.name }}</text>
-            <text class="focus-desc">{{ featuredTournament.desc }}</text>
+            <text class="focus-title">{{ featuredEventNews.title }}</text>
+            <text class="focus-desc">{{ featuredEventNews.summary }}</text>
             <view class="focus-footer">
-              <text>{{ featuredTournament.typeText }}</text>
-              <text>{{ featuredTournament.playersText }}</text>
+              <text>{{ featuredEventNews.typeText }}</text>
+              <text>{{ featuredEventNews.locationText || featuredEventNews.sourceText || '赛事情报' }}</text>
             </view>
           </view>
           <view v-else class="section-empty">
-            <text class="empty-title">还没有可推荐的赛事</text>
-            <text class="empty-desc">先去排行榜看看高手状态，晚点再来报名。</text>
+            <text class="empty-title">还没有可看的赛事情报</text>
+            <text class="empty-desc">先去看看最近的赛事动态，稍后再来刷新。</text>
           </view>
         </view>
 
@@ -205,21 +205,19 @@ import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { useThemeStore } from '@/store/theme.js'
 import { useNotificationStore } from '@/store/notification.js'
-import { getTournamentList } from '@/api/tournament.js'
+import { getFeaturedEventNews } from '@/api/event-news.js'
 import { getCurrentMatch, startMatch } from '@/api/match.js'
 import { getPublicPosts } from '@/api/social.js'
 import { getLeaderboard } from '@/api/rank.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { formatRelativeTime } from '@/utils/format.js'
 import { getGameTypeLabel } from '@/utils/game-types.js'
-import { buildFeaturedPostTarget, pickFeaturedTournament } from '@/utils/home-index.js'
+import { buildFeaturedPostTarget, normalizeFeaturedEventNews } from '@/utils/home-index.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
 
 const userStore = useUserStore()
 const themeStore = useThemeStore()
 const notificationStore = useNotificationStore()
-
-const tournamentStatusMap = { 0: '报名中', 1: '进行中', 2: '已结束' }
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight)
 const isDarkMode = computed(() => themeStore.isDarkMode)
@@ -234,11 +232,11 @@ const selectedGameType = ref(null)
 const currentMatch = ref(null)
 const leaderboardTopThree = ref([])
 const myRanking = ref(null)
-const featuredTournament = ref(null)
+const featuredEventNews = ref(null)
 const featuredPost = ref(null)
 
 const hasContent = computed(() => {
-  return Boolean(currentMatch.value || featuredTournament.value || featuredPost.value || leaderboardTopThree.value.length)
+  return Boolean(currentMatch.value || featuredEventNews.value || featuredPost.value || leaderboardTopThree.value.length)
 })
 
 const headerSubtitle = computed(() => {
@@ -363,7 +361,7 @@ const toolEntries = computed(() => [
   { label: 'PK记录', desc: '查看邀约与结果', icon: 'flag-filled', iconColor: '#18b05b', url: '/subPages/social/challenges' },
   { label: '深度统计', desc: '看你的竞技画像', icon: 'bars', iconColor: '#16a34a', url: '/subPages/user/statsDetail' },
   { label: '规则说明', desc: '快速查台球规则', icon: 'help', iconColor: '#7c3aed', url: '/subPages/rules/index' },
-  { label: '赛事大厅', desc: '发现平台比赛', icon: 'calendar', iconColor: '#ea580c', url: '/subPages/tournament/index' },
+  { label: '赛事情报', desc: '查看最近赛程赛况', icon: 'calendar', iconColor: '#ea580c', url: '/subPages/tournament/index' },
   { label: '球房场馆', desc: '寻找附近球房', icon: 'location', iconColor: '#0f766e', url: '/subPages/venue/index' }
 ])
 
@@ -373,7 +371,7 @@ const loadData = async () => {
   try {
     const requests = [
       getLeaderboard({ page: 1, page_size: 3 }).catch(() => ({ success: false })),
-      getTournamentList({ page: 1, page_size: 5 }).catch(() => ({ success: false })),
+      getFeaturedEventNews().catch(() => ({ success: false })),
       getPublicPosts({ page: 1, page_size: 6 }).catch(() => ({ success: false }))
     ]
 
@@ -400,9 +398,9 @@ const loadData = async () => {
       myRanking.value = null
     }
 
-    const tournamentRes = results[resultIndex++]
-    featuredTournament.value = tournamentRes.success
-      ? normalizeTournament(pickFeaturedTournament(tournamentRes.list || []))
+    const featuredRes = results[resultIndex++]
+    featuredEventNews.value = featuredRes.success
+      ? normalizeFeaturedEventNews(featuredRes.event_news || featuredRes.eventNews)
       : null
 
     const postRes = results[resultIndex]
@@ -418,19 +416,6 @@ const onRefresh = async () => {
   refreshing.value = true
   await Promise.all([loadData(), notificationStore.fetchUnreadCount()])
   refreshing.value = false
-}
-
-const normalizeTournament = (item) => {
-  if (!item) return null
-
-  return {
-    ...item,
-    statusText: tournamentStatusMap[item.status] || '报名中',
-    typeText: getGameTypeLabel(item.game_type),
-    playersText: `${item.current_players || 0}/${item.max_players || 0} 人`,
-    timeText: formatEventTime(item.start_time),
-    desc: `${getGameTypeLabel(item.game_type)} · ${item.current_players || 0}/${item.max_players || 0} 人已报名`
-  }
 }
 
 const pickFeaturedPost = (list) => {
@@ -452,26 +437,6 @@ const getPostTagText = (postType) => {
   if (postType === 1) return '战报'
   if (postType === 2) return '打卡'
   return '动态'
-}
-
-const formatEventTime = (dateTime) => {
-  if (!dateTime) return '时间待定'
-
-  const date = new Date(dateTime)
-  if (Number.isNaN(date.getTime())) return '时间待定'
-
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
-  const diffDays = Math.round((target - today) / (24 * 60 * 60 * 1000))
-  const hh = String(date.getHours()).padStart(2, '0')
-  const mm = String(date.getMinutes()).padStart(2, '0')
-
-  if (diffDays === 0) return `今天 ${hh}:${mm}`
-  if (diffDays === 1) return `明天 ${hh}:${mm}`
-  if (diffDays === 2) return `后天 ${hh}:${mm}`
-
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${hh}:${mm}`
 }
 
 const formatDuration = (durationSeconds) => {
