@@ -25,7 +25,30 @@ func NewGetEventNewsListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *
 }
 
 func (l *GetEventNewsListLogic) GetEventNewsList(req *types.GetEventNewsListReq) (resp *types.GetEventNewsListResp, err error) {
-	// todo: add your logic here and delete this line
+	if req == nil {
+		return &types.GetEventNewsListResp{Success: false, List: []types.EventNewsInfo{}}, nil
+	}
 
-	return
+	items, err := l.svcCtx.EventNewsModel.FindPublishedMatching(req.GameType, req.Status, req.City)
+	if err != nil {
+		l.Logger.Errorf("获取赛事情报列表失败: req=%+v err=%v", req, err)
+		return &types.GetEventNewsListResp{Success: false, List: []types.EventNewsInfo{}}, nil
+	}
+
+	sortEventNewsItems(items, eventNewsNow())
+	pageItems := paginateEventNewsItems(items, req.Page, req.PageSize)
+
+	respItems := make([]types.EventNewsInfo, 0, len(pageItems))
+	for _, item := range pageItems {
+		respItems = append(respItems, mapEventNewsInfo(item))
+	}
+	if respItems == nil {
+		respItems = []types.EventNewsInfo{}
+	}
+
+	return &types.GetEventNewsListResp{
+		Success: true,
+		Total:   int64(len(items)),
+		List:    respItems,
+	}, nil
 }

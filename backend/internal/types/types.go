@@ -557,7 +557,7 @@ type GetEventNewsDetailResp struct {
 type GetEventNewsListReq struct {
 	Page     int    `form:"page,default=1"`
 	PageSize int    `form:"page_size,default=20"`
-	Status   int    `form:"status,optional"`
+	Status   int    `form:"status,optional,default=-1"`
 	GameType int    `form:"game_type,optional"`
 	City     string `form:"city,optional"`
 }

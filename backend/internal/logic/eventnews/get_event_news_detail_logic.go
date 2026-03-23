@@ -25,7 +25,22 @@ func NewGetEventNewsDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext)
 }
 
 func (l *GetEventNewsDetailLogic) GetEventNewsDetail(req *types.GetEventNewsDetailReq) (resp *types.GetEventNewsDetailResp, err error) {
-	// todo: add your logic here and delete this line
+	if req == nil || req.EventNewsId <= 0 {
+		return &types.GetEventNewsDetailResp{Success: false}, nil
+	}
 
-	return
+	item, err := l.svcCtx.EventNewsModel.FindPublishedById(req.EventNewsId)
+	if err != nil {
+		l.Logger.Errorf("获取赛事情报详情失败: eventNewsId=%d err=%v", req.EventNewsId, err)
+		return &types.GetEventNewsDetailResp{Success: false}, nil
+	}
+	if item == nil {
+		return &types.GetEventNewsDetailResp{Success: false}, nil
+	}
+
+	info := mapEventNewsInfo(*item)
+	return &types.GetEventNewsDetailResp{
+		Success:   true,
+		EventNews: &info,
+	}, nil
 }

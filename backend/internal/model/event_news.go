@@ -70,6 +70,37 @@ func (m *EventNewsModel) FindById(id int64) (*EventNews, error) {
 	return &eventNews, err
 }
 
+func (m *EventNewsModel) FindPublishedById(id int64) (*EventNews, error) {
+	var eventNews EventNews
+	err := m.db.
+		Where("id = ? AND published = ?", id, true).
+		First(&eventNews).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &eventNews, err
+}
+
+func (m *EventNewsModel) FindPublishedMatching(gameType, status int, city string) ([]EventNews, error) {
+	query := m.db.Model(&EventNews{}).Where("published = ?", true)
+	if gameType > 0 {
+		query = query.Where("game_type = ?", gameType)
+	}
+	if status >= 0 {
+		query = query.Where("status = ?", status)
+	}
+	if city != "" {
+		query = query.Where("city = ?", city)
+	}
+
+	var list []EventNews
+	err := query.Find(&list).Error
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
 func (m *EventNewsModel) FindList(page, pageSize int, gameType, status int, city string, published int) ([]EventNews, int64, error) {
 	page, pageSize = normalizePage(page, pageSize)
 	offset := (page - 1) * pageSize

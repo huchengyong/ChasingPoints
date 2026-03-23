@@ -25,7 +25,23 @@ func NewGetFeaturedEventNewsLogic(ctx context.Context, svcCtx *svc.ServiceContex
 }
 
 func (l *GetFeaturedEventNewsLogic) GetFeaturedEventNews() (resp *types.GetFeaturedEventNewsResp, err error) {
-	// todo: add your logic here and delete this line
+	items, err := l.svcCtx.EventNewsModel.FindPublishedMatching(-1, -1, "")
+	if err != nil {
+		l.Logger.Errorf("获取首页焦点赛事情报失败: err=%v", err)
+		return &types.GetFeaturedEventNewsResp{Success: false}, nil
+	}
+	if len(items) == 0 {
+		return &types.GetFeaturedEventNewsResp{Success: false}, nil
+	}
 
-	return
+	item := pickBestFeaturedEventNews(items, eventNewsNow())
+	if item == nil {
+		return &types.GetFeaturedEventNewsResp{Success: false}, nil
+	}
+
+	info := mapEventNewsInfo(*item)
+	return &types.GetFeaturedEventNewsResp{
+		Success:   true,
+		EventNews: &info,
+	}, nil
 }
