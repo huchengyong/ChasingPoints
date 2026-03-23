@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS `season_records` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `season_id` BIGINT UNSIGNED NOT NULL COMMENT '赛季ID',
   `user_id` BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+  `game_type` TINYINT NOT NULL DEFAULT 3 COMMENT '球种 1=斯诺克 2=九球追分 3=中式八球 4=美式九球',
   `start_rank_score` INT NOT NULL DEFAULT 0 COMMENT '赛季初始排位分',
   `end_rank_score` INT NOT NULL DEFAULT 0 COMMENT '赛季结束排位分',
   `peak_rank_score` INT NOT NULL DEFAULT 0 COMMENT '赛季峰值排位分',
@@ -86,9 +87,10 @@ CREATE TABLE IF NOT EXISTS `season_records` (
   `rewards` JSON DEFAULT NULL COMMENT '赛季奖励JSON',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_season_user` (`season_id`, `user_id`),
+  UNIQUE KEY `uk_season_user_game` (`season_id`, `user_id`, `game_type`),
   KEY `idx_season_id` (`season_id`),
-  KEY `idx_user_id` (`user_id`)
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_season_game_rank` (`season_id`, `game_type`, `end_rank_score`, `wins`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='赛季记录表';
 
 -- 球馆表
@@ -98,6 +100,7 @@ CREATE TABLE IF NOT EXISTS `venues` (
   `address` VARCHAR(512) NOT NULL DEFAULT '' COMMENT '详细地址',
   `city` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '城市',
   `district` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '区县',
+  `full_address` VARCHAR(512) NOT NULL DEFAULT '' COMMENT '完整地址',
   `latitude` DECIMAL(10,7) DEFAULT NULL COMMENT '纬度',
   `longitude` DECIMAL(10,7) DEFAULT NULL COMMENT '经度',
   `phone` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '联系电话',
@@ -108,12 +111,22 @@ CREATE TABLE IF NOT EXISTS `venues` (
   `description` TEXT DEFAULT NULL COMMENT '球馆描述',
   `owner_user_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '认证球馆店主用户ID',
   `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态 0=待审核 1=已通过',
+  `geo_status` TINYINT NOT NULL DEFAULT 0 COMMENT '地理解析状态 0=待解析 1=成功 2=重试中 3=失败',
+  `geo_source` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '地理解析来源',
+  `geo_score` INT NOT NULL DEFAULT 0 COMMENT '地理解析匹配分',
+  `geo_level` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '地理解析级别',
+  `geo_attempts` INT NOT NULL DEFAULT 0 COMMENT '地理解析尝试次数',
+  `geo_error` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '最近一次地理解析错误',
+  `geo_updated_at` DATETIME DEFAULT NULL COMMENT '最近一次地理解析时间',
+  `duplicate_of_venue_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '重复球馆归并目标ID',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_city` (`city`),
   KEY `idx_district` (`city`, `district`),
   KEY `idx_status` (`status`),
-  KEY `idx_owner` (`owner_user_id`)
+  KEY `idx_owner` (`owner_user_id`),
+  KEY `idx_status_geo_status` (`status`, `geo_status`),
+  UNIQUE KEY `uniq_full_address` (`full_address`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='球馆表';
 
 -- 球馆签到表

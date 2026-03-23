@@ -11,11 +11,15 @@ CREATE TABLE IF NOT EXISTS `matches` (
   `game_mode` varchar(20) DEFAULT NULL COMMENT '比赛模式：让球数/单局决胜/目标分等',
   `my_score` int NOT NULL DEFAULT 0 COMMENT '我的总得分（局数或分数）',
   `opponent_score` int NOT NULL DEFAULT 0 COMMENT '对手总得分',
+  `current_frame_my_score` int NOT NULL DEFAULT 0 COMMENT '当前frame我方分数',
+  `current_frame_opponent_score` int NOT NULL DEFAULT 0 COMMENT '当前frame对手分数',
+  `current_frame_started` tinyint(1) NOT NULL DEFAULT 0 COMMENT '当前frame是否已开始',
   `status` tinyint NOT NULL DEFAULT 1 COMMENT '状态：1=进行中 2=已完成 3=已取消',
   `result` tinyint DEFAULT NULL COMMENT '比赛结果：1=胜利 2=失败 3=平局',
   `match_time` datetime NOT NULL COMMENT '比赛开始时间',
   `end_time` datetime DEFAULT NULL COMMENT '比赛结束时间',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `sync_revision` bigint unsigned NOT NULL DEFAULT 0 COMMENT '对局同步版本号',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted_at` datetime DEFAULT NULL,
@@ -24,7 +28,10 @@ CREATE TABLE IF NOT EXISTS `matches` (
   KEY `idx_opponent_id` (`opponent_id`),
   KEY `idx_status` (`status`),
   KEY `idx_match_time` (`match_time`),
-  KEY `idx_deleted_at` (`deleted_at`)
+  KEY `idx_deleted_at` (`deleted_at`),
+  KEY `idx_user_opponent_status` (`user_id`, `opponent_id`, `status`),
+  KEY `idx_status_deleted` (`status`, `deleted_at`),
+  KEY `idx_opponent_status` (`opponent_id`, `status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='对局记录表';
 
 -- 局记录表
@@ -51,10 +58,14 @@ CREATE TABLE IF NOT EXISTS `match_actions` (
   `score_change` int NOT NULL DEFAULT 0 COMMENT '分数变化',
   `extra_data` json DEFAULT NULL COMMENT '额外数据',
   `is_undone` tinyint NOT NULL DEFAULT 0 COMMENT '是否已撤销',
+  `client_action_id` varchar(64) DEFAULT NULL COMMENT '客户端操作ID',
+  `base_revision` bigint unsigned NOT NULL DEFAULT 0 COMMENT '客户端基线版本号',
+  `server_revision` bigint unsigned NOT NULL DEFAULT 0 COMMENT '服务端确认版本号',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_match_id` (`match_id`),
-  KEY `idx_is_undone` (`is_undone`)
+  KEY `idx_is_undone` (`is_undone`),
+  UNIQUE KEY `uk_match_client_action` (`match_id`, `client_action_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='操作日志表';
 
 -- 特殊成绩表

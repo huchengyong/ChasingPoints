@@ -11,8 +11,10 @@ CREATE TABLE IF NOT EXISTS `users` (
   `status` tinyint NOT NULL DEFAULT 1 COMMENT '状态:1正常 0禁用',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted_at` datetime DEFAULT NULL COMMENT '删除时间',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `idx_phone` (`phone`)
+  UNIQUE KEY `idx_phone` (`phone`),
+  KEY `idx_deleted_at` (`deleted_at`)
 ) ENGINE=InnoDB AUTO_INCREMENT=143713 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
 -- OAuth关联表
@@ -23,9 +25,11 @@ CREATE TABLE IF NOT EXISTS `user_oauth` (
   `open_id` varchar(128) NOT NULL COMMENT 'OpenID',
   `union_id` varchar(128) DEFAULT NULL COMMENT 'UnionID',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `deleted_at` datetime DEFAULT NULL COMMENT '删除时间',
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_provider_openid` (`provider`, `open_id`),
-  KEY `idx_user_id` (`user_id`)
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_deleted_at` (`deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='OAuth关联表';
 
 -- 验证码表（用于存储短信验证码）
@@ -37,9 +41,11 @@ CREATE TABLE IF NOT EXISTS `verification_codes` (
   `expires_at` datetime NOT NULL COMMENT '过期时间',
   `used` tinyint NOT NULL DEFAULT 0 COMMENT '是否已使用:0未使用 1已使用',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `deleted_at` datetime DEFAULT NULL COMMENT '删除时间',
   PRIMARY KEY (`id`),
   KEY `idx_phone_scene` (`phone`, `scene`),
-  KEY `idx_expires_at` (`expires_at`)
+  KEY `idx_expires_at` (`expires_at`),
+  KEY `idx_deleted_at` (`deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='验证码表';
 
 -- +goose Down
