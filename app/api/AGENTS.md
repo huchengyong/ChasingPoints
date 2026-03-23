@@ -16,6 +16,7 @@ api/
 ├── social.js        # 动态流、发帖、评论、点赞
 ├── challenge.js     # PK 挑战
 ├── tournament.js    # 赛事、报名、对阵、分享
+├── event-news.js    # 赛事情报、焦点赛事、赛事详情
 ├── season.js        # 赛季榜单、赛季报告
 ├── venue.js         # 球房、附近球房、签到
 ├── rules.js         # 规则目录、详情、术语
