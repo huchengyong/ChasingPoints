@@ -1,0 +1,63 @@
+package config
+
+import (
+	"github.com/zeromicro/go-zero/rest"
+)
+
+type Config struct {
+	rest.RestConf
+
+	// 应用环境：local, dev, prod
+	AppEnv string `json:",env=APP_ENV,default=local"`
+
+	// JWT配置
+	Auth struct {
+		AccessSecret string
+		AccessExpire int64
+	}
+
+	// 管理后台配置
+	Admin struct {
+		SetupToken string `json:",env=ADMIN_SETUP_TOKEN,optional"`
+	}
+
+	// MySQL配置
+	MySQL struct {
+		DataSource string
+	}
+
+	// Redis配置
+	Redis struct {
+		Host     string
+		Password string
+		DB       int
+	}
+
+	// 阿里云短信配置
+	AliSms struct {
+		AccessKeyId     string
+		AccessKeySecret string
+		SignName        string
+		TemplateCode    string
+		Endpoint        string
+	}
+
+	// 推送配置
+	UniPush struct {
+		AppId        string `json:",env=UNIPUSH_APP_ID,default="`
+		AppKey       string `json:",env=UNIPUSH_APP_KEY,default="`
+		MasterSecret string `json:",env=UNIPUSH_MASTER_SECRET,default="`
+		Enabled      bool   `json:",env=UNIPUSH_ENABLED,default=false"`
+	}
+
+	// 球馆地理解析配置
+	Geocode struct {
+		WorkerEnabled    bool   `json:",env=GEOCODE_WORKER_ENABLED,default=true"`
+		PollIntervalMs   int    `json:",env=GEOCODE_POLL_INTERVAL_MS,default=3000"`
+		RequestTimeoutMs int    `json:",env=GEOCODE_REQUEST_TIMEOUT_MS,default=5000"`
+		MaxAttempts      int    `json:",env=GEOCODE_MAX_ATTEMPTS,default=5"`
+		BatchSize        int    `json:",env=GEOCODE_BATCH_SIZE,default=5"`
+		AutoPublish      bool   `json:",env=GEOCODE_AUTO_PUBLISH,default=true"`
+		EncryptSecret    string `json:",env=GEOCODE_ENCRYPT_SECRET,optional"`
+	}
+}

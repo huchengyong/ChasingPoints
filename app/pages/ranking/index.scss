@@ -1,0 +1,655 @@
+// 排行榜页面样式
+.ranking-container {
+    min-height: 100vh;
+    background-color: #f6f7f8;
+    box-sizing: border-box;
+}
+
+.ranking-scroll {
+    height: 100vh;
+    box-sizing: border-box;
+}
+
+.game-type-tabs {
+    white-space: nowrap;
+    padding: 24rpx 24rpx 0;
+    box-sizing: border-box;
+
+    ::-webkit-scrollbar {
+        display: none;
+        width: 0;
+        height: 0;
+    }
+}
+
+.game-type-tab {
+    display: inline-flex;
+    flex-shrink: 0;
+    min-width: 164rpx;
+    height: 72rpx;
+    padding: 0 28rpx;
+    margin-right: 16rpx;
+    border-radius: 999rpx;
+    background: rgba(255, 255, 255, 0.82);
+    border: 1rpx solid rgba(148, 163, 184, 0.2);
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+
+    text {
+        font-size: 26rpx;
+        font-weight: 600;
+        color: #475569;
+    }
+
+    &.active {
+        background: linear-gradient(135deg, #18b05b 0%, #15803d 100%);
+        border-color: transparent;
+        box-shadow: 0 10rpx 24rpx rgba(24, 176, 91, 0.24);
+
+        text {
+            color: #ffffff;
+        }
+    }
+}
+
+// 加载状态
+.loading-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    gap: 12px;
+
+    .loading-text {
+        font-size: 14px;
+        color: #94a3b8;
+    }
+}
+// 空数据状态
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60vh;
+    gap: 16px;
+
+    .empty-icon {
+        margin-bottom: 32rpx;
+    }
+
+    .empty-title {
+        font-size: 18px;
+        font-weight: 500;
+        color: #475569;
+        margin-top: 16px;
+    }
+
+    .empty-subtitle {
+        font-size: 14px;
+        color: #94a3b8;
+        margin-bottom: 64rpx;
+    }
+
+    .start-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 320rpx;
+        height: 96rpx;
+        padding: 0 64rpx;
+        background-color: #18b05b;
+        border-radius: 999rpx;
+        box-shadow: 0 8rpx 32rpx rgba(24, 176, 91, 0.3);
+        transition: all 0.3s ease;
+
+        &::after {
+            display: none;
+        }
+
+        &:active {
+            transform: scale(0.98);
+            opacity: 0.9;
+        }
+
+        text {
+            font-size: 32rpx;
+            font-weight: 700;
+            color: #ffffff;
+        }
+    }
+
+    .start-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 320rpx;
+        height: 96rpx;
+        margin-top: 48rpx;
+        padding: 0 64rpx;
+        background-color: #18b05b;
+        border-radius: 999rpx;
+        box-shadow: 0 8rpx 32rpx rgba(24, 176, 91, 0.3);
+        transition: all 0.3s ease;
+
+        &::after {
+            display: none;
+        }
+
+        &:active {
+            transform: scale(0.98);
+            opacity: 0.9;
+        }
+
+        text {
+            font-size: 32rpx;
+            font-weight: 700;
+            color: #ffffff;
+        }
+    }
+}
+
+// 领奖台区域
+.podium-section {
+    position: relative;
+    height: 328px;
+    padding: 32px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.podium-base {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: flex-end;
+    gap: 0;
+    width: 90%;
+    max-width: 320px;
+
+    .podium-block {
+        border-radius: 8px 8px 0 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 8px 4px;
+        box-sizing: border-box;
+
+        .podium-rank-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.9);
+            text-align: center;
+        }
+
+        .podium-winrate {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.9);
+            text-align: center;
+        }
+
+        &.second {
+            width: calc(33.33% - 8px);
+            height: 70px;
+            background-color: #cbd5e1;
+
+            .podium-rank-name {
+                color: rgba(255, 255, 255, 0.9);
+                font-size: 16px;
+                font-weight: 600;
+            }
+        }
+
+        &.first {
+            width: calc(33.33% + 16px);
+            height: 100px;
+            background-color: #fcd34d;
+            margin: 0 -8px;
+
+            .podium-rank-name {
+                color: rgba(255, 255, 255, 0.9);
+                font-size: 20px;
+                font-weight: 800;
+            }
+
+            .podium-winrate {
+                font-size: 12px;
+            }
+        }
+
+        &.third {
+            width: calc(33.33% - 8px);
+            height: 80px;
+            background-color: #a16207;
+        }
+    }
+}
+
+.podium-users {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    width: 90%;
+    max-width: 320px;
+    z-index: 1;
+}
+
+.podium-user {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    &.second {
+        width: 33.33%;
+        margin-bottom: 70px;
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border: 4px solid #94a3b8;
+        }
+
+        .rank-badge.silver {
+            background-color: #94a3b8;
+        }
+    }
+
+    &.first {
+        width: 40%;
+        margin-bottom: 100px;
+
+        .avatar {
+            width: 112px;
+            height: 112px;
+            border: 4px solid #fbbf24;
+            box-shadow: 0 10px 30px rgba(251, 191, 36, 0.3);
+        }
+
+        .rank-badge.gold {
+            width: 32px;
+            height: 32px;
+            font-size: 16px;
+            background-color: #fbbf24;
+            bottom: -10px;
+        }
+
+        .nickname {
+            font-size: 18px;
+            font-weight: 700;
+            margin-top: 10px;
+        }
+
+        .score {
+            font-size: 16px;
+        }
+    }
+
+    &.third {
+        width: 33.33%;
+        margin-bottom: 80px;
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border: 4px solid #a16207;
+        }
+
+        .rank-badge.bronze {
+            background-color: #a16207;
+        }
+    }
+}
+
+.crown-icon {
+    margin-bottom: -20px;
+    filter: drop-shadow(0 0 20px rgba(251, 191, 36, 0.6));
+}
+
+.avatar-wrapper {
+    position: relative;
+    margin-bottom: 8px;
+}
+
+.avatar {
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.rank-badge {
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.nickname {
+    font-size: 16px;
+    font-weight: 500;
+    color: #0f172a;
+    text-align: center;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.score {
+    font-size: 14px;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+// 我的排名卡片（固定在底部）
+.my-ranking-card {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 0;
+    padding: 16px 24px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+    border-top: 1px solid #7dd3fc;
+    border-radius: 0;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+
+    .my-rank {
+        width: 24px;
+        font-size: 18px;
+        font-weight: 700;
+        color: #0f172a;
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    .my-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+    }
+
+    .my-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .my-details {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .my-label {
+        font-size: 16px;
+        font-weight: 500;
+        color: #0f172a;
+    }
+
+    .my-rank-name {
+        font-size: 14px;
+        color: #64748b;
+    }
+
+    .my-score {
+        font-size: 16px;
+        font-weight: 500;
+        color: #0f172a;
+        flex-shrink: 0;
+    }
+}
+
+// 排行榜列表
+.ranking-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 0 8px 100px;
+}
+
+.ranking-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 16px;
+    background-color: #ffffff;
+    border-radius: 8px;
+
+    .item-rank {
+        width: 24px;
+        font-size: 16px;
+        font-weight: 500;
+        color: #64748b;
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    .item-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+        min-width: 0; // 允许flex项收缩，解决子元素文本溢出问题
+        overflow: hidden;
+    }
+
+    .item-avatar {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0; // 防止头像被压缩
+    }
+
+    .item-details {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-width: 0; // 允许flex项收缩
+    }
+
+    .item-nickname {
+        font-size: 16px;
+        font-weight: 500;
+        color: #0f172a;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+
+    .item-rank-name {
+        font-size: 14px;
+        color: #64748b;
+    }
+
+    .item-winrate {
+        font-size: 14px;
+        color: #475569;
+        flex-shrink: 0;
+    }
+}
+
+// 加载更多
+.load-more {
+    padding: 16px;
+    text-align: center;
+
+    .load-more-text {
+        font-size: 14px;
+        color: #94a3b8;
+    }
+}
+
+// 深色模式
+@media (prefers-color-scheme: dark) {
+    .ranking-container {
+        background-color: #101922;
+    }
+
+    .loading-wrapper .loading-text {
+        color: #64748b;
+    }
+
+    .podium-base {
+        .podium-block.second {
+            background-color: #475569;
+        }
+
+        .podium-block.first {
+            background-color: #d97706;
+        }
+
+        .podium-block.third {
+            background-color: #78350f;
+        }
+    }
+
+    .nickname {
+        color: #f8fafc;
+    }
+
+    .score {
+        color: #94a3b8;
+    }
+
+    .my-ranking-card {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2a4a6c 100%);
+        border-color: #3b5a80;
+
+        .my-rank,
+        .my-label,
+        .my-score {
+            color: #f8fafc;
+        }
+
+        .my-rank-name {
+            color: #94a3b8;
+        }
+    }
+
+    .ranking-item {
+        background-color: rgba(30, 41, 59, 0.5);
+
+        .item-rank {
+            color: #94a3b8;
+        }
+
+        .item-nickname {
+            color: #f1f5f9;
+        }
+
+        .item-rank-name {
+            color: #94a3b8;
+        }
+
+        .item-winrate {
+            color: #cbd5e1;
+        }
+    }
+}
+.empty-state {
+    .empty-title {
+        color: #cbd5e1;
+    }
+    .empty-subtitle {
+        color: #64748b;
+    }
+}
+
+// 支持 dark-mode class 方式
+.dark-mode {
+    background-color: #101922;
+
+    .loading-wrapper .loading-text {
+        color: #64748b;
+    }
+
+    .podium-base {
+        .podium-block.second {
+            background-color: #475569;
+        }
+
+        .podium-block.first {
+            background-color: #d97706;
+        }
+
+        .podium-block.third {
+            background-color: #78350f;
+        }
+    }
+
+    .nickname {
+        color: #f8fafc;
+    }
+
+    .score {
+        color: #94a3b8;
+    }
+
+    .my-ranking-card {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2a4a6c 100%);
+        border-color: #3b5a80;
+
+        .my-rank,
+        .my-label,
+        .my-score {
+            color: #f8fafc;
+        }
+
+        .my-rank-name {
+            color: #94a3b8;
+        }
+    }
+
+    .ranking-item {
+        background-color: rgba(30, 41, 59, 0.5);
+
+        .item-rank {
+            color: #94a3b8;
+        }
+
+        .item-nickname {
+            color: #f1f5f9;
+        }
+
+        .item-rank-name {
+            color: #94a3b8;
+        }
+
+        .item-winrate {
+            color: #cbd5e1;
+        }
+    }
+.empty-state {
+    .empty-title {
+        color: #cbd5e1;
+    }
+    .empty-subtitle {
+        color: #64748b;
+    }
+}
+}

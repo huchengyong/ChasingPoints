@@ -1,0 +1,386 @@
+{
+	"easycom": {
+		"autoscan": true,
+		"custom": {
+			"^uni-(.*)": "@dcloudio/uni-ui/lib/uni-$1/uni-$1.vue"
+		}
+	},
+	"pages": [
+		{
+			"path": "pages/welcome/index",
+			"style": {
+				"navigationBarTitleText": "欢迎",
+				"navigationStyle": "custom",
+				"navigationBarTextStyle": "white"
+			}
+		},
+		{
+			"path": "pages/login/login",
+			"style": {
+				"navigationBarTitleText": "登录",
+				"navigationStyle": "custom",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "@background"
+			}
+		},
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "球艺堂",
+				"navigationBarBackgroundColor": "@background"
+			}
+		},
+		{
+			"path": "pages/match/index",
+			"style": {
+				"navigationBarTitleText": "正在进行中的对局",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/ranking/index",
+			"style": {
+				"navigationBarTitleText": "排行榜"
+			}
+		},
+		{
+			"path": "pages/social/index",
+			"style": {
+				"navigationBarTitleText": "动态"
+			}
+		},
+			{
+				"path": "pages/user/index",
+				"style": {
+					"navigationBarTitleText": "我的"
+				}
+			}
+	],
+	"tabBar": {
+		"color": "@tabInactive",
+		"selectedColor": "@tabActive",
+		"backgroundColor": "@background",
+		"borderStyle": "black",
+		"list": [
+			{
+				"pagePath": "pages/index/index",
+				"text": "首页",
+				"iconPath": "@indexIconPath",
+				"selectedIconPath": "@selectedIndexIconPath"
+			},
+			{
+				"pagePath": "pages/match/index",
+				"text": "对局",
+				"iconPath": "@matchIconPath",
+				"selectedIconPath": "@selectedMatchIconPath"
+			},
+			{
+				"pagePath": "pages/social/index",
+				"text": "动态",
+				"iconPath": "@socialIconPath",
+				"selectedIconPath": "@selectedSocialIconPath"
+			},
+			{
+				"pagePath": "pages/user/index",
+				"text": "我的",
+				"iconPath": "@userIconPath",
+				"selectedIconPath": "@selectedUserIconPath"
+			}
+		]
+	},
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "球艺堂",
+		"navigationBarBackgroundColor": "@background",
+		"backgroundColor": "@background"
+	},
+	"subPackages": [
+		{
+			"root": "subPages/agreement",
+			"pages": [
+				{
+					"path": "userAgreement",
+					"style": {
+						"navigationBarTitleText": "用户协议"
+					}
+				},
+				{
+					"path": "privacyPolicy",
+					"style": {
+						"navigationBarTitleText": "隐私政策"
+					}
+				}
+			]
+		},
+		{
+			"root": "subPages/user",
+			"pages": [
+				{
+					"path": "matchHistory",
+					"style": {
+						"navigationBarTitleText": "比赛记录"
+					}
+				},
+				{
+					"path": "rankExplain",
+					"style": {
+						"navigationBarTitleText": "段位说明"
+					}
+				},
+				{
+					"path": "notification",
+					"style": {
+						"navigationBarTitleText": "通知管理"
+					}
+				},
+				{
+					"path": "opponentRecord",
+					"style": {
+						"navigationBarTitleText": "对手记录"
+					}
+				},
+				{
+					"path": "h2hRecord",
+					"style": {
+						"navigationBarTitleText": "交锋记录"
+					}
+				},
+				{
+					"path": "settings",
+					"style": {
+						"navigationBarTitleText": "设置"
+					}
+				}
+				,{
+					"path": "statsDetail",
+					"style": {
+						"navigationBarTitleText": "深度统计",
+						"navigationBarBackgroundColor": "#f1f5f9",
+						"backgroundColor": "#f1f5f9"
+					}
+				}
+			]
+		},
+		{
+			"root": "subPages/match",
+			"pages": [
+				{
+					"path": "matchDetail",
+					"style": {
+						"navigationBarTitleText": "对局详情"
+					}
+				},
+				{
+					"path": "matchResult",
+					"style": {
+						"navigationStyle": "custom"
+					}
+				},
+				{
+					"path": "playing",
+					"style": {
+						"navigationStyle": "custom"
+					}
+				},
+				{
+					"path": "shareResult",
+					"style": {
+						"navigationBarTitleText": "战绩海报",
+						"navigationStyle": "custom"
+					}
+				}
+			]
+		},
+		{
+			"root": "subPages/help",
+			"pages": [
+					{
+						"path": "feedback",
+						"style": {
+							"navigationBarTitleText": "意见反馈"
+						}
+					}
+				]
+			},
+		{
+			"root": "subPages/achievement",
+			"pages": [
+				{
+					"path": "index",
+					"style": {
+						"navigationBarTitleText": "成就"
+					}
+				},
+				{
+					"path": "detail",
+					"style": {
+						"navigationBarTitleText": "成就详情"
+					}
+				},
+				{
+					"path": "titles",
+					"style": {
+						"navigationBarTitleText": "称号管理"
+					}
+				}
+			]
+		},
+		{
+			"root": "subPages/social",
+			"pages": [
+				{
+					"path": "feed",
+					"style": {
+						"navigationBarTitleText": "动态广场"
+					}
+				},
+				{
+					"path": "postCreate",
+					"style": {
+						"navigationBarTitleText": "发布动态"
+					}
+				},
+				{
+					"path": "friendList",
+					"style": {
+						"navigationBarTitleText": "好友列表",
+						"enablePullDownRefresh": true
+					}
+				},
+				{
+					"path": "addFriend",
+					"style": {
+						"navigationBarTitleText": "添加好友"
+					}
+				},
+				{
+					"path": "friendRequests",
+					"style": {
+						"navigationBarTitleText": "好友请求",
+						"enablePullDownRefresh": true
+					}
+				},
+				{
+					"path": "challenges",
+					"style": {
+						"navigationBarTitleText": "PK记录"
+					}
+				},
+				{
+					"path": "pkReport",
+					"style": {
+						"navigationBarTitleText": "PK报表"
+					}
+				}
+			]
+		},
+		{
+			"root": "subPages/tournament",
+			"pages": [
+				{
+					"path": "index",
+					"style": {
+						"navigationBarTitleText": "赛事大厅",
+						"enablePullDownRefresh": true
+					}
+				},
+				{
+					"path": "create",
+					"style": {
+						"navigationBarTitleText": "创建赛事"
+					}
+				},
+				{
+					"path": "detail",
+					"style": {
+						"navigationBarTitleText": "赛事详情"
+					}
+				},
+				{
+					"path": "bracket",
+					"style": {
+						"navigationBarTitleText": "对阵图"
+					}
+				}
+			]
+		},
+		{
+			"root": "subPages/venue",
+			"pages": [
+				{
+					"path": "index",
+					"style": {
+						"navigationBarTitleText": "附近球馆"
+					}
+				},
+				{
+					"path": "detail",
+					"style": {
+						"navigationBarTitleText": "球馆详情"
+					}
+				},
+				{
+					"path": "submit",
+					"style": {
+						"navigationBarTitleText": "上传球馆"
+					}
+				}
+			]
+		},
+		{
+			"root": "subPages/rules",
+			"pages": [
+				{
+					"path": "index",
+					"style": {
+						"navigationBarTitleText": "规则百科"
+					}
+				},
+				{
+					"path": "detail",
+					"style": {
+						"navigationBarTitleText": "规则详情"
+					}
+				},
+				{
+					"path": "glossary",
+					"style": {
+						"navigationBarTitleText": "术语词典"
+					}
+				}
+			]
+		},
+		{
+			"root": "subPages/season",
+			"pages": [
+				{
+					"path": "index",
+					"style": {
+						"navigationBarTitleText": "赛季"
+					}
+				},
+				{
+					"path": "report",
+					"style": {
+						"navigationBarTitleText": "赛季报告",
+						"navigationStyle": "custom"
+					}
+				}
+			]
+		}
+		,{
+			"root": "subPages/notification",
+			"pages": [
+				{
+					"path": "index",
+					"style": {
+						"navigationBarTitleText": "消息中心",
+						"enablePullDownRefresh": true
+					}
+				}
+			]
+		}
+	],
+	"uniIdRouter": {}
+}

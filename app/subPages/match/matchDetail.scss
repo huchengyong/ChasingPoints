@@ -1,0 +1,380 @@
+/* 对局详情/观战页面样式 */
+
+// 主色调
+$primary-color: #18b05b;
+
+// 浅色模式变量 (默认)
+$bg-light: #f4f7f4;
+$card-bg-light: #ffffff;
+$text-primary-light: #0f172a;
+$text-secondary-light: #64748b;
+$text-muted-light: #94a3b8;
+$border-color-light: #dce7df;
+
+// 深色模式变量
+$bg-dark: #0f1712;
+$card-bg-dark: #16211a;
+$text-primary-dark: #f3fff6;
+$text-secondary-dark: #a7c0af;
+$text-muted-dark: #6f8878;
+$border-color-dark: #24342a;
+
+// 状态颜色
+$win-color: #4CAF50;
+$loss-color: #E57373;
+
+// 页面容器
+.match-detail-container {
+    min-height: 100vh;
+    background-color: $bg-light;
+    padding: 24rpx;
+    box-sizing: border-box;
+
+    // ========== 深色模式适配 ==========
+    &.dark-mode {
+        background-color: $bg-dark;
+
+        .loading-container {
+            .loading-text {
+                color: $text-secondary-dark;
+            }
+        }
+
+        .spectate-badge {
+            background: linear-gradient(135deg, rgba(24, 176, 91, 0.3), rgba(21, 128, 61, 0.3));
+            border-color: rgba(24, 176, 91, 0.5);
+
+            text {
+                color: $text-primary-dark;
+            }
+        }
+
+        .players-card {
+            background-color: $card-bg-dark;
+            box-shadow: none;
+        }
+
+        .player-info {
+            .player-name {
+                color: $text-primary-dark;
+            }
+        }
+
+        .avatar {
+            border-color: $border-color-dark;
+            background-color: #374151;
+        }
+
+        .vs-section {
+            .vs-text {
+                color: $text-muted-dark;
+            }
+        }
+
+        .score-display {
+            .score-text {
+                color: $text-primary-dark;
+            }
+        }
+
+        .match-info-text {
+            color: $text-secondary-dark;
+        }
+
+        .stat-item {
+            background-color: rgba(15, 23, 18, 0.6);
+
+            .stat-label {
+                color: $text-muted-dark;
+            }
+
+            .stat-value {
+                color: $text-primary-dark;
+            }
+        }
+
+        .section-title {
+            color: $text-muted-dark;
+        }
+
+        .empty-rounds {
+            background-color: $card-bg-dark;
+            box-shadow: none;
+
+            .empty-text {
+                color: $text-muted-dark;
+            }
+        }
+
+        .round-card {
+            background-color: $card-bg-dark;
+            box-shadow: none;
+        }
+
+        .round-info {
+            .round-date {
+                color: $text-primary-dark;
+            }
+
+            .round-game-type {
+                color: $text-muted-dark;
+            }
+        }
+
+        .round-result {
+            .round-score {
+                color: $text-primary-dark;
+            }
+        }
+    }
+}
+
+// ========== 加载状态 ==========
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    gap: 24rpx;
+
+    .loading-text {
+        font-size: 28rpx;
+        color: $text-secondary-light;
+    }
+}
+
+// ========== 观战模式标识 ==========
+.spectate-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12rpx;
+    padding: 16rpx 32rpx;
+    margin-bottom: 24rpx;
+    background: linear-gradient(135deg, rgba(24, 176, 91, 0.15), rgba(21, 128, 61, 0.15));
+    border-radius: 16rpx;
+    border: 2rpx solid rgba(24, 176, 91, 0.3);
+
+    text {
+        font-size: 28rpx;
+        font-weight: 600;
+        color: $primary-color;
+    }
+}
+
+// ========== 双方信息卡片 ==========
+.players-card {
+    display: flex;
+    flex-direction: column;
+    gap: 32rpx;
+    padding: 40rpx 32rpx;
+    background-color: $card-bg-light;
+    border-radius: 24rpx;
+    margin-bottom: 24rpx;
+    box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+}
+
+// 头像区域
+.avatars-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32rpx;
+}
+
+.player-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16rpx;
+    width: 33%;
+
+    .player-name {
+        font-size: 28rpx;
+        font-weight: 500;
+        color: $text-primary-light;
+        max-width: 160rpx;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+.avatar-wrapper {
+    position: relative;
+}
+
+.avatar {
+    width: 112rpx;
+    height: 112rpx;
+    border-radius: 50%;
+    border: 6rpx solid $border-color-light;
+    background-color: #e5e7eb;
+}
+
+.vs-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8rpx;
+    width: 33%;
+
+    .vs-text {
+        font-size: 24rpx;
+        font-weight: 600;
+        color: $text-muted-light;
+    }
+}
+
+// 比分展示
+.score-display {
+    display: flex;
+    justify-content: center;
+    padding: 16rpx 0;
+
+    .score-text {
+        font-size: 80rpx;
+        font-weight: 900;
+        color: $text-primary-light;
+        letter-spacing: -0.02em;
+    }
+}
+
+// 对局信息
+.match-info-text {
+    text-align: center;
+    font-size: 28rpx;
+    color: $text-secondary-light;
+}
+
+// 统计数据网格
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20rpx;
+    margin-top: 16rpx;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8rpx;
+    padding: 20rpx;
+    background-color: #f1f5f9;
+    border-radius: 16rpx;
+
+    .stat-label {
+        font-size: 24rpx;
+        font-weight: 500;
+        color: $text-muted-light;
+    }
+
+    .stat-value {
+        font-size: 36rpx;
+        font-weight: 700;
+        color: $text-primary-light;
+    }
+
+    .status-ongoing {
+        color: $win-color;
+        font-size: 28rpx;
+    }
+}
+
+// ========== 局记录列表 ==========
+.round-history {
+    display: flex;
+    flex-direction: column;
+    gap: 20rpx;
+}
+
+.section-title {
+    font-size: 28rpx;
+    font-weight: 600;
+    color: $text-muted-light;
+    padding: 0 8rpx;
+}
+
+.empty-rounds {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 64rpx 32rpx;
+    background-color: $card-bg-light;
+    border-radius: 20rpx;
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+
+    .empty-text {
+        font-size: 28rpx;
+        color: $text-muted-light;
+    }
+}
+
+.round-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28rpx 24rpx;
+    background-color: $card-bg-light;
+    border-radius: 20rpx;
+    border-left: 8rpx solid transparent;
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+
+    &.win-round {
+        border-left-color: $win-color;
+    }
+
+    &.loss-round {
+        border-left-color: $loss-color;
+    }
+}
+
+.round-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8rpx;
+    flex: 1;
+
+    .round-date {
+        font-size: 28rpx;
+        font-weight: 600;
+        color: $text-primary-light;
+    }
+
+    .round-game-type {
+        font-size: 24rpx;
+        color: $text-muted-light;
+    }
+}
+
+.round-result {
+    display: flex;
+    align-items: center;
+    gap: 24rpx;
+
+    .round-score {
+        font-size: 36rpx;
+        font-weight: 700;
+        color: $text-primary-light;
+    }
+}
+
+.result-badge {
+    width: 120rpx;
+    text-align: center;
+
+    .result-text {
+        font-size: 26rpx;
+        font-weight: 700;
+
+        &.win {
+            color: $win-color;
+        }
+
+        &.loss {
+            color: $loss-color;
+        }
+    }
+}

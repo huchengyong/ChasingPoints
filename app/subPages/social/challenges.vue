@@ -1,0 +1,527 @@
+<template>
+	<view class="challenges-page">
+		<view class="page-tip">
+			<uni-icons type="info" size="16" color="#18b05b"></uni-icons>
+			<text>这里记录的是线上 PK 邀约，只用于社交互动，不会直接生成真实对局。</text>
+		</view>
+
+		<view class="summary-grid" v-if="!loading">
+			<view class="summary-card">
+				<text class="summary-value">{{ receivedCount }}</text>
+				<text class="summary-label">待我回应</text>
+			</view>
+			<view class="summary-card">
+				<text class="summary-value">{{ sentCount }}</text>
+				<text class="summary-label">等待对方</text>
+			</view>
+			<view class="summary-card">
+				<text class="summary-value">{{ respondedCount }}</text>
+				<text class="summary-label">已回应</text>
+			</view>
+		</view>
+
+		<!-- 标签切换 -->
+		<view class="tab-bar">
+			<view class="tab-item" :class="{ active: tab === 'received' }" @tap="switchTab('received')">
+				<text>收到</text>
+				<view v-if="receivedCount > 0" class="tab-badge">
+					<text>{{ receivedCount }}</text>
+				</view>
+			</view>
+			<view class="tab-item" :class="{ active: tab === 'sent' }" @tap="switchTab('sent')">
+				<text>发出</text>
+			</view>
+			<view class="tab-item" :class="{ active: tab === 'responded' }" @tap="switchTab('responded')">
+				<text>已回应</text>
+			</view>
+		</view>
+
+		<!-- 加载中 -->
+		<view v-if="loading" class="loading-state">
+			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<text class="loading-text">加载中...</text>
+		</view>
+
+		<!-- PK 列表 -->
+		<view v-else-if="list.length > 0" class="challenge-list">
+			<view v-for="item in list" :key="item.id" class="challenge-card" @tap="openPkReport(item)">
+				<view class="card-top">
+					<image
+						class="challenge-avatar"
+						:src="item.avatar || '/static/images/default-avatar.png'"
+						mode="aspectFill"
+					></image>
+					<view class="challenge-info">
+						<text class="challenge-name">{{ item.nickname || '球友' }}</text>
+							<text class="challenge-game">{{ getGameTypeLabel(item.game_type, '台球') }}</text>
+						<text class="challenge-direction">{{ getDirectionText(item) }}</text>
+					</view>
+					<view class="challenge-status" :class="'status-' + item.status">
+						<text>{{ statusMap[item.status] || '待处理' }}</text>
+					</view>
+				</view>
+				<view v-if="item.message" class="challenge-message">
+					<text>"{{ item.message }}"</text>
+				</view>
+				<view class="card-time">
+					<text>{{ item.relativeTime }}</text>
+				</view>
+				<!-- 操作按钮 -->
+				<view v-if="tab === 'received' && item.status === 0" class="card-actions">
+					<view class="action-btn ghost-btn" @tap.stop="openPkReport(item)">
+						<text>看报表</text>
+					</view>
+					<view class="action-btn reject-btn" @tap.stop="handleReject(item)">
+						<text>拒绝</text>
+					</view>
+					<view class="action-btn accept-btn" @tap.stop="handleAccept(item)">
+						<text>回应PK</text>
+					</view>
+				</view>
+				<view v-else class="card-link" @tap.stop="openPkReport(item)">
+					<text>查看PK报表</text>
+				</view>
+			</view>
+		</view>
+
+		<!-- 空状态 -->
+		<view v-else class="empty-state">
+			<text class="empty-icon">⚔️</text>
+			<text class="empty-text">{{ emptyText }}</text>
+		</view>
+
+		<!-- PK 发起弹窗 -->
+		<view v-if="showChallengeModal" class="modal-overlay" @tap="closeChallengeModal">
+			<view class="modal-container" @tap.stop>
+				<text class="modal-title">发起PK邀约</text>
+				<text class="modal-subtitle">向 {{ targetFriend.nickname || '好友' }} 发起数据 PK，不会直接开赛</text>
+				<view class="game-type-options">
+					<view
+						v-for="gt in gameTypes"
+						:key="gt.value"
+						class="game-type-option"
+						:class="{ selected: selectedGameType === gt.value }"
+						@tap="selectedGameType = gt.value"
+					>
+						<text>{{ gt.label }}</text>
+					</view>
+				</view>
+				<input
+					class="message-input"
+					v-model="challengeMessage"
+					placeholder="附言（选填）"
+					maxlength="50"
+				/>
+				<view class="modal-actions">
+					<view class="modal-btn cancel-btn" @tap="closeChallengeModal">
+						<text>取消</text>
+					</view>
+					<view class="modal-btn confirm-btn" @tap="submitChallenge">
+						<text>发送PK</text>
+					</view>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup>
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { getPendingChallenges, acceptChallenge, rejectChallenge, sendChallenge } from '@/api/challenge.js'
+import { formatRelativeTime } from '@/utils/format.js'
+import { GAME_TYPE_OPTIONS, getGameTypeLabel } from '@/utils/game-types.js'
+
+const statusMap = { 0: '待回应', 1: '已回应', 2: '已拒绝', 3: '已过期' }
+const gameTypes = GAME_TYPE_OPTIONS
+
+const tab = ref('received')
+const list = ref([])
+const loading = ref(true)
+const receivedCount = ref(0)
+const sentCount = ref(0)
+const respondedCount = ref(0)
+
+// 挑战弹窗
+const showChallengeModal = ref(false)
+const targetFriend = ref({})
+const selectedGameType = ref(GAME_TYPE_OPTIONS[0].value)
+const challengeMessage = ref('')
+
+const fetchList = async () => {
+	loading.value = true
+	try {
+		const res = await getPendingChallenges({ page: 1, page_size: 50 })
+		if (res.success) {
+			const all = (res.list || []).map(item => ({
+				...item,
+				relativeTime: formatRelativeTime(item.created_at)
+			}))
+			receivedCount.value = all.filter(item => (item.direction === 'received' || !item.direction) && item.status === 0).length
+			sentCount.value = all.filter(item => item.direction === 'sent' && item.status === 0).length
+			respondedCount.value = all.filter(item => item.status !== 0).length
+
+			if (tab.value === 'received') {
+				list.value = all.filter(item => (item.direction === 'received' || !item.direction) && item.status === 0)
+			} else if (tab.value === 'sent') {
+				list.value = all.filter(item => item.direction === 'sent' && item.status === 0)
+			} else {
+				list.value = all.filter(item => item.status !== 0)
+			}
+		}
+	} catch (e) {
+		console.error('获取挑战列表失败', e)
+	} finally {
+		loading.value = false
+	}
+}
+
+const switchTab = (newTab) => {
+	tab.value = newTab
+	fetchList()
+}
+
+const getDirectionText = (item) => {
+	if (item.status !== 0) {
+		return item.direction === 'sent' ? '我发起的 PK 已有结果' : '对方发起的 PK 已有结果'
+	}
+	return item.direction === 'sent' ? '等待对方回应' : '等待我来回应'
+}
+
+const getOpponentId = (item) => item.friend_id || item.user_id || item.target_id || item.sender_id || item.receiver_id || 0
+
+const openPkReport = (item) => {
+	const query = []
+	const opponentId = getOpponentId(item)
+	const opponentName = item.opponent_name || item.nickname || ''
+
+	if (opponentId) {
+		query.push(`opponent_id=${opponentId}`)
+	}
+	if (opponentName) {
+		query.push(`opponent_name=${encodeURIComponent(opponentName)}`)
+	}
+	if (item.avatar) {
+		query.push(`opponent_avatar=${encodeURIComponent(item.avatar)}`)
+	}
+
+	uni.navigateTo({ url: `/subPages/social/pkReport?${query.join('&')}` })
+}
+
+const handleAccept = async (item) => {
+	try {
+		const res = await acceptChallenge({ challenge_id: item.id })
+		if (res.success) {
+			uni.showToast({ title: '已回应PK邀约', icon: 'success' })
+			uni.showModal({
+				title: '提示',
+				content: '线上 PK 仅用于社交互动。若要记录真实比赛，请双方在线下见面后从“对局”页正式开始计分。',
+				showCancel: false
+			})
+			fetchList()
+		} else {
+			uni.showToast({ title: res.msg || '接受失败', icon: 'none' })
+		}
+	} catch (e) {
+		uni.showToast({ title: '操作失败', icon: 'none' })
+	}
+}
+
+const handleReject = async (item) => {
+	try {
+		const res = await rejectChallenge({ challenge_id: item.id })
+		if (res.success) {
+			uni.showToast({ title: '已拒绝', icon: 'success' })
+			fetchList()
+		}
+	} catch (e) {
+		uni.showToast({ title: '操作失败', icon: 'none' })
+	}
+}
+
+// 打开发起挑战弹窗（由其他页面通过事件触发）
+const openChallengeModal = (friend) => {
+	targetFriend.value = friend
+	selectedGameType.value = GAME_TYPE_OPTIONS[0].value
+	challengeMessage.value = ''
+	showChallengeModal.value = true
+}
+
+const closeChallengeModal = () => {
+	showChallengeModal.value = false
+}
+
+const emptyText = computed(() => {
+	if (tab.value === 'received') return '暂无待回应的 PK 邀约'
+	if (tab.value === 'sent') return '暂无等待中的 PK 邀约'
+	return '暂无已回应的 PK 记录'
+})
+
+const submitChallenge = async () => {
+	try {
+		const res = await sendChallenge({
+			friend_id: targetFriend.value.friend_id || targetFriend.value.id,
+			game_type: selectedGameType.value,
+			message: challengeMessage.value
+		})
+		if (res.success) {
+			uni.showToast({ title: 'PK邀约已发送', icon: 'success' })
+			closeChallengeModal()
+			fetchList()
+		} else {
+			uni.showToast({ title: res.msg || '发送失败', icon: 'none' })
+		}
+	} catch (e) {
+		uni.showToast({ title: '发送失败', icon: 'none' })
+	}
+}
+
+onMounted(() => {
+	fetchList()
+	// 监听来自好友列表的挑战事件
+	uni.$on('openChallenge', openChallengeModal)
+})
+
+// 页面卸载时取消事件监听
+onUnmounted(() => {
+	uni.$off('openChallenge', openChallengeModal)
+})
+</script>
+
+<style lang="scss" scoped>
+.challenges-page {
+	min-height: 100vh;
+	background: #f1f5f9;
+	padding-bottom: 32rpx;
+}
+.page-tip {
+	margin: 20rpx 24rpx 0;
+	padding: 18rpx 20rpx;
+	border-radius: 20rpx;
+	background: rgba(24, 176, 91, 0.08);
+	display: flex;
+	align-items: flex-start;
+	gap: 12rpx;
+	box-sizing: border-box;
+
+	text {
+		font-size: 24rpx;
+		line-height: 1.6;
+		color: #166534;
+	}
+}
+.summary-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 16rpx;
+	margin: 20rpx 24rpx 0;
+}
+.summary-card {
+	background: #fff;
+	border-radius: 20rpx;
+	padding: 20rpx 16rpx;
+	text-align: center;
+
+	.summary-value {
+		display: block;
+		font-size: 40rpx;
+		font-weight: 700;
+		color: #18b05b;
+	}
+
+	.summary-label {
+		display: block;
+		margin-top: 8rpx;
+		font-size: 22rpx;
+		color: #64748b;
+	}
+}
+.tab-bar {
+	display: flex;
+	background: #fff;
+	margin-top: 20rpx;
+	padding: 0 24rpx;
+	.tab-item {
+		flex: 1;
+		text-align: center;
+		padding: 24rpx 0;
+		font-size: 28rpx;
+		color: #64748b;
+		position: relative;
+		&.active {
+			color: #18b05b;
+			font-weight: 600;
+			&::after {
+				content: '';
+				position: absolute;
+				bottom: 0;
+				left: 30%;
+				right: 30%;
+				height: 4rpx;
+				background: #18b05b;
+				border-radius: 2rpx;
+			}
+		}
+		.tab-badge {
+			position: absolute;
+			top: 12rpx;
+			right: 20%;
+			background: #ef4444;
+			border-radius: 20rpx;
+			min-width: 32rpx;
+			height: 32rpx;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 0 8rpx;
+			font-size: 20rpx;
+			color: #fff;
+		}
+	}
+}
+.loading-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-height: 50vh;
+	.loading-text { font-size: 28rpx; color: #94a3b8; margin-top: 16rpx; }
+}
+.challenge-list {
+	padding: 20rpx 24rpx;
+}
+.challenge-card {
+	background: #fff;
+	border-radius: 16rpx;
+	padding: 24rpx;
+	margin-bottom: 16rpx;
+	.card-top {
+		display: flex;
+		align-items: center;
+		.challenge-avatar {
+			width: 80rpx;
+			height: 80rpx;
+			border-radius: 50%;
+			margin-right: 16rpx;
+			background: #e2e8f0;
+		}
+		.challenge-info {
+			flex: 1;
+			.challenge-name { font-size: 30rpx; font-weight: 500; color: #1e293b; display: block; }
+			.challenge-game { font-size: 24rpx; color: #94a3b8; margin-top: 4rpx; }
+			.challenge-direction { font-size: 22rpx; color: #cbd5e1; margin-top: 4rpx; display: block; }
+		}
+		.challenge-status {
+			padding: 6rpx 16rpx;
+			border-radius: 8rpx;
+			font-size: 22rpx;
+			&.status-0 { background: #fef3c7; color: #d97706; }
+			&.status-1 { background: #dcfce7; color: #16a34a; }
+			&.status-2 { background: #fee2e2; color: #dc2626; }
+			&.status-3 { background: #f1f5f9; color: #94a3b8; }
+		}
+	}
+	.challenge-message {
+		margin-top: 12rpx;
+		padding: 12rpx 16rpx;
+		background: #f8fafc;
+		border-radius: 8rpx;
+		font-size: 26rpx;
+		color: #475569;
+		font-style: italic;
+	}
+	.card-time {
+		margin-top: 12rpx;
+		font-size: 22rpx;
+		color: #cbd5e1;
+	}
+	.card-link {
+		margin-top: 16rpx;
+		display: inline-flex;
+		padding: 12rpx 18rpx;
+		border-radius: 999rpx;
+		background: rgba(24, 176, 91, 0.08);
+
+		text {
+			font-size: 22rpx;
+			color: #18b05b;
+		}
+	}
+	.card-actions {
+		display: flex;
+		gap: 12rpx;
+		margin-top: 16rpx;
+		.action-btn {
+			flex: 1;
+			text-align: center;
+			padding: 16rpx;
+			border-radius: 10rpx;
+			font-size: 28rpx;
+		}
+		.reject-btn { background: #f1f5f9; color: #64748b; }
+		.accept-btn { background: #18b05b; color: #fff; font-weight: 500; }
+		.ghost-btn { background: #f0fdf4; color: #18b05b; }
+	}
+}
+.empty-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-height: 50vh;
+	.empty-icon { font-size: 80rpx; margin-bottom: 16rpx; }
+	.empty-text { font-size: 28rpx; color: #94a3b8; }
+}
+.modal-overlay {
+	position: fixed;
+	top: 0; left: 0; right: 0; bottom: 0;
+	z-index: 999;
+	background: rgba(0,0,0,0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.modal-container {
+	width: 600rpx;
+	background: #fff;
+	border-radius: 24rpx;
+	padding: 40rpx;
+	.modal-title { font-size: 34rpx; font-weight: 700; color: #1e293b; display: block; text-align: center; }
+	.modal-subtitle { font-size: 26rpx; color: #94a3b8; display: block; text-align: center; margin: 12rpx 0 24rpx; }
+	.game-type-options {
+		display: flex;
+		gap: 12rpx;
+		margin-bottom: 20rpx;
+		.game-type-option {
+			flex: 1;
+			text-align: center;
+			padding: 16rpx;
+			border-radius: 10rpx;
+			background: #f1f5f9;
+			font-size: 26rpx;
+			color: #475569;
+			&.selected { background: #18b05b; color: #fff; }
+		}
+	}
+	.message-input {
+		width: 100%;
+		padding: 16rpx;
+		border: 2rpx solid #e2e8f0;
+		border-radius: 10rpx;
+		font-size: 28rpx;
+		margin-bottom: 24rpx;
+	}
+	.modal-actions {
+		display: flex;
+		gap: 16rpx;
+		.modal-btn {
+			flex: 1;
+			text-align: center;
+			padding: 20rpx;
+			border-radius: 12rpx;
+			font-size: 28rpx;
+		}
+		.cancel-btn { background: #f1f5f9; color: #64748b; }
+		.confirm-btn { background: #18b05b; color: #fff; font-weight: 500; }
+	}
+}
+</style>

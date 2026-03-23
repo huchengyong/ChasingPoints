@@ -1,0 +1,2221 @@
+syntax = "v1"
+
+// ==================== 通用类型 ====================
+type UserInfo {
+	Id        int64  `json:"id"`
+	Phone     string `json:"phone"`
+	Nickname  string `json:"nickname"`
+	Avatar    string `json:"avatar"`
+	Status    int    `json:"status"`
+	CreatedAt string `json:"created_at"`
+}
+
+// ==================== 认证相关 ====================
+// 发送短信验证码
+type SendSmsReq {
+	Phone string `json:"phone"`
+	Scene string `json:"scene,optional,default=login"` // login/bind
+}
+
+type SendSmsResp {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+// 手机号登录
+type LoginReq {
+	Phone   string `json:"phone"`
+	SmsCode string `json:"sms_code"`
+}
+
+type LoginResp {
+	Success      bool      `json:"success"`
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"refresh_token"`
+	ExpiresIn    int64     `json:"expires_in"`
+	UserInfo     *UserInfo `json:"user_info"`
+}
+
+// OAuth登录
+type LoginByOauthReq {
+	Provider  string `json:"provider"` // huawei
+	OpenId    string `json:"open_id"`
+	UnionId   string `json:"union_id,optional"`
+	NickName  string `json:"nick_name,optional"`
+	AvatarUrl string `json:"avatar_url,optional"`
+	Platform  string `json:"platform,optional"`
+}
+
+type LoginByOauthResp {
+	Success       bool      `json:"success"`
+	AccessToken   string    `json:"access_token"`
+	RefreshToken  string    `json:"refresh_token"`
+	ExpiresIn     int64     `json:"expires_in"`
+	NeedBindPhone bool      `json:"need_bind_phone"`
+	UserInfo      *UserInfo `json:"user_info"`
+}
+
+// 绑定手机号
+type BindPhoneReq {
+	Phone   string `json:"phone"`
+	SmsCode string `json:"sms_code"`
+}
+
+type BindPhoneResp {
+	Success       bool   `json:"success"`
+	Message       string `json:"message"`
+	MergedAccount bool   `json:"merged_account"`
+}
+
+// ==================== 服务定义 ====================
+@server (
+	prefix: /api/auth
+)
+service billiard_master-api {
+	@doc "发送短信验证码"
+	@handler SendSms
+	post /send-sms (SendSmsReq) returns (SendSmsResp)
+
+	@doc "手机号登录/注册"
+	@handler Login
+	post /login (LoginReq) returns (LoginResp)
+
+	@doc "OAuth登录"
+	@handler LoginByOauth
+	post /login-by-oauth (LoginByOauthReq) returns (LoginByOauthResp)
+}
+
+// ==================== 公开接口 ====================
+// 正在进行的对局列表项
+type OngoingMatchItem {
+	Id              int64  `json:"id"`
+	GameType        int    `json:"game_type"`
+	GameTypeName    string `json:"game_type_name"`
+	Player1Id       int64  `json:"player1_id"` // 玩家1(创建者)ID
+	Player1Name     string `json:"player1_name"`
+	Player1Avatar   string `json:"player1_avatar"`
+	Player2Id       int64  `json:"player2_id"` // 玩家2(对手)ID，0表示非注册用户
+	Player2Name     string `json:"player2_name"`
+	Player2Avatar   string `json:"player2_avatar"`
+	Player1Score    int    `json:"player1_score"`
+	Player2Score    int    `json:"player2_score"`
+	CurrentRound    int    `json:"current_round"`
+	MatchTime       string `json:"match_time"` // 开始时间 ISO格式
+	DurationSeconds int64  `json:"duration_seconds"` // 对局已持续秒数，由服务端计算
+}
+
+// 获取正在进行的对局列表请求
+type GetOngoingMatchesReq {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+}
+
+// 获取正在进行的对局列表响应
+type GetOngoingMatchesResp {
+	Success bool               `json:"success"`
+	Total   int64              `json:"total"`
+	List    []OngoingMatchItem `json:"list"`
+}
+
+// 公开对局详情请求（观战模式）
+type GetPublicMatchDetailReq {
+	MatchId int64 `form:"match_id"`
+}
+
+// 局记录
+type RoundRecord {
+	RoundNumber  int `json:"round_number"`
+	Player1Score int `json:"player1_score"`
+	Player2Score int `json:"player2_score"`
+	Winner       int `json:"winner"` // 1=玩家1胜 2=玩家2胜
+}
+
+// 公开对局详情数据（第三方视角）
+type PublicMatchDetailData {
+	Id                       int64         `json:"id"`
+	GameType                 int           `json:"game_type"`
+	Status                   int           `json:"status"` // 1=进行中 2=已完成 3=已取消
+	ServerRevision           int64         `json:"server_revision"`
+	Player1Id                int64         `json:"player1_id"`
+	Player1Name              string        `json:"player1_name"`
+	Player1Avatar            string        `json:"player1_avatar"`
+	Player2Id                int64         `json:"player2_id"`
+	Player2Name              string        `json:"player2_name"`
+	Player2Avatar            string        `json:"player2_avatar"`
+	Player1Score             int           `json:"player1_score"`
+	Player2Score             int           `json:"player2_score"`
+	CurrentFramePlayer1Score int           `json:"current_frame_player1_score,optional"`
+	CurrentFramePlayer2Score int           `json:"current_frame_player2_score,optional"`
+	CurrentFrameStarted      bool          `json:"current_frame_started,optional"`
+	CurrentRound             int           `json:"current_round"`
+	TotalRounds              int           `json:"total_rounds"`
+	DurationSeconds          int64         `json:"duration_seconds"`
+	Rounds                   []RoundRecord `json:"rounds"` // 局记录
+	CreatedAt                string        `json:"created_at"`
+}
+
+// 公开对局详情响应
+type GetPublicMatchDetailResp {
+	Success bool                   `json:"success"`
+	Match   *PublicMatchDetailData `json:"match"`
+}
+
+@server (
+	prefix: /api/public
+)
+service billiard_master-api {
+	@doc (
+		summary:     "获取正在进行的对局列表"
+		description: "获取平台所有正在进行的对局列表，公开接口无需登录"
+	)
+	@handler GetOngoingMatches
+	get /matches/ongoing (GetOngoingMatchesReq) returns (GetOngoingMatchesResp)
+
+	@doc (
+		summary:     "获取段位排行榜"
+		description: "获取按排位分排序的用户排行榜，包含前三名和分页列表，公开接口无需登录"
+	)
+	@handler GetLeaderboard
+	get /rank/leaderboard (GetLeaderboardReq) returns (GetLeaderboardResp)
+
+	@doc (
+		summary:     "获取公开对局详情"
+		description: "获取对局详情（观战模式），公开接口无需登录，使用第三方视角"
+	)
+	@handler GetPublicMatchDetail
+	get /match/detail (GetPublicMatchDetailReq) returns (GetPublicMatchDetailResp)
+}
+
+@server (
+	prefix: /api/auth
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "绑定手机号"
+	@handler BindPhone
+	post /bind-phone (BindPhoneReq) returns (BindPhoneResp)
+}
+
+// ==================== 用户相关 ====================
+// 更新昵称
+type UpdateNicknameReq {
+	Nickname string `json:"nickname"`
+}
+
+type UpdateNicknameResp {
+	Success  bool      `json:"success"`
+	Message  string    `json:"message"`
+	UserInfo *UserInfo `json:"user_info"`
+}
+
+// 获取用户信息
+type GetUserInfoResp {
+	Success  bool      `json:"success"`
+	UserInfo *UserInfo `json:"user_info"`
+}
+
+// 更新推送令牌
+type UpdatePushTokenReq {
+	PushClientId string `json:"push_client_id"`
+}
+
+// 用户统计数据
+type UserStatsResp {
+	Success      bool    `json:"success"`
+	TotalMatches int     `json:"total_matches"` // 总对局数
+	Wins         int     `json:"wins"` // 胜场数
+	Losses       int     `json:"losses"` // 负场数
+	WinRate      float64 `json:"win_rate"` // 胜率(百分比)
+	MaxWinStreak int     `json:"max_win_streak"` // 最高连胜
+}
+
+@server (
+	prefix: /api/user
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "获取当前用户信息"
+	@handler GetUserInfo
+	get /info returns (GetUserInfoResp)
+
+	@doc "获取用户统计数据"
+	@handler GetUserStats
+	get /stats returns (UserStatsResp)
+
+	@doc "更新昵称"
+	@handler UpdateNickname
+	post /nickname (UpdateNicknameReq) returns (UpdateNicknameResp)
+
+	@doc "更新推送令牌"
+	@handler UpdatePushToken
+	post /push-token (UpdatePushTokenReq) returns (CommonResp)
+}
+
+// ==================== 对局相关 ====================
+// 通用响应
+type CommonResp {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+// 特殊成绩项
+type AchievementItem {
+	Type  string `json:"type"`
+	Count int    `json:"count"`
+}
+
+// 对局同步快照（当前登录用户视角）
+type MatchSyncSnapshot {
+	MatchId                       int64 `json:"match_id"`
+	Status                        int   `json:"status"`
+	ServerRevision                int64 `json:"server_revision"`
+	MyScore                       int   `json:"my_score"`
+	OpponentScore                 int   `json:"opponent_score"`
+	CurrentFrameStarted           bool  `json:"current_frame_started,optional"`
+	CurrentFrameMyScore           int   `json:"current_frame_my_score,optional"`
+	CurrentFrameOpponentScore     int   `json:"current_frame_opponent_score,optional"`
+	CurrentRound                  int   `json:"current_round"`
+	TotalRounds                   int   `json:"total_rounds"`
+	RedBallCount                  int   `json:"red_ball_count,optional"`
+	SnookerClearanceStarted       bool  `json:"snooker_clearance_started,optional"`
+	SnookerClearedColors          []int `json:"snooker_cleared_colors,optional"`
+	SnookerExpectedClearanceScore int   `json:"snooker_expected_clearance_score,optional"`
+	SnookerClearanceCompleted     bool  `json:"snooker_clearance_completed,optional"`
+}
+
+// 开始对局
+type StartMatchReq {
+	GameType       int    `json:"game_type"` // 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
+	GameMode       string `json:"game_mode,optional"` // 比赛模式
+	OpponentId     int64  `json:"opponent_id,optional"` // 对手ID
+	OpponentName   string `json:"opponent_name"` // 对手昵称
+	OpponentAvatar string `json:"opponent_avatar,optional"` // 对手头像
+}
+
+type StartMatchResp {
+	Success      bool              `json:"success"`
+	Action       string            `json:"action,optional"` // created/resume_existing/blocked
+	BlockReason  string            `json:"block_reason,optional"` // self_ongoing/opponent_ongoing
+	Message      string            `json:"message,optional"`
+	MatchId      int64             `json:"match_id"`
+	OngoingMatch *CurrentMatchInfo `json:"ongoing_match,optional"`
+}
+
+// 加分
+type MatchScoreReq {
+	MatchId        int64  `json:"match_id"`
+	Actor          int    `json:"actor"` // 1=我 2=对手
+	Score          int    `json:"score"` // 加的分数
+	ClientActionId string `json:"client_action_id"`
+	BaseRevision   int64  `json:"base_revision"`
+}
+
+type MatchScoreResp {
+	Accepted                      bool              `json:"accepted"`
+	Success                       bool              `json:"success"`
+	Message                       string            `json:"message,optional"`
+	ClientActionId                string            `json:"client_action_id,optional"`
+	ServerRevision                int64             `json:"server_revision"`
+	Snapshot                      MatchSyncSnapshot `json:"snapshot"`
+	RedBallCount                  int               `json:"red_ball_count,optional"`
+	SnookerClearanceStarted       bool              `json:"snooker_clearance_started,optional"`
+	SnookerClearedColors          []int             `json:"snooker_cleared_colors,optional"`
+	SnookerExpectedClearanceScore int               `json:"snooker_expected_clearance_score,optional"`
+	SnookerClearanceCompleted     bool              `json:"snooker_clearance_completed,optional"`
+	CurrentFrameStarted           bool              `json:"current_frame_started,optional"`
+	CurrentFrameMyScore           int               `json:"current_frame_my_score,optional"`
+	CurrentFrameOpponentScore     int               `json:"current_frame_opponent_score,optional"`
+	MyScore                       int               `json:"my_score"`
+	OpponentScore                 int               `json:"opponent_score"`
+}
+
+// 结束一局
+type EndRoundReq {
+	MatchId        int64  `json:"match_id"`
+	Winner         int    `json:"winner"` // 1=我 2=对手
+	WinType        string `json:"win_type,optional"` // 获胜方式
+	Score          int    `json:"score,optional,default=1"` // 获胜得分，默认1分
+	ClientActionId string `json:"client_action_id"`
+	BaseRevision   int64  `json:"base_revision"`
+}
+
+type EndRoundResp {
+	Accepted                  bool              `json:"accepted"`
+	Success                   bool              `json:"success"`
+	ClientActionId            string            `json:"client_action_id,optional"`
+	ServerRevision            int64             `json:"server_revision"`
+	Snapshot                  MatchSyncSnapshot `json:"snapshot"`
+	RoundNo                   int               `json:"round_no"`
+	CurrentFrameStarted       bool              `json:"current_frame_started,optional"`
+	CurrentFrameMyScore       int               `json:"current_frame_my_score,optional"`
+	CurrentFrameOpponentScore int               `json:"current_frame_opponent_score,optional"`
+	MyScore                   int               `json:"my_score"`
+	OpponentScore             int               `json:"opponent_score"`
+}
+
+// 开始下一局
+type StartNextRoundReq {
+	MatchId        int64  `json:"match_id"`
+	ClientActionId string `json:"client_action_id"`
+	BaseRevision   int64  `json:"base_revision"`
+}
+
+type StartNextRoundResp {
+	Accepted                  bool              `json:"accepted"`
+	Success                   bool              `json:"success"`
+	ClientActionId            string            `json:"client_action_id,optional"`
+	ServerRevision            int64             `json:"server_revision"`
+	Snapshot                  MatchSyncSnapshot `json:"snapshot"`
+	RoundNo                   int               `json:"round_no"` // 新局数
+	CurrentFrameStarted       bool              `json:"current_frame_started,optional"`
+	CurrentFrameMyScore       int               `json:"current_frame_my_score,optional"`
+	CurrentFrameOpponentScore int               `json:"current_frame_opponent_score,optional"`
+	MyScore                   int               `json:"my_score"` // 我方总分
+	OpponentScore             int               `json:"opponent_score"` // 对手总分
+}
+
+// 犯规
+type MatchFoulReq {
+	MatchId        int64  `json:"match_id"`
+	Actor          int    `json:"actor"` // 犯规方
+	Score          int    `json:"score,optional"` // 犯规加分，默认1
+	ClientActionId string `json:"client_action_id"`
+	BaseRevision   int64  `json:"base_revision"`
+}
+
+// 撤销
+type MatchUndoReq {
+	MatchId        int64  `json:"match_id"`
+	ClientActionId string `json:"client_action_id"`
+	BaseRevision   int64  `json:"base_revision"`
+}
+
+type MatchUndoResp {
+	Accepted                  bool              `json:"accepted"`
+	Success                   bool              `json:"success"`
+	ClientActionId            string            `json:"client_action_id,optional"`
+	ServerRevision            int64             `json:"server_revision"`
+	Snapshot                  MatchSyncSnapshot `json:"snapshot"`
+	CurrentFrameStarted       bool              `json:"current_frame_started,optional"`
+	CurrentFrameMyScore       int               `json:"current_frame_my_score,optional"`
+	CurrentFrameOpponentScore int               `json:"current_frame_opponent_score,optional"`
+	MyScore                   int               `json:"my_score"`
+	OpponentScore             int               `json:"opponent_score"`
+	Message                   string            `json:"message"`
+}
+
+// 结束对局
+type FinishMatchReq {
+	MatchId        int64  `json:"match_id"`
+	Remark         string `json:"remark,optional"`
+	ClientActionId string `json:"client_action_id"`
+	BaseRevision   int64  `json:"base_revision"`
+}
+
+type FinishMatchResp {
+	Accepted       bool              `json:"accepted"`
+	Success        bool              `json:"success"`
+	Result         int               `json:"result"` // 1=胜利 2=失败 3=平局
+	ClientActionId string            `json:"client_action_id,optional"`
+	ServerRevision int64             `json:"server_revision"`
+	Snapshot       MatchSyncSnapshot `json:"snapshot"`
+	MyScore        int               `json:"my_score"`
+	OpponentScore  int               `json:"opponent_score"`
+}
+
+// 取消对局
+type CancelMatchReq {
+	MatchId int64 `json:"match_id"`
+}
+
+// 获取进行中对局
+type CurrentMatchInfo {
+	Id                        int64  `json:"id"`
+	GameType                  int    `json:"game_type"`
+	GameTypeName              string `json:"game_type_name"`
+	GameMode                  string `json:"game_mode"`
+	OpponentId                int64  `json:"opponent_id,optional"`
+	OpponentName              string `json:"opponent_name"`
+	OpponentAvatar            string `json:"opponent_avatar,optional"`
+	MyScore                   int    `json:"my_score"`
+	OpponentScore             int    `json:"opponent_score"`
+	CurrentFrameStarted       bool   `json:"current_frame_started,optional"`
+	CurrentFrameMyScore       int    `json:"current_frame_my_score,optional"`
+	CurrentFrameOpponentScore int    `json:"current_frame_opponent_score,optional"`
+	CurrentRound              int    `json:"current_round"`
+	ServerRevision            int64  `json:"server_revision"`
+	MatchTime                 string `json:"match_time"`
+	DurationSeconds           int64  `json:"duration_seconds"` // 对局已持续秒数
+}
+
+type GetCurrentMatchResp {
+	Success bool              `json:"success"`
+	Match   *CurrentMatchInfo `json:"match"`
+}
+
+// 对局列表
+type MatchListReq {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+	GameType int `form:"game_type,optional"`
+	Result   int `form:"result,optional"`
+}
+
+type MatchListItem {
+	Id             int64  `json:"id"`
+	OpponentId     int64  `json:"opponent_id"` // 对手ID（注册用户才有）
+	GameType       int    `json:"game_type"`
+	GameTypeName   string `json:"game_type_name"`
+	OpponentName   string `json:"opponent_name"`
+	OpponentAvatar string `json:"opponent_avatar"`
+	MyScore        int    `json:"my_score"`
+	OpponentScore  int    `json:"opponent_score"`
+	Result         int    `json:"result"`
+	MatchTime      string `json:"match_time"`
+}
+
+type MatchListResp {
+	Success bool            `json:"success"`
+	Total   int64           `json:"total"`
+	List    []MatchListItem `json:"list"`
+}
+
+// 交锋统计
+type H2HStatsReq {
+	OpponentId   int64  `form:"opponent_id,optional"`
+	OpponentName string `form:"opponent_name,optional"`
+}
+
+type H2HOpponent {
+	Id     int64  `json:"id"`
+	Name   string `json:"name"`
+	Avatar string `json:"avatar"`
+}
+
+type H2HStats {
+	TotalMatches int     `json:"total_matches"`
+	MyWins       int     `json:"my_wins"`
+	OpponentWins int     `json:"opponent_wins"`
+	WinRate      float64 `json:"win_rate"`
+	AvgScoreDiff float64 `json:"avg_score_diff"`
+	MaxWinStreak int     `json:"max_win_streak"`
+}
+
+type H2HStatsResp {
+	Success  bool         `json:"success"`
+	Opponent *H2HOpponent `json:"opponent"`
+	Stats    *H2HStats    `json:"stats"`
+}
+
+// 交锋历史
+type H2HHistoryReq {
+	OpponentId int64 `form:"opponent_id"`
+	Page       int   `form:"page,default=1"`
+	PageSize   int   `form:"page_size,default=20"`
+	Result     int   `form:"result,optional"`
+}
+
+type H2HHistoryResp {
+	Success bool            `json:"success"`
+	Total   int64           `json:"total"`
+	List    []MatchListItem `json:"list"`
+}
+
+// 搜索对手
+type SearchOpponentReq {
+	Keyword string `form:"keyword"`
+}
+
+type OpponentItem {
+	Id         int64  `json:"id"`
+	Name       string `json:"name"`
+	Avatar     string `json:"avatar"`
+	MatchCount int    `json:"match_count"`
+}
+
+type SearchOpponentResp {
+	Success bool           `json:"success"`
+	List    []OpponentItem `json:"list"`
+}
+
+// 获取匹配二维码
+type GetMatchQRCodeResp {
+	Success    bool   `json:"success"`
+	QrcodeData string `json:"qrcode_data"` // 二维码内容JSON: {"user_id":xxx,"nickname":"xxx","avatar":"xxx","ts":xxx}
+}
+
+// 获取对局详情
+type GetMatchDetailReq {
+	MatchId int64 `form:"match_id"`
+}
+
+type MatchAchievement {
+	BreakClear    int `json:"break_clear"` // 炸清次数
+	ContinueClear int `json:"continue_clear"` // 接清次数
+	GoldenBreak   int `json:"golden_break"` // 金球数
+	NineOnBreak   int `json:"nine_on_break"` // 大金数
+	Break50       int `json:"break_50"` // 单杆50+
+	Break100      int `json:"break_100"` // 单杆100+
+	Break147      int `json:"break_147"` // 单杆147
+}
+
+type RankDetail {
+	Label string `json:"label"`
+	Value int    `json:"value"`
+}
+
+type GetMatchDetailResp {
+	Success bool            `json:"success"`
+	Match   MatchDetailData `json:"match"`
+}
+
+type MatchSummaryItem {
+	Label string `json:"label"`
+	Value string `json:"value"`
+	Desc  string `json:"desc,optional"`
+	Icon  string `json:"icon,optional"`
+	Tone  string `json:"tone,optional"`
+}
+
+type MatchDetailData {
+	Id                            int64              `json:"id"`
+	GameType                      int                `json:"game_type"`
+	Status                        int                `json:"status"` // 1=进行中 2=已完成 3=已取消
+	ServerRevision                int64              `json:"server_revision"`
+	IsPlayer1                     bool               `json:"is_player1"` // 当前用户是否是创建者(用于视角判断)
+	MyScore                       int                `json:"my_score"` // 从当前用户视角的分数
+	OpponentScore                 int                `json:"opponent_score"` // 从当前用户视角的对手分数
+	MyName                        string             `json:"my_name"`
+	OpponentName                  string             `json:"opponent_name"`
+	MyAvatar                      string             `json:"my_avatar"`
+	OpponentAvatar                string             `json:"opponent_avatar"`
+	MyWinRate                     float64            `json:"my_win_rate"` // 我方胜率(百分比)
+	OpponentWinRate               float64            `json:"opponent_win_rate"` // 对手胜率(百分比)
+	MyMaxScore                    int                `json:"my_max_score"` // 我方单杆最高
+	OpponentMaxScore              int                `json:"opponent_max_score"` // 对手单杆最高
+	MyRankChange                  int                `json:"my_rank_change"`
+	OpponentRankChange            int                `json:"opponent_rank_change"`
+	MyRankDetails                 []RankDetail       `json:"my_rank_details"`
+	CurrentFrameStarted           bool               `json:"current_frame_started,optional"`
+	CurrentFrameMyScore           int                `json:"current_frame_my_score,optional"`
+	CurrentFrameOpponentScore     int                `json:"current_frame_opponent_score,optional"`
+	RedBallCount                  int                `json:"red_ball_count,optional"`
+	SnookerClearanceStarted       bool               `json:"snooker_clearance_started,optional"`
+	SnookerClearedColors          []int              `json:"snooker_cleared_colors,optional"`
+	SnookerExpectedClearanceScore int                `json:"snooker_expected_clearance_score,optional"`
+	SnookerClearanceCompleted     bool               `json:"snooker_clearance_completed,optional"`
+	SummaryHighlights             []MatchSummaryItem `json:"summary_highlights,optional"`
+	SummaryStats                  []MatchSummaryItem `json:"summary_stats,optional"`
+	Achievements                  MatchAchievement   `json:"achievements"`
+	CreatedAt                     string             `json:"created_at"`
+}
+
+@server (
+	prefix: /api/match
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "开始对局"
+	@handler StartMatch
+	post /start (StartMatchReq) returns (StartMatchResp)
+
+	@doc "加分"
+	@handler MatchScore
+	post /score (MatchScoreReq) returns (MatchScoreResp)
+
+	@doc "结束一局"
+	@handler EndRound
+	post /round/end (EndRoundReq) returns (EndRoundResp)
+
+	@doc "开始下一局"
+	@handler StartNextRound
+	post /round/start (StartNextRoundReq) returns (StartNextRoundResp)
+
+	@doc "犯规"
+	@handler MatchFoul
+	post /foul (MatchFoulReq) returns (MatchScoreResp)
+
+	@doc "撤销操作"
+	@handler MatchUndo
+	post /undo (MatchUndoReq) returns (MatchUndoResp)
+
+	@doc "结束对局"
+	@handler FinishMatch
+	post /finish (FinishMatchReq) returns (FinishMatchResp)
+
+	@doc "取消对局"
+	@handler CancelMatch
+	post /cancel (CancelMatchReq) returns (CommonResp)
+
+	@doc "获取进行中对局"
+	@handler GetCurrentMatch
+	get /current returns (GetCurrentMatchResp)
+
+	@doc "获取对局列表"
+	@handler GetMatchList
+	get /list (MatchListReq) returns (MatchListResp)
+
+	@doc "获取交锋统计"
+	@handler GetH2HStats
+	get /h2h/stats (H2HStatsReq) returns (H2HStatsResp)
+
+	@doc "获取交锋历史"
+	@handler GetH2HHistory
+	get /h2h/history (H2HHistoryReq) returns (H2HHistoryResp)
+
+	@doc "获取匹配二维码"
+	@handler GetMatchQRCode
+	get /qrcode returns (GetMatchQRCodeResp)
+
+	@doc "获取对局详情"
+	@handler GetMatchDetail
+	get /detail (GetMatchDetailReq) returns (GetMatchDetailResp)
+}
+
+// 对手记录列表项
+type OpponentRecordItem {
+	Id           int64   `json:"id"`
+	Name         string  `json:"name"`
+	Avatar       string  `json:"avatar"`
+	TotalMatches int     `json:"total_matches"` // 总对局数
+	Wins         int     `json:"wins"` // 我方胜场
+	Losses       int     `json:"losses"` // 我方负场
+	WinRate      float64 `json:"win_rate"` // 胜率百分比
+	LastMatchAt  string  `json:"last_match_at"` // 上次对局时间
+}
+
+// 获取对手列表请求
+type GetOpponentListReq {
+	Page     int    `form:"page,default=1"`
+	PageSize int    `form:"page_size,default=20"`
+	Keyword  string `form:"keyword,optional"`
+}
+
+// 获取对手列表响应
+type GetOpponentListResp {
+	Success        bool                 `json:"success"`
+	TotalOpponents int                  `json:"total_opponents"` // 总对手数
+	TotalWins      int                  `json:"total_wins"` // 总胜场
+	Total          int64                `json:"total"`
+	List           []OpponentRecordItem `json:"list"`
+}
+
+@server (
+	prefix: /api/opponent
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "搜索对手"
+	@handler SearchOpponent
+	get /search (SearchOpponentReq) returns (SearchOpponentResp)
+
+	@doc (
+		summary:     "获取对手列表"
+		description: "获取当前用户交战过的所有对手列表及统计数据"
+	)
+	@handler GetOpponentList
+	get /list (GetOpponentListReq) returns (GetOpponentListResp)
+}
+
+// ==================== 段位相关 ====================
+// 段位信息
+type RankInfo {
+	Level       int    `json:"level"` // 段位等级 1-5
+	Name        string `json:"name"` // 段位名称
+	Icon        string `json:"icon"` // 段位图标URL
+	RankScore   int    `json:"rank_score"` // 当前排位分
+	TotalWins   int    `json:"total_wins"` // 总胜场
+	TotalLosses int    `json:"total_losses"` // 总败场
+	MaxStreak   int    `json:"max_streak"` // 最高连胜
+	NextLevel   int    `json:"next_level"` // 下一段位等级
+	NextName    string `json:"next_name"` // 下一段位名称
+	NextScore   int    `json:"next_score"` // 晋级所需分数
+	Progress    int    `json:"progress"` // 晋级进度百分比
+}
+
+// 获取用户段位信息
+type GetUserRankInfoReq {
+	GameType int `form:"game_type,optional,default=3"`
+}
+
+type GetUserRankInfoResp {
+	Success  bool      `json:"success"`
+	RankInfo *RankInfo `json:"rank_info"`
+}
+
+// 段位列表项
+type RankItem {
+	Level     int    `json:"level"`
+	Name      string `json:"name"`
+	Icon      string `json:"icon"`
+	MinScore  int    `json:"min_score"` // 晋升最低分
+	IsCurrent bool   `json:"is_current"` // 是否当前段位
+}
+
+// 获取段位列表
+type GetRankListReq {
+	GameType int `form:"game_type,optional,default=3"`
+}
+
+type GetRankListResp {
+	Success bool       `json:"success"`
+	List    []RankItem `json:"list"`
+}
+
+// 排行榜用户项
+type LeaderboardItem {
+	Rank      int    `json:"rank"` // 排名
+	UserId    int64  `json:"user_id"`
+	Nickname  string `json:"nickname"`
+	Avatar    string `json:"avatar"`
+	RankLevel int    `json:"rank_level"` // 段位等级
+	RankName  string `json:"rank_name"` // 段位名称
+	RankScore int    `json:"rank_score"` // 排位分
+	WinRate   int    `json:"win_rate"` // 胜率百分比
+}
+
+// 获取排行榜请求
+type GetLeaderboardReq {
+	GameType int `form:"game_type,optional,default=3"`
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+}
+
+// 获取排行榜响应
+type GetLeaderboardResp {
+	Success   bool              `json:"success"`
+	Total     int64             `json:"total"`
+	TopThree  []LeaderboardItem `json:"top_three"` // 前三名
+	MyRanking *LeaderboardItem  `json:"my_ranking"` // 我的排名
+	List      []LeaderboardItem `json:"list"` // 第4名开始的列表
+}
+
+@server (
+	prefix: /api/rank
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc (
+		summary:     "获取用户段位信息"
+		description: "获取当前登录用户的段位信息，包括段位等级、排位分和晋级进度"
+	)
+	@handler GetUserRankInfo
+	get /info (GetUserRankInfoReq) returns (GetUserRankInfoResp)
+
+	@doc (
+		summary:     "获取段位列表"
+		description: "获取所有段位列表及其晋升条件"
+	)
+	@handler GetRankList
+	get /list (GetRankListReq) returns (GetRankListResp)
+}
+
+// ==================== 成就模块 ====================
+// 成就定义
+type AchievementDef {
+	Id          int64  `json:"id"`
+	Key         string `json:"key"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Icon        string `json:"icon"`
+	Category    string `json:"category"`
+	Threshold   int    `json:"threshold"`
+	Progress    int    `json:"progress"`
+	Unlocked    bool   `json:"unlocked"`
+	UnlockedAt  string `json:"unlocked_at,omitempty"`
+}
+
+type GetAchievementListReq {
+	Category string `form:"category,optional"`
+}
+
+type GetAchievementListResp {
+	Success bool             `json:"success"`
+	List    []AchievementDef `json:"list"`
+}
+
+type GetUserAchievementsResp {
+	Success bool             `json:"success"`
+	Total   int              `json:"total"`
+	List    []AchievementDef `json:"list"`
+}
+
+// 称号
+type TitleInfo {
+	Id        int64  `json:"id"`
+	TitleName string `json:"title_name"`
+	Source    string `json:"source"`
+	Equipped  bool   `json:"equipped"`
+	CreatedAt string `json:"created_at"`
+}
+
+type EquipTitleReq {
+	TitleId int64 `json:"title_id"`
+	Equip   bool  `json:"equip"`
+}
+
+type GetUserTitlesResp {
+	Success bool        `json:"success"`
+	List    []TitleInfo `json:"list"`
+}
+
+@server (
+	prefix: /api/achievement
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "获取成就列表"
+	@handler GetAchievementList
+	get /list (GetAchievementListReq) returns (GetAchievementListResp)
+
+	@doc "获取已解锁成就"
+	@handler GetUserAchievements
+	get /unlocked returns (GetUserAchievementsResp)
+
+	@doc "装备/卸下称号"
+	@handler EquipTitle
+	post /title/equip (EquipTitleReq) returns (CommonResp)
+
+	@doc "获取用户称号列表"
+	@handler GetUserTitles
+	get /titles returns (GetUserTitlesResp)
+}
+
+// ==================== 好友模块 ====================
+type FriendInfo {
+	Id        int64  `json:"id"`
+	UserId    int64  `json:"user_id"`
+	Nickname  string `json:"nickname"`
+	Avatar    string `json:"avatar"`
+	RankLevel int    `json:"rank_level"`
+	RankName  string `json:"rank_name"`
+	CreatedAt string `json:"created_at"`
+}
+
+type FriendRequestInfo {
+	Id         int64  `json:"id"`
+	FromUserId int64  `json:"from_user_id"`
+	Nickname   string `json:"nickname"`
+	Avatar     string `json:"avatar"`
+	Message    string `json:"message"`
+	Status     int    `json:"status"`
+	CreatedAt  string `json:"created_at"`
+}
+
+type SendFriendRequestReq {
+	ToUserId int64  `json:"to_user_id"`
+	Message  string `json:"message,optional"`
+}
+
+type HandleFriendRequestReq {
+	RequestId int64 `json:"request_id"`
+}
+
+type GetFriendListReq {
+	Page     int    `form:"page,default=1"`
+	PageSize int    `form:"page_size,default=20"`
+	Keyword  string `form:"keyword,optional"`
+}
+
+type GetFriendListResp {
+	Success bool         `json:"success"`
+	Total   int64        `json:"total"`
+	List    []FriendInfo `json:"list"`
+}
+
+type DeleteFriendReq {
+	FriendUserId int64 `json:"friend_user_id"`
+}
+
+type GetFriendRequestsReq {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+}
+
+type GetFriendRequestsResp {
+	Success bool                `json:"success"`
+	Total   int64               `json:"total"`
+	List    []FriendRequestInfo `json:"list"`
+}
+
+type SearchUserReq {
+	Keyword string `form:"keyword"`
+}
+
+type SearchUserItem {
+	UserId   int64  `json:"user_id"`
+	Nickname string `json:"nickname"`
+	Avatar   string `json:"avatar"`
+	RankName string `json:"rank_name"`
+	IsFriend bool   `json:"is_friend"`
+}
+
+type SearchUserResp {
+	Success bool             `json:"success"`
+	List    []SearchUserItem `json:"list"`
+}
+
+@server (
+	prefix: /api/friend
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "发送好友请求"
+	@handler SendFriendRequest
+	post /request (SendFriendRequestReq) returns (CommonResp)
+
+	@doc "接受好友请求"
+	@handler AcceptFriendRequest
+	post /accept (HandleFriendRequestReq) returns (CommonResp)
+
+	@doc "拒绝好友请求"
+	@handler RejectFriendRequest
+	post /reject (HandleFriendRequestReq) returns (CommonResp)
+
+	@doc "获取好友列表"
+	@handler GetFriendList
+	get /list (GetFriendListReq) returns (GetFriendListResp)
+
+	@doc "删除好友"
+	@handler DeleteFriend
+	post /delete (DeleteFriendReq) returns (CommonResp)
+
+	@doc "获取好友请求列表"
+	@handler GetFriendRequests
+	get /requests (GetFriendRequestsReq) returns (GetFriendRequestsResp)
+
+	@doc "搜索用户"
+	@handler SearchFriendUser
+	get /search (SearchUserReq) returns (SearchUserResp)
+}
+
+// ==================== 关注模块 ====================
+type FollowUserInfo {
+	UserId      int64  `json:"user_id"`
+	Nickname    string `json:"nickname"`
+	Avatar      string `json:"avatar"`
+	RankName    string `json:"rank_name"`
+	IsFollowing bool   `json:"is_following"`
+}
+
+type FollowReq {
+	TargetUserId int64 `json:"target_user_id"`
+}
+
+type GetFollowListReq {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+}
+
+type GetFollowListResp {
+	Success bool             `json:"success"`
+	Total   int64            `json:"total"`
+	List    []FollowUserInfo `json:"list"`
+}
+
+@server (
+	prefix: /api/follow
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "关注用户"
+	@handler FollowUser
+	post /follow (FollowReq) returns (CommonResp)
+
+	@doc "取消关注"
+	@handler UnfollowUser
+	post /unfollow (FollowReq) returns (CommonResp)
+
+	@doc "获取关注列表"
+	@handler GetFollowingList
+	get /following (GetFollowListReq) returns (GetFollowListResp)
+
+	@doc "获取粉丝列表"
+	@handler GetFollowerList
+	get /followers (GetFollowListReq) returns (GetFollowListResp)
+}
+
+// ==================== 动态模块 ====================
+type SocialPostInfo {
+	Id            int64    `json:"id"`
+	UserId        int64    `json:"user_id"`
+	Nickname      string   `json:"nickname"`
+	Avatar        string   `json:"avatar"`
+	Content       string   `json:"content"`
+	Images        []string `json:"images"`
+	PostType      int      `json:"post_type"`
+	MatchId       int64    `json:"match_id,omitempty"`
+	LikesCount    int      `json:"likes_count"`
+	CommentsCount int      `json:"comments_count"`
+	IsLiked       bool     `json:"is_liked"`
+	CreatedAt     string   `json:"created_at"`
+}
+
+type CreatePostReq {
+	Content  string   `json:"content"`
+	Images   []string `json:"images,optional"`
+	PostType int      `json:"post_type"`
+	MatchId  int64    `json:"match_id,optional"`
+}
+
+type CreatePostResp {
+	Success bool  `json:"success"`
+	PostId  int64 `json:"post_id"`
+}
+
+type GetPostListReq {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+}
+
+type GetPostListResp {
+	Success bool             `json:"success"`
+	Total   int64            `json:"total"`
+	List    []SocialPostInfo `json:"list"`
+}
+
+type PostIdReq {
+	PostId int64 `json:"post_id"`
+}
+
+type CommentPostReq {
+	PostId  int64  `json:"post_id"`
+	Content string `json:"content"`
+}
+
+type PostCommentInfo {
+	Id        int64  `json:"id"`
+	UserId    int64  `json:"user_id"`
+	Nickname  string `json:"nickname"`
+	Avatar    string `json:"avatar"`
+	Content   string `json:"content"`
+	CreatedAt string `json:"created_at"`
+}
+
+type GetPostCommentsReq {
+	PostId   int64 `form:"post_id"`
+	Page     int   `form:"page,default=1"`
+	PageSize int   `form:"page_size,default=20"`
+}
+
+type GetPostCommentsResp {
+	Success bool              `json:"success"`
+	Total   int64             `json:"total"`
+	List    []PostCommentInfo `json:"list"`
+}
+
+@server (
+	prefix: /api/social
+)
+service billiard_master-api {
+	@doc "获取广场动态"
+	@handler GetPublicPosts
+	get /public (GetPostListReq) returns (GetPostListResp)
+}
+
+@server (
+	prefix: /api/social
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "发布动态"
+	@handler CreatePost
+	post /post (CreatePostReq) returns (CreatePostResp)
+
+	@doc "获取关注的人的动态"
+	@handler GetPostList
+	get /feed (GetPostListReq) returns (GetPostListResp)
+
+	@doc "点赞动态"
+	@handler LikePost
+	post /like (PostIdReq) returns (CommonResp)
+
+	@doc "取消点赞"
+	@handler UnlikePost
+	post /unlike (PostIdReq) returns (CommonResp)
+
+	@doc "评论动态"
+	@handler CommentPost
+	post /comment (CommentPostReq) returns (CommonResp)
+
+	@doc "删除动态"
+	@handler DeletePost
+	post /delete (PostIdReq) returns (CommonResp)
+
+	@doc "获取动态评论"
+	@handler GetPostComments
+	get /comments (GetPostCommentsReq) returns (GetPostCommentsResp)
+}
+
+// ==================== 挑战模块 ====================
+type ChallengeInfo {
+	Id           int64  `json:"id"`
+	FromUserId   int64  `json:"from_user_id"`
+	FromNickname string `json:"from_nickname"`
+	FromAvatar   string `json:"from_avatar"`
+	ToUserId     int64  `json:"to_user_id"`
+	ToNickname   string `json:"to_nickname"`
+	ToAvatar     string `json:"to_avatar"`
+	GameType     int    `json:"game_type"`
+	Message      string `json:"message"`
+	Status       int    `json:"status"`
+	CreatedAt    string `json:"created_at"`
+}
+
+type SendChallengeReq {
+	ToUserId int64  `json:"to_user_id"`
+	GameType int    `json:"game_type"`
+	Message  string `json:"message,optional"`
+}
+
+type SendChallengeResp {
+	Success     bool  `json:"success"`
+	ChallengeId int64 `json:"challenge_id"`
+}
+
+type HandleChallengeReq {
+	ChallengeId int64 `json:"challenge_id"`
+}
+
+type GetPendingChallengesResp {
+	Success bool            `json:"success"`
+	List    []ChallengeInfo `json:"list"`
+}
+
+@server (
+	prefix: /api/challenge
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "发起挑战"
+	@handler SendChallenge
+	post /send (SendChallengeReq) returns (SendChallengeResp)
+
+	@doc "接受挑战"
+	@handler AcceptChallenge
+	post /accept (HandleChallengeReq) returns (CommonResp)
+
+	@doc "拒绝挑战"
+	@handler RejectChallenge
+	post /reject (HandleChallengeReq) returns (CommonResp)
+
+	@doc "获取待处理挑战"
+	@handler GetPendingChallenges
+	get /pending returns (GetPendingChallengesResp)
+}
+
+// ==================== 赛事模块 ====================
+type TournamentInfo {
+	Id             int64  `json:"id"`
+	CreatorId      int64  `json:"creator_id"`
+	CreatorName    string `json:"creator_name"`
+	Name           string `json:"name"`
+	Description    string `json:"description"`
+	GameType       int    `json:"game_type"`
+	Format         int    `json:"format"`
+	MaxPlayers     int    `json:"max_players"`
+	CurrentPlayers int    `json:"current_players"`
+	Status         int    `json:"status"`
+	City           string `json:"city"`
+	VenueName      string `json:"venue_name"`
+	StartTime      string `json:"start_time"`
+	EndTime        string `json:"end_time"`
+	CreatedAt      string `json:"created_at"`
+}
+
+type GetTournamentListReq {
+	Page     int    `form:"page,default=1"`
+	PageSize int    `form:"page_size,default=20"`
+	Status   int    `form:"status,optional"`
+	GameType int    `form:"game_type,optional"`
+	City     string `form:"city,optional"`
+}
+
+type GetTournamentListResp {
+	Success bool             `json:"success"`
+	Total   int64            `json:"total"`
+	List    []TournamentInfo `json:"list"`
+}
+
+type GetTournamentDetailReq {
+	TournamentId int64 `form:"tournament_id"`
+}
+
+type TournamentParticipant {
+	UserId    int64  `json:"user_id"`
+	Nickname  string `json:"nickname"`
+	Avatar    string `json:"avatar"`
+	Seed      int    `json:"seed"`
+	Status    int    `json:"status"`
+	FinalRank int    `json:"final_rank"`
+}
+
+type GetTournamentDetailResp {
+	Success      bool                    `json:"success"`
+	Tournament   *TournamentInfo         `json:"tournament"`
+	Participants []TournamentParticipant `json:"participants"`
+}
+
+type TournamentBracketMatch {
+	Id              int64  `json:"id"`
+	RoundNumber     int    `json:"round_number"`
+	MatchOrder      int    `json:"match_order"`
+	Player1Id       int64  `json:"player1_id"`
+	Player1Name     string `json:"player1_name"`
+	Player2Id       int64  `json:"player2_id"`
+	Player2Name     string `json:"player2_name"`
+	WinnerId        int64  `json:"winner_id"`
+	BracketPosition string `json:"bracket_position"`
+	Status          int    `json:"status"`
+}
+
+type GetTournamentBracketReq {
+	TournamentId int64 `form:"tournament_id"`
+}
+
+type GetTournamentBracketResp {
+	Success     bool                     `json:"success"`
+	Matches     []TournamentBracketMatch `json:"matches"`
+	TotalRounds int                      `json:"total_rounds"`
+}
+
+// 赛事公开接口
+@server (
+	prefix: /api/tournament
+)
+service billiard_master-api {
+	@doc "获取赛事列表"
+	@handler GetTournamentList
+	get /list (GetTournamentListReq) returns (GetTournamentListResp)
+
+	@doc "获取赛事详情"
+	@handler GetTournamentDetail
+	get /detail (GetTournamentDetailReq) returns (GetTournamentDetailResp)
+
+	@doc "获取赛事对阵图"
+	@handler GetTournamentBracket
+	get /bracket (GetTournamentBracketReq) returns (GetTournamentBracketResp)
+}
+
+// 赛事需登录接口
+type CreateTournamentReq {
+	Name        string `json:"name"`
+	Description string `json:"description,optional"`
+	GameType    int    `json:"game_type"`
+	Format      int    `json:"format"`
+	MaxPlayers  int    `json:"max_players"`
+	City        string `json:"city,optional"`
+	VenueName   string `json:"venue_name,optional"`
+	StartTime   string `json:"start_time"`
+}
+
+type CreateTournamentResp {
+	Success      bool  `json:"success"`
+	TournamentId int64 `json:"tournament_id"`
+}
+
+type TournamentIdReq {
+	TournamentId int64 `json:"tournament_id"`
+}
+
+type UpdateTournamentMatchReq {
+	TournamentMatchId int64 `json:"tournament_match_id"`
+	WinnerId          int64 `json:"winner_id"`
+	MatchId           int64 `json:"match_id,optional"`
+}
+
+type GetMyTournamentsReq {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+	Status   int `form:"status,optional"`
+}
+
+@server (
+	prefix: /api/tournament
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "创建赛事"
+	@handler CreateTournament
+	post /create (CreateTournamentReq) returns (CreateTournamentResp)
+
+	@doc "报名赛事"
+	@handler JoinTournament
+	post /join (TournamentIdReq) returns (CommonResp)
+
+	@doc "退出赛事"
+	@handler LeaveTournament
+	post /leave (TournamentIdReq) returns (CommonResp)
+
+	@doc "签到赛事"
+	@handler CheckinTournament
+	post /checkin (TournamentIdReq) returns (CommonResp)
+
+	@doc "更新赛事对局结果"
+	@handler UpdateTournamentMatch
+	post /match/update (UpdateTournamentMatchReq) returns (CommonResp)
+
+	@doc "结束赛事"
+	@handler FinishTournament
+	post /finish (TournamentIdReq) returns (CommonResp)
+
+	@doc "取消赛事"
+	@handler CancelTournament
+	post /cancel (TournamentIdReq) returns (CommonResp)
+
+	@doc "获取我的赛事"
+	@handler GetMyTournaments
+	get /my (GetMyTournamentsReq) returns (GetTournamentListResp)
+}
+
+// ==================== 赛季模块 ====================
+type SeasonInfo {
+	Id             int64   `json:"id"`
+	Name           string  `json:"name"`
+	StartDate      string  `json:"start_date"`
+	EndDate        string  `json:"end_date"`
+	Status         int     `json:"status"`
+	RankResetRatio float64 `json:"rank_reset_ratio"`
+}
+
+type GetCurrentSeasonResp {
+	Success bool        `json:"success"`
+	Season  *SeasonInfo `json:"season"`
+}
+
+type SeasonLeaderboardItem {
+	Rank          int    `json:"rank"`
+	UserId        int64  `json:"user_id"`
+	Nickname      string `json:"nickname"`
+	Avatar        string `json:"avatar"`
+	RankScore     int    `json:"rank_score"`
+	PeakScore     int    `json:"peak_score"`
+	MatchesPlayed int    `json:"matches_played"`
+	Wins          int    `json:"wins"`
+}
+
+type GetSeasonLeaderboardReq {
+	SeasonId int64 `form:"season_id,optional"`
+	GameType int   `form:"game_type,optional,default=3"`
+	Page     int   `form:"page,default=1"`
+	PageSize int   `form:"page_size,default=20"`
+}
+
+type GetSeasonLeaderboardResp {
+	Success bool                    `json:"success"`
+	Season  *SeasonInfo             `json:"season"`
+	Total   int64                   `json:"total"`
+	List    []SeasonLeaderboardItem `json:"list"`
+}
+
+// 赛季公开接口
+@server (
+	prefix: /api/season
+)
+service billiard_master-api {
+	@doc "获取当前赛季"
+	@handler GetCurrentSeason
+	get /current returns (GetCurrentSeasonResp)
+
+	@doc "获取赛季排行榜"
+	@handler GetSeasonLeaderboard
+	get /leaderboard (GetSeasonLeaderboardReq) returns (GetSeasonLeaderboardResp)
+}
+
+// 赛季需登录接口
+type SeasonRecordInfo {
+	SeasonId       int64  `json:"season_id"`
+	SeasonName     string `json:"season_name"`
+	StartRankScore int    `json:"start_rank_score"`
+	EndRankScore   int    `json:"end_rank_score"`
+	PeakRankScore  int    `json:"peak_rank_score"`
+	MatchesPlayed  int    `json:"matches_played"`
+	Wins           int    `json:"wins"`
+	FinalRank      int    `json:"final_rank"`
+}
+
+type GetMySeasonRecordReq {
+	SeasonId int64 `form:"season_id,optional"`
+	GameType int   `form:"game_type,optional,default=3"`
+}
+
+type GetMySeasonRecordResp {
+	Success bool              `json:"success"`
+	Record  *SeasonRecordInfo `json:"record"`
+}
+
+type GetSeasonReportReq {
+	SeasonId int64 `form:"season_id"`
+	GameType int   `form:"game_type,optional,default=3"`
+}
+
+type SeasonReportData {
+	Record          *SeasonRecordInfo `json:"record"`
+	RankTrend       []int             `json:"rank_trend"`
+	WinRateByType   map[string]int    `json:"win_rate_by_type,omitempty"`
+	TopAchievements []AchievementDef  `json:"top_achievements"`
+}
+
+type GetSeasonReportResp {
+	Success bool              `json:"success"`
+	Report  *SeasonReportData `json:"report"`
+}
+
+@server (
+	prefix: /api/season
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "获取我的赛季记录"
+	@handler GetMySeasonRecord
+	get /my-record (GetMySeasonRecordReq) returns (GetMySeasonRecordResp)
+
+	@doc "获取赛季报告"
+	@handler GetSeasonReport
+	get /report (GetSeasonReportReq) returns (GetSeasonReportResp)
+}
+
+// ==================== 球馆模块 ====================
+type VenueInfo {
+	Id            int64    `json:"id"`
+	Name          string   `json:"name"`
+	Address       string   `json:"address"`
+	City          string   `json:"city"`
+	District      string   `json:"district"`
+	Latitude      float64  `json:"latitude"`
+	Longitude     float64  `json:"longitude"`
+	Phone         string   `json:"phone"`
+	Images        []string `json:"images"`
+	BusinessHours string   `json:"business_hours"`
+	TableCount    int      `json:"table_count"`
+	PriceRange    string   `json:"price_range"`
+	Description   string   `json:"description"`
+	Distance      float64  `json:"distance,omitempty"`
+	CheckinCount  int      `json:"checkin_count"`
+	Status        int      `json:"status"`
+}
+
+type GetVenueListReq {
+	Page      int     `form:"page,default=1"`
+	PageSize  int     `form:"page_size,default=20"`
+	City      string  `form:"city,optional"`
+	Latitude  float64 `form:"latitude,optional"`
+	Longitude float64 `form:"longitude,optional"`
+	SortBy    string  `form:"sort_by,optional,default=distance"`
+}
+
+type GetVenueListResp {
+	Success bool        `json:"success"`
+	Total   int64       `json:"total"`
+	List    []VenueInfo `json:"list"`
+}
+
+type GetVenueDetailReq {
+	VenueId int64 `form:"venue_id"`
+}
+
+type GetVenueDetailResp {
+	Success bool       `json:"success"`
+	Venue   *VenueInfo `json:"venue"`
+}
+
+type GetNearbyVenuesReq {
+	Latitude  float64 `form:"latitude"`
+	Longitude float64 `form:"longitude"`
+	Radius    int     `form:"radius,optional,default=5000"`
+	Limit     int     `form:"limit,optional,default=10"`
+}
+
+// 球馆公开接口
+@server (
+	prefix: /api/venue
+)
+service billiard_master-api {
+	@doc "获取球馆列表"
+	@handler GetVenueList
+	get /list (GetVenueListReq) returns (GetVenueListResp)
+
+	@doc "获取球馆详情"
+	@handler GetVenueDetail
+	get /detail (GetVenueDetailReq) returns (GetVenueDetailResp)
+
+	@doc "获取附近球馆"
+	@handler GetNearbyVenues
+	get /nearby (GetNearbyVenuesReq) returns (GetVenueListResp)
+}
+
+// 球馆需登录接口
+type CreateVenueReq {
+	Name          string   `json:"name"`
+	Address       string   `json:"address"`
+	City          string   `json:"city"`
+	District      string   `json:"district,optional"`
+	Phone         string   `json:"phone,optional"`
+	Images        []string `json:"images,optional"`
+	BusinessHours string   `json:"business_hours,optional"`
+	TableCount    int      `json:"table_count,optional"`
+	PriceRange    string   `json:"price_range,optional"`
+	Description   string   `json:"description,optional"`
+}
+
+type CreateVenueResp {
+	Success bool   `json:"success"`
+	VenueId int64  `json:"venue_id"`
+	Message string `json:"message"`
+}
+
+type VenueIdReq {
+	VenueId int64 `json:"venue_id"`
+}
+
+type VenueCheckinInfo {
+	Id        int64  `json:"id"`
+	VenueId   int64  `json:"venue_id"`
+	VenueName string `json:"venue_name"`
+	CreatedAt string `json:"created_at"`
+}
+
+type GetMyCheckinsReq {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+}
+
+type GetMyCheckinsResp {
+	Success bool               `json:"success"`
+	Total   int64              `json:"total"`
+	List    []VenueCheckinInfo `json:"list"`
+}
+
+@server (
+	prefix: /api/venue
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "创建球馆"
+	@handler CreateVenue
+	post /create (CreateVenueReq) returns (CreateVenueResp)
+
+	@doc "打卡球馆"
+	@handler CheckinVenue
+	post /checkin (VenueIdReq) returns (CommonResp)
+
+	@doc "获取我的打卡记录"
+	@handler GetMyCheckins
+	get /my-checkins (GetMyCheckinsReq) returns (GetMyCheckinsResp)
+}
+
+// ==================== 规则百科模块 ====================
+type RuleCategoryInfo {
+	Category      string `json:"category"`
+	Name          string `json:"name"`
+	Description   string `json:"description"`
+	RuleCount     int    `json:"rule_count"`
+	FoulCount     int    `json:"foul_count"`
+	GlossaryCount int    `json:"glossary_count"`
+}
+
+type GetRuleCategoriesResp {
+	Success bool               `json:"success"`
+	List    []RuleCategoryInfo `json:"list"`
+}
+
+type GetRuleContentReq {
+	Category    string `form:"category"`
+	ContentType string `form:"content_type"`
+}
+
+type RuleContentItem {
+	Id        int64  `json:"id"`
+	Title     string `json:"title"`
+	Content   string `json:"content"`
+	SortOrder int    `json:"sort_order"`
+}
+
+type GetRuleContentResp {
+	Success bool              `json:"success"`
+	List    []RuleContentItem `json:"list"`
+}
+
+type GetGlossaryReq {
+	Category string `form:"category,optional"`
+}
+
+type GlossaryItemInfo {
+	Id       int64  `json:"id"`
+	Title    string `json:"title"`
+	Content  string `json:"content"`
+	Category string `json:"category"`
+}
+
+type GetGlossaryResp {
+	Success bool               `json:"success"`
+	List    []GlossaryItemInfo `json:"list"`
+}
+
+type SearchRulesReq {
+	Keyword string `form:"keyword"`
+}
+
+type SearchRulesResp {
+	Success bool              `json:"success"`
+	List    []RuleContentItem `json:"list"`
+}
+
+@server (
+	prefix: /api/rules
+)
+service billiard_master-api {
+	@doc "获取规则分类"
+	@handler GetRuleCategories
+	get /categories returns (GetRuleCategoriesResp)
+
+	@doc "获取规则内容"
+	@handler GetRuleContent
+	get /content (GetRuleContentReq) returns (GetRuleContentResp)
+
+	@doc "获取术语词典"
+	@handler GetGlossary
+	get /glossary (GetGlossaryReq) returns (GetGlossaryResp)
+
+	@doc "搜索规则"
+	@handler SearchRules
+	get /search (SearchRulesReq) returns (SearchRulesResp)
+}
+
+// ==================== 通知模块 ====================
+type NotificationInfo {
+	Id        int64  `json:"id"`
+	Type      string `json:"type"`
+	Title     string `json:"title"`
+	Content   string `json:"content"`
+	Data      string `json:"data"`
+	IsRead    bool   `json:"is_read"`
+	CreatedAt string `json:"created_at"`
+}
+
+type GetNotificationListReq {
+	Page     int    `form:"page,default=1"`
+	PageSize int    `form:"page_size,default=20"`
+	Type     string `form:"type,optional"`
+}
+
+type GetNotificationListResp {
+	Success bool               `json:"success"`
+	Total   int64              `json:"total"`
+	List    []NotificationInfo `json:"list"`
+}
+
+type NotificationIdReq {
+	NotificationId int64 `json:"notification_id"`
+}
+
+type GetUnreadCountResp {
+	Success bool `json:"success"`
+	Count   int  `json:"count"`
+}
+
+@server (
+	prefix: /api/notification
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "获取通知列表"
+	@handler GetNotificationList
+	get /list (GetNotificationListReq) returns (GetNotificationListResp)
+
+	@doc "标记已读"
+	@handler MarkNotificationRead
+	post /read (NotificationIdReq) returns (CommonResp)
+
+	@doc "全部标记已读"
+	@handler MarkAllNotificationsRead
+	post /read-all returns (CommonResp)
+
+	@doc "获取未读数量"
+	@handler GetUnreadCount
+	get /unread-count returns (GetUnreadCountResp)
+
+	@doc "删除通知"
+	@handler DeleteNotification
+	post /delete (NotificationIdReq) returns (CommonResp)
+}
+
+// ==================== 分享模块 ====================
+type GetMatchShareDataReq {
+	MatchId int64 `form:"match_id"`
+}
+
+type MatchShareData {
+	MatchId           int64              `json:"match_id"`
+	GameType          int                `json:"game_type"`
+	GameTypeName      string             `json:"game_type_name"`
+	MyName            string             `json:"my_name"`
+	MyAvatar          string             `json:"my_avatar"`
+	MyScore           int                `json:"my_score"`
+	OpponentName      string             `json:"opponent_name"`
+	OpponentAvatar    string             `json:"opponent_avatar"`
+	OpponentScore     int                `json:"opponent_score"`
+	Result            string             `json:"result"`
+	MatchTime         string             `json:"match_time"`
+	RankChange        int                `json:"rank_change"`
+	SummaryHighlights []MatchSummaryItem `json:"summary_highlights,optional"`
+	SummaryStats      []MatchSummaryItem `json:"summary_stats,optional"`
+}
+
+type GetMatchShareDataResp {
+	Success bool            `json:"success"`
+	Data    *MatchShareData `json:"data"`
+}
+
+type GetTournamentShareDataReq {
+	TournamentId int64 `form:"tournament_id"`
+}
+
+type TournamentShareData {
+	TournamentId   int64  `json:"tournament_id"`
+	TournamentName string `json:"tournament_name"`
+	FinalRank      int    `json:"final_rank"`
+	TotalPlayers   int    `json:"total_players"`
+	MatchesPlayed  int    `json:"matches_played"`
+	MatchesWon     int    `json:"matches_won"`
+}
+
+type GetTournamentShareDataResp {
+	Success bool                 `json:"success"`
+	Data    *TournamentShareData `json:"data"`
+}
+
+@server (
+	prefix: /api/share
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "获取对局分享数据"
+	@handler GetMatchShareData
+	get /match (GetMatchShareDataReq) returns (GetMatchShareDataResp)
+
+	@doc "获取赛事分享数据"
+	@handler GetTournamentShareData
+	get /tournament (GetTournamentShareDataReq) returns (GetTournamentShareDataResp)
+}
+
+// ==================== 深度统计模块 ====================
+type GameTypeStats {
+	GameType     int     `json:"game_type"`
+	GameTypeName string  `json:"game_type_name"`
+	TotalMatches int     `json:"total_matches"`
+	Wins         int     `json:"wins"`
+	Losses       int     `json:"losses"`
+	WinRate      float64 `json:"win_rate"`
+	HighestScore int     `json:"highest_score"`
+}
+
+type TrendPoint {
+	MatchId   int64   `json:"match_id"`
+	Date      string  `json:"date"`
+	WinRate   float64 `json:"win_rate"`
+	RankScore int     `json:"rank_score,omitempty"`
+	Result    int     `json:"result"`
+}
+
+type SingleHighScoreRecord {
+	MatchId      int64  `json:"match_id"`
+	Score        int    `json:"score"`
+	GameType     int    `json:"game_type"`
+	GameTypeName string `json:"game_type_name"`
+	OpponentName string `json:"opponent_name"`
+	Date         string `json:"date"`
+}
+
+type DurationStats {
+	AverageSeconds int `json:"average_seconds"`
+	FastestSeconds int `json:"fastest_seconds"`
+	LongestSeconds int `json:"longest_seconds"`
+	TotalMatches   int `json:"total_matches"`
+}
+
+type OpponentStrengthItem {
+	RankRange string  `json:"rank_range"`
+	Matches   int     `json:"matches"`
+	Wins      int     `json:"wins"`
+	WinRate   float64 `json:"win_rate"`
+}
+
+type GetStatsByGameTypeResp {
+	Success bool            `json:"success"`
+	List    []GameTypeStats `json:"list"`
+}
+
+type GetRecentTrendReq {
+	Limit    int `form:"limit,optional,default=30"`
+	GameType int `form:"game_type,optional"`
+}
+
+type GetRecentTrendResp {
+	Success bool         `json:"success"`
+	List    []TrendPoint `json:"list"`
+}
+
+type GetRankScoreTrendReq {
+	Limit    int `form:"limit,optional,default=30"`
+	GameType int `form:"game_type,optional,default=3"`
+}
+
+type GetRankScoreTrendResp {
+	Success bool         `json:"success"`
+	List    []TrendPoint `json:"list"`
+}
+
+type GetSingleHighScoreReq {
+	GameType int `form:"game_type,optional"`
+	Limit    int `form:"limit,optional,default=10"`
+}
+
+type GetSingleHighScoreResp {
+	Success bool                    `json:"success"`
+	List    []SingleHighScoreRecord `json:"list"`
+}
+
+type GetMatchDurationStatsReq {
+	GameType int `form:"game_type,optional"`
+}
+
+type GetMatchDurationStatsResp {
+	Success bool           `json:"success"`
+	Stats   *DurationStats `json:"stats"`
+}
+
+type GetOpponentStrengthResp {
+	Success bool                   `json:"success"`
+	List    []OpponentStrengthItem `json:"list"`
+}
+
+@server (
+	prefix: /api/stats
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "分球种统计"
+	@handler GetStatsByGameType
+	get /by-game-type returns (GetStatsByGameTypeResp)
+
+	@doc "近N场胜率趋势"
+	@handler GetRecentTrend
+	get /recent-trend (GetRecentTrendReq) returns (GetRecentTrendResp)
+
+	@doc "段位分变化趋势"
+	@handler GetRankScoreTrend
+	get /rank-score-trend (GetRankScoreTrendReq) returns (GetRankScoreTrendResp)
+
+	@doc "单杆最高分记录"
+	@handler GetSingleHighScore
+	get /single-high-score (GetSingleHighScoreReq) returns (GetSingleHighScoreResp)
+
+	@doc "对局时长统计"
+	@handler GetMatchDurationStats
+	get /match-duration (GetMatchDurationStatsReq) returns (GetMatchDurationStatsResp)
+
+	@doc "强弱对手分析"
+	@handler GetOpponentStrength
+	get /opponent-strength returns (GetOpponentStrengthResp)
+}
+
+// ==================== Admin 管理后台 ====================
+type AdminLoginReq {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type AdminLoginResp {
+	Code     int        `json:"code"`
+	Success  bool       `json:"success"`
+	Message  string     `json:"message"`
+	Token    string     `json:"token"`
+	UserInfo *AdminInfo `json:"userInfo"`
+}
+
+type AdminInfo {
+	Id       int64  `json:"id"`
+	Email    string `json:"email"`
+	Nickname string `json:"nickname"`
+	Avatar   string `json:"avatar"`
+	Role     string `json:"role"`
+}
+
+type AdminInitReq {
+	Email      string `json:"email"`
+	Password   string `json:"password"`
+	SetupToken string `json:"setup_token"`
+}
+
+type AdminInitResp {
+	Code    int    `json:"code"`
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+type AdminChangePasswordReq {
+	OldPassword string `json:"old_password"`
+	NewPassword string `json:"new_password"`
+}
+
+type AdminWriteResp {
+	Code    int    `json:"code"`
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+type AdminUserInfoResp {
+	Code     int        `json:"code"`
+	Success  bool       `json:"success"`
+	Message  string     `json:"message"`
+	UserInfo *AdminInfo `json:"userInfo"`
+}
+
+type AdminExistsResp {
+	Code    int    `json:"code"`
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Exists  bool   `json:"exists"`
+}
+
+@server (
+	prefix: /api/admin
+)
+service billiard_master-api {
+	@doc "管理员登录"
+	@handler AdminLogin
+	post /login (AdminLoginReq) returns (AdminLoginResp)
+
+	@doc "初始化管理员账号"
+	@handler AdminInit
+	post /init (AdminInitReq) returns (AdminInitResp)
+
+	@doc "检查管理员账号是否存在"
+	@handler AdminExists
+	get /exists returns (AdminExistsResp)
+}
+
+@server (
+	prefix: /api/admin/user
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "获取当前管理员信息"
+	@handler AdminUserInfo
+	get /info returns (AdminUserInfoResp)
+
+	@doc "修改管理员密码"
+	@handler AdminChangePassword
+	post /change-password (AdminChangePasswordReq) returns (AdminWriteResp)
+}
+
+// ==================== Admin 球馆审核 ====================
+type AdminVenueListReq {
+	Page     int    `form:"page,default=1"`
+	PageSize int    `form:"page_size,default=20"`
+	Status   int    `form:"status,default=-1"` // -1:全部 0:隐藏 1:已发布 2:待审核 3:已拒绝
+	City     string `form:"city,optional"`
+}
+
+type AdminVenueInfo {
+	Id            int64   `json:"id"`
+	Name          string  `json:"name"`
+	Address       string  `json:"address"`
+	City          string  `json:"city"`
+	District      string  `json:"district"`
+	Latitude      float64 `json:"latitude"`
+	Longitude     float64 `json:"longitude"`
+	Phone         string  `json:"phone"`
+	Images        string  `json:"images"`
+	BusinessHours string  `json:"business_hours"`
+	TableCount    int     `json:"table_count"`
+	PriceRange    string  `json:"price_range"`
+	Description   string  `json:"description"`
+	Status        int     `json:"status"`
+	GeoStatus     int     `json:"geo_status"`
+	OwnerUserId   int64   `json:"owner_user_id"`
+	CreatedAt     string  `json:"created_at"`
+}
+
+type AdminVenueListResp {
+	Code    int              `json:"code"`
+	Success bool             `json:"success"`
+	Message string           `json:"message"`
+	Total   int64            `json:"total"`
+	List    []AdminVenueInfo `json:"list"`
+}
+
+type AdminVenueReviewReq {
+	VenueId      int64  `json:"venue_id"`
+	Status       int    `json:"status"` // 1:通过 3:拒绝
+	RejectReason string `json:"reject_reason,optional"`
+}
+
+type AdminVenueReviewResp {
+	Code    int    `json:"code"`
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+@server (
+	prefix: /api/admin/venue
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "获取球馆列表（管理员）"
+	@handler AdminGetVenueList
+	get /list (AdminVenueListReq) returns (AdminVenueListResp)
+
+	@doc "审核球馆"
+	@handler AdminReviewVenue
+	post /review (AdminVenueReviewReq) returns (AdminVenueReviewResp)
+}
+
+// ==================== Admin 用户管理 ====================
+type AdminUserListReq {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+	Status   int `form:"status,optional,default=-1"`
+}
+
+type AdminUserInfo {
+	Id        int64  `json:"id"`
+	Phone     string `json:"phone"`
+	Nickname  string `json:"nickname"`
+	Avatar    string `json:"avatar"`
+	Status    int    `json:"status"`
+	CreatedAt string `json:"created_at"`
+}
+
+type AdminUserListResp {
+	Code    int             `json:"code"`
+	Success bool            `json:"success"`
+	Message string          `json:"message"`
+	Total   int64           `json:"total"`
+	List    []AdminUserInfo `json:"list"`
+}
+
+type AdminUserUpdateStatusReq {
+	UserId int64 `json:"user_id"`
+	Status int   `json:"status"`
+}
+
+@server (
+	prefix: /api/admin/users
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "获取用户列表（管理员）"
+	@handler AdminGetUserList
+	get /list (AdminUserListReq) returns (AdminUserListResp)
+
+	@doc "更新用户状态"
+	@handler AdminUpdateUserStatus
+	post /update-status (AdminUserUpdateStatusReq) returns (AdminWriteResp)
+}
+
+// ==================== Admin 首页统计 ====================
+type AdminDashboardStatsResp {
+	Code           int    `json:"code"`
+	Success        bool   `json:"success"`
+	Message        string `json:"message"`
+	TotalUsers     int64  `json:"total_users"`
+	TodayNewUsers  int64  `json:"today_new_users"`
+	TotalMatches   int64  `json:"total_matches"`
+	OngoingMatches int64  `json:"ongoing_matches"`
+}
+
+type AdminRecentUser {
+	Id        int64  `json:"id"`
+	Nickname  string `json:"nickname"`
+	Phone     string `json:"phone"`
+	CreatedAt string `json:"created_at"`
+}
+
+type AdminRecentUsersResp {
+	Code    int               `json:"code"`
+	Success bool              `json:"success"`
+	Message string            `json:"message"`
+	List    []AdminRecentUser `json:"list"`
+}
+
+type AdminRecentMatch {
+	Id            int64  `json:"id"`
+	GameType      int    `json:"game_type"`
+	GameTypeName  string `json:"game_type_name"`
+	Player1Name   string `json:"player1_name"`
+	Player2Name   string `json:"player2_name"`
+	MyScore       int    `json:"my_score"`
+	OpponentScore int    `json:"opponent_score"`
+	Status        int    `json:"status"`
+	CreatedAt     string `json:"created_at"`
+}
+
+type AdminRecentMatchesResp {
+	Code    int                `json:"code"`
+	Success bool               `json:"success"`
+	Message string             `json:"message"`
+	List    []AdminRecentMatch `json:"list"`
+}
+
+@server (
+	prefix: /api/admin/dashboard
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "获取首页统计数据"
+	@handler AdminGetDashboardStats
+	get /stats returns (AdminDashboardStatsResp)
+
+	@doc "获取最近注册用户"
+	@handler AdminGetRecentUsers
+	get /recent-users returns (AdminRecentUsersResp)
+
+	@doc "获取最近对局"
+	@handler AdminGetRecentMatches
+	get /recent-matches returns (AdminRecentMatchesResp)
+}
+
+// ==================== Admin 对局管理 ====================
+type AdminMatchListReq {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+	Status   int `form:"status,optional,default=-1"` // -1:全部 1:进行中 2:已完成 3:已取消
+	GameType int `form:"game_type,optional,default=-1"` // -1:全部 1:斯诺克 2:九球追分 3:中式八球 4:美式九球
+}
+
+type AdminMatchInfo {
+	Id            int64  `json:"id"`
+	GameType      int    `json:"game_type"`
+	GameTypeName  string `json:"game_type_name"`
+	Player1Name   string `json:"player1_name"`
+	Player2Name   string `json:"player2_name"`
+	MyScore       int    `json:"my_score"`
+	OpponentScore int    `json:"opponent_score"`
+	Status        int    `json:"status"`
+	StatusText    string `json:"status_text"`
+	Result        *int   `json:"result,omitempty"`
+	WinnerName    string `json:"winner_name"`
+	MatchTime     string `json:"match_time"`
+	CreatedAt     string `json:"created_at"`
+}
+
+type AdminMatchListResp {
+	Code    int              `json:"code"`
+	Success bool             `json:"success"`
+	Message string           `json:"message"`
+	Total   int64            `json:"total"`
+	List    []AdminMatchInfo `json:"list"`
+}
+
+@server (
+	prefix: /api/admin/match
+	jwt:    Auth
+)
+service billiard_master-api {
+	@doc "获取对局列表（管理员）"
+	@handler AdminGetMatchList
+	get /list (AdminMatchListReq) returns (AdminMatchListResp)
+}
+

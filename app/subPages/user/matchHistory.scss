@@ -1,0 +1,404 @@
+/* 对局记录页面样式 */
+
+// 主色调
+$primary-color: #18b05b;
+$loss-red: #E57373;
+
+// 浅色模式变量
+$bg-light: #f6f7f8;
+$card-bg-light: #ffffff;
+$text-primary-light: #0f172a;
+$text-secondary-light: #64748b;
+$text-tertiary-light: #94a3b8;
+$border-color-light: #e2e8f0;
+
+// 深色模式变量
+$bg-dark: #1E2A3A;
+$card-bg-dark: #2C3E50;
+$text-primary-dark: #F5F5F5;
+$text-secondary-dark: #94a3b8;
+$text-tertiary-dark: #64748b;
+$border-color-dark: #334155;
+
+// 页面容器
+.match-history-container {
+    min-height: 100vh;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    background-color: $bg-light;
+    display: flex;
+    flex-direction: column;
+    transition: background-color 0.3s ease;
+}
+
+// 列表区域
+.match-list {
+    flex: 1;
+    width: 100%;
+    padding: 0 32rpx;
+    box-sizing: border-box;
+}
+
+// 加载中状态
+.loading-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 120rpx 0;
+    gap: 24rpx;
+
+    .loading-text {
+        font-size: 28rpx;
+        color: $text-secondary-light;
+        transition: color 0.3s ease;
+    }
+}
+
+// 空状态
+.empty-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 120rpx 0;
+    gap: 16rpx;
+
+    .empty-text {
+        font-size: 32rpx;
+        font-weight: 600;
+        color: $text-secondary-light;
+        margin-top: 16rpx;
+        transition: color 0.3s ease;
+    }
+
+    .empty-hint {
+        font-size: 28rpx;
+        color: $text-tertiary-light;
+        transition: color 0.3s ease;
+    }
+}
+
+// 对局记录列表
+.match-items {
+    display: flex;
+    flex-direction: column;
+    gap: 24rpx;
+    padding: 16rpx 0;
+}
+
+// 单条对局记录
+.match-item {
+    display: flex;
+    align-items: center;
+    gap: 24rpx;
+    padding: 32rpx;
+    box-sizing: border-box;
+    background-color: $card-bg-light;
+    border-radius: 24rpx;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+
+    &:active {
+        transform: scale(0.98);
+    }
+}
+
+// 头像区域
+.avatar-wrapper {
+    flex-shrink: 0;
+
+    .avatar {
+        width: 96rpx;
+        height: 96rpx;
+        border-radius: 50%;
+        background-color: $border-color-light;
+        transition: background-color 0.3s ease;
+    }
+}
+
+// 对局信息
+.match-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8rpx;
+    min-width: 0;
+
+    .name-row {
+        display: flex;
+        align-items: center;
+        gap: 16rpx;
+    }
+
+    .opponent-name {
+        font-size: 32rpx;
+        font-weight: 600;
+        color: $text-primary-light;
+        transition: color 0.3s ease;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .game-type-tag {
+        flex-shrink: 0;
+        padding: 4rpx 16rpx;
+        border-radius: 999rpx;
+
+        text {
+            font-size: 22rpx;
+            font-weight: 600;
+        }
+
+        // 中式八球 - 蓝色
+        &.chinese-8ball {
+            background-color: rgba(24, 176, 91, 0.15);
+
+            text {
+                color: #18b05b;
+            }
+        }
+
+        // 九球 - 绿色
+        &.american-9ball {
+            background-color: rgba(34, 197, 94, 0.15);
+
+            text {
+                color: #22c55e;
+            }
+        }
+
+        // 斯诺克 - 红色
+        &.snooker {
+            background-color: rgba(239, 68, 68, 0.15);
+
+            text {
+                color: #ef4444;
+            }
+        }
+    }
+
+    .match-time {
+        font-size: 24rpx;
+        color: $text-tertiary-light;
+        transition: color 0.3s ease;
+    }
+}
+
+// 比分结果区域
+.match-result {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8rpx;
+
+    .result-badge {
+        padding: 6rpx 16rpx;
+        border-radius: 8rpx;
+
+        &.win {
+            background-color: rgba($primary-color, 0.1);
+
+            .result-text {
+                color: $primary-color;
+            }
+        }
+
+        &.lose {
+            background-color: rgba($loss-red, 0.1);
+
+            .result-text {
+                color: $loss-red;
+            }
+        }
+
+        &.draw {
+            background-color: rgba($text-secondary-light, 0.1);
+
+            .result-text {
+                color: $text-secondary-light;
+            }
+        }
+
+        .result-text {
+            font-size: 28rpx;
+            font-weight: 700;
+        }
+    }
+
+    .score {
+        font-size: 28rpx;
+        font-weight: 500;
+        color: $text-secondary-light;
+        transition: color 0.3s ease;
+    }
+}
+
+// 右箭头
+.arrow-wrapper {
+    flex-shrink: 0;
+    margin-left: 16rpx;
+}
+
+// 加载更多
+.load-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32rpx 0 48rpx;
+
+    .load-more-text {
+        font-size: 26rpx;
+        color: $text-tertiary-light;
+        transition: color 0.3s ease;
+    }
+}
+
+// 需要登录状态
+.login-required {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 200rpx 48rpx;
+    gap: 24rpx;
+
+    .hint-text {
+        font-size: 32rpx;
+        font-weight: 500;
+        color: $text-secondary-light;
+        margin-top: 16rpx;
+        transition: color 0.3s ease;
+    }
+
+    .login-btn {
+        margin-top: 32rpx;
+        width: 280rpx;
+        height: 88rpx;
+        line-height: 88rpx;
+        background: linear-gradient(135deg, $primary-color 0%, darken($primary-color, 10%) 100%);
+        color: #ffffff;
+        font-size: 32rpx;
+        font-weight: 600;
+        border-radius: 44rpx;
+        border: none;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+        &::after {
+            display: none;
+        }
+
+        &:active {
+            transform: scale(0.96);
+        }
+    }
+}
+
+// ========== 深色模式适配 ==========
+.dark-mode {
+    background-color: $bg-dark;
+
+    .loading-wrapper {
+        .loading-text {
+            color: $text-secondary-dark;
+        }
+    }
+
+    .empty-wrapper {
+        .empty-text {
+            color: $text-secondary-dark;
+        }
+
+        .empty-hint {
+            color: $text-tertiary-dark;
+        }
+    }
+
+    .match-item {
+        background-color: $card-bg-dark;
+    }
+
+    .avatar-wrapper {
+        .avatar {
+            background-color: $border-color-dark;
+        }
+    }
+
+    .match-info {
+        .opponent-name {
+            color: $text-primary-dark;
+        }
+
+        .game-type-tag {
+
+            // 中式八球 - 蓝色
+            &.chinese-8ball {
+                background-color: rgba(24, 176, 91, 0.2);
+
+                text {
+                    color: #86efac;
+                }
+            }
+
+            // 九球 - 绿色
+            &.american-9ball {
+                background-color: rgba(34, 197, 94, 0.2);
+
+                text {
+                    color: #4ade80;
+                }
+            }
+
+            // 斯诺克 - 红色
+            &.snooker {
+                background-color: rgba(239, 68, 68, 0.2);
+
+                text {
+                    color: #f87171;
+                }
+            }
+        }
+
+        .match-time {
+            color: $text-tertiary-dark;
+        }
+    }
+
+    .match-result {
+        .result-badge {
+            &.win {
+                background-color: rgba($primary-color, 0.15);
+            }
+
+            &.lose {
+                background-color: rgba($loss-red, 0.15);
+            }
+
+            &.draw {
+                background-color: rgba($text-secondary-dark, 0.15);
+
+                .result-text {
+                    color: $text-secondary-dark;
+                }
+            }
+        }
+
+        .score {
+            color: $text-secondary-dark;
+        }
+    }
+
+    .load-more {
+        .load-more-text {
+            color: $text-tertiary-dark;
+        }
+    }
+
+    .login-required {
+        .hint-text {
+            color: $text-secondary-dark;
+        }
+    }
+}

@@ -1,0 +1,393 @@
+// 段位说明页面样式
+.rank-explain-container {
+    min-height: 100vh;
+    background-color: #f6f7f8;
+    box-sizing: border-box;
+}
+
+.content-scroll {
+    height: 100vh;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.game-type-tabs {
+    white-space: nowrap;
+    margin-bottom: 16px;
+
+    ::-webkit-scrollbar {
+        display: none;
+        width: 0;
+        height: 0;
+    }
+}
+
+.game-type-tab {
+    display: inline-flex;
+    flex-shrink: 0;
+    min-width: 164rpx;
+    height: 72rpx;
+    padding: 0 28rpx;
+    margin-right: 16rpx;
+    border-radius: 999rpx;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1rpx solid rgba(148, 163, 184, 0.2);
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+
+    text {
+        font-size: 26rpx;
+        font-weight: 600;
+        color: #475569;
+    }
+
+    &.active {
+        background: linear-gradient(135deg, #18b05b 0%, #15803d 100%);
+        border-color: transparent;
+        box-shadow: 0 10rpx 24rpx rgba(24, 176, 91, 0.24);
+
+        text {
+            color: #ffffff;
+        }
+    }
+}
+
+// 加载状态
+.loading-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    gap: 12px;
+
+    .loading-text {
+        font-size: 14px;
+        color: #94a3b8;
+    }
+}
+
+// 当前段位卡片
+.current-rank-card {
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+
+    .rank-main {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .rank-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 8px;
+        flex-shrink: 0;
+    }
+
+    .rank-details {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 6px;
+        flex: 1;
+    }
+
+    .rank-label {
+        font-size: 14px;
+        color: #64748b;
+    }
+
+    .rank-name {
+        font-size: 18px;
+        font-weight: 700;
+        color: #0f172a;
+        letter-spacing: -0.015em;
+    }
+
+    .rank-score {
+        font-size: 14px;
+        color: #64748b;
+    }
+}
+
+// 晋级进度
+.progress-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 16px;
+    margin-top: 16px;
+    border-top: 1px solid #e2e8f0;
+
+    .progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .progress-title {
+        font-size: 14px;
+        font-weight: 500;
+        color: #334155;
+    }
+
+    .progress-value {
+        font-size: 14px;
+        color: #64748b;
+    }
+
+    .progress-bar {
+        height: 8px;
+        background-color: #e2e8f0;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background-color: #18b05b;
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+
+    .progress-hint {
+        font-size: 12px;
+        color: #64748b;
+    }
+}
+
+// 最高段位徽章
+.max-rank-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px;
+    margin-top: 16px;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-radius: 8px;
+
+    .max-rank-text {
+        font-size: 14px;
+        font-weight: 500;
+        color: #92400e;
+    }
+}
+
+// 提示语
+.tip-text {
+    display: block;
+    text-align: center;
+    font-size: 14px;
+    color: #64748b;
+    padding: 20px 0 12px;
+}
+
+// 段位列表
+.rank-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.rank-item {
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 12px 16px;
+    transition: all 0.2s ease;
+
+    &.is-current {
+        box-shadow: 0 0 0 2px rgba(24, 176, 91, 0.5);
+    }
+
+    .rank-item-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+    }
+
+    .rank-item-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .rank-item-icon {
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+    }
+
+    .rank-item-name {
+        font-size: 16px;
+        font-weight: 500;
+        color: #1e293b;
+    }
+}
+
+// 展开内容
+.rank-item-content {
+    padding-top: 12px;
+    margin-top: 12px;
+    border-top: 1px solid #e2e8f0;
+
+    .promotion-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: #334155;
+        margin-bottom: 4px;
+    }
+
+    .promotion-condition {
+        display: block;
+        font-size: 14px;
+        color: #475569;
+        line-height: 1.6;
+    }
+}
+
+// 深色模式
+@media (prefers-color-scheme: dark) {
+    .rank-explain-container {
+        background-color: #101922;
+    }
+
+    .loading-wrapper .loading-text {
+        color: #64748b;
+    }
+
+    .current-rank-card {
+        background-color: rgba(30, 41, 59, 0.5);
+
+        .rank-label {
+            color: #94a3b8;
+        }
+
+        .rank-name {
+            color: #f8fafc;
+        }
+
+        .rank-score {
+            color: #94a3b8;
+        }
+    }
+
+    .progress-section {
+        border-top-color: #334155;
+
+        .progress-title {
+            color: #e2e8f0;
+        }
+
+        .progress-value {
+            color: #94a3b8;
+        }
+
+        .progress-bar {
+            background-color: #334155;
+        }
+
+        .progress-hint {
+            color: #94a3b8;
+        }
+    }
+
+    .tip-text {
+        color: #94a3b8;
+    }
+
+    .rank-item {
+        background-color: rgba(30, 41, 59, 0.5);
+
+        .rank-item-name {
+            color: #f1f5f9;
+        }
+    }
+
+    .rank-item-content {
+        border-top-color: #334155;
+
+        .promotion-label {
+            color: #e2e8f0;
+        }
+
+        .promotion-condition {
+            color: #94a3b8;
+        }
+    }
+}
+
+// 支持 dark-mode class 方式
+.dark-mode {
+    background-color: #101922;
+
+    .loading-wrapper .loading-text {
+        color: #64748b;
+    }
+
+    .current-rank-card {
+        background-color: rgba(30, 41, 59, 0.5);
+
+        .rank-label {
+            color: #94a3b8;
+        }
+
+        .rank-name {
+            color: #f8fafc;
+        }
+
+        .rank-score {
+            color: #94a3b8;
+        }
+    }
+
+    .progress-section {
+        border-top-color: #334155;
+
+        .progress-title {
+            color: #e2e8f0;
+        }
+
+        .progress-value {
+            color: #94a3b8;
+        }
+
+        .progress-bar {
+            background-color: #334155;
+        }
+
+        .progress-hint {
+            color: #94a3b8;
+        }
+    }
+
+    .tip-text {
+        color: #94a3b8;
+    }
+
+    .rank-item {
+        background-color: rgba(30, 41, 59, 0.5);
+
+        .rank-item-name {
+            color: #f1f5f9;
+        }
+    }
+
+    .rank-item-content {
+        border-top-color: #334155;
+
+        .promotion-label {
+            color: #e2e8f0;
+        }
+
+        .promotion-condition {
+            color: #94a3b8;
+        }
+    }
+}

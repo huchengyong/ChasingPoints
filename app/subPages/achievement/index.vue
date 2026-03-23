@@ -1,0 +1,284 @@
+<template>
+	<view class="achievement-page">
+		<!-- 当前称号 -->
+		<view class="title-bar" @tap="goToTitles">
+			<view class="title-info">
+				<text class="title-label">当前称号</text>
+				<text class="title-name">{{ equippedTitle || '未装备' }}</text>
+			</view>
+			<view class="title-arrow">
+				<uni-icons type="right" size="16" color="#94a3b8"></uni-icons>
+			</view>
+		</view>
+
+		<!-- 分类 Tab -->
+		<scroll-view scroll-x class="category-tabs">
+			<view
+				v-for="tab in categoryTabs"
+				:key="tab.key"
+				class="tab-item"
+				:class="{ active: currentCategory === tab.key }"
+				@tap="switchCategory(tab.key)"
+			>
+				<text>{{ tab.label }}</text>
+			</view>
+		</scroll-view>
+
+		<!-- 加载中 -->
+		<view v-if="loading" class="loading-state">
+			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<text class="loading-text">加载中...</text>
+		</view>
+
+		<!-- 成就列表 -->
+		<view v-else class="achievement-grid">
+			<view
+				v-for="item in filteredList"
+				:key="item.id"
+				class="achievement-card"
+				:class="{ unlocked: item.unlocked }"
+				@tap="goToDetail(item.id)"
+			>
+				<view class="card-icon" :class="{ locked: !item.unlocked }">
+					<text class="icon-emoji">{{ getCategoryEmoji(item.category) }}</text>
+				</view>
+				<text class="card-name">{{ item.name }}</text>
+				<view class="progress-bar">
+					<view
+						class="progress-fill"
+						:style="{ width: getProgress(item) + '%' }"
+						:class="{ complete: item.unlocked }"
+					></view>
+				</view>
+				<text class="progress-text">{{ item.unlocked ? '已解锁' : item.progress + '/' + item.threshold }}</text>
+			</view>
+		</view>
+
+		<!-- 空状态 -->
+		<view v-if="!loading && filteredList.length === 0" class="empty-state">
+			<text class="empty-text">暂无成就数据</text>
+		</view>
+	</view>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
+import { getAchievementList, getUserTitles } from '@/api/achievement.js'
+
+const loading = ref(true)
+const achievementList = ref([])
+const equippedTitle = ref('')
+const currentCategory = ref('all')
+
+const categoryTabs = [
+	{ key: 'all', label: '全部' },
+	{ key: '胜场', label: '胜场' },
+	{ key: '连胜', label: '连胜' },
+	{ key: '特殊', label: '特殊' },
+	{ key: '对局', label: '对局' },
+	{ key: '社交', label: '社交' },
+	{ key: '赛事', label: '赛事' }
+]
+
+const filteredList = computed(() => {
+	if (currentCategory.value === 'all') return achievementList.value
+	return achievementList.value.filter(item => item.category === currentCategory.value)
+})
+
+const getCategoryEmoji = (category) => {
+	const map = { '胜场': '🏅', '连胜': '🔥', '特殊': '⭐', '对局': '🎱', '社交': '👥', '赛事': '🏆' }
+	return map[category] || '🎯'
+}
+
+const getProgress = (item) => {
+	if (item.unlocked) return 100
+	if (!item.threshold || item.threshold === 0) return 0
+	return Math.min(Math.round((item.progress / item.threshold) * 100), 100)
+}
+
+const switchCategory = (key) => {
+	currentCategory.value = key
+}
+
+const goToDetail = (id) => {
+	uni.navigateTo({ url: '/subPages/achievement/detail?id=' + id })
+}
+
+const goToTitles = () => {
+	uni.navigateTo({ url: '/subPages/achievement/titles' })
+}
+
+const loadData = async () => {
+	loading.value = true
+	try {
+		const [achRes, titleRes] = await Promise.all([
+			getAchievementList(),
+			getUserTitles().catch(() => null)
+		])
+		achievementList.value = achRes.list || achRes || []
+		if (titleRes) {
+			const titles = titleRes.list || titleRes || []
+			const equipped = titles.find(t => t.equipped)
+			equippedTitle.value = equipped ? equipped.title_name : ''
+		}
+	} catch (e) {
+		console.error('加载成就数据失败:', e)
+	} finally {
+		loading.value = false
+	}
+}
+
+onLoad(() => {
+	loadData()
+})
+</script>
+
+<style lang="scss" scoped>
+.achievement-page {
+	min-height: 100vh;
+	background: #f1f5f9;
+	padding-bottom: 40rpx;
+}
+
+.title-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin: 24rpx;
+	padding: 28rpx 32rpx;
+	background: linear-gradient(135deg, #18b05b, #8b5cf6);
+	border-radius: 20rpx;
+	color: #fff;
+
+	.title-info {
+		display: flex;
+		flex-direction: column;
+		.title-label {
+			font-size: 24rpx;
+			opacity: 0.8;
+		}
+		.title-name {
+			font-size: 34rpx;
+			font-weight: 600;
+			margin-top: 8rpx;
+		}
+	}
+}
+
+.category-tabs {
+	white-space: nowrap;
+	padding: 0 24rpx 20rpx;
+
+	.tab-item {
+		display: inline-block;
+		padding: 12rpx 28rpx;
+		margin-right: 16rpx;
+		border-radius: 32rpx;
+		background: #fff;
+		font-size: 26rpx;
+		color: #64748b;
+
+		&.active {
+			background: #18b05b;
+			color: #fff;
+		}
+	}
+}
+
+.loading-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding-top: 200rpx;
+	.loading-text {
+		margin-top: 16rpx;
+		font-size: 28rpx;
+		color: #94a3b8;
+	}
+}
+
+.achievement-grid {
+	display: flex;
+	flex-wrap: wrap;
+	padding: 0 16rpx;
+
+	.achievement-card {
+		width: calc(50% - 24rpx);
+		margin: 8rpx 12rpx;
+		background: #fff;
+		border-radius: 16rpx;
+		padding: 28rpx 20rpx;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+
+		&.unlocked {
+			border: 2rpx solid #18b05b;
+		}
+
+		.card-icon {
+			width: 96rpx;
+			height: 96rpx;
+			border-radius: 50%;
+			background: #f0fdf4;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			margin-bottom: 16rpx;
+
+			&.locked {
+				background: #f1f5f9;
+				opacity: 0.5;
+			}
+
+			.icon-emoji {
+				font-size: 44rpx;
+			}
+		}
+
+		.card-name {
+			font-size: 26rpx;
+			font-weight: 500;
+			color: #1e293b;
+			margin-bottom: 12rpx;
+			text-align: center;
+		}
+
+		.progress-bar {
+			width: 100%;
+			height: 12rpx;
+			background: #e2e8f0;
+			border-radius: 6rpx;
+			overflow: hidden;
+			margin-bottom: 8rpx;
+
+			.progress-fill {
+				height: 100%;
+				background: #94a3b8;
+				border-radius: 6rpx;
+				transition: width 0.3s;
+
+				&.complete {
+					background: #18b05b;
+				}
+			}
+		}
+
+		.progress-text {
+			font-size: 22rpx;
+			color: #94a3b8;
+		}
+	}
+}
+
+.empty-state {
+	display: flex;
+	justify-content: center;
+	padding-top: 200rpx;
+	.empty-text {
+		font-size: 28rpx;
+		color: #94a3b8;
+	}
+}
+</style>

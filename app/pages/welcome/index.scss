@@ -1,0 +1,206 @@
+.welcome-container {
+    position: relative;
+    width: 100vw;
+    min-height: 100vh;
+    background-color: #121212;
+    overflow: hidden;
+
+    &.dark-mode {
+        background-color: #000000;
+    }
+}
+
+.bg-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.3;
+}
+
+/* 跳过按钮 */
+.skip-btn {
+    position: absolute;
+    top: 70rpx;
+    right: 32rpx;
+    z-index: 10;
+    padding: 16rpx 32rpx;
+    background-color: rgba(255, 255, 255, 0.15);
+    border-radius: 40rpx;
+    backdrop-filter: blur(10px);
+}
+
+.skip-text {
+    color: #ffffff;
+    font-size: 28rpx;
+    font-weight: 500;
+}
+
+.content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    padding: 0 32rpx;
+    padding-bottom: 40rpx;
+}
+
+.spacer {
+    flex-grow: 1;
+}
+
+/* 标题区域 */
+.title-section {
+    text-align: center;
+    padding: 48rpx 0;
+}
+
+.main-title {
+    display: block;
+    color: #ffffff;
+    font-size: 64rpx;
+    font-weight: bold;
+    line-height: 1.3;
+    letter-spacing: 2rpx;
+}
+
+.sub-title {
+    display: block;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 32rpx;
+    margin-top: 24rpx;
+    line-height: 1.5;
+}
+
+/* 按钮区域 */
+.button-section {
+    display: flex;
+    flex-direction: column;
+    gap: 24rpx;
+    padding: 0 16rpx;
+    margin-top: 32rpx;
+}
+
+.btn-register {
+    width: 100%;
+    height: 96rpx;
+    background-color: #FFD700;
+    color: #000000;
+    font-size: 32rpx;
+    font-weight: bold;
+    border-radius: 16rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+
+    &::after {
+        display: none;
+    }
+}
+
+.btn-login {
+    width: 100%;
+    height: 96rpx;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    font-size: 32rpx;
+    font-weight: bold;
+    border-radius: 16rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+
+    &::after {
+        display: none;
+    }
+}
+
+/* 第三方登录区域 */
+.third-party-section {
+    margin-top: 48rpx;
+    text-align: center;
+}
+
+.third-party-text {
+    color: #9dabb9;
+    font-size: 28rpx;
+}
+
+.third-party-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 48rpx;
+    margin-top: 32rpx;
+}
+
+.third-party-btn {
+    width: 96rpx;
+    height: 96rpx;
+    background-color: #ffffff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.third-party-icon {
+    width: 48rpx;
+    height: 48rpx;
+}
+
+/* 协议和隐私 */
+.agreement {
+    margin-top: 40rpx;
+    padding-bottom: 32rpx;
+    text-align: center;
+
+    .agreement-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12rpx;
+    }
+
+    .checkbox {
+        width: 36rpx;
+        height: 36rpx;
+        border: 2rpx solid rgba(255, 255, 255, 0.3);
+        border-radius: 8rpx;
+        margin-right: 12rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+
+        &.checked {
+            background-color: #FFD700;
+            border-color: #FFD700;
+        }
+    }
+
+    .agreement-text {
+        font-size: 24rpx;
+        color: #9dabb9;
+    }
+
+    .agreement-links {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24rpx;
+
+        .link {
+            color: rgba(255, 255, 255, 0.9);
+            margin: 0 8rpx;
+            text-decoration: underline;
+        }
+
+        .separator {
+            color: #717d8a;
+        }
+    }
+}

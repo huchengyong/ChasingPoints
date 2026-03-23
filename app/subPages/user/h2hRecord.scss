@@ -1,0 +1,473 @@
+/* 交锋记录页面样式 */
+
+// 主色调
+$primary-color: #4CAF50;
+$loss-red: #E57373;
+
+// 浅色模式变量
+$bg-light: #f6f7f8;
+$card-bg-light: #ffffff;
+$stats-bg-light: #f3f4f6;
+$text-primary-light: #111827;
+$text-secondary-light: #6b7280;
+$text-tertiary-light: #9ca3af;
+$border-color-light: #e5e7eb;
+
+// 深色模式变量
+$bg-dark: #1E2A3A;
+$card-bg-dark: #2C3E50;
+$stats-bg-dark: rgba(30, 42, 58, 0.6);
+$text-primary-dark: #F5F5F5;
+$text-secondary-dark: #9ca3af;
+$text-tertiary-dark: #6b7280;
+$border-color-dark: #334155;
+
+// 页面容器
+.h2h-record-container {
+    min-height: 100vh;
+    width: 100%;
+    overflow-x: hidden;
+    background-color: $bg-light;
+    display: flex;
+    flex-direction: column;
+    transition: background-color 0.3s ease;
+}
+
+// 顶部统计卡片
+.h2h-summary-card {
+    margin: 32rpx;
+    padding: 48rpx 32rpx;
+    background-color: $card-bg-light;
+    border-radius: 24rpx;
+    transition: background-color 0.3s ease;
+}
+
+// 头像对比区域
+.avatar-group {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 32rpx;
+
+    .avatar-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16rpx;
+        width: 33%;
+
+        .avatar {
+            width: 112rpx;
+            height: 112rpx;
+            border-radius: 50%;
+            background-color: $border-color-light;
+            border: 8rpx solid $border-color-light;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .avatar-placeholder {
+            width: 112rpx;
+            height: 112rpx;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 8rpx solid $border-color-light;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            .avatar-text {
+                font-size: 36rpx;
+                font-weight: 700;
+                color: #ffffff;
+            }
+        }
+
+        .name {
+            font-size: 28rpx;
+            font-weight: 500;
+            color: $text-primary-light;
+            transition: color 0.3s ease;
+        }
+    }
+
+    .vs-section {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 33%;
+
+        .vs-text {
+            font-size: 28rpx;
+            color: $text-tertiary-light;
+            transition: color 0.3s ease;
+        }
+    }
+}
+
+// 总战绩
+.total-score {
+    text-align: center;
+    padding: 16rpx 0 8rpx;
+
+    .score-text {
+        font-size: 96rpx;
+        font-weight: 700;
+        color: $text-primary-light;
+        transition: color 0.3s ease;
+        letter-spacing: 4rpx;
+    }
+}
+
+// 胜率描述
+.win-rate-desc {
+    text-align: center;
+    padding-bottom: 32rpx;
+
+    .desc-text {
+        font-size: 30rpx;
+        color: $text-secondary-light;
+        transition: color 0.3s ease;
+    }
+}
+
+// 统计数据栏
+.stats-grid {
+    display: flex;
+    gap: 24rpx;
+    text-align: center;
+
+    .stat-item {
+        flex: 1;
+        padding: 24rpx 16rpx;
+        background-color: $stats-bg-light;
+        border-radius: 16rpx;
+        display: flex;
+        flex-direction: column;
+        gap: 8rpx;
+        transition: background-color 0.3s ease;
+
+        .stat-label {
+            font-size: 24rpx;
+            font-weight: 500;
+            color: $text-tertiary-light;
+            transition: color 0.3s ease;
+        }
+
+        .stat-value {
+            font-size: 40rpx;
+            font-weight: 700;
+            color: $text-primary-light;
+            transition: color 0.3s ease;
+            letter-spacing: 1rpx;
+        }
+    }
+}
+
+// 筛选按钮组
+.filter-bar {
+    margin: 0 32rpx 24rpx;
+    padding: 10rpx;
+    background-color: $card-bg-light;
+    border-radius: 16rpx;
+    transition: background-color 0.3s ease;
+
+    .filter-buttons {
+        display: flex;
+        gap: 20rpx;
+
+        .filter-btn {
+            flex: 1;
+            border-radius: 12rpx;
+            text-align: center;
+            transition: all 0.2s ease;
+
+            &::after {
+                display: none;
+            }
+
+            .btn-text {
+                font-size: 28rpx;
+                font-weight: 600;
+                color: $text-secondary-light;
+                transition: color 0.3s ease;
+            }
+
+            &.active {
+                background-color: $stats-bg-light;
+
+                .btn-text {
+                    color: $text-primary-light;
+                }
+            }
+        }
+    }
+}
+
+// 历史列表标题
+.history-header {
+    padding: 0 40rpx 16rpx;
+
+    .header-text {
+        font-size: 28rpx;
+        font-weight: 600;
+        color: $text-tertiary-light;
+        transition: color 0.3s ease;
+    }
+}
+
+// 历史对局列表
+.history-list {
+    flex: 1;
+    padding: 0 32rpx 32rpx;
+}
+
+// 单条历史记录
+.history-item {
+    display: flex;
+    align-items: center;
+    padding: 32rpx;
+    margin-bottom: 24rpx;
+    background-color: $card-bg-light;
+    border-radius: 24rpx;
+    border-left: 8rpx solid transparent;
+    box-sizing: border-box;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+
+    &.win {
+        border-left-color: $primary-color;
+    }
+
+    &.lose {
+        border-left-color: $loss-red;
+    }
+
+    &.draw {
+        border-left-color: $text-tertiary-light;
+    }
+
+    &:active {
+        transform: scale(0.98);
+    }
+}
+
+// 左侧信息
+.item-left {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8rpx;
+
+    .match-date {
+        font-size: 30rpx;
+        font-weight: 600;
+        color: $text-primary-light;
+        transition: color 0.3s ease;
+    }
+
+    .game-type {
+        font-size: 24rpx;
+        color: $text-tertiary-light;
+        transition: color 0.3s ease;
+    }
+}
+
+// 右侧比分和结果
+.item-right {
+    display: flex;
+    align-items: center;
+    gap: 32rpx;
+
+    .score {
+        font-size: 40rpx;
+        font-weight: 700;
+        color: $text-primary-light;
+        transition: color 0.3s ease;
+    }
+
+    .result-wrapper {
+        width: 120rpx;
+        text-align: center;
+
+        .result-text {
+            font-size: 28rpx;
+            font-weight: 700;
+
+            &.win {
+                color: $primary-color;
+            }
+
+            &.lose {
+                color: $loss-red;
+            }
+
+            &.draw {
+                color: $text-tertiary-light;
+            }
+        }
+    }
+}
+
+// 加载中状态
+.loading-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80rpx 0;
+    gap: 24rpx;
+
+    .loading-text {
+        font-size: 28rpx;
+        color: $text-secondary-light;
+        transition: color 0.3s ease;
+    }
+}
+
+// 空状态
+.empty-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80rpx 0;
+    gap: 16rpx;
+
+    .empty-text {
+        font-size: 28rpx;
+        color: $text-secondary-light;
+        margin-top: 16rpx;
+        transition: color 0.3s ease;
+    }
+}
+
+// 加载更多
+.load-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32rpx 0 48rpx;
+
+    .load-more-text {
+        font-size: 26rpx;
+        color: $text-tertiary-light;
+        transition: color 0.3s ease;
+    }
+}
+
+// ========== 深色模式适配 ==========
+.dark-mode {
+    background-color: $bg-dark;
+
+    .h2h-summary-card {
+        background-color: $card-bg-dark;
+    }
+
+    .avatar-group {
+        .avatar-section {
+            .avatar {
+                background-color: $border-color-dark;
+                border-color: $border-color-dark;
+            }
+
+            .name {
+                color: $text-primary-dark;
+            }
+        }
+
+        .vs-section {
+            .vs-text {
+                color: $text-tertiary-dark;
+            }
+        }
+    }
+
+    .total-score {
+        .score-text {
+            color: $text-primary-dark;
+        }
+    }
+
+    .win-rate-desc {
+        .desc-text {
+            color: $text-secondary-dark;
+        }
+    }
+
+    .stats-grid {
+        .stat-item {
+            background-color: $stats-bg-dark;
+
+            .stat-label {
+                color: $text-tertiary-dark;
+            }
+
+            .stat-value {
+                color: $text-primary-dark;
+            }
+        }
+    }
+
+    .filter-bar {
+        background-color: $card-bg-dark;
+
+        .filter-buttons {
+            .filter-btn {
+                .btn-text {
+                    color: $text-secondary-dark;
+                }
+
+                &.active {
+                    background-color: $bg-dark;
+
+                    .btn-text {
+                        color: #ffffff;
+                    }
+                }
+            }
+        }
+    }
+
+    .history-header {
+        .header-text {
+            color: $text-tertiary-dark;
+        }
+    }
+
+    .history-item {
+        background-color: $card-bg-dark;
+
+        .item-left {
+            .match-date {
+                color: $text-primary-dark;
+            }
+
+            .game-type {
+                color: $text-tertiary-dark;
+            }
+        }
+
+        .item-right {
+            .score {
+                color: $text-primary-dark;
+            }
+        }
+    }
+
+    .loading-wrapper {
+        .loading-text {
+            color: $text-secondary-dark;
+        }
+    }
+
+    .empty-wrapper {
+        .empty-text {
+            color: $text-secondary-dark;
+        }
+    }
+
+    .load-more {
+        .load-more-text {
+            color: $text-tertiary-dark;
+        }
+    }
+}

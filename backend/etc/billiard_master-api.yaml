@@ -1,0 +1,52 @@
+Name: ${APP_NAME}
+Host: ${APP_HOST}
+Port: ${APP_PORT}
+Env: ${APP_ENV}
+Timeout: 10000
+
+# JWT配置
+Auth:
+  AccessSecret: ${JWT_ACCESS_SECRET}
+  AccessExpire: 86400
+
+# MySQL配置
+MySQL:
+  DataSource: ${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(${MYSQL_HOST}:${MYSQL_PORT})/${MYSQL_DATABASE}?charset=utf8mb4&parseTime=true&loc=Local
+
+# Redis配置
+Redis:
+  Host: ${REDIS_HOST}:${REDIS_PORT}
+  Password: ${REDIS_PASSWORD}
+  DB: 0
+
+# 阿里云短信配置
+AliSms:
+  AccessKeyId: ${ALI_SMS_ACCESS_KEY_ID}
+  AccessKeySecret: ${ALI_SMS_ACCESS_KEY_SECRET}
+  SignName: ${ALI_SMS_SIGN_NAME}
+  TemplateCode: ${ALI_SMS_TEMPLATE_CODE}
+  Endpoint: ${ALI_SMS_ENDPOINT}
+
+# 推送配置
+UniPush:
+  AppId: ${UNIPUSH_APP_ID}
+  AppKey: ${UNIPUSH_APP_KEY}
+  MasterSecret: ${UNIPUSH_MASTER_SECRET}
+  Enabled: false
+
+Geocode:
+  WorkerEnabled: true
+  PollIntervalMs: 3000
+  RequestTimeoutMs: 5000
+  MaxAttempts: 5
+  BatchSize: 5
+  AutoPublish: true
+  EncryptSecret: ${GEOCODE_ENCRYPT_SECRET}
+
+Log:
+  Encoding: plain
+  Mode: console
+  Level: debug
+  MaxSize: 20
+  Rotation: size
+  Stat: false

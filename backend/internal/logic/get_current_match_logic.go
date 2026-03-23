@@ -1,0 +1,54 @@
+package logic
+
+import (
+	"context"
+
+	"billiard_master/internal/svc"
+	"billiard_master/internal/types"
+	"billiard_master/internal/utils"
+
+	"github.com/zeromicro/go-zero/core/logx"
+)
+
+type GetCurrentMatchLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+// 获取进行中对局
+func NewGetCurrentMatchLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetCurrentMatchLogic {
+	return &GetCurrentMatchLogic{
+		Logger: logx.WithContext(ctx),
+		ctx:    ctx,
+		svcCtx: svcCtx,
+	}
+}
+
+func (l *GetCurrentMatchLogic) GetCurrentMatch() (resp *types.GetCurrentMatchResp, err error) {
+	// 获取用户ID
+	userId, err := utils.GetUserIDFromCtx(l.ctx)
+	if err != nil {
+		l.Logger.Errorf("获取用户ID失败: %v", err)
+		return &types.GetCurrentMatchResp{Success: false}, nil
+	}
+
+	// 查询进行中的对局
+	match, err := l.svcCtx.MatchModel.FindCurrentByUserId(userId)
+	if err != nil {
+		l.Logger.Errorf("查询进行中对局失败: %v", err)
+		return &types.GetCurrentMatchResp{Success: false}, nil
+	}
+
+	if match == nil {
+		return &types.GetCurrentMatchResp{
+			Success: true,
+			Match:   nil,
+		}, nil
+	}
+
+	return &types.GetCurrentMatchResp{
+		Success: true,
+		Match:   buildCurrentMatchInfo(l.svcCtx, userId, match),
+	}, nil
+}

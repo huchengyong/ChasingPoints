@@ -1,0 +1,311 @@
+/* 设置页面样式 */
+
+// 主色调
+$primary-color: #18b05b;
+
+// 浅色模式变量
+$bg-light: #f6f7f8;
+$card-bg-light: #ffffff;
+$text-primary-light: #0f172a;
+$text-secondary-light: #64748b;
+$border-color-light: #e2e8f0;
+
+// 深色模式变量
+$bg-dark: #101922;
+$card-bg-dark: #1e293b;
+$text-primary-dark: #ffffff;
+$text-secondary-dark: #94a3b8;
+$border-color-dark: #334155;
+
+// 页面容器
+.settings-container {
+    min-height: 100vh;
+    background-color: $bg-light;
+    transition: background-color 0.3s ease;
+}
+
+// 主内容区
+.main-content {
+    padding: 32rpx;
+}
+
+// 菜单组
+.menu-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8rpx;
+    padding: 16rpx;
+    background-color: $card-bg-light;
+    border-radius: 24rpx;
+    transition: background-color 0.3s ease;
+}
+
+// 菜单项
+.menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24rpx 16rpx;
+    min-height: 88rpx;
+
+    .menu-left {
+        display: flex;
+        align-items: center;
+        gap: 24rpx;
+
+        .icon-wrapper {
+            width: 72rpx;
+            height: 72rpx;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16rpx;
+            transition: background-color 0.3s ease;
+
+            &.blue {
+                background-color: rgba(59, 130, 246, 0.1);
+            }
+
+            &.indigo {
+                background-color: rgba(21, 128, 61, 0.1);
+            }
+
+            &.green {
+                background-color: rgba(34, 197, 94, 0.1);
+            }
+
+            &.rose {
+                background-color: rgba(244, 63, 94, 0.1);
+            }
+
+            &.slate {
+                background-color: rgba(100, 116, 139, 0.1);
+            }
+        }
+
+        .menu-text {
+            font-size: 32rpx;
+            color: $text-primary-light;
+            transition: color 0.3s ease;
+        }
+    }
+
+    .menu-right {
+        display: flex;
+        align-items: center;
+        gap: 12rpx;
+
+        .menu-value {
+            font-size: 28rpx;
+            color: $text-secondary-light;
+            transition: color 0.3s ease;
+        }
+    }
+}
+
+// 深色模式开关
+.switch-wrapper {
+    position: relative;
+    width: 102rpx;
+    height: 62rpx;
+
+    .switch-track {
+        width: 100%;
+        height: 100%;
+        border-radius: 999rpx;
+        background-color: $border-color-light;
+        display: flex;
+        align-items: center;
+        padding: 4rpx;
+        transition: background-color 0.3s ease;
+
+        &.active {
+            background-color: $primary-color;
+        }
+    }
+
+    .switch-thumb {
+        width: 54rpx;
+        height: 54rpx;
+        border-radius: 50%;
+        background-color: #ffffff;
+        box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease;
+
+        &.active {
+            transform: translateX(40rpx);
+        }
+    }
+}
+
+// ========== 编辑昵称弹框样式 ==========
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.modal-container {
+    width: 85%;
+    max-width: 640rpx;
+    margin: 0 32rpx;
+    padding: 48rpx;
+    background-color: $card-bg-light;
+    border-radius: 24rpx;
+    box-shadow: 0 20rpx 50rpx rgba(0, 0, 0, 0.15);
+    transition: background-color 0.3s ease;
+
+    .modal-title {
+        text-align: center;
+        font-size: 36rpx;
+        font-weight: 700;
+        color: $text-primary-light;
+        transition: color 0.3s ease;
+    }
+
+    .modal-input-wrapper {
+        margin-top: 48rpx;
+    }
+
+    .modal-input {
+        width: 100%;
+        height: 96rpx;
+        padding: 0 24rpx;
+        box-sizing: border-box;
+        background-color: rgba(100, 116, 139, 0.1);
+        border: 2rpx solid $border-color-light;
+        border-radius: 16rpx;
+        font-size: 32rpx;
+        color: $text-primary-light;
+        transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+    }
+
+    .modal-buttons {
+        display: flex;
+        gap: 24rpx;
+        margin-top: 48rpx;
+    }
+
+    .modal-btn {
+        flex: 1;
+        height: 88rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16rpx;
+        font-size: 32rpx;
+        font-weight: 600;
+
+        &::after {
+            display: none;
+        }
+
+        &.cancel {
+            background-color: $border-color-light;
+
+            text {
+                color: $text-secondary-light;
+            }
+        }
+
+        &.confirm {
+            background-color: $primary-color;
+
+            text {
+                color: #ffffff;
+            }
+        }
+
+        &:disabled {
+            opacity: 0.6;
+        }
+    }
+}
+
+// ========== 深色模式适配 ==========
+.dark-mode {
+    background-color: $bg-dark;
+
+    .menu-group {
+        background-color: $card-bg-dark;
+    }
+
+    .menu-item {
+        .menu-left {
+            .icon-wrapper {
+                &.blue {
+                    background-color: rgba(59, 130, 246, 0.2);
+                }
+
+                &.indigo {
+                    background-color: rgba(21, 128, 61, 0.2);
+                }
+
+                &.green {
+                    background-color: rgba(34, 197, 94, 0.2);
+                }
+
+                &.rose {
+                    background-color: rgba(244, 63, 94, 0.2);
+                }
+
+                &.slate {
+                    background-color: rgba(100, 116, 139, 0.2);
+                }
+            }
+
+            .menu-text {
+                color: $text-primary-dark;
+            }
+        }
+
+        .menu-right {
+            .menu-value {
+                color: $text-secondary-dark;
+            }
+        }
+    }
+
+    .switch-wrapper {
+        .switch-track {
+            background-color: $border-color-dark;
+
+            &.active {
+                background-color: $primary-color;
+            }
+        }
+    }
+
+    // 弹框深色模式
+    .modal-container {
+        background-color: $card-bg-dark;
+
+        .modal-title {
+            color: $text-primary-dark;
+        }
+
+        .modal-input {
+            background-color: rgba(100, 116, 139, 0.2);
+            border-color: $border-color-dark;
+            color: $text-primary-dark;
+        }
+
+        .modal-btn {
+            &.cancel {
+                background-color: $border-color-dark;
+
+                text {
+                    color: $text-secondary-dark;
+                }
+            }
+        }
+    }
+}
