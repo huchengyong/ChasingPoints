@@ -2,9 +2,13 @@ package admin
 
 import (
 	"context"
+	"strings"
+	"time"
 
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
+	"chasing_points/internal/utils"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -25,7 +29,118 @@ func NewAdminCreateEventNewsLogic(ctx context.Context, svcCtx *svc.ServiceContex
 }
 
 func (l *AdminCreateEventNewsLogic) AdminCreateEventNews(req *types.AdminEventNewsCreateReq) (resp *types.AdminWriteResp, err error) {
-	// todo: add your logic here and delete this line
+	if _, err := utils.GetAdminIDFromCtx(l.ctx); err != nil {
+		return &types.AdminWriteResp{
+			Code:    401,
+			Success: false,
+			Message: "未登录或登录已过期",
+		}, nil
+	}
 
-	return
+	if req == nil {
+		return &types.AdminWriteResp{
+			Code:    400,
+			Success: false,
+			Message: "请求参数错误",
+		}, nil
+	}
+
+	title := strings.TrimSpace(req.Title)
+	if title == "" {
+		return &types.AdminWriteResp{
+			Code:    400,
+			Success: false,
+			Message: "请输入标题",
+		}, nil
+	}
+	if req.GameType <= 0 {
+		return &types.AdminWriteResp{
+			Code:    400,
+			Success: false,
+			Message: "请选择球种",
+		}, nil
+	}
+	if req.Status < model.EventNewsStatusUpcoming || req.Status > model.EventNewsStatusCanceled {
+		return &types.AdminWriteResp{
+			Code:    400,
+			Success: false,
+			Message: "请选择正确的状态",
+		}, nil
+	}
+
+	startTime, err := parseAdminEventNewsTime(req.StartTime)
+	if err != nil {
+		return &types.AdminWriteResp{
+			Code:    400,
+			Success: false,
+			Message: "开始时间格式不正确",
+		}, nil
+	}
+	sortTime, err := parseAdminEventNewsTime(req.SortTime)
+	if err != nil {
+		return &types.AdminWriteResp{
+			Code:    400,
+			Success: false,
+			Message: "排序时间格式不正确",
+		}, nil
+	}
+	if startTime == nil && sortTime == nil {
+		return &types.AdminWriteResp{
+			Code:    400,
+			Success: false,
+			Message: "开始时间和排序时间至少填写一个",
+		}, nil
+	}
+	if sortTime == nil {
+		sortTime = startTime
+	}
+
+	endTime, err := parseAdminEventNewsTime(req.EndTime)
+	if err != nil {
+		return &types.AdminWriteResp{
+			Code:    400,
+			Success: false,
+			Message: "结束时间格式不正确",
+		}, nil
+	}
+
+	now := time.Now()
+	news := &model.EventNews{
+		Title:      title,
+		GameType:   req.GameType,
+		SourceType: strings.TrimSpace(req.SourceType),
+		SourceName: strings.TrimSpace(req.SourceName),
+		SourceUrl:  strings.TrimSpace(req.SourceUrl),
+		CoverImage: strings.TrimSpace(req.CoverImage),
+		Summary:    strings.TrimSpace(req.Summary),
+		Content:    req.Content,
+		Country:    strings.TrimSpace(req.Country),
+		City:       strings.TrimSpace(req.City),
+		Venue:      strings.TrimSpace(req.Venue),
+		StartTime:  startTime,
+		EndTime:    endTime,
+		Status:     req.Status,
+		StageText:  strings.TrimSpace(req.StageText),
+		ResultText: strings.TrimSpace(req.ResultText),
+		Featured:   req.Featured,
+		SortTime:   sortTime,
+		Published:  false,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}
+
+	if err := l.svcCtx.EventNewsModel.Create(news); err != nil {
+		l.Logger.Errorf("创建赛事情报失败: err=%v", err)
+		return &types.AdminWriteResp{
+			Code:    500,
+			Success: false,
+			Message: "创建赛事情报失败",
+		}, nil
+	}
+
+	return &types.AdminWriteResp{
+		Code:    0,
+		Success: true,
+		Message: "创建成功",
+	}, nil
 }
