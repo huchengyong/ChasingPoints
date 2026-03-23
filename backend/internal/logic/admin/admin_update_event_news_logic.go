@@ -94,7 +94,7 @@ func (l *AdminUpdateEventNewsLogic) AdminUpdateEventNews(req *types.AdminEventNe
 		}, nil
 	}
 
-	if err := applyAdminEventNewsPatch(existing, req); err != nil {
+	if err := applyAdminEventNewsUpdate(existing, req); err != nil {
 		return &types.AdminWriteResp{
 			Code:    400,
 			Success: false,

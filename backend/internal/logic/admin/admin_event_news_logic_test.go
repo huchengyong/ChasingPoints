@@ -205,6 +205,85 @@ func TestAdminUpdatePublishAndDeleteEventNews(t *testing.T) {
 	}
 }
 
+func TestAdminUpdateEventNewsClearsFieldsAndFollowsStartTime(t *testing.T) {
+	svcCtx := newEventNewsAdminTestSvc(t)
+	originalStart := adminTestTime(2026, 3, 24, 11, 0, 0)
+	originalEnd := adminTestTime(2026, 3, 24, 18, 0, 0)
+	seed := createSeedEventNews(t, svcCtx, &model.EventNews{
+		Title:      "赛事情报原始标题",
+		GameType:   1,
+		SourceType: "official",
+		SourceName: "WST",
+		SourceUrl:  "https://example.com/original",
+		CoverImage: "https://example.com/original.jpg",
+		Summary:    "原始摘要",
+		Content:    "原始正文",
+		Country:    "英国",
+		City:       "伦敦",
+		Venue:      "Venue A",
+		StartTime:  &originalStart,
+		EndTime:    &originalEnd,
+		Status:     model.EventNewsStatusUpcoming,
+		StageText:  "原始阶段",
+		ResultText: "原始赛果",
+		Featured:   false,
+		SortTime:   &originalStart,
+		Published:  false,
+	})
+
+	updateLogic := NewAdminUpdateEventNewsLogic(adminTestCtx(-100), svcCtx)
+	nextStart := adminTestTime(2026, 3, 25, 10, 30, 0)
+	resp, err := updateLogic.AdminUpdateEventNews(&types.AdminEventNewsUpdateReq{
+		EventNewsId: seed.Id,
+		Title:       "赛事情报原始标题",
+		GameType:    1,
+		SourceType:  "",
+		SourceName:  "",
+		SourceUrl:   "",
+		CoverImage:  "",
+		Summary:     "",
+		Content:     "",
+		Country:     "",
+		City:        "",
+		Venue:       "",
+		StartTime:   adminTestTimeString(nextStart),
+		EndTime:     "",
+		Status:      model.EventNewsStatusLive,
+		StageText:   "",
+		ResultText:  "",
+		Featured:    true,
+	})
+	if err != nil {
+		t.Fatalf("clear update event news: %v", err)
+	}
+	if !resp.Success || resp.Code != 0 {
+		t.Fatalf("expected clear update success, got %#v", resp)
+	}
+
+	refreshed, err := svcCtx.EventNewsModel.FindById(seed.Id)
+	if err != nil {
+		t.Fatalf("find cleared event news: %v", err)
+	}
+	if refreshed == nil {
+		t.Fatal("expected refreshed event news")
+	}
+	if refreshed.SourceUrl != "" || refreshed.Summary != "" || refreshed.Content != "" || refreshed.StageText != "" || refreshed.ResultText != "" {
+		t.Fatalf("expected cleared string fields, got %#v", refreshed)
+	}
+	if refreshed.EndTime != nil {
+		t.Fatalf("expected end_time cleared, got %#v", refreshed.EndTime)
+	}
+	if refreshed.StartTime == nil || refreshed.SortTime == nil {
+		t.Fatalf("expected start_time and sort_time set, got %#v", refreshed)
+	}
+	if !refreshed.StartTime.Equal(*refreshed.SortTime) {
+		t.Fatalf("expected sort_time to follow start_time, got start=%v sort=%v", refreshed.StartTime, refreshed.SortTime)
+	}
+	if !refreshed.Featured || refreshed.Status != model.EventNewsStatusLive {
+		t.Fatalf("expected other fields updated too, got %#v", refreshed)
+	}
+}
+
 func TestAdminEventNewsListFiltersAndRejectsNonAdmin(t *testing.T) {
 	svcCtx := newEventNewsAdminTestSvc(t)
 	firstStart := adminTestTime(2026, 3, 25, 9, 0, 0)

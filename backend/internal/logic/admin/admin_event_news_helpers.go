@@ -60,7 +60,7 @@ func buildAdminEventNewsInfo(item model.EventNews) types.EventNewsInfo {
 	return info
 }
 
-func applyAdminEventNewsPatch(item *model.EventNews, req *types.AdminEventNewsUpdateReq) error {
+func applyAdminEventNewsUpdate(item *model.EventNews, req *types.AdminEventNewsUpdateReq) error {
 	startTime, err := parseAdminEventNewsTime(req.StartTime)
 	if err != nil {
 		return err
@@ -74,53 +74,26 @@ func applyAdminEventNewsPatch(item *model.EventNews, req *types.AdminEventNewsUp
 		return err
 	}
 
-	if strings.TrimSpace(req.Title) != "" {
-		item.Title = strings.TrimSpace(req.Title)
-	}
+	item.Title = strings.TrimSpace(req.Title)
 	item.GameType = req.GameType
-	if strings.TrimSpace(req.SourceType) != "" {
-		item.SourceType = strings.TrimSpace(req.SourceType)
-	}
-	if strings.TrimSpace(req.SourceName) != "" {
-		item.SourceName = strings.TrimSpace(req.SourceName)
-	}
-	if strings.TrimSpace(req.SourceUrl) != "" {
-		item.SourceUrl = strings.TrimSpace(req.SourceUrl)
-	}
-	if strings.TrimSpace(req.CoverImage) != "" {
-		item.CoverImage = strings.TrimSpace(req.CoverImage)
-	}
-	if strings.TrimSpace(req.Summary) != "" {
-		item.Summary = strings.TrimSpace(req.Summary)
-	}
-	if strings.TrimSpace(req.Content) != "" {
-		item.Content = req.Content
-	}
-	if strings.TrimSpace(req.Country) != "" {
-		item.Country = strings.TrimSpace(req.Country)
-	}
-	if strings.TrimSpace(req.City) != "" {
-		item.City = strings.TrimSpace(req.City)
-	}
-	if strings.TrimSpace(req.Venue) != "" {
-		item.Venue = strings.TrimSpace(req.Venue)
-	}
+	item.SourceType = strings.TrimSpace(req.SourceType)
+	item.SourceName = strings.TrimSpace(req.SourceName)
+	item.SourceUrl = strings.TrimSpace(req.SourceUrl)
+	item.CoverImage = strings.TrimSpace(req.CoverImage)
+	item.Summary = strings.TrimSpace(req.Summary)
+	item.Content = req.Content
+	item.Country = strings.TrimSpace(req.Country)
+	item.City = strings.TrimSpace(req.City)
+	item.Venue = strings.TrimSpace(req.Venue)
 	item.Status = req.Status
-	if startTime != nil {
-		item.StartTime = startTime
+	item.StartTime = startTime
+	if sortTime == nil && startTime != nil {
+		sortTime = startTime
 	}
-	if sortTime != nil {
-		item.SortTime = sortTime
-	}
-	if endTime != nil {
-		item.EndTime = endTime
-	}
-	if strings.TrimSpace(req.StageText) != "" {
-		item.StageText = strings.TrimSpace(req.StageText)
-	}
-	if strings.TrimSpace(req.ResultText) != "" {
-		item.ResultText = strings.TrimSpace(req.ResultText)
-	}
+	item.SortTime = sortTime
+	item.EndTime = endTime
+	item.StageText = strings.TrimSpace(req.StageText)
+	item.ResultText = strings.TrimSpace(req.ResultText)
 	item.Featured = req.Featured
 	return nil
 }
