@@ -4,27 +4,36 @@ import assert from 'node:assert/strict'
 import {
   canRequestSms,
   canSubmitLogin,
+  getCodeError,
+  getPhoneError,
   isCodeValid,
   isPhoneValid,
+  maskPhone,
+  resolvePostLoginNavigation,
+  resolveSmsFeedback,
   resolveWelcomeActions
 } from '../utils/entry-funnel.js'
 
 test('resolveWelcomeActions hides Huawei login outside HarmonyOS', () => {
-  const result = resolveWelcomeActions({ isHarmony: false })
+  const result = resolveWelcomeActions({ isHarmony: false, isAgreed: false })
 
   assert.deepEqual(result, {
     primaryText: '手机号登录 / 注册',
     secondaryText: '华为账号登录',
     tertiaryText: '先逛逛',
-    showHuaweiLogin: false
+    showHuaweiLogin: false,
+    primaryDisabled: true,
+    secondaryDisabled: true
   })
 })
 
 test('resolveWelcomeActions shows Huawei login on HarmonyOS', () => {
-  const result = resolveWelcomeActions({ isHarmony: true })
+  const result = resolveWelcomeActions({ isHarmony: true, isAgreed: true })
 
   assert.equal(result.showHuaweiLogin, true)
   assert.equal(result.secondaryText, '华为账号登录')
+  assert.equal(result.primaryDisabled, false)
+  assert.equal(result.secondaryDisabled, false)
 })
 
 test('isPhoneValid accepts mainland mobile numbers', () => {
@@ -84,4 +93,31 @@ test('canSubmitLogin requires valid phone, valid code, agreement, and idle submi
     isAgreed: true,
     isLogging: false
   }), false)
+})
+
+test('getPhoneError only surfaces a message after the user starts typing an invalid number', () => {
+  assert.equal(getPhoneError(''), '')
+  assert.equal(getPhoneError('13800138000'), '')
+  assert.equal(getPhoneError('1380013'), '请输入正确的手机号')
+})
+
+test('getCodeError only surfaces a message after the user starts typing an invalid code', () => {
+  assert.equal(getCodeError(''), '')
+  assert.equal(getCodeError('123456'), '')
+  assert.equal(getCodeError('1234'), '请输入6位验证码')
+})
+
+test('maskPhone returns a masked number for valid phones only', () => {
+  assert.equal(maskPhone('13800138000'), '138****8000')
+  assert.equal(maskPhone('123'), '')
+})
+
+test('resolveSmsFeedback prefers a masked destination when the phone is valid', () => {
+  assert.equal(resolveSmsFeedback('13800138000'), '验证码已发送至 138****8000')
+  assert.equal(resolveSmsFeedback('bad phone'), '验证码已发送，请注意查收')
+})
+
+test('resolvePostLoginNavigation returns back when the user came from another page', () => {
+  assert.equal(resolvePostLoginNavigation({ pageCount: 2 }), 'back')
+  assert.equal(resolvePostLoginNavigation({ pageCount: 1 }), 'home')
 })
