@@ -126,6 +126,12 @@ $border-dark: #3a2e16;
 	margin-top: 32rpx;
 }
 
+.pk-entry-actions {
+	display: flex;
+	gap: 16rpx;
+	margin-top: 16rpx;
+}
+
 .hero-btn,
 .status-btn,
 .icon-btn,
@@ -179,6 +185,15 @@ $border-dark: #3a2e16;
 
 	text {
 		color: #ffffff;
+	}
+}
+
+.status-btn-outline {
+	background: rgba(224, 174, 18, 0.08);
+	border: 1rpx solid rgba(224, 174, 18, 0.22);
+
+	text {
+		color: #8a6510;
 	}
 }
 
@@ -777,6 +792,14 @@ $border-dark: #3a2e16;
 	color: $text-secondary-light;
 }
 
+.qrcode-helper {
+	display: block;
+	margin-top: 12rpx;
+	font-size: 24rpx;
+	line-height: 1.5;
+	color: $text-muted-light;
+}
+
 .qrcode-display {
 	display: flex;
 	align-items: center;
@@ -847,6 +870,19 @@ $border-dark: #3a2e16;
 	.qrcode-loading-text,
 	.qrcode-hint {
 		color: $text-secondary-dark;
+	}
+
+	.qrcode-helper {
+		color: $text-muted-dark;
+	}
+
+	.status-btn-outline {
+		background: rgba(247, 216, 106, 0.08);
+		border-color: rgba(247, 216, 106, 0.16);
+
+		text {
+			color: #f7e7a8;
+		}
 	}
 
 	.preview-module {

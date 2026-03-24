@@ -139,15 +139,27 @@
 					<text class="status-title">{{ statusCard.title }}</text>
 					<text class="status-description">{{ statusCard.description }}</text>
 					<view class="status-actions">
-						<button class="status-btn status-btn-primary" @click="handleStatusAction(statusCard.action)">
+						<button
+							v-if="showPrimaryStatusAction"
+							class="status-btn status-btn-primary"
+							@click="handleStatusAction(statusCard.action)"
+						>
 							<text>{{ statusCard.actionText }}</text>
 						</button>
 						<button
-							v-if="statusCard.secondaryActionText"
+							v-if="showSecondaryStatusAction"
 							class="status-btn status-btn-secondary"
 							@click="handleStatusAction(statusCard.secondaryAction)"
 						>
 							<text>{{ statusCard.secondaryActionText }}</text>
+						</button>
+					</view>
+					<view v-if="showPkEntryActions" class="pk-entry-actions">
+						<button class="status-btn status-btn-primary" @click="handleStartPK">
+							<text>{{ pkEntryActions.primaryText }}</text>
+						</button>
+						<button class="status-btn status-btn-outline" @click="handleQrCode">
+							<text>{{ pkEntryActions.secondaryText }}</text>
 						</button>
 					</view>
 				</view>
@@ -260,7 +272,7 @@
 		<view v-if="showQrCodeModal" class="qrcode-modal-overlay" @click="closeQrCodeModal">
 			<view class="qrcode-modal-container" @click.stop>
 				<view class="qrcode-modal-header">
-					<text class="qrcode-modal-title">我的二维码</text>
+					<text class="qrcode-modal-title">{{ qrCodeModalCopy.title }}</text>
 					<view class="qrcode-modal-close" @click="closeQrCodeModal">
 						<uni-icons type="closeempty" size="24" :color="isDarkMode ? '#94a3b8' : '#64748b'"></uni-icons>
 					</view>
@@ -290,7 +302,8 @@
 					/>
 				</view>
 				<view class="qrcode-modal-footer">
-					<text class="qrcode-hint">让对手扫描你的二维码进行匹配</text>
+					<text class="qrcode-hint">{{ qrCodeModalCopy.hint }}</text>
+					<text class="qrcode-helper">{{ qrCodeModalCopy.helper }}</text>
 				</view>
 			</view>
 		</view>
@@ -317,6 +330,7 @@ import {
 	resolveStatusCardContent,
 	resolveUserHomepageMode
 } from '@/utils/user-homepage.js'
+import { resolvePkEntryActions, resolveQrCodeModalCopy } from '@/utils/pk-entry-actions.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { useNotificationStore } from '@/store/notification.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
@@ -343,6 +357,8 @@ const previewModules = [
 
 const guestHeroCopy = resolveGuestHeroCopy()
 const sectionTitles = resolveSectionTitles()
+const pkEntryActions = resolvePkEntryActions()
+const qrCodeModalCopy = resolveQrCodeModalCopy()
 
 const isDarkMode = computed(() => themeStore.isDarkMode)
 const isHideMatch = ref(false)
@@ -419,6 +435,13 @@ const statusCard = computed(() => resolveStatusCardContent({
 	currentMatch: currentMatch.value,
 	recentMatch: recentMatchCard.value
 }))
+const showPkEntryActions = computed(() => isLoggedIn.value)
+const showPrimaryStatusAction = computed(() => !(isLoggedIn.value && statusCard.value.action === 'start'))
+const showSecondaryStatusAction = computed(() => {
+	if (!statusCard.value.secondaryActionText) return false
+	if (isLoggedIn.value && statusCard.value.action === 'start') return false
+	return true
+})
 
 const identitySummary = computed(() => {
 	if (homepageMode.value === 'ongoing' && currentMatch.value) {
