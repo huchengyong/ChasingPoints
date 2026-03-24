@@ -244,7 +244,8 @@ onMounted(() => {
 		font-size: 26rpx;
 		color: #64748b;
 			&.active {
-				background: #ffefb8;
+				background: #fff7dc;
+				border: 1rpx solid rgba(224, 174, 18, 0.22);
 				color: #c69200;
 				font-weight: 500;
 			}

@@ -1,7 +1,7 @@
 // 排行榜页面样式
 .ranking-container {
     min-height: 100vh;
-    background-color: #faf8f2;
+    background-color: #ffffff;
     box-sizing: border-box;
 }
 
@@ -43,12 +43,12 @@
     }
 
     &.active {
-        background: linear-gradient(135deg, #e0ae12 0%, #c69200 100%);
-        border-color: transparent;
-        box-shadow: 0 10rpx 24rpx rgba(224, 174, 18, 0.24);
+        background: #fff7dc;
+        border-color: rgba(224, 174, 18, 0.22);
+        box-shadow: 0 10rpx 24rpx rgba(224, 174, 18, 0.12);
 
         text {
-            color: #231c0b;
+            color: #7c5b05;
         }
     }
 }

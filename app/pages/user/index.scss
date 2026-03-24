@@ -1,12 +1,12 @@
 $primary-color: #e0ae12;
 $primary-strong: #c69200;
-$bg-light: #faf8f2;
+$bg-light: #ffffff;
 $card-bg-light: #ffffff;
-$card-bg-soft-light: #fdf7e8;
-$text-primary-light: #231c0b;
-$text-secondary-light: #6e6242;
-$text-muted-light: #9a8c67;
-$border-light: #e9e2cf;
+$card-bg-soft-light: #f8fafc;
+$text-primary-light: #0f172a;
+$text-secondary-light: #64748b;
+$text-muted-light: #94a3b8;
+$border-light: #e5e7eb;
 $bg-dark: #141109;
 $card-bg-dark: #1e180d;
 $card-bg-soft-dark: #241d10;
@@ -17,9 +17,7 @@ $border-dark: #3a2e16;
 
 .user-container {
 	min-height: 100vh;
-	background:
-		radial-gradient(circle at top left, rgba(224, 174, 18, 0.15), transparent 30%),
-		linear-gradient(180deg, #fff4cf 0%, $bg-light 26%, $bg-light 100%);
+	background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
 	color: $text-primary-light;
 	padding-bottom: 120rpx;
 	box-sizing: border-box;
@@ -157,11 +155,12 @@ $border-dark: #3a2e16;
 
 .hero-btn-primary,
 .status-btn-primary {
-	background: linear-gradient(135deg, #fff4cf 0%, #f5c76b 100%);
-	box-shadow: 0 16rpx 28rpx rgba(245, 199, 107, 0.22);
+	background: #ffffff;
+	border: 1rpx solid rgba(224, 174, 18, 0.22);
+	box-shadow: 0 12rpx 24rpx rgba(224, 174, 18, 0.12);
 
 	text {
-		color: #3d2a06;
+		color: #7c5b05;
 	}
 }
 

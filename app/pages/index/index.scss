@@ -1,11 +1,11 @@
 .home-container {
-  --home-bg: #faf8f2;
+  --home-bg: #ffffff;
   --home-surface: #ffffff;
-  --home-surface-secondary: #fdf7e8;
-  --home-text-primary: #231c0b;
-  --home-text-secondary: #6e6242;
-  --home-text-muted: #9a8c67;
-  --home-border: rgba(163, 138, 76, 0.18);
+  --home-surface-secondary: #f8fafc;
+  --home-text-primary: #0f172a;
+  --home-text-secondary: #64748b;
+  --home-text-muted: #94a3b8;
+  --home-border: rgba(148, 163, 184, 0.18);
   --home-accent: #e0ae12;
   --home-accent-strong: #c69200;
   --home-accent-soft: rgba(224, 174, 18, 0.14);
@@ -17,8 +17,7 @@
   overflow: hidden;
   box-sizing: border-box;
   background:
-    radial-gradient(circle at top left, rgba(224, 174, 18, 0.16), transparent 34%),
-    linear-gradient(180deg, #fff4cf 0%, var(--home-bg) 32%, var(--home-bg) 100%);
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   color: var(--home-text-primary);
 
   &.dark-mode {
@@ -55,8 +54,8 @@
 }
 
 .dark-mode .nav-header {
-  background: rgba(15, 23, 18, 0.82);
-  border-bottom-color: rgba(148, 163, 184, 0.08);
+  background: rgba(20, 17, 9, 0.82);
+  border-bottom-color: rgba(224, 174, 18, 0.08);
 }
 
 .header-content {

@@ -78,16 +78,16 @@ export const useThemeStore = defineStore('theme', {
         // 亮色主题
         uni.setNavigationBarColor({
           frontColor: '#000000',
-          backgroundColor: '#faf8f2',
+          backgroundColor: '#ffffff',
           animation: {
             duration: 300,
             timingFunc: 'easeIn'
           }
         })
         uni.setTabBarStyle({
-          backgroundColor: '#faf8f2',
+          backgroundColor: '#ffffff',
           borderStyle: 'black',
-          color: '#6e6242',
+          color: '#64748b',
           selectedColor: '#E0AE12'
         })
       }

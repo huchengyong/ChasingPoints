@@ -271,12 +271,12 @@ onMounted(async () => {
 		color: #475569;
 	}
 	&.active {
-			background: linear-gradient(135deg, #e0ae12 0%, #c69200 100%);
-			border-color: transparent;
-			text {
-				color: #231c0b;
-			}
+		background: #fff7dc;
+		border: 1rpx solid rgba(224, 174, 18, 0.22);
+		text {
+			color: #7c5b05;
 		}
+	}
 	}
 	.season-card {
 		background: linear-gradient(135deg, #5f4306 0%, #b68108 100%);

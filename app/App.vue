@@ -110,16 +110,16 @@
 					// 亮色主题
 					uni.setNavigationBarColor({
 						frontColor: '#000000',
-						backgroundColor: '#faf8f2',
+						backgroundColor: '#ffffff',
 						animation: {
 							duration: 400,
 							timingFunc: 'easeIn'
 						}
 					})
 					uni.setTabBarStyle({
-						backgroundColor: '#faf8f2',
+						backgroundColor: '#ffffff',
 						borderStyle: 'black',
-						color: '#6e6242',
+						color: '#64748b',
 						selectedColor: '#E0AE12'
 					})
 				}
@@ -223,20 +223,20 @@
 		--primary-color-light: rgba(224, 174, 18, 0.14);
 
 		/* 背景色 */
-		--bg-color: #faf8f2;
+		--bg-color: #ffffff;
 		--card-bg: #ffffff;
 		--input-bg: #ffffff;
 
 		/* 文字颜色 */
-		--text-primary: #231c0b;
-		--text-secondary: #6e6242;
-		--text-tertiary: #9a8c67;
+		--text-primary: #0f172a;
+		--text-secondary: #64748b;
+		--text-tertiary: #94a3b8;
 
 		/* 边框颜色 */
-		--border-color: #e9e2cf;
+		--border-color: #e5e7eb;
 
 		/* 其他 */
-		--divider-color: #e9e2cf;
+		--divider-color: #e5e7eb;
 		--danger-color: #ef4444;
 	}
 
