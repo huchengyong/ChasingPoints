@@ -13,8 +13,12 @@ export function canRequestSms({ phone, countdown, isSending }) {
   return isPhoneValid(phone) && countdown <= 0 && !isSending
 }
 
+export function canAttemptLogin({ phone, code, isLogging }) {
+  return isPhoneValid(phone) && isCodeValid(code) && !isLogging
+}
+
 export function canSubmitLogin({ phone, code, isAgreed, isLogging }) {
-  return isPhoneValid(phone) && isCodeValid(code) && Boolean(isAgreed) && !isLogging
+  return canAttemptLogin({ phone, code, isLogging }) && Boolean(isAgreed)
 }
 
 export function getPhoneError(phone) {
@@ -58,14 +62,12 @@ export function resolvePostLoginNavigation({ pageCount }) {
 }
 
 export function resolveWelcomeActions({ isHarmony, isAgreed }) {
-  const disabled = !Boolean(isAgreed)
-
   return {
     primaryText: '手机号登录 / 注册',
     secondaryText: '华为账号登录',
     tertiaryText: '先逛逛',
     showHuaweiLogin: Boolean(isHarmony),
-    primaryDisabled: disabled,
-    secondaryDisabled: disabled
+    primaryDisabled: false,
+    secondaryDisabled: false
   }
 }

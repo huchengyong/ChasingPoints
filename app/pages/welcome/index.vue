@@ -67,6 +67,15 @@
 				</view>
 			</view>
 		</view>
+
+		<agreementConsentSheet
+			:show="showAgreementSheet"
+			:is-dark-mode="isDarkMode"
+			@close="closeAgreementSheet"
+			@agree="handleAgreementAccepted"
+			@open-user="openUserAgreement"
+			@open-privacy="openPrivacyPolicy"
+		/>
 	</view>
 </template>
 
@@ -74,6 +83,7 @@
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useThemeStore } from '@/store/theme.js'
+import agreementConsentSheet from '@/components/agreementConsentSheet.vue'
 import { resolveWelcomeActions } from '@/utils/entry-funnel.js'
 
 const WELCOME_PAGE_VIEWED_KEY = 'welcome_page_viewed'
@@ -89,6 +99,8 @@ const themeStore = useThemeStore()
 const isDarkMode = computed(() => themeStore.isDarkMode)
 const shouldShow = ref(false)
 const isAgreed = ref(false)
+const showAgreementSheet = ref(false)
+const pendingAgreementAction = ref('')
 const welcomeActions = computed(() => resolveWelcomeActions({
 	isHarmony: isHarmonyPlatform,
 	isAgreed: isAgreed.value
@@ -119,6 +131,16 @@ const persistAgreementState = (value) => {
 const toggleAgreement = () => {
 	isAgreed.value = !isAgreed.value
 	persistAgreementState(isAgreed.value)
+}
+
+const requestAgreementFor = (action) => {
+	pendingAgreementAction.value = action
+	showAgreementSheet.value = true
+}
+
+const closeAgreementSheet = () => {
+	showAgreementSheet.value = false
+	pendingAgreementAction.value = ''
 }
 
 /**
@@ -159,8 +181,9 @@ const navigateToLogin = () => {
  * 主入口
  */
 const handlePrimaryEntry = () => {
-	if (welcomeActions.value.primaryDisabled) {
-		return false
+	if (!isAgreed.value) {
+		requestAgreementFor('primary')
+		return
 	}
 	navigateToLogin()
 }
@@ -169,8 +192,25 @@ const handlePrimaryEntry = () => {
  * 华为登录
  */
 const handleHuaweiLogin = () => {
-	if (welcomeActions.value.secondaryDisabled) return
+	if (!isAgreed.value) {
+		requestAgreementFor('huawei')
+		return
+	}
 	navigateToLogin()
+}
+
+const handleAgreementAccepted = () => {
+	isAgreed.value = true
+	persistAgreementState(true)
+	const action = pendingAgreementAction.value
+	closeAgreementSheet()
+
+	if (action === 'huawei') {
+		handleHuaweiLogin()
+		return
+	}
+
+	handlePrimaryEntry()
 }
 
 /**

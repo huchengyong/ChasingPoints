@@ -91,7 +91,6 @@
 					</view>
 					<button
 						class="third-party-btn"
-						:disabled="!isAgreed"
 						@click="handleHuaweiLogin"
 					>
 						<image src="/static/images/huawei.svg" mode="aspectFit" />
@@ -107,6 +106,15 @@
 			@close="showBindPhoneModal = false"
 			@success="handleBindPhoneSuccess"
 		/>
+
+		<agreementConsentSheet
+			:show="showAgreementSheet"
+			:is-dark-mode="isDarkMode"
+			@close="closeAgreementSheet"
+			@agree="handleAgreementAccepted"
+			@open-user="showAgreement('user')"
+			@open-privacy="showAgreement('privacy')"
+		/>
 	</view>
 </template>
 
@@ -116,10 +124,11 @@ import { onShow } from '@dcloudio/uni-app'
 import { useThemeStore } from '@/store/theme.js'
 import { useUserStore } from '@/store/user.js'
 import { sendSms, login, loginByOauth } from '@/api/auth.js'
+import agreementConsentSheet from '@/components/agreementConsentSheet.vue'
 import bindPhone from '@/components/bindPhone.vue'
 import {
+	canAttemptLogin,
 	canRequestSms,
-	canSubmitLogin,
 	getCodeError,
 	getPhoneError,
 	isCodeValid,
@@ -149,6 +158,8 @@ const isSending = ref(false)
 const isLogging = ref(false)
 const showBindPhoneModal = ref(false)
 const isAgreed = ref(false)
+const showAgreementSheet = ref(false)
+const pendingAgreementAction = ref('')
 const isDarkMode = computed(() => themeStore.isDarkMode)
 const showHuaweiLogin = computed(() => isHarmonyPlatform)
 const phoneError = computed(() => getPhoneError(formData.phone))
@@ -158,10 +169,9 @@ const canSendCode = computed(() => canRequestSms({
 	countdown: countdown.value,
 	isSending: isSending.value
 }))
-const canSubmit = computed(() => canSubmitLogin({
+const canSubmit = computed(() => canAttemptLogin({
 	phone: formData.phone,
 	code: formData.code,
-	isAgreed: isAgreed.value,
 	isLogging: isLogging.value
 }))
 const sendCodeText = computed(() => {
@@ -181,6 +191,16 @@ const persistAgreementState = (value) => {
 const toggleAgreement = () => {
 	isAgreed.value = !isAgreed.value
 	persistAgreementState(isAgreed.value)
+}
+
+const requestAgreementFor = (action) => {
+	pendingAgreementAction.value = action
+	showAgreementSheet.value = true
+}
+
+const closeAgreementSheet = () => {
+	showAgreementSheet.value = false
+	pendingAgreementAction.value = ''
 }
 
 const startCountdown = () => {
@@ -240,10 +260,7 @@ const handleSendCode = async () => {
 
 const handleLogin = async () => {
 	if (!isAgreed.value) {
-		uni.showToast({
-			title: '请先阅读并同意相关协议',
-			icon: 'none'
-		})
+		requestAgreementFor('submit')
 		return
 	}
 
@@ -290,6 +307,7 @@ const handleLogin = async () => {
 
 const handleHuaweiLogin = async () => {
 	if (!isAgreed.value) {
+		requestAgreementFor('huawei')
 		return
 	}
 
@@ -349,6 +367,20 @@ const handleHuaweiLogin = async () => {
 		})
 	}
 	// #endif
+}
+
+const handleAgreementAccepted = () => {
+	isAgreed.value = true
+	persistAgreementState(true)
+	const action = pendingAgreementAction.value
+	closeAgreementSheet()
+
+	if (action === 'huawei') {
+		handleHuaweiLogin()
+		return
+	}
+
+	handleLogin()
 }
 
 const handleBindPhoneSuccess = (payload) => {
@@ -729,11 +761,11 @@ onUnmounted(() => {
 }
 
 .login-btn {
-	width: 100%;
-	height: 100rpx;
-	border-radius: 999rpx;
-	background: linear-gradient(135deg, #f7d86a 0%, #e0ae12 48%, #c69200 100%);
-	color: #231c0b;
+				width: 100%;
+				height: 100rpx;
+				border-radius: 999rpx;
+				background: linear-gradient(135deg, #f7d86a 0%, #e0ae12 48%, #c69200 100%);
+				color: #ffffff;
 	font-size: 32rpx;
 	font-weight: 700;
 	box-shadow: 0 18rpx 34rpx rgba(224, 174, 18, 0.24);

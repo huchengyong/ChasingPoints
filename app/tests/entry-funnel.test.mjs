@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  canAttemptLogin,
   canRequestSms,
   canSubmitLogin,
   getCodeError,
@@ -22,8 +23,8 @@ test('resolveWelcomeActions hides Huawei login outside HarmonyOS', () => {
     secondaryText: '华为账号登录',
     tertiaryText: '先逛逛',
     showHuaweiLogin: false,
-    primaryDisabled: true,
-    secondaryDisabled: true
+    primaryDisabled: false,
+    secondaryDisabled: false
   })
 })
 
@@ -91,6 +92,20 @@ test('canSubmitLogin requires valid phone, valid code, agreement, and idle submi
     phone: '13800138000',
     code: '12345',
     isAgreed: true,
+    isLogging: false
+  }), false)
+})
+
+test('canAttemptLogin ignores agreement state and only depends on form readiness', () => {
+  assert.equal(canAttemptLogin({
+    phone: '13800138000',
+    code: '123456',
+    isLogging: false
+  }), true)
+
+  assert.equal(canAttemptLogin({
+    phone: '13800138000',
+    code: '12345',
     isLogging: false
   }), false)
 })
