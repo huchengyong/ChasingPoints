@@ -32,18 +32,18 @@
 
     <view class="tool-row">
       <view class="tool-chip" @tap="goFriendList">
-        <uni-icons type="staff-filled" size="16" color="#18b05b"></uni-icons>
+        <uni-icons type="staff-filled" size="16" color="#E0AE12"></uni-icons>
         <text>好友列表</text>
       </view>
       <view class="tool-chip" @tap="goFriendRequests">
-        <uni-icons type="person-filled" size="16" color="#18b05b"></uni-icons>
+        <uni-icons type="person-filled" size="16" color="#E0AE12"></uni-icons>
         <text>好友请求</text>
         <view v-if="friendRequestStore.pendingCount > 0" class="tool-badge">
           <text>{{ friendRequestStore.pendingCount > 99 ? '99+' : friendRequestStore.pendingCount }}</text>
         </view>
       </view>
       <view class="tool-chip" @tap="goPublicFeed">
-        <uni-icons type="chat" size="16" color="#18b05b"></uni-icons>
+        <uni-icons type="chat" size="16" color="#E0AE12"></uni-icons>
         <text>全量动态流</text>
       </view>
     </view>
@@ -57,7 +57,7 @@
       @scrolltolower="loadMore"
     >
       <view v-if="loading" class="state-block">
-        <uni-icons type="spinner-cycle" size="34" color="#18b05b"></uni-icons>
+        <uni-icons type="spinner-cycle" size="34" color="#E0AE12"></uni-icons>
         <text class="state-text">加载中...</text>
       </view>
 

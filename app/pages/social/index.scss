@@ -1,20 +1,20 @@
 .social-page {
   min-height: 100vh;
-  background: #f4f7f4;
+  background: #ffffff;
   color: #0f172a;
   box-sizing: border-box;
   padding: 20rpx 24rpx 0;
 
   &.dark-mode {
-    background: #0f1712;
-    color: #f3fff6;
+    background: #141109;
+    color: #fff7e1;
 
     .social-tabs,
     .action-card,
     .tool-chip,
     .post-card {
-      background: #16211a;
-      border-color: #24342a;
+      background: #1e180d;
+      border-color: #3a2e16;
     }
 
     .tab-item,
@@ -23,14 +23,14 @@
     .post-time,
     .post-footer,
     .state-text {
-      color: #a7c0af;
+      color: #d7c89b;
     }
 
     .post-content,
     .action-title,
     .post-name,
     .state-title {
-      color: #f3fff6;
+      color: #fff7e1;
     }
   }
 }
@@ -40,7 +40,7 @@
   align-items: center;
   gap: 12rpx;
   background: #ffffff;
-  border: 1rpx solid #dce7df;
+  border: 1rpx solid #e5e7eb;
   border-radius: 28rpx;
   padding: 8rpx;
   box-sizing: border-box;
@@ -54,8 +54,9 @@
     font-size: 28rpx;
 
     &.active {
-      background: #18b05b;
-      color: #ffffff;
+      background: #fff7dc;
+      color: #7c5b05;
+      border: 1rpx solid rgba(224, 174, 18, 0.22);
       font-weight: 600;
     }
   }
@@ -70,7 +71,7 @@
 
 .action-card {
   background: #ffffff;
-  border: 1rpx solid #dce7df;
+  border: 1rpx solid #e5e7eb;
   border-radius: 24rpx;
   padding: 24rpx 18rpx;
   box-sizing: border-box;
@@ -79,7 +80,8 @@
   gap: 10rpx;
 
   &.primary {
-    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    background: linear-gradient(135deg, #fffdf5 0%, #fff7dc 100%);
+    border-color: rgba(224, 174, 18, 0.2);
   }
 
   .action-icon {
@@ -112,7 +114,7 @@
   align-items: center;
   gap: 8rpx;
   background: #ffffff;
-  border: 1rpx solid #dce7df;
+  border: 1rpx solid #e5e7eb;
   border-radius: 999rpx;
   padding: 14rpx 20rpx;
   box-sizing: border-box;
@@ -261,11 +263,11 @@
   min-width: 180rpx;
   padding: 12rpx 20rpx;
   border-radius: 999rpx;
-  background: rgba(24, 176, 91, 0.08);
+  background: rgba(224, 174, 18, 0.12);
 
   text {
     font-size: 22rpx;
-    color: #18b05b;
+    color: #c69200;
   }
 }
 
