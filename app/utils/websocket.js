@@ -4,7 +4,9 @@
  * 兼容 uni-app（含鸿蒙）
  */
 
-const WS_BASE_URL = 'wss://api-tunnel2.kekemate.com'
+import { NETWORK_CONFIG } from './runtime-config.js'
+
+const WS_BASE_URL = NETWORK_CONFIG.wsBaseUrl
 
 export const WS_MESSAGE_TYPES = {
   SCORE_UPDATE: 'score_update',

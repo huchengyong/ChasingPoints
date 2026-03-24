@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"chasing_points/internal/testsupport"
+
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -19,6 +21,9 @@ func TestEventNewsModelCRUDAndQueries(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite db: %v", err)
+	}
+	if err := testsupport.PrepareEventNewsSchema(db); err != nil {
+		t.Fatalf("prepare event news schema: %v", err)
 	}
 
 	model := NewEventNewsModel(db)

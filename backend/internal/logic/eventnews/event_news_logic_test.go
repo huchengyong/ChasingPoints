@@ -7,6 +7,7 @@ import (
 
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
+	"chasing_points/internal/testsupport"
 	"chasing_points/internal/types"
 
 	"gorm.io/driver/sqlite"
@@ -19,6 +20,9 @@ func newEventNewsTestSvc(t *testing.T) *svc.ServiceContext {
 	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite db: %v", err)
+	}
+	if err := testsupport.PrepareEventNewsSchema(db); err != nil {
+		t.Fatalf("prepare event news schema: %v", err)
 	}
 
 	return &svc.ServiceContext{

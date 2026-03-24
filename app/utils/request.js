@@ -3,11 +3,13 @@
  */
 import pinia from '@/store/index.js'
 import { useUserStore } from '@/store/user.js'
-import { shouldResolveBusinessResponse } from './request-response.js'
+import {
+  shouldResolveBusinessResponse,
+  unwrapBusinessResponse
+} from './request-response.js'
+import { NETWORK_CONFIG } from './runtime-config.js'
 
-// 基础配置 api-bm
-// const BASE_URL = 'https://api-bm.dianzaozao.com' // 根据实际情况配置
-const BASE_URL = 'https://api-tunnel2.kekemate.com'
+const BASE_URL = NETWORK_CONFIG.httpBaseUrl
 
 // 请求拦截器
 const requestInterceptor = (config) => {
@@ -67,7 +69,7 @@ const responseInterceptor = (response, silent = false) => {
 
     // 业务状态码处理
     if (shouldResolveBusinessResponse(data)) {
-      return Promise.resolve(data.data || data)
+      return Promise.resolve(unwrapBusinessResponse(data))
     } else {
       const error = new Error(data.message || data.msg || '请求失败')
       error.responseData = data

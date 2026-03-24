@@ -1,113 +1,89 @@
-# PROJECT KNOWLEDGE BASE AND HARD CONSTRAINTS
+# APP FRONTEND GUIDE
 
 ## OVERVIEW
-这是一个 UniApp Vue3 前端 + go-zero 后端的台球应用仓库。当前主业务已经覆盖认证、对局、排行榜、成就、社交、赛事、赛季、球房、规则、通知、分享和深度统计。
+`app/` 是 UniApp Vue3 用户端，当前代码重点覆盖 4 个 tab 页面、11 个分包页面簇、统一请求层、主题系统、登录与绑定手机号链路、对局实时同步、战报分享和一批纯逻辑测试。
 
 ## GLOBAL RULES
-- 用简体中文和我交流沟通。
-- `AGENTS.md` 与 `GEMINI.md` 与 `IFLOW.md` 需要保持一致；修改其中一份时，另一份也必须同步更新。
-- 不要把过期的静态快照信息（如生成时间、旧 commit、旧模块列表）当作当前事实。
+- 用简体中文沟通。
+- `AGENTS.md` 与 `GEMINI.md` 需要保持同步；仓库里当前没有 `IFLOW.md`。
+- 任何目录说明都以当前仓库实际文件为准，不要沿用旧模块名或旧页面结构。
 
 ## STRUCTURE
 ```text
-./
-├── pages/                         # Tab 主包页面：首页/对局/动态/我的/欢迎/登录
-├── subPages/                      # 分包页面：user/match/help/agreement/social/tournament/venue/rules/season/notification
-├── api/                           # 前端接口门面层，页面只调用这里
-├── components/                    # 复用组件（如 bindPhone、gameTypeModal）
-├── store/                         # Pinia 状态：user/theme/notification
-├── utils/                         # request/format/websocket/posterGenerator 等通用工具
-├── static/                        # 图片、tabBar 图标、字体等静态资源
-├── design_code/                   # 设计稿 HTML 与截图参考，仅作移动端复刻参考
-├── backend/       # go-zero API 服务
-├── theme.json                     # 主题变量源
-├── pages.json                     # 页面路由、tabBar、分包注册
-├── App.vue                        # 全局主题、推送、公共样式
-└── AGENTS.md / GEMINI.md          # 项目上下文与硬约束（必须同步）
+app/
+├── App.vue                    # 全局生命周期、主题应用、Push 初始化、前台对局提醒
+├── main.js                    # Vue3 SSR App 入口，挂载 Pinia
+├── pages.json                 # 主包页面、tabBar、分包注册
+├── theme.json                 # UniApp 主题变量
+├── pages/                     # 主包页面
+│   ├── welcome/
+│   ├── login/
+│   ├── index/
+│   ├── match/
+│   ├── ranking/
+│   ├── social/
+│   └── user/
+├── subPages/                  # 分包页面
+├── api/                       # 页面唯一请求门面
+├── components/                # bindPhone、agreementConsentSheet、gameTypeModal
+├── store/                     # Pinia：user/theme/notification/friendRequest
+├── utils/                     # request、format、websocket、业务纯函数与导航 helper
+├── tests/                     # node:test 纯逻辑测试
+├── static/                    # 图片、图标、字体
+└── harmony-configs/           # HarmonyOS 配置
 ```
 
 ## CURRENT ARCHITECTURE
-- 前端入口是 `main.js`，通过 Pinia + `pinia-plugin-persistedstate` 管理状态。
-- `App.vue` 负责系统主题同步、导航栏/TabBar 主题应用、APP 端推送初始化。
-- `pages.json` 已注册主包页面和 11 个分包：`agreement`、`user`、`match`、`help`、`achievement`、`social`、`tournament`、`venue`、`rules`、`season`、`notification`。
-- `utils/request.js` 统一处理 Bearer Token、401 登录失效、`code === 0 || success` 成功判定。
-- `utils/websocket.js` 封装了对局级和用户级 WebSocket；后端对应路由是 `/api/match/ws` 与 `/api/user/ws`。
-- 后端以 `backend/chasing_points.api` 为契约源，`internal/logic -> internal/model` 承接业务与数据访问，`internal/svc/service_context.go` 统一注入 Gorm、Redis、阿里云短信、UniPush。
+- 入口是 [app/main.js](/Users/wisesearch/Projects/ChasingPoints/app/main.js)，使用 Pinia；状态持久化由 [app/store/index.js](/Users/wisesearch/Projects/ChasingPoints/app/store/index.js) 注册的 `pinia-plugin-persistedstate` 完成。
+- [app/App.vue](/Users/wisesearch/Projects/ChasingPoints/app/App.vue) 仍使用 Options API，因为需要承接 UniApp app 级生命周期；页面组件默认继续优先用 `script setup`。
+- [app/pages.json](/Users/wisesearch/Projects/ChasingPoints/app/pages.json) 当前注册 6 个主包页面和 11 个分包根目录。
+- [app/utils/runtime-config.js](/Users/wisesearch/Projects/ChasingPoints/app/utils/runtime-config.js) 负责按环境解析网络基地址；[app/utils/request.js](/Users/wisesearch/Projects/ChasingPoints/app/utils/request.js) 统一处理 token、401、业务成功判定；[app/utils/websocket.js](/Users/wisesearch/Projects/ChasingPoints/app/utils/websocket.js) 负责 match/user 两条 WS 链路。
+- 页面层只能依赖 `api/*.js`；业务纯函数尽量沉到 `utils/*.js` 并在 `tests/*.test.mjs` 里覆盖。
 
 ## WHERE TO LOOK
 | Task | Location | Notes |
 |------|----------|-------|
-| 页面路由、分包、导航样式 | `pages.json` | 先确认页面是否已注册、是否自定义导航栏 |
-| 全局主题/推送/盒模型 | `App.vue`, `theme.json`, `store/theme.js`, `uni.scss` | 颜色与主题联动必须一致 |
-| 前端接口封装 | `api/*.js` | 页面不要直接触达 `utils/request.js` |
-| 认证与用户状态 | `api/auth.js`, `store/user.js` | token、refreshToken、needBindPhone 在这里汇总 |
-| 对局实时同步 | `utils/websocket.js`, `subPages/match/*.vue` | 需要同时理解 WS 消息和页面状态 |
-| 海报/分享能力 | `utils/posterGenerator.js`, `api/share.js`, `subPages/match/shareResult.vue`, `subPages/social/pkReport.vue` | 对局战报与 PK 海报都在用 |
-| 后端接口定义 | `backend/chasing_points.api` | 改完必须立刻执行 goctl |
-| 后端依赖注入 | `backend/internal/svc/service_context.go` | model、Redis、短信、Push 初始化都在这里 |
-| 业务逻辑 | `backend/internal/logic/` | 一接口一 logic，含少量共享 helper |
-| 数据访问层 | `backend/internal/model/` | Gorm 模型与查询方法集中在这里 |
-| 用户态上下文解析 | `backend/internal/utils/jwt_parser.go` | 统一用 `GetUserIDFromCtx` |
-| 数据库迁移 | `backend/migrations/*.sql`, `backend/goose.sh` | 迁移和模型要同步维护 |
+| 页面注册、导航栏、分包 | `pages.json` | 新页面先确认主包还是分包 |
+| 全局主题、Push、前台弹窗 | `App.vue`, `theme.json`, `store/theme.js` | 主题和导航栏颜色要一起看 |
+| 登录态与用户信息 | `store/user.js`, `api/auth.js`, `components/bindPhone.vue` | `needBindPhone` 和 token 在这里汇总 |
+| 通知状态 | `store/notification.js`, `utils/notification.js`, `api/notification.js` | 有页面和 store 双向联动 |
+| 请求层 | `utils/request.js`, `utils/request-response.js` | 401、业务成功判定、静默请求都在这里 |
+| 对局实时同步 | `utils/websocket.js`, `utils/match-action.js`, `subPages/match/*.vue` | 要同时理解 revision/snapshot 和页面跳转 |
+| 首页/登录漏斗纯逻辑 | `utils/home-index.js`, `utils/entry-funnel.js`, `tests/*.test.mjs` | 很多 UI 规则已抽纯函数 |
+| 球房提交流程 | `subPages/venue/submit.vue`, `utils/venue-submit.js` | 当前只提交基础字段 |
+| 战报/分享 | `utils/posterGenerator.js`, `api/share.js`, `subPages/match/shareResult.vue`, `subPages/social/pkReport.vue` | 涉及画布和分享数据整形 |
 
-## BACKEND HARD CONSTRAINTS
-- 重要：每当修改 `backend` 目录下 `.api` 后缀的文件时，紧跟其后的一步必须是执行 goctl 命令生成相关代码模板，而不是手动去改模板里的代码。
-- 执行 goctl 命令生成模板时，必须指定参数 `--style go_zero --home ~/.goctl/default`。
-- 生成 handler、logic 和 types 代码的命令是：`goctl api go --api chasing_points.api --dir . --style go_zero --home ~/.goctl/default`。
-- 当前项目下任何 `.api` 文件里的 `service` 都只能用 `service chasing_points-api`。
-- 凡是文件首行注释包含 `// Code generated by goctl. DO NOT EDIT.` 的文件，都严禁修改。
-- `.api` 文件里定义的写操作接口 `returns` 统一优先使用 `WriteResponse`，列表接口统一优先用 `ListResponse`，详情接口统一优先用 `DetailResponse`。如果这三种都不满足，新增 Response 时必须包含 `code` 和 `success` 字段。
-- `internal/logic` 层不要有直接操作数据库的代码，必须通过 `internal/model` 中对应模型的方法访问；缺方法时在 model 层补。
-- SQL 文件凡是新增或修改业务表，都需要同步在 `internal/model` 下定义或更新相关 Gorm 模型；模型字段必须带 `json` 标签，且 `json` 标签要和 column 字段一致。
-- 所有需要从 ctx 上下文中获取登录态 `user_id` 的代码，统一通过 `internal/utils/jwt_parser.go` 里的 `GetUserIDFromCtx` 方法获取。
-- 如果需要手动操作 MySQL 数据库，可以使用 `.env` 文件里的 MySQL 配置信息。
-- 创建迁移 SQL 文件时，必须同时包含 `+goose Up` 和 `+goose Down`；`Up` 里是创建语句，`Down` 里是删除语句；创建表语句必须带 `IF NOT EXISTS`。
-- 注意：MySQL 不支持 `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` 语法（这是 MariaDB 的扩展）。如果要在 goose 迁移中添加列，只需写 `ADD COLUMN` 即可；且执行普通 DDL 语句时不要用 `StatementBegin/End` 包裹多条语句，应去掉它们让 goose 按分号自动分割独立执行。
-- 不要修改 `.api` 后手动补 handler/logic/types 而跳过 goctl。
-- 不要在 `logic` 中拼底层 SQL 或绕过 `svcCtx` 新建 DB 连接。
+## FRONTEND CONSTRAINTS
+- 这是跨平台 UniApp 项目，页面层不要直接用 `uni.request`，统一走 `api/*.js`。
+- 页面默认优先使用 `script setup` + SCSS；`App.vue` 作为 app 生命周期例外。
+- 样式优先拆到同名 `.scss` 文件；全局共享样式才放进 `App.vue` 或 `uni.scss`。
+- 列表时间展示优先复用 [app/utils/format.js](/Users/wisesearch/Projects/ChasingPoints/app/utils/format.js)。
+- 对局写操作、登录漏斗、球房提交等规则，优先提炼为 `utils/*.js` 纯函数并补测试，而不是把规则散在页面里。
+- Push、主题、前台对局提醒属于 app 级行为，优先改 `App.vue`，不要把相同逻辑复制到页面。
 
-## FRONTEND HARD CONSTRAINTS
-- 这是一个跨平台编译项目，前端代码禁止使用动态引入。
-- UniApp Vue3 页面默认统一使用组合式 API（`script setup`）写法。
-- 样式代码统一使用 SCSS，并且优先拆到与 Vue 文件同名的 `.scss` 文件中，再在 Vue 文件里引入。
-- 当前端需要对接后端接口时，务必在 `api` 目录下相关 `.js` 文件中定义接口方法；页面里不要封装 request，也不要直接引入并调用 `utils/request.js`。
-- 所有列表页面需要显示时间的地方，都要使用 `utils/format.js` 里的 `formatRelativeTime` 来格式化相对时间。
-- UniApp 中页面如果需要图标，统一优先使用 `uni-icons`。
-- 当要求复刻 `design_code` 目录下某个 HTML 样式到 Vue 文件时，要优先保证移动端兼容和可运行，而不是机械照搬。
-- 在开发 Vue 页面时，没有特殊要求的情况下，不要设计自定义顶部导航栏，而是优先使用 uni-app 的系统导航栏。所有自定义顶部导航栏的高度都必须与系统导航栏高度一致。
-- 页面只能调用 `api/*.js`，不要在 `.vue` 里直接 `uni.request`，也不要直接 import `utils/request.js`。
-- 不要在页面层重复封装请求、重复做 401 跳转、重复管理 token。
+## THEME AND UI CONSTRAINTS
+- 主题变量必须同时兼容 `theme.json`、`App.vue` 中的 CSS 变量和 `store/theme.js` 的运行时切换。
+- 主题色背景按钮文字统一使用白色 `#ffffff`。
+- 自定义按钮必须隐藏 `button::after`。
+- 页面最外层容器要注意 `box-sizing: border-box` 和首屏 margin collapse，避免顶部漏白。
+- 没有明确设计要求时，优先使用系统导航栏；自定义导航栏要和系统高度、返回行为保持一致。
 
-## STYLE AND THEME CONSTRAINTS
-- 在页面样式中定义的浅色模式与深色模式颜色变量，要求与 `theme.json` 中定义的颜色变量一致；`theme.json` 未涉及的颜色变量，可根据设计稿补充。
-- 主题颜色要同时兼容 `theme.json`、`App.vue` 的 CSS 变量、`store/theme.js` 的运行时切换逻辑。
-- **主题色背景按钮字体统一规范**：所有使用主题色（黄色/金色渐变，如 `#e0ae12`、`#f7d86a` 等）作为背景的按钮，字体颜色必须统一使用白色 `#ffffff`，以确保视觉一致性和可读性。
-- Uni-app 中 `button` 组件默认会有一个 `::after` 伪元素用于边框效果，所有自定义按钮都需要通过 `&::after { display: none; }` 隐藏它。
-- 由于 CSS 盒模型问题，当 `width: 100%` 加上 `padding` 时，实际宽度会超出容器，需要通过添加 `box-sizing: border-box` 解决。
-- 注意避免“外边距塌陷（Margin Collapse）”导致页面顶部漏出系统白底：如果页面最外层容器没有设置 `padding` 或 `border`，内部第一个子元素设置了 `margin-top`，会导致顶部漏白。规范做法是给最外层容器设置 `padding-top` 并配合 `box-sizing: border-box`，同时去掉首个子元素的顶部 `margin`。
-
-## ANTI-PATTERNS
-- 不要把过期的静态快照信息、旧模块列表或历史结构当作当前事实。
-- 不要在页面中直接调用 `uni.request`。
-- 不要在页面中绕过 `api/*.js` 直接调用 `utils/request.js`。
-- 不要写死浅色/深色变量而忽略 `theme.json` 和全局主题同步。
-- 不要在移动端页面中机械复刻 `design_code/` 的桌面布局而忽略编译和交互兼容性。
-
-## COMMANDS
+## TEST AND COMMANDS
 ```bash
-# Frontend
+# 安装依赖
 npm install
 
-# Backend
-cd backend
-go run chasing_points.go -f etc/chasing_points-api.yaml
-
-# API 代码生成（修改 .api 后立即执行）
-cd backend
-goctl api go --api chasing_points.api --dir . --style go_zero --home ~/.goctl/default
-
-# DB migration
-cd backend
-./goose.sh status
-./goose.sh up
+# 运行当前纯逻辑测试
+node --test tests/*.test.mjs
 ```
+
+## KNOWN FACTS
+- `package.json` 当前只有 `dependencies`，没有 `scripts`；默认不要假设可以直接 `npm test`。
+- 当前 HTTP 与 WebSocket 基地址由 `utils/runtime-config.js` 统一管理：开发环境默认走 tunnel，生产环境默认走正式域名。
+- `App.vue` 里会直接调用 `post('/api/user/push-token')`，这是 app 级基础设施调用，不是页面层越界。
+
+## ANTI-PATTERNS
+- 不要在 `.vue` 页面里直接 `uni.request` 或直接 import `utils/request.js`。
+- 不要把业务规则直接埋进页面生命周期，能抽纯函数就抽，并补 `tests/*.test.mjs`。
+- 不要继续引用不存在的目录或设计稿目录，例如当前仓库里没有 `design_code/`。
+- 不要把旧模块名如 `mall`、`order`、`favorites` 当成当前项目结构。

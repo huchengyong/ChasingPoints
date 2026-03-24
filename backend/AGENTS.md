@@ -1,25 +1,26 @@
 # BACKEND KNOWLEDGE BASE
 
 ## OVERVIEW
-`backend/` 是 go-zero REST API 服务主目录。它不仅负责常规 HTTP 接口，还负责对局级和用户级 WebSocket、Redis 短信验证码、UniPush 推送以及 Gorm 数据访问。
+`backend/` 是 go-zero REST API 服务主目录。它不仅负责常规 HTTP 接口，还负责对局级和用户级 WebSocket、Redis 短信验证码、UniPush 推送、球房地理编码任务以及 Gorm 数据访问。
 
 ## STRUCTURE
 ```text
 backend/
-├── chasing_points.api       # 后端契约单一真源
-├── chasing_points.go        # 服务入口，注册 HTTP + WebSocket 路由
+├── chasing_points.api        # 后端契约单一真源
+├── chasing_points.go         # 服务入口，注册 HTTP + WebSocket 路由
 ├── go.mod                    # go-zero + Gorm + Redis + Ali SMS + UniPush 依赖
 ├── etc/                      # API 配置，支持 .env 注入
 ├── internal/                 # handler / logic / model / svc / pkg / utils / types
 ├── migrations/               # goose SQL 迁移
 ├── goose.sh                  # 基于 .env 的 migration 脚本
-└── .env                      # 本地数据库、短信等环境变量（如存在）
+└── readme.md                 # 当前基本为空，不要依赖它获取事实
 ```
 
 ## DOMAIN MAP
-- `chasing_points.api` 当前覆盖 `auth`、`public`、`user`、`match`、`opponent`、`rank`、`achievement`、`friend`、`follow`、`social`、`challenge`、`tournament`、`season`、`venue`、`rules`、`notification`、`share`、`stats`。
+- `chasing_points.api` 当前覆盖 `auth`、`public`、`user`、`match`、`opponent`、`rank`、`achievement`、`friend`、`follow`、`social`、`challenge`、`tournament`、`season`、`venue`、`rules`、`notification`、`share`、`stats`，以及 admin 端相关接口。
 - `chasing_points.go` 额外注册了两个 WebSocket 路由：`/api/match/ws`、`/api/user/ws`。
-- `internal/svc/service_context.go` 集中初始化 MySQL、Redis、阿里云短信、UniPush，以及所有 model。
+- `internal/svc/service_context.go` 集中初始化 MySQL、Redis、阿里云短信、UniPush、地理编码 worker，以及所有 model。
+- `internal/logic/admin/` 是管理员后台专用逻辑目录；`internal/logic/eventnews/` 是用户端赛事情报读取逻辑目录。
 
 ## WHERE TO LOOK
 | Task | Location | Notes |
@@ -30,6 +31,8 @@ backend/
 | 迁移脚本 | `migrations/*.sql` | 迁移和 model 必须同步 |
 | 迁移执行 | `goose.sh` | 自动读取 `.env` 并包装 goose |
 | 依赖注入 | `internal/svc/service_context.go` | model、Redis、短信、Push 全在这里 |
+| 管理后台逻辑 | `internal/logic/admin/*.go` | admin 登录、首页、用户、对局、球馆审核、赛事情报 |
+| 赛事情报领域 | `internal/model/event_news.go`, `internal/logic/eventnews/*.go` | 该表由 migration 管理，不走 AutoMigrate |
 
 ## CONVENTIONS
 - 修改 `.api` 后必须执行：`goctl api go --api chasing_points.api --dir . --style go_zero --home ~/.goctl/default`。
@@ -40,12 +43,14 @@ backend/
 - 需要用户 ID 时必须调用 `internal/utils/jwt_parser.go` 的 `GetUserIDFromCtx`。
 - 迁移 SQL 必须包含 `+goose Up` / `+goose Down`，建表语句带 `IF NOT EXISTS`。
 - 修改业务表结构后，要同步补齐 Gorm 模型、json 标签和必要的 model 方法。
+- 新增测试如果依赖 migration 管理的表，必须显式建 schema；不要默认指望 model 构造函数帮你建表。
 
 ## ANTI-PATTERNS
 - 不要把 `.api` 当“参考文档”，它是实际契约源；改接口先改它。
 - 不要忽略 `chasing_points.go` 里手工注册的 WebSocket 路由。
 - 不要在 logic 里新建 MySQL/Redis/SMS/Push 客户端；统一从 `ServiceContext` 注入。
 - 不要假设后端只有 HTTP 接口；对局和用户通知还依赖 WebSocket 实时链路。
+- 不要把 `readme.md` 当成当前后端说明文档；现在几乎没有内容。
 
 ## QUICK COMMANDS
 ```bash
@@ -59,4 +64,7 @@ goctl api go --api chasing_points.api --dir . --style go_zero --home ~/.goctl/de
 ./goose.sh status
 ./goose.sh up
 ./goose.sh create <name>
+
+# 后端测试
+go test ./...
 ```

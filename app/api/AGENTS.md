@@ -1,28 +1,27 @@
 # FRONTEND API LAYER GUIDE
 
 ## OVERVIEW
-`api/` 是页面访问后端的唯一门面层。当前接口已经按认证、对局、排行榜、成就、社交、赛事、赛季、球房、规则、通知、分享、统计等领域拆分。
+`api/` 是用户端页面访问后端的唯一门面层。页面、组件和 store 不应直接触达 `utils/request.js`；统一通过这里按业务域组织接口。
 
 ## STRUCTURE
 ```text
 api/
+├── achievement.js   # 成就列表、用户成就、称号
 ├── auth.js          # 短信、登录、OAuth、绑定手机号
-├── user.js          # 用户资料、昵称、推送 token 等
-├── match.js         # 对局、交锋、公开对局、对手
-├── rank.js          # 段位、排行榜
-├── achievement.js   # 成就、称号
-├── friend.js        # 好友列表、申请、搜索
-├── follow.js        # 关注/粉丝
-├── social.js        # 动态流、发帖、评论、点赞
-├── challenge.js     # PK 挑战
-├── tournament.js    # 赛事、报名、对阵、分享
-├── event-news.js    # 赛事情报、焦点赛事、赛事详情
-├── season.js        # 赛季榜单、赛季报告
-├── venue.js         # 球房、附近球房、签到
-├── rules.js         # 规则目录、详情、术语
+├── challenge.js     # PK 挑战发送/接受/拒绝
+├── event-news.js    # 赛事情报列表、焦点赛事、详情
+├── friend.js        # 好友列表、好友申请、搜索用户
+├── match.js         # 对局、当前对局、历史、交锋、公开对局、对手
 ├── notification.js  # 通知列表、已读、删除、未读数
-├── share.js         # 分享相关接口
-└── stats.js         # 深度统计数据
+├── rank.js          # 段位、榜单
+├── rules.js         # 规则目录、详情、术语
+├── season.js        # 当前赛季、赛季榜、赛季报告
+├── share.js         # 对局/赛事分享
+├── social.js        # 动态流、发帖、评论、点赞
+├── stats.js         # 深度统计、趋势、对手强度
+├── tournament.js    # 赛事列表、创建、详情、报名、对阵
+├── user.js          # 用户资料、昵称、推送 token
+└── venue.js         # 球房列表、详情、附近球房、签到、提交
 ```
 
 ## REQUEST CONTRACT
@@ -39,7 +38,7 @@ api/
 | 用户资料和设置 | `user.js` | 昵称、资料、推送 token |
 | 对局流转与观战 | `match.js` | 同时覆盖 `/api/match`、`/api/public`、`/api/opponent` |
 | 通知中心 | `notification.js` | 与 `store/notification.js`、`subPages/notification/index.vue` 联动 |
-| 社交关系链 | `friend.js`, `follow.js`, `social.js`, `challenge.js` | 好友/关注/帖子/挑战是拆分的 |
+| 社交关系链 | `friend.js`, `social.js`, `challenge.js` | 当前仓库没有单独的 `follow.js` 文件 |
 | 赛事与赛季 | `tournament.js`, `season.js` | 赛事分享和赛季报告是独立模块 |
 | 球房与规则 | `venue.js`, `rules.js` | 对应分包页面较多 |
 | 分享和深度统计 | `share.js`, `stats.js` | 对局海报、赛季报告、用户深度统计 |
@@ -50,9 +49,10 @@ api/
 - API 层只做请求和参数组织，不写 toast、弹窗、跳转等 UI 行为。
 - 新接口先确认后端 `.api` 契约，再补前端封装，避免页面直接依赖未稳定路径。
 - 公共接口也放在已有领域文件中维护，不要为了 `/api/public` 单独再造一层页面请求。
+- 如果多个页面复用相同的请求参数整形逻辑，优先提炼到 API 层或 `utils/*.js`，不要复制粘贴。
 
 ## ANTI-PATTERNS
 - 禁止在页面里直接 `uni.request`。
 - 禁止在页面里绕过 `api/*.js` 直接调用 `utils/request.js`。
 - 禁止在 API 层做页面状态管理、副作用导航或重复认证处理。
-- 禁止保留已经不存在的旧模块说明，如 `mall.js`、`order.js`、`favorites.js`、`address.js`。
+- 禁止保留已经不存在的旧模块说明，如 `follow.js`、`mall.js`、`order.js`、`favorites.js`、`address.js`。

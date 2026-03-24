@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/store/user'
+import { unwrapBusinessData } from './response'
 
 // 创建 axios 实例
 const request: AxiosInstance = axios.create({
@@ -32,7 +33,7 @@ request.interceptors.response.use(
     
     // 根据后端返回格式判断
     if (data.code === 0 || data.success === true) {
-      return data.data || data
+      return unwrapBusinessData(data)
     }
     
     // 业务错误
