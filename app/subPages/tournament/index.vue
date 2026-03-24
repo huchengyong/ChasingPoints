@@ -187,70 +187,108 @@ const normalizeEventNewsItem = (item, now = Date.now()) => {
 	}
 }
 
-const fetchList = async (isRefresh = false) => {
+const buildQueryParams = (pageValue, gameTypeValue, statusValue) => {
+	const params = {
+		page: pageValue,
+		page_size: 10
+	}
+	if (gameTypeValue > 0) params.game_type = gameTypeValue
+	if (statusValue >= 0) params.status = statusValue
+	return params
+}
+
+const fetchList = async ({
+	pageValue = page.value,
+	gameTypeValue = selectedGameType.value.value,
+	statusValue = selectedStatus.value.value,
+	replace = false,
+	commitSelection = null
+} = {}) => {
 	if (loading.value) return
 	loading.value = true
 	try {
-		const params = {
-			page: page.value,
-			page_size: 10
-		}
-		if (selectedGameType.value.value > 0) params.game_type = selectedGameType.value.value
-		if (selectedStatus.value.value >= 0) params.status = selectedStatus.value.value
-
-		const res = await getEventNewsList(params)
+		const res = await getEventNewsList(buildQueryParams(pageValue, gameTypeValue, statusValue))
 		if (res.success) {
 			const newList = (res.list || []).map((item) => normalizeEventNewsItem(item))
-			if (isRefresh) {
+			if (commitSelection) {
+				if (commitSelection.gameType) selectedGameType.value = commitSelection.gameType
+				if (commitSelection.status) selectedStatus.value = commitSelection.status
+			}
+			if (replace) {
 				list.value = newList
 			} else {
 				list.value = [...list.value, ...newList]
 			}
+			page.value = pageValue
 			totalCount.value = res.total || 0
 			hasMore.value = list.value.length < (res.total || 0)
+			return true
 		}
+		return false
 	} catch (e) {
 		console.error('获取赛事情报列表失败', e)
+		return false
 	} finally {
 		loading.value = false
 		refreshing.value = false
 	}
 }
 
-const onRefresh = () => {
+const onRefresh = async () => {
 	if (loading.value) return
 	refreshing.value = true
-	page.value = 1
-	fetchList(true)
+	await fetchList({
+		pageValue: 1,
+		replace: true
+	})
 }
 
-const loadMore = () => {
+const loadMore = async () => {
 	if (!hasMore.value || loading.value) return
-	page.value++
-	fetchList()
+	await fetchList({
+		pageValue: page.value + 1,
+		replace: false
+	})
 }
 
-const onGameTypeChange = (e) => {
+const onGameTypeChange = async (e) => {
 	if (loading.value) return
-	selectedGameType.value = gameTypes.value[e.detail.value]
-	page.value = 1
-	list.value = []
-	fetchList(true)
+	const nextGameType = gameTypes.value[e.detail.value]
+	await fetchList({
+		pageValue: 1,
+		gameTypeValue: nextGameType.value,
+		statusValue: selectedStatus.value.value,
+		replace: true,
+		commitSelection: {
+			gameType: nextGameType,
+			status: selectedStatus.value
+		}
+	})
 }
 
-const onStatusChange = (e) => {
+const onStatusChange = async (e) => {
 	if (loading.value) return
-	selectedStatus.value = statusList.value[e.detail.value]
-	page.value = 1
-	list.value = []
-	fetchList(true)
+	const nextStatus = statusList.value[e.detail.value]
+	await fetchList({
+		pageValue: 1,
+		gameTypeValue: selectedGameType.value.value,
+		statusValue: nextStatus.value,
+		replace: true,
+		commitSelection: {
+			gameType: selectedGameType.value,
+			status: nextStatus
+		}
+	})
 }
 
 const goDetail = (id) => {
 	uni.navigateTo({ url: '/subPages/tournament/detail?id=' + id })
 }
 
-onMounted(() => fetchList(true))
+onMounted(() => fetchList({
+	pageValue: 1,
+	replace: true
+}))
 </script>
 
 <style lang="scss" scoped>
