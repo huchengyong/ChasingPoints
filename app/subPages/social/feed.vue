@@ -27,7 +27,7 @@
 
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
@@ -379,7 +379,7 @@ onShow(() => {
 		position: relative;
 
 		&.active {
-			color: #18b05b;
+			color: #C69200;
 			font-weight: 600;
 
 			&::after {
@@ -390,7 +390,7 @@ onShow(() => {
 				transform: translateX(-50%);
 				width: 48rpx;
 				height: 6rpx;
-				background: #18b05b;
+				background: #E0AE12;
 				border-radius: 3rpx;
 			}
 		}
@@ -532,11 +532,11 @@ onShow(() => {
 			align-items: center;
 			padding: 10rpx 18rpx;
 			border-radius: 999rpx;
-			background: rgba(24, 176, 91, 0.08);
+			background: rgba(224, 174, 18, 0.12);
 
 			text {
 				font-size: 22rpx;
-				color: #18b05b;
+				color: #C69200;
 			}
 		}
 	}
@@ -559,7 +559,7 @@ onShow(() => {
 			.comment-user {
 				font-size: 24rpx;
 				font-weight: 500;
-				color: #18b05b;
+				color: #C69200;
 				margin-right: 8rpx;
 			}
 			.comment-text {
@@ -592,11 +592,11 @@ onShow(() => {
 
 			.comment-send {
 				padding: 12rpx 24rpx;
-				background: #18b05b;
+				background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
 				border-radius: 32rpx;
 				text {
 					font-size: 26rpx;
-					color: #fff;
+					color: #1f2937;
 				}
 			}
 		}
@@ -641,11 +641,11 @@ onShow(() => {
 	bottom: 120rpx;
 	width: 100rpx;
 	height: 100rpx;
-	background: #18b05b;
+	background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
 	border-radius: 50%;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	box-shadow: 0 8rpx 24rpx rgba(59, 130, 246, 0.4);
+	box-shadow: 0 8rpx 24rpx rgba(224, 174, 18, 0.26);
 }
 </style>

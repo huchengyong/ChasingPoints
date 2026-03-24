@@ -5,14 +5,14 @@
 			<view class="settings-item">
 				<view class="item-left">
 					<view class="icon-wrapper green">
-						<uni-icons type="tune-filled" size="24" color="#22c55e"></uni-icons>
+						<uni-icons type="tune-filled" size="24" color="#E0AE12"></uni-icons>
 					</view>
 					<text class="item-text">对局通知</text>
 				</view>
 				<switch
 					:checked="matchUpdates"
 					@change="toggleMatchUpdates"
-					color="#18b05b"
+					color="#E0AE12"
 					style="transform:scale(0.8)"
 				/>
 			</view>
@@ -21,14 +21,14 @@
 			<view class="settings-item">
 				<view class="item-left">
 					<view class="icon-wrapper blue">
-						<uni-icons type="staff-filled" size="24" color="#18b05b"></uni-icons>
+						<uni-icons type="staff-filled" size="24" color="#E0AE12"></uni-icons>
 					</view>
 					<text class="item-text">对手请求</text>
 				</view>
 				<switch
 					:checked="friendRequests"
 					@change="toggleFriendRequests"
-					color="#18b05b"
+					color="#E0AE12"
 					style="transform:scale(0.8)"
 				/>
 			</view>
@@ -44,7 +44,7 @@
 				<switch
 					:checked="systemAnnouncements"
 					@change="toggleSystemAnnouncements"
-					color="#18b05b"
+					color="#E0AE12"
 					style="transform:scale(0.8)"
 				/>
 			</view>

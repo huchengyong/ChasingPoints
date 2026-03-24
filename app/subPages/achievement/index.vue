@@ -26,7 +26,7 @@
 
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
@@ -147,7 +147,7 @@ onLoad(() => {
 	justify-content: space-between;
 	margin: 24rpx;
 	padding: 28rpx 32rpx;
-	background: linear-gradient(135deg, #18b05b, #8b5cf6);
+	background: linear-gradient(135deg, #E0AE12, #F59E0B);
 	border-radius: 20rpx;
 	color: #fff;
 
@@ -180,8 +180,8 @@ onLoad(() => {
 		color: #64748b;
 
 		&.active {
-			background: #18b05b;
-			color: #fff;
+			background: #E0AE12;
+			color: #1f2937;
 		}
 	}
 }
@@ -214,14 +214,14 @@ onLoad(() => {
 		align-items: center;
 
 		&.unlocked {
-			border: 2rpx solid #18b05b;
+			border: 2rpx solid #E0AE12;
 		}
 
 		.card-icon {
 			width: 96rpx;
 			height: 96rpx;
 			border-radius: 50%;
-			background: #f0fdf4;
+			background: rgba(224, 174, 18, 0.12);
 			display: flex;
 			align-items: center;
 			justify-content: center;
@@ -260,7 +260,7 @@ onLoad(() => {
 				transition: width 0.3s;
 
 				&.complete {
-					background: #18b05b;
+					background: #E0AE12;
 				}
 			}
 		}

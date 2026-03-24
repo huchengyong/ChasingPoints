@@ -1,7 +1,7 @@
 <template>
 	<view class="friend-list-page">
 		<view v-if="mode === 'pk-report'" class="page-banner">
-			<uni-icons type="bars" size="18" color="#18b05b"></uni-icons>
+			<uni-icons type="bars" size="18" color="#E0AE12"></uni-icons>
 			<text>选择一位好友，基于你们的真实交锋记录生成 PK 报表。</text>
 		</view>
 
@@ -13,7 +13,7 @@
 			</view>
 			<view class="header-actions">
 				<view class="action-btn" @tap="goToRequests">
-					<uni-icons type="person-filled" size="22" color="#18b05b"></uni-icons>
+					<uni-icons type="person-filled" size="22" color="#E0AE12"></uni-icons>
 					<view v-if="pendingCount > 0" class="action-badge">
 						<text class="badge-num">{{ pendingCount > 99 ? '99+' : pendingCount }}</text>
 					</view>
@@ -23,7 +23,7 @@
 
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
@@ -180,12 +180,12 @@ onPullDownRefresh(() => {
 	margin: 20rpx 24rpx 0;
 	padding: 18rpx 20rpx;
 	border-radius: 18rpx;
-	background: rgba(24, 176, 91, 0.08);
+	background: rgba(224, 174, 18, 0.12);
 
 	text {
 		font-size: 24rpx;
 		line-height: 1.6;
-		color: #166534;
+		color: #7c5b12;
 	}
 }
 
@@ -334,8 +334,8 @@ onPullDownRefresh(() => {
 		margin-bottom: 40rpx;
 	}
 	.add-btn {
-		background: #18b05b;
-		color: #fff;
+		background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
+		color: #1f2937;
 		border-radius: 40rpx;
 		padding: 0 60rpx;
 		height: 80rpx;

@@ -1,7 +1,7 @@
 <template>
 	<view class="detail-page">
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
@@ -102,7 +102,7 @@
 
 		<view v-else class="empty-state">
 			<view class="empty-icon">
-				<uni-icons type="calendar" size="36" color="#15803d"></uni-icons>
+				<uni-icons type="calendar" size="36" color="#E0AE12"></uni-icons>
 			</view>
 			<text class="empty-title">{{ errorMessage || '未找到该赛事情报' }}</text>
 			<text class="empty-text">可以返回上一页，或重试加载这条赛事情报。</text>

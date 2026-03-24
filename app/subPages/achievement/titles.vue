@@ -2,7 +2,7 @@
 	<view class="titles-page">
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
@@ -118,8 +118,8 @@ onLoad(() => {
 		margin-bottom: 16rpx;
 
 		&.equipped {
-			border: 2rpx solid #18b05b;
-			background: #f0fdf4;
+			border: 2rpx solid #E0AE12;
+			background: rgba(224, 174, 18, 0.12);
 		}
 
 		.title-left {
@@ -142,12 +142,12 @@ onLoad(() => {
 						color: #d97706;
 					}
 					&.season {
-						background: #dcfce7;
-						color: #15803d;
+						background: rgba(224, 174, 18, 0.14);
+						color: #C69200;
 					}
 					&.tournament {
-						background: #dcfce7;
-						color: #16a34a;
+						background: rgba(59, 130, 246, 0.12);
+						color: #2563eb;
 					}
 					&.default {
 						background: #f1f5f9;
@@ -164,8 +164,8 @@ onLoad(() => {
 			text-align: center;
 			border-radius: 30rpx;
 			font-size: 26rpx;
-			background: #18b05b;
-			color: #fff;
+			background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
+			color: #1f2937;
 			border: none;
 			padding: 0 24rpx;
 			margin: 0;

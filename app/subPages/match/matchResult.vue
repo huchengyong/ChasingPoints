@@ -18,7 +18,7 @@
 		</view>
 
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="28" :color="isDarkMode ? '#86efac' : '#18b05b'"></uni-icons>
+			<uni-icons type="spinner-cycle" size="28" :color="isDarkMode ? '#FCD34D' : '#E0AE12'"></uni-icons>
 			<text class="loading-text">正在生成本场战报...</text>
 		</view>
 
@@ -403,7 +403,7 @@ const getToneColor = (tone) => {
 		case 'gold':
 			return '#f59e0b'
 		case 'blue':
-			return '#18b05b'
+			return '#3b82f6'
 		case 'red':
 			return '#ef4444'
 		case 'green':

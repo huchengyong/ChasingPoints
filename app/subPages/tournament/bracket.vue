@@ -1,7 +1,7 @@
 <template>
 	<view class="bracket-page">
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载对阵图...</text>
 		</view>
 

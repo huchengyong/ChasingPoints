@@ -1,7 +1,7 @@
 <template>
 	<view class="challenges-page">
 		<view class="page-tip">
-			<uni-icons type="info" size="16" color="#18b05b"></uni-icons>
+			<uni-icons type="info" size="16" color="#E0AE12"></uni-icons>
 			<text>这里记录的是线上 PK 邀约，只用于社交互动，不会直接生成真实对局。</text>
 		</view>
 
@@ -38,7 +38,7 @@
 
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
@@ -297,7 +297,7 @@ onUnmounted(() => {
 	margin: 20rpx 24rpx 0;
 	padding: 18rpx 20rpx;
 	border-radius: 20rpx;
-	background: rgba(24, 176, 91, 0.08);
+	background: rgba(224, 174, 18, 0.12);
 	display: flex;
 	align-items: flex-start;
 	gap: 12rpx;
@@ -306,7 +306,7 @@ onUnmounted(() => {
 	text {
 		font-size: 24rpx;
 		line-height: 1.6;
-		color: #166534;
+		color: #7c5b12;
 	}
 }
 .summary-grid {
@@ -325,7 +325,7 @@ onUnmounted(() => {
 		display: block;
 		font-size: 40rpx;
 		font-weight: 700;
-		color: #18b05b;
+		color: #C69200;
 	}
 
 	.summary-label {
@@ -348,7 +348,7 @@ onUnmounted(() => {
 		color: #64748b;
 		position: relative;
 		&.active {
-			color: #18b05b;
+			color: #C69200;
 			font-weight: 600;
 			&::after {
 				content: '';
@@ -357,7 +357,7 @@ onUnmounted(() => {
 				left: 30%;
 				right: 30%;
 				height: 4rpx;
-				background: #18b05b;
+				background: #E0AE12;
 				border-radius: 2rpx;
 			}
 		}
@@ -439,11 +439,11 @@ onUnmounted(() => {
 		display: inline-flex;
 		padding: 12rpx 18rpx;
 		border-radius: 999rpx;
-		background: rgba(24, 176, 91, 0.08);
+		background: rgba(224, 174, 18, 0.12);
 
 		text {
 			font-size: 22rpx;
-			color: #18b05b;
+			color: #C69200;
 		}
 	}
 	.card-actions {
@@ -458,8 +458,8 @@ onUnmounted(() => {
 			font-size: 28rpx;
 		}
 		.reject-btn { background: #f1f5f9; color: #64748b; }
-		.accept-btn { background: #18b05b; color: #fff; font-weight: 500; }
-		.ghost-btn { background: #f0fdf4; color: #18b05b; }
+		.accept-btn { background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%); color: #1f2937; font-weight: 600; }
+		.ghost-btn { background: rgba(224, 174, 18, 0.12); color: #C69200; }
 	}
 }
 .empty-state {
@@ -499,7 +499,7 @@ onUnmounted(() => {
 			background: #f1f5f9;
 			font-size: 26rpx;
 			color: #475569;
-			&.selected { background: #18b05b; color: #fff; }
+			&.selected { background: #E0AE12; color: #1f2937; }
 		}
 	}
 	.message-input {
@@ -521,7 +521,7 @@ onUnmounted(() => {
 			font-size: 28rpx;
 		}
 		.cancel-btn { background: #f1f5f9; color: #64748b; }
-		.confirm-btn { background: #18b05b; color: #fff; font-weight: 500; }
+		.confirm-btn { background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%); color: #1f2937; font-weight: 600; }
 	}
 }
 </style>

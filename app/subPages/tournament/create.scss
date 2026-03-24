@@ -3,7 +3,7 @@
 	padding: 24rpx 24rpx 220rpx;
 	box-sizing: border-box;
 	background:
-		linear-gradient(180deg, #dcfce7 0%, #f0fdf4 18%, #f8fafc 36%, #f8fafc 100%);
+		linear-gradient(180deg, #ffffff 0%, #f8fafc 40%, #f8fafc 100%);
 }
 
 .page-intro,
@@ -16,7 +16,7 @@
 	margin-bottom: 20rpx;
 	padding: 32rpx 28rpx;
 	border-radius: 28rpx;
-	background: linear-gradient(135deg, #0f172a 0%, #166534 62%, #38bdf8 100%);
+	background: linear-gradient(135deg, #0f172a 0%, #7c5b12 62%, #38bdf8 100%);
 	box-shadow: 0 18rpx 40rpx rgba(37, 99, 235, 0.16);
 
 	.intro-copy {
@@ -181,8 +181,8 @@
 }
 
 .label-required {
-	color: #166534;
-	background: #dcfce7;
+	color: #7c5b12;
+	background: rgba(224, 174, 18, 0.16);
 }
 
 .label-optional {
@@ -192,7 +192,7 @@
 
 .label-complete {
 	color: #047857;
-	background: #dcfce7;
+	background: rgba(224, 174, 18, 0.16);
 }
 
 .form-input,
@@ -347,7 +347,7 @@
 	min-width: 220rpx;
 	padding: 24rpx 32rpx;
 	border-radius: 22rpx;
-	background: linear-gradient(135deg, #15803d 0%, #0284c7 100%);
+	background: linear-gradient(135deg, #C69200 0%, #0284c7 100%);
 	box-shadow: 0 12rpx 24rpx rgba(37, 99, 235, 0.22);
 	text-align: center;
 

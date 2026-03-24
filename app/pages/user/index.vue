@@ -484,7 +484,7 @@ const quickActions = computed(() => ([
 		label: '竞技分析',
 		desc: '查看更完整的竞技画像',
 		icon: 'bars',
-		iconColor: '#22c55e',
+		iconColor: '#E0AE12',
 		iconClass: 'green',
 		handler: handleStatsDetail
 	},

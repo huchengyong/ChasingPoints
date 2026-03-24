@@ -250,8 +250,8 @@ const handlePublish = async () => {
 			color: #64748b;
 
 			&.active {
-				background: #18b05b;
-				color: #fff;
+				background: #E0AE12;
+				color: #1f2937;
 			}
 		}
 	}
@@ -260,8 +260,8 @@ const handlePublish = async () => {
 .publish-section {
 	.publish-btn {
 		width: 100%;
-		background: #18b05b;
-		color: #fff;
+		background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
+		color: #1f2937;
 		border-radius: 40rpx;
 		height: 88rpx;
 		line-height: 88rpx;

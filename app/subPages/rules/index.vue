@@ -19,7 +19,7 @@
 				<text class="clear-btn" @tap="clearSearch">清除</text>
 			</view>
 			<view v-if="searchLoading" class="loading-state">
-				<uni-icons type="spinner-cycle" size="28" color="#18b05b"></uni-icons>
+				<uni-icons type="spinner-cycle" size="28" color="#E0AE12"></uni-icons>
 			</view>
 			<view v-else-if="searchResults.length > 0">
 				<view
@@ -169,7 +169,7 @@ const goToGlossary = () => {
 
 	.clear-btn {
 		font-size: 24rpx;
-		color: #18b05b;
+		color: #C69200;
 		font-weight: 400;
 	}
 }

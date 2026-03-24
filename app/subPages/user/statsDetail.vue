@@ -2,7 +2,7 @@
 	<view class="stats-page">
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载统计数据...</text>
 		</view>
 
@@ -356,8 +356,8 @@ watch(currentGame, () => {
 		color: #64748b;
 
 		&.active {
-			background: #18b05b;
-			color: #fff;
+			background: #E0AE12;
+			color: #1f2937;
 		}
 	}
 }
@@ -378,7 +378,7 @@ watch(currentGame, () => {
 			font-weight: 700;
 			color: #1e293b;
 
-			&.highlight { color: #18b05b; }
+			&.highlight { color: #C69200; }
 			&.green { color: #22c55e; }
 			&.red { color: #ef4444; }
 		}
@@ -464,7 +464,7 @@ watch(currentGame, () => {
 		.rank-value {
 			font-size: 56rpx;
 			font-weight: 800;
-			color: #18b05b;
+			color: #C69200;
 		}
 		.rank-label {
 			font-size: 24rpx;

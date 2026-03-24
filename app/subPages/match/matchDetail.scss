@@ -1,23 +1,23 @@
 /* 对局详情/观战页面样式 */
 
 // 主色调
-$primary-color: #18b05b;
+$primary-color: #E0AE12;
 
 // 浅色模式变量 (默认)
-$bg-light: #f4f7f4;
+$bg-light: #f8fafc;
 $card-bg-light: #ffffff;
 $text-primary-light: #0f172a;
 $text-secondary-light: #64748b;
 $text-muted-light: #94a3b8;
-$border-color-light: #dce7df;
+$border-color-light: #e2e8f0;
 
 // 深色模式变量
-$bg-dark: #0f1712;
-$card-bg-dark: #16211a;
-$text-primary-dark: #f3fff6;
-$text-secondary-dark: #a7c0af;
-$text-muted-dark: #6f8878;
-$border-color-dark: #24342a;
+$bg-dark: #0f172a;
+$card-bg-dark: #1e293b;
+$text-primary-dark: #f8fafc;
+$text-secondary-dark: #94a3b8;
+$text-muted-dark: #64748b;
+$border-color-dark: #334155;
 
 // 状态颜色
 $win-color: #4CAF50;
@@ -41,8 +41,8 @@ $loss-color: #E57373;
         }
 
         .spectate-badge {
-            background: linear-gradient(135deg, rgba(24, 176, 91, 0.3), rgba(21, 128, 61, 0.3));
-            border-color: rgba(24, 176, 91, 0.5);
+            background: linear-gradient(135deg, rgba(224, 174, 18, 0.28), rgba(245, 158, 11, 0.22));
+            border-color: rgba(224, 174, 18, 0.38);
 
             text {
                 color: $text-primary-dark;
@@ -152,9 +152,9 @@ $loss-color: #E57373;
     gap: 12rpx;
     padding: 16rpx 32rpx;
     margin-bottom: 24rpx;
-    background: linear-gradient(135deg, rgba(24, 176, 91, 0.15), rgba(21, 128, 61, 0.15));
+    background: linear-gradient(135deg, rgba(224, 174, 18, 0.14), rgba(245, 158, 11, 0.1));
     border-radius: 16rpx;
-    border: 2rpx solid rgba(24, 176, 91, 0.3);
+    border: 2rpx solid rgba(224, 174, 18, 0.26);
 
     text {
         font-size: 28rpx;

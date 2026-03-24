@@ -2,7 +2,7 @@
 	<view class="requests-page">
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
@@ -202,8 +202,8 @@ onPullDownRefresh(() => {
 			flex-shrink: 0;
 
 			.action-accept {
-				background: #18b05b;
-				color: #fff;
+				background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
+				color: #1f2937;
 				font-size: 24rpx;
 				padding: 0 24rpx;
 				height: 56rpx;

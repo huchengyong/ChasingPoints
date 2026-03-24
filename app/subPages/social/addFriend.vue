@@ -22,7 +22,7 @@
 
 		<!-- 加载中 -->
 		<view v-if="searching" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">搜索中...</text>
 		</view>
 
@@ -160,11 +160,11 @@ const handleAdd = async (item) => {
 
 	.search-btn {
 		padding: 14rpx 28rpx;
-		background: #18b05b;
+		background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
 		border-radius: 36rpx;
 		text {
 			font-size: 28rpx;
-			color: #fff;
+			color: #1f2937;
 		}
 	}
 }
@@ -234,8 +234,8 @@ const handleAdd = async (item) => {
 			margin: 0;
 
 			&.add {
-				background: #18b05b;
-				color: #fff;
+				background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
+				color: #1f2937;
 			}
 			&.pending {
 				background: #e2e8f0;

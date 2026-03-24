@@ -255,9 +255,9 @@ onPullDownRefresh(() => {
 			justify-content: center;
 			flex-shrink: 0;
 
-			&.type-challenge { background: #dcfce7; }
+			&.type-challenge { background: rgba(224, 174, 18, 0.14); }
 			&.type-tournament { background: #fef3c7; }
-			&.type-rank_change { background: #dcfce7; }
+			&.type-rank_change { background: rgba(59, 130, 246, 0.12); }
 			&.type-friend_request { background: #f3e8ff; }
 			&.type-system { background: #f1f5f9; }
 

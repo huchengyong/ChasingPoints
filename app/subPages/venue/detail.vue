@@ -1,7 +1,7 @@
 <template>
 	<view class="venue-detail-page">
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
@@ -101,11 +101,11 @@
 
 			<view class="action-bar">
 				<view class="action-btn nav-btn" @tap="openNavigation">
-					<uni-icons type="navigate" size="20" color="#18b05b"></uni-icons>
+					<uni-icons type="navigate" size="20" color="#E0AE12"></uni-icons>
 					<text class="nav-text">去导航</text>
 				</view>
 				<view class="action-btn call-btn" @tap="callPhone" v-if="venue.phone">
-					<uni-icons type="phone" size="20" color="#22c55e"></uni-icons>
+					<uni-icons type="phone" size="20" color="#0f766e"></uni-icons>
 					<text class="call-text">打电话</text>
 				</view>
 				<view class="action-btn checkin-btn" :class="{ disabled: hasCheckedIn }" @tap="doCheckin">

@@ -2,7 +2,7 @@
 	min-height: 100vh;
 	box-sizing: border-box;
 	padding: 24rpx 24rpx 180rpx;
-	background: linear-gradient(180deg, #dcfce7 0%, #f0fdf4 20%, #f8fafc 42%, #f8fafc 100%);
+	background: linear-gradient(180deg, #ffffff 0%, #f8fafc 46%, #f8fafc 100%);
 }
 
 .loading-state,
@@ -269,23 +269,23 @@
 }
 
 .nav-btn {
-	background: #f0fdf4;
+	background: rgba(224, 174, 18, 0.12);
 }
 
 .nav-text {
 	font-size: 26rpx;
 	font-weight: 600;
-	color: #15803d;
+	color: #C69200;
 }
 
 .call-btn {
-	background: #f0fdf4;
+	background: rgba(15, 118, 110, 0.12);
 }
 
 .call-text {
 	font-size: 26rpx;
 	font-weight: 600;
-	color: #22c55e;
+	color: #0f766e;
 }
 
 .checkin-btn {

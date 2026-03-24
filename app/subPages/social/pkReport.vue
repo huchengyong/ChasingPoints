@@ -3,7 +3,7 @@
     <canvas canvas-id="pkReportPoster" class="poster-canvas"></canvas>
 
     <view v-if="loading" class="loading-state">
-      <uni-icons type="spinner-cycle" size="38" color="#18b05b"></uni-icons>
+      <uni-icons type="spinner-cycle" size="38" color="#E0AE12"></uni-icons>
       <text class="loading-text">正在生成PK报表...</text>
     </view>
 

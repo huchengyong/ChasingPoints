@@ -43,12 +43,12 @@
     }
 
     &.active {
-        background: linear-gradient(135deg, #18b05b 0%, #15803d 100%);
+        background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
         border-color: transparent;
-        box-shadow: 0 10rpx 24rpx rgba(24, 176, 91, 0.24);
+        box-shadow: 0 10rpx 24rpx rgba(224, 174, 18, 0.24);
 
         text {
-            color: #ffffff;
+            color: #1f2937;
         }
     }
 }
@@ -149,7 +149,7 @@
 
     .progress-fill {
         height: 100%;
-        background-color: #18b05b;
+        background-color: #E0AE12;
         border-radius: 4px;
         transition: width 0.3s ease;
     }
@@ -201,7 +201,7 @@
     transition: all 0.2s ease;
 
     &.is-current {
-        box-shadow: 0 0 0 2px rgba(24, 176, 91, 0.5);
+        box-shadow: 0 0 0 2px rgba(224, 174, 18, 0.36);
     }
 
     .rank-item-header {

@@ -12,7 +12,7 @@
 
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 		</view>
 
 		<!-- 术语列表 -->
@@ -125,8 +125,8 @@ onLoad(() => {
 
 		.term-tag {
 			font-size: 22rpx;
-			background: #f0fdf4;
-			color: #18b05b;
+			background: rgba(224, 174, 18, 0.12);
+			color: #C69200;
 			padding: 4rpx 16rpx;
 			border-radius: 12rpx;
 		}

@@ -6,7 +6,7 @@
 				<view class="menu-item" @click="openEditNicknameModal">
 					<view class="menu-left">
 						<view class="icon-wrapper blue">
-							<uni-icons type="person" size="24" color="#18b05b"></uni-icons>
+							<uni-icons type="person" size="24" color="#E0AE12"></uni-icons>
 						</view>
 						<text class="menu-text">编辑资料</text>
 					</view>
@@ -33,7 +33,7 @@
 				<view class="menu-item" @click="handleNotifications">
 					<view class="menu-left">
 						<view class="icon-wrapper green">
-							<uni-icons type="notification-filled" size="24" color="#22c55e"></uni-icons>
+							<uni-icons type="notification-filled" size="24" color="#E0AE12"></uni-icons>
 						</view>
 						<text class="menu-text">通知管理</text>
 					</view>

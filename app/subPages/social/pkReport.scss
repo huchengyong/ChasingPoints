@@ -81,12 +81,12 @@
 }
 
 .hero-card {
-  background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
+  background: linear-gradient(180deg, rgba(224, 174, 18, 0.08) 0%, #ffffff 100%);
 }
 
 .hero-kicker {
   font-size: 22rpx;
-  color: #18b05b;
+  color: #C69200;
 }
 
 .player-row {
@@ -108,7 +108,7 @@
   width: 112rpx;
   height: 112rpx;
   border-radius: 50%;
-  background: #dcfce7;
+  background: rgba(224, 174, 18, 0.16);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -116,7 +116,7 @@
   &.placeholder text {
     font-size: 36rpx;
     font-weight: 700;
-    color: #18b05b;
+    color: #C69200;
   }
 }
 
@@ -131,7 +131,7 @@
 .vs-title {
   font-size: 42rpx;
   font-weight: 700;
-  color: #18b05b;
+  color: #C69200;
 }
 
 .vs-sub {
@@ -160,7 +160,7 @@
 
 .summary-card {
   margin-top: 24rpx;
-  background: rgba(24, 176, 91, 0.08);
+  background: rgba(224, 174, 18, 0.12);
   border-radius: 20rpx;
   padding: 20rpx;
 }
@@ -168,7 +168,7 @@
 .summary-title {
   font-size: 24rpx;
   font-weight: 600;
-  color: #18b05b;
+  color: #C69200;
 }
 
 .summary-text {
@@ -299,18 +299,18 @@
 }
 
 .primary-btn {
-  background: #18b05b;
+  background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
 
   text {
-    color: #ffffff;
+    color: #1f2937;
   }
 }
 
 .secondary-btn {
-  background: #f0fdf4;
+  background: rgba(224, 174, 18, 0.12);
 
   text {
-    color: #18b05b;
+    color: #C69200;
   }
 }
 

@@ -5,7 +5,7 @@
 
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">生成海报中...</text>
 		</view>
 
@@ -157,7 +157,7 @@ onLoad((options) => {
 		align-items: center;
 		justify-content: center;
 		gap: 12rpx;
-		background: #18b05b;
+		background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
 		border-radius: 12rpx;
 		padding: 24rpx;
 		.save-text { font-size: 30rpx; color: #fff; font-weight: 500; }

@@ -21,7 +21,7 @@
 
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 		</view>
 
 		<!-- 内容列表 -->
@@ -157,8 +157,8 @@ onLoad((options) => {
 		color: #64748b;
 
 		&.active {
-			background: #18b05b;
-			color: #fff;
+			background: #E0AE12;
+			color: #1f2937;
 		}
 	}
 }
@@ -188,8 +188,8 @@ onLoad((options) => {
 				width: 48rpx;
 				height: 48rpx;
 				border-radius: 50%;
-				background: #f0fdf4;
-				color: #18b05b;
+				background: rgba(224, 174, 18, 0.12);
+				color: #C69200;
 				font-size: 24rpx;
 				font-weight: 600;
 				display: flex;
