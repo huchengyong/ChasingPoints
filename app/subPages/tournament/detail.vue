@@ -160,7 +160,7 @@ const formatEventRelativeText = (dateTime, now = Date.now()) => {
 
 const normalizeEventNews = (item, now = Date.now()) => {
 	const startTime = item.start_time || item.sort_time || item.created_at
-	const endTime = item.end_time || item.updated_at || ''
+	const endTime = item.end_time || ''
 
 	return {
 		id: item.id,
@@ -193,16 +193,12 @@ const fetchDetail = async () => {
 	errorMessage.value = ''
 	try {
 		const res = await getEventNewsDetail({ event_news_id: eventNewsId.value })
-		if (res.success && (res.event_news || res.eventNews)) {
-			eventNews.value = normalizeEventNews(res.event_news || res.eventNews)
-			return
-		}
-		eventNews.value = null
-		errorMessage.value = res.message || '未找到该赛事情报'
+		eventNews.value = normalizeEventNews(res.event_news || res.eventNews)
+		return
 	} catch (e) {
 		console.error('获取赛事情报详情失败', e)
 		eventNews.value = null
-		errorMessage.value = '加载失败，请稍后重试'
+		errorMessage.value = e?.responseData?.message || e?.message || '加载失败，请稍后重试'
 	} finally {
 		loading.value = false
 	}
