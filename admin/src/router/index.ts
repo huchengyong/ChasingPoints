@@ -33,6 +33,12 @@ const routes = [
         meta: { title: '对局管理', icon: 'Trophy' }
       },
       {
+        path: 'event-news',
+        name: 'EventNews',
+        component: () => import('@/views/event-news/index.vue'),
+        meta: { title: '赛事情报', icon: 'Calendar' }
+      },
+      {
         path: 'venues',
         name: 'Venues',
         component: () => import('@/views/venues/index.vue'),

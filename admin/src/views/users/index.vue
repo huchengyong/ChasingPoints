@@ -5,7 +5,7 @@
         <div class="card-header">
           <span>用户管理</span>
           <div class="header-filters">
-            <el-select v-model="filterStatus" placeholder="用户状态" clearable @change="handleFilterChange">
+            <el-select v-model="filterStatus" placeholder="用户状态" @change="handleFilterChange">
               <el-option label="全部" :value="-1" />
               <el-option label="正常" :value="1" />
               <el-option label="禁用" :value="0" />
@@ -79,7 +79,11 @@ const filterStatus = ref<number>(-1)
 const fetchUserList = async () => {
   loading.value = true
   try {
-    const params: any = {
+    const params: {
+      page: number
+      page_size: number
+      status?: number
+    } = {
       page: page.value,
       page_size: pageSize.value
     }
