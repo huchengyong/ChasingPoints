@@ -260,18 +260,6 @@ const dialogMode = ref<'create' | 'edit'>('create')
 const editingId = ref<number | null>(null)
 const formRef = ref<FormInstance>()
 
-function formatDateTime(value: Date) {
-  const year = value.getFullYear()
-  const month = `${value.getMonth() + 1}`.padStart(2, '0')
-  const day = `${value.getDate()}`.padStart(2, '0')
-  const hour = `${value.getHours()}`.padStart(2, '0')
-  const minute = `${value.getMinutes()}`.padStart(2, '0')
-  const second = `${value.getSeconds()}`.padStart(2, '0')
-  return `${year}-${month}-${day} ${hour}:${minute}:${second}`
-}
-
-const getNowString = () => formatDateTime(new Date())
-
 const createEmptyForm = (): EventNewsFormModel => ({
   title: '',
   game_type: 1,
@@ -284,13 +272,13 @@ const createEmptyForm = (): EventNewsFormModel => ({
   country: '',
   city: '',
   venue: '',
-  start_time: getNowString(),
+  start_time: '',
   end_time: '',
   status: 0,
   stage_text: '',
   result_text: '',
   featured: false,
-  sort_time: getNowString()
+  sort_time: ''
 })
 
 const formModel = ref<EventNewsFormModel>(createEmptyForm())
@@ -376,10 +364,10 @@ const loadList = async () => {
       eventNewsList.value = res.list || []
       total.value = res.total || 0
     } else {
-      ElMessage.error(res.message || '获取赛事情报列表失败')
+      console.error('获取赛事情报列表失败', res.message)
     }
   } catch (error: any) {
-    ElMessage.error(error.message || '获取赛事情报列表失败')
+    console.error('获取赛事情报列表失败', error)
   } finally {
     loading.value = false
   }
@@ -430,7 +418,7 @@ const openEditDialog = (row: EventNewsItem) => {
     stage_text: row.stage_text || '',
     result_text: row.result_text || '',
     featured: row.featured,
-    sort_time: row.sort_time || row.start_time || getNowString()
+    sort_time: row.sort_time || row.start_time || ''
   }
   dialogVisible.value = true
   formRef.value?.clearValidate()
@@ -488,11 +476,9 @@ const handleSubmit = async () => {
       ElMessage.success(res.message || '保存成功')
       dialogVisible.value = false
       loadList()
-    } else {
-      ElMessage.error(res.message || '保存失败')
     }
   } catch (error: any) {
-    ElMessage.error(error.message || '保存失败')
+    console.error('保存赛事情报失败', error)
   } finally {
     saving.value = false
   }
@@ -517,12 +503,10 @@ const handlePublishToggle = async (row: EventNewsItem) => {
     if (res.success) {
       ElMessage.success(res.message || `${action}成功`)
       loadList()
-    } else {
-      ElMessage.error(res.message || `${action}失败`)
     }
   } catch (error: any) {
     if (error !== 'cancel' && error !== 'close') {
-      ElMessage.error(error.message || `${action}失败`)
+      console.error(`${action}赛事情报失败`, error)
     }
   }
 }
@@ -539,12 +523,10 @@ const handleDelete = async (row: EventNewsItem) => {
     if (res.success) {
       ElMessage.success(res.message || '删除成功')
       loadList()
-    } else {
-      ElMessage.error(res.message || '删除失败')
     }
   } catch (error: any) {
     if (error !== 'cancel' && error !== 'close') {
-      ElMessage.error(error.message || '删除失败')
+      console.error('删除赛事情报失败', error)
     }
   }
 }
