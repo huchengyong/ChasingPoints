@@ -101,7 +101,7 @@ const handleConfirm = () => {
 
 <style lang="scss" scoped>
 // 主色调
-$primary-color: #18b05b;
+$primary-color: #e0ae12;
 
 // 浅色模式变量
 $light-bg: #ffffff;
@@ -227,12 +227,12 @@ $dark-cancel-bg: #27272a;
 				}
 			}
 
-			&.confirm {
-				background-color: $primary-color;
+				&.confirm {
+					background-color: $primary-color;
 
-				text {
-					color: #ffffff;
-				}
+					text {
+						color: #231c0b;
+					}
 
 				&:disabled {
 					opacity: 0.5;

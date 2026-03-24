@@ -4,7 +4,7 @@
 		<view class="main-content">
 			<!-- 加载状态 -->
 			<view v-if="showPageLoading" class="loading-container">
-				<uni-icons type="spinner-cycle" size="48" color="#18b05b"></uni-icons>
+					<uni-icons type="spinner-cycle" size="48" color="#E0AE12"></uni-icons>
 				<text class="loading-text">加载中...</text>
 			</view>
 

@@ -1,33 +1,33 @@
-$primary-color: #18b05b;
-$primary-strong: #15803d;
-$bg-light: #f4f7f4;
+$primary-color: #e0ae12;
+$primary-strong: #c69200;
+$bg-light: #faf8f2;
 $card-bg-light: #ffffff;
-$card-bg-soft-light: #f7fbf7;
-$text-primary-light: #0f172a;
-$text-secondary-light: #64748b;
-$text-muted-light: #94a3b8;
-$border-light: #dce7df;
-$bg-dark: #0f1712;
-$card-bg-dark: #16211a;
-$card-bg-soft-dark: #1c2a22;
-$text-primary-dark: #f3fff6;
-$text-secondary-dark: #a7c0af;
-$text-muted-dark: #6f8878;
-$border-dark: #24342a;
+$card-bg-soft-light: #fdf7e8;
+$text-primary-light: #231c0b;
+$text-secondary-light: #6e6242;
+$text-muted-light: #9a8c67;
+$border-light: #e9e2cf;
+$bg-dark: #141109;
+$card-bg-dark: #1e180d;
+$card-bg-soft-dark: #241d10;
+$text-primary-dark: #fff7e1;
+$text-secondary-dark: #d7c89b;
+$text-muted-dark: #9f926e;
+$border-dark: #3a2e16;
 
 .user-container {
 	min-height: 100vh;
 	background:
-		radial-gradient(circle at top left, rgba(24, 176, 91, 0.12), transparent 30%),
-		linear-gradient(180deg, #eaf7ee 0%, $bg-light 26%, $bg-light 100%);
+		radial-gradient(circle at top left, rgba(224, 174, 18, 0.15), transparent 30%),
+		linear-gradient(180deg, #fff4cf 0%, $bg-light 26%, $bg-light 100%);
 	color: $text-primary-light;
 	padding-bottom: 120rpx;
 	box-sizing: border-box;
 
 	&.dark-mode {
 		background:
-			radial-gradient(circle at top left, rgba(74, 222, 128, 0.18), transparent 28%),
-			linear-gradient(180deg, #0c140f 0%, $bg-dark 30%, $bg-dark 100%);
+			radial-gradient(circle at top left, rgba(240, 197, 66, 0.18), transparent 28%),
+			linear-gradient(180deg, #1a1408 0%, $bg-dark 30%, $bg-dark 100%);
 		color: $text-primary-dark;
 	}
 }
@@ -50,11 +50,11 @@ $border-dark: #24342a;
 .identity-hero {
 	padding: 30rpx;
 	background:
-		radial-gradient(circle at 15% 12%, rgba(110, 231, 183, 0.18), transparent 24%),
+		radial-gradient(circle at 15% 12%, rgba(255, 232, 170, 0.24), transparent 24%),
 		radial-gradient(circle at top right, rgba(255, 255, 255, 0.16), transparent 34%),
-		linear-gradient(135deg, #0f2519 0%, #12402a 42%, #15803d 100%);
+		linear-gradient(135deg, #3c2b08 0%, #8f6507 42%, #c69200 100%);
 	color: #ffffff;
-	box-shadow: 0 22rpx 48rpx rgba(8, 29, 17, 0.22);
+	box-shadow: 0 22rpx 48rpx rgba(60, 43, 8, 0.28);
 }
 
 .identity-mode-tabs {

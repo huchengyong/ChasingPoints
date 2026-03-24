@@ -206,13 +206,13 @@ onLoad((options) => {
 		font-weight: 600;
 		color: #cbd5e1;
 	}
-	&.active {
-		background: linear-gradient(135deg, #18b05b 0%, #15803d 100%);
-		border-color: transparent;
-		text {
-			color: #fff;
+		&.active {
+			background: linear-gradient(135deg, #e0ae12 0%, #c69200 100%);
+			border-color: transparent;
+			text {
+				color: #231c0b;
+			}
 		}
-	}
 }
 .report-card {
 	background: rgba(255,255,255,0.08);
@@ -269,8 +269,8 @@ onLoad((options) => {
 		gap: 16rpx;
 		.type-name { font-size: 26rpx; color: #cbd5e1; width: 140rpx; }
 		.type-bar { flex: 1; height: 16rpx; background: rgba(255,255,255,0.1); border-radius: 8rpx; overflow: hidden;
-			.type-fill { height: 100%; background: #18b05b; border-radius: 8rpx; min-width: 10rpx; }
-		}
+				.type-fill { height: 100%; background: #e0ae12; border-radius: 8rpx; min-width: 10rpx; }
+			}
 		.type-wins { font-size: 24rpx; color: #94a3b8; width: 80rpx; text-align: right; }
 	}
 }

@@ -358,7 +358,7 @@ const rankingSummary = computed(() => {
 })
 
 const toolEntries = computed(() => [
-  { label: 'PK记录', desc: '查看邀约与结果', icon: 'flag-filled', iconColor: '#18b05b', url: '/subPages/social/challenges' },
+  { label: 'PK记录', desc: '查看邀约与结果', icon: 'flag-filled', iconColor: '#E0AE12', url: '/subPages/social/challenges' },
   { label: '深度统计', desc: '看你的竞技画像', icon: 'bars', iconColor: '#16a34a', url: '/subPages/user/statsDetail' },
   { label: '规则说明', desc: '快速查台球规则', icon: 'help', iconColor: '#7c3aed', url: '/subPages/rules/index' },
   { label: '赛事情报', desc: '查看最近赛程赛况', icon: 'calendar', iconColor: '#ea580c', url: '/subPages/tournament/index' },

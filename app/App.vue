@@ -94,33 +94,33 @@
 					// 暗色主题
 					uni.setNavigationBarColor({
 						frontColor: '#ffffff',
-						backgroundColor: '#0f1712',
+						backgroundColor: '#141109',
 						animation: {
 							duration: 400,
 							timingFunc: 'easeIn'
 						}
 					})
 					uni.setTabBarStyle({
-						backgroundColor: '#0f1712',
+						backgroundColor: '#141109',
 						borderStyle: 'white',
-						color: '#a7c0af',
-						selectedColor: '#22c55e'
+						color: '#c6b78c',
+						selectedColor: '#E0AE12'
 					})
 				} else {
 					// 亮色主题
 					uni.setNavigationBarColor({
 						frontColor: '#000000',
-						backgroundColor: '#f4f7f4',
+						backgroundColor: '#faf8f2',
 						animation: {
 							duration: 400,
 							timingFunc: 'easeIn'
 						}
 					})
 					uni.setTabBarStyle({
-						backgroundColor: '#f4f7f4',
+						backgroundColor: '#faf8f2',
 						borderStyle: 'black',
-						color: '#5d7465',
-						selectedColor: '#18b05b'
+						color: '#6e6242',
+						selectedColor: '#E0AE12'
 					})
 				}
 			},
@@ -219,50 +219,50 @@
 	/* 全局 CSS 变量定义 - 亮色主题（默认） */
 	page {
 		/* 主色调 */
-		--primary-color: #18b05b;
-		--primary-color-light: rgba(24, 176, 91, 0.12);
+		--primary-color: #e0ae12;
+		--primary-color-light: rgba(224, 174, 18, 0.14);
 
 		/* 背景色 */
-		--bg-color: #f4f7f4;
+		--bg-color: #faf8f2;
 		--card-bg: #ffffff;
 		--input-bg: #ffffff;
 
 		/* 文字颜色 */
-		--text-primary: #102318;
-		--text-secondary: #5d7465;
-		--text-tertiary: #8aa08f;
+		--text-primary: #231c0b;
+		--text-secondary: #6e6242;
+		--text-tertiary: #9a8c67;
 
 		/* 边框颜色 */
-		--border-color: #dce7df;
+		--border-color: #e9e2cf;
 
 		/* 其他 */
-		--divider-color: #dce7df;
+		--divider-color: #e9e2cf;
 		--danger-color: #ef4444;
 	}
 
 	/* 暗色主题 */
-	@media (prefers-color-scheme: dark) {
-		page {
-			/* 主色调 */
-			--primary-color: #22c55e;
-			--primary-color-light: rgba(34, 197, 94, 0.18);
+		@media (prefers-color-scheme: dark) {
+			page {
+				/* 主色调 */
+				--primary-color: #e0ae12;
+				--primary-color-light: rgba(224, 174, 18, 0.2);
 
-			/* 背景色 */
-			--bg-color: #0f1712;
-			--card-bg: #16211a;
-			--input-bg: #16211a;
+				/* 背景色 */
+				--bg-color: #141109;
+				--card-bg: #1e180d;
+				--input-bg: #1e180d;
 
-			/* 文字颜色 */
-			--text-primary: #f3fff6;
-			--text-secondary: #a7c0af;
-			--text-tertiary: #6f8878;
+				/* 文字颜色 */
+				--text-primary: #fff7e1;
+				--text-secondary: #d7c89b;
+				--text-tertiary: #9f926e;
 
-			/* 边框颜色 */
-			--border-color: #24342a;
+				/* 边框颜色 */
+				--border-color: #3a2e16;
 
-			/* 其他 */
-			--divider-color: #16211a;
-			--danger-color: #ef4444;
+				/* 其他 */
+				--divider-color: #241d0f;
+				--danger-color: #ef4444;
+			}
 		}
-	}
-</style>
+	</style>

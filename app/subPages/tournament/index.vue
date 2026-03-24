@@ -49,7 +49,7 @@
 		</view>
 
 		<view v-if="loading && page === 1 && list.length === 0" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+				<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
@@ -108,7 +108,7 @@
 
 			<view v-else class="empty-state">
 				<view class="empty-badge">
-					<uni-icons type="calendar" size="28" color="#15803d"></uni-icons>
+						<uni-icons type="calendar" size="28" color="#E0AE12"></uni-icons>
 				</view>
 				<text class="empty-title">当前筛选下还没有赛事情报</text>
 				<text class="empty-text">赛事正在更新中，稍后再来刷新，或者换个球种看看。</text>

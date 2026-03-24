@@ -1,25 +1,25 @@
 /* 对战列表页面样式 */
 
 // 主色调
-$primary-color: #18b05b;
+$primary-color: #e0ae12;
 
 // 浅色模式变量 (默认)
-$bg-light: #f6f7f8;
+$bg-light: #faf8f2;
 $card-bg-light: #ffffff;
-$card-bg-light-hover: #f3f4f6;
-$text-primary-light: #111827;
-$text-secondary-light: #6b7280;
-$text-tertiary-light: #9ca3af;
-$border-color-light: #e5e7eb;
+$card-bg-light-hover: #fdf7e8;
+$text-primary-light: #231c0b;
+$text-secondary-light: #7b6a44;
+$text-tertiary-light: #9a8c67;
+$border-color-light: #e9e2cf;
 
 // 深色模式变量
-$bg-dark: #101922;
-$card-bg-dark: rgba(107, 114, 128, 0.1);
-$card-bg-dark-hover: rgba(107, 114, 128, 0.2);
-$text-primary-dark: #ffffff;
-$text-secondary-dark: #9ca3af;
-$text-tertiary-dark: #6b7280;
-$border-color-dark: rgba(255, 255, 255, 0.1);
+$bg-dark: #141109;
+$card-bg-dark: rgba(58, 46, 22, 0.42);
+$card-bg-dark-hover: rgba(77, 61, 28, 0.56);
+$text-primary-dark: #fff7e1;
+$text-secondary-dark: #d7c89b;
+$text-tertiary-dark: #9f926e;
+$border-color-dark: rgba(224, 174, 18, 0.12);
 
 // 页面容器
 .match-container {
@@ -109,7 +109,7 @@ $border-color-dark: rgba(255, 255, 255, 0.1);
     // 当前用户对局高亮
     &.my-match {
         border: 3rpx solid $primary-color;
-        box-shadow: 0 4rpx 24rpx rgba(24, 176, 91, 0.25);
+        box-shadow: 0 4rpx 24rpx rgba(224, 174, 18, 0.22);
     }
 }
 
@@ -229,7 +229,7 @@ $border-color-dark: rgba(255, 255, 255, 0.1);
     font-weight: 600;
 
     &.chinese-8ball {
-        background-color: rgba(24, 176, 91, 0.2);
+        background-color: rgba(224, 174, 18, 0.16);
         color: $primary-color;
     }
 

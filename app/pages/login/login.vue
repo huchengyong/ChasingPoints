@@ -433,14 +433,14 @@ onUnmounted(() => {
 
 	// 深色模式
 	&.dark-mode {
-		--bg-color: #0f1712;
-		--text-primary: #f3fff6;
-		--text-secondary: #a7c0af;
-		--text-tertiary: #6f8878;
-		--border-color: #24342a;
-		--input-bg: #16211a;
-		--card-bg: #16211a;
-		--primary-color-light: rgba(24, 176, 91, 0.2);
+		--bg-color: #141109;
+		--text-primary: #fff7e1;
+		--text-secondary: #d7c89b;
+		--text-tertiary: #9f926e;
+		--border-color: #3a2e16;
+		--input-bg: #1e180d;
+		--card-bg: #1e180d;
+		--primary-color-light: rgba(224, 174, 18, 0.2);
 	}
 }
 
@@ -462,12 +462,12 @@ onUnmounted(() => {
 		.logo {
 			width: 128rpx;
 			height: 128rpx;
-			background: linear-gradient(135deg, #18b05b 0%, #166534 100%);
+			background: linear-gradient(135deg, #f7d86a 0%, #c69200 100%);
 			border-radius: 50%;
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			box-shadow: 0 8rpx 24rpx rgba(24, 176, 91, 0.3);
+			box-shadow: 0 8rpx 24rpx rgba(224, 174, 18, 0.28);
 			overflow: hidden;
 
 			image {
@@ -535,17 +535,17 @@ onUnmounted(() => {
 				}
 			}
 
-			.send-code-btn {
-				position: absolute;
-				right: 16rpx;
-				height: 72rpx;
-				line-height: 72rpx;
-				padding: 0 24rpx;
-				background-color: var(--primary-color-light, rgba(24, 176, 91, 0.1));
-				color: var(--primary-color, #18b05b);
-				font-size: 26rpx;
-				font-weight: 500;
-				border-radius: 12rpx;
+				.send-code-btn {
+					position: absolute;
+					right: 16rpx;
+					height: 72rpx;
+					line-height: 72rpx;
+					padding: 0 24rpx;
+					background-color: var(--primary-color-light, rgba(224, 174, 18, 0.14));
+					color: var(--primary-color, #e0ae12);
+					font-size: 26rpx;
+					font-weight: 500;
+					border-radius: 12rpx;
 
 				&::after {
 					display: none;
@@ -566,12 +566,12 @@ onUnmounted(() => {
 		width: 100%;
 		height: 100rpx;
 		line-height: 100rpx;
-		background: linear-gradient(135deg, #18b05b 0%, #166534 100%);
-		color: #ffffff;
+		background: linear-gradient(135deg, #e0ae12 0%, #c69200 100%);
+		color: #231c0b;
 		font-size: 32rpx;
 		font-weight: 600;
 		border-radius: 50rpx;
-		box-shadow: 0 8rpx 24rpx rgba(24, 176, 91, 0.35);
+		box-shadow: 0 8rpx 24rpx rgba(224, 174, 18, 0.32);
 		transition: all 0.3s;
 
     &::after {
@@ -655,8 +655,8 @@ onUnmounted(() => {
 		margin-bottom: 12rpx;
 	}
 
-	.checkbox {
-		width: 36rpx;
+		.checkbox {
+			width: 36rpx;
 		height: 36rpx;
 		border: 2rpx solid var(--border-color, #e2e8f0);
 		border-radius: 8rpx;
@@ -666,10 +666,10 @@ onUnmounted(() => {
 		justify-content: center;
 		transition: all 0.2s;
 
-		&.checked {
-			background: linear-gradient(135deg, #18b05b 0%, #166534 100%);
-			border-color: #18b05b;
-		}
+			&.checked {
+				background: linear-gradient(135deg, #e0ae12 0%, #c69200 100%);
+				border-color: #e0ae12;
+			}
 	}
 
 	.agreement-text {
@@ -683,10 +683,10 @@ onUnmounted(() => {
 		justify-content: center;
 		font-size: 24rpx;
 
-		.link {
-			color: var(--primary-color, #18b05b);
-			margin: 0 8rpx;
-		}
+			.link {
+				color: var(--primary-color, #e0ae12);
+				margin: 0 8rpx;
+			}
 
 		.separator {
 			color: var(--text-tertiary, #94a3b8);

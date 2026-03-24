@@ -25,7 +25,7 @@
 					<view class="benefits-grid">
 						<view v-for="item in guestBenefits" :key="item.title" class="benefit-card">
 							<view class="benefit-icon">
-								<uni-icons :type="item.icon" size="20" color="#18b05b"></uni-icons>
+									<uni-icons :type="item.icon" size="20" color="#E0AE12"></uni-icons>
 							</view>
 							<text class="benefit-title">{{ item.title }}</text>
 							<text class="benefit-desc">{{ item.desc }}</text>
@@ -267,7 +267,7 @@
 				</view>
 				<view class="qrcode-modal-body">
 					<view v-show="qrcodeLoading" class="qrcode-loading">
-						<uni-icons type="spinner-cycle" size="48" color="#18b05b"></uni-icons>
+						<uni-icons type="spinner-cycle" size="48" color="#E0AE12"></uni-icons>
 						<text class="qrcode-loading-text">生成中...</text>
 					</view>
 					<view v-show="!qrcodeLoading" class="qrcode-display">
@@ -468,7 +468,7 @@ const quickActions = computed(() => ([
 		label: '比赛记录',
 		desc: hasRecentMatch.value ? `累计 ${userStats.totalMatches} 场` : '查看历史对局',
 		icon: 'list',
-		iconColor: '#18b05b',
+		iconColor: '#E0AE12',
 		iconClass: 'blue',
 		handler: handleMatchHistory
 	},

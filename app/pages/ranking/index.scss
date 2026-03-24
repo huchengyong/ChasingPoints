@@ -1,7 +1,7 @@
 // 排行榜页面样式
 .ranking-container {
     min-height: 100vh;
-    background-color: #f6f7f8;
+    background-color: #faf8f2;
     box-sizing: border-box;
 }
 
@@ -43,12 +43,12 @@
     }
 
     &.active {
-        background: linear-gradient(135deg, #18b05b 0%, #15803d 100%);
+        background: linear-gradient(135deg, #e0ae12 0%, #c69200 100%);
         border-color: transparent;
-        box-shadow: 0 10rpx 24rpx rgba(24, 176, 91, 0.24);
+        box-shadow: 0 10rpx 24rpx rgba(224, 174, 18, 0.24);
 
         text {
-            color: #ffffff;
+            color: #231c0b;
         }
     }
 }
@@ -100,9 +100,9 @@
         min-width: 320rpx;
         height: 96rpx;
         padding: 0 64rpx;
-        background-color: #18b05b;
+        background-color: #e0ae12;
         border-radius: 999rpx;
-        box-shadow: 0 8rpx 32rpx rgba(24, 176, 91, 0.3);
+        box-shadow: 0 8rpx 32rpx rgba(224, 174, 18, 0.28);
         transition: all 0.3s ease;
 
         &::after {
@@ -117,7 +117,7 @@
         text {
             font-size: 32rpx;
             font-weight: 700;
-            color: #ffffff;
+            color: #231c0b;
         }
     }
 
@@ -129,9 +129,9 @@
         height: 96rpx;
         margin-top: 48rpx;
         padding: 0 64rpx;
-        background-color: #18b05b;
+        background-color: #e0ae12;
         border-radius: 999rpx;
-        box-shadow: 0 8rpx 32rpx rgba(24, 176, 91, 0.3);
+        box-shadow: 0 8rpx 32rpx rgba(224, 174, 18, 0.28);
         transition: all 0.3s ease;
 
         &::after {
@@ -146,7 +146,7 @@
         text {
             font-size: 32rpx;
             font-weight: 700;
-            color: #ffffff;
+            color: #231c0b;
         }
     }
 }

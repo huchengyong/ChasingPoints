@@ -62,33 +62,33 @@ export const useThemeStore = defineStore('theme', {
         // 暗色主题
         uni.setNavigationBarColor({
           frontColor: '#ffffff',
-          backgroundColor: '#0f1712',
+          backgroundColor: '#141109',
           animation: {
             duration: 300,
             timingFunc: 'easeIn'
           }
         })
         uni.setTabBarStyle({
-          backgroundColor: '#0f1712',
+          backgroundColor: '#141109',
           borderStyle: 'white',
-          color: '#a7c0af',
-          selectedColor: '#22c55e'
+          color: '#c6b78c',
+          selectedColor: '#E0AE12'
         })
       } else {
         // 亮色主题
         uni.setNavigationBarColor({
           frontColor: '#000000',
-          backgroundColor: '#f4f7f4',
+          backgroundColor: '#faf8f2',
           animation: {
             duration: 300,
             timingFunc: 'easeIn'
           }
         })
         uni.setTabBarStyle({
-          backgroundColor: '#f4f7f4',
+          backgroundColor: '#faf8f2',
           borderStyle: 'black',
-          color: '#5d7465',
-          selectedColor: '#18b05b'
+          color: '#6e6242',
+          selectedColor: '#E0AE12'
         })
       }
     },

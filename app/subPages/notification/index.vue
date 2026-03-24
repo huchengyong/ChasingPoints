@@ -41,7 +41,7 @@
 
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="28" color="#18b05b"></uni-icons>
+				<uni-icons type="spinner-cycle" size="28" color="#E0AE12"></uni-icons>
 		</view>
 
 		<!-- 加载更多 -->
@@ -223,10 +223,10 @@ onPullDownRefresh(() => {
 		font-size: 28rpx;
 		color: #64748b;
 	}
-	.read-all-btn {
-		font-size: 26rpx;
-		color: #18b05b;
-	}
+		.read-all-btn {
+			font-size: 26rpx;
+			color: #c69200;
+		}
 }
 
 .notification-list {
@@ -241,10 +241,10 @@ onPullDownRefresh(() => {
 		margin-bottom: 12rpx;
 		gap: 16rpx;
 
-		&.unread {
-			background: #f8fafc;
-			border-left: 6rpx solid #18b05b;
-		}
+			&.unread {
+				background: #f8fafc;
+				border-left: 6rpx solid #e0ae12;
+			}
 
 		.item-icon {
 			width: 64rpx;
@@ -281,13 +281,13 @@ onPullDownRefresh(() => {
 					font-weight: 600;
 					color: #1e293b;
 				}
-				.unread-dot {
-					width: 12rpx;
-					height: 12rpx;
-					border-radius: 50%;
-					background: #18b05b;
-					flex-shrink: 0;
-				}
+					.unread-dot {
+						width: 12rpx;
+						height: 12rpx;
+						border-radius: 50%;
+						background: #e0ae12;
+						flex-shrink: 0;
+					}
 			}
 
 			.item-body {
@@ -340,10 +340,10 @@ onPullDownRefresh(() => {
 	padding: 40rpx 0;
 }
 
-.load-more {
-	text-align: center;
-	padding: 32rpx 0;
-	font-size: 26rpx;
-	color: #18b05b;
-}
+	.load-more {
+		text-align: center;
+		padding: 32rpx 0;
+		font-size: 26rpx;
+		color: #c69200;
+	}
 </style>
