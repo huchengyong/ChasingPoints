@@ -193,6 +193,13 @@ const fetchDetail = async () => {
 	errorMessage.value = ''
 	try {
 		const res = await getEventNewsDetail({ event_news_id: eventNewsId.value })
+		// 显式检查API返回值
+		if (!res.success) {
+			throw new Error(res.message || '获取赛事情报详情失败')
+		}
+		if (!res.event_news && !res.eventNews) {
+			throw new Error('赛事情报数据不存在')
+		}
 		eventNews.value = normalizeEventNews(res.event_news || res.eventNews)
 		return
 	} catch (e) {

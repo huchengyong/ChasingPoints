@@ -16,11 +16,13 @@ func parseAdminEventNewsTime(value string) (*time.Time, error) {
 		return nil, nil
 	}
 
-	parsed, err := time.ParseInLocation(adminEventNewsTimeLayout, trimmed, time.Local)
+	// 使用 UTC 时区确保服务器和数据库时间一致性
+	parsed, err := time.Parse(adminEventNewsTimeLayout, trimmed)
 	if err != nil {
 		return nil, err
 	}
-	return &parsed, nil
+	utcTime := parsed.UTC()
+	return &utcTime, nil
 }
 
 func buildAdminEventNewsInfo(item model.EventNews) types.EventNewsInfo {

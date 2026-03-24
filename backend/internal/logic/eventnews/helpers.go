@@ -69,6 +69,7 @@ func eventNewsEffectiveTime(item model.EventNews) time.Time {
 	case item.StartTime != nil && !item.StartTime.IsZero():
 		return item.StartTime.UTC()
 	default:
+		// CreatedAt 由 GORM 自动设置，已经是 UTC
 		return item.CreatedAt.UTC()
 	}
 }

@@ -208,23 +208,29 @@ const fetchList = async ({
 	loading.value = true
 	try {
 		const res = await getEventNewsList(buildQueryParams(pageValue, gameTypeValue, statusValue))
-		if (res.success) {
-			const newList = (res.list || []).map((item) => normalizeEventNewsItem(item))
-			if (commitSelection) {
-				if (commitSelection.gameType) selectedGameType.value = commitSelection.gameType
-				if (commitSelection.status) selectedStatus.value = commitSelection.status
-			}
-			if (replace) {
-				list.value = newList
-			} else {
-				list.value = [...list.value, ...newList]
-			}
-			page.value = pageValue
-			totalCount.value = res.total || 0
-			hasMore.value = list.value.length < (res.total || 0)
-			return true
+		// 显式检查API返回值
+		if (!res.success) {
+			console.error('获取赛事情报列表失败:', res.message)
+			return false
 		}
-		return false
+		if (!Array.isArray(res.list)) {
+			console.error('获取赛事情报列表失败: 返回数据格式错误')
+			return false
+		}
+		const newList = (res.list || []).map((item) => normalizeEventNewsItem(item))
+		if (commitSelection) {
+			if (commitSelection.gameType) selectedGameType.value = commitSelection.gameType
+			if (commitSelection.status) selectedStatus.value = commitSelection.status
+		}
+		if (replace) {
+			list.value = newList
+		} else {
+			list.value = [...list.value, ...newList]
+		}
+		page.value = pageValue
+		totalCount.value = res.total || 0
+		hasMore.value = list.value.length < (res.total || 0)
+		return true
 	} catch (e) {
 		console.error('获取赛事情报列表失败', e)
 		return false

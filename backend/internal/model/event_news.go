@@ -49,7 +49,7 @@ type EventNewsModel struct {
 }
 
 func NewEventNewsModel(db *gorm.DB) *EventNewsModel {
-	_ = db.AutoMigrate(&EventNews{})
+	// 注意：数据库表结构由 migrations 管理，不在这里执行 AutoMigrate
 	return &EventNewsModel{db: db}
 }
 
