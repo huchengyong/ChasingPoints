@@ -29,7 +29,7 @@ export const getNearbyVenues = (params) => {
 
 /**
  * 创建/上传球馆
- * @param {Object} data { name, address, city, district, phone, images, business_hours, table_count, price_range, description }
+ * @param {Object} data { name, address, city, district }
  */
 export const createVenue = (data) => {
   return post('/api/venue/create', data)

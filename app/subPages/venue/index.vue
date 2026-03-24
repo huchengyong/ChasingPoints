@@ -229,7 +229,7 @@ onMounted(() => {
 		padding: 12rpx 24rpx;
 			background: #e0ae12;
 			border-radius: 12rpx;
-			.submit-text { font-size: 26rpx; color: #231c0b; }
+			.submit-text { font-size: 26rpx; color: #ffffff; }
 		}
 	}
 .mode-tabs {
@@ -329,7 +329,7 @@ onMounted(() => {
 			padding: 16rpx 40rpx;
 			background: #e0ae12;
 			border-radius: 12rpx;
-			color: #231c0b;
+			color: #ffffff;
 			font-size: 28rpx;
 		}
 	}

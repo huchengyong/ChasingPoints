@@ -364,16 +364,10 @@ type CreateTournamentResp struct {
 }
 
 type CreateVenueReq struct {
-	Name          string   `json:"name"`
-	Address       string   `json:"address"`
-	City          string   `json:"city"`
-	District      string   `json:"district,optional"`
-	Phone         string   `json:"phone,optional"`
-	Images        []string `json:"images,optional"`
-	BusinessHours string   `json:"business_hours,optional"`
-	TableCount    int      `json:"table_count,optional"`
-	PriceRange    string   `json:"price_range,optional"`
-	Description   string   `json:"description,optional"`
+	Name     string `json:"name"`
+	Address  string `json:"address"`
+	City     string `json:"city"`
+	District string `json:"district,optional"`
 }
 
 type CreateVenueResp struct {

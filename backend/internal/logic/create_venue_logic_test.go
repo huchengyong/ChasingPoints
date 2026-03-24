@@ -21,16 +21,10 @@ func TestValidateCreateVenueReqRejectsMissingBaseFields(t *testing.T) {
 
 func TestBuildVenueAndTaskFromReqCreatesAsyncGeocodePayload(t *testing.T) {
 	req := &types.CreateVenueReq{
-		Name:          "UK台球",
-		City:          "上海市",
-		District:      "浦东新区",
-		Address:       "东明路街道新达汇",
-		Phone:         "13800138000",
-		Images:        []string{"https://example.com/a.png"},
-		BusinessHours: "10:00-23:00",
-		TableCount:    18,
-		PriceRange:    "30-60元/小时",
-		Description:   "社区球房",
+		Name:     "UK台球",
+		City:     "上海市",
+		District: "浦东新区",
+		Address:  "东明路街道新达汇",
 	}
 
 	venue, task, err := buildVenueAndTaskFromReq(1001, req, 5)
@@ -48,6 +42,24 @@ func TestBuildVenueAndTaskFromReqCreatesAsyncGeocodePayload(t *testing.T) {
 	}
 	if venue.Latitude != 0 || venue.Longitude != 0 {
 		t.Fatalf("expected zero coordinates before geocode, got %v,%v", venue.Latitude, venue.Longitude)
+	}
+	if venue.Phone != "" {
+		t.Fatalf("expected empty phone, got %q", venue.Phone)
+	}
+	if venue.BusinessHours != "" {
+		t.Fatalf("expected empty business hours, got %q", venue.BusinessHours)
+	}
+	if venue.TableCount != 0 {
+		t.Fatalf("expected zero table count, got %d", venue.TableCount)
+	}
+	if venue.PriceRange != "" {
+		t.Fatalf("expected empty price range, got %q", venue.PriceRange)
+	}
+	if venue.Description != "" {
+		t.Fatalf("expected empty description, got %q", venue.Description)
+	}
+	if venue.Images != "[]" {
+		t.Fatalf("expected empty images json, got %s", venue.Images)
 	}
 	if task.Status != model.VenueGeocodeTaskStatusPending {
 		t.Fatalf("expected pending task status, got %d", task.Status)

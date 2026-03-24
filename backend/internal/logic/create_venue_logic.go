@@ -2,7 +2,6 @@ package logic
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"strings"
 
@@ -101,7 +100,6 @@ func buildVenueAndTaskFromReq(userId int64, req *types.CreateVenueReq, maxAttemp
 		maxAttempts = 5
 	}
 
-	imagesJSON, _ := json.Marshal(req.Images)
 	venue := &model.Venue{
 		Name:          strings.TrimSpace(req.Name),
 		Address:       strings.TrimSpace(req.Address),
@@ -110,12 +108,12 @@ func buildVenueAndTaskFromReq(userId int64, req *types.CreateVenueReq, maxAttemp
 		FullAddress:   model.BuildVenueFullAddress(req.City, req.District, req.Address),
 		Latitude:      0,
 		Longitude:     0,
-		Phone:         strings.TrimSpace(req.Phone),
-		Images:        string(imagesJSON),
-		BusinessHours: strings.TrimSpace(req.BusinessHours),
-		TableCount:    req.TableCount,
-		PriceRange:    strings.TrimSpace(req.PriceRange),
-		Description:   strings.TrimSpace(req.Description),
+		Phone:         "",
+		Images:        "[]",
+		BusinessHours: "",
+		TableCount:    0,
+		PriceRange:    "",
+		Description:   "",
 		OwnerUserId:   userId,
 		Status:        model.VenueStatusPending, // 用户提交的球馆默认为待审核状态
 		GeoStatus:     model.VenueGeoStatusPending,
