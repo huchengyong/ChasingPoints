@@ -333,15 +333,15 @@ onPullDownRefresh(() => {
 		color: #94a3b8;
 		margin-bottom: 40rpx;
 	}
-	.add-btn {
-		background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
-		color: #1f2937;
-		border-radius: 40rpx;
-		padding: 0 60rpx;
-		height: 80rpx;
-		line-height: 80rpx;
-		font-size: 28rpx;
-		border: none;
-	}
+		.add-btn {
+			background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
+			color: #ffffff;
+			border-radius: 40rpx;
+			padding: 0 60rpx;
+			height: 80rpx;
+			line-height: 80rpx;
+			font-size: 28rpx;
+			border: none;
+		}
 }
 </style>

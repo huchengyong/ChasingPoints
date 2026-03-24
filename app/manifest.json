@@ -94,7 +94,8 @@
                 },
                 "uni-payment" : {
                     "alipay" : {}
-                }
+                },
+                "uni-verify" : {}
             },
             "signingConfigs" : {
                 "default" : {

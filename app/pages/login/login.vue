@@ -562,12 +562,12 @@ onUnmounted(() => {
 .login-btn-container {
 	padding: 32rpx 0;
 
-	.login-btn {
-		width: 100%;
-		height: 100rpx;
-		line-height: 100rpx;
-		background: linear-gradient(135deg, #e0ae12 0%, #c69200 100%);
-		color: #231c0b;
+				.login-btn {
+					width: 100%;
+					height: 100rpx;
+					line-height: 100rpx;
+					background: linear-gradient(135deg, #e0ae12 0%, #c69200 100%);
+					color: #ffffff;
 		font-size: 32rpx;
 		font-weight: 600;
 		border-radius: 50rpx;
