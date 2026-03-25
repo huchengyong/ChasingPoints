@@ -5,7 +5,7 @@
         <div class="card-header">
           <div class="title-block">
             <span class="title">赛事情报管理</span>
-            <span class="subtitle">维护斯诺克、中式八球、中式九球的赛程与赛况信息</span>
+            <span class="subtitle">按赛事维护基础信息，并在赛事下管理阶段赛程</span>
           </div>
           <div class="header-actions">
             <el-select v-model="filterGameType" placeholder="球种筛选" style="width: 160px" @change="handleFilter">
@@ -26,34 +26,45 @@
               <el-option label="未发布" :value="0" />
               <el-option label="已发布" :value="1" />
             </el-select>
-            <el-button type="primary" @click="openCreateDialog">新建草稿</el-button>
+            <el-button type="primary" @click="openCreateDialog">新建赛事</el-button>
           </div>
         </div>
       </template>
 
       <el-table :data="eventNewsList" stripe border>
         <el-table-column type="index" width="60" label="序号" :index="(index: number) => (page - 1) * pageSize + index + 1" />
-        <el-table-column prop="title" label="标题" min-width="220" show-overflow-tooltip />
+        <el-table-column prop="title" label="赛事标题" min-width="220" show-overflow-tooltip />
         <el-table-column prop="game_type" label="球种" width="120">
           <template #default="{ row }">
             {{ getGameTypeLabel(row.game_type) }}
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="110">
+        <el-table-column prop="status" label="赛事状态" width="110">
           <template #default="{ row }">
             <el-tag :type="getStatusTagType(row.status)">
               {{ getStatusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="featured" label="Featured" width="110">
+        <el-table-column prop="current_stage_text" label="当前阶段" min-width="140" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ row.current_stage_text || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="latest_result_text" label="最新赛果" min-width="180" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ row.latest_result_text || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="stage_count" label="阶段数" width="90" />
+        <el-table-column prop="featured" label="焦点" width="90">
           <template #default="{ row }">
             <el-tag :type="row.featured ? 'warning' : 'info'">
               {{ row.featured ? '焦点' : '普通' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="published" label="Published" width="120">
+        <el-table-column prop="published" label="发布状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.published ? 'success' : 'info'">
               {{ row.published ? '已发布' : '未发布' }}
@@ -62,9 +73,10 @@
         </el-table-column>
         <el-table-column prop="start_time" label="开始时间" width="170" />
         <el-table-column prop="updated_at" label="更新时间" width="170" />
-        <el-table-column label="操作" width="260" fixed="right">
+        <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openEditDialog(row)">编辑</el-button>
+            <el-button link type="primary" @click="openEditDialog(row, true)">管理阶段</el-button>
             <el-button
               link
               :type="row.published ? 'warning' : 'success'"
@@ -93,13 +105,13 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="960px"
+      width="1100px"
       destroy-on-close
     >
       <el-form ref="formRef" :model="formModel" :rules="rules" label-width="110px">
         <el-row :gutter="16">
           <el-col :span="12">
-            <el-form-item label="标题" prop="title">
+            <el-form-item label="赛事标题" prop="title">
               <el-input v-model="formModel.title" placeholder="请输入赛事标题" maxlength="128" show-word-limit />
             </el-form-item>
           </el-col>
@@ -139,7 +151,7 @@
           </el-col>
           <el-col :span="24">
             <el-form-item label="正文">
-              <el-input v-model="formModel.content" type="textarea" :rows="6" placeholder="赛事情报正文" />
+              <el-input v-model="formModel.content" type="textarea" :rows="5" placeholder="赛事介绍正文" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
@@ -183,28 +195,18 @@
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="状态" prop="status">
+            <el-form-item label="赛事状态" prop="status">
               <el-select v-model="formModel.status" placeholder="请选择状态" style="width: 100%">
                 <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="阶段说明">
-              <el-input v-model="formModel.stage_text" placeholder="如：资格赛 / 决赛日" maxlength="128" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="赛果摘要">
-              <el-input v-model="formModel.result_text" placeholder="如：赵心童晋级 8 强" maxlength="255" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
             <el-form-item label="焦点推荐">
               <el-switch v-model="formModel.featured" active-text="是" inactive-text="否" />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="8">
             <el-form-item label="排序时间">
               <el-date-picker
                 v-model="formModel.sort_time"
@@ -220,9 +222,134 @@
         </el-row>
       </el-form>
 
+      <el-divider content-position="left">阶段赛程</el-divider>
+
+      <div class="stage-header">
+        <div class="stage-copy">
+          <span class="stage-title">阶段列表</span>
+          <span class="stage-tip">赛事保存后即可继续维护资格赛、32 强、16 强等阶段信息。</span>
+        </div>
+        <el-button type="primary" :disabled="!editingId" @click="openCreateStageDialog">新增阶段</el-button>
+      </div>
+
+      <el-alert
+        v-if="!editingId"
+        title="请先保存赛事基础信息，再进入编辑态维护阶段赛程。"
+        type="info"
+        :closable="false"
+        class="stage-alert"
+      />
+
+      <el-table v-else :data="stageList" border stripe class="stage-table">
+        <el-table-column type="index" width="60" label="序号" />
+        <el-table-column prop="stage_name" label="阶段名称" min-width="160" />
+        <el-table-column prop="stage_order" label="阶段排序" width="100" />
+        <el-table-column prop="status" label="状态" width="110">
+          <template #default="{ row }">
+            <el-tag :type="getStatusTagType(row.status)">
+              {{ getStatusLabel(row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="start_time" label="开始时间" width="170">
+          <template #default="{ row }">
+            {{ row.start_time || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="result_text" label="赛果摘要" min-width="220" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ row.result_text || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="160" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="openEditStageDialog(row)">编辑</el-button>
+            <el-button link type="danger" @click="handleDeleteStage(row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSubmit">保存</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSubmit">保存赛事</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="stageDialogVisible"
+      :title="stageDialogTitle"
+      width="760px"
+      destroy-on-close
+    >
+      <el-form ref="stageFormRef" :model="stageFormModel" :rules="stageRules" label-width="100px">
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="阶段名称" prop="stage_name">
+              <el-input v-model="stageFormModel.stage_name" placeholder="如：资格赛 / 32强 / 决赛" maxlength="128" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="阶段排序" prop="stage_order">
+              <el-input-number v-model="stageFormModel.stage_order" :min="1" :step="10" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="开始时间">
+              <el-date-picker
+                v-model="stageFormModel.start_time"
+                type="datetime"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                format="YYYY-MM-DD HH:mm:ss"
+                placeholder="请选择开始时间"
+                clearable
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="结束时间">
+              <el-date-picker
+                v-model="stageFormModel.end_time"
+                type="datetime"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                format="YYYY-MM-DD HH:mm:ss"
+                placeholder="请选择结束时间"
+                clearable
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="阶段状态" prop="status">
+              <el-select v-model="stageFormModel.status" placeholder="请选择阶段状态" style="width: 100%">
+                <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="排序时间">
+              <el-date-picker
+                v-model="stageFormModel.sort_time"
+                type="datetime"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                format="YYYY-MM-DD HH:mm:ss"
+                placeholder="不填则默认使用开始时间"
+                clearable
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="赛果摘要">
+              <el-input v-model="stageFormModel.result_text" type="textarea" :rows="3" placeholder="如：赵心童晋级16强" maxlength="255" show-word-limit />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="stageDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="stageSaving" @click="handleStageSubmit">保存阶段</el-button>
       </template>
     </el-dialog>
   </div>
@@ -233,21 +360,39 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import {
   createEventNews,
+  createEventNewsStage,
   deleteEventNews,
+  deleteEventNewsStage,
   getEventNewsList,
   publishEventNews,
   updateEventNews,
+  updateEventNewsStage,
   type EventNewsFormPayload,
-  type EventNewsItem
+  type EventNewsItem,
+  type EventNewsStageFormPayload,
+  type EventNewsStageItem
 } from '@/api/event-news'
 
 interface EventNewsFormModel extends EventNewsFormPayload {
-  event_news_id?: number
+  event_id?: number
+}
+
+interface EventNewsStageFormModel {
+  stage_id?: number
+  stage_name: string
+  stage_order: number
+  start_time: string
+  end_time: string
+  status: number
+  result_text: string
+  sort_time: string
 }
 
 const loading = ref(false)
 const saving = ref(false)
+const stageSaving = ref(false)
 const eventNewsList = ref<EventNewsItem[]>([])
+const stageList = ref<EventNewsStageItem[]>([])
 const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
@@ -259,6 +404,10 @@ const dialogVisible = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
 const editingId = ref<number | null>(null)
 const formRef = ref<FormInstance>()
+
+const stageDialogVisible = ref(false)
+const stageDialogMode = ref<'create' | 'edit'>('create')
+const stageFormRef = ref<FormInstance>()
 
 const createEmptyForm = (): EventNewsFormModel => ({
   title: '',
@@ -275,13 +424,22 @@ const createEmptyForm = (): EventNewsFormModel => ({
   start_time: '',
   end_time: '',
   status: 0,
-  stage_text: '',
-  result_text: '',
   featured: false,
   sort_time: ''
 })
 
+const createEmptyStageForm = (): EventNewsStageFormModel => ({
+  stage_name: '',
+  stage_order: 10,
+  start_time: '',
+  end_time: '',
+  status: 0,
+  result_text: '',
+  sort_time: ''
+})
+
 const formModel = ref<EventNewsFormModel>(createEmptyForm())
+const stageFormModel = ref<EventNewsStageFormModel>(createEmptyStageForm())
 
 const gameTypeOptions = [
   { label: '斯诺克', value: 1 },
@@ -303,12 +461,19 @@ const statusOptions = [
 ]
 
 const rules: FormRules = {
-  title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
+  title: [{ required: true, message: '请输入赛事标题', trigger: 'blur' }],
   game_type: [{ required: true, message: '请选择球种', trigger: 'change' }],
-  status: [{ required: true, message: '请选择状态', trigger: 'change' }]
+  status: [{ required: true, message: '请选择赛事状态', trigger: 'change' }]
 }
 
-const dialogTitle = computed(() => (dialogMode.value === 'create' ? '新建赛事情报草稿' : '编辑赛事情报'))
+const stageRules: FormRules = {
+  stage_name: [{ required: true, message: '请输入阶段名称', trigger: 'blur' }],
+  stage_order: [{ required: true, message: '请输入阶段排序', trigger: 'change' }],
+  status: [{ required: true, message: '请选择阶段状态', trigger: 'change' }]
+}
+
+const dialogTitle = computed(() => (dialogMode.value === 'create' ? '新建赛事' : '编辑赛事'))
+const stageDialogTitle = computed(() => (stageDialogMode.value === 'create' ? '新增阶段' : '编辑阶段'))
 
 const getGameTypeLabel = (value: number) => {
   return gameTypeOptions.find(item => item.value === value)?.label || '-'
@@ -331,8 +496,30 @@ const getStatusTagType = (value: number): 'success' | 'warning' | 'danger' | 'in
   }
 }
 
+const normalizeStages = (stages: EventNewsStageItem[] = []) => {
+  return [...stages].sort((left, right) => {
+    if (left.stage_order !== right.stage_order) {
+      return left.stage_order - right.stage_order
+    }
+    return left.id - right.id
+  })
+}
+
 const applyEmptyForm = () => {
   formModel.value = createEmptyForm()
+}
+
+const applyEmptyStageForm = () => {
+  stageFormModel.value = createEmptyStageForm()
+}
+
+const refreshEditingEventFromList = () => {
+  if (!editingId.value) {
+    stageList.value = []
+    return
+  }
+  const latest = eventNewsList.value.find(item => item.id === editingId.value)
+  stageList.value = normalizeStages(latest?.stages || [])
 }
 
 const loadList = async () => {
@@ -363,6 +550,7 @@ const loadList = async () => {
     if (res.success) {
       eventNewsList.value = res.list || []
       total.value = res.total || 0
+      refreshEditingEventFromList()
     } else {
       console.error('获取赛事情报列表失败', res.message)
     }
@@ -392,15 +580,16 @@ const openCreateDialog = () => {
   dialogMode.value = 'create'
   editingId.value = null
   applyEmptyForm()
+  stageList.value = []
   dialogVisible.value = true
   formRef.value?.clearValidate()
 }
 
-const openEditDialog = (row: EventNewsItem) => {
+const openEditDialog = (row: EventNewsItem, focusStages = false) => {
   dialogMode.value = 'edit'
   editingId.value = row.id
   formModel.value = {
-    event_news_id: row.id,
+    event_id: row.id,
     title: row.title,
     game_type: row.game_type,
     source_type: row.source_type || 'manual',
@@ -415,16 +604,21 @@ const openEditDialog = (row: EventNewsItem) => {
     start_time: row.start_time || '',
     end_time: row.end_time || '',
     status: row.status,
-    stage_text: row.stage_text || '',
-    result_text: row.result_text || '',
     featured: row.featured,
     sort_time: row.sort_time || row.start_time || ''
   }
+  stageList.value = normalizeStages(row.stages || [])
   dialogVisible.value = true
   formRef.value?.clearValidate()
+  if (focusStages) {
+    setTimeout(() => {
+      const table = document.querySelector('.stage-table')
+      table?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }, 50)
+  }
 }
 
-const buildFormPayload = () => {
+const buildFormPayload = (): EventNewsFormPayload => {
   const form = formModel.value
   const startTime = (form.start_time || '').trim()
   const sortTime = (form.sort_time || '').trim() || startTime
@@ -444,11 +638,9 @@ const buildFormPayload = () => {
     start_time: startTime,
     end_time: (form.end_time || '').trim(),
     status: form.status ?? 0,
-    stage_text: form.stage_text.trim(),
-    result_text: form.result_text.trim(),
     featured: form.featured,
     sort_time: sortTime
-  } as EventNewsFormPayload
+  }
 }
 
 const handleSubmit = async () => {
@@ -468,19 +660,117 @@ const handleSubmit = async () => {
     const res = dialogMode.value === 'create'
       ? await createEventNews(payload)
       : await updateEventNews({
-          event_news_id: editingId.value || 0,
+          event_id: editingId.value || 0,
           ...payload
         })
 
     if (res.success) {
       ElMessage.success(res.message || '保存成功')
       dialogVisible.value = false
-      loadList()
+      await loadList()
     }
   } catch (error: any) {
-    console.error('保存赛事情报失败', error)
+    console.error('保存赛事失败', error)
   } finally {
     saving.value = false
+  }
+}
+
+const openCreateStageDialog = () => {
+  if (!editingId.value) {
+    ElMessage.warning('请先保存赛事基础信息')
+    return
+  }
+  stageDialogMode.value = 'create'
+  applyEmptyStageForm()
+  stageDialogVisible.value = true
+  stageFormRef.value?.clearValidate()
+}
+
+const openEditStageDialog = (row: EventNewsStageItem) => {
+  stageDialogMode.value = 'edit'
+  stageFormModel.value = {
+    stage_id: row.id,
+    stage_name: row.stage_name || '',
+    stage_order: row.stage_order || 10,
+    start_time: row.start_time || '',
+    end_time: row.end_time || '',
+    status: row.status,
+    result_text: row.result_text || '',
+    sort_time: row.sort_time || row.start_time || ''
+  }
+  stageDialogVisible.value = true
+  stageFormRef.value?.clearValidate()
+}
+
+const buildStagePayload = (): EventNewsStageFormPayload => {
+  const form = stageFormModel.value
+  const startTime = (form.start_time || '').trim()
+  const sortTime = (form.sort_time || '').trim() || startTime
+
+  return {
+    event_id: editingId.value || 0,
+    stage_name: form.stage_name.trim(),
+    stage_order: Number(form.stage_order || 0),
+    start_time: startTime,
+    end_time: (form.end_time || '').trim(),
+    status: form.status ?? 0,
+    result_text: form.result_text.trim(),
+    sort_time: sortTime
+  }
+}
+
+const handleStageSubmit = async () => {
+  if (!editingId.value) {
+    ElMessage.warning('请先保存赛事基础信息')
+    return
+  }
+  const valid = stageFormRef.value ? await stageFormRef.value.validate().catch(() => false) : false
+  if (!valid) {
+    return
+  }
+
+  const payload = buildStagePayload()
+  stageSaving.value = true
+  try {
+    const res = stageDialogMode.value === 'create'
+      ? await createEventNewsStage(payload)
+      : await updateEventNewsStage({
+          stage_id: stageFormModel.value.stage_id || 0,
+          ...payload
+        })
+
+    if (res.success) {
+      ElMessage.success(res.message || '保存成功')
+      stageDialogVisible.value = false
+      await loadList()
+      refreshEditingEventFromList()
+    }
+  } catch (error: any) {
+    console.error('保存阶段失败', error)
+  } finally {
+    stageSaving.value = false
+  }
+}
+
+const handleDeleteStage = async (row: EventNewsStageItem) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除阶段「${row.stage_name}」吗？`, '确认删除', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
+    const res = await deleteEventNewsStage({ stage_id: row.id })
+    if (res.success) {
+      ElMessage.success(res.message || '删除成功')
+      await loadList()
+      refreshEditingEventFromList()
+    }
+  } catch (error: any) {
+    if (error !== 'cancel' && error !== 'close') {
+      console.error('删除阶段失败', error)
+    }
   }
 }
 
@@ -496,37 +786,40 @@ const handlePublishToggle = async (row: EventNewsItem) => {
     })
 
     const res = await publishEventNews({
-      event_news_id: row.id,
+      event_id: row.id,
       published: targetPublished
     })
 
     if (res.success) {
       ElMessage.success(res.message || `${action}成功`)
-      loadList()
+      await loadList()
     }
   } catch (error: any) {
     if (error !== 'cancel' && error !== 'close') {
-      console.error(`${action}赛事情报失败`, error)
+      console.error(`${action}赛事失败`, error)
     }
   }
 }
 
 const handleDelete = async (row: EventNewsItem) => {
   try {
-    await ElMessageBox.confirm(`确定要删除「${row.title}」吗？`, '确认删除', {
+    await ElMessageBox.confirm(`确定要删除「${row.title}」及其全部阶段吗？`, '确认删除', {
       confirmButtonText: '删除',
       cancelButtonText: '取消',
       type: 'warning'
     })
 
-    const res = await deleteEventNews({ event_news_id: row.id })
+    const res = await deleteEventNews({ event_id: row.id })
     if (res.success) {
       ElMessage.success(res.message || '删除成功')
-      loadList()
+      if (editingId.value === row.id) {
+        dialogVisible.value = false
+      }
+      await loadList()
     }
   } catch (error: any) {
     if (error !== 'cancel' && error !== 'close') {
-      console.error('删除赛事情报失败', error)
+      console.error('删除赛事失败', error)
     }
   }
 }
@@ -576,5 +869,38 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+.stage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.stage-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stage-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.stage-tip {
+  font-size: 12px;
+  color: #909399;
+}
+
+.stage-alert {
+  margin-bottom: 12px;
+}
+
+.stage-table {
+  margin-bottom: 12px;
 }
 </style>

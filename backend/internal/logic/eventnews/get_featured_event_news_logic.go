@@ -39,9 +39,16 @@ func (l *GetFeaturedEventNewsLogic) GetFeaturedEventNews() (resp *types.GetFeatu
 		return &types.GetFeaturedEventNewsResp{Success: false}, nil
 	}
 
-	info := mapEventNewsInfo(*item)
+	stages, err := l.svcCtx.EventNewsStageModel.FindByEventId(item.Id)
+	if err != nil {
+		l.Logger.Errorf("获取焦点赛事阶段失败: eventId=%d err=%v", item.Id, err)
+		return &types.GetFeaturedEventNewsResp{Success: false}, nil
+	}
+
+	info := mapEventNewsInfo(*item, stages)
 	return &types.GetFeaturedEventNewsResp{
 		Success:   true,
+		Event:     &info,
 		EventNews: &info,
 	}, nil
 }

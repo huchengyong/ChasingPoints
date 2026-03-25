@@ -1,5 +1,19 @@
 import request from '@/utils/request'
 
+export interface EventNewsStageItem {
+  id: number
+  event_id: number
+  stage_name: string
+  stage_order: number
+  start_time: string
+  end_time: string
+  status: number
+  result_text: string
+  sort_time: string
+  created_at: string
+  updated_at: string
+}
+
 export interface EventNewsItem {
   id: number
   title: string
@@ -16,8 +30,10 @@ export interface EventNewsItem {
   start_time: string
   end_time: string
   status: number
-  stage_text: string
-  result_text: string
+  current_stage_text: string
+  latest_result_text: string
+  stage_count: number
+  stages: EventNewsStageItem[]
   featured: boolean
   sort_time: string
   published: boolean
@@ -57,23 +73,40 @@ export interface EventNewsFormPayload {
   start_time: string
   end_time: string
   status: number
-  stage_text: string
-  result_text: string
   featured: boolean
   sort_time: string
 }
 
 export interface EventNewsUpdatePayload extends EventNewsFormPayload {
-  event_news_id: number
+  event_id: number
 }
 
 export interface EventNewsPublishPayload {
-  event_news_id: number
+  event_id: number
   published: boolean
 }
 
 export interface EventNewsDeletePayload {
-  event_news_id: number
+  event_id: number
+}
+
+export interface EventNewsStageFormPayload {
+  event_id: number
+  stage_name: string
+  stage_order: number
+  start_time: string
+  end_time: string
+  status: number
+  result_text: string
+  sort_time: string
+}
+
+export interface EventNewsStageUpdatePayload extends EventNewsStageFormPayload {
+  stage_id: number
+}
+
+export interface EventNewsStageDeletePayload {
+  stage_id: number
 }
 
 export interface WriteResult {
@@ -100,4 +133,16 @@ export const publishEventNews = (data: EventNewsPublishPayload): Promise<WriteRe
 
 export const deleteEventNews = (data: EventNewsDeletePayload): Promise<WriteResult> => {
   return request.post('/api/admin/event-news/delete', data)
+}
+
+export const createEventNewsStage = (data: EventNewsStageFormPayload): Promise<WriteResult> => {
+  return request.post('/api/admin/event-news/stage/create', data)
+}
+
+export const updateEventNewsStage = (data: EventNewsStageUpdatePayload): Promise<WriteResult> => {
+  return request.post('/api/admin/event-news/stage/update', data)
+}
+
+export const deleteEventNewsStage = (data: EventNewsStageDeletePayload): Promise<WriteResult> => {
+  return request.post('/api/admin/event-news/stage/delete', data)
 }

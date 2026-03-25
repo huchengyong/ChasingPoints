@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 
-	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -36,7 +35,7 @@ func (l *AdminUpdateEventNewsLogic) AdminUpdateEventNews(req *types.AdminEventNe
 		}, nil
 	}
 
-	if req == nil || req.EventNewsId <= 0 {
+	if req == nil || req.EventId <= 0 {
 		return &types.AdminWriteResp{
 			Code:    400,
 			Success: false,
@@ -45,41 +44,36 @@ func (l *AdminUpdateEventNewsLogic) AdminUpdateEventNews(req *types.AdminEventNe
 	}
 
 	title := strings.TrimSpace(req.Title)
-	if title == "" {
-		return &types.AdminWriteResp{
-			Code:    400,
-			Success: false,
-			Message: "请输入标题",
-		}, nil
-	}
-	if req.GameType <= 0 {
-		return &types.AdminWriteResp{
-			Code:    400,
-			Success: false,
-			Message: "请选择球种",
-		}, nil
-	}
-	if req.Status < model.EventNewsStatusUpcoming || req.Status > model.EventNewsStatusCanceled {
-		return &types.AdminWriteResp{
-			Code:    400,
-			Success: false,
-			Message: "请选择正确的状态",
-		}, nil
-	}
-
-	startTimeProvided := strings.TrimSpace(req.StartTime) != ""
-	sortTimeProvided := strings.TrimSpace(req.SortTime) != ""
-	if !startTimeProvided && !sortTimeProvided {
-		return &types.AdminWriteResp{
-			Code:    400,
-			Success: false,
-			Message: "开始时间和排序时间至少填写一个",
-		}, nil
-	}
-
-	existing, err := l.svcCtx.EventNewsModel.FindById(req.EventNewsId)
+	startTime, err := parseAdminEventNewsTime(req.StartTime)
 	if err != nil {
-		l.Logger.Errorf("查询赛事情报失败: id=%d err=%v", req.EventNewsId, err)
+		return &types.AdminWriteResp{
+			Code:    400,
+			Success: false,
+			Message: "开始时间格式不正确",
+		}, nil
+	}
+	sortTime, err := parseAdminEventNewsTime(req.SortTime)
+	if err != nil {
+		return &types.AdminWriteResp{
+			Code:    400,
+			Success: false,
+			Message: "排序时间格式不正确",
+		}, nil
+	}
+	if sortTime == nil && startTime != nil {
+		sortTime = startTime
+	}
+	if message := validateAdminEventNewsReq(title, req.GameType, req.Status, startTime, sortTime); message != "" {
+		return &types.AdminWriteResp{
+			Code:    400,
+			Success: false,
+			Message: message,
+		}, nil
+	}
+
+	existing, err := l.svcCtx.EventNewsModel.FindById(req.EventId)
+	if err != nil {
+		l.Logger.Errorf("查询赛事情报失败: id=%d err=%v", req.EventId, err)
 		return &types.AdminWriteResp{
 			Code:    500,
 			Success: false,
@@ -106,7 +100,7 @@ func (l *AdminUpdateEventNewsLogic) AdminUpdateEventNews(req *types.AdminEventNe
 	existing.Status = req.Status
 
 	if err := l.svcCtx.EventNewsModel.Update(existing); err != nil {
-		l.Logger.Errorf("更新赛事情报失败: id=%d err=%v", req.EventNewsId, err)
+		l.Logger.Errorf("更新赛事情报失败: id=%d err=%v", req.EventId, err)
 		return &types.AdminWriteResp{
 			Code:    500,
 			Success: false,

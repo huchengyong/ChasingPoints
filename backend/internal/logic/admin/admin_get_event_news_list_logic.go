@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -60,9 +61,28 @@ func (l *AdminGetEventNewsListLogic) AdminGetEventNewsList(req *types.AdminEvent
 		}, nil
 	}
 
+	eventIDs := make([]int64, 0, len(list))
+	for _, item := range list {
+		eventIDs = append(eventIDs, item.Id)
+	}
+	stageMap, err := l.svcCtx.EventNewsStageModel.FindByEventIds(eventIDs)
+	if err != nil {
+		l.Logger.Errorf("获取赛事情报阶段失败: err=%v", err)
+		return &types.AdminEventNewsListResp{
+			Code:    500,
+			Success: false,
+			Message: "获取赛事情报列表失败",
+			List:    []types.EventNewsInfo{},
+		}, nil
+	}
+
 	items := make([]types.EventNewsInfo, 0, len(list))
 	for _, item := range list {
-		items = append(items, buildAdminEventNewsInfo(item))
+		stages := stageMap[item.Id]
+		if stages == nil {
+			stages = []model.EventNewsStage{}
+		}
+		items = append(items, buildAdminEventNewsInfo(item, stages))
 	}
 	if items == nil {
 		items = []types.EventNewsInfo{}

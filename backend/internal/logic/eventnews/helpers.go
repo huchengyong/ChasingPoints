@@ -25,25 +25,24 @@ func normalizeEventNewsPage(page, pageSize int) (int, int) {
 	return page, pageSize
 }
 
-func mapEventNewsInfo(item model.EventNews) types.EventNewsInfo {
+func mapEventNewsInfo(item model.EventNews, stages []model.EventNewsStage) types.EventNewsInfo {
 	resp := types.EventNewsInfo{
-		Id:         item.Id,
-		Title:      item.Title,
-		GameType:   item.GameType,
-		SourceType: item.SourceType,
-		SourceName: item.SourceName,
-		SourceUrl:  item.SourceUrl,
-		CoverImage: item.CoverImage,
-		Summary:    item.Summary,
-		Content:    item.Content,
-		Country:    item.Country,
-		City:       item.City,
-		Venue:      item.Venue,
-		Status:     item.Status,
-		StageText:  item.StageText,
-		ResultText: item.ResultText,
-		Featured:   item.Featured,
-		Published:  item.Published,
+		Id:               item.Id,
+		Title:            item.Title,
+		GameType:         item.GameType,
+		SourceType:       item.SourceType,
+		SourceName:       item.SourceName,
+		SourceUrl:        item.SourceUrl,
+		CoverImage:       item.CoverImage,
+		Summary:          item.Summary,
+		Content:          item.Content,
+		Country:          item.Country,
+		City:             item.City,
+		Venue:            item.Venue,
+		Status:           item.Status,
+		Featured:         item.Featured,
+		Published:        item.Published,
+		StageCount:       len(stages),
 	}
 	if item.StartTime != nil {
 		resp.StartTime = item.StartTime.Format(eventNewsTimeLayout)
@@ -59,6 +58,36 @@ func mapEventNewsInfo(item model.EventNews) types.EventNewsInfo {
 	}
 	resp.CreatedAt = item.CreatedAt.Format(eventNewsTimeLayout)
 	resp.UpdatedAt = item.UpdatedAt.Format(eventNewsTimeLayout)
+
+	summaryStage := pickSummaryStage(stages)
+	if summaryStage != nil {
+		resp.CurrentStageText = summaryStage.StageName
+		resp.LatestResultText = summaryStage.ResultText
+	}
+
+	return resp
+}
+
+func mapEventNewsStageInfo(item model.EventNewsStage) types.EventNewsStageInfo {
+	resp := types.EventNewsStageInfo{
+		Id:         item.Id,
+		EventId:    item.EventId,
+		StageName:  item.StageName,
+		StageOrder: item.StageOrder,
+		Status:     item.Status,
+		ResultText: item.ResultText,
+		CreatedAt:  item.CreatedAt.Format(eventNewsTimeLayout),
+		UpdatedAt:  item.UpdatedAt.Format(eventNewsTimeLayout),
+	}
+	if item.StartTime != nil {
+		resp.StartTime = item.StartTime.Format(eventNewsTimeLayout)
+	}
+	if item.EndTime != nil {
+		resp.EndTime = item.EndTime.Format(eventNewsTimeLayout)
+	}
+	if item.SortTime != nil {
+		resp.SortTime = item.SortTime.Format(eventNewsTimeLayout)
+	}
 	return resp
 }
 
@@ -69,7 +98,6 @@ func eventNewsEffectiveTime(item model.EventNews) time.Time {
 	case item.StartTime != nil && !item.StartTime.IsZero():
 		return item.StartTime.UTC()
 	default:
-		// CreatedAt 由 GORM 自动设置，已经是 UTC
 		return item.CreatedAt.UTC()
 	}
 }
@@ -163,4 +191,47 @@ func paginateEventNewsItems(items []model.EventNews, page, pageSize int) []model
 	pageItems := make([]model.EventNews, 0, end-start)
 	pageItems = append(pageItems, items[start:end]...)
 	return pageItems
+}
+
+func pickSummaryStage(stages []model.EventNewsStage) *model.EventNewsStage {
+	if len(stages) == 0 {
+		return nil
+	}
+
+	candidates := filterStagesByStatus(stages, model.EventNewsStatusLive)
+	if len(candidates) == 0 {
+		candidates = filterStagesByStatus(stages, model.EventNewsStatusUpcoming)
+	}
+	if len(candidates) == 0 {
+		candidates = filterStagesByStatus(stages, model.EventNewsStatusFinished)
+	}
+	if len(candidates) == 0 {
+		candidates = append(candidates, stages...)
+	}
+
+	sort.SliceStable(candidates, func(i, j int) bool {
+		if candidates[i].Status == model.EventNewsStatusUpcoming && candidates[j].Status == model.EventNewsStatusUpcoming {
+			if candidates[i].StageOrder != candidates[j].StageOrder {
+				return candidates[i].StageOrder < candidates[j].StageOrder
+			}
+			return candidates[i].Id < candidates[j].Id
+		}
+		if candidates[i].StageOrder != candidates[j].StageOrder {
+			return candidates[i].StageOrder > candidates[j].StageOrder
+		}
+		return candidates[i].Id > candidates[j].Id
+	})
+
+	chosen := candidates[0]
+	return &chosen
+}
+
+func filterStagesByStatus(stages []model.EventNewsStage, status int) []model.EventNewsStage {
+	filtered := make([]model.EventNewsStage, 0, len(stages))
+	for _, stage := range stages {
+		if stage.Status == status {
+			filtered = append(filtered, stage)
+		}
+	}
+	return filtered
 }

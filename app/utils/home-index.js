@@ -59,13 +59,15 @@ export const normalizeFeaturedEventNews = (item, now = Date.now()) => {
   return {
     id: item.id,
     title: item.title || '赛事情报',
-    summary: item.summary || item.result_text || '查看最新赛程赛况',
+    summary: item.summary || item.latest_result_text || '查看最新赛程赛况',
     statusText: getEventNewsStatusText(item.status),
     timeText: formatEventNewsTime(timeSource, now),
     typeText: item.game_type != null ? getGameTypeLabel(item.game_type, '台球') : '台球',
     locationText,
     sourceText,
     sourceUrl: item.source_url || '',
+    currentStageText: item.current_stage_text || '',
+    latestResultText: item.latest_result_text || '',
     gameType: item.game_type,
     status: item.status
   }

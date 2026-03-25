@@ -46,28 +46,6 @@ func (l *AdminCreateEventNewsLogic) AdminCreateEventNews(req *types.AdminEventNe
 	}
 
 	title := strings.TrimSpace(req.Title)
-	if title == "" {
-		return &types.AdminWriteResp{
-			Code:    400,
-			Success: false,
-			Message: "请输入标题",
-		}, nil
-	}
-	if req.GameType <= 0 {
-		return &types.AdminWriteResp{
-			Code:    400,
-			Success: false,
-			Message: "请选择球种",
-		}, nil
-	}
-	if req.Status < model.EventNewsStatusUpcoming || req.Status > model.EventNewsStatusCanceled {
-		return &types.AdminWriteResp{
-			Code:    400,
-			Success: false,
-			Message: "请选择正确的状态",
-		}, nil
-	}
-
 	startTime, err := parseAdminEventNewsTime(req.StartTime)
 	if err != nil {
 		return &types.AdminWriteResp{
@@ -93,6 +71,13 @@ func (l *AdminCreateEventNewsLogic) AdminCreateEventNews(req *types.AdminEventNe
 	}
 	if sortTime == nil {
 		sortTime = startTime
+	}
+	if message := validateAdminEventNewsReq(title, req.GameType, req.Status, startTime, sortTime); message != "" {
+		return &types.AdminWriteResp{
+			Code:    400,
+			Success: false,
+			Message: message,
+		}, nil
 	}
 
 	endTime, err := parseAdminEventNewsTime(req.EndTime)
@@ -120,8 +105,6 @@ func (l *AdminCreateEventNewsLogic) AdminCreateEventNews(req *types.AdminEventNe
 		StartTime:  startTime,
 		EndTime:    endTime,
 		Status:     req.Status,
-		StageText:  strings.TrimSpace(req.StageText),
-		ResultText: strings.TrimSpace(req.ResultText),
 		Featured:   req.Featured,
 		SortTime:   sortTime,
 		Published:  false,
