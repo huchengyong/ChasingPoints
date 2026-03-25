@@ -440,10 +440,16 @@ $dark-input-bg: transparent;
 	.bind-btn {
 		width: 100%;
 		height: 112rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0;
 		background-color: #e5e5e5;
 		color: #9ca3af;
 		font-size: 32rpx;
 		font-weight: bold;
+		line-height: 1;
+		text-align: center;
 		border-radius: 24rpx;
 		border: none;
 
@@ -555,6 +561,11 @@ $dark-input-bg: transparent;
 		.bind-btn {
 			background-color: $dark-border;
 			color: #6b7280;
+
+			&.active {
+				background-color: #006400;
+				color: #ffffff;
+			}
 		}
 
 		.checkbox {

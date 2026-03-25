@@ -357,7 +357,7 @@ watch(currentGame, () => {
 
 		&.active {
 			background: #E0AE12;
-			color: #1f2937;
+			color: #ffffff;
 		}
 	}
 }
