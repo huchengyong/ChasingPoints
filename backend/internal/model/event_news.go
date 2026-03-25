@@ -29,8 +29,6 @@ type EventNews struct {
 	StartTime   *time.Time     `gorm:"default:null;index" json:"start_time"`
 	EndTime     *time.Time     `gorm:"default:null" json:"end_time"`
 	Status      int            `gorm:"not null;default:0;index" json:"status"`
-	StageText   string         `gorm:"size:128;not null;default:''" json:"stage_text"`
-	ResultText  string         `gorm:"size:255;not null;default:''" json:"result_text"`
 	Featured    bool           `gorm:"not null;default:false;index" json:"featured"`
 	SortTime    *time.Time     `gorm:"default:null;index" json:"sort_time"`
 	Published   bool           `gorm:"not null;default:false;index" json:"published"`
@@ -41,7 +39,7 @@ type EventNews struct {
 }
 
 func (EventNews) TableName() string {
-	return "event_news"
+	return "event_news_events"
 }
 
 type EventNewsModel struct {
@@ -49,7 +47,6 @@ type EventNewsModel struct {
 }
 
 func NewEventNewsModel(db *gorm.DB) *EventNewsModel {
-	// 注意：数据库表结构由 migrations 管理，不在这里执行 AutoMigrate
 	return &EventNewsModel{db: db}
 }
 
@@ -72,9 +69,7 @@ func (m *EventNewsModel) FindById(id int64) (*EventNews, error) {
 
 func (m *EventNewsModel) FindPublishedById(id int64) (*EventNews, error) {
 	var eventNews EventNews
-	err := m.db.
-		Where("id = ? AND published = ?", id, true).
-		First(&eventNews).Error
+	err := m.db.Where("id = ? AND published = ?", id, true).First(&eventNews).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}
@@ -94,7 +89,7 @@ func (m *EventNewsModel) FindPublishedMatching(gameType, status int, city string
 	}
 
 	var list []EventNews
-	err := query.Find(&list).Error
+	err := query.Order("featured DESC, sort_time ASC, id DESC").Find(&list).Error
 	if err != nil {
 		return nil, err
 	}
@@ -131,10 +126,7 @@ func (m *EventNewsModel) FindList(page, pageSize int, gameType, status int, city
 
 func (m *EventNewsModel) FindFeatured() (*EventNews, error) {
 	var eventNews EventNews
-	err := m.db.
-		Where("featured = 1 AND published = 1").
-		Order("sort_time ASC, id DESC").
-		First(&eventNews).Error
+	err := m.db.Where("featured = 1 AND published = 1").Order("sort_time ASC, id DESC").First(&eventNews).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}
@@ -155,9 +147,7 @@ func (m *EventNewsModel) UpdatePublished(id int64, published bool) (bool, error)
 		updates["published_at"] = nil
 	}
 
-	result := m.db.Model(&EventNews{}).
-		Where("id = ?", id).
-		Updates(updates)
+	result := m.db.Model(&EventNews{}).Where("id = ?", id).Updates(updates)
 	if result.Error != nil {
 		return false, result.Error
 	}

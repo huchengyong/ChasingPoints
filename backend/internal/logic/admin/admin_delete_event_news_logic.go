@@ -34,7 +34,7 @@ func (l *AdminDeleteEventNewsLogic) AdminDeleteEventNews(req *types.AdminEventNe
 		}, nil
 	}
 
-	if req == nil || req.EventNewsId <= 0 {
+	if req == nil || req.EventId <= 0 {
 		return &types.AdminWriteResp{
 			Code:    400,
 			Success: false,
@@ -42,9 +42,9 @@ func (l *AdminDeleteEventNewsLogic) AdminDeleteEventNews(req *types.AdminEventNe
 		}, nil
 	}
 
-	existing, err := l.svcCtx.EventNewsModel.FindById(req.EventNewsId)
+	existing, err := l.svcCtx.EventNewsModel.FindById(req.EventId)
 	if err != nil {
-		l.Logger.Errorf("查询赛事情报失败: id=%d err=%v", req.EventNewsId, err)
+		l.Logger.Errorf("查询赛事情报失败: id=%d err=%v", req.EventId, err)
 		return &types.AdminWriteResp{
 			Code:    500,
 			Success: false,
@@ -59,8 +59,17 @@ func (l *AdminDeleteEventNewsLogic) AdminDeleteEventNews(req *types.AdminEventNe
 		}, nil
 	}
 
-	if _, err := l.svcCtx.EventNewsModel.SoftDelete(req.EventNewsId); err != nil {
-		l.Logger.Errorf("删除赛事情报失败: id=%d err=%v", req.EventNewsId, err)
+	if err := l.svcCtx.EventNewsStageModel.SoftDeleteByEventId(req.EventId); err != nil {
+		l.Logger.Errorf("删除赛事阶段失败: eventId=%d err=%v", req.EventId, err)
+		return &types.AdminWriteResp{
+			Code:    500,
+			Success: false,
+			Message: "删除赛事情报失败",
+		}, nil
+	}
+
+	if _, err := l.svcCtx.EventNewsModel.SoftDelete(req.EventId); err != nil {
+		l.Logger.Errorf("删除赛事情报失败: id=%d err=%v", req.EventId, err)
 		return &types.AdminWriteResp{
 			Code:    500,
 			Success: false,

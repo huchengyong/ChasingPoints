@@ -51,14 +51,12 @@ type AdminEventNewsCreateReq struct {
 	StartTime  string `json:"start_time"`
 	EndTime    string `json:"end_time,optional"`
 	Status     int    `json:"status"`
-	StageText  string `json:"stage_text,optional"`
-	ResultText string `json:"result_text,optional"`
 	Featured   bool   `json:"featured,optional"`
 	SortTime   string `json:"sort_time,optional"`
 }
 
 type AdminEventNewsIdReq struct {
-	EventNewsId int64 `json:"event_news_id"`
+	EventId int64 `json:"event_id"`
 }
 
 type AdminEventNewsListReq struct {
@@ -78,30 +76,55 @@ type AdminEventNewsListResp struct {
 }
 
 type AdminEventNewsPublishReq struct {
-	EventNewsId int64 `json:"event_news_id"`
-	Published   bool  `json:"published"`
+	EventId   int64 `json:"event_id"`
+	Published bool  `json:"published"`
+}
+
+type AdminEventNewsStageCreateReq struct {
+	EventId    int64  `json:"event_id"`
+	StageName  string `json:"stage_name"`
+	StageOrder int    `json:"stage_order"`
+	StartTime  string `json:"start_time,optional"`
+	EndTime    string `json:"end_time,optional"`
+	Status     int    `json:"status"`
+	ResultText string `json:"result_text,optional"`
+	SortTime   string `json:"sort_time,optional"`
+}
+
+type AdminEventNewsStageIdReq struct {
+	StageId int64 `json:"stage_id"`
+}
+
+type AdminEventNewsStageUpdateReq struct {
+	StageId    int64  `json:"stage_id"`
+	EventId    int64  `json:"event_id"`
+	StageName  string `json:"stage_name"`
+	StageOrder int    `json:"stage_order"`
+	StartTime  string `json:"start_time,optional"`
+	EndTime    string `json:"end_time,optional"`
+	Status     int    `json:"status"`
+	ResultText string `json:"result_text,optional"`
+	SortTime   string `json:"sort_time,optional"`
 }
 
 type AdminEventNewsUpdateReq struct {
-	EventNewsId int64  `json:"event_news_id"`
-	Title       string `json:"title"`
-	GameType    int    `json:"game_type"`
-	SourceType  string `json:"source_type,optional"`
-	SourceName  string `json:"source_name,optional"`
-	SourceUrl   string `json:"source_url,optional"`
-	CoverImage  string `json:"cover_image,optional"`
-	Summary     string `json:"summary,optional"`
-	Content     string `json:"content,optional"`
-	Country     string `json:"country,optional"`
-	City        string `json:"city,optional"`
-	Venue       string `json:"venue,optional"`
-	StartTime   string `json:"start_time"`
-	EndTime     string `json:"end_time,optional"`
-	Status      int    `json:"status"`
-	StageText   string `json:"stage_text,optional"`
-	ResultText  string `json:"result_text,optional"`
-	Featured    bool   `json:"featured,optional"`
-	SortTime    string `json:"sort_time,optional"`
+	EventId    int64  `json:"event_id"`
+	Title      string `json:"title"`
+	GameType   int    `json:"game_type"`
+	SourceType string `json:"source_type,optional"`
+	SourceName string `json:"source_name,optional"`
+	SourceUrl  string `json:"source_url,optional"`
+	CoverImage string `json:"cover_image,optional"`
+	Summary    string `json:"summary,optional"`
+	Content    string `json:"content,optional"`
+	Country    string `json:"country,optional"`
+	City       string `json:"city,optional"`
+	Venue      string `json:"venue,optional"`
+	StartTime  string `json:"start_time"`
+	EndTime    string `json:"end_time,optional"`
+	Status     int    `json:"status"`
+	Featured   bool   `json:"featured,optional"`
+	SortTime   string `json:"sort_time,optional"`
 }
 
 type AdminExistsResp struct {
@@ -435,29 +458,45 @@ type EquipTitleReq struct {
 }
 
 type EventNewsInfo struct {
-	Id          int64  `json:"id"`
-	Title       string `json:"title"`
-	GameType    int    `json:"game_type"`
-	SourceType  string `json:"source_type"`
-	SourceName  string `json:"source_name"`
-	SourceUrl   string `json:"source_url"`
-	CoverImage  string `json:"cover_image"`
-	Summary     string `json:"summary"`
-	Content     string `json:"content"`
-	Country     string `json:"country"`
-	City        string `json:"city"`
-	Venue       string `json:"venue"`
-	StartTime   string `json:"start_time"`
-	EndTime     string `json:"end_time"`
-	Status      int    `json:"status"` // 0:即将开始 1:进行中 2:已结束 3:已取消
-	StageText   string `json:"stage_text"`
-	ResultText  string `json:"result_text"`
-	Featured    bool   `json:"featured"`
-	SortTime    string `json:"sort_time"`
-	Published   bool   `json:"published"`
-	PublishedAt string `json:"published_at"`
-	CreatedAt   string `json:"created_at"`
-	UpdatedAt   string `json:"updated_at"`
+	Id               int64                `json:"id"`
+	Title            string               `json:"title"`
+	GameType         int                  `json:"game_type"`
+	SourceType       string               `json:"source_type"`
+	SourceName       string               `json:"source_name"`
+	SourceUrl        string               `json:"source_url"`
+	CoverImage       string               `json:"cover_image"`
+	Summary          string               `json:"summary"`
+	Content          string               `json:"content"`
+	Country          string               `json:"country"`
+	City             string               `json:"city"`
+	Venue            string               `json:"venue"`
+	StartTime        string               `json:"start_time"`
+	EndTime          string               `json:"end_time"`
+	Status           int                  `json:"status"` // 0:即将开始 1:进行中 2:已结束 3:已取消
+	CurrentStageText string               `json:"current_stage_text"`
+	LatestResultText string               `json:"latest_result_text"`
+	StageCount       int                  `json:"stage_count"`
+	Stages           []EventNewsStageInfo `json:"stages"`
+	Featured         bool                 `json:"featured"`
+	SortTime         string               `json:"sort_time"`
+	Published        bool                 `json:"published"`
+	PublishedAt      string               `json:"published_at"`
+	CreatedAt        string               `json:"created_at"`
+	UpdatedAt        string               `json:"updated_at"`
+}
+
+type EventNewsStageInfo struct {
+	Id         int64  `json:"id"`
+	EventId    int64  `json:"event_id"`
+	StageName  string `json:"stage_name"`
+	StageOrder int    `json:"stage_order"`
+	StartTime  string `json:"start_time"`
+	EndTime    string `json:"end_time"`
+	Status     int    `json:"status"`
+	ResultText string `json:"result_text"`
+	SortTime   string `json:"sort_time"`
+	CreatedAt  string `json:"created_at"`
+	UpdatedAt  string `json:"updated_at"`
 }
 
 type FinishMatchReq struct {
@@ -540,12 +579,15 @@ type GetCurrentSeasonResp struct {
 }
 
 type GetEventNewsDetailReq struct {
-	EventNewsId int64 `form:"event_news_id"`
+	EventId     int64 `form:"event_id,optional"`
+	EventNewsId int64 `form:"event_news_id,optional"`
 }
 
 type GetEventNewsDetailResp struct {
-	Success   bool           `json:"success"`
-	EventNews *EventNewsInfo `json:"event_news"`
+	Success   bool                 `json:"success"`
+	Event     *EventNewsInfo       `json:"event"`
+	EventNews *EventNewsInfo       `json:"event_news,optional"`
+	Stages    []EventNewsStageInfo `json:"stages"`
 }
 
 type GetEventNewsListReq struct {
@@ -564,7 +606,8 @@ type GetEventNewsListResp struct {
 
 type GetFeaturedEventNewsResp struct {
 	Success   bool           `json:"success"`
-	EventNews *EventNewsInfo `json:"event_news"`
+	Event     *EventNewsInfo `json:"event"`
+	EventNews *EventNewsInfo `json:"event_news,optional"`
 }
 
 type GetFollowListReq struct {

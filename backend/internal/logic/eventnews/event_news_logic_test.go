@@ -26,8 +26,9 @@ func newEventNewsTestSvc(t *testing.T) *svc.ServiceContext {
 	}
 
 	return &svc.ServiceContext{
-		DB:             db,
-		EventNewsModel: model.NewEventNewsModel(db),
+		DB:                 db,
+		EventNewsModel:     model.NewEventNewsModel(db),
+		EventNewsStageModel: model.NewEventNewsStageModel(db),
 	}
 }
 
@@ -36,13 +37,22 @@ func mustTimePtr(t time.Time) *time.Time {
 	return &v
 }
 
-func createEventNews(t *testing.T, svcCtx *svc.ServiceContext, news *model.EventNews) *model.EventNews {
+func createEvent(t *testing.T, svcCtx *svc.ServiceContext, event *model.EventNews) *model.EventNews {
 	t.Helper()
 
-	if err := svcCtx.EventNewsModel.Create(news); err != nil {
-		t.Fatalf("create event news: %v", err)
+	if err := svcCtx.EventNewsModel.Create(event); err != nil {
+		t.Fatalf("create event: %v", err)
 	}
-	return news
+	return event
+}
+
+func createStage(t *testing.T, svcCtx *svc.ServiceContext, stage *model.EventNewsStage) *model.EventNewsStage {
+	t.Helper()
+
+	if err := svcCtx.EventNewsStageModel.Create(stage); err != nil {
+		t.Fatalf("create stage: %v", err)
+	}
+	return stage
 }
 
 func withEventNewsNow(now time.Time) func() {
@@ -55,39 +65,54 @@ func withEventNewsNow(now time.Time) func() {
 	}
 }
 
-func TestGetEventNewsListFiltersByGameTypeAndPublishedState(t *testing.T) {
+func TestGetEventNewsListFiltersPublishedEventParentsAndExposesStageSummary(t *testing.T) {
 	svcCtx := newEventNewsTestSvc(t)
 	defer withEventNewsNow(time.Date(2026, 3, 23, 12, 0, 0, 0, time.UTC))()
 
-	createEventNews(t, svcCtx, &model.EventNews{
-		Title:      "斯诺克公开赛A",
+	snooker := createEvent(t, svcCtx, &model.EventNews{
+		Title:      "2026斯诺克世锦赛",
 		GameType:   1,
 		SourceType: "official",
 		SourceName: "WST",
-		City:       "上海",
+		City:       "谢菲尔德",
 		Status:     model.EventNewsStatusLive,
 		Published:  true,
 		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 0, 0, 0, time.UTC)),
 	})
-	createEventNews(t, svcCtx, &model.EventNews{
-		Title:      "斯诺克公开赛B",
+	createStage(t, svcCtx, &model.EventNewsStage{
+		EventId:    snooker.Id,
+		StageName:  "资格赛",
+		StageOrder: 10,
+		Status:     model.EventNewsStatusFinished,
+		ResultText: "资格赛收官",
+		SortTime:   mustTimePtr(time.Date(2026, 3, 22, 18, 0, 0, 0, time.UTC)),
+	})
+	createStage(t, svcCtx, &model.EventNewsStage{
+		EventId:    snooker.Id,
+		StageName:  "32强",
+		StageOrder: 20,
+		Status:     model.EventNewsStatusLive,
+		ResultText: "赵心童晋级16强",
+		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 30, 0, 0, time.UTC)),
+	})
+
+	createEvent(t, svcCtx, &model.EventNews{
+		Title:      "未发布斯诺克赛",
 		GameType:   1,
 		SourceType: "manual",
 		SourceName: "Admin",
-		City:       "上海",
 		Status:     model.EventNewsStatusLive,
 		Published:  false,
-		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 30, 0, 0, time.UTC)),
+		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 40, 0, 0, time.UTC)),
 	})
-	createEventNews(t, svcCtx, &model.EventNews{
+	createEvent(t, svcCtx, &model.EventNews{
 		Title:      "中式八球公开赛",
 		GameType:   3,
 		SourceType: "manual",
 		SourceName: "Admin",
-		City:       "北京",
-		Status:     model.EventNewsStatusLive,
+		Status:     model.EventNewsStatusUpcoming,
 		Published:  true,
-		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 45, 0, 0, time.UTC)),
+		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 12, 30, 0, 0, time.UTC)),
 	})
 
 	logic := NewGetEventNewsListLogic(context.Background(), svcCtx)
@@ -103,26 +128,29 @@ func TestGetEventNewsListFiltersByGameTypeAndPublishedState(t *testing.T) {
 	if !resp.Success {
 		t.Fatalf("expected success, got %#v", resp)
 	}
-	if resp.Total != 1 {
-		t.Fatalf("expected one published snooker event, got %d", resp.Total)
+	if resp.Total != 1 || len(resp.List) != 1 {
+		t.Fatalf("expected one published snooker event, got %#v", resp)
 	}
-	if resp.List == nil || len(resp.List) != 1 {
-		t.Fatalf("expected one list item, got %#v", resp.List)
+	if resp.List[0].Title != snooker.Title {
+		t.Fatalf("expected snooker event, got %#v", resp.List[0])
 	}
-	if resp.List[0].Title != "斯诺克公开赛A" {
-		t.Fatalf("expected published snooker item, got %#v", resp.List[0])
+	if resp.List[0].CurrentStageText != "32强" {
+		t.Fatalf("expected current stage summary from stages, got %#v", resp.List[0])
 	}
-	if resp.List[0].Published != true {
-		t.Fatalf("expected public item to stay published, got %#v", resp.List[0])
+	if resp.List[0].LatestResultText != "赵心童晋级16强" {
+		t.Fatalf("expected latest result summary from stages, got %#v", resp.List[0])
+	}
+	if resp.List[0].StageCount != 2 {
+		t.Fatalf("expected two stages, got %#v", resp.List[0])
 	}
 }
 
-func TestGetEventNewsListFiltersByStatusAndSortsByConsumerPriority(t *testing.T) {
+func TestGetEventNewsListFiltersByEventStatus(t *testing.T) {
 	svcCtx := newEventNewsTestSvc(t)
 	defer withEventNewsNow(time.Date(2026, 3, 23, 12, 0, 0, 0, time.UTC))()
 
-	createEventNews(t, svcCtx, &model.EventNews{
-		Title:      "进行中-更近",
+	createEvent(t, svcCtx, &model.EventNews{
+		Title:      "进行中赛事",
 		GameType:   1,
 		SourceType: "official",
 		SourceName: "WST",
@@ -130,32 +158,14 @@ func TestGetEventNewsListFiltersByStatusAndSortsByConsumerPriority(t *testing.T)
 		Published:  true,
 		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 55, 0, 0, time.UTC)),
 	})
-	createEventNews(t, svcCtx, &model.EventNews{
-		Title:      "进行中-更远",
-		GameType:   1,
-		SourceType: "official",
-		SourceName: "WST",
-		Status:     model.EventNewsStatusLive,
-		Published:  true,
-		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 10, 30, 0, 0, time.UTC)),
-	})
-	createEventNews(t, svcCtx, &model.EventNews{
-		Title:      "即将开始",
+	createEvent(t, svcCtx, &model.EventNews{
+		Title:      "即将开始赛事",
 		GameType:   1,
 		SourceType: "manual",
 		SourceName: "Admin",
 		Status:     model.EventNewsStatusUpcoming,
 		Published:  true,
 		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 12, 20, 0, 0, time.UTC)),
-	})
-	createEventNews(t, svcCtx, &model.EventNews{
-		Title:      "已结束",
-		GameType:   1,
-		SourceType: "manual",
-		SourceName: "Admin",
-		Status:     model.EventNewsStatusFinished,
-		Published:  true,
-		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 40, 0, 0, time.UTC)),
 	})
 
 	logic := NewGetEventNewsListLogic(context.Background(), svcCtx)
@@ -165,126 +175,57 @@ func TestGetEventNewsListFiltersByStatusAndSortsByConsumerPriority(t *testing.T)
 		Status:   model.EventNewsStatusLive,
 	})
 	if err != nil {
-		t.Fatalf("get list by status: %v", err)
+		t.Fatalf("get list by event status: %v", err)
 	}
 	if !resp.Success {
 		t.Fatalf("expected success, got %#v", resp)
 	}
-	if resp.Total != 2 {
-		t.Fatalf("expected two live events, got %d", resp.Total)
+	if resp.Total != 1 || len(resp.List) != 1 {
+		t.Fatalf("expected one live event, got %#v", resp)
 	}
-	if len(resp.List) != 2 {
-		t.Fatalf("expected two list items, got %#v", resp.List)
-	}
-	if resp.List[0].Title != "进行中-更近" || resp.List[1].Title != "进行中-更远" {
-		t.Fatalf("expected live events ordered by proximity, got %#v", resp.List)
-	}
-	for _, item := range resp.List {
-		if item.Status != model.EventNewsStatusLive {
-			t.Fatalf("expected only live items, got %#v", item)
-		}
+	if resp.List[0].Title != "进行中赛事" || resp.List[0].Status != model.EventNewsStatusLive {
+		t.Fatalf("expected only live event rows, got %#v", resp.List)
 	}
 }
 
-func TestGetEventNewsListShowsAllStatusesWhenStatusIsMinusOne(t *testing.T) {
+func TestGetEventNewsDetailReturnsGroupedStagesForPublishedEvent(t *testing.T) {
 	svcCtx := newEventNewsTestSvc(t)
 	defer withEventNewsNow(time.Date(2026, 3, 23, 12, 0, 0, 0, time.UTC))()
 
-	createEventNews(t, svcCtx, &model.EventNews{
-		Title:      "进行中",
-		GameType:   1,
-		SourceType: "official",
-		SourceName: "WST",
-		Status:     model.EventNewsStatusLive,
-		Published:  true,
-		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 55, 0, 0, time.UTC)),
-	})
-	createEventNews(t, svcCtx, &model.EventNews{
-		Title:      "即将开始",
-		GameType:   1,
-		SourceType: "manual",
-		SourceName: "Admin",
-		Status:     model.EventNewsStatusUpcoming,
-		Published:  true,
-		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 12, 20, 0, 0, time.UTC)),
-	})
-	createEventNews(t, svcCtx, &model.EventNews{
-		Title:      "已结束",
-		GameType:   1,
-		SourceType: "manual",
-		SourceName: "Admin",
-		Status:     model.EventNewsStatusFinished,
-		Published:  true,
-		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 40, 0, 0, time.UTC)),
-	})
-
-	logic := NewGetEventNewsListLogic(context.Background(), svcCtx)
-	resp, err := logic.GetEventNewsList(&types.GetEventNewsListReq{
-		Page:     1,
-		PageSize: 20,
-		Status:   -1,
-		GameType: 1,
-	})
-	if err != nil {
-		t.Fatalf("get list with sentinel status: %v", err)
-	}
-	if !resp.Success {
-		t.Fatalf("expected success, got %#v", resp)
-	}
-	if resp.Total != 3 {
-		t.Fatalf("expected three items, got %d", resp.Total)
-	}
-	if len(resp.List) != 3 {
-		t.Fatalf("expected three list items, got %#v", resp.List)
-	}
-	if resp.List[0].Title != "进行中" || resp.List[1].Title != "即将开始" || resp.List[2].Title != "已结束" {
-		t.Fatalf("expected consumer-friendly ordering, got %#v", resp.List)
-	}
-}
-
-func TestGetEventNewsListReturnsEmptySliceWhenNoMatches(t *testing.T) {
-	svcCtx := newEventNewsTestSvc(t)
-	defer withEventNewsNow(time.Date(2026, 3, 23, 12, 0, 0, 0, time.UTC))()
-
-	logic := NewGetEventNewsListLogic(context.Background(), svcCtx)
-	resp, err := logic.GetEventNewsList(&types.GetEventNewsListReq{
-		Page:     1,
-		PageSize: 20,
-		GameType: 1,
-	})
-	if err != nil {
-		t.Fatalf("get empty list: %v", err)
-	}
-	if !resp.Success {
-		t.Fatalf("expected success, got %#v", resp)
-	}
-	if resp.Total != 0 {
-		t.Fatalf("expected total 0, got %d", resp.Total)
-	}
-	if resp.List == nil {
-		t.Fatal("expected empty slice, got nil")
-	}
-	if len(resp.List) != 0 {
-		t.Fatalf("expected empty list, got %#v", resp.List)
-	}
-}
-
-func TestGetEventNewsDetailOnlyReturnsPublishedContent(t *testing.T) {
-	svcCtx := newEventNewsTestSvc(t)
-	defer withEventNewsNow(time.Date(2026, 3, 23, 12, 0, 0, 0, time.UTC))()
-
-	published := createEventNews(t, svcCtx, &model.EventNews{
-		Title:      "已发布详情",
+	event := createEvent(t, svcCtx, &model.EventNews{
+		Title:      "2026斯诺克世锦赛",
 		GameType:   1,
 		SourceType: "official",
 		SourceName: "WST",
 		Status:     model.EventNewsStatusLive,
 		Published:  true,
 		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 50, 0, 0, time.UTC)),
-		Content:    "detail content",
+		Content:    "赛事详情正文",
 	})
-	unpublished := createEventNews(t, svcCtx, &model.EventNews{
-		Title:      "未发布详情",
+	createStage(t, svcCtx, &model.EventNewsStage{
+		EventId:    event.Id,
+		StageName:  "16强",
+		StageOrder: 30,
+		Status:     model.EventNewsStatusUpcoming,
+		ResultText: "待更新",
+	})
+	createStage(t, svcCtx, &model.EventNewsStage{
+		EventId:    event.Id,
+		StageName:  "资格赛",
+		StageOrder: 10,
+		Status:     model.EventNewsStatusFinished,
+		ResultText: "资格赛结束",
+	})
+	createStage(t, svcCtx, &model.EventNewsStage{
+		EventId:    event.Id,
+		StageName:  "32强",
+		StageOrder: 20,
+		Status:     model.EventNewsStatusLive,
+		ResultText: "32强进行中",
+	})
+
+	unpublished := createEvent(t, svcCtx, &model.EventNews{
+		Title:      "未发布赛事",
 		GameType:   3,
 		SourceType: "manual",
 		SourceName: "Admin",
@@ -294,123 +235,113 @@ func TestGetEventNewsDetailOnlyReturnsPublishedContent(t *testing.T) {
 	})
 
 	logic := NewGetEventNewsDetailLogic(context.Background(), svcCtx)
-	resp, err := logic.GetEventNewsDetail(&types.GetEventNewsDetailReq{EventNewsId: published.Id})
+	resp, err := logic.GetEventNewsDetail(&types.GetEventNewsDetailReq{EventId: event.Id})
 	if err != nil {
 		t.Fatalf("get published detail: %v", err)
 	}
-	if !resp.Success || resp.EventNews == nil {
+	if !resp.Success || resp.Event == nil {
 		t.Fatalf("expected published detail success, got %#v", resp)
 	}
-	if resp.EventNews.Title != "已发布详情" || resp.EventNews.Content != "detail content" {
-		t.Fatalf("unexpected detail payload: %#v", resp.EventNews)
+	if resp.EventNews == nil || resp.EventNews.Id != event.Id {
+		t.Fatalf("expected legacy event_news payload mirror, got %#v", resp)
+	}
+	if resp.Event.Title != event.Title || resp.Event.Content != "赛事详情正文" {
+		t.Fatalf("unexpected event detail payload: %#v", resp.Event)
+	}
+	if len(resp.Stages) != 3 {
+		t.Fatalf("expected three ordered stages, got %#v", resp.Stages)
+	}
+	if resp.Stages[0].StageName != "资格赛" || resp.Stages[1].StageName != "32强" || resp.Stages[2].StageName != "16强" {
+		t.Fatalf("expected stages sorted by stage_order, got %#v", resp.Stages)
 	}
 
-	resp, err = logic.GetEventNewsDetail(&types.GetEventNewsDetailReq{EventNewsId: unpublished.Id})
+	resp, err = logic.GetEventNewsDetail(&types.GetEventNewsDetailReq{EventId: unpublished.Id})
 	if err != nil {
 		t.Fatalf("get unpublished detail: %v", err)
 	}
 	if resp.Success {
 		t.Fatalf("expected unpublished detail to be rejected, got %#v", resp)
 	}
+}
 
-	resp, err = logic.GetEventNewsDetail(&types.GetEventNewsDetailReq{EventNewsId: 999999})
+func TestGetEventNewsDetailAcceptsLegacyEventNewsIDParam(t *testing.T) {
+	svcCtx := newEventNewsTestSvc(t)
+	event := createEvent(t, svcCtx, &model.EventNews{
+		Title:      "兼容详情赛事",
+		GameType:   1,
+		SourceType: "official",
+		SourceName: "WST",
+		Status:     model.EventNewsStatusLive,
+		Published:  true,
+	})
+
+	logic := NewGetEventNewsDetailLogic(context.Background(), svcCtx)
+	resp, err := logic.GetEventNewsDetail(&types.GetEventNewsDetailReq{EventNewsId: event.Id})
 	if err != nil {
-		t.Fatalf("get missing detail: %v", err)
+		t.Fatalf("get legacy detail: %v", err)
 	}
-	if resp.Success {
-		t.Fatalf("expected missing detail to be rejected, got %#v", resp)
+	if !resp.Success || resp.Event == nil || resp.Event.Id != event.Id {
+		t.Fatalf("expected legacy event_news_id to resolve detail, got %#v", resp)
+	}
+	if resp.EventNews == nil || resp.EventNews.Id != event.Id {
+		t.Fatalf("expected event_news mirror field, got %#v", resp)
 	}
 }
 
-func TestGetFeaturedEventNewsPrefersFeaturedThenFallsBackToBestActiveEvent(t *testing.T) {
-	t.Run("featured item wins", func(t *testing.T) {
-		svcCtx := newEventNewsTestSvc(t)
-		defer withEventNewsNow(time.Date(2026, 3, 23, 12, 0, 0, 0, time.UTC))()
+func TestGetFeaturedEventNewsPrefersFeaturedEventAndIncludesStagePreview(t *testing.T) {
+	svcCtx := newEventNewsTestSvc(t)
+	defer withEventNewsNow(time.Date(2026, 3, 23, 12, 0, 0, 0, time.UTC))()
 
-		featured := createEventNews(t, svcCtx, &model.EventNews{
-			Title:      "焦点赛事",
-			GameType:   1,
-			SourceType: "official",
-			SourceName: "WST",
-			Status:     model.EventNewsStatusUpcoming,
-			Featured:   true,
-			Published:  true,
-			SortTime:   mustTimePtr(time.Date(2026, 3, 23, 13, 0, 0, 0, time.UTC)),
-		})
-		createEventNews(t, svcCtx, &model.EventNews{
-			Title:      "普通进行中",
-			GameType:   1,
-			SourceType: "manual",
-			SourceName: "Admin",
-			Status:     model.EventNewsStatusLive,
-			Published:  true,
-			SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 55, 0, 0, time.UTC)),
-		})
-
-		logic := NewGetFeaturedEventNewsLogic(context.Background(), svcCtx)
-		resp, err := logic.GetFeaturedEventNews()
-		if err != nil {
-			t.Fatalf("get featured: %v", err)
-		}
-		if !resp.Success || resp.EventNews == nil {
-			t.Fatalf("expected featured success, got %#v", resp)
-		}
-		if resp.EventNews.Id != featured.Id {
-			t.Fatalf("expected featured item to win, got %#v", resp.EventNews)
-		}
+	featured := createEvent(t, svcCtx, &model.EventNews{
+		Title:      "焦点赛事",
+		GameType:   1,
+		SourceType: "official",
+		SourceName: "WST",
+		Status:     model.EventNewsStatusUpcoming,
+		Featured:   true,
+		Published:  true,
+		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 13, 0, 0, 0, time.UTC)),
+	})
+	createStage(t, svcCtx, &model.EventNewsStage{
+		EventId:    featured.Id,
+		StageName:  "资格赛",
+		StageOrder: 10,
+		Status:     model.EventNewsStatusUpcoming,
+		ResultText: "明日开打",
 	})
 
-	t.Run("fallback prefers live over upcoming and finished", func(t *testing.T) {
-		svcCtx := newEventNewsTestSvc(t)
-		defer withEventNewsNow(time.Date(2026, 3, 23, 12, 0, 0, 0, time.UTC))()
-
-		bestLive := createEventNews(t, svcCtx, &model.EventNews{
-			Title:      "更近的进行中",
-			GameType:   1,
-			SourceType: "official",
-			SourceName: "WST",
-			Status:     model.EventNewsStatusLive,
-			Published:  true,
-			SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 56, 0, 0, time.UTC)),
-		})
-		createEventNews(t, svcCtx, &model.EventNews{
-			Title:      "更远的进行中",
-			GameType:   1,
-			SourceType: "official",
-			SourceName: "WST",
-			Status:     model.EventNewsStatusLive,
-			Published:  true,
-			SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 20, 0, 0, time.UTC)),
-		})
-		createEventNews(t, svcCtx, &model.EventNews{
-			Title:      "即将开始",
-			GameType:   3,
-			SourceType: "manual",
-			SourceName: "Admin",
-			Status:     model.EventNewsStatusUpcoming,
-			Published:  true,
-			SortTime:   mustTimePtr(time.Date(2026, 3, 23, 12, 20, 0, 0, time.UTC)),
-		})
-		createEventNews(t, svcCtx, &model.EventNews{
-			Title:      "刚结束",
-			GameType:   2,
-			SourceType: "manual",
-			SourceName: "Admin",
-			Status:     model.EventNewsStatusFinished,
-			Published:  true,
-			SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 58, 0, 0, time.UTC)),
-		})
-
-		logic := NewGetFeaturedEventNewsLogic(context.Background(), svcCtx)
-		resp, err := logic.GetFeaturedEventNews()
-		if err != nil {
-			t.Fatalf("get fallback featured: %v", err)
-		}
-		if !resp.Success || resp.EventNews == nil {
-			t.Fatalf("expected fallback success, got %#v", resp)
-		}
-		if resp.EventNews.Id != bestLive.Id {
-			t.Fatalf("expected nearest live event, got %#v", resp.EventNews)
-		}
+	other := createEvent(t, svcCtx, &model.EventNews{
+		Title:      "普通进行中赛事",
+		GameType:   1,
+		SourceType: "manual",
+		SourceName: "Admin",
+		Status:     model.EventNewsStatusLive,
+		Published:  true,
+		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 55, 0, 0, time.UTC)),
 	})
+	createStage(t, svcCtx, &model.EventNewsStage{
+		EventId:    other.Id,
+		StageName:  "32强",
+		StageOrder: 20,
+		Status:     model.EventNewsStatusLive,
+		ResultText: "32强激战中",
+	})
+
+	logic := NewGetFeaturedEventNewsLogic(context.Background(), svcCtx)
+	resp, err := logic.GetFeaturedEventNews()
+	if err != nil {
+		t.Fatalf("get featured: %v", err)
+	}
+	if !resp.Success || resp.Event == nil {
+		t.Fatalf("expected featured success, got %#v", resp)
+	}
+	if resp.EventNews == nil || resp.EventNews.Id != featured.Id {
+		t.Fatalf("expected featured legacy event_news mirror, got %#v", resp)
+	}
+	if resp.Event.Id != featured.Id {
+		t.Fatalf("expected featured event to win, got %#v", resp.Event)
+	}
+	if resp.Event.CurrentStageText != "资格赛" || resp.Event.LatestResultText != "明日开打" {
+		t.Fatalf("expected stage preview on featured event, got %#v", resp.Event)
+	}
 }

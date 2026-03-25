@@ -20,7 +20,7 @@ export const getEventNewsList = (params = {}) => {
 /**
  * 获取赛事情报详情
  * @param {Object} params 查询参数
- * @param {number} params.event_news_id 赛事情报 ID
+ * @param {number} params.event_id 赛事 ID
  * @returns {Promise}
  */
 export const getEventNewsDetail = (params = {}) => {

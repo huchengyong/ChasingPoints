@@ -62,7 +62,8 @@ test('normalizeFeaturedEventNews maps event news fields without roster copy', ()
   const card = normalizeFeaturedEventNews({
     id: 11,
     title: '独牙传奇中式九球公开赛',
-    summary: '国内顶级追分赛事今晚开赛',
+    latest_result_text: '资格赛今晚开打',
+    current_stage_text: '资格赛',
     game_type: 2,
     status: 1,
     start_time: '2026-03-11T20:00:00+08:00',
@@ -74,13 +75,14 @@ test('normalizeFeaturedEventNews maps event news fields without roster copy', ()
 
   assert.equal(card.id, 11)
   assert.equal(card.title, '独牙传奇中式九球公开赛')
-  assert.equal(card.summary, '国内顶级追分赛事今晚开赛')
+  assert.equal(card.summary, '资格赛今晚开打')
   assert.equal(card.statusText, '进行中')
   assert.equal(card.timeText, '今天 20:00')
   assert.equal(card.typeText, '九球追分')
   assert.equal(card.locationText, '杭州 · 奥体中心')
   assert.equal(card.sourceText, '独牙传奇')
   assert.equal(card.sourceUrl, 'https://example.com/event')
+  assert.equal(card.currentStageText, '资格赛')
   assert.equal('playersText' in card, false)
 })
 

@@ -176,13 +176,13 @@ const normalizeEventNewsItem = (item, now = Date.now()) => {
 	return {
 		...item,
 		title: item.title || '赛事情报',
-		summary: item.summary || item.result_text || '最新赛况持续更新中',
+		summary: item.summary || item.latest_result_text || '最新赛况持续更新中',
 		statusText: getEventNewsStatusText(item.status, '未知状态'),
 		gameTypeText: getGameTypeText(item.game_type),
 		timeText: formatEventNewsTime(timeSource, now),
 		locationText: formatLocationText(item),
-		stageText: item.stage_text || '阶段待更新',
-		resultText: item.result_text || '',
+		stageText: item.current_stage_text || '阶段待更新',
+		resultText: item.latest_result_text || '',
 		sourceText: item.source_name || ''
 	}
 }

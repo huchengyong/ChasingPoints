@@ -34,7 +34,7 @@ func (l *AdminPublishEventNewsLogic) AdminPublishEventNews(req *types.AdminEvent
 		}, nil
 	}
 
-	if req == nil || req.EventNewsId <= 0 {
+	if req == nil || req.EventId <= 0 {
 		return &types.AdminWriteResp{
 			Code:    400,
 			Success: false,
@@ -42,9 +42,9 @@ func (l *AdminPublishEventNewsLogic) AdminPublishEventNews(req *types.AdminEvent
 		}, nil
 	}
 
-	existing, err := l.svcCtx.EventNewsModel.FindById(req.EventNewsId)
+	existing, err := l.svcCtx.EventNewsModel.FindById(req.EventId)
 	if err != nil {
-		l.Logger.Errorf("查询赛事情报失败: id=%d err=%v", req.EventNewsId, err)
+		l.Logger.Errorf("查询赛事情报失败: id=%d err=%v", req.EventId, err)
 		return &types.AdminWriteResp{
 			Code:    500,
 			Success: false,
@@ -59,8 +59,8 @@ func (l *AdminPublishEventNewsLogic) AdminPublishEventNews(req *types.AdminEvent
 		}, nil
 	}
 
-	if _, err := l.svcCtx.EventNewsModel.UpdatePublished(req.EventNewsId, req.Published); err != nil {
-		l.Logger.Errorf("更新赛事情报发布状态失败: id=%d err=%v", req.EventNewsId, err)
+	if _, err := l.svcCtx.EventNewsModel.UpdatePublished(req.EventId, req.Published); err != nil {
+		l.Logger.Errorf("更新赛事情报发布状态失败: id=%d err=%v", req.EventId, err)
 		return &types.AdminWriteResp{
 			Code:    500,
 			Success: false,

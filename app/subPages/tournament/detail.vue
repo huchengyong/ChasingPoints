@@ -60,22 +60,26 @@
 
 			<view class="story-card">
 				<view class="section-head">
-					<text class="section-title">赛况摘要</text>
-					<text class="section-tip">{{ eventNews.sourceName || '信息来源' }}</text>
+					<text class="section-title">阶段赛程</text>
+					<text class="section-tip">{{ eventNews.stages.length }} 个阶段</text>
 				</view>
-				<view class="story-list">
-					<view class="story-item">
-						<text class="story-label">当前阶段</text>
-						<text class="story-value">{{ eventNews.stageText }}</text>
+				<view class="story-list" v-if="eventNews.stages.length">
+					<view
+						v-for="stage in eventNews.stages"
+						:key="stage.id"
+						class="story-item"
+					>
+						<view class="story-topline">
+							<text class="story-label">{{ stage.stageName }}</text>
+							<text class="story-badge">{{ stage.statusText }}</text>
+						</view>
+						<text class="story-value">{{ stage.resultText }}</text>
+						<text class="story-meta">{{ stage.timeText }}</text>
 					</view>
-					<view class="story-item">
-						<text class="story-label">最新赛果</text>
-						<text class="story-value">{{ eventNews.resultText }}</text>
-					</view>
-					<view class="story-item">
-						<text class="story-label">赛事地点</text>
-						<text class="story-value">{{ eventNews.locationText || '待补充' }}</text>
-					</view>
+				</view>
+				<view v-else class="story-item">
+					<text class="story-label">阶段待更新</text>
+					<text class="story-value">当前赛事还没有录入阶段赛程。</text>
 				</view>
 			</view>
 
@@ -161,11 +165,12 @@ const formatEventRelativeText = (dateTime, now = Date.now()) => {
 const normalizeEventNews = (item, now = Date.now()) => {
 	const startTime = item.start_time || item.sort_time || item.created_at
 	const endTime = item.end_time || ''
+	const stages = Array.isArray(item.stages) ? item.stages : []
 
 	return {
 		id: item.id,
 		title: item.title || '赛事情报',
-		summary: item.summary || item.result_text || '赛程赛况持续更新中',
+		summary: item.summary || item.latest_result_text || '赛程赛况持续更新中',
 		status: item.status,
 		statusText: getEventNewsStatusText(item.status, '赛事情报'),
 		gameTypeText: getGameTypeLabel(item.game_type, '台球'),
@@ -173,11 +178,16 @@ const normalizeEventNews = (item, now = Date.now()) => {
 		endTimeText: endTime ? formatEventNewsTime(endTime, now) : '待定',
 		relativeTimeText: item.start_time ? formatEventRelativeText(item.start_time, now) : '时间待定',
 		locationText: formatLocationText(item),
-		stageText: item.stage_text || '阶段待更新',
-		resultText: item.result_text || '赛果待更新',
 		sourceName: item.source_name || '手动录入',
 		sourceUrl: item.source_url || '',
-		updatedAtText: item.updated_at ? formatRelativeTime(item.updated_at) : '刚刚'
+		updatedAtText: item.updated_at ? formatRelativeTime(item.updated_at) : '刚刚',
+		stages: stages.map((stage) => ({
+			id: stage.id,
+			stageName: stage.stage_name || '阶段待更新',
+			statusText: getEventNewsStatusText(stage.status, '待更新'),
+			resultText: stage.result_text || '赛果待更新',
+			timeText: stage.start_time ? formatEventNewsTime(stage.start_time, now) : (stage.sort_time ? formatEventNewsTime(stage.sort_time, now) : '时间待定')
+		}))
 	}
 }
 
@@ -192,15 +202,19 @@ const fetchDetail = async () => {
 	loading.value = true
 	errorMessage.value = ''
 	try {
-		const res = await getEventNewsDetail({ event_news_id: eventNewsId.value })
+		const res = await getEventNewsDetail({ event_id: eventNewsId.value })
 		// 显式检查API返回值
 		if (!res.success) {
 			throw new Error(res.message || '获取赛事情报详情失败')
 		}
-		if (!res.event_news && !res.eventNews) {
+		if (!res.event && !res.eventNews) {
 			throw new Error('赛事情报数据不存在')
 		}
-		eventNews.value = normalizeEventNews(res.event_news || res.eventNews)
+		const eventPayload = res.event || res.eventNews
+		eventNews.value = normalizeEventNews({
+			...eventPayload,
+			stages: Array.isArray(res.stages) ? res.stages : []
+		})
 		return
 	} catch (e) {
 		console.error('获取赛事情报详情失败', e)

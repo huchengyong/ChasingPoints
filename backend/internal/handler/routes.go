@@ -90,6 +90,24 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: admin.AdminPublishEventNewsHandler(serverCtx),
 			},
 			{
+				// 创建赛事阶段
+				Method:  http.MethodPost,
+				Path:    "/stage/create",
+				Handler: admin.AdminCreateEventNewsStageHandler(serverCtx),
+			},
+			{
+				// 删除赛事阶段
+				Method:  http.MethodPost,
+				Path:    "/stage/delete",
+				Handler: admin.AdminDeleteEventNewsStageHandler(serverCtx),
+			},
+			{
+				// 更新赛事阶段
+				Method:  http.MethodPost,
+				Path:    "/stage/update",
+				Handler: admin.AdminUpdateEventNewsStageHandler(serverCtx),
+			},
+			{
 				// 更新赛事情报
 				Method:  http.MethodPost,
 				Path:    "/update",

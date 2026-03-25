@@ -201,10 +201,28 @@
 	background: #f8fafc;
 }
 
+.story-topline {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16rpx;
+}
+
 .story-label {
 	display: block;
 	font-size: 20rpx;
 	color: #94a3b8;
+}
+
+.story-badge {
+	flex-shrink: 0;
+	padding: 8rpx 14rpx;
+	border-radius: 999rpx;
+	font-size: 20rpx;
+	font-weight: 600;
+	line-height: 1;
+	color: #7c5b12;
+	background: rgba(224, 174, 18, 0.14);
 }
 
 .story-value {
@@ -215,6 +233,14 @@
 	font-weight: 600;
 	color: #0f172a;
 	word-break: break-word;
+}
+
+.story-meta {
+	display: block;
+	margin-top: 12rpx;
+	font-size: 22rpx;
+	line-height: 1.45;
+	color: #64748b;
 }
 
 .source-box {

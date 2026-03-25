@@ -400,7 +400,7 @@ const loadData = async () => {
 
     const featuredRes = results[resultIndex++]
     featuredEventNews.value = featuredRes.success
-      ? normalizeFeaturedEventNews(featuredRes.event_news || featuredRes.eventNews)
+      ? normalizeFeaturedEventNews(featuredRes.event || featuredRes.eventNews || featuredRes.event_news)
       : null
 
     const postRes = results[resultIndex]
