@@ -2,11 +2,14 @@ package logic
 
 import (
 	"context"
+	"time"
 
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
 	"github.com/zeromicro/go-zero/core/logx"
+	"gorm.io/gorm"
 )
 
 type AdminReviewVenueLogic struct {
@@ -61,9 +64,20 @@ func (l *AdminReviewVenueLogic) AdminReviewVenue(req *types.AdminVenueReviewReq)
 		}, nil
 	}
 
-	// 更新状态
-	if err := l.svcCtx.VenueModel.UpdateStatus(req.VenueId, req.Status); err != nil {
-		l.Logger.Errorf("更新球馆状态失败: venueId=%d status=%d err=%v", req.VenueId, req.Status, err)
+	if err := l.svcCtx.DB.Transaction(func(tx *gorm.DB) error {
+		rejectReason := ""
+		if req.Status == model.VenueStatusRejected {
+			rejectReason = req.RejectReason
+		}
+		if err := l.svcCtx.VenueModel.UpdateReviewWithTx(tx, req.VenueId, req.Status, rejectReason); err != nil {
+			return err
+		}
+		if req.Status != model.VenueStatusPublished {
+			return nil
+		}
+		return l.grantFavoriteVenueRewardIfEligible(tx, venue, time.Now())
+	}); err != nil {
+		l.Logger.Errorf("更新球馆审核状态失败: venueId=%d status=%d err=%v", req.VenueId, req.Status, err)
 		return &types.AdminVenueReviewResp{
 			Code:    500,
 			Success: false,
@@ -83,4 +97,72 @@ func (l *AdminReviewVenueLogic) AdminReviewVenue(req *types.AdminVenueReviewReq)
 		Success: true,
 		Message: msg,
 	}, nil
+}
+
+func (l *AdminReviewVenueLogic) grantFavoriteVenueRewardIfEligible(tx *gorm.DB, venue *model.Venue, now time.Time) error {
+	if venue == nil || venue.OwnerUserId <= 0 {
+		return nil
+	}
+
+	config, err := l.svcCtx.FavoriteVenueRewardConfigModel.FindByActivityKey(model.FavoriteVenueRewardActivityKey)
+	if err != nil {
+		return err
+	}
+	if config == nil {
+		config = model.DefaultFavoriteVenueRewardConfig()
+	}
+	if !model.FavoriteVenueRewardConfigIsActive(config, now) {
+		return nil
+	}
+
+	existingByUser, err := l.svcCtx.FavoriteVenueRewardRecordModel.FindByActivityAndUser(model.FavoriteVenueRewardActivityKey, venue.OwnerUserId)
+	if err != nil {
+		return err
+	}
+	if existingByUser != nil {
+		return nil
+	}
+
+	existingByVenue, err := l.svcCtx.FavoriteVenueRewardRecordModel.FindByActivityAndVenue(model.FavoriteVenueRewardActivityKey, venue.Id)
+	if err != nil {
+		return err
+	}
+	if existingByVenue != nil {
+		return nil
+	}
+
+	user, err := l.svcCtx.UserModel.FindById(venue.OwnerUserId)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return nil
+	}
+	if !model.FavoriteVenueRewardIsWithinWindow(user.CreatedAt, venue.CreatedAt, config.NewUserWindowDays) {
+		return nil
+	}
+
+	var before *time.Time
+	baseTime := now
+	if user.MemberExpiresAt != nil {
+		beforeValue := *user.MemberExpiresAt
+		before = &beforeValue
+		if beforeValue.After(now) {
+			baseTime = beforeValue
+		}
+	}
+	after := baseTime.AddDate(0, 0, config.RewardDays)
+	if err := l.svcCtx.UserModel.UpdateMemberExpiresAtWithTx(tx, user.Id, &after); err != nil {
+		return err
+	}
+
+	return l.svcCtx.FavoriteVenueRewardRecordModel.CreateWithTx(tx, &model.FavoriteVenueRewardRecord{
+		ActivityKey:           model.FavoriteVenueRewardActivityKey,
+		UserId:                user.Id,
+		VenueId:               venue.Id,
+		RewardDays:            config.RewardDays,
+		MemberExpiresAtBefore: before,
+		MemberExpiresAtAfter:  after,
+		GrantedAt:             now,
+	})
 }

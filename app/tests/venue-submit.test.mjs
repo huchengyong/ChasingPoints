@@ -29,8 +29,8 @@ test('buildVenueSubmitPayload only keeps basic venue fields', () => {
 
 test('resolveVenueSubmitCopy describes the basics-only flow', () => {
   assert.deepEqual(resolveVenueSubmitCopy([]), {
-    title: '确认基础资料后上传球馆',
-    tip: '提交后系统会根据地址自动定位并等待审核。'
+    title: '确认常玩球馆后提交',
+    tip: '首次有效补充并审核通过，送 1 个月会员。'
   })
 
   assert.deepEqual(resolveVenueSubmitCopy(['球馆名称', '详细地址']), {

@@ -2,16 +2,16 @@
 	<view class="submit-page">
 		<view class="page-intro">
 			<view class="intro-copy">
-				<text class="intro-eyebrow">球馆提交</text>
-				<text class="intro-title">完善球馆信息，方便大家了解和找到这里</text>
-				<text class="intro-desc">填写基础资料后即可提交，系统会根据地址自动定位球馆位置。</text>
+				<text class="intro-eyebrow">常玩球馆</text>
+				<text class="intro-title">补充你常玩的球馆，后续约球和签到更方便</text>
+				<text class="intro-desc">首次有效补充并审核通过后，送 1 个月会员。填写基础资料即可提交。</text>
 			</view>
 		</view>
 
 		<view class="form-section">
 			<view class="section-head">
-				<text class="section-title">基础资料</text>
-				<text class="section-tip">请填写球馆名称、城市和详细地址，方便大家准确找到这里。</text>
+				<text class="section-title">常玩球馆资料</text>
+				<text class="section-tip">请填写球馆名称、城市和详细地址，审核通过后会自动发放会员。</text>
 			</view>
 			<view class="form-group" :class="getFieldClass('name')">
 				<view class="label-row">
@@ -56,13 +56,13 @@
 			</view>
 		</view>
 
-		<view class="submit-bar">
+			<view class="submit-bar">
 			<view class="submit-copy">
 				<text class="submit-title">{{ submitBarCopy.title }}</text>
 				<text class="submit-tip">{{ submitBarCopy.tip }}</text>
 			</view>
 			<view class="submit-btn" :class="{ disabled: submitting, pending: missingRequiredKeys.length > 0 }" @tap="handleSubmit">
-				<text>{{ submitting ? '提交中...' : '上传球馆信息' }}</text>
+				<text>{{ submitting ? '提交中...' : '提交常玩球馆' }}</text>
 			</view>
 		</view>
 	</view>
@@ -120,7 +120,7 @@ const handleSubmit = async () => {
 		const data = buildVenueSubmitPayload(form.value)
 		const res = await createVenue(data)
 		if (res.success) {
-			uni.showToast({ title: res.message || '已提交，系统正在定位', icon: 'success' })
+			uni.showToast({ title: res.message || '已提交，审核通过后会员将自动到账', icon: 'success' })
 			setTimeout(() => {
 				uni.navigateBack()
 			}, 1500)

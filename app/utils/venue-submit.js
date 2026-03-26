@@ -16,7 +16,7 @@ export const resolveVenueSubmitCopy = (missingRequiredLabels = []) => {
   }
 
   return {
-    title: '确认基础资料后上传球馆',
-    tip: '提交后系统会根据地址自动定位并等待审核。'
+    title: '确认常玩球馆后提交',
+    tip: '首次有效补充并审核通过，送 1 个月会员。'
   }
 }

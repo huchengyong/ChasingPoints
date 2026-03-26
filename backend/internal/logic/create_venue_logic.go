@@ -132,6 +132,6 @@ func buildCreateVenueResp(venueId int64) *types.CreateVenueResp {
 	return &types.CreateVenueResp{
 		Success: true,
 		VenueId: venueId,
-		Message: "已提交，系统正在定位并整理球馆资料",
+		Message: "已提交，审核通过后会员将自动到账",
 	}
 }

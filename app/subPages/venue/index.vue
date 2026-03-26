@@ -9,7 +9,7 @@
 			</view>
 			<view class="submit-btn" @tap="goSubmit">
 				<uni-icons type="plusempty" size="16" color="#fff"></uni-icons>
-				<text class="submit-text">上传球馆</text>
+				<text class="submit-text">添加常玩球馆</text>
 			</view>
 		</view>
 
@@ -79,7 +79,7 @@
 				<text class="empty-icon">🎱</text>
 				<text class="empty-text">{{ mode === 'nearby' ? '附近暂无球馆' : '暂无球馆数据' }}</text>
 				<view class="empty-btn" @tap="goSubmit">
-					<text>上传球馆信息</text>
+					<text>添加常玩球馆</text>
 				</view>
 			</view>
 

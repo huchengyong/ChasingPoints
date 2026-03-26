@@ -217,6 +217,19 @@ type GetUserInfoResp {
 	UserInfo *UserInfo `json:"user_info"`
 }
 
+type FavoriteVenueRewardStatusResp {
+	Success            bool   `json:"success"`
+	Enabled            bool   `json:"enabled"`
+	PopupEnabled       bool   `json:"popup_enabled"`
+	RewardDays         int    `json:"reward_days"`
+	NewUserWindowDays  int    `json:"new_user_window_days"`
+	Status             string `json:"status"`
+	MemberExpiresAt    string `json:"member_expires_at,optional"`
+	SubmittedVenueId   int64  `json:"submitted_venue_id,optional"`
+	SubmittedVenueName string `json:"submitted_venue_name,optional"`
+	RejectReason       string `json:"reject_reason,optional"`
+}
+
 // 更新推送令牌
 type UpdatePushTokenReq {
 	PushClientId string `json:"push_client_id"`
@@ -241,6 +254,10 @@ service chasing_points-api {
 	@doc "获取当前用户信息"
 	@handler GetUserInfo
 	get /info returns (GetUserInfoResp)
+
+	@doc "获取常玩球馆奖励状态"
+	@handler GetFavoriteVenueRewardStatus
+	get /favorite-venue-reward-status returns (FavoriteVenueRewardStatusResp)
 
 	@doc "获取用户统计数据"
 	@handler GetUserStats
@@ -2279,6 +2296,7 @@ type AdminVenueInfo {
 	Status        int     `json:"status"`
 	GeoStatus     int     `json:"geo_status"`
 	OwnerUserId   int64   `json:"owner_user_id"`
+	RejectReason  string  `json:"reject_reason"`
 	CreatedAt     string  `json:"created_at"`
 }
 
@@ -2302,6 +2320,53 @@ type AdminVenueReviewResp {
 	Message string `json:"message"`
 }
 
+type AdminVenueRewardConfigResp {
+	Code              int    `json:"code"`
+	Success           bool   `json:"success"`
+	Message           string `json:"message"`
+	Enabled           bool   `json:"enabled"`
+	PopupEnabled      bool   `json:"popup_enabled"`
+	RewardDays        int    `json:"reward_days"`
+	NewUserWindowDays int    `json:"new_user_window_days"`
+	StartAt           string `json:"start_at,optional"`
+	EndAt             string `json:"end_at,optional"`
+}
+
+type AdminVenueRewardConfigUpdateReq {
+	Enabled           bool   `json:"enabled"`
+	PopupEnabled      bool   `json:"popup_enabled"`
+	RewardDays        int    `json:"reward_days"`
+	NewUserWindowDays int    `json:"new_user_window_days"`
+	StartAt           string `json:"start_at,optional"`
+	EndAt             string `json:"end_at,optional"`
+}
+
+type AdminVenueRewardRecordListReq {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+}
+
+type AdminVenueRewardRecordInfo {
+	Id                    int64  `json:"id"`
+	UserId                int64  `json:"user_id"`
+	UserNickname          string `json:"user_nickname"`
+	UserPhone             string `json:"user_phone"`
+	VenueId               int64  `json:"venue_id"`
+	VenueName             string `json:"venue_name"`
+	RewardDays            int    `json:"reward_days"`
+	MemberExpiresAtBefore string `json:"member_expires_at_before,optional"`
+	MemberExpiresAtAfter  string `json:"member_expires_at_after"`
+	GrantedAt             string `json:"granted_at"`
+}
+
+type AdminVenueRewardRecordListResp {
+	Code    int                          `json:"code"`
+	Success bool                         `json:"success"`
+	Message string                       `json:"message"`
+	Total   int64                        `json:"total"`
+	List    []AdminVenueRewardRecordInfo `json:"list"`
+}
+
 @server (
 	prefix: /api/admin/venue
 	group:  admin
@@ -2311,6 +2376,18 @@ service chasing_points-api {
 	@doc "获取球馆列表（管理员）"
 	@handler AdminGetVenueList
 	get /list (AdminVenueListReq) returns (AdminVenueListResp)
+
+	@doc "获取常玩球馆奖励配置"
+	@handler AdminGetVenueRewardConfig
+	get /reward-config returns (AdminVenueRewardConfigResp)
+
+	@doc "更新常玩球馆奖励配置"
+	@handler AdminUpdateVenueRewardConfig
+	post /reward-config (AdminVenueRewardConfigUpdateReq) returns (AdminWriteResp)
+
+	@doc "获取常玩球馆奖励发放记录"
+	@handler AdminGetVenueRewardRecordList
+	get /reward-records (AdminVenueRewardRecordListReq) returns (AdminVenueRewardRecordListResp)
 
 	@doc "审核球馆"
 	@handler AdminReviewVenue

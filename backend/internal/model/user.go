@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"time"
 
 	"gorm.io/gorm"
@@ -8,15 +9,16 @@ import (
 )
 
 type User struct {
-	Id        int64          `gorm:"primarykey"`
-	Phone     *string        `gorm:"uniqueIndex;size:20"`
-	Nickname  string         `gorm:"size:50;not null;default:''"`
-	Avatar    string         `gorm:"size:255;not null;default:''"`
-	Status    int            `gorm:"not null;default:1"`
-	PushToken string         `gorm:"size:255;not null;default:''"`
-	CreatedAt time.Time      `gorm:"autoCreateTime"`
-	UpdatedAt time.Time      `gorm:"autoUpdateTime"`
-	DeletedAt gorm.DeletedAt `gorm:"index"`
+	Id              int64          `gorm:"primarykey"`
+	Phone           *string        `gorm:"uniqueIndex;size:20"`
+	Nickname        string         `gorm:"size:50;not null;default:''"`
+	Avatar          string         `gorm:"size:255;not null;default:''"`
+	Status          int            `gorm:"not null;default:1"`
+	PushToken       string         `gorm:"size:255;not null;default:''"`
+	MemberExpiresAt *time.Time     `json:"member_expires_at"`
+	CreatedAt       time.Time      `gorm:"autoCreateTime"`
+	UpdatedAt       time.Time      `gorm:"autoUpdateTime"`
+	DeletedAt       gorm.DeletedAt `gorm:"index"`
 }
 
 func (User) TableName() string {
@@ -75,6 +77,17 @@ func (m *UserModel) DeleteById(userId int64) error {
 // UpdatePushToken 更新用户推送令牌
 func (m *UserModel) UpdatePushToken(userId int64, token string) error {
 	return m.db.Model(&User{}).Where("id = ?", userId).Update("push_token", token).Error
+}
+
+func (m *UserModel) UpdateMemberExpiresAtWithTx(tx *gorm.DB, userId int64, expiresAt *time.Time) error {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	if db == nil {
+		return errors.New("user db is nil")
+	}
+	return db.Model(&User{}).Where("id = ?", userId).Update("member_expires_at", expiresAt).Error
 }
 
 // LockUsersForUpdate 按主键顺序锁定用户行，用于串行化涉及同一用户的关键事务。
