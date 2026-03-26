@@ -19,6 +19,23 @@ export const homePageContent = {
     title: '每一杆，都值得被记录',
     description:
       '追分是一款面向台球爱好者的竞技记录 App，帮你记录战绩、生成战报、找到旗鼓相当的对手。',
+    previewCards: [
+      {
+        title: '今日战绩',
+        value: '12 胜 5 负',
+        detail: '最近 7 天稳定输出'
+      },
+      {
+        title: '精彩战报',
+        value: '3 份',
+        detail: '刚结束的强强对局'
+      },
+      {
+        title: '常约对手',
+        value: '8 位',
+        detail: '找到真正旗鼓相当的人'
+      }
+    ],
     primaryAction: {
       label: '立即下载',
       to: '/download'

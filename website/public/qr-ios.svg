@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" fill="none">
+  <rect width="240" height="240" rx="32" fill="#fff"/>
+  <rect x="28" y="28" width="72" height="72" rx="12" fill="#231C0B"/>
+  <rect x="42" y="42" width="44" height="44" rx="8" fill="#D9A617"/>
+  <rect x="140" y="28" width="72" height="72" rx="12" fill="#231C0B"/>
+  <rect x="154" y="42" width="44" height="44" rx="8" fill="#D9A617"/>
+  <rect x="28" y="140" width="72" height="72" rx="12" fill="#231C0B"/>
+  <rect x="42" y="154" width="44" height="44" rx="8" fill="#D9A617"/>
+  <path d="M132 134h18v18h-18zm26 0h18v18h-18zm26 0h18v18h-18zm-26 26h18v18h-18zm26 26h18v18h-18zm-52 0h18v18h-18zm26 26h18v18h-18z" fill="#231C0B"/>
+  <text x="120" y="225" fill="#6E6242" font-family="Arial, sans-serif" font-size="18" text-anchor="middle">iOS 扫码下载</text>
+</svg>
