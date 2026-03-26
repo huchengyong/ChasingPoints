@@ -21,7 +21,7 @@ export function buildPageSeo({
   title,
   description,
   path,
-  image = '/og-cover.jpg'
+  image = '/og-cover.svg'
 }: BuildPageSeoInput): BuildPageSeoResult {
   const canonicalUrl = `${siteConfig.siteUrl}${path}`
   const ogImage = image.startsWith('http')

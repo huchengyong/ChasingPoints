@@ -1,3 +1,5 @@
+import { resolvePublicValue } from './runtime'
+
 export interface DownloadEntry {
   platform: 'ios' | 'android'
   label: string
@@ -10,14 +12,14 @@ export const downloadEntries: DownloadEntry[] = [
   {
     platform: 'ios',
     label: 'iPhone 下载',
-    href: 'https://example.com/download/ios',
+    href: resolvePublicValue('NUXT_PUBLIC_IOS_DOWNLOAD_URL', 'https://example.com/download/ios'),
     qrImage: '/qr-ios.svg',
     note: '请使用 iPhone 打开，或在桌面端扫码下载。'
   },
   {
     platform: 'android',
     label: 'Android 下载',
-    href: 'https://example.com/download/android',
+    href: resolvePublicValue('NUXT_PUBLIC_ANDROID_DOWNLOAD_URL', 'https://example.com/download/android'),
     qrImage: '/qr-android.svg',
     note: '请使用 Android 手机打开，或在桌面端扫码下载。'
   }

@@ -1,3 +1,5 @@
+import { resolvePublicValue } from './runtime'
+
 export interface SiteNavLink {
   label: string
   to: string
@@ -24,7 +26,7 @@ export const siteConfig: SiteConfig = {
   brandName: '追分',
   defaultTitle: '追分官网',
   titleTemplate: '%s | 追分官网',
-  siteUrl: 'https://example.com',
+  siteUrl: resolvePublicValue('NUXT_PUBLIC_SITE_URL', 'https://example.com'),
   navLinks: legalLinks,
   legalLinks
 }

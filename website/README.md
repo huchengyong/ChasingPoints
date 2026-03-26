@@ -42,6 +42,14 @@ npm run test
 - `NUXT_PUBLIC_SITE_URL`
   - 官网正式域名，用于 canonical、OG URL 和 sitemap 对齐。
   - 未配置时默认回退到 `https://example.com`。
+- `NUXT_PUBLIC_IOS_DOWNLOAD_URL`
+  - iOS 正式下载地址。
+- `NUXT_PUBLIC_ANDROID_DOWNLOAD_URL`
+  - Android 正式下载地址。
+- `NUXT_PUBLIC_CONTACT_EMAIL`
+  - 官网联系邮箱。
+- `NUXT_PUBLIC_CONTACT_WECHAT`
+  - 官网联系微信。
 
 ## 当前约定
 
