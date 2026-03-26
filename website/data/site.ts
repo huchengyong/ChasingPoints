@@ -26,7 +26,7 @@ export const siteConfig: SiteConfig = {
   brandName: '追分',
   defaultTitle: '追分官网',
   titleTemplate: '%s | 追分官网',
-  siteUrl: resolvePublicValue('NUXT_PUBLIC_SITE_URL', 'https://example.com'),
+  siteUrl: resolvePublicValue('NUXT_PUBLIC_SITE_URL', 'https://www.zhuifen.cn'),
   navLinks: legalLinks,
   legalLinks
 }

@@ -41,7 +41,7 @@ npm run test
 
 - `NUXT_PUBLIC_SITE_URL`
   - 官网正式域名，用于 canonical、OG URL 和 sitemap 对齐。
-  - 未配置时默认回退到 `https://example.com`。
+  - 未配置时默认回退到 `https://www.zhuifen.cn`。
 - `NUXT_PUBLIC_IOS_DOWNLOAD_URL`
   - iOS 正式下载地址。
 - `NUXT_PUBLIC_ANDROID_DOWNLOAD_URL`

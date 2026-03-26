@@ -19,7 +19,7 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'https://example.com'
+      siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'https://www.zhuifen.cn'
     }
   }
 })

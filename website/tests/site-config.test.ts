@@ -11,4 +11,8 @@ describe('siteConfig', () => {
       '/contact'
     ])
   })
+
+  it('defaults the public site host to www.zhuifen.cn', () => {
+    expect(siteConfig.siteUrl).toBe('https://www.zhuifen.cn')
+  })
 })

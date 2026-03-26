@@ -23,7 +23,7 @@ website/
 - 官网当前使用 `Nuxt 3.21.2`。
 - 页面 SEO 统一走 `composables/usePageSeo.ts`。
 - 首页与次级页都依赖 `data/*.ts` 作为文案和配置来源。
-- 正式域名通过 `NUXT_PUBLIC_SITE_URL` 注入；未配置时默认使用 `https://example.com`。
+- 正式域名通过 `NUXT_PUBLIC_SITE_URL` 注入；未配置时默认使用 `https://www.zhuifen.cn`。
 - 下载链接和联系信息通过 `NUXT_PUBLIC_IOS_DOWNLOAD_URL`、`NUXT_PUBLIC_ANDROID_DOWNLOAD_URL`、`NUXT_PUBLIC_CONTACT_EMAIL`、`NUXT_PUBLIC_CONTACT_WECHAT` 注入。
 
 ## CONVENTIONS
