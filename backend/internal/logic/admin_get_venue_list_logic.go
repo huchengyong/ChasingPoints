@@ -54,6 +54,7 @@ func (l *AdminGetVenueListLogic) AdminGetVenueList(req *types.AdminVenueListReq)
 			Status:        venue.Status,
 			GeoStatus:     venue.GeoStatus,
 			OwnerUserId:   venue.OwnerUserId,
+			RejectReason:  venue.RejectReason,
 			CreatedAt:     venue.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}

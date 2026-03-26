@@ -13,6 +13,14 @@ export const getUserStats = () => {
 }
 
 /**
+ * 获取常玩球馆奖励状态
+ * @returns {Promise} 返回 { enabled, popup_enabled, reward_days, new_user_window_days, status }
+ */
+export const getFavoriteVenueRewardStatus = () => {
+  return get('/api/user/favorite-venue-reward-status')
+}
+
+/**
  * 更新昵称
  * @param {String} nickname 新昵称
  * @returns {Promise}
@@ -22,6 +30,7 @@ export const updateNickname = (nickname) => {
 }
 
 export default {
+  getFavoriteVenueRewardStatus,
   getUserStats,
   updateNickname
 }

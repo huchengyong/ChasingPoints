@@ -175,6 +175,24 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/review",
 				Handler: admin.AdminReviewVenueHandler(serverCtx),
 			},
+			{
+				// 获取常玩球馆奖励配置
+				Method:  http.MethodGet,
+				Path:    "/reward-config",
+				Handler: admin.AdminGetVenueRewardConfigHandler(serverCtx),
+			},
+			{
+				// 更新常玩球馆奖励配置
+				Method:  http.MethodPost,
+				Path:    "/reward-config",
+				Handler: admin.AdminUpdateVenueRewardConfigHandler(serverCtx),
+			},
+			{
+				// 获取常玩球馆奖励发放记录
+				Method:  http.MethodGet,
+				Path:    "/reward-records",
+				Handler: admin.AdminGetVenueRewardRecordListHandler(serverCtx),
+			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
 		rest.WithPrefix("/api/admin/venue"),
@@ -870,6 +888,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 
 	server.AddRoutes(
 		[]rest.Route{
+			{
+				// 获取常玩球馆奖励状态
+				Method:  http.MethodGet,
+				Path:    "/favorite-venue-reward-status",
+				Handler: user.GetFavoriteVenueRewardStatusHandler(serverCtx),
+			},
 			{
 				// 获取当前用户信息
 				Method:  http.MethodGet,

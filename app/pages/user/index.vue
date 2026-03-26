@@ -134,10 +134,10 @@
 					</view>
 				</view>
 
-				<view class="status-card">
-					<text class="status-eyebrow">{{ statusCard.eyebrow }}</text>
-					<text class="status-title">{{ statusCard.title }}</text>
-					<text class="status-description">{{ statusCard.description }}</text>
+					<view class="status-card">
+						<text class="status-eyebrow">{{ statusCard.eyebrow }}</text>
+						<text class="status-title">{{ statusCard.title }}</text>
+						<text class="status-description">{{ statusCard.description }}</text>
 					<view class="status-actions">
 						<button
 							v-if="showPrimaryStatusAction"
@@ -161,7 +161,45 @@
 						<button class="status-btn status-btn-outline" @click="handleQrCode">
 							<text>{{ pkEntryActions.secondaryText }}</text>
 						</button>
+						</view>
 					</view>
+
+					<view v-if="favoriteVenueMemberCard.visible" class="member-card">
+						<view class="member-card-head">
+							<view class="member-card-copy">
+								<text class="member-card-eyebrow">订阅会员</text>
+								<text class="member-card-title">{{ favoriteVenueMemberCard.title }}</text>
+								<text class="member-card-desc">{{ favoriteVenueMemberCard.description }}</text>
+							</view>
+							<text class="member-card-status">{{ favoriteVenueMemberCard.statusText }}</text>
+						</view>
+						<view class="member-benefits">
+							<view
+								v-for="item in favoriteVenueMemberCard.benefits"
+								:key="item.title"
+								class="member-benefit-item"
+							>
+								<text class="member-benefit-title">{{ item.title }}</text>
+								<text class="member-benefit-desc">{{ item.description }}</text>
+							</view>
+						</view>
+					</view>
+
+					<view v-if="favoriteVenueRewardCard.visible" class="reward-task-card">
+						<view class="reward-task-head">
+							<view class="reward-task-copy">
+								<text class="reward-task-title">{{ favoriteVenueRewardCard.title }}</text>
+								<text class="reward-task-desc">{{ favoriteVenueRewardCard.description }}</text>
+						</view>
+						<text v-if="favoriteVenueRewardCard.statusText" class="reward-task-status">{{ favoriteVenueRewardCard.statusText }}</text>
+					</view>
+					<button
+						v-if="favoriteVenueRewardCard.actionText"
+						class="reward-task-btn"
+						@click="handleFavoriteVenueRewardAction"
+					>
+						<text>{{ favoriteVenueRewardCard.actionText }}</text>
+					</button>
 				</view>
 
 				<view class="section-block">
@@ -269,6 +307,33 @@
 			</view>
 		</view>
 
+		<view v-if="showFavoriteVenueRewardModal" class="reward-modal-overlay" @click="handleFavoriteVenueRewardModalDismiss">
+			<view class="reward-modal-card" @click.stop>
+				<view class="reward-modal-header">
+					<view class="reward-modal-copy">
+						<text class="reward-modal-title">{{ favoriteVenueRewardPopupCopy.title }}</text>
+						<text class="reward-modal-desc">{{ favoriteVenueRewardPopupCopy.description }}</text>
+					</view>
+					<view class="reward-modal-close" @click="handleFavoriteVenueRewardModalDismiss">
+						<uni-icons type="closeempty" size="24" :color="isDarkMode ? '#94a3b8' : '#64748b'"></uni-icons>
+					</view>
+				</view>
+				<view class="reward-modal-highlight">
+					<text class="reward-modal-highlight-eyebrow">添加常玩球馆</text>
+					<text class="reward-modal-highlight-title">审核通过后自动发放会员</text>
+					<text class="reward-modal-highlight-desc">以后约球、签到、发赛事时，也能更快选到你常去的球馆。</text>
+				</view>
+				<view class="reward-modal-actions">
+					<button class="reward-modal-btn reward-modal-btn-secondary" @click="handleFavoriteVenueRewardModalDismiss">
+						<text>{{ favoriteVenueRewardPopupCopy.secondaryText }}</text>
+					</button>
+					<button class="reward-modal-btn reward-modal-btn-primary" @click="handleFavoriteVenueRewardModalConfirm">
+						<text>{{ favoriteVenueRewardPopupCopy.primaryText }}</text>
+					</button>
+				</view>
+			</view>
+		</view>
+
 		<view v-if="showQrCodeModal" class="qrcode-modal-overlay" @click="closeQrCodeModal">
 			<view class="qrcode-modal-container" @click.stop>
 				<view class="qrcode-modal-header">
@@ -320,7 +385,7 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { onShow, onHide } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
-import { getUserStats } from '@/api/user.js'
+import { getFavoriteVenueRewardStatus, getUserStats } from '@/api/user.js'
 import { getCurrentMatch, getMatchQRCode, startMatch } from '@/api/match.js'
 import { getUserRankInfo } from '@/api/rank.js'
 import { userWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
@@ -336,6 +401,13 @@ import { useNotificationStore } from '@/store/notification.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
+import {
+	getFavoriteVenueRewardPopupStorageKey,
+	shouldShowFavoriteVenueRewardPopup,
+	resolveFavoriteVenueRewardPopupCopy,
+	resolveFavoriteVenueRewardTaskCard,
+	resolveFavoriteVenueMemberCard
+} from '@/utils/favorite-venue-reward.js'
 
 const userStore = useUserStore()
 const themeStore = useThemeStore()
@@ -370,6 +442,8 @@ const selectedGameType = ref(null)
 const currentRankGameType = ref(3)
 const currentMatch = ref(null)
 const rankInfo = ref(null)
+const favoriteVenueRewardStatus = ref(null)
+const showFavoriteVenueRewardModal = ref(false)
 const rankGameTabs = GAME_TYPE_TABS
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
@@ -394,6 +468,9 @@ const userInfo = computed(() => ({
 	nickname: userStore.userInfo?.nickname || '用户',
 	avatar: userStore.userInfo?.avatar || ''
 }))
+const favoriteVenueMemberCard = computed(() => resolveFavoriteVenueMemberCard(favoriteVenueRewardStatus.value || {}))
+const favoriteVenueRewardCard = computed(() => resolveFavoriteVenueRewardTaskCard(favoriteVenueRewardStatus.value || {}))
+const favoriteVenueRewardPopupCopy = computed(() => resolveFavoriteVenueRewardPopupCopy(favoriteVenueRewardStatus.value || {}))
 
 const userStats = reactive({
 	totalMatches: 0,
@@ -575,8 +652,10 @@ const loadHomepageData = async () => {
 		friendRequestStore.fetchPendingCount(),
 		loadUserStats(),
 		loadRankInfo(),
-		loadCurrentMatch()
+		loadCurrentMatch(),
+		loadFavoriteVenueRewardStatus()
 	])
+	syncFavoriteVenueRewardModal()
 }
 
 const loadUserStats = async () => {
@@ -619,14 +698,59 @@ const loadCurrentMatch = async () => {
 	}
 }
 
+const loadFavoriteVenueRewardStatus = async () => {
+	try {
+		const res = await getFavoriteVenueRewardStatus()
+		favoriteVenueRewardStatus.value = res.success ? res : null
+	} catch (error) {
+		console.error('获取常玩球馆奖励状态失败:', error)
+		favoriteVenueRewardStatus.value = null
+	}
+}
+
 const resetHomepageState = () => {
 	currentMatch.value = null
 	rankInfo.value = null
+	favoriteVenueRewardStatus.value = null
+	showFavoriteVenueRewardModal.value = false
 	userStats.totalMatches = 0
 	userStats.wins = 0
 	userStats.losses = 0
 	userStats.winRate = 0
 	userStats.maxStreak = 0
+}
+
+const hasFavoriteVenueRewardPopupDismissed = () => {
+	if (!userInfo.value.id) return true
+	return !!uni.getStorageSync(getFavoriteVenueRewardPopupStorageKey(userInfo.value.id))
+}
+
+const markFavoriteVenueRewardPopupDismissed = () => {
+	if (!userInfo.value.id) return
+	uni.setStorageSync(getFavoriteVenueRewardPopupStorageKey(userInfo.value.id), 1)
+}
+
+const syncFavoriteVenueRewardModal = () => {
+	showFavoriteVenueRewardModal.value = shouldShowFavoriteVenueRewardPopup({
+		userId: userInfo.value.id,
+		rewardStatus: favoriteVenueRewardStatus.value,
+		popupDismissed: hasFavoriteVenueRewardPopupDismissed()
+	})
+}
+
+const handleFavoriteVenueRewardAction = () => {
+	uni.navigateTo({ url: '/subPages/venue/submit' })
+}
+
+const handleFavoriteVenueRewardModalDismiss = () => {
+	markFavoriteVenueRewardPopupDismissed()
+	showFavoriteVenueRewardModal.value = false
+}
+
+const handleFavoriteVenueRewardModalConfirm = () => {
+	markFavoriteVenueRewardPopupDismissed()
+	showFavoriteVenueRewardModal.value = false
+	handleFavoriteVenueRewardAction()
 }
 
 const connectUserWS = async () => {

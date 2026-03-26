@@ -283,6 +283,7 @@ type AdminVenueInfo struct {
 	Status        int     `json:"status"`
 	GeoStatus     int     `json:"geo_status"`
 	OwnerUserId   int64   `json:"owner_user_id"`
+	RejectReason  string  `json:"reject_reason"`
 	CreatedAt     string  `json:"created_at"`
 }
 
@@ -311,6 +312,53 @@ type AdminVenueReviewResp struct {
 	Code    int    `json:"code"`
 	Success bool   `json:"success"`
 	Message string `json:"message"`
+}
+
+type AdminVenueRewardConfigResp struct {
+	Code              int    `json:"code"`
+	Success           bool   `json:"success"`
+	Message           string `json:"message"`
+	Enabled           bool   `json:"enabled"`
+	PopupEnabled      bool   `json:"popup_enabled"`
+	RewardDays        int    `json:"reward_days"`
+	NewUserWindowDays int    `json:"new_user_window_days"`
+	StartAt           string `json:"start_at,optional"`
+	EndAt             string `json:"end_at,optional"`
+}
+
+type AdminVenueRewardConfigUpdateReq struct {
+	Enabled           bool   `json:"enabled"`
+	PopupEnabled      bool   `json:"popup_enabled"`
+	RewardDays        int    `json:"reward_days"`
+	NewUserWindowDays int    `json:"new_user_window_days"`
+	StartAt           string `json:"start_at,optional"`
+	EndAt             string `json:"end_at,optional"`
+}
+
+type AdminVenueRewardRecordInfo struct {
+	Id                    int64  `json:"id"`
+	UserId                int64  `json:"user_id"`
+	UserNickname          string `json:"user_nickname"`
+	UserPhone             string `json:"user_phone"`
+	VenueId               int64  `json:"venue_id"`
+	VenueName             string `json:"venue_name"`
+	RewardDays            int    `json:"reward_days"`
+	MemberExpiresAtBefore string `json:"member_expires_at_before,optional"`
+	MemberExpiresAtAfter  string `json:"member_expires_at_after"`
+	GrantedAt             string `json:"granted_at"`
+}
+
+type AdminVenueRewardRecordListReq struct {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+}
+
+type AdminVenueRewardRecordListResp struct {
+	Code    int                          `json:"code"`
+	Success bool                         `json:"success"`
+	Message string                       `json:"message"`
+	Total   int64                        `json:"total"`
+	List    []AdminVenueRewardRecordInfo `json:"list"`
 }
 
 type AdminWriteResp struct {
@@ -497,6 +545,19 @@ type EventNewsStageInfo struct {
 	SortTime   string `json:"sort_time"`
 	CreatedAt  string `json:"created_at"`
 	UpdatedAt  string `json:"updated_at"`
+}
+
+type FavoriteVenueRewardStatusResp struct {
+	Success            bool   `json:"success"`
+	Enabled            bool   `json:"enabled"`
+	PopupEnabled       bool   `json:"popup_enabled"`
+	RewardDays         int    `json:"reward_days"`
+	NewUserWindowDays  int    `json:"new_user_window_days"`
+	Status             string `json:"status"`
+	MemberExpiresAt    string `json:"member_expires_at,optional"`
+	SubmittedVenueId   int64  `json:"submitted_venue_id,optional"`
+	SubmittedVenueName string `json:"submitted_venue_name,optional"`
+	RejectReason       string `json:"reject_reason,optional"`
 }
 
 type FinishMatchReq struct {
