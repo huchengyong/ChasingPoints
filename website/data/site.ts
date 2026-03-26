@@ -7,6 +7,7 @@ export interface SiteConfig {
   brandName: string
   defaultTitle: string
   titleTemplate: string
+  siteUrl: string
   navLinks: SiteNavLink[]
   legalLinks: SiteNavLink[]
 }
@@ -23,6 +24,7 @@ export const siteConfig: SiteConfig = {
   brandName: '追分',
   defaultTitle: '追分官网',
   titleTemplate: '%s | 追分官网',
+  siteUrl: 'https://example.com',
   navLinks: legalLinks,
   legalLinks
 }
