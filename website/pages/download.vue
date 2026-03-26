@@ -41,7 +41,9 @@ usePageSeo({
             <a class="download-card__button" :href="entry.href" target="_blank" rel="noreferrer">
               立即获取
             </a>
-            <img :alt="`${entry.label} 二维码`" :src="entry.qrImage" class="download-card__qr">
+            <a :href="entry.qrTargetUrl" target="_blank" rel="noreferrer">
+              <img :alt="`${entry.label} 二维码`" :src="entry.qrImage" class="download-card__qr">
+            </a>
           </div>
         </article>
       </section>

@@ -5,23 +5,28 @@ export interface DownloadEntry {
   label: string
   href: string
   qrImage: string
+  qrTargetUrl: string
   note: string
 }
+
+const comingSoonQrTarget = 'https://www.zhuifen.cn/coming-soon'
 
 export const downloadEntries: DownloadEntry[] = [
   {
     platform: 'ios',
     label: 'iPhone 下载',
-    href: resolvePublicValue('NUXT_PUBLIC_IOS_DOWNLOAD_URL', 'https://example.com/download/ios'),
+    href: comingSoonQrTarget,
     qrImage: '/qr-ios.svg',
-    note: '请使用 iPhone 打开，或在桌面端扫码下载。'
+    qrTargetUrl: comingSoonQrTarget,
+    note: '请使用 iPhone 打开下载入口，或在桌面端扫码查看当前平台开放状态。'
   },
   {
     platform: 'android',
     label: 'Android 下载',
-    href: resolvePublicValue('NUXT_PUBLIC_ANDROID_DOWNLOAD_URL', 'https://example.com/download/android'),
+    href: comingSoonQrTarget,
     qrImage: '/qr-android.svg',
-    note: '请使用 Android 手机打开，或在桌面端扫码下载。'
+    qrTargetUrl: comingSoonQrTarget,
+    note: '请使用 Android 手机打开下载入口，或在桌面端扫码查看当前平台开放状态。'
   }
 ]
 
