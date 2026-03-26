@@ -1,10 +1,11 @@
 # CHASING POINTS REPOSITORY GUIDE
 
 ## OVERVIEW
-这是一个多端台球项目仓库，当前由 3 个主要子系统组成：
+这是一个多端台球项目仓库，当前由 4 个主要子系统组成：
 - `app/`：UniApp Vue3 移动端，面向普通用户，覆盖登录、对局、动态、我的、赛事、球房、规则、赛季、通知等链路。
 - `backend/`：go-zero REST API 服务，负责业务接口、WebSocket、Redis 短信验证码、UniPush、球房地理编码任务等。
 - `admin/`：Vue 3 + Vite + TypeScript + Element Plus 管理后台，当前覆盖管理员登录、首页统计、用户管理、对局管理、赛事情报、球馆审核。
+- `website/`：Nuxt 3 官网子项目，负责品牌首页、下载页、协议页、联系页和基础 SEO。
 
 ## REPOSITORY MAP
 ```text
@@ -28,9 +29,14 @@
 │   ├── internal/
 │   ├── migrations/
 │   └── goose.sh
-└── admin/                     # Vue3 管理后台
+├── admin/                     # Vue3 管理后台
+│   ├── AGENTS.md
+│   ├── src/
+│   └── package.json
+└── website/                   # Nuxt3 官网
     ├── AGENTS.md
-    ├── src/
+    ├── pages/
+    ├── data/
     └── package.json
 ```
 
@@ -38,6 +44,7 @@
 - API 契约单一真源是 [backend/chasing_points.api](/Users/wisesearch/Projects/ChasingPoints/backend/chasing_points.api)。
 - 用户端页面只能调用 `app/api/*.js`，不要在页面中直接写 `uni.request`。
 - 管理后台页面通过 `admin/src/api/*.ts` 调后端，统一走 [admin/src/utils/request.ts](/Users/wisesearch/Projects/ChasingPoints/admin/src/utils/request.ts)。
+- 官网公开页面由 `website/pages/*.vue` 暴露，页面文案与下载配置集中在 `website/data/*.ts`。
 - 后端主链路是 `handler -> logic -> model`，共享依赖统一从 `internal/svc/ServiceContext` 注入。
 - 实时能力走 2 条 WebSocket 路由：`/api/match/ws`、`/api/user/ws`。
 - 管理端不是独立后端，仍复用同一个 go-zero 服务中的 admin 路由。
@@ -53,6 +60,7 @@
 ## CURRENT TECH FACTS
 - `app/` 当前是 JavaScript 项目，没有统一 npm scripts；现有测试通过 `node --test tests/*.test.mjs` 执行。
 - `admin/` 使用 Vite，接口基地址来自 `.env.development` / `.env.production` 的 `VITE_API_BASE_URL`。
+- `website/` 使用 Nuxt 3，正式域名通过 `NUXT_PUBLIC_SITE_URL` 注入。
 - `app/` 当前通过 `utils/runtime-config.js` 按 `NODE_ENV` 解析 HTTP/WS 基地址；开发环境默认走 tunnel，生产环境默认走正式域名。
 - `backend/` 使用 go 1.25、go-zero、Gorm、Redis、Aliyun SMS、UniPush。
 - `backend/internal/model` 中有些模型在构造函数里 `AutoMigrate`，但 `event_news` 明确由迁移管理，不会自动建表。
@@ -65,6 +73,7 @@
 - 后端实时链路：[backend/internal/pkg/ws/](/Users/wisesearch/Projects/ChasingPoints/backend/internal/pkg/ws)
 - 后端迁移与模型一致性：[backend/migrations/](/Users/wisesearch/Projects/ChasingPoints/backend/migrations) 与 [backend/internal/model/](/Users/wisesearch/Projects/ChasingPoints/backend/internal/model)
 - 管理后台鉴权与 API：[admin/src/router/index.ts](/Users/wisesearch/Projects/ChasingPoints/admin/src/router/index.ts)、[admin/src/utils/request.ts](/Users/wisesearch/Projects/ChasingPoints/admin/src/utils/request.ts)
+- 官网页面与 SEO：[website/pages/](/Users/wisesearch/Projects/ChasingPoints/website/pages) 与 [website/composables/usePageSeo.ts](/Users/wisesearch/Projects/ChasingPoints/website/composables/usePageSeo.ts)
 
 ## COMMANDS
 ```bash
@@ -74,6 +83,15 @@ node --test tests/*.test.mjs
 
 # 管理后台构建
 cd admin
+npm run build
+
+# 官网开发
+cd website
+npm run dev
+
+# 官网构建与测试
+cd website
+npm run test
 npm run build
 
 # 后端服务启动
@@ -98,3 +116,4 @@ cd backend
 - `app` 没有根级 `npm test` script，默认验证命令是 `node --test tests/*.test.mjs`。
 - `backend` 的 `event_news` 相关测试依赖显式建表；如果新增或调整该领域测试，不能指望模型构造函数自动建 schema。
 - `app/AGENTS.md` 与 `app/GEMINI.md` 需要保持同步；仓库里当前没有 `IFLOW.md`。
+- `website` 当前下载链接、联系信息和 sitemap 仍是占位值，上线前必须替换为正式内容。
