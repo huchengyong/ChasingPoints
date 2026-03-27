@@ -3,7 +3,7 @@ package admin
 import (
 	"net/http"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/admin"
 	"chasing_points/internal/svc"
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
@@ -17,7 +17,7 @@ func AdminInitHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		l := logic.NewAdminInitLogic(r.Context(), svcCtx)
+		l := admin.NewAdminInitLogic(r.Context(), svcCtx)
 		resp, err := l.AdminInit(req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

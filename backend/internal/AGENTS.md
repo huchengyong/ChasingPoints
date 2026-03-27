@@ -8,7 +8,7 @@
 internal/
 ├── config/       # 配置结构体
 ├── handler/      # HTTP handler；routes.go 为 goctl 生成
-├── logic/        # 业务逻辑；主目录 + admin 子目录 + eventnews 子目录
+├── logic/        # 业务逻辑；`logic/<group>` 放接口入口，根目录放公共层
 ├── model/        # Gorm 模型与查询方法
 ├── middleware/   # request_context 等 HTTP 中间件
 ├── pkg/geocode/  # 地理编码客户端、配额、worker
@@ -24,10 +24,10 @@ internal/
 | Task | Location | Notes |
 |------|----------|-------|
 | handler 注册关系 | `handler/routes.go` | 生成文件，只读 |
-| 单接口逻辑 | `logic/*_logic.go` | 命名与 handler 对齐 |
+| 单接口逻辑 | `logic/<group>/*_logic.go` | 与 `handler/<group>/*_handler.go` 对齐 |
 | 管理后台逻辑 | `logic/admin/*.go` | admin 接口不要混进普通用户逻辑目录 |
 | 用户端赛事情报读取 | `logic/eventnews/*.go` | 与 admin 写入逻辑分开维护 |
-| 共享业务辅助 | `logic/common.go`, `logic/tournament_helper.go` | 避免在多个 logic 重复复制 |
+| 共享业务辅助 | `logic/*.go` 根目录公共层 | 避免在多个 group logic 重复复制 |
 | 数据模型/查询 | `model/*.go` | Gorm 模型和查询入口 |
 | 依赖注入 | `svc/service_context.go` | 所有 model、Redis、短信、Push 初始化 |
 | 实时通信 | `pkg/ws/*.go` | 对局同步和用户通知 |
@@ -42,16 +42,18 @@ internal/
 
 ## CONVENTIONS
 - handler 负责解析请求、调用 logic、统一输出；复杂业务不要留在 handler。
-- logic 负责业务流程编排、权限校验、领域规则，不直接操作底层 DB。
+- `logic/<group>` 负责接口入口的业务流程编排、权限校验、领域规则，不直接操作底层 DB。
+- 根目录 `logic/*.go` 只保留跨多个 group 复用的公共层 helper / service / protocol / payload，不再新增接口入口 logic。
 - model 负责 Gorm 查询、分页、聚合、事务辅助；供 logic 复用。
 - DTO 来源于 `.api`，修改请求/响应结构要先改 `.api` 再生成，不直接改 `types`。
 - 获取当前登录用户 ID 时统一用 `utils.GetUserIDFromCtx(l.ctx)`。
 - `pkg/ws` 下的消息类型和连接参数要与前端 `utils/websocket.js` 保持一致。
-- `model` 层并不都自动建表；像 `event_news` 这种 migration 管理表，测试里要手动准备 schema。
+- `model` 层不负责自动建表；像赛事情报这种 migration 管理结构，测试里要手动准备 schema。当前有效表是 `event_news_events` 和 `event_news_stages`。
 
 ## ANTI-PATTERNS
 - 禁止在 `handler` 中塞入复杂业务流程。
 - 禁止在 `logic` 中直接 new DB/Redis/SMS/Push 客户端。
 - 禁止直接修改 `types` 或 `routes.go` 这类生成文件。
 - 禁止把跨多个 logic 复用的规则散落复制，优先收敛到 helper 或 model。
+- 禁止把新的接口入口 logic 再塞回根目录 `logic/*.go`。
 - 禁止把 admin 逻辑直接塞回普通用户 handler/logic 目录，优先保持 `logic/admin` 的边界。

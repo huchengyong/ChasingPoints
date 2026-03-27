@@ -3,7 +3,7 @@ package admin
 import (
 	"net/http"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/admin"
 	"chasing_points/internal/svc"
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
@@ -17,7 +17,7 @@ func AdminChangePasswordHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		l := logic.NewAdminChangePasswordLogic(r.Context(), svcCtx)
+		l := admin.NewAdminChangePasswordLogic(r.Context(), svcCtx)
 		resp, err := l.AdminChangePassword(req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

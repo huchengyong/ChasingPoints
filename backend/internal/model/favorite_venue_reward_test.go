@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"chasing_points/internal/testsupport"
+
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -14,6 +16,9 @@ func newFavoriteVenueRewardTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite db: %v", err)
+	}
+	if err := testsupport.PrepareFavoriteVenueRewardSchema(db); err != nil {
+		t.Fatalf("prepare favorite venue reward schema: %v", err)
 	}
 
 	return db

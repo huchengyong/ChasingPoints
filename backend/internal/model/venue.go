@@ -34,7 +34,7 @@ type Venue struct {
 	GeoError           string     `gorm:"size:255;not null;default:''" json:"geo_error"`
 	GeoUpdatedAt       *time.Time `json:"geo_updated_at"`
 	DuplicateOfVenueId *int64     `gorm:"default:null" json:"duplicate_of_venue_id"`
-	RejectReason       string     `gorm:"size:255;not null;default:''" json:"reject_reason"`
+	RejectReason       string     `gorm:"size:255;not null;default:'';comment:审核拒绝原因" json:"reject_reason"`
 	CreatedAt          time.Time  `gorm:"autoCreateTime" json:"created_at"`
 }
 
@@ -124,7 +124,6 @@ type VenueModel struct {
 }
 
 func NewVenueModel(db *gorm.DB) *VenueModel {
-	_ = db.AutoMigrate(&Venue{})
 	return &VenueModel{db: db}
 }
 
@@ -354,7 +353,6 @@ type VenueCheckinModel struct {
 }
 
 func NewVenueCheckinModel(db *gorm.DB) *VenueCheckinModel {
-	_ = db.AutoMigrate(&VenueCheckin{})
 	return &VenueCheckinModel{db: db}
 }
 
@@ -398,7 +396,6 @@ type VenueGeocodeTaskModel struct {
 }
 
 func NewVenueGeocodeTaskModel(db *gorm.DB) *VenueGeocodeTaskModel {
-	_ = db.AutoMigrate(&VenueGeocodeTask{})
 	return &VenueGeocodeTaskModel{db: db}
 }
 
@@ -499,7 +496,6 @@ type GeocodeAccountModel struct {
 }
 
 func NewGeocodeAccountModel(db *gorm.DB) *GeocodeAccountModel {
-	_ = db.AutoMigrate(&GeocodeAccount{})
 	return &GeocodeAccountModel{db: db}
 }
 

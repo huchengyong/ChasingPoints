@@ -28,6 +28,10 @@ func filterSnookerActionsToCompletedRounds(actions []model.MatchAction, rounds [
 	return filtered
 }
 
+func FilterSnookerActionsToCompletedRounds(actions []model.MatchAction, rounds []model.MatchRound) []model.MatchAction {
+	return filterSnookerActionsToCompletedRounds(actions, rounds)
+}
+
 func filterSnookerActionsToRoundLimit(actions []model.MatchAction, maxRoundNo int) []model.MatchAction {
 	if len(actions) == 0 || maxRoundNo <= 0 {
 		return []model.MatchAction{}

@@ -3,7 +3,7 @@ package match
 import (
 	"net/http"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/match"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
@@ -18,7 +18,7 @@ func MatchUndoHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		l := logic.NewMatchUndoLogic(r.Context(), svcCtx)
+		l := match.NewMatchUndoLogic(r.Context(), svcCtx)
 		resp, err := l.MatchUndo(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

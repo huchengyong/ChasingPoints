@@ -3,7 +3,7 @@ package auth
 import (
 	"net/http"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/auth"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -19,7 +19,7 @@ func SendSmsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		l := logic.NewSendSmsLogic(r.Context(), svcCtx)
+		l := auth.NewSendSmsLogic(r.Context(), svcCtx)
 		resp, err := l.SendSms(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

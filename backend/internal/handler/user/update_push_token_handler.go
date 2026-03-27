@@ -3,7 +3,7 @@ package user
 import (
 	"net/http"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/user"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
@@ -18,7 +18,7 @@ func UpdatePushTokenHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		l := logic.NewUpdatePushTokenLogic(r.Context(), svcCtx)
+		l := user.NewUpdatePushTokenLogic(r.Context(), svcCtx)
 		resp, err := l.UpdatePushToken(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

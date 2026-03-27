@@ -3,7 +3,7 @@ package friend
 import (
 	"net/http"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/friend"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
@@ -18,7 +18,7 @@ func DeleteFriendHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		l := logic.NewDeleteFriendLogic(r.Context(), svcCtx)
+		l := friend.NewDeleteFriendLogic(r.Context(), svcCtx)
 		resp, err := l.DeleteFriend(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

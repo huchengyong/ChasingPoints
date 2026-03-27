@@ -212,6 +212,7 @@ import { getLeaderboard } from '@/api/rank.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { formatRelativeTime } from '@/utils/format.js'
 import { getGameTypeLabel } from '@/utils/game-types.js'
+import { pickFeaturedEventNewsPayload } from '@/utils/event-news-response.js'
 import { buildFeaturedPostTarget, normalizeFeaturedEventNews } from '@/utils/home-index.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
 
@@ -400,7 +401,7 @@ const loadData = async () => {
 
     const featuredRes = results[resultIndex++]
     featuredEventNews.value = featuredRes.success
-      ? normalizeFeaturedEventNews(featuredRes.event || featuredRes.eventNews || featuredRes.event_news)
+      ? normalizeFeaturedEventNews(pickFeaturedEventNewsPayload(featuredRes))
       : null
 
     const postRes = results[resultIndex]

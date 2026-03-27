@@ -12,6 +12,10 @@ func normalizeStoredAchievementType(winType string) string {
 	return normalizeAchievementType(winType)
 }
 
+func NormalizeStoredAchievementType(winType string) string {
+	return normalizeStoredAchievementType(winType)
+}
+
 func buildMatchAchievementPayload(list []model.MatchAchievement) types.MatchAchievement {
 	payload := types.MatchAchievement{}
 	for _, ach := range list {
@@ -33,4 +37,8 @@ func buildMatchAchievementPayload(list []model.MatchAchievement) types.MatchAchi
 		}
 	}
 	return payload
+}
+
+func BuildMatchAchievementPayload(list []model.MatchAchievement) types.MatchAchievement {
+	return buildMatchAchievementPayload(list)
 }

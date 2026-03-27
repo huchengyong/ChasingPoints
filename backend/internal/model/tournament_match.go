@@ -30,7 +30,6 @@ type TournamentMatchModel struct {
 }
 
 func NewTournamentMatchModel(db *gorm.DB) *TournamentMatchModel {
-	_ = db.AutoMigrate(&TournamentMatch{})
 	return &TournamentMatchModel{db: db}
 }
 

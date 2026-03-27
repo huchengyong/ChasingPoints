@@ -3,7 +3,7 @@ package user
 import (
 	"net/http"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/user"
 	"chasing_points/internal/svc"
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
@@ -11,7 +11,7 @@ import (
 // 获取当前用户信息
 func GetUserInfoHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		l := logic.NewGetUserInfoLogic(r.Context(), svcCtx)
+		l := user.NewGetUserInfoLogic(r.Context(), svcCtx)
 		resp, err := l.GetUserInfo()
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

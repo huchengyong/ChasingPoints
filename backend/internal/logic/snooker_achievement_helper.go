@@ -63,6 +63,10 @@ func calculateSnookerAchievementScoresByActor(actions []model.MatchAction, rewar
 	return totals[1], totals[2]
 }
 
+func CalculateSnookerAchievementScoresByActor(actions []model.MatchAction, rewardMap map[string]int) (int, int) {
+	return calculateSnookerAchievementScoresByActor(actions, rewardMap)
+}
+
 func scoreSnookerBreak(breakScore int, rewardMap map[string]int) int {
 	switch {
 	case breakScore == 147:

@@ -126,6 +126,7 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getEventNewsDetail } from '@/api/event-news.js'
+import { pickEventNewsDetailPayload } from '@/utils/event-news-response.js'
 import { formatRelativeTime } from '@/utils/format.js'
 import { formatEventNewsTime, getEventNewsStatusText } from '@/utils/home-index.js'
 import { getGameTypeLabel } from '@/utils/game-types.js'
@@ -207,10 +208,10 @@ const fetchDetail = async () => {
 		if (!res.success) {
 			throw new Error(res.message || '获取赛事情报详情失败')
 		}
-		if (!res.event && !res.eventNews) {
+		const eventPayload = pickEventNewsDetailPayload(res)
+		if (!eventPayload) {
 			throw new Error('赛事情报数据不存在')
 		}
-		const eventPayload = res.event || res.eventNews
 		eventNews.value = normalizeEventNews({
 			...eventPayload,
 			stages: Array.isArray(res.stages) ? res.stages : []

@@ -3,7 +3,7 @@ package challenge
 import (
 	"net/http"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/challenge"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
@@ -18,7 +18,7 @@ func RejectChallengeHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		l := logic.NewRejectChallengeLogic(r.Context(), svcCtx)
+		l := challenge.NewRejectChallengeLogic(r.Context(), svcCtx)
 		resp, err := l.RejectChallenge(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

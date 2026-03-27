@@ -640,15 +640,13 @@ type GetCurrentSeasonResp struct {
 }
 
 type GetEventNewsDetailReq struct {
-	EventId     int64 `form:"event_id,optional"`
-	EventNewsId int64 `form:"event_news_id,optional"`
+	EventId int64 `form:"event_id,optional"`
 }
 
 type GetEventNewsDetailResp struct {
-	Success   bool                 `json:"success"`
-	Event     *EventNewsInfo       `json:"event"`
-	EventNews *EventNewsInfo       `json:"event_news,optional"`
-	Stages    []EventNewsStageInfo `json:"stages"`
+	Success bool                 `json:"success"`
+	Event   *EventNewsInfo       `json:"event"`
+	Stages  []EventNewsStageInfo `json:"stages"`
 }
 
 type GetEventNewsListReq struct {
@@ -666,9 +664,8 @@ type GetEventNewsListResp struct {
 }
 
 type GetFeaturedEventNewsResp struct {
-	Success   bool           `json:"success"`
-	Event     *EventNewsInfo `json:"event"`
-	EventNews *EventNewsInfo `json:"event_news,optional"`
+	Success bool           `json:"success"`
+	Event   *EventNewsInfo `json:"event"`
 }
 
 type GetFollowListReq struct {

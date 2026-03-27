@@ -3,7 +3,7 @@ package opponent
 import (
 	"net/http"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/opponent"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
@@ -18,7 +18,7 @@ func SearchOpponentHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		l := logic.NewSearchOpponentLogic(r.Context(), svcCtx)
+		l := opponent.NewSearchOpponentLogic(r.Context(), svcCtx)
 		resp, err := l.SearchOpponent(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

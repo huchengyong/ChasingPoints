@@ -1,10 +1,4 @@
 -- +goose Up
-ALTER TABLE `users`
-  ADD COLUMN IF NOT EXISTS `member_expires_at` DATETIME DEFAULT NULL COMMENT '会员到期时间';
-
-ALTER TABLE `venues`
-  ADD COLUMN IF NOT EXISTS `reject_reason` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '审核拒绝原因';
-
 CREATE TABLE IF NOT EXISTS `favorite_venue_reward_configs` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `activity_key` VARCHAR(64) NOT NULL COMMENT '活动唯一标识',
@@ -14,8 +8,8 @@ CREATE TABLE IF NOT EXISTS `favorite_venue_reward_configs` (
   `new_user_window_days` INT NOT NULL DEFAULT 7 COMMENT '新用户有效期天数',
   `start_at` DATETIME DEFAULT NULL COMMENT '活动开始时间',
   `end_at` DATETIME DEFAULT NULL COMMENT '活动结束时间',
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_activity_key` (`activity_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='常玩球馆会员奖励配置表';
@@ -29,7 +23,7 @@ CREATE TABLE IF NOT EXISTS `favorite_venue_reward_records` (
   `member_expires_at_before` DATETIME DEFAULT NULL COMMENT '发放前会员到期时间',
   `member_expires_at_after` DATETIME NOT NULL COMMENT '发放后会员到期时间',
   `granted_at` DATETIME NOT NULL COMMENT '发放时间',
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_activity_user` (`activity_key`, `user_id`),
   UNIQUE KEY `uniq_activity_venue` (`activity_key`, `venue_id`),
@@ -57,5 +51,3 @@ ON DUPLICATE KEY UPDATE
 -- +goose Down
 DROP TABLE IF EXISTS `favorite_venue_reward_records`;
 DROP TABLE IF EXISTS `favorite_venue_reward_configs`;
-ALTER TABLE `venues` DROP COLUMN IF EXISTS `reject_reason`;
-ALTER TABLE `users` DROP COLUMN IF EXISTS `member_expires_at`;

@@ -54,6 +54,7 @@
 - 做功能改动时先确认自己所在子系统，再读取对应目录下的 `AGENTS.md`。
 - 不要把历史文档、旧分支记忆、旧模块列表当作当前事实；先以仓库实际文件为准。
 - 修改后端 `.api` 文件后，下一步必须立刻运行 goctl 生成代码，不要手改生成文件。
+- 当前后端接口入口 logic 已按 `backend/internal/logic/<group>/` 分组；根目录 `backend/internal/logic/*.go` 只保留共享 helper / service / protocol / payload 等公共层。重新跑 goctl 后如果出现新的 `todo` 空壳文件，只有在同步补齐真实逻辑与 handler 引用后才允许提交。
 - 修改数据库表结构时，迁移、Gorm 模型、前后端字段命名和接口响应要一起核对。
 - 新增接口时，要同时考虑 `app/api` 或 `admin/src/api` 是否需要补对应门面。
 
@@ -63,7 +64,8 @@
 - `website/` 使用 Nuxt 3，正式域名通过 `NUXT_PUBLIC_SITE_URL` 注入。
 - `app/` 当前通过 `utils/runtime-config.js` 按 `NODE_ENV` 解析 HTTP/WS 基地址；开发环境默认走 tunnel，生产环境默认走正式域名。
 - `backend/` 使用 go 1.25、go-zero、Gorm、Redis、Aliyun SMS、UniPush。
-- `backend/internal/model` 中有些模型在构造函数里 `AutoMigrate`，但 `event_news` 明确由迁移管理，不会自动建表。
+- `backend/` 数据库结构现在统一由 `backend/migrations/*.sql` 管理；测试如果需要 schema，走 `backend/internal/testsupport` 显式准备。
+- `backend/` 的接口入口逻辑目录现以 `backend/internal/logic/<group>/` 为准；根目录 `backend/internal/logic/*.go` 是公共层，不再放 handler 一一对应的接口 logic。
 
 ## REVIEW HOTSPOTS
 - 移动端请求层：[app/utils/request.js](/Users/wisesearch/Projects/ChasingPoints/app/utils/request.js)
@@ -114,6 +116,7 @@ cd backend
 
 ## KNOWN PITFALLS
 - `app` 没有根级 `npm test` script，默认验证命令是 `node --test tests/*.test.mjs`。
-- `backend` 的 `event_news` 相关测试依赖显式建表；如果新增或调整该领域测试，不能指望模型构造函数自动建 schema。
+- `backend` 的赛事情报领域测试依赖显式建表；当前有效表是 `event_news_events` 和 `event_news_stages`，不要再依赖废弃的单表 `event_news`。
+- `backend` 的 MySQL 迁移要注意版本兼容：`CREATE TABLE IF NOT EXISTS` 可以用，但不要默认写 `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` 或 `DROP COLUMN IF EXISTS`，部分环境会直接报 1064。给已有表补字段时，先查 `information_schema.COLUMNS` 再决定是否执行 `ALTER TABLE`。
 - `app/AGENTS.md` 与 `app/GEMINI.md` 需要保持同步；仓库里当前没有 `IFLOW.md`。
 - `website` 当前下载链接、联系信息和 sitemap 仍是占位值，上线前必须替换为正式内容。

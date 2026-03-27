@@ -3,7 +3,7 @@ package stats
 import (
 	"net/http"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/stats"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
@@ -18,7 +18,7 @@ func GetRecentTrendHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		l := logic.NewGetRecentTrendLogic(r.Context(), svcCtx)
+		l := stats.NewGetRecentTrendLogic(r.Context(), svcCtx)
 		resp, err := l.GetRecentTrend(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

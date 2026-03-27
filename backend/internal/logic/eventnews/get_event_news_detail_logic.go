@@ -52,10 +52,9 @@ func (l *GetEventNewsDetailLogic) GetEventNewsDetail(req *types.GetEventNewsDeta
 	}
 
 	return &types.GetEventNewsDetailResp{
-		Success:   true,
-		Event:     &info,
-		EventNews: &info,
-		Stages:    stageInfos,
+		Success: true,
+		Event:   &info,
+		Stages:  stageInfos,
 	}, nil
 }
 
@@ -66,5 +65,5 @@ func resolveEventNewsDetailID(req *types.GetEventNewsDetailReq) int64 {
 	if req.EventId > 0 {
 		return req.EventId
 	}
-	return req.EventNewsId
+	return 0
 }

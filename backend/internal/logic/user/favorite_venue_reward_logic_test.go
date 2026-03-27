@@ -7,6 +7,7 @@ import (
 
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
+	"chasing_points/internal/testsupport"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -18,6 +19,9 @@ func newFavoriteVenueRewardUserTestSvc(t *testing.T) *svc.ServiceContext {
 	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite db: %v", err)
+	}
+	if err := testsupport.PrepareFavoriteVenueRewardSchema(db); err != nil {
+		t.Fatalf("prepare favorite venue reward schema: %v", err)
 	}
 
 	return &svc.ServiceContext{

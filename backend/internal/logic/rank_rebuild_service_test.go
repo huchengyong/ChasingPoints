@@ -7,6 +7,10 @@ import (
 	"chasing_points/internal/model"
 )
 
+func int64Ptr(v int64) *int64 {
+	return &v
+}
+
 func TestUpdateReplaySettlementStateCountsDrawForSameOpponentDailyLimit(t *testing.T) {
 	dayStart := time.Date(2026, 3, 16, 0, 0, 0, 0, time.UTC)
 	match := &model.Match{

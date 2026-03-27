@@ -18,12 +18,20 @@ func buildTrendPointsFromRankChanges(logs []model.RankChangeLog) []types.TrendPo
 	return points
 }
 
+func BuildTrendPointsFromRankChanges(logs []model.RankChangeLog) []types.TrendPoint {
+	return buildTrendPointsFromRankChanges(logs)
+}
+
 func buildSeasonRankTrendFromLogs(logs []model.RankChangeLog) []int {
 	trend := make([]int, 0, len(logs))
 	for _, item := range logs {
 		trend = append(trend, item.AfterScore)
 	}
 	return trend
+}
+
+func BuildSeasonRankTrendFromLogs(logs []model.RankChangeLog) []int {
+	return buildSeasonRankTrendFromLogs(logs)
 }
 
 func buildSeasonSnapshotFromLogs(before *model.RankChangeLog, logs []model.RankChangeLog) (start, end, peak int) {
@@ -47,6 +55,10 @@ func buildSeasonSnapshotFromLogs(before *model.RankChangeLog, logs []model.RankC
 		}
 	}
 	return start, end, peak
+}
+
+func BuildSeasonSnapshotFromLogs(before *model.RankChangeLog, logs []model.RankChangeLog) (start, end, peak int) {
+	return buildSeasonSnapshotFromLogs(before, logs)
 }
 
 func rankResultToTrendResult(result string) int {
@@ -92,6 +104,10 @@ func rankLogToDetails(log *model.RankChangeLog) []types.RankDetail {
 	return details
 }
 
+func RankLogToDetails(log *model.RankChangeLog) []types.RankDetail {
+	return rankLogToDetails(log)
+}
+
 func findOpponentRankLog(logs []model.RankChangeLog, userId int64) *model.RankChangeLog {
 	for i := range logs {
 		if logs[i].UserId != userId {
@@ -99,4 +115,8 @@ func findOpponentRankLog(logs []model.RankChangeLog, userId int64) *model.RankCh
 		}
 	}
 	return nil
+}
+
+func FindOpponentRankLog(logs []model.RankChangeLog, userId int64) *model.RankChangeLog {
+	return findOpponentRankLog(logs, userId)
 }

@@ -3,7 +3,7 @@ package venue
 import (
 	"net/http"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/venue"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
@@ -18,7 +18,7 @@ func GetMyCheckinsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		l := logic.NewGetMyCheckinsLogic(r.Context(), svcCtx)
+		l := venue.NewGetMyCheckinsLogic(r.Context(), svcCtx)
 		resp, err := l.GetMyCheckins(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

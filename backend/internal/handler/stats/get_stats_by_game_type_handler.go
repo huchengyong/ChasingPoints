@@ -3,7 +3,7 @@ package stats
 import (
 	"net/http"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/stats"
 	"chasing_points/internal/svc"
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
@@ -11,7 +11,7 @@ import (
 // 分球种统计
 func GetStatsByGameTypeHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		l := logic.NewGetStatsByGameTypeLogic(r.Context(), svcCtx)
+		l := stats.NewGetStatsByGameTypeLogic(r.Context(), svcCtx)
 		resp, err := l.GetStatsByGameType()
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

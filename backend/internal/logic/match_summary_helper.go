@@ -26,6 +26,10 @@ func buildMatchSummary(gameType int, myActor int, myScore int, opponentScore int
 	}
 }
 
+func BuildMatchSummary(gameType int, myActor int, myScore int, opponentScore int, myWinRate float64, opponentWinRate float64, myMaxScore int, opponentMaxScore int, redBallCount int, createdAt string, rounds []model.MatchRound, actions []model.MatchAction, achievements types.MatchAchievement) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
+	return buildMatchSummary(gameType, myActor, myScore, opponentScore, myWinRate, opponentWinRate, myMaxScore, opponentMaxScore, redBallCount, createdAt, rounds, actions, achievements)
+}
+
 func buildSnookerSummary(myActor int, myWinRate float64, opponentWinRate float64, myMaxScore int, opponentMaxScore int, _ int, createdAt string, actions []model.MatchAction) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
 	myBreakStats, opponentBreakStats := calculateSnookerBreakStatsForActors(actions, myActor)
 	if myBreakStats.Highest > 0 || opponentBreakStats.Highest > 0 {
@@ -218,6 +222,10 @@ func calculateHighestScoringRun(actions []model.MatchAction, actor int) int {
 
 func calculateSnookerHighestBreaks(actions []model.MatchAction, myActor int) (int, int) {
 	return calculateSnookerHighestBreak(actions, myActor), calculateSnookerHighestBreak(actions, opponentActor(myActor))
+}
+
+func CalculateSnookerHighestBreaks(actions []model.MatchAction, myActor int) (int, int) {
+	return calculateSnookerHighestBreaks(actions, myActor)
 }
 
 type snookerBreakStats struct {

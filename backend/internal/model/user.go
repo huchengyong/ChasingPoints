@@ -15,7 +15,7 @@ type User struct {
 	Avatar          string         `gorm:"size:255;not null;default:''"`
 	Status          int            `gorm:"not null;default:1"`
 	PushToken       string         `gorm:"size:255;not null;default:''"`
-	MemberExpiresAt *time.Time     `json:"member_expires_at"`
+	MemberExpiresAt *time.Time     `gorm:"comment:会员到期时间" json:"member_expires_at"`
 	CreatedAt       time.Time      `gorm:"autoCreateTime"`
 	UpdatedAt       time.Time      `gorm:"autoUpdateTime"`
 	DeletedAt       gorm.DeletedAt `gorm:"index"`
@@ -30,7 +30,6 @@ type UserModel struct {
 }
 
 func NewUserModel(db *gorm.DB) *UserModel {
-	db.AutoMigrate(&User{})
 	return &UserModel{db: db}
 }
 

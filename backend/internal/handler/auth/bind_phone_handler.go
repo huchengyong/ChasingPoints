@@ -3,7 +3,7 @@ package auth
 import (
 	"net/http"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/auth"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
@@ -18,7 +18,7 @@ func BindPhoneHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		l := logic.NewBindPhoneLogic(r.Context(), svcCtx)
+		l := auth.NewBindPhoneLogic(r.Context(), svcCtx)
 		resp, err := l.BindPhone(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

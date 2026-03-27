@@ -3,7 +3,7 @@ package follow
 import (
 	"net/http"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/follow"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
@@ -18,7 +18,7 @@ func GetFollowerListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		l := logic.NewGetFollowerListLogic(r.Context(), svcCtx)
+		l := follow.NewGetFollowerListLogic(r.Context(), svcCtx)
 		resp, err := l.GetFollowerList(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

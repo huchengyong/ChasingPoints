@@ -9,13 +9,15 @@ CREATE TABLE IF NOT EXISTS `users` (
   `nickname` varchar(50) NOT NULL DEFAULT '' COMMENT '昵称',
   `avatar` varchar(255) NOT NULL DEFAULT '' COMMENT '头像URL',
   `status` tinyint NOT NULL DEFAULT 1 COMMENT '状态:1正常 0禁用',
+  `push_token` varchar(255) NOT NULL DEFAULT '' COMMENT 'UniPush推送令牌',
+  `member_expires_at` datetime DEFAULT NULL COMMENT '会员到期时间',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted_at` datetime DEFAULT NULL COMMENT '删除时间',
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_phone` (`phone`),
   KEY `idx_deleted_at` (`deleted_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=143713 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
 -- OAuth关联表
 CREATE TABLE IF NOT EXISTS `user_oauth` (

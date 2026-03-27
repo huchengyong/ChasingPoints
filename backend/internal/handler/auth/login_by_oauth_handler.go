@@ -3,7 +3,7 @@ package auth
 import (
 	"net/http"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/auth"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
@@ -18,7 +18,7 @@ func LoginByOauthHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		l := logic.NewLoginByOauthLogic(r.Context(), svcCtx)
+		l := auth.NewLoginByOauthLogic(r.Context(), svcCtx)
 		resp, err := l.LoginByOauth(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

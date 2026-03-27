@@ -55,16 +55,16 @@ func FavoriteVenueRewardConfigIsActive(config *FavoriteVenueRewardConfig, now ti
 }
 
 type FavoriteVenueRewardConfig struct {
-	Id                int64      `gorm:"primarykey" json:"id"`
-	ActivityKey       string     `gorm:"size:64;not null;uniqueIndex" json:"activity_key"`
-	Enabled           bool       `gorm:"not null;default:false" json:"enabled"`
-	PopupEnabled      bool       `gorm:"not null;default:false" json:"popup_enabled"`
-	RewardDays        int        `gorm:"not null;default:30" json:"reward_days"`
-	NewUserWindowDays int        `gorm:"not null;default:7" json:"new_user_window_days"`
-	StartAt           *time.Time `json:"start_at"`
-	EndAt             *time.Time `json:"end_at"`
-	CreatedAt         time.Time  `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt         time.Time  `gorm:"autoUpdateTime" json:"updated_at"`
+	Id                int64      `gorm:"primarykey;comment:主键ID" json:"id"`
+	ActivityKey       string     `gorm:"size:64;not null;uniqueIndex;comment:活动唯一标识" json:"activity_key"`
+	Enabled           bool       `gorm:"not null;default:false;comment:是否开启奖励" json:"enabled"`
+	PopupEnabled      bool       `gorm:"not null;default:false;comment:是否开启我的页弹窗" json:"popup_enabled"`
+	RewardDays        int        `gorm:"not null;default:30;comment:奖励会员天数" json:"reward_days"`
+	NewUserWindowDays int        `gorm:"not null;default:7;comment:新用户有效期天数" json:"new_user_window_days"`
+	StartAt           *time.Time `gorm:"comment:活动开始时间" json:"start_at"`
+	EndAt             *time.Time `gorm:"comment:活动结束时间" json:"end_at"`
+	CreatedAt         time.Time  `gorm:"autoCreateTime;comment:创建时间" json:"created_at"`
+	UpdatedAt         time.Time  `gorm:"autoUpdateTime;comment:更新时间" json:"updated_at"`
 }
 
 func (FavoriteVenueRewardConfig) TableName() string {
@@ -72,15 +72,15 @@ func (FavoriteVenueRewardConfig) TableName() string {
 }
 
 type FavoriteVenueRewardRecord struct {
-	Id                    int64      `gorm:"primarykey" json:"id"`
-	ActivityKey           string     `gorm:"size:64;not null;uniqueIndex:uniq_activity_user,priority:1;uniqueIndex:uniq_activity_venue,priority:1" json:"activity_key"`
-	UserId                int64      `gorm:"not null;uniqueIndex:uniq_activity_user,priority:2;index" json:"user_id"`
-	VenueId               int64      `gorm:"not null;uniqueIndex:uniq_activity_venue,priority:2;index" json:"venue_id"`
-	RewardDays            int        `gorm:"not null;default:30" json:"reward_days"`
-	MemberExpiresAtBefore *time.Time `json:"member_expires_at_before"`
-	MemberExpiresAtAfter  time.Time  `gorm:"not null" json:"member_expires_at_after"`
-	GrantedAt             time.Time  `gorm:"not null" json:"granted_at"`
-	CreatedAt             time.Time  `gorm:"autoCreateTime" json:"created_at"`
+	Id                    int64      `gorm:"primarykey;comment:主键ID" json:"id"`
+	ActivityKey           string     `gorm:"size:64;not null;uniqueIndex:uniq_activity_user,priority:1;uniqueIndex:uniq_activity_venue,priority:1;comment:活动唯一标识" json:"activity_key"`
+	UserId                int64      `gorm:"not null;uniqueIndex:uniq_activity_user,priority:2;index;comment:获奖用户ID" json:"user_id"`
+	VenueId               int64      `gorm:"not null;uniqueIndex:uniq_activity_venue,priority:2;index;comment:触发奖励的球馆ID" json:"venue_id"`
+	RewardDays            int        `gorm:"not null;default:30;comment:发放会员天数" json:"reward_days"`
+	MemberExpiresAtBefore *time.Time `gorm:"comment:发放前会员到期时间" json:"member_expires_at_before"`
+	MemberExpiresAtAfter  time.Time  `gorm:"not null;comment:发放后会员到期时间" json:"member_expires_at_after"`
+	GrantedAt             time.Time  `gorm:"not null;comment:发放时间" json:"granted_at"`
+	CreatedAt             time.Time  `gorm:"autoCreateTime;comment:创建时间" json:"created_at"`
 }
 
 func (FavoriteVenueRewardRecord) TableName() string {
@@ -105,7 +105,6 @@ type FavoriteVenueRewardConfigModel struct {
 }
 
 func NewFavoriteVenueRewardConfigModel(db *gorm.DB) *FavoriteVenueRewardConfigModel {
-	_ = db.AutoMigrate(&FavoriteVenueRewardConfig{})
 	return &FavoriteVenueRewardConfigModel{db: db}
 }
 
@@ -166,7 +165,6 @@ type FavoriteVenueRewardRecordModel struct {
 }
 
 func NewFavoriteVenueRewardRecordModel(db *gorm.DB) *FavoriteVenueRewardRecordModel {
-	_ = db.AutoMigrate(&FavoriteVenueRewardRecord{})
 	return &FavoriteVenueRewardRecordModel{db: db}
 }
 

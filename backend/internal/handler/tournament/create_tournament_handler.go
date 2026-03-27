@@ -3,7 +3,7 @@ package tournament
 import (
 	"net/http"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/tournament"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
@@ -18,7 +18,7 @@ func CreateTournamentHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		l := logic.NewCreateTournamentLogic(r.Context(), svcCtx)
+		l := tournament.NewCreateTournamentLogic(r.Context(), svcCtx)
 		resp, err := l.CreateTournament(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

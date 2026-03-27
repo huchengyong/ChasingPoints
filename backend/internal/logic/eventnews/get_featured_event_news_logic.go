@@ -47,8 +47,7 @@ func (l *GetFeaturedEventNewsLogic) GetFeaturedEventNews() (resp *types.GetFeatu
 
 	info := mapEventNewsInfo(*item, stages)
 	return &types.GetFeaturedEventNewsResp{
-		Success:   true,
-		Event:     &info,
-		EventNews: &info,
+		Success: true,
+		Event:   &info,
 	}, nil
 }

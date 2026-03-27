@@ -3,7 +3,7 @@ package social
 import (
 	"net/http"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/social"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
@@ -18,7 +18,7 @@ func CreatePostHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		l := logic.NewCreatePostLogic(r.Context(), svcCtx)
+		l := social.NewCreatePostLogic(r.Context(), svcCtx)
 		resp, err := l.CreatePost(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

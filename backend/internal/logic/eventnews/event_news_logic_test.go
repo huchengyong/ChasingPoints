@@ -26,8 +26,8 @@ func newEventNewsTestSvc(t *testing.T) *svc.ServiceContext {
 	}
 
 	return &svc.ServiceContext{
-		DB:                 db,
-		EventNewsModel:     model.NewEventNewsModel(db),
+		DB:                  db,
+		EventNewsModel:      model.NewEventNewsModel(db),
 		EventNewsStageModel: model.NewEventNewsStageModel(db),
 	}
 }
@@ -242,9 +242,6 @@ func TestGetEventNewsDetailReturnsGroupedStagesForPublishedEvent(t *testing.T) {
 	if !resp.Success || resp.Event == nil {
 		t.Fatalf("expected published detail success, got %#v", resp)
 	}
-	if resp.EventNews == nil || resp.EventNews.Id != event.Id {
-		t.Fatalf("expected legacy event_news payload mirror, got %#v", resp)
-	}
 	if resp.Event.Title != event.Title || resp.Event.Content != "赛事详情正文" {
 		t.Fatalf("unexpected event detail payload: %#v", resp.Event)
 	}
@@ -264,27 +261,15 @@ func TestGetEventNewsDetailReturnsGroupedStagesForPublishedEvent(t *testing.T) {
 	}
 }
 
-func TestGetEventNewsDetailAcceptsLegacyEventNewsIDParam(t *testing.T) {
+func TestGetEventNewsDetailRejectsMissingEventID(t *testing.T) {
 	svcCtx := newEventNewsTestSvc(t)
-	event := createEvent(t, svcCtx, &model.EventNews{
-		Title:      "兼容详情赛事",
-		GameType:   1,
-		SourceType: "official",
-		SourceName: "WST",
-		Status:     model.EventNewsStatusLive,
-		Published:  true,
-	})
-
 	logic := NewGetEventNewsDetailLogic(context.Background(), svcCtx)
-	resp, err := logic.GetEventNewsDetail(&types.GetEventNewsDetailReq{EventNewsId: event.Id})
+	resp, err := logic.GetEventNewsDetail(&types.GetEventNewsDetailReq{})
 	if err != nil {
-		t.Fatalf("get legacy detail: %v", err)
+		t.Fatalf("get detail without event id: %v", err)
 	}
-	if !resp.Success || resp.Event == nil || resp.Event.Id != event.Id {
-		t.Fatalf("expected legacy event_news_id to resolve detail, got %#v", resp)
-	}
-	if resp.EventNews == nil || resp.EventNews.Id != event.Id {
-		t.Fatalf("expected event_news mirror field, got %#v", resp)
+	if resp.Success || resp.Event != nil {
+		t.Fatalf("expected missing event_id to be rejected, got %#v", resp)
 	}
 }
 
@@ -334,9 +319,6 @@ func TestGetFeaturedEventNewsPrefersFeaturedEventAndIncludesStagePreview(t *test
 	}
 	if !resp.Success || resp.Event == nil {
 		t.Fatalf("expected featured success, got %#v", resp)
-	}
-	if resp.EventNews == nil || resp.EventNews.Id != featured.Id {
-		t.Fatalf("expected featured legacy event_news mirror, got %#v", resp)
 	}
 	if resp.Event.Id != featured.Id {
 		t.Fatalf("expected featured event to win, got %#v", resp.Event)

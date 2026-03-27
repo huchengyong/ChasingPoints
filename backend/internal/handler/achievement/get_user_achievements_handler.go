@@ -3,7 +3,7 @@ package achievement
 import (
 	"net/http"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/achievement"
 	"chasing_points/internal/svc"
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
@@ -11,7 +11,7 @@ import (
 // 获取已解锁成就
 func GetUserAchievementsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		l := logic.NewGetUserAchievementsLogic(r.Context(), svcCtx)
+		l := achievement.NewGetUserAchievementsLogic(r.Context(), svcCtx)
 		resp, err := l.GetUserAchievements()
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

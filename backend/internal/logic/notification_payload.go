@@ -23,3 +23,7 @@ func buildNotificationPayload(target string, matchId, requestId int64) *string {
 	value := string(data)
 	return &value
 }
+
+func BuildNotificationPayload(target string, matchId, requestId int64) *string {
+	return buildNotificationPayload(target, matchId, requestId)
+}

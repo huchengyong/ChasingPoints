@@ -38,4 +38,3 @@ CREATE TABLE IF NOT EXISTS `geocode_accounts` (
 -- +goose Down
 DROP TABLE IF EXISTS `geocode_accounts`;
 DROP TABLE IF EXISTS `venue_geocode_tasks`;
-SELECT 1;

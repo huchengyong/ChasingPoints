@@ -54,6 +54,16 @@ func resolveReplayAchievementScores(
 	return calculateAchievementScoreFromStoredAchievements(storedAchievements, rewardMap), 0
 }
 
+func ResolveReplayAchievementScores(
+	gameType int,
+	rounds []model.MatchRound,
+	actions []model.MatchAction,
+	storedAchievements []model.MatchAchievement,
+	rewardMap map[string]int,
+) (int, int) {
+	return resolveReplayAchievementScores(gameType, rounds, actions, storedAchievements, rewardMap)
+}
+
 func applyHistoricalMatchSeasonSnapshot(recordInfo *types.SeasonRecordInfo, season *model.Season, startScore, endScore, peakScore int, hasRankLogs bool) *types.SeasonRecordInfo {
 	if recordInfo == nil {
 		return &types.SeasonRecordInfo{
@@ -72,4 +82,8 @@ func applyHistoricalMatchSeasonSnapshot(recordInfo *types.SeasonRecordInfo, seas
 	}
 
 	return recordInfo
+}
+
+func ApplyHistoricalMatchSeasonSnapshot(recordInfo *types.SeasonRecordInfo, season *model.Season, startScore, endScore, peakScore int, hasRankLogs bool) *types.SeasonRecordInfo {
+	return applyHistoricalMatchSeasonSnapshot(recordInfo, season, startScore, endScore, peakScore, hasRankLogs)
 }

@@ -14,6 +14,8 @@ const (
 	sameOpponentRepeatMatchRate = 30
 )
 
+const DefaultDailyPositiveCap = defaultDailyPositiveCap
+
 type RankSettlementResult struct {
 	BeforeScore            int
 	AfterScore             int
@@ -260,6 +262,10 @@ func buildRankSettlementRemark(settlement RankSettlementResult) string {
 		return ""
 	}
 	return string(data)
+}
+
+func BuildRankSettlementRemark(settlement RankSettlementResult) string {
+	return buildRankSettlementRemark(settlement)
 }
 
 func parseRankSettlementRemark(raw string) rankSettlementRemark {

@@ -25,7 +25,6 @@
 .game-type-tab {
     display: inline-flex;
     flex-shrink: 0;
-    min-width: 164rpx;
     height: 72rpx;
     padding: 0 28rpx;
     margin-right: 16rpx;
@@ -48,7 +47,7 @@
         box-shadow: 0 10rpx 24rpx rgba(224, 174, 18, 0.24);
 
         text {
-            color: #1f2937;
+            color: #FFFFFF;
         }
     }
 }

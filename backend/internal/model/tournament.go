@@ -46,7 +46,6 @@ type TournamentModel struct {
 }
 
 func NewTournamentModel(db *gorm.DB) *TournamentModel {
-	_ = db.AutoMigrate(&Tournament{})
 	return &TournamentModel{db: db}
 }
 
@@ -157,7 +156,6 @@ type TournamentParticipantModel struct {
 }
 
 func NewTournamentParticipantModel(db *gorm.DB) *TournamentParticipantModel {
-	_ = db.AutoMigrate(&TournamentParticipant{})
 	return &TournamentParticipantModel{db: db}
 }
 

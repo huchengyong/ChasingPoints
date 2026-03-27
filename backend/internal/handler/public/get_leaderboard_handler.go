@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/public"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -33,7 +33,7 @@ func GetLeaderboardHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			}
 		}
 
-		l := logic.NewGetLeaderboardLogic(ctx, svcCtx)
+		l := public.NewGetLeaderboardLogic(ctx, svcCtx)
 		resp, err := l.GetLeaderboard(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

@@ -3,7 +3,7 @@ package rank
 import (
 	"net/http"
 
-	"chasing_points/internal/logic"
+	"chasing_points/internal/logic/rank"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
@@ -18,7 +18,7 @@ func GetRankListHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		l := logic.NewGetRankListLogic(r.Context(), svcCtx)
+		l := rank.NewGetRankListLogic(r.Context(), svcCtx)
 		resp, err := l.GetRankList(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

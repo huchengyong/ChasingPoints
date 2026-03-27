@@ -3,8 +3,8 @@
 		<view class="page-intro">
 			<view class="intro-copy">
 				<text class="intro-eyebrow">常玩球馆</text>
-				<text class="intro-title">补充你常玩的球馆，后续约球和签到更方便</text>
-				<text class="intro-desc">首次有效补充并审核通过后，送 1 个月会员。填写基础资料即可提交。</text>
+				<text class="intro-title">提交常玩的球馆，领取 1 个月会员</text>
+				<text class="intro-desc">填写基础资料，要求真实信息，后台审核通过后会自动发放会员。虚假信息将不予通过。</text>
 			</view>
 		</view>
 

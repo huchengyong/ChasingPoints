@@ -27,22 +27,22 @@ func normalizeEventNewsPage(page, pageSize int) (int, int) {
 
 func mapEventNewsInfo(item model.EventNews, stages []model.EventNewsStage) types.EventNewsInfo {
 	resp := types.EventNewsInfo{
-		Id:               item.Id,
-		Title:            item.Title,
-		GameType:         item.GameType,
-		SourceType:       item.SourceType,
-		SourceName:       item.SourceName,
-		SourceUrl:        item.SourceUrl,
-		CoverImage:       item.CoverImage,
-		Summary:          item.Summary,
-		Content:          item.Content,
-		Country:          item.Country,
-		City:             item.City,
-		Venue:            item.Venue,
-		Status:           item.Status,
-		Featured:         item.Featured,
-		Published:        item.Published,
-		StageCount:       len(stages),
+		Id:         item.Id,
+		Title:      item.Title,
+		GameType:   item.GameType,
+		SourceType: item.SourceType,
+		SourceName: item.SourceName,
+		SourceUrl:  item.SourceUrl,
+		CoverImage: item.CoverImage,
+		Summary:    item.Summary,
+		Content:    item.Content,
+		Country:    item.Country,
+		City:       item.City,
+		Venue:      item.Venue,
+		Status:     item.Status,
+		Featured:   item.Featured,
+		Published:  item.Published,
+		StageCount: len(stages),
 	}
 	if item.StartTime != nil {
 		resp.StartTime = item.StartTime.Format(eventNewsTimeLayout)
