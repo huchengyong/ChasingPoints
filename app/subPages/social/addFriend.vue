@@ -164,7 +164,7 @@ const handleAdd = async (item) => {
 		border-radius: 36rpx;
 		text {
 			font-size: 28rpx;
-			color: #1f2937;
+			color: #ffffff;
 		}
 	}
 }
@@ -210,19 +210,21 @@ const handleAdd = async (item) => {
 			flex-shrink: 0;
 		}
 
-		.user-info {
-			flex: 1;
-			.user-name {
-				font-size: 30rpx;
-				font-weight: 500;
-				color: #1e293b;
-			}
-			.user-id {
-				font-size: 24rpx;
-				color: #94a3b8;
-				margin-top: 4rpx;
-			}
+	.user-info {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		.user-name {
+			font-size: 30rpx;
+			font-weight: 500;
+			color: #1e293b;
 		}
+		.user-id {
+			font-size: 24rpx;
+			color: #94a3b8;
+			margin-top: 4rpx;
+		}
+	}
 
 		.status-btn {
 			padding: 0 28rpx;
@@ -235,7 +237,7 @@ const handleAdd = async (item) => {
 
 			&.add {
 				background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
-				color: #1f2937;
+				color: #ffffff;
 			}
 			&.pending {
 				background: #e2e8f0;

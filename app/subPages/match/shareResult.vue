@@ -1,7 +1,7 @@
 <template>
 	<view class="share-page">
 		<!-- Canvas (隐藏，用于绘制) -->
-		<canvas canvas-id="matchPoster" class="poster-canvas" style="width:750px;height:1320px;position:absolute;left:-9999px;"></canvas>
+		<canvas canvas-id="matchPoster" class="poster-canvas" style="width:750px;height:2000px;position:absolute;left:-9999px;"></canvas>
 
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">

@@ -127,9 +127,16 @@ export function generateMatchPoster(canvasId, data) {
   return new Promise((resolve, reject) => {
     const ctx = uni.createCanvasContext(canvasId)
     const W = 750
-    const H = 1320
     const highlights = Array.isArray(data.summary_highlights) ? data.summary_highlights.slice(0, 4) : []
     const stats = Array.isArray(data.summary_stats) ? data.summary_stats.slice(0, 6) : []
+    
+    // 动态计算所需高度，防止超出固定高度被覆盖内容
+    const hRows = highlights.length > 0 ? Math.ceil(highlights.length / 2) : 1
+    const sRows = stats.length > 0 ? Math.ceil(stats.length / 2) : 0
+    const statsTop = 572 + 56 + hRows * 170 + 20
+    const statsEnd = statsTop + 56 + sRows * 170
+    const H = Math.max(1320, statsEnd + 150)
+
     const gameTypeName = data.game_type_name || getGameTypeLabel(data.game_type)
     const rankChange = Number(data.rank_change || 0)
     const rankChangeLabel = rankChange > 0 ? `排位 +${rankChange}` : rankChange < 0 ? `排位 ${rankChange}` : '排位 ±0'
@@ -217,7 +224,7 @@ export function generateMatchPoster(canvasId, data) {
       drawCenterText(ctx, '当前模式暂无可展示亮点，但战绩已完成记录', 710, 24, '#94a3b8')
     }
 
-    const statsTop = highlights.length > 2 ? 988 : 818
+    // statsTop 已在顶部动态计算
     drawSectionHeader(ctx, '本场数据', '海报展示项与对局总结页保持同一统计口径', statsTop)
     stats.forEach((item, index) => {
       const col = index % 2
@@ -233,6 +240,12 @@ export function generateMatchPoster(canvasId, data) {
       setTimeout(() => {
         uni.canvasToTempFilePath({
           canvasId: canvasId,
+          x: 0,
+          y: 0,
+          width: W,
+          height: H,
+          destWidth: W,
+          destHeight: H,
           quality: 1,
           success: (res) => resolve(res.tempFilePath),
           fail: (err) => reject(err)

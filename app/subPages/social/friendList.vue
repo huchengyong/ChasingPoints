@@ -42,11 +42,11 @@
 					mode="aspectFill"
 				/>
 				<view class="friend-info">
-					<view class="friend-name-row">
-						<text class="friend-name">{{ item.nickname || '球友' }}</text>
-						<text v-if="item.rank_name" class="friend-rank">{{ item.rank_name }}</text>
-					</view>
-					<text class="friend-sub">ID: {{ item.friend_id }}</text>
+                        <view class="friend-primary">
+                          <text class="friend-name">{{ item.nickname || '球友' }}</text>
+                          <text v-if="item.rank_name" class="friend-rank">{{ item.rank_name }}</text>
+                        </view>
+                        <text class="friend-sub">ID: {{ item.friend_id }}</text>
 				</view>
 				<uni-icons type="right" size="16" color="#cbd5e1"></uni-icons>
 			</view>
@@ -274,7 +274,7 @@ onPullDownRefresh(() => {
 			flex: 1;
 			overflow: hidden;
 
-			.friend-name-row {
+            .friend-primary {
 				display: flex;
 				align-items: center;
 				gap: 12rpx;
