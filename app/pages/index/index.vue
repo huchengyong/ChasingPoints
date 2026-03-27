@@ -287,13 +287,13 @@ const heroSubtitle = computed(() => {
 const heroPrimaryText = computed(() => {
   if (heroMode.value === 'ongoing') return '继续对局'
   if (heroMode.value === 'ready') return '发起 PK'
-  return '登录 / 注册'
+  return '发起 PK'
 })
 
 const heroSecondaryText = computed(() => {
   if (heroMode.value === 'ongoing') return '查看 PK 记录'
   if (heroMode.value === 'ready') return '查看排行榜'
-  return '先看排行榜'
+  return '出示 PK 码'
 })
 
 const heroMetaTags = computed(() => {
@@ -507,7 +507,12 @@ const handleSecondaryAction = () => {
     return
   }
 
-  goTo('/pages/ranking/index')
+  if (heroMode.value === 'ready') {
+    goTo('/pages/ranking/index')
+    return
+  }
+
+  goLogin()
 }
 
 const handleSummaryAction = (type) => {

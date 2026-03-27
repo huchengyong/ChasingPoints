@@ -130,6 +130,10 @@ test('resolvePrimaryAction prefers continue match for ongoing state', () => {
   assert.equal(resolvePrimaryAction('ongoing'), 'continue')
 })
 
+test('resolvePrimaryAction routes guest users to the PK intent flow', () => {
+  assert.equal(resolvePrimaryAction('guest'), 'start_pk')
+})
+
 test('resolveStatusCardContent returns continue action for current match', () => {
   const result = resolveStatusCardContent({
     mode: 'ongoing',
@@ -160,6 +164,19 @@ test('resolveGuestHeroCopy avoids login-wall phrasing', () => {
 
   assert.equal(result.title, '登录后，解锁你的个人竞技主页')
   assert.doesNotMatch(result.description, /请先完成登录/)
+  assert.equal(result.primaryActionText, '发起PK')
+  assert.equal(result.secondaryActionText, '出示PK码')
+})
+
+test('resolveStatusCardContent aligns guest actions with PK entry intents', () => {
+  const result = resolveStatusCardContent({
+    mode: 'guest'
+  })
+
+  assert.equal(result.action, 'start_pk')
+  assert.equal(result.actionText, '发起PK')
+  assert.equal(result.secondaryAction, 'show_pk_code')
+  assert.equal(result.secondaryActionText, '出示PK码')
 })
 
 test('resolveSectionTitles returns competitive naming', () => {

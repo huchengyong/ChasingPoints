@@ -34,7 +34,7 @@
 		{
 			"path": "pages/match/index",
 			"style": {
-				"navigationBarTitleText": "正在进行中的对局",
+				"navigationBarTitleText": "对局大厅",
 				"enablePullDownRefresh": true
 			}
 		},

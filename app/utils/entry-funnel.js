@@ -57,8 +57,16 @@ export function resolveSmsFeedback(phone) {
   return `验证码已发送至 ${maskedPhone}`
 }
 
-export function resolvePostLoginNavigation({ pageCount }) {
+export function resolvePostLoginNavigation({ pageCount, pendingAction = '' }) {
+  if (pendingAction) {
+    return 'intent'
+  }
+
   return Number(pageCount) > 1 ? 'back' : 'home'
+}
+
+export function shouldClearPendingPostLoginIntent({ hasPendingIntent, completedLoginFlow }) {
+  return Boolean(hasPendingIntent) && !completedLoginFlow
 }
 
 export function resolveWelcomeActions({ isHarmony, isAgreed }) {

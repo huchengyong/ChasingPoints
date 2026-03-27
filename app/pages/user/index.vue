@@ -9,10 +9,10 @@
 						<text class="guest-description">{{ guestHeroCopy.description }}</text>
 					</view>
 					<view class="guest-hero-actions">
-						<button class="hero-btn hero-btn-primary" @click="handleGoLogin">
+						<button class="hero-btn hero-btn-primary" @click="handleGuestStartPK">
 							<text>{{ guestHeroCopy.primaryActionText }}</text>
 						</button>
-						<button class="hero-btn hero-btn-secondary" @click="openRoute('/pages/ranking/index')">
+						<button class="hero-btn hero-btn-secondary" @click="handleGuestShowQrCode">
 							<text>{{ guestHeroCopy.secondaryActionText }}</text>
 						</button>
 					</view>
@@ -402,6 +402,11 @@ import { useFriendRequestStore } from '@/store/friendRequest.js'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
 import {
+	POST_LOGIN_ACTIONS,
+	consumePostLoginIntent,
+	setPostLoginIntent
+} from '@/utils/post-login-intent.js'
+import {
 	getFavoriteVenueRewardPopupStorageKey,
 	shouldShowFavoriteVenueRewardPopup,
 	resolveFavoriteVenueRewardPopupCopy,
@@ -623,6 +628,7 @@ onShow(() => {
 	if (isLoggedIn.value) {
 		loadHomepageData()
 		connectUserWS()
+		handlePendingPostLoginIntent()
 	} else {
 		resetHomepageState()
 		notificationStore.clearUnread()
@@ -807,6 +813,14 @@ const handleStatusAction = (action) => {
 		handleContinueCurrentMatch()
 		return
 	}
+	if (action === 'start_pk') {
+		handleStartPK()
+		return
+	}
+	if (action === 'show_pk_code') {
+		handleQrCode()
+		return
+	}
 	if (action === 'login') {
 		handleGoLogin()
 		return
@@ -822,10 +836,32 @@ const handleStatusAction = (action) => {
 	handleStartPK()
 }
 
-const handleGoLogin = () => {
+const handleGoLogin = (postLoginAction = '') => {
+	setPostLoginIntent(postLoginAction)
 	uni.navigateTo({
 		url: '/pages/login/login'
 	})
+}
+
+const handleGuestStartPK = () => {
+	handleGoLogin(POST_LOGIN_ACTIONS.START_PK)
+}
+
+const handleGuestShowQrCode = () => {
+	handleGoLogin(POST_LOGIN_ACTIONS.SHOW_PK_CODE)
+}
+
+const handlePendingPostLoginIntent = () => {
+	const pendingIntent = consumePostLoginIntent()
+
+	if (pendingIntent === POST_LOGIN_ACTIONS.START_PK) {
+		handleStartPK()
+		return
+	}
+
+	if (pendingIntent === POST_LOGIN_ACTIONS.SHOW_PK_CODE) {
+		handleQrCode()
+	}
 }
 
 const handleStartPK = () => {

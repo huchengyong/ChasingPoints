@@ -120,7 +120,7 @@
 
 <script setup>
 import { computed, onUnmounted, reactive, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onUnload } from '@dcloudio/uni-app'
 import { useThemeStore } from '@/store/theme.js'
 import { useUserStore } from '@/store/user.js'
 import { sendSms, login, loginByOauth } from '@/api/auth.js'
@@ -134,8 +134,13 @@ import {
 	isCodeValid,
 	isPhoneValid,
 	resolvePostLoginNavigation,
-	resolveSmsFeedback
+	resolveSmsFeedback,
+	shouldClearPendingPostLoginIntent
 } from '@/utils/entry-funnel.js'
+import {
+	clearPostLoginIntent,
+	getPostLoginIntent
+} from '@/utils/post-login-intent.js'
 
 const WELCOME_PAGE_VIEWED_KEY = 'welcome_page_viewed'
 const ENTRY_FUNNEL_AGREEMENT_KEY = 'entry_funnel_agreement_accepted'
@@ -183,6 +188,7 @@ const sendCodeText = computed(() => {
 })
 
 let countdownTimer = null
+let completedLoginFlow = false
 
 const persistAgreementState = (value) => {
 	uni.setStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY, Boolean(value))
@@ -216,7 +222,16 @@ const startCountdown = () => {
 
 const navigateAfterLogin = () => {
 	const pages = getCurrentPages()
-	const action = resolvePostLoginNavigation({ pageCount: pages.length })
+	const pendingAction = getPostLoginIntent()
+	const action = resolvePostLoginNavigation({
+		pageCount: pages.length,
+		pendingAction
+	})
+
+	if (action === 'intent') {
+		uni.switchTab({ url: '/pages/user/index' })
+		return
+	}
 
 	if (action === 'back') {
 		uni.navigateBack({
@@ -290,6 +305,7 @@ const handleLogin = async () => {
 
 		userStore.login(res)
 		uni.setStorageSync(WELCOME_PAGE_VIEWED_KEY, true)
+		completedLoginFlow = true
 		navigateAfterLogin()
 		uni.showToast({
 			title: '登录成功',
@@ -354,6 +370,7 @@ const handleHuaweiLogin = async () => {
 			return
 		}
 
+		completedLoginFlow = true
 		navigateAfterLogin()
 		uni.showToast({
 			title: '登录成功',
@@ -397,6 +414,7 @@ const handleBindPhoneSuccess = (payload) => {
 		return
 	}
 
+	completedLoginFlow = true
 	navigateAfterLogin()
 	uni.showToast({
 		title: payload?.message || '绑定成功',
@@ -415,6 +433,15 @@ onShow(() => {
 	themeStore.syncTheme()
 	themeStore.applyNavigationBarTheme()
 	isAgreed.value = Boolean(uni.getStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY))
+})
+
+onUnload(() => {
+	if (shouldClearPendingPostLoginIntent({
+		hasPendingIntent: getPostLoginIntent(),
+		completedLoginFlow
+	})) {
+		clearPostLoginIntent()
+	}
 })
 
 onUnmounted(() => {
@@ -658,26 +685,29 @@ onUnmounted(() => {
 	height: 72rpx;
 	padding: 0 24rpx;
 	border-radius: 14rpx;
-	background: rgba(224, 174, 18, 0.12);
-	color: #8a6510;
-	font-size: 24rpx;
+	background: linear-gradient(135deg, #f7d86a 0%, #e0ae12 48%, #c69200 100%);
+	color: #ffffff;
+	font-size: 28rpx;
 	font-weight: 700;
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	box-shadow: 0 4rpx 8rpx rgba(224, 174, 18, 0.3);
 
 	&::after {
 		display: none;
 	}
 
-	&:disabled {
+	&[disabled] {
 		opacity: 0.45;
+		box-shadow: none;
+		color: #ffffff !important;
 	}
 }
 
 .dark-mode .send-code-btn {
-	background: rgba(247, 216, 106, 0.12);
-	color: #f7e7a8;
+	background: linear-gradient(135deg, #f7d86a 0%, #e0ae12 48%, #c69200 100%);
+	color: #ffffff;
 }
 
 .field-error {
@@ -774,9 +804,10 @@ onUnmounted(() => {
 		display: none;
 	}
 
-	&:disabled {
+	&[disabled] {
 		opacity: 0.45;
 		box-shadow: none;
+		color: #ffffff !important;
 	}
 }
 
@@ -833,7 +864,7 @@ onUnmounted(() => {
 		display: none;
 	}
 
-	&:disabled {
+	&[disabled] {
 		opacity: 0.45;
 	}
 

@@ -12,7 +12,8 @@ import {
   maskPhone,
   resolvePostLoginNavigation,
   resolveSmsFeedback,
-  resolveWelcomeActions
+  resolveWelcomeActions,
+  shouldClearPendingPostLoginIntent
 } from '../utils/entry-funnel.js'
 
 test('resolveWelcomeActions hides Huawei login outside HarmonyOS', () => {
@@ -133,6 +134,30 @@ test('resolveSmsFeedback prefers a masked destination when the phone is valid', 
 })
 
 test('resolvePostLoginNavigation returns back when the user came from another page', () => {
-  assert.equal(resolvePostLoginNavigation({ pageCount: 2 }), 'back')
-  assert.equal(resolvePostLoginNavigation({ pageCount: 1 }), 'home')
+  assert.equal(resolvePostLoginNavigation({ pageCount: 2, pendingAction: '' }), 'back')
+  assert.equal(resolvePostLoginNavigation({ pageCount: 1, pendingAction: '' }), 'home')
+})
+
+test('resolvePostLoginNavigation prefers pending post-login actions over default back behavior', () => {
+  assert.equal(resolvePostLoginNavigation({
+    pageCount: 3,
+    pendingAction: 'start_pk'
+  }), 'intent')
+})
+
+test('shouldClearPendingPostLoginIntent only clears abandoned pending actions on login exit', () => {
+  assert.equal(shouldClearPendingPostLoginIntent({
+    hasPendingIntent: true,
+    completedLoginFlow: false
+  }), true)
+
+  assert.equal(shouldClearPendingPostLoginIntent({
+    hasPendingIntent: true,
+    completedLoginFlow: true
+  }), false)
+
+  assert.equal(shouldClearPendingPostLoginIntent({
+    hasPendingIntent: false,
+    completedLoginFlow: false
+  }), false)
 })
