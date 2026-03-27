@@ -1,27 +1,15 @@
 <template>
-	<view class="feed-page">
+	<view class="feed-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 顶部 Tab -->
 		<view class="feed-tabs">
 			<view
+				v-for="tab in tabs"
+				:key="tab.value"
 				class="tab-item"
-				:class="{ active: currentTab === 'following' }"
-				@tap="switchTab('following')"
+				:class="{ active: currentTab === tab.value }"
+				@tap="switchTab(tab.value)"
 			>
-				<text>好友</text>
-			</view>
-			<view
-				class="tab-item"
-				:class="{ active: currentTab === 'public' }"
-				@tap="switchTab('public')"
-			>
-				<text>推荐</text>
-			</view>
-			<view
-				class="tab-item"
-				:class="{ active: currentTab === 'reports' }"
-				@tap="switchTab('reports')"
-			>
-				<text>战报</text>
+				<text>{{ tab.label }}</text>
 			</view>
 		</view>
 
@@ -99,11 +87,11 @@
 								size="20"
 								:color="item.liked ? '#ef4444' : '#94a3b8'"
 							></uni-icons>
-							<text :class="{ liked: item.liked }">{{ item.likes_count || '' }}</text>
+							<text :class="{ liked: item.liked }">{{ formatActionCount(item.likes_count, '点赞') }}</text>
 						</view>
 						<view class="action-item" @tap="toggleComments(item)">
 							<uni-icons type="chat" size="20" color="#94a3b8"></uni-icons>
-							<text>{{ item.comments_count || '' }}</text>
+							<text>{{ formatActionCount(item.comments_count, '评论') }}</text>
 						</view>
 					</view>
 
@@ -150,9 +138,12 @@
 
 			<!-- 空状态 -->
 			<view v-else class="empty-state">
-				<text class="empty-icon">{{ currentTab === 'following' ? '👀' : currentTab === 'reports' ? '🏆' : '📝' }}</text>
-				<text class="empty-title">{{ emptyTitle }}</text>
-				<text class="empty-sub">去发布第一条动态吧！</text>
+				<text class="empty-icon">{{ emptyState.icon }}</text>
+				<text class="empty-title">{{ emptyState.title }}</text>
+				<text class="empty-sub">{{ emptyState.desc }}</text>
+				<view v-if="emptyState.ctaText" class="empty-cta" @tap="handleEmptyStateCta">
+					<text>{{ emptyState.ctaText }}</text>
+				</view>
 			</view>
 
 			<!-- 加载更多指示 -->
@@ -175,9 +166,16 @@
 import { computed, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { getPostList, getPublicPosts, likePost, unlikePost, commentPost, deletePost, getPostComments } from '@/api/social.js'
+import { useThemeStore } from '@/store/theme.js'
+import { useUserStore } from '@/store/user.js'
 import { formatRelativeTime } from '@/utils/format.js'
+import { filterReportPosts, resolveFeedTab, resolveSocialEmptyState, SOCIAL_TABS } from '@/utils/social-entry.js'
 
-const currentTab = ref('public')
+const tabs = SOCIAL_TABS
+const themeStore = useThemeStore()
+const userStore = useUserStore()
+
+const currentTab = ref('recommend')
 const loading = ref(true)
 const refreshing = ref(false)
 const loadingMore = ref(false)
@@ -186,12 +184,14 @@ const page = ref(1)
 const pageSize = 10
 const total = ref(0)
 const hasMore = ref(false)
+const shouldRefreshOnShow = ref(false)
 
-const emptyTitle = computed(() => {
-	if (currentTab.value === 'following') return '好友还没有动态'
-	if (currentTab.value === 'reports') return '暂时还没有战报'
-	return '推荐流还没有动态'
-})
+const isDarkMode = computed(() => themeStore.isDarkMode)
+
+const emptyState = computed(() => resolveSocialEmptyState({
+	tab: currentTab.value,
+	isLoggedIn: userStore.isLoggedIn
+}))
 
 const switchTab = (tab) => {
 	if (currentTab.value === tab) return
@@ -205,26 +205,13 @@ const loadData = async (isRefresh = false) => {
 		loading.value = true
 	}
 	try {
-		const api = currentTab.value === 'following' ? getPostList : getPublicPosts
-		const res = await api({ page: page.value, page_size: pageSize })
-		let list = (res.list || res || []).map(item => ({
-			...item,
-			images: parseImages(item.images),
-			relativeTime: formatRelativeTime(item.created_at),
-			showComments: false,
-			commentList: [],
-			commentText: '',
-			commentLoading: false
-		}))
-		if (currentTab.value === 'reports') {
-			list = list.filter(item => item.post_type === 1)
-		}
+		const { list, total: resolvedTotal } = await loadPostsByTab(currentTab.value)
 		if (isRefresh) {
 			postList.value = list
 		} else {
 			postList.value = [...postList.value, ...list]
 		}
-		total.value = res.total || postList.value.length
+		total.value = resolvedTotal
 		hasMore.value = postList.value.length < total.value
 	} catch (e) {
 		console.error('加载动态失败:', e)
@@ -232,6 +219,52 @@ const loadData = async (isRefresh = false) => {
 		loading.value = false
 		refreshing.value = false
 		loadingMore.value = false
+	}
+}
+
+const normalizePost = (item) => ({
+	...item,
+	images: parseImages(item.images),
+	relativeTime: formatRelativeTime(item.created_at),
+	showComments: false,
+	commentList: [],
+	commentText: '',
+	commentLoading: false
+})
+
+const loadPostsByTab = async (tab) => {
+	if (tab === 'reports') {
+		const requests = [
+			getPublicPosts({ page: page.value, page_size: pageSize }).catch(() => ({ list: [], total: 0 }))
+		]
+
+		if (userStore.isLoggedIn) {
+			requests.push(getPostList({ page: page.value, page_size: pageSize }).catch(() => ({ list: [], total: 0 })))
+		}
+
+		const responses = await Promise.all(requests)
+		const list = filterReportPosts(
+			responses.flatMap((res) => (res.list || res || []).map(normalizePost))
+		).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+		return {
+			list,
+			total: list.length
+		}
+	}
+
+	const feedTab = resolveFeedTab(tab)
+	if (feedTab === 'following' && !userStore.isLoggedIn) {
+		return {
+			list: [],
+			total: 0
+		}
+	}
+
+	const api = feedTab === 'following' ? getPostList : getPublicPosts
+	const res = await api({ page: page.value, page_size: pageSize })
+	return {
+		list: (res.list || res || []).map(normalizePost),
+		total: res.total || (res.list || res || []).length
 	}
 }
 
@@ -247,7 +280,7 @@ const onRefresh = () => {
 }
 
 const loadMore = () => {
-	if (!hasMore.value || loadingMore.value) return
+	if (!hasMore.value || loadingMore.value || currentTab.value === 'reports') return
 	loadingMore.value = true
 	page.value++
 	loadData(false)
@@ -331,6 +364,7 @@ const previewImage = (images, index) => {
 }
 
 const goToCreate = () => {
+	shouldRefreshOnShow.value = true
 	uni.navigateTo({ url: '/subPages/social/postCreate' })
 }
 
@@ -344,13 +378,29 @@ const openPkReport = (item) => {
 	uni.navigateTo({ url: `/subPages/social/pkReport?${query.join('&')}` })
 }
 
-onLoad(() => {
+const formatActionCount = (value, fallbackText) => {
+	return value > 0 ? value : fallbackText
+}
+
+const handleEmptyStateCta = () => {
+	if (currentTab.value === 'friends' && !userStore.isLoggedIn) {
+		uni.navigateTo({ url: '/pages/login/login' })
+	}
+}
+
+onLoad((options) => {
+	const requestedTab = tabs.find((item) => item.value === options?.tab)?.value
+	if (requestedTab) {
+		currentTab.value = requestedTab
+	}
 	loadData(true)
 })
 
 onShow(() => {
-	// 返回时刷新
-	if (!loading.value) {
+	themeStore.syncTheme()
+	themeStore.applyNavigationBarTheme()
+	if (!loading.value && shouldRefreshOnShow.value) {
+		shouldRefreshOnShow.value = false
 		loadData(true)
 	}
 })
@@ -362,6 +412,40 @@ onShow(() => {
 	background: #f1f5f9;
 	display: flex;
 	flex-direction: column;
+
+	&.dark-mode {
+		background: #141109;
+
+		.feed-tabs,
+		.post-card {
+			background: #1e180d;
+			border-color: #3a2e16;
+		}
+
+		.tab-item,
+		.post-time,
+		.loading-text,
+		.empty-sub,
+		.loading-more-text,
+		.no-more-text,
+		.comment-text,
+		.no-comments text,
+		.comment-loading-text,
+		.action-item text {
+			color: #d7c89b;
+		}
+
+		.post-nickname,
+		.post-text,
+		.empty-title {
+			color: #fff7e1;
+		}
+
+		.comment-input {
+			background: #2b2316 !important;
+			color: #fff7e1;
+		}
+	}
 }
 
 .feed-tabs {
@@ -420,6 +504,7 @@ onShow(() => {
 
 .post-card {
 	background: #fff;
+	border: 1rpx solid #e2e8f0;
 	border-radius: 20rpx;
 	padding: 28rpx;
 	margin-bottom: 20rpx;
@@ -622,6 +707,18 @@ onShow(() => {
 	.empty-sub {
 		font-size: 26rpx;
 		color: #94a3b8;
+	}
+}
+
+.empty-cta {
+	margin-top: 20rpx;
+	padding: 16rpx 32rpx;
+	border-radius: 999rpx;
+	background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
+
+	text {
+		font-size: 24rpx;
+		color: #ffffff;
 	}
 }
 

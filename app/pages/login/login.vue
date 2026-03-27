@@ -102,8 +102,9 @@
 
 		<bindPhone
 			:show="showBindPhoneModal"
-			:closable="false"
-			@close="showBindPhoneModal = false"
+			:closable="true"
+			:is-dark-mode="isDarkMode"
+			@close="handleBindPhoneClose"
 			@success="handleBindPhoneSuccess"
 		/>
 
@@ -133,8 +134,10 @@ import {
 	getPhoneError,
 	isCodeValid,
 	isPhoneValid,
+	resolveEntryFunnelAgreementState,
 	resolvePostLoginNavigation,
 	resolveSmsFeedback,
+	shouldClearEntryFunnelAgreementSession,
 	shouldClearPendingPostLoginIntent
 } from '@/utils/entry-funnel.js'
 import {
@@ -144,6 +147,7 @@ import {
 
 const WELCOME_PAGE_VIEWED_KEY = 'welcome_page_viewed'
 const ENTRY_FUNNEL_AGREEMENT_KEY = 'entry_funnel_agreement_accepted'
+const ENTRY_FUNNEL_SESSION_KEY = 'entry_funnel_session_active'
 
 let isHarmonyPlatform = false
 // #ifdef APP-HARMONY
@@ -422,6 +426,16 @@ const handleBindPhoneSuccess = (payload) => {
 	})
 }
 
+const handleBindPhoneClose = () => {
+	showBindPhoneModal.value = false
+	completedLoginFlow = true
+	navigateAfterLogin()
+	uni.showToast({
+		title: '可稍后绑定手机号',
+		icon: 'none'
+	})
+}
+
 const showAgreement = (type) => {
 	const url = type === 'user'
 		? '/subPages/agreement/userAgreement'
@@ -432,10 +446,28 @@ const showAgreement = (type) => {
 onShow(() => {
 	themeStore.syncTheme()
 	themeStore.applyNavigationBarTheme()
-	isAgreed.value = Boolean(uni.getStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY))
+	const sessionActive = Boolean(uni.getStorageSync(ENTRY_FUNNEL_SESSION_KEY))
+	isAgreed.value = resolveEntryFunnelAgreementState({
+		storedAgreement: uni.getStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY),
+		sessionActive
+	})
+	uni.setStorageSync(ENTRY_FUNNEL_SESSION_KEY, true)
+
+	if (!sessionActive) {
+		uni.removeStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY)
+	}
 })
 
 onUnload(() => {
+	const visibleRoutes = getCurrentPages().map((page) => page.route)
+	if (shouldClearEntryFunnelAgreementSession({
+		currentRoute: 'pages/login/login',
+		visibleRoutes
+	})) {
+		uni.removeStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY)
+		uni.removeStorageSync(ENTRY_FUNNEL_SESSION_KEY)
+	}
+
 	if (shouldClearPendingPostLoginIntent({
 		hasPendingIntent: getPostLoginIntent(),
 		completedLoginFlow
@@ -683,6 +715,7 @@ onUnmounted(() => {
 	position: absolute;
 	right: 14rpx;
 	height: 72rpx;
+	line-height: 72rpx;
 	padding: 0 24rpx;
 	border-radius: 14rpx;
 	background: linear-gradient(135deg, #f7d86a 0%, #e0ae12 48%, #c69200 100%);
@@ -791,13 +824,19 @@ onUnmounted(() => {
 }
 
 .login-btn {
-				width: 100%;
-				height: 100rpx;
-				border-radius: 999rpx;
-				background: linear-gradient(135deg, #f7d86a 0%, #e0ae12 48%, #c69200 100%);
-				color: #ffffff;
+	width: 100%;
+	height: 100rpx;
+	padding: 0;
+	border-radius: 999rpx;
+	background: linear-gradient(135deg, #f7d86a 0%, #e0ae12 48%, #c69200 100%);
+	color: #ffffff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	font-size: 32rpx;
 	font-weight: 700;
+	line-height: 1;
+	text-align: center;
 	box-shadow: 0 18rpx 34rpx rgba(224, 174, 18, 0.24);
 
 	&::after {

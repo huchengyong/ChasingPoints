@@ -42,9 +42,15 @@
           <text>{{ friendRequestStore.pendingCount > 99 ? '99+' : friendRequestStore.pendingCount }}</text>
         </view>
       </view>
-      <view class="tool-chip" @tap="goPublicFeed">
-        <uni-icons type="chat" size="16" color="#E0AE12"></uni-icons>
-        <text>全量动态流</text>
+    </view>
+
+    <view class="feed-section-head">
+      <view class="feed-section-copy">
+        <text class="feed-section-title">{{ currentTabMeta.title }}</text>
+        <text class="feed-section-desc">{{ currentTabMeta.desc }}</text>
+      </view>
+      <view class="feed-section-link" @tap="openCurrentFeed()">
+        <text>{{ currentTabMeta.cta }}</text>
       </view>
     </view>
 
@@ -62,7 +68,7 @@
       </view>
 
       <view v-else-if="visiblePosts.length > 0" class="post-list">
-        <view v-for="item in visiblePosts" :key="item.id" class="post-card">
+        <view v-for="item in visiblePosts" :key="item.id" class="post-card" @tap="handlePreviewCardTap(item)">
           <view class="post-header">
             <image
               class="post-avatar"
@@ -89,6 +95,7 @@
               class="post-image"
               :src="img"
               mode="aspectFill"
+              @tap.stop="previewImage(item.images, idx)"
             />
           </view>
 
@@ -98,7 +105,7 @@
           </view>
 
           <view v-if="item.post_type === 1" class="report-actions">
-            <view class="report-btn" @tap="openPkReport(item)">
+            <view class="report-btn" @tap.stop="openPkReport(item)">
               <text>查看PK报表</text>
             </view>
           </view>
@@ -109,6 +116,9 @@
         <text class="state-icon">{{ emptyState.icon }}</text>
         <text class="state-title">{{ emptyState.title }}</text>
         <text class="state-text">{{ emptyState.desc }}</text>
+        <view v-if="emptyState.ctaText" class="state-cta" @tap="handleEmptyStateCta">
+          <text>{{ emptyState.ctaText }}</text>
+        </view>
       </view>
 
       <view v-if="showLoadMore" class="load-more">
@@ -130,13 +140,10 @@ import { useUserStore } from '@/store/user.js'
 import { useNotificationStore } from '@/store/notification.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
 import { formatRelativeTime } from '@/utils/format.js'
+import { buildFeedUrl, filterReportPosts, resolveSocialEmptyState, SOCIAL_TABS } from '@/utils/social-entry.js'
 import { userWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 
-const tabs = [
-  { label: '推荐', value: 'recommend' },
-  { label: '好友', value: 'friends' },
-  { label: '战报', value: 'reports' }
-]
+const tabs = SOCIAL_TABS
 
 const themeStore = useThemeStore()
 const userStore = useUserStore()
@@ -155,38 +162,43 @@ const followingPage = ref(1)
 const pageSize = 10
 const publicHasMore = ref(false)
 const followingHasMore = ref(false)
+const shouldRefreshOnShow = ref(true)
 
 const visiblePosts = computed(() => {
   if (activeTab.value === 'friends') {
     return followingPosts.value
   }
   if (activeTab.value === 'reports') {
-    return [...publicPosts.value, ...followingPosts.value]
-      .filter((item) => item.post_type === 1)
+    return filterReportPosts([...publicPosts.value, ...followingPosts.value])
       .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
   }
   return publicPosts.value
 })
 
-const emptyState = computed(() => {
+const emptyState = computed(() => resolveSocialEmptyState({
+  tab: activeTab.value,
+  isLoggedIn: userStore.isLoggedIn
+}))
+
+const currentTabMeta = computed(() => {
   if (activeTab.value === 'friends') {
     return {
-      icon: '👥',
-      title: userStore.isLoggedIn ? '好友还没有新动态' : '登录后查看好友动态',
-      desc: userStore.isLoggedIn ? '去发一条近况，带动球友互动。' : '登录后可查看关注与好友的真实战绩分享。'
+      title: '好友动态预览',
+      desc: userStore.isLoggedIn ? '先看几条近况，想继续刷就进入完整好友流。' : '登录后可查看完整好友流与真实战绩分享。',
+      cta: userStore.isLoggedIn ? '查看好友动态' : '登录后查看'
     }
   }
   if (activeTab.value === 'reports') {
     return {
-      icon: '🏆',
-      title: '暂时还没有战报',
-      desc: '真实对局结束后分享的战绩，会优先出现在这里。'
+      title: '战报预览',
+      desc: '这里先看精选战报，完整浏览与互动统一进入战报流。',
+      cta: '查看全部战报'
     }
   }
   return {
-    icon: '📝',
-    title: '暂时还没有推荐内容',
-    desc: '去发布第一条动态，或者稍后再来看看。'
+    title: '推荐动态预览',
+    desc: '先快速感知社区氛围，继续浏览时进入完整推荐流。',
+    cta: '查看全部推荐'
   }
 })
 
@@ -310,6 +322,7 @@ const loadMore = async () => {
 }
 
 const goCreatePost = () => {
+  shouldRefreshOnShow.value = true
   uni.navigateTo({ url: '/subPages/social/postCreate' })
 }
 
@@ -333,8 +346,12 @@ const goFriendRequests = () => {
   uni.navigateTo({ url: '/subPages/social/friendRequests' })
 }
 
-const goPublicFeed = () => {
-  uni.navigateTo({ url: '/subPages/social/feed' })
+const openCurrentFeed = (tab = activeTab.value) => {
+  if (tab === 'friends' && !userStore.isLoggedIn) {
+    uni.navigateTo({ url: '/pages/login/login' })
+    return
+  }
+  uni.navigateTo({ url: buildFeedUrl(tab) })
 }
 
 const connectUserWS = async () => {
@@ -371,6 +388,23 @@ const openPkReport = (item) => {
   uni.navigateTo({ url: `/subPages/social/pkReport?${query.join('&')}` })
 }
 
+const handlePreviewCardTap = () => {
+  openCurrentFeed()
+}
+
+const previewImage = (images, index) => {
+  uni.previewImage({
+    urls: images,
+    current: index
+  })
+}
+
+const handleEmptyStateCta = () => {
+  if (activeTab.value === 'friends' && !userStore.isLoggedIn) {
+    uni.navigateTo({ url: '/pages/login/login' })
+  }
+}
+
 onShow(() => {
   themeStore.syncTheme()
   themeStore.applyNavigationBarTheme()
@@ -381,7 +415,10 @@ onShow(() => {
     friendRequestStore.clearPendingCount()
   }
   connectUserWS()
-  loadData(true)
+  if (shouldRefreshOnShow.value) {
+    shouldRefreshOnShow.value = false
+    loadData(true)
+  }
 })
 
 onHide(() => {

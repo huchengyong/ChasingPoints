@@ -1,5 +1,9 @@
 const PHONE_REGEXP = /^1[3-9]\d{9}$/
 const CODE_REGEXP = /^\d{6}$/
+const ENTRY_FUNNEL_ROUTES = new Set([
+  'pages/welcome/index',
+  'pages/login/login'
+])
 
 export function isPhoneValid(phone) {
   return PHONE_REGEXP.test(String(phone || '').trim())
@@ -67,6 +71,18 @@ export function resolvePostLoginNavigation({ pageCount, pendingAction = '' }) {
 
 export function shouldClearPendingPostLoginIntent({ hasPendingIntent, completedLoginFlow }) {
   return Boolean(hasPendingIntent) && !completedLoginFlow
+}
+
+export function resolveEntryFunnelAgreementState({ storedAgreement, sessionActive }) {
+  if (!sessionActive) {
+    return false
+  }
+
+  return Boolean(storedAgreement)
+}
+
+export function shouldClearEntryFunnelAgreementSession({ currentRoute, visibleRoutes = [] }) {
+  return !visibleRoutes.some((route) => route !== currentRoute && ENTRY_FUNNEL_ROUTES.has(route))
 }
 
 export function resolveWelcomeActions({ isHarmony, isAgreed }) {

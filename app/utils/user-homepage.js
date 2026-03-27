@@ -16,8 +16,8 @@ export const resolveGuestHeroCopy = () => ({
   eyebrow: '个人竞技主页',
   title: '登录后，解锁你的个人竞技主页',
   description: '记录比分、查看段位变化、沉淀每一场对局，挑战和消息也会集中在这里。',
-  primaryActionText: '发起PK',
-  secondaryActionText: '出示PK码'
+  primaryActionText: '登录/注册',
+  secondaryActionText: '发起PK'
 })
 
 export const resolveSectionTitles = () => ({
@@ -40,7 +40,7 @@ export const resolveUserHomepageMode = ({
 
 export const resolvePrimaryAction = (mode) => {
   if (mode === 'ongoing') return 'continue'
-  if (mode === 'guest') return 'start_pk'
+  if (mode === 'guest') return 'login'
   return 'start'
 }
 
@@ -74,10 +74,10 @@ export const resolveStatusCardContent = ({ mode, currentMatch = null, recentMatc
       eyebrow: '登录后解锁',
       title: '登录后，解锁你的个人竞技主页',
       description: '登录后查看进行中的对局、个人战绩、段位变化和待处理事项。',
-      action: 'start_pk',
-      actionText: '发起PK',
-      secondaryAction: 'show_pk_code',
-      secondaryActionText: '出示PK码'
+      action: 'login',
+      actionText: '登录/注册',
+      secondaryAction: 'start_pk',
+      secondaryActionText: '发起PK'
     }
   }
 

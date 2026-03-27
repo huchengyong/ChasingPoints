@@ -81,13 +81,18 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onUnload } from '@dcloudio/uni-app'
 import { useThemeStore } from '@/store/theme.js'
 import agreementConsentSheet from '@/components/agreementConsentSheet.vue'
-import { resolveWelcomeActions } from '@/utils/entry-funnel.js'
+import {
+	resolveEntryFunnelAgreementState,
+	resolveWelcomeActions,
+	shouldClearEntryFunnelAgreementSession
+} from '@/utils/entry-funnel.js'
 
 const WELCOME_PAGE_VIEWED_KEY = 'welcome_page_viewed'
 const ENTRY_FUNNEL_AGREEMENT_KEY = 'entry_funnel_agreement_accepted'
+const ENTRY_FUNNEL_SESSION_KEY = 'entry_funnel_session_active'
 
 let isHarmonyPlatform = false
 // #ifdef APP-HARMONY
@@ -111,7 +116,16 @@ const welcomeActions = computed(() => resolveWelcomeActions({
 onShow(() => {
 	themeStore.syncTheme()
 	themeStore.applyNavigationBarTheme()
-	isAgreed.value = Boolean(uni.getStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY))
+	const sessionActive = Boolean(uni.getStorageSync(ENTRY_FUNNEL_SESSION_KEY))
+	isAgreed.value = resolveEntryFunnelAgreementState({
+		storedAgreement: uni.getStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY),
+		sessionActive
+	})
+	uni.setStorageSync(ENTRY_FUNNEL_SESSION_KEY, true)
+
+	if (!sessionActive) {
+		uni.removeStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY)
+	}
 
 	const hasViewed = uni.getStorageSync(WELCOME_PAGE_VIEWED_KEY)
 	if (hasViewed) {
@@ -119,6 +133,17 @@ onShow(() => {
 	} else {
 		// 只有需要显示 welcome 页面时才渲染内容
 		shouldShow.value = true
+	}
+})
+
+onUnload(() => {
+	const visibleRoutes = getCurrentPages().map((page) => page.route)
+	if (shouldClearEntryFunnelAgreementSession({
+		currentRoute: 'pages/welcome/index',
+		visibleRoutes
+	})) {
+		uni.removeStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY)
+		uni.removeStorageSync(ENTRY_FUNNEL_SESSION_KEY)
 	}
 })
 

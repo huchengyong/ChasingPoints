@@ -201,6 +201,7 @@ $border-color-dark: rgba(247, 231, 168, 0.12);
     .modal-btn {
         flex: 1;
         height: 88rpx;
+        line-height: 88rpx;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -241,6 +242,7 @@ $border-color-dark: rgba(247, 231, 168, 0.12);
 .logout-btn {
     width: 100%;
     height: 92rpx;
+    line-height: 92rpx;
     margin-top: 24rpx;
     display: flex;
     align-items: center;

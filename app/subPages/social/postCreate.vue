@@ -1,5 +1,5 @@
 <template>
-	<view class="post-create-page">
+	<view class="post-create-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 文本输入 -->
 		<view class="input-section">
 			<textarea
@@ -75,13 +75,17 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { createPost } from '@/api/social.js'
+import { useThemeStore } from '@/store/theme.js'
 
 const content = ref('')
 const imageList = ref([])
 const postType = ref(3)
 const publishing = ref(false)
+const themeStore = useThemeStore()
+
+const isDarkMode = computed(() => themeStore.isDarkMode)
 
 const canPublish = computed(() => {
 	return content.value.trim().length > 0
@@ -94,6 +98,11 @@ onLoad((options) => {
 	if (options.post_type) {
 		postType.value = Number(options.post_type) || 3
 	}
+})
+
+onShow(() => {
+	themeStore.syncTheme()
+	themeStore.applyNavigationBarTheme()
 })
 
 const chooseImage = () => {
@@ -146,6 +155,34 @@ const handlePublish = async () => {
 	min-height: 100vh;
 	background: #f1f5f9;
 	padding: 20rpx 24rpx;
+
+	&.dark-mode {
+		background: #141109;
+
+		.input-section,
+		.image-section,
+		.type-section {
+			background: #1e180d;
+		}
+
+		.content-input,
+		.type-tag.active {
+			color: #fff7e1;
+		}
+
+		.char-count,
+		.section-label,
+		.add-text,
+		.type-tag {
+			color: #d7c89b;
+		}
+
+		.image-add,
+		.type-tag {
+			background: #2b2316;
+			border-color: #3a2e16;
+		}
+	}
 }
 
 .input-section {
@@ -272,6 +309,10 @@ const handlePublish = async () => {
 		&[disabled] {
 			background: #cbd5e1;
 			color: #94a3b8;
+		}
+
+		&::after {
+			display: none;
 		}
 	}
 }

@@ -207,6 +207,7 @@ $dark-cancel-bg: #27272a;
 		.modal-btn {
 			flex: 1;
 			height: 96rpx;
+			line-height: 96rpx;
 			display: flex;
 			align-items: center;
 			justify-content: center;

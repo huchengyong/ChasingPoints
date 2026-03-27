@@ -120,10 +120,11 @@ const handleClose = () => {
 .sheet-confirm-btn {
 	width: 100%;
 	height: 96rpx;
+	line-height: 96rpx; 
 	margin-top: 32rpx;
 	border-radius: 999rpx;
 	background: linear-gradient(135deg, #f7d86a 0%, #e0ae12 48%, #c69200 100%);
-	color: #231c0b;
+	color: #ffffff;
 	font-size: 32rpx;
 	font-weight: 700;
 	box-shadow: 0 16rpx 32rpx rgba(224, 174, 18, 0.22);

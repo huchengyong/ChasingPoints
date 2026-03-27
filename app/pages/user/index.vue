@@ -9,10 +9,10 @@
 						<text class="guest-description">{{ guestHeroCopy.description }}</text>
 					</view>
 					<view class="guest-hero-actions">
-						<button class="hero-btn hero-btn-primary" @click="handleGuestStartPK">
+						<button class="hero-btn hero-btn-primary" @click="handleGoLogin">
 							<text>{{ guestHeroCopy.primaryActionText }}</text>
 						</button>
-						<button class="hero-btn hero-btn-secondary" @click="handleGuestShowQrCode">
+						<button class="hero-btn hero-btn-secondary" @click="handleGuestStartPK">
 							<text>{{ guestHeroCopy.secondaryActionText }}</text>
 						</button>
 					</view>
@@ -845,10 +845,6 @@ const handleGoLogin = (postLoginAction = '') => {
 
 const handleGuestStartPK = () => {
 	handleGoLogin(POST_LOGIN_ACTIONS.START_PK)
-}
-
-const handleGuestShowQrCode = () => {
-	handleGoLogin(POST_LOGIN_ACTIONS.SHOW_PK_CODE)
 }
 
 const handlePendingPostLoginIntent = () => {

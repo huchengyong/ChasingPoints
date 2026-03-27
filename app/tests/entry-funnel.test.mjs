@@ -10,8 +10,10 @@ import {
   isCodeValid,
   isPhoneValid,
   maskPhone,
+  resolveEntryFunnelAgreementState,
   resolvePostLoginNavigation,
   resolveSmsFeedback,
+  shouldClearEntryFunnelAgreementSession,
   resolveWelcomeActions,
   shouldClearPendingPostLoginIntent
 } from '../utils/entry-funnel.js'
@@ -160,4 +162,28 @@ test('shouldClearPendingPostLoginIntent only clears abandoned pending actions on
     hasPendingIntent: false,
     completedLoginFlow: false
   }), false)
+})
+
+test('resolveEntryFunnelAgreementState resets stale agreement when opening a fresh funnel session', () => {
+  assert.equal(resolveEntryFunnelAgreementState({
+    storedAgreement: true,
+    sessionActive: false
+  }), false)
+
+  assert.equal(resolveEntryFunnelAgreementState({
+    storedAgreement: true,
+    sessionActive: true
+  }), true)
+})
+
+test('shouldClearEntryFunnelAgreementSession only clears when no funnel page remains in stack', () => {
+  assert.equal(shouldClearEntryFunnelAgreementSession({
+    currentRoute: 'pages/login/login',
+    visibleRoutes: ['pages/welcome/index']
+  }), false)
+
+  assert.equal(shouldClearEntryFunnelAgreementSession({
+    currentRoute: 'pages/login/login',
+    visibleRoutes: ['pages/user/index']
+  }), true)
 })

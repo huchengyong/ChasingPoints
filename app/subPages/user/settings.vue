@@ -12,13 +12,13 @@
 					</view>
 					<view class="menu-right">
 						<text class="menu-value">{{ userNickname }}</text>
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
 					</view>
 				</view>
 				<view class="menu-item" @click="toggleDarkMode">
 					<view class="menu-left">
-						<view class="icon-wrapper indigo">
-							<uni-icons type="starhalf" size="24" color="#6366f1"></uni-icons>
+						<view class="icon-wrapper gold">
+							<uni-icons type="starhalf" size="24" color="#E0AE12"></uni-icons>
 						</view>
 						<text class="menu-text">深色模式</text>
 					</view>
@@ -30,6 +30,18 @@
 						</view>
 					</view>
 				</view>
+				<view v-if="showBindPhoneEntry" class="menu-item" @click="openBindPhoneModal">
+					<view class="menu-left">
+						<view class="icon-wrapper gold-soft">
+							<uni-icons type="phone-filled" size="24" color="#E0AE12"></uni-icons>
+						</view>
+						<text class="menu-text">绑定手机号</text>
+					</view>
+					<view class="menu-right">
+						<text class="menu-value">{{ bindPhoneEntryText }}</text>
+						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
+					</view>
+				</view>
 				<view class="menu-item" @click="handleNotifications">
 					<view class="menu-left">
 						<view class="icon-wrapper green">
@@ -38,44 +50,57 @@
 						<text class="menu-text">通知管理</text>
 					</view>
 					<view class="menu-right">
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
 					</view>
 				</view>
 				<view class="menu-item" @click="handlePrivacy">
 					<view class="menu-left">
 						<view class="icon-wrapper rose">
-							<uni-icons type="locked-filled" size="24" color="#f43f5e"></uni-icons>
+							<uni-icons type="locked-filled" size="24" color="#d97706"></uni-icons>
 						</view>
 						<text class="menu-text">隐私政策</text>
 					</view>
 					<view class="menu-right">
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
 					</view>
 				</view>
 				<view class="menu-item" @click="handleAgreement">
 					<view class="menu-left">
-						<view class="icon-wrapper slate">
-							<uni-icons type="flag-filled" size="24" color="#fcbd71"></uni-icons>
+						<view class="icon-wrapper gold-soft">
+							<uni-icons type="flag-filled" size="24" color="#c69200"></uni-icons>
 						</view>
 						<text class="menu-text">用户协议</text>
 					</view>
 					<view class="menu-right">
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
 					</view>
 				</view>
 				<view class="menu-item" @click="handleHelp">
 					<view class="menu-left">
-						<view class="icon-wrapper slate">
-							<uni-icons type="help-filled" size="24" color="#dd6161"></uni-icons>
+						<view class="icon-wrapper amber">
+							<uni-icons type="help-filled" size="24" color="#b45309"></uni-icons>
 						</view>
 						<text class="menu-text">意见反馈</text>
 					</view>
 					<view class="menu-right">
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
 					</view>
 				</view>
 			</view>
+			<view class="page-actions">
+				<button class="logout-btn" @click="handleLogout">
+					<text>退出登录</text>
+				</button>
+			</view>
 		</view>
+
+		<bindPhone
+			:show="showBindPhoneModal"
+			:closable="true"
+			:is-dark-mode="isDarkMode"
+			@close="handleBindPhoneClose"
+			@success="handleBindPhoneSuccess"
+		/>
 
 		<!-- 编辑昵称弹框 -->
 		<view class="modal-overlay" v-if="showEditNicknameModal" @click="closeEditNicknameModal">
@@ -109,6 +134,7 @@ import { onShow, onHide } from '@dcloudio/uni-app'
 import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
 import { useUserStore } from '@/store/user.js'
 import { updateNickname } from '@/api/user.js'
+import bindPhone from '@/components/bindPhone.vue'
 
 // ========== 状态管理 ==========
 const themeStore = useThemeStore()
@@ -117,7 +143,11 @@ const userStore = useUserStore()
 // ========== 响应式数据 ==========
 const isDarkMode = computed(() => themeStore.isDarkMode)
 const userNickname = computed(() => userStore.userInfo?.nickname || '用户')
+const userPhone = computed(() => userStore.userInfo?.phone || '')
+const showBindPhoneEntry = computed(() => Boolean(userStore.needBindPhone || !userPhone.value))
+const bindPhoneEntryText = computed(() => (userPhone.value ? '继续完善' : '立即绑定'))
 const showEditNicknameModal = ref(false)
+const showBindPhoneModal = ref(false)
 const newNickname = ref('')
 const isSaving = ref(false)
 
@@ -222,6 +252,34 @@ const toggleDarkMode = () => {
 	themeStore.toggleTheme()
 }
 
+const openBindPhoneModal = () => {
+	showBindPhoneModal.value = true
+}
+
+const handleBindPhoneClose = () => {
+	showBindPhoneModal.value = false
+}
+
+const handleBindPhoneSuccess = (payload) => {
+	showBindPhoneModal.value = false
+
+	if (payload?.action === 'relogin') {
+		userStore.logout()
+		uni.showToast({
+			title: payload.message || '账号已合并，请重新登录',
+			icon: 'none'
+		})
+		uni.reLaunch({ url: '/pages/login/login' })
+		return
+	}
+
+	userStore.bindPhoneSuccess(payload?.maskedPhone || payload?.phone || '')
+	uni.showToast({
+		title: payload?.message || '绑定成功',
+		icon: 'success'
+	})
+}
+
 /**
  * 通知管理
  */
@@ -255,6 +313,22 @@ const handleAgreement = () => {
 const handleHelp = () => {
 	uni.navigateTo({
 		url: '/subPages/help/feedback'
+	})
+}
+
+const handleLogout = () => {
+	uni.showModal({
+		title: '提示',
+		content: '确定要退出登录吗？',
+		success: ({ confirm }) => {
+			if (!confirm) return
+			userStore.logout()
+			uni.switchTab({ url: '/pages/user/index' })
+			uni.showToast({
+				title: '已退出登录',
+				icon: 'success'
+			})
+		}
 	})
 }
 </script>
