@@ -242,6 +242,13 @@
 					}
 				},
 				{
+					"path": "myPosts",
+					"style": {
+						"navigationBarTitleText": "我的动态",
+						"enablePullDownRefresh": true
+					}
+				},
+				{
 					"path": "friendList",
 					"style": {
 						"navigationBarTitleText": "好友列表",

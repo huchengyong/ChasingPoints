@@ -2,7 +2,6 @@ package social
 
 import (
 	"context"
-	"encoding/json"
 
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -50,49 +49,14 @@ func (l *GetPostListLogic) GetPostList(req *types.GetPostListReq) (resp *types.G
 
 	list := make([]types.SocialPostInfo, 0, len(posts))
 	for _, post := range posts {
-		nickname := ""
-		avatar := ""
-		user, userErr := l.svcCtx.UserModel.FindById(post.UserId)
-		if userErr != nil {
-			l.Logger.Errorf("查询动态作者失败: postId=%d userId=%d err=%v", post.Id, post.UserId, userErr)
+		item, ok, buildErr := buildSocialPostInfo(l.svcCtx, post, userIdInt, false)
+		if buildErr != nil {
+			l.Logger.Errorf("构建关注动态失败: postId=%d err=%v", post.Id, buildErr)
 			continue
 		}
-		if user != nil {
-			nickname = user.Nickname
-			avatar = user.Avatar
+		if !ok {
+			continue
 		}
-
-		isLiked, likeErr := l.svcCtx.SocialPostModel.HasLiked(post.Id, userIdInt)
-		if likeErr != nil {
-			l.Logger.Errorf("查询动态点赞状态失败: postId=%d userId=%d err=%v", post.Id, userIdInt, likeErr)
-			return &types.GetPostListResp{Success: false}, nil
-		}
-
-		images := make([]string, 0)
-		if post.Images != nil && *post.Images != "" {
-			if unmarshalErr := json.Unmarshal([]byte(*post.Images), &images); unmarshalErr != nil {
-				l.Logger.Errorf("解析动态图片失败: postId=%d err=%v", post.Id, unmarshalErr)
-				images = []string{}
-			}
-		}
-
-		item := types.SocialPostInfo{
-			Id:            post.Id,
-			UserId:        post.UserId,
-			Nickname:      nickname,
-			Avatar:        avatar,
-			Content:       post.Content,
-			Images:        images,
-			PostType:      post.PostType,
-			LikesCount:    post.LikesCount,
-			CommentsCount: post.CommentsCount,
-			IsLiked:       isLiked,
-			CreatedAt:     post.CreatedAt.Format("2006-01-02 15:04:05"),
-		}
-		if post.MatchId != nil {
-			item.MatchId = *post.MatchId
-		}
-
 		list = append(list, item)
 	}
 

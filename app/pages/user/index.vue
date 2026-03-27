@@ -570,6 +570,14 @@ const metricCards = computed(() => ([
 
 const quickActions = computed(() => ([
 	{
+		label: '我的动态',
+		desc: '查看审核进度、发布记录和拒绝原因',
+		icon: 'compose',
+		iconColor: '#2563eb',
+		iconClass: 'blue',
+		handler: handleMyPosts
+	},
+	{
 		label: '比赛记录',
 		desc: hasRecentMatch.value ? `累计 ${userStats.totalMatches} 场` : '查看历史对局',
 		icon: 'list',
@@ -967,6 +975,10 @@ const handleContinueCurrentMatch = () => {
 
 const handleMatchHistory = () => {
 	uni.navigateTo({ url: '/subPages/user/matchHistory' })
+}
+
+const handleMyPosts = () => {
+	uni.navigateTo({ url: '/subPages/social/myPosts' })
 }
 
 const handleOpponentRecord = () => {

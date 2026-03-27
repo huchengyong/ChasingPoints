@@ -62,6 +62,7 @@ func (l *CreatePostLogic) CreatePost(req *types.CreatePostReq) (resp *types.Crea
 		Images:   imagesPtr,
 		PostType: postType,
 		MatchId:  matchIdPtr,
+		Status:   model.SocialPostStatusPending,
 	}
 
 	if err = l.svcCtx.SocialPostModel.Create(post); err != nil {

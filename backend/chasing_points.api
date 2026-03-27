@@ -1075,6 +1075,10 @@ type SocialPostInfo {
 	LikesCount    int      `json:"likes_count"`
 	CommentsCount int      `json:"comments_count"`
 	IsLiked       bool     `json:"is_liked"`
+	Status        int      `json:"status"`
+	StatusText    string   `json:"status_text"`
+	RejectReason  string   `json:"reject_reason,optional"`
+	IsMine        bool     `json:"is_mine"`
 	CreatedAt     string   `json:"created_at"`
 }
 
@@ -1154,6 +1158,10 @@ service chasing_points-api {
 	@doc "获取关注的人的动态"
 	@handler GetPostList
 	get /feed (GetPostListReq) returns (GetPostListResp)
+
+	@doc "获取我的动态"
+	@handler GetMyPostList
+	get /mine (GetPostListReq) returns (GetPostListResp)
 
 	@doc "点赞动态"
 	@handler LikePost
@@ -2364,6 +2372,46 @@ type AdminVenueRewardRecordListResp {
 	List    []AdminVenueRewardRecordInfo `json:"list"`
 }
 
+// ==================== Admin 动态审核 ====================
+type AdminSocialPostListReq {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+	Status   int `form:"status,default=-1"` // -1:全部 1:已发布 2:待审核 3:已拒绝
+}
+
+type AdminSocialPostInfo {
+	Id            int64    `json:"id"`
+	UserId        int64    `json:"user_id"`
+	Nickname      string   `json:"nickname"`
+	Avatar        string   `json:"avatar"`
+	Content       string   `json:"content"`
+	Images        []string `json:"images"`
+	PostType      int      `json:"post_type"`
+	MatchId       int64    `json:"match_id,omitempty"`
+	LikesCount    int      `json:"likes_count"`
+	CommentsCount int      `json:"comments_count"`
+	Status        int      `json:"status"`
+	StatusText    string   `json:"status_text"`
+	RejectReason  string   `json:"reject_reason"`
+	ReviewedAt    string   `json:"reviewed_at,optional"`
+	ReviewedBy    int64    `json:"reviewed_by,optional"`
+	CreatedAt     string   `json:"created_at"`
+}
+
+type AdminSocialPostListResp {
+	Code    int                   `json:"code"`
+	Success bool                  `json:"success"`
+	Message string                `json:"message"`
+	Total   int64                 `json:"total"`
+	List    []AdminSocialPostInfo `json:"list"`
+}
+
+type AdminSocialPostReviewReq {
+	PostId       int64  `json:"post_id"`
+	Status       int    `json:"status"` // 1:通过 3:拒绝
+	RejectReason string `json:"reject_reason,optional"`
+}
+
 @server (
 	prefix: /api/admin/venue
 	group:  admin
@@ -2389,6 +2437,21 @@ service chasing_points-api {
 	@doc "审核球馆"
 	@handler AdminReviewVenue
 	post /review (AdminVenueReviewReq) returns (AdminVenueReviewResp)
+}
+
+@server (
+	prefix: /api/admin/social
+	group:  admin
+	jwt:    Auth
+)
+service chasing_points-api {
+	@doc "获取动态列表（管理员）"
+	@handler AdminGetSocialPostList
+	get /posts (AdminSocialPostListReq) returns (AdminSocialPostListResp)
+
+	@doc "审核动态"
+	@handler AdminReviewSocialPost
+	post /review (AdminSocialPostReviewReq) returns (AdminWriteResp)
 }
 
 // ==================== Admin 用户管理 ====================

@@ -224,6 +224,7 @@ const loadData = async (isRefresh = false) => {
 
 const normalizePost = (item) => ({
 	...item,
+	liked: Boolean(item.liked ?? item.is_liked),
 	images: parseImages(item.images),
 	relativeTime: formatRelativeTime(item.created_at),
 	showComments: false,

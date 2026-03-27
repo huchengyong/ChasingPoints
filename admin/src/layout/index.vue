@@ -64,7 +64,8 @@ const menuList = [
   { path: '/users', title: '用户管理', icon: 'UserFilled' },
   { path: '/matches', title: '对局管理', icon: 'Trophy' },
   { path: '/event-news', title: '赛事情报', icon: 'Calendar' },
-  { path: '/venues', title: '球馆审核', icon: 'OfficeBuilding' }
+  { path: '/venues', title: '球馆审核', icon: 'OfficeBuilding' },
+  { path: '/social-posts', title: '动态审核', icon: 'ChatDotRound' }
 ]
 
 const handleCommand = (command: string) => {

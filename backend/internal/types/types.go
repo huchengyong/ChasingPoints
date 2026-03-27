@@ -231,6 +231,45 @@ type AdminRecentUsersResp struct {
 	List    []AdminRecentUser `json:"list"`
 }
 
+type AdminSocialPostInfo struct {
+	Id            int64    `json:"id"`
+	UserId        int64    `json:"user_id"`
+	Nickname      string   `json:"nickname"`
+	Avatar        string   `json:"avatar"`
+	Content       string   `json:"content"`
+	Images        []string `json:"images"`
+	PostType      int      `json:"post_type"`
+	MatchId       int64    `json:"match_id,omitempty"`
+	LikesCount    int      `json:"likes_count"`
+	CommentsCount int      `json:"comments_count"`
+	Status        int      `json:"status"`
+	StatusText    string   `json:"status_text"`
+	RejectReason  string   `json:"reject_reason"`
+	ReviewedAt    string   `json:"reviewed_at,optional"`
+	ReviewedBy    int64    `json:"reviewed_by,optional"`
+	CreatedAt     string   `json:"created_at"`
+}
+
+type AdminSocialPostListReq struct {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+	Status   int `form:"status,default=-1"` // -1:全部 1:已发布 2:待审核 3:已拒绝
+}
+
+type AdminSocialPostListResp struct {
+	Code    int                   `json:"code"`
+	Success bool                  `json:"success"`
+	Message string                `json:"message"`
+	Total   int64                 `json:"total"`
+	List    []AdminSocialPostInfo `json:"list"`
+}
+
+type AdminSocialPostReviewReq struct {
+	PostId       int64  `json:"post_id"`
+	Status       int    `json:"status"` // 1:通过 3:拒绝
+	RejectReason string `json:"reject_reason,optional"`
+}
+
 type AdminUserInfo struct {
 	Id        int64  `json:"id"`
 	Phone     string `json:"phone"`
@@ -1575,6 +1614,10 @@ type SocialPostInfo struct {
 	LikesCount    int      `json:"likes_count"`
 	CommentsCount int      `json:"comments_count"`
 	IsLiked       bool     `json:"is_liked"`
+	Status        int      `json:"status"`
+	StatusText    string   `json:"status_text"`
+	RejectReason  string   `json:"reject_reason,optional"`
+	IsMine        bool     `json:"is_mine"`
 	CreatedAt     string   `json:"created_at"`
 }
 

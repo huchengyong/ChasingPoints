@@ -3,6 +3,7 @@ package social
 import (
 	"context"
 
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -25,6 +26,15 @@ func NewGetPostCommentsLogic(ctx context.Context, svcCtx *svc.ServiceContext) *G
 }
 
 func (l *GetPostCommentsLogic) GetPostComments(req *types.GetPostCommentsReq) (resp *types.GetPostCommentsResp, err error) {
+	post, err := l.svcCtx.SocialPostModel.FindById(req.PostId)
+	if err != nil {
+		l.Logger.Errorf("查询动态失败: postId=%d err=%v", req.PostId, err)
+		return &types.GetPostCommentsResp{Success: false}, nil
+	}
+	if post == nil || post.Status != model.SocialPostStatusPublished {
+		return &types.GetPostCommentsResp{Success: false}, nil
+	}
+
 	comments, total, err := l.svcCtx.SocialPostModel.GetComments(req.PostId, req.Page, req.PageSize)
 	if err != nil {
 		l.Logger.Errorf("查询动态评论失败: postId=%d err=%v", req.PostId, err)

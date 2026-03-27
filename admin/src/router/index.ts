@@ -43,6 +43,12 @@ const routes = [
         name: 'Venues',
         component: () => import('@/views/venues/index.vue'),
         meta: { title: '球馆审核', icon: 'OfficeBuilding' }
+      },
+      {
+        path: 'social-posts',
+        name: 'SocialPosts',
+        component: () => import('@/views/social-posts/index.vue'),
+        meta: { title: '动态审核', icon: 'ChatDotRound' }
       }
     ]
   },

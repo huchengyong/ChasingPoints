@@ -3,6 +3,7 @@ package social
 import (
 	"context"
 
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -34,6 +35,14 @@ func (l *LikePostLogic) LikePost(req *types.PostIdReq) (resp *types.CommonResp, 
 
 	if req.PostId <= 0 {
 		return &types.CommonResp{Success: false, Message: "动态不存在"}, nil
+	}
+	post, err := l.svcCtx.SocialPostModel.FindById(req.PostId)
+	if err != nil {
+		l.Logger.Errorf("查询动态失败: postId=%d err=%v", req.PostId, err)
+		return &types.CommonResp{Success: false, Message: "点赞失败"}, nil
+	}
+	if post == nil || post.Status != model.SocialPostStatusPublished {
+		return &types.CommonResp{Success: false, Message: "该动态暂不可互动"}, nil
 	}
 
 	if err = l.svcCtx.SocialPostModel.AddLike(req.PostId, userIdInt); err != nil {

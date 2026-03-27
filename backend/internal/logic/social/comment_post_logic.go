@@ -37,6 +37,14 @@ func (l *CommentPostLogic) CommentPost(req *types.CommentPostReq) (resp *types.C
 	if req.PostId <= 0 {
 		return &types.CommonResp{Success: false, Message: "动态不存在"}, nil
 	}
+	post, err := l.svcCtx.SocialPostModel.FindById(req.PostId)
+	if err != nil {
+		l.Logger.Errorf("查询动态失败: postId=%d err=%v", req.PostId, err)
+		return &types.CommonResp{Success: false, Message: "评论失败"}, nil
+	}
+	if post == nil || post.Status != model.SocialPostStatusPublished {
+		return &types.CommonResp{Success: false, Message: "该动态暂不可互动"}, nil
+	}
 	content := strings.TrimSpace(req.Content)
 	if content == "" {
 		return &types.CommonResp{Success: false, Message: "评论内容不能为空"}, nil

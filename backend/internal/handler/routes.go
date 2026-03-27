@@ -201,6 +201,25 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
+				// 获取动态列表（管理员）
+				Method:  http.MethodGet,
+				Path:    "/posts",
+				Handler: admin.AdminGetSocialPostListHandler(serverCtx),
+			},
+			{
+				// 审核动态
+				Method:  http.MethodPost,
+				Path:    "/review",
+				Handler: admin.AdminReviewSocialPostHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/admin/social"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
 				// 获取用户列表（管理员）
 				Method:  http.MethodGet,
 				Path:    "/list",
@@ -746,6 +765,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodPost,
 				Path:    "/like",
 				Handler: social.LikePostHandler(serverCtx),
+			},
+			{
+				// 获取我的动态
+				Method:  http.MethodGet,
+				Path:    "/mine",
+				Handler: social.GetMyPostListHandler(serverCtx),
 			},
 			{
 				// 发布动态

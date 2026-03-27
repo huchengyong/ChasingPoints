@@ -78,6 +78,7 @@ import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { createPost } from '@/api/social.js'
 import { useThemeStore } from '@/store/theme.js'
+import { buildPostReviewSuccessCopy } from '@/utils/social-review.js'
 
 const content = ref('')
 const imageList = ref([])
@@ -134,10 +135,11 @@ const handlePublish = async () => {
 
 		const res = await createPost(data)
 		if (res.success) {
-			uni.showToast({ title: '发布成功', icon: 'success' })
+			const successCopy = buildPostReviewSuccessCopy()
+			uni.showToast({ title: successCopy.toast, icon: 'success' })
 			setTimeout(() => {
-				uni.navigateBack()
-			}, 1000)
+				uni.redirectTo({ url: `/subPages/social/myPosts?hint=${encodeURIComponent(successCopy.hint)}` })
+			}, 700)
 		} else {
 			uni.showToast({ title: res.message || '发布失败', icon: 'none' })
 		}
