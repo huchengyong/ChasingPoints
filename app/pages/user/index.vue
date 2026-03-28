@@ -97,16 +97,18 @@
 									<text class="identity-name">{{ userInfo.nickname }}</text>
 									<view class="identity-rank-chip" @click="handleRankExplain">
 										<uni-icons type="star-filled" size="12" color="#f59e0b"></uni-icons>
-										<text>当前段位</text>
+										<text>{{ highestRankChipText }}</text>
 									</view>
 								</view>
 								<text class="identity-id">ID: {{ userInfo.id }}</text>
-								<text class="identity-summary">{{ identitySummary }}</text>
 							</view>
 						</view>
 						<view class="identity-actions">
-							<button class="icon-btn" @click="handleQrCode">
-								<uni-icons fontFamily="CustomFont" size="16" color="#e2e8f0">{{ '\&#xe604;' }}</uni-icons>
+							<button class="icon-btn" @click="handleNotificationCenter">
+								<uni-icons type="notification-filled" size="18" color="#e2e8f0"></uni-icons>
+								<view v-if="pendingTotal > 0" class="icon-btn-badge">
+									<text>{{ pendingBadgeText }}</text>
+								</view>
 							</button>
 							<button class="icon-btn" @click="handleSettings">
 								<uni-icons type="gear" size="20" color="#e2e8f0"></uni-icons>
@@ -117,7 +119,7 @@
 						<image class="identity-rank-icon" :src="displayRank.icon" mode="aspectFit"></image>
 						<view class="identity-rank-copy">
 							<text class="identity-rank-title">{{ currentRankGameLabel }} · {{ displayRank.name }}</text>
-							<text class="identity-rank-meta">当前积分 {{ displayRank.score }} · {{ rankProgressText }}</text>
+							<text class="identity-rank-meta">排位分 {{ displayRank.score }} · {{ rankProgressText }}</text>
 						</view>
 						<uni-icons type="right" size="18" color="#ffffff"></uni-icons>
 					</view>
@@ -138,7 +140,7 @@
 						<text class="status-eyebrow">{{ statusCard.eyebrow }}</text>
 						<text class="status-title">{{ statusCard.title }}</text>
 						<text class="status-description">{{ statusCard.description }}</text>
-					<view class="status-actions">
+					<view v-if="showPrimaryStatusAction || showSecondaryStatusAction" class="status-actions">
 						<button
 							v-if="showPrimaryStatusAction"
 							class="status-btn status-btn-primary"
@@ -226,9 +228,6 @@
 								<view class="quick-icon" :class="item.iconClass">
 									<uni-icons :type="item.icon" size="20" :color="item.iconColor"></uni-icons>
 								</view>
-								<view v-if="item.badge" class="quick-badge">
-									<text>{{ item.badge }}</text>
-								</view>
 							</view>
 							<text class="quick-title">{{ item.label }}</text>
 							<text class="quick-desc">{{ item.desc }}</text>
@@ -251,7 +250,7 @@
 							<uni-icons type="right" size="16" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
 						</view>
 						<view class="service-item" @click="openRoute('/subPages/venue/index')">
-							<text>球房与签到</text>
+							<text>查看附近球馆</text>
 							<uni-icons type="right" size="16" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
 						</view>
 					</view>
@@ -272,31 +271,10 @@
 							</view>
 						</view>
 					</view>
-					<view v-if="isLoggedIn" class="settings-item" @click="handleSettings">
-						<view class="settings-copy">
-							<text class="settings-label">账号设置</text>
-							<text class="settings-desc">修改昵称、查看账号信息与基础配置</text>
-						</view>
-						<uni-icons type="right" size="18" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
-					</view>
 					<view class="settings-item" @click="handleHelp">
 						<view class="settings-copy">
 							<text class="settings-label">帮助与反馈</text>
 							<text class="settings-desc">提交问题、建议或获取使用帮助</text>
-						</view>
-						<uni-icons type="right" size="18" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
-					</view>
-					<view class="settings-item" @click="handlePrivacy">
-						<view class="settings-copy">
-							<text class="settings-label">隐私政策</text>
-							<text class="settings-desc">查看平台隐私与数据使用说明</text>
-						</view>
-						<uni-icons type="right" size="18" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
-					</view>
-					<view class="settings-item" @click="handleAgreement">
-						<view class="settings-copy">
-							<text class="settings-label">用户协议</text>
-							<text class="settings-desc">查看平台使用规则与服务条款</text>
 						</view>
 						<uni-icons type="right" size="18" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
 					</view>
@@ -391,6 +369,8 @@ import { getUserRankInfo } from '@/api/rank.js'
 import { userWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import {
 	resolveGuestHeroCopy,
+	resolveHighestRankDisplay,
+	resolveStatusActionVisibility,
 	resolveSectionTitles,
 	resolveStatusCardContent,
 	resolveUserHomepageMode
@@ -399,7 +379,7 @@ import { resolvePkEntryActions, resolveQrCodeModalCopy } from '@/utils/pk-entry-
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { useNotificationStore } from '@/store/notification.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
-import { GAME_TYPE_TABS } from '@/utils/game-types.js'
+import { GAME_TYPE_TABS, ORDERED_GAME_TYPES } from '@/utils/game-types.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
 import {
 	POST_LOGIN_ACTIONS,
@@ -447,25 +427,14 @@ const selectedGameType = ref(null)
 const currentRankGameType = ref(3)
 const currentMatch = ref(null)
 const rankInfo = ref(null)
+const highestRankInfo = ref(null)
 const favoriteVenueRewardStatus = ref(null)
 const showFavoriteVenueRewardModal = ref(false)
 const rankGameTabs = GAME_TYPE_TABS
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const pendingTotal = computed(() => notificationStore.unreadCount + friendRequestStore.pendingCount)
-const pendingSummary = computed(() => {
-	if (pendingTotal.value <= 0) return '当前没有未处理事项'
-
-	const parts = []
-	if (notificationStore.unreadCount > 0) {
-		parts.push(`${notificationStore.unreadCount} 条消息`)
-	}
-	if (friendRequestStore.pendingCount > 0) {
-		parts.push(`${friendRequestStore.pendingCount} 个好友申请`)
-	}
-
-	return parts.join(' · ')
-})
+const pendingBadgeText = computed(() => (pendingTotal.value > 99 ? '99+' : String(pendingTotal.value || '')))
 
 const userInfo = computed(() => ({
 	id: userStore.userInfo?.id || 0,
@@ -494,6 +463,7 @@ const displayRank = computed(() => ({
 	nextName: rankInfo.value?.next_name || '下一段位',
 	nextScore: rankInfo.value?.next_score || 0
 }))
+const highestRankChipText = computed(() => highestRankInfo.value?.name || displayRank.value.name || '未定级')
 const currentRankGameLabel = computed(() => rankGameTabs.find(item => item.value === currentRankGameType.value)?.label || '中式八球')
 
 const hasRecentMatch = computed(() => userStats.totalMatches > 0)
@@ -517,13 +487,14 @@ const statusCard = computed(() => resolveStatusCardContent({
 	currentMatch: currentMatch.value,
 	recentMatch: recentMatchCard.value
 }))
+const statusActionVisibility = computed(() => resolveStatusActionVisibility({
+	isLoggedIn: isLoggedIn.value,
+	mode: homepageMode.value,
+	statusCard: statusCard.value
+}))
 const showPkEntryActions = computed(() => isLoggedIn.value)
-const showPrimaryStatusAction = computed(() => !(isLoggedIn.value && statusCard.value.action === 'start'))
-const showSecondaryStatusAction = computed(() => {
-	if (!statusCard.value.secondaryActionText) return false
-	if (isLoggedIn.value && statusCard.value.action === 'start') return false
-	return true
-})
+const showPrimaryStatusAction = computed(() => statusActionVisibility.value.showPrimary)
+const showSecondaryStatusAction = computed(() => statusActionVisibility.value.showSecondary)
 
 const identitySummary = computed(() => {
 	if (homepageMode.value === 'ongoing' && currentMatch.value) {
@@ -610,16 +581,7 @@ const quickActions = computed(() => ([
 		handler: handleAchievement
 	},
 	{
-		label: '待处理',
-		desc: pendingSummary.value,
-		icon: 'chat',
-		iconColor: '#ef4444',
-		iconClass: 'rose',
-		handler: handleNotificationCenter,
-		badge: pendingTotal.value > 99 ? '99+' : (pendingTotal.value || '')
-	},
-	{
-		label: '好友对局',
+		label: '好友列表',
 		desc: '管理好友，发起 PK 或查看报表对比',
 		icon: 'person-filled',
 		iconColor: '#0f766e',
@@ -666,6 +628,7 @@ const loadHomepageData = async () => {
 		friendRequestStore.fetchPendingCount(),
 		loadUserStats(),
 		loadRankInfo(),
+		loadHighestRankInfo(),
 		loadCurrentMatch(),
 		loadFavoriteVenueRewardStatus()
 	])
@@ -702,6 +665,31 @@ const loadRankInfo = async () => {
 	}
 }
 
+const loadHighestRankInfo = async () => {
+	try {
+		const results = await Promise.allSettled(
+			ORDERED_GAME_TYPES.map(({ value }) => getUserRankInfo({ game_type: value }))
+		)
+
+		const rankList = results
+			.map((result, index) => {
+				if (result.status !== 'fulfilled') return null
+				const rank = result.value?.success ? result.value.rank_info || null : null
+				if (!rank) return null
+				return {
+					...rank,
+					gameType: ORDERED_GAME_TYPES[index].value
+				}
+			})
+			.filter(Boolean)
+
+		highestRankInfo.value = resolveHighestRankDisplay(rankList, rankInfo.value)
+	} catch (error) {
+		console.error('获取最高段位失败:', error)
+		highestRankInfo.value = resolveHighestRankDisplay([], rankInfo.value)
+	}
+}
+
 const loadCurrentMatch = async () => {
 	try {
 		const res = await getCurrentMatch()
@@ -725,6 +713,7 @@ const loadFavoriteVenueRewardStatus = async () => {
 const resetHomepageState = () => {
 	currentMatch.value = null
 	rankInfo.value = null
+	highestRankInfo.value = null
 	favoriteVenueRewardStatus.value = null
 	showFavoriteVenueRewardModal.value = false
 	userStats.totalMatches = 0
@@ -1022,14 +1011,6 @@ const toggleHideMatch = () => {
 	isHideMatch.value = !isHideMatch.value
 	uni.setStorageSync('user_hide_match', isHideMatch.value)
 	userStore.setHideMatch && userStore.setHideMatch(isHideMatch.value)
-}
-
-const handlePrivacy = () => {
-	uni.navigateTo({ url: '/subPages/agreement/privacyPolicy' })
-}
-
-const handleAgreement = () => {
-	uni.navigateTo({ url: '/subPages/agreement/userAgreement' })
 }
 
 const handleHelp = () => {

@@ -310,7 +310,7 @@ const heroMetaTags = computed(() => {
       tags.push(`当前第 ${myRanking.value.rank} 名`)
     }
     if (myRanking.value?.rank_score) {
-      tags.push(`积分 ${myRanking.value.rank_score}`)
+      tags.push(`排位分 ${myRanking.value.rank_score}`)
     }
     return tags.length ? tags : ['准备开始', '生成战报']
   }

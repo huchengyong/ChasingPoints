@@ -22,7 +22,7 @@ export const resolveGuestHeroCopy = () => ({
 
 export const resolveSectionTitles = () => ({
   stats: '竞技概览',
-  quickActions: '竞技工具',
+  quickActions: '竞技社交',
   secondaryServices: '更多竞技服务',
   settings: '设置与支持'
 })
@@ -63,7 +63,7 @@ export const resolveStatusCardContent = ({ mode, currentMatch = null, recentMatc
       title: recentMatch.title || '刚完成一场比赛',
       description: recentMatch.description || '查看刚结束的对局结果，继续保持状态。',
       action: 'recent',
-      actionText: '查看最近战绩',
+      actionText: '',
       secondaryAction: 'start',
       secondaryActionText: '再来一场'
     }
@@ -90,4 +90,47 @@ export const resolveStatusCardContent = ({ mode, currentMatch = null, recentMatc
     secondaryAction: 'history',
     secondaryActionText: '查看比赛记录'
   }
+}
+
+export const resolveStatusActionVisibility = ({ isLoggedIn, mode, statusCard = {} } = {}) => {
+  if (isLoggedIn && mode === 'active') {
+    return {
+      showPrimary: false,
+      showSecondary: false
+    }
+  }
+
+  const showPrimary = Boolean(statusCard.actionText) && !(isLoggedIn && statusCard.action === 'start')
+  const showSecondary = Boolean(statusCard.secondaryActionText) && !(isLoggedIn && statusCard.action === 'start')
+
+  return {
+    showPrimary,
+    showSecondary
+  }
+}
+
+const normalizeRankDisplay = (rank = null, fallbackGameType = 0) => {
+  if (!rank) return null
+
+  return {
+    gameType: rank.gameType || rank.game_type || fallbackGameType || 0,
+    name: rank.name || '未定级',
+    level: Number(rank.level || 0),
+    rankScore: Number(rank.rankScore ?? rank.rank_score ?? 0)
+  }
+}
+
+export const resolveHighestRankDisplay = (rankList = [], fallbackRank = null) => {
+  const candidates = rankList
+    .map((item) => normalizeRankDisplay(item))
+    .filter(Boolean)
+
+  const highest = candidates.reduce((best, current) => {
+    if (!best) return current
+    if (current.level !== best.level) return current.level > best.level ? current : best
+    if (current.rankScore !== best.rankScore) return current.rankScore > best.rankScore ? current : best
+    return best
+  }, null)
+
+  return highest || normalizeRankDisplay(fallbackRank)
 }

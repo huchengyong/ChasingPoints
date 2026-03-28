@@ -97,10 +97,15 @@ $border-dark: #3a2e16;
 	min-width: 0;
 }
 
-.guest-eyebrow,
-.status-eyebrow {
+.guest-eyebrow {
 	font-size: 22rpx;
 	color: rgba(255, 255, 255, 0.74);
+}
+
+.status-eyebrow {
+	display: block;
+	font-size: 22rpx;
+	color: $text-muted-light;
 }
 
 .guest-title {
@@ -123,7 +128,7 @@ $border-dark: #3a2e16;
 .status-actions {
 	display: flex;
 	gap: 16rpx;
-	margin-top: 32rpx;
+	margin-top: 16rpx;
 }
 
 .pk-entry-actions {
@@ -483,12 +488,35 @@ $border-dark: #3a2e16;
 }
 
 .icon-btn {
+	position: relative;
 	width: 72rpx;
 	height: 72rpx;
 	border-radius: 16rpx;
 	padding: 0;
 	background: rgba(255, 255, 255, 0.08);
 	border: 1rpx solid rgba(255, 255, 255, 0.14);
+}
+
+.icon-btn-badge {
+	position: absolute;
+	top: -8rpx;
+	right: -8rpx;
+	min-width: 32rpx;
+	height: 32rpx;
+	padding: 0 8rpx;
+	border-radius: 999rpx;
+	background: #ef4444;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 8rpx 16rpx rgba(15, 23, 42, 0.18);
+
+	text {
+		font-size: 18rpx;
+		font-weight: 700;
+		line-height: 1;
+		color: #ffffff;
+	}
 }
 
 .identity-rank-row {
@@ -1146,7 +1174,8 @@ $border-dark: #3a2e16;
 
 	.section-hint,
 	.preview-status,
-	.metric-card-label {
+	.metric-card-label,
+	.status-eyebrow {
 		color: $text-muted-dark;
 	}
 

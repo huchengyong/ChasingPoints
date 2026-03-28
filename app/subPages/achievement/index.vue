@@ -12,7 +12,7 @@
 		</view>
 
 		<!-- 分类 Tab -->
-		<scroll-view scroll-x class="category-tabs">
+		<scroll-view scroll-x class="category-tabs" :show-scrollbar="false">
 			<view
 				v-for="tab in categoryTabs"
 				:key="tab.key"
@@ -179,11 +179,27 @@ onLoad(() => {
 		font-size: 26rpx;
 		color: #64748b;
 
+		text {
+			color: inherit;
+		}
+
 		&.active {
 			background: #E0AE12;
-			color: #1f2937;
+			color: #ffffff;
+		}
+
+		&.active text {
+			color: #ffffff;
 		}
 	}
+
+	&::-webkit-scrollbar {
+		display: none;
+		width: 0;
+		height: 0;
+	}
+
+	scrollbar-width: none;
 }
 
 .loading-state {

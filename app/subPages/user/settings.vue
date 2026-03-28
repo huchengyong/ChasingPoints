@@ -75,17 +75,6 @@
 						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
 					</view>
 				</view>
-				<view class="menu-item" @click="handleHelp">
-					<view class="menu-left">
-						<view class="icon-wrapper amber">
-							<uni-icons type="help-filled" size="24" color="#b45309"></uni-icons>
-						</view>
-						<text class="menu-text">意见反馈</text>
-					</view>
-					<view class="menu-right">
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
-					</view>
-				</view>
 			</view>
 			<view class="page-actions">
 				<button class="logout-btn" @click="handleLogout">
@@ -304,15 +293,6 @@ const handlePrivacy = () => {
 const handleAgreement = () => {
 	uni.navigateTo({
 		url: '/subPages/agreement/userAgreement'
-	})
-}
-
-/**
- * 帮助与反馈
- */
-const handleHelp = () => {
-	uni.navigateTo({
-		url: '/subPages/help/feedback'
 	})
 }
 

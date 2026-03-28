@@ -39,8 +39,8 @@ INSERT INTO `favorite_venue_reward_configs` (
   `new_user_window_days`
 ) VALUES (
   'favorite_venue_member_reward',
-  0,
-  0,
+  1,
+  1,
   30,
   7
 )

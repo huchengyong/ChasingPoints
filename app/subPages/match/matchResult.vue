@@ -292,7 +292,7 @@ const myRankNote = computed(() => {
 
 const opponentRankNote = computed(() => {
 	const change = matchData.value.opponent_rank_change || 0
-	if (change > 0) return '对手本场状态更受益于当前积分规则。'
+	if (change > 0) return '对手本场状态更受益于排位分规则。'
 	if (change < 0) return '对手本场排位分出现回撤。'
 	return '对手本场排位分保持不变。'
 })
