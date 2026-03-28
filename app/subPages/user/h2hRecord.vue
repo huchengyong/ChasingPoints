@@ -147,6 +147,7 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useThemeStore } from '@/store/theme.js'
 import { useUserStore } from '@/store/user.js'
 import { getH2HStats, getH2HHistory } from '@/api/match.js'
+import { buildH2HHistoryParams } from '@/utils/h2h-record.js'
 
 // ========== 状态管理 ==========
 const themeStore = useThemeStore()
@@ -293,16 +294,14 @@ const fetchHistory = async (isRefresh = false, isLoadMore = false) => {
 	}
 
 	try {
-		const params = {
-			opponent_id: opponentId.value || opponentData.id,
+		const params = buildH2HHistoryParams({
+			opponentId: opponentId.value,
+			fallbackOpponentId: opponentData.id,
+			opponentName: opponentData.name || opponentName.value,
 			page: currentPage.value,
-			page_size: pageSize
-		}
-		
-		// 添加筛选条件
-		if (currentFilter.value > 0) {
-			params.result = currentFilter.value
-		}
+			pageSize,
+			result: currentFilter.value
+		})
 
 		const res = await getH2HHistory(params)
 

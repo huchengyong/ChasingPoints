@@ -6,7 +6,7 @@ import { get, post } from '@/utils/request.js'
 
 /**
  * 发起 PK 邀约
- * @param {Object} data { friend_id, game_type, message }
+ * @param {Object} data { to_user_id, game_type, message }
  */
 export const sendChallenge = (data) => {
   return post('/api/challenge/send', data)

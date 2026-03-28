@@ -3,6 +3,7 @@ package match
 import (
 	"context"
 
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -33,9 +34,8 @@ func (l *GetH2HHistoryLogic) GetH2HHistory(req *types.H2HHistoryReq) (resp *type
 		return &types.H2HHistoryResp{Success: false}, nil
 	}
 
-	// 验证必须传入 OpponentId
-	if req.OpponentId <= 0 {
-		l.Logger.Errorf("缺少 opponent_id 参数")
+	if req.OpponentId <= 0 && req.OpponentName == "" {
+		l.Logger.Errorf("缺少 opponent_id/opponent_name 参数")
 		return &types.H2HHistoryResp{Success: false}, nil
 	}
 
@@ -50,11 +50,25 @@ func (l *GetH2HHistoryLogic) GetH2HHistory(req *types.H2HHistoryReq) (resp *type
 	}
 	offset := (page - 1) * pageSize
 
-	// 查询与指定对手的交锋历史（支持双向查询）
-	matches, total, err := l.svcCtx.MatchModel.ListByOpponentId(userId, req.OpponentId, req.Result, offset, pageSize)
-	if err != nil {
-		l.Logger.Errorf("查询交锋历史失败: %v", err)
-		return &types.H2HHistoryResp{Success: false}, nil
+	// 查询与指定对手的交锋历史（支持注册用户双向查询和匿名对手名称兜底）
+	var matches []model.H2HMatchRecord
+	var total int64
+	if req.OpponentId > 0 {
+		idMatches, idTotal, queryErr := l.svcCtx.MatchModel.ListByOpponentId(userId, req.OpponentId, req.Result, offset, pageSize)
+		if queryErr != nil {
+			l.Logger.Errorf("查询交锋历史失败: %v", queryErr)
+			return &types.H2HHistoryResp{Success: false}, nil
+		}
+		matches = idMatches
+		total = idTotal
+	} else {
+		nameMatches, nameTotal, queryErr := l.svcCtx.MatchModel.ListByOpponentName(userId, req.OpponentName, req.Result, offset, pageSize)
+		if queryErr != nil {
+			l.Logger.Errorf("查询匿名对手交锋历史失败: %v", queryErr)
+			return &types.H2HHistoryResp{Success: false}, nil
+		}
+		matches = nameMatches
+		total = nameTotal
 	}
 
 	// 转换数据

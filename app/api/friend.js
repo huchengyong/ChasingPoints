@@ -41,7 +41,7 @@ export const getFriendList = (params = {}) => {
 
 /**
  * 删除好友
- * @param {Object} data { friend_id }
+ * @param {Object} data { friend_user_id }
  * @returns {Promise}
  */
 export const deleteFriend = (data) => {

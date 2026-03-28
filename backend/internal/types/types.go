@@ -1097,10 +1097,11 @@ type GlossaryItemInfo struct {
 }
 
 type H2HHistoryReq struct {
-	OpponentId int64 `form:"opponent_id"`
-	Page       int   `form:"page,default=1"`
-	PageSize   int   `form:"page_size,default=20"`
-	Result     int   `form:"result,optional"`
+	OpponentId   int64  `form:"opponent_id,optional"`
+	OpponentName string `form:"opponent_name,optional"`
+	Page         int    `form:"page,default=1"`
+	PageSize     int    `form:"page_size,default=20"`
+	Result       int    `form:"result,optional"`
 }
 
 type H2HHistoryResp struct {

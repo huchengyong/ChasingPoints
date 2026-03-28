@@ -31,7 +31,7 @@
 		<view v-else-if="friendList.length > 0" class="friend-list">
 			<view
 				v-for="item in friendList"
-				:key="item.friend_id"
+				:key="item.friend_user_id || item.id"
 				class="friend-item"
 				@tap="goToH2H(item)"
 				@longpress="showDeleteConfirm(item)"
@@ -46,7 +46,7 @@
                           <text class="friend-name">{{ item.nickname || '球友' }}</text>
                           <text v-if="item.rank_name" class="friend-rank">{{ item.rank_name }}</text>
                         </view>
-                        <text class="friend-sub">ID: {{ item.friend_id }}</text>
+                        <text class="friend-sub">ID: {{ item.friend_user_id }}</text>
 				</view>
 				<uni-icons type="right" size="16" color="#cbd5e1"></uni-icons>
 			</view>
@@ -74,6 +74,13 @@ import { ref } from 'vue'
 import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
 import { getFriendList, getFriendRequests, deleteFriend } from '@/api/friend.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
+import {
+	buildDeleteFriendPayload,
+	buildFriendH2HUrl,
+	buildFriendPkReportUrl,
+	normalizeFriendListItem,
+	resolveFriendUserId
+} from '@/utils/friend-entry.js'
 
 const loading = ref(true)
 const friendList = ref([])
@@ -95,7 +102,7 @@ const loadData = async (isRefresh = false) => {
 			getFriendList({ page: page.value, page_size: pageSize }),
 			getFriendRequests({ page: 1, page_size: 1 }).catch(() => null)
 		])
-		const list = friendRes.list || friendRes || []
+		const list = (friendRes.list || friendRes || []).map(normalizeFriendListItem)
 		if (isRefresh) {
 			friendList.value = list
 		} else {
@@ -131,23 +138,27 @@ const goToRequests = () => {
 
 const goToH2H = (item) => {
 	if (mode.value === 'pk-report') {
-		uni.navigateTo({
-			url: `/subPages/social/pkReport?opponent_id=${item.friend_id}&opponent_name=${encodeURIComponent(item.nickname || '球友')}&opponent_avatar=${encodeURIComponent(item.avatar || '')}`
-		})
+		uni.navigateTo({ url: buildFriendPkReportUrl(item) })
 		return
 	}
-	uni.navigateTo({ url: '/subPages/user/h2hRecord?opponent_id=' + item.friend_id })
+	uni.navigateTo({ url: buildFriendH2HUrl(item) })
 }
 
 const showDeleteConfirm = (item) => {
+	const friendUserId = resolveFriendUserId(item)
+	if (!friendUserId) {
+		uni.showToast({ title: '好友信息异常', icon: 'none' })
+		return
+	}
+
 	uni.showModal({
 		title: '删除好友',
 		content: `确定删除好友「${item.nickname || '球友'}」吗？`,
 		success: async (res) => {
 			if (res.confirm) {
 				try {
-					await deleteFriend({ friend_id: item.friend_id })
-					friendList.value = friendList.value.filter(f => f.friend_id !== item.friend_id)
+					await deleteFriend(buildDeleteFriendPayload(item))
+					friendList.value = friendList.value.filter(f => resolveFriendUserId(f) !== friendUserId)
 					uni.showToast({ title: '已删除', icon: 'success' })
 				} catch (e) {
 					uni.showToast({ title: '删除失败', icon: 'none' })

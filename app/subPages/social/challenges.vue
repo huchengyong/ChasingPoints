@@ -130,9 +130,12 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { getPendingChallenges, acceptChallenge, rejectChallenge, sendChallenge } from '@/api/challenge.js'
 import { formatRelativeTime } from '@/utils/format.js'
 import { GAME_TYPE_OPTIONS, getGameTypeLabel } from '@/utils/game-types.js'
+import { useUserStore } from '@/store/user.js'
+import { buildChallengePayload, normalizeChallengeListItem } from '@/utils/challenge-entry.js'
 
 const statusMap = { 0: '待回应', 1: '已回应', 2: '已拒绝', 3: '已过期' }
 const gameTypes = GAME_TYPE_OPTIONS
+const userStore = useUserStore()
 
 const tab = ref('received')
 const list = ref([])
@@ -153,15 +156,15 @@ const fetchList = async () => {
 		const res = await getPendingChallenges({ page: 1, page_size: 50 })
 		if (res.success) {
 			const all = (res.list || []).map(item => ({
-				...item,
+				...normalizeChallengeListItem(item, userStore.userId),
 				relativeTime: formatRelativeTime(item.created_at)
 			}))
-			receivedCount.value = all.filter(item => (item.direction === 'received' || !item.direction) && item.status === 0).length
+			receivedCount.value = all.filter(item => item.direction === 'received' && item.status === 0).length
 			sentCount.value = all.filter(item => item.direction === 'sent' && item.status === 0).length
 			respondedCount.value = all.filter(item => item.status !== 0).length
 
 			if (tab.value === 'received') {
-				list.value = all.filter(item => (item.direction === 'received' || !item.direction) && item.status === 0)
+				list.value = all.filter(item => item.direction === 'received' && item.status === 0)
 			} else if (tab.value === 'sent') {
 				list.value = all.filter(item => item.direction === 'sent' && item.status === 0)
 			} else {
@@ -187,11 +190,9 @@ const getDirectionText = (item) => {
 	return item.direction === 'sent' ? '等待对方回应' : '等待我来回应'
 }
 
-const getOpponentId = (item) => item.friend_id || item.user_id || item.target_id || item.sender_id || item.receiver_id || 0
-
 const openPkReport = (item) => {
 	const query = []
-	const opponentId = getOpponentId(item)
+	const opponentId = item.opponent_id || 0
 	const opponentName = item.opponent_name || item.nickname || ''
 
 	if (opponentId) {
@@ -258,11 +259,16 @@ const emptyText = computed(() => {
 
 const submitChallenge = async () => {
 	try {
-		const res = await sendChallenge({
-			friend_id: targetFriend.value.friend_id || targetFriend.value.id,
-			game_type: selectedGameType.value,
+		const payload = buildChallengePayload({
+			targetFriend: targetFriend.value,
+			gameType: selectedGameType.value,
 			message: challengeMessage.value
 		})
+		if (!payload.to_user_id) {
+			uni.showToast({ title: '好友信息异常', icon: 'none' })
+			return
+		}
+		const res = await sendChallenge(payload)
 		if (res.success) {
 			uni.showToast({ title: 'PK邀约已发送', icon: 'success' })
 			closeChallengeModal()
