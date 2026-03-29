@@ -32,23 +32,39 @@
 			<view
 				v-for="item in friendList"
 				:key="item.friend_user_id || item.id"
-				class="friend-item"
-				@tap="goToH2H(item)"
-				@longpress="showDeleteConfirm(item)"
+				class="friend-swipe-item"
 			>
-				<image
-					class="friend-avatar"
-					:src="item.avatar || '/static/images/default-avatar.png'"
-					mode="aspectFill"
-				/>
-				<view class="friend-info">
-                        <view class="friend-primary">
-                          <text class="friend-name">{{ item.nickname || '球友' }}</text>
-                          <text v-if="item.rank_name" class="friend-rank">{{ item.rank_name }}</text>
-                        </view>
-                        <text class="friend-sub">ID: {{ item.friend_user_id }}</text>
+				<view class="swipe-actions">
+					<view class="swipe-action-btn blacklist" @tap.stop="showBlacklistConfirm(item)">
+						<text>拉黑</text>
+					</view>
+					<view class="swipe-action-btn delete" @tap.stop="showDeleteConfirm(item)">
+						<text>删除</text>
+					</view>
 				</view>
-				<uni-icons type="right" size="16" color="#cbd5e1"></uni-icons>
+				<view
+					class="friend-item"
+					:style="getFriendItemStyle(item)"
+					@tap="handleFriendTap(item)"
+					@touchstart="handleItemTouchStart(item, $event)"
+					@touchmove="handleItemTouchMove(item, $event)"
+					@touchend="handleItemTouchEnd(item)"
+					@touchcancel="handleItemTouchEnd(item)"
+				>
+					<image
+						class="friend-avatar"
+						:src="item.avatar || '/static/images/default-avatar.png'"
+						mode="aspectFill"
+					/>
+					<view class="friend-info">
+						<view class="friend-primary">
+							<text class="friend-name">{{ item.nickname || '球友' }}</text>
+							<text v-if="item.rank_name" class="friend-rank">{{ item.rank_name }}</text>
+						</view>
+						<text class="friend-sub">ID: {{ item.friend_user_id }}</text>
+					</view>
+					<uni-icons type="right" size="16" color="#cbd5e1"></uni-icons>
+				</view>
 			</view>
 
 			<!-- 加载更多 -->
@@ -72,15 +88,27 @@
 <script setup>
 import { ref } from 'vue'
 import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
-import { getFriendList, getFriendRequests, deleteFriend } from '@/api/friend.js'
+import { getFriendList, getFriendRequests, deleteFriend, blacklistFriend } from '@/api/friend.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
 import {
+	buildBlacklistFriendPayload,
 	buildDeleteFriendPayload,
 	buildFriendH2HUrl,
 	buildFriendPkReportUrl,
 	normalizeFriendListItem,
 	resolveFriendUserId
 } from '@/utils/friend-entry.js'
+import { clampFriendSwipeOffset, resolveFriendSwipeEndOffset } from '@/utils/friend-swipe.js'
+
+const FRIEND_ACTION_WIDTH_RPX = 280
+
+const createEmptyTouchState = () => ({
+	friendUserId: 0,
+	startX: 0,
+	startY: 0,
+	startOffset: 0,
+	direction: ''
+})
 
 const loading = ref(true)
 const friendList = ref([])
@@ -90,12 +118,17 @@ const total = ref(0)
 const hasMore = ref(false)
 const pendingCount = ref(0)
 const mode = ref('default')
+const actionWidth = ref(140)
+const openFriendUserId = ref(0)
+const swipeOffsets = ref({})
+const touchState = ref(createEmptyTouchState())
 const friendRequestStore = useFriendRequestStore()
 
 const loadData = async (isRefresh = false) => {
 	if (isRefresh) {
 		page.value = 1
 		loading.value = true
+		resetSwipeState()
 	}
 	try {
 		const [friendRes, requestRes] = await Promise.all([
@@ -136,7 +169,7 @@ const goToRequests = () => {
 	uni.navigateTo({ url: '/subPages/social/friendRequests' })
 }
 
-const goToH2H = (item) => {
+const navigateToFriendDetail = (item) => {
 	if (mode.value === 'pk-report') {
 		uni.navigateTo({ url: buildFriendPkReportUrl(item) })
 		return
@@ -144,13 +177,155 @@ const goToH2H = (item) => {
 	uni.navigateTo({ url: buildFriendH2HUrl(item) })
 }
 
-const showDeleteConfirm = (item) => {
-	const friendUserId = resolveFriendUserId(item)
+const resetSwipeState = () => {
+	swipeOffsets.value = {}
+	openFriendUserId.value = 0
+	touchState.value = createEmptyTouchState()
+}
+
+const getTouchClient = (event) => {
+	const touch = event?.touches?.[0] || event?.changedTouches?.[0]
+	return {
+		x: touch?.clientX ?? touch?.pageX ?? touch?.x ?? 0,
+		y: touch?.clientY ?? touch?.pageY ?? touch?.y ?? 0
+	}
+}
+
+const getFriendUserId = (item) => resolveFriendUserId(item)
+
+const getFriendOffset = (friendUserId) => swipeOffsets.value[friendUserId] || 0
+
+const setFriendOffset = (friendUserId, offset) => {
+	swipeOffsets.value = {
+		...swipeOffsets.value,
+		[friendUserId]: offset
+	}
+}
+
+const closeSwipeItem = (friendUserId) => {
+	if (!friendUserId) return
+	setFriendOffset(friendUserId, 0)
+	if (openFriendUserId.value === friendUserId) {
+		openFriendUserId.value = 0
+	}
+}
+
+const closeOtherSwipeItems = (activeFriendUserId = 0) => {
+	const nextOffsets = {}
+	Object.keys(swipeOffsets.value).forEach((key) => {
+		const currentId = Number(key)
+		nextOffsets[currentId] = currentId === activeFriendUserId ? swipeOffsets.value[currentId] || 0 : 0
+	})
+	swipeOffsets.value = nextOffsets
+	if (openFriendUserId.value && openFriendUserId.value !== activeFriendUserId) {
+		openFriendUserId.value = 0
+	}
+}
+
+const getFriendItemStyle = (item) => {
+	const friendUserId = getFriendUserId(item)
+	return {
+		transform: `translate3d(${getFriendOffset(friendUserId)}px, 0, 0)`
+	}
+}
+
+const handleFriendTap = (item) => {
+	const friendUserId = getFriendUserId(item)
 	if (!friendUserId) {
 		uni.showToast({ title: '好友信息异常', icon: 'none' })
 		return
 	}
 
+	if (openFriendUserId.value && openFriendUserId.value !== friendUserId) {
+		closeSwipeItem(openFriendUserId.value)
+		return
+	}
+
+	if (getFriendOffset(friendUserId) < 0) {
+		closeSwipeItem(friendUserId)
+		return
+	}
+
+	navigateToFriendDetail(item)
+}
+
+const handleItemTouchStart = (item, event) => {
+	const friendUserId = getFriendUserId(item)
+	if (!friendUserId) return
+
+	closeOtherSwipeItems(friendUserId)
+	const point = getTouchClient(event)
+	touchState.value = {
+		friendUserId,
+		startX: point.x,
+		startY: point.y,
+		startOffset: getFriendOffset(friendUserId),
+		direction: ''
+	}
+}
+
+const handleItemTouchMove = (item, event) => {
+	const friendUserId = getFriendUserId(item)
+	const currentTouchState = touchState.value
+	if (!friendUserId || currentTouchState.friendUserId !== friendUserId) return
+
+	const point = getTouchClient(event)
+	const deltaX = point.x - currentTouchState.startX
+	const deltaY = point.y - currentTouchState.startY
+	const absDeltaX = Math.abs(deltaX)
+	const absDeltaY = Math.abs(deltaY)
+
+	if (!currentTouchState.direction) {
+		if (absDeltaY > absDeltaX && absDeltaY > 8) {
+			touchState.value = {
+				...currentTouchState,
+				direction: 'vertical'
+			}
+			return
+		}
+		if (absDeltaX > 8) {
+			touchState.value = {
+				...currentTouchState,
+				direction: 'horizontal'
+			}
+		}
+	}
+
+	if (touchState.value.direction !== 'horizontal') return
+
+	const nextOffset = clampFriendSwipeOffset(currentTouchState.startOffset + deltaX, actionWidth.value)
+	setFriendOffset(friendUserId, nextOffset)
+}
+
+const handleItemTouchEnd = (item) => {
+	const friendUserId = getFriendUserId(item)
+	const currentTouchState = touchState.value
+	if (!friendUserId || currentTouchState.friendUserId !== friendUserId) return
+
+	if (currentTouchState.direction === 'horizontal') {
+		const nextOffset = resolveFriendSwipeEndOffset(getFriendOffset(friendUserId), actionWidth.value)
+		setFriendOffset(friendUserId, nextOffset)
+		openFriendUserId.value = nextOffset < 0 ? friendUserId : 0
+	}
+
+	touchState.value = createEmptyTouchState()
+}
+
+const removeFriendFromList = (friendUserId) => {
+	friendList.value = friendList.value.filter(item => getFriendUserId(item) !== friendUserId)
+	total.value = Math.max(0, total.value - 1)
+	hasMore.value = friendList.value.length < total.value
+	closeSwipeItem(friendUserId)
+}
+
+const showDeleteConfirm = (item) => {
+	const friendUserId = getFriendUserId(item)
+	if (!friendUserId) {
+		uni.showToast({ title: '好友信息异常', icon: 'none' })
+		return
+	}
+
+	closeSwipeItem(friendUserId)
 	uni.showModal({
 		title: '删除好友',
 		content: `确定删除好友「${item.nickname || '球友'}」吗？`,
@@ -158,7 +333,7 @@ const showDeleteConfirm = (item) => {
 			if (res.confirm) {
 				try {
 					await deleteFriend(buildDeleteFriendPayload(item))
-					friendList.value = friendList.value.filter(f => resolveFriendUserId(f) !== friendUserId)
+					removeFriendFromList(friendUserId)
 					uni.showToast({ title: '已删除', icon: 'success' })
 				} catch (e) {
 					uni.showToast({ title: '删除失败', icon: 'none' })
@@ -168,8 +343,37 @@ const showDeleteConfirm = (item) => {
 	})
 }
 
+const showBlacklistConfirm = (item) => {
+	const friendUserId = getFriendUserId(item)
+	if (!friendUserId) {
+		uni.showToast({ title: '好友信息异常', icon: 'none' })
+		return
+	}
+
+	closeSwipeItem(friendUserId)
+	uni.showModal({
+		title: '加入黑名单',
+		content: `确定将「${item.nickname || '球友'}」加入黑名单吗？加入后会自动删除好友，并阻止彼此再次搜索和添加。`,
+		confirmText: '确认拉黑',
+		confirmColor: '#334155',
+		success: async (res) => {
+			if (res.confirm) {
+				try {
+					await blacklistFriend(buildBlacklistFriendPayload(item))
+					removeFriendFromList(friendUserId)
+					uni.showToast({ title: '已加入黑名单', icon: 'success' })
+				} catch (e) {
+					uni.showToast({ title: '操作失败', icon: 'none' })
+				}
+			}
+		}
+	})
+}
+
 onLoad((options) => {
 	mode.value = options.mode || 'default'
+	const resolvedWidth = typeof uni.upx2px === 'function' ? uni.upx2px(FRIEND_ACTION_WIDTH_RPX) : 140
+	actionWidth.value = resolvedWidth > 0 ? resolvedWidth : 140
 	loadData(true)
 })
 
@@ -265,13 +469,52 @@ onPullDownRefresh(() => {
 .friend-list {
 	padding: 20rpx 24rpx;
 
+	.friend-swipe-item {
+		position: relative;
+		margin-bottom: 16rpx;
+		border-radius: 16rpx;
+		overflow: hidden;
+	}
+
+	.swipe-actions {
+		position: absolute;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		width: 280rpx;
+		display: flex;
+
+		.swipe-action-btn {
+			flex: 1;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+
+			text {
+				font-size: 26rpx;
+				font-weight: 600;
+				color: #ffffff;
+			}
+
+			&.blacklist {
+				background: #475569;
+			}
+
+			&.delete {
+				background: #ef4444;
+			}
+		}
+	}
+
 	.friend-item {
+		position: relative;
+		z-index: 1;
 		display: flex;
 		align-items: center;
 		background: #fff;
 		border-radius: 16rpx;
 		padding: 24rpx;
-		margin-bottom: 16rpx;
+		transition: transform 0.18s ease;
 
 		.friend-avatar {
 			width: 88rpx;
@@ -285,7 +528,7 @@ onPullDownRefresh(() => {
 			flex: 1;
 			overflow: hidden;
 
-            .friend-primary {
+			.friend-primary {
 				display: flex;
 				align-items: center;
 				gap: 12rpx;
@@ -344,15 +587,20 @@ onPullDownRefresh(() => {
 		color: #94a3b8;
 		margin-bottom: 40rpx;
 	}
-		.add-btn {
-			background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
-			color: #ffffff;
-			border-radius: 40rpx;
-			padding: 0 60rpx;
-			height: 80rpx;
-			line-height: 80rpx;
-			font-size: 28rpx;
+
+	.add-btn {
+		background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
+		color: #ffffff;
+		border-radius: 40rpx;
+		padding: 0 60rpx;
+		height: 80rpx;
+		line-height: 80rpx;
+		font-size: 28rpx;
+		border: none;
+
+		&::after {
 			border: none;
 		}
+	}
 }
 </style>

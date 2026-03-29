@@ -44,3 +44,7 @@ export const buildFriendPkReportUrl = (item = {}) => {
 export const buildDeleteFriendPayload = (item = {}) => ({
   friend_user_id: resolveFriendUserId(item)
 })
+
+export const buildBlacklistFriendPayload = (item = {}) => ({
+  friend_user_id: resolveFriendUserId(item)
+})

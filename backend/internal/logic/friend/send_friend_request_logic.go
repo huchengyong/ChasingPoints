@@ -48,6 +48,15 @@ func (l *SendFriendRequestLogic) SendFriendRequest(req *types.SendFriendRequestR
 		return &types.CommonResp{Success: false, Message: "用户不存在"}, nil
 	}
 
+	hasBlacklistRelation, err := l.svcCtx.FriendModel.HasBlacklistRelation(userIdInt, req.ToUserId)
+	if err != nil {
+		l.Logger.Errorf("检查黑名单关系失败: %v", err)
+		return &types.CommonResp{Success: false, Message: "发送失败"}, nil
+	}
+	if hasBlacklistRelation {
+		return &types.CommonResp{Success: false, Message: "由于隐私设置，无法发送好友申请"}, nil
+	}
+
 	areFriends, err := l.svcCtx.FriendModel.AreFriends(userIdInt, req.ToUserId)
 	if err != nil {
 		l.Logger.Errorf("检查好友关系失败: %v", err)
@@ -75,7 +84,8 @@ func (l *SendFriendRequestLogic) SendFriendRequest(req *types.SendFriendRequestR
 		return &types.CommonResp{Success: false, Message: "已有待处理的好友请求"}, nil
 	}
 
-	if err = l.svcCtx.FriendModel.SendRequest(userIdInt, req.ToUserId, req.Message); err != nil {
+	friendRequest, err := l.svcCtx.FriendModel.SendRequest(userIdInt, req.ToUserId, req.Message)
+	if err != nil {
 		l.Logger.Errorf("发送好友请求失败: %v", err)
 		return &types.CommonResp{Success: false, Message: "发送失败"}, nil
 	}
@@ -85,17 +95,14 @@ func (l *SendFriendRequestLogic) SendFriendRequest(req *types.SendFriendRequestR
 		fromUserName = fromUser.Nickname
 	}
 
-	content := fmt.Sprintf("%s 向你发送了好友申请", fromUserName)
-	if req.Message != "" {
-		content = fmt.Sprintf("%s：%s", content, req.Message)
-	}
+	content := buildFriendRequestNotificationContent(fromUserName, req.Message)
 
 	if notifyErr := l.svcCtx.NotificationModel.Create(&model.Notification{
 		UserId:  req.ToUserId,
 		Type:    "friend_request",
 		Title:   "收到好友申请",
 		Content: content,
-		Data:    buildNotificationPayload("/subPages/social/friendRequests", 0, 0),
+		Data:    buildNotificationPayload("/subPages/social/friendRequests", 0, friendRequest.Id),
 		IsRead:  0,
 	}); notifyErr != nil {
 		l.Logger.Errorf("创建好友申请通知失败: %v", notifyErr)
@@ -117,4 +124,12 @@ func (l *SendFriendRequestLogic) SendFriendRequest(req *types.SendFriendRequestR
 	}
 
 	return &types.CommonResp{Success: true, Message: "发送成功"}, nil
+}
+
+func buildFriendRequestNotificationContent(fromUserName, message string) string {
+	content := fmt.Sprintf("%s 向你发送了好友申请", fromUserName)
+	if message != "" {
+		content = fmt.Sprintf("%s：%s", content, message)
+	}
+	return content
 }

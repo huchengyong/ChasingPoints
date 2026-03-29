@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -93,4 +94,18 @@ func (m *NotificationModel) Delete(userId, notificationId int64) error {
 
 func (m *NotificationModel) Create(notification *Notification) error {
 	return m.db.Create(notification).Error
+}
+
+func (m *NotificationModel) DeleteFriendRequestNotification(userId, requestId int64, legacyContent string) error {
+	query := m.db.Where("user_id = ? AND type = ? AND title = ?", userId, "friend_request", "收到好友申请")
+
+	if requestId > 0 && legacyContent != "" {
+		query = query.Where("(data LIKE ? OR content = ?)", fmt.Sprintf("%%\"request_id\":%d%%", requestId), legacyContent)
+	} else if requestId > 0 {
+		query = query.Where("data LIKE ?", fmt.Sprintf("%%\"request_id\":%d%%", requestId))
+	} else if legacyContent != "" {
+		query = query.Where("content = ?", legacyContent)
+	}
+
+	return query.Delete(&Notification{}).Error
 }

@@ -38,7 +38,7 @@ func (l *SearchFriendUserLogic) SearchFriendUser(req *types.SearchUserReq) (resp
 		return &types.SearchUserResp{Success: true, List: []types.SearchUserItem{}}, nil
 	}
 
-	users, err := l.svcCtx.FriendModel.SearchUsers(keyword, 20)
+	users, err := l.svcCtx.FriendModel.SearchUsers(userIdInt, keyword, 20)
 	if err != nil {
 		l.Logger.Errorf("搜索用户失败: %v", err)
 		return &types.SearchUserResp{Success: false, List: []types.SearchUserItem{}}, nil
@@ -56,10 +56,6 @@ func (l *SearchFriendUserLogic) SearchFriendUser(req *types.SearchUserReq) (resp
 
 	list := make([]types.SearchUserItem, 0, len(users))
 	for _, item := range users {
-		if item.Id == userIdInt {
-			continue
-		}
-
 		isFriend, friendErr := l.svcCtx.FriendModel.AreFriends(userIdInt, item.Id)
 		if friendErr != nil {
 			l.Logger.Errorf("检查好友关系失败: userId=%d targetId=%d err=%v", userIdInt, item.Id, friendErr)

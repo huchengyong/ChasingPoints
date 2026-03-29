@@ -417,6 +417,10 @@ type BindPhoneResp struct {
 	MergedAccount bool   `json:"merged_account"`
 }
 
+type BlacklistFriendReq struct {
+	FriendUserId int64 `json:"friend_user_id"`
+}
+
 type CancelMatchReq struct {
 	MatchId int64 `json:"match_id"`
 }

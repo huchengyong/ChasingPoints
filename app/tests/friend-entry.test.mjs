@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  buildBlacklistFriendPayload,
   buildDeleteFriendPayload,
   buildFriendH2HUrl,
   buildFriendPkReportUrl,
@@ -51,4 +52,8 @@ test('buildFriendPkReportUrl keeps avatar, name, and canonical user id aligned',
 
 test('buildDeleteFriendPayload uses friend_user_id expected by backend contract', () => {
   assert.deepEqual(buildDeleteFriendPayload({ user_id: 77 }), { friend_user_id: 77 })
+})
+
+test('buildBlacklistFriendPayload uses friend_user_id expected by backend contract', () => {
+  assert.deepEqual(buildBlacklistFriendPayload({ friend_id: 88 }), { friend_user_id: 88 })
 })

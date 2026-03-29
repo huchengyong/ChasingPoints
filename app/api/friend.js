@@ -49,6 +49,15 @@ export const deleteFriend = (data) => {
 }
 
 /**
+ * 加入黑名单
+ * @param {Object} data { friend_user_id }
+ * @returns {Promise}
+ */
+export const blacklistFriend = (data) => {
+  return post('/api/friend/blacklist', data)
+}
+
+/**
  * 获取好友请求列表
  * @param {Object} params { page, page_size }
  * @returns {Promise}

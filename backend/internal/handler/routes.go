@@ -406,6 +406,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: friend.AcceptFriendRequestHandler(serverCtx),
 			},
 			{
+				// 加入黑名单
+				Method:  http.MethodPost,
+				Path:    "/blacklist",
+				Handler: friend.BlacklistFriendHandler(serverCtx),
+			},
+			{
 				// 删除好友
 				Method:  http.MethodPost,
 				Path:    "/delete",

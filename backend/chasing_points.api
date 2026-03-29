@@ -953,6 +953,10 @@ type DeleteFriendReq {
 	FriendUserId int64 `json:"friend_user_id"`
 }
 
+type BlacklistFriendReq {
+	FriendUserId int64 `json:"friend_user_id"`
+}
+
 type GetFriendRequestsReq {
 	Page     int `form:"page,default=1"`
 	PageSize int `form:"page_size,default=20"`
@@ -1006,6 +1010,10 @@ service chasing_points-api {
 	@doc "删除好友"
 	@handler DeleteFriend
 	post /delete (DeleteFriendReq) returns (CommonResp)
+
+	@doc "加入黑名单"
+	@handler BlacklistFriend
+	post /blacklist (BlacklistFriendReq) returns (CommonResp)
 
 	@doc "获取好友请求列表"
 	@handler GetFriendRequests
