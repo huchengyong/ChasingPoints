@@ -84,6 +84,48 @@ function drawTextBlock(ctx, text, x, y, maxCharsPerLine, lineHeight, maxLines, c
   }
 }
 
+function splitPosterLines(text, maxCharsPerLine, maxLines) {
+  const content = text || ''
+  const lines = []
+
+  for (let index = 0; index < maxLines; index += 1) {
+    const start = index * maxCharsPerLine
+    if (start >= content.length) break
+    let line = content.slice(start, start + maxCharsPerLine)
+    if (index === maxLines - 1 && content.length > start + maxCharsPerLine) {
+      line = `${line.slice(0, Math.max(maxCharsPerLine - 1, 1))}…`
+    }
+    lines.push(line)
+  }
+
+  return lines
+}
+
+export function resolvePkSummaryLayout(summaryText) {
+  const cardY = 790
+  const titleY = cardY + 50
+  const firstLineY = cardY + 102
+  const lineHeight = 44
+  const bottomPadding = 34
+  const summaryLines = splitPosterLines(
+    summaryText || '真实对局数据越多，PK 报表越有说服力。',
+    20,
+    2
+  )
+  const lineCount = Math.max(summaryLines.length, 1)
+  const cardHeight = firstLineY - cardY + (lineCount - 1) * lineHeight + bottomPadding
+
+  return {
+    cardY,
+    cardHeight,
+    titleY,
+    summaryLines: summaryLines.map((line, index) => ({
+      text: line,
+      y: firstLineY + lineHeight * index
+    }))
+  }
+}
+
 function drawSummaryCard(ctx, item, x, y, w, h) {
   const { accent, soft } = getToneColors(item.tone)
   drawRoundRect(ctx, x, y, w, h, 24)
@@ -321,19 +363,19 @@ export function generatePkReportPoster(canvasId, data) {
       ctx.fillText(value, x, y + 48)
     })
 
-    drawRoundRect(ctx, 60, 790, 630, 150, 24)
+    const summaryLayout = resolvePkSummaryLayout(data.summaryText)
+
+    drawRoundRect(ctx, 60, summaryLayout.cardY, 630, summaryLayout.cardHeight, 24)
     ctx.setFillStyle('rgba(59,130,246,0.12)')
     ctx.fill()
     ctx.setFontSize(24)
     ctx.setFillStyle('#bfdbfe')
-    ctx.fillText('系统结论', 100, 840)
+    ctx.fillText('系统结论', 100, summaryLayout.titleY)
     ctx.setFontSize(28)
     ctx.setFillStyle('#ffffff')
-    const summary = data.summaryText || '真实对局数据越多，PK 报表越有说服力。'
-    ctx.fillText(summary.slice(0, 20), 100, 892)
-    if (summary.length > 20) {
-      ctx.fillText(summary.slice(20, 40), 100, 934)
-    }
+    summaryLayout.summaryLines.forEach((line) => {
+      ctx.fillText(line.text, 100, line.y)
+    })
 
     drawCenterText(ctx, '仅统计真实线下对局，不代表线上比赛结果', 1000, 22, '#94a3b8')
 
