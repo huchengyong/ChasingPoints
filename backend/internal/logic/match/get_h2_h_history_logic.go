@@ -28,15 +28,29 @@ func NewGetH2HHistoryLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Get
 
 func (l *GetH2HHistoryLogic) GetH2HHistory(req *types.H2HHistoryReq) (resp *types.H2HHistoryResp, err error) {
 	// 获取用户ID
-	userId, err := utils.GetUserIDFromCtx(l.ctx)
+	viewerUserId, err := utils.GetUserIDFromCtx(l.ctx)
 	if err != nil {
 		l.Logger.Errorf("获取用户ID失败: %v", err)
-		return &types.H2HHistoryResp{Success: false}, nil
+		return &types.H2HHistoryResp{Success: false, Message: "获取交锋历史失败"}, nil
+	}
+
+	subjectUserId := viewerUserId
+	if req.TargetUserId > 0 && req.TargetUserId != viewerUserId {
+		areFriends, friendErr := l.svcCtx.FriendModel.AreFriends(viewerUserId, req.TargetUserId)
+		if friendErr != nil {
+			l.Logger.Errorf("检查好友关系失败: %v", friendErr)
+			return &types.H2HHistoryResp{Success: false, Message: "获取对方战绩失败"}, nil
+		}
+		if !areFriends {
+			return &types.H2HHistoryResp{Success: false, Message: "仅可查看好友的对方战绩"}, nil
+		}
+
+		subjectUserId = req.TargetUserId
 	}
 
 	if req.OpponentId <= 0 && req.OpponentName == "" {
 		l.Logger.Errorf("缺少 opponent_id/opponent_name 参数")
-		return &types.H2HHistoryResp{Success: false}, nil
+		return &types.H2HHistoryResp{Success: false, Message: "缺少对手信息"}, nil
 	}
 
 	// 分页参数
@@ -54,18 +68,18 @@ func (l *GetH2HHistoryLogic) GetH2HHistory(req *types.H2HHistoryReq) (resp *type
 	var matches []model.H2HMatchRecord
 	var total int64
 	if req.OpponentId > 0 {
-		idMatches, idTotal, queryErr := l.svcCtx.MatchModel.ListByOpponentId(userId, req.OpponentId, req.Result, offset, pageSize)
+		idMatches, idTotal, queryErr := l.svcCtx.MatchModel.ListByOpponentId(subjectUserId, req.OpponentId, req.Result, offset, pageSize)
 		if queryErr != nil {
 			l.Logger.Errorf("查询交锋历史失败: %v", queryErr)
-			return &types.H2HHistoryResp{Success: false}, nil
+			return &types.H2HHistoryResp{Success: false, Message: "获取交锋历史失败"}, nil
 		}
 		matches = idMatches
 		total = idTotal
 	} else {
-		nameMatches, nameTotal, queryErr := l.svcCtx.MatchModel.ListByOpponentName(userId, req.OpponentName, req.Result, offset, pageSize)
+		nameMatches, nameTotal, queryErr := l.svcCtx.MatchModel.ListByOpponentName(subjectUserId, req.OpponentName, req.Result, offset, pageSize)
 		if queryErr != nil {
 			l.Logger.Errorf("查询匿名对手交锋历史失败: %v", queryErr)
-			return &types.H2HHistoryResp{Success: false}, nil
+			return &types.H2HHistoryResp{Success: false, Message: "获取交锋历史失败"}, nil
 		}
 		matches = nameMatches
 		total = nameTotal

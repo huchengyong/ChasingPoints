@@ -27,13 +27,35 @@ func NewGetOpponentListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *G
 
 func (l *GetOpponentListLogic) GetOpponentList(req *types.GetOpponentListReq) (resp *types.GetOpponentListResp, err error) {
 	// 获取用户ID
-	userId, err := utils.GetUserIDFromCtx(l.ctx)
+	viewerUserId, err := utils.GetUserIDFromCtx(l.ctx)
 	if err != nil {
 		l.Logger.Errorf("获取用户ID失败: %v", err)
 		return &types.GetOpponentListResp{
 			Success: false,
 			List:    []types.OpponentRecordItem{},
 		}, nil
+	}
+
+	subjectUserId := viewerUserId
+	if req.TargetUserId > 0 && req.TargetUserId != viewerUserId {
+		areFriends, friendErr := l.svcCtx.FriendModel.AreFriends(viewerUserId, req.TargetUserId)
+		if friendErr != nil {
+			l.Logger.Errorf("检查好友关系失败: %v", friendErr)
+			return &types.GetOpponentListResp{
+				Success: false,
+				Message: "获取对方战绩失败",
+				List:    []types.OpponentRecordItem{},
+			}, nil
+		}
+		if !areFriends {
+			return &types.GetOpponentListResp{
+				Success: false,
+				Message: "仅可查看好友的对方战绩",
+				List:    []types.OpponentRecordItem{},
+			}, nil
+		}
+
+		subjectUserId = req.TargetUserId
 	}
 
 	// 分页参数
@@ -48,21 +70,23 @@ func (l *GetOpponentListLogic) GetOpponentList(req *types.GetOpponentListReq) (r
 	offset := (page - 1) * pageSize
 
 	// 获取整体统计数据
-	totalOpponents, totalWins, err := l.svcCtx.MatchModel.GetOverallOpponentStats(userId)
+	totalOpponents, totalWins, err := l.svcCtx.MatchModel.GetOverallOpponentStats(subjectUserId)
 	if err != nil {
 		l.Logger.Errorf("获取整体对手统计失败: %v", err)
 		return &types.GetOpponentListResp{
 			Success: false,
+			Message: "获取对方战绩失败",
 			List:    []types.OpponentRecordItem{},
 		}, nil
 	}
 
 	// 获取对手列表
-	stats, total, err := l.svcCtx.MatchModel.ListOpponentsWithStats(userId, req.Keyword, offset, pageSize)
+	stats, total, err := l.svcCtx.MatchModel.ListOpponentsWithStats(subjectUserId, req.Keyword, offset, pageSize)
 	if err != nil {
 		l.Logger.Errorf("获取对手列表失败: %v", err)
 		return &types.GetOpponentListResp{
 			Success: false,
+			Message: "获取对方战绩失败",
 			List:    []types.OpponentRecordItem{},
 		}, nil
 	}

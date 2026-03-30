@@ -27,10 +27,24 @@ func NewGetH2HStatsLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetH2
 
 func (l *GetH2HStatsLogic) GetH2HStats(req *types.H2HStatsReq) (resp *types.H2HStatsResp, err error) {
 	// 获取用户ID
-	userId, err := utils.GetUserIDFromCtx(l.ctx)
+	viewerUserId, err := utils.GetUserIDFromCtx(l.ctx)
 	if err != nil {
 		l.Logger.Errorf("获取用户ID失败: %v", err)
-		return &types.H2HStatsResp{Success: false}, nil
+		return &types.H2HStatsResp{Success: false, Message: "获取交锋统计失败"}, nil
+	}
+
+	subjectUserId := viewerUserId
+	if req.TargetUserId > 0 && req.TargetUserId != viewerUserId {
+		areFriends, friendErr := l.svcCtx.FriendModel.AreFriends(viewerUserId, req.TargetUserId)
+		if friendErr != nil {
+			l.Logger.Errorf("检查好友关系失败: %v", friendErr)
+			return &types.H2HStatsResp{Success: false, Message: "获取对方战绩失败"}, nil
+		}
+		if !areFriends {
+			return &types.H2HStatsResp{Success: false, Message: "仅可查看好友的对方战绩"}, nil
+		}
+
+		subjectUserId = req.TargetUserId
 	}
 
 	// 获取对手信息
@@ -43,7 +57,7 @@ func (l *GetH2HStatsLogic) GetH2HStats(req *types.H2HStatsReq) (resp *types.H2HS
 		user, err := l.svcCtx.UserModel.FindById(req.OpponentId)
 		if err != nil {
 			l.Logger.Errorf("查询用户失败: %v", err)
-			return &types.H2HStatsResp{Success: false}, nil
+			return &types.H2HStatsResp{Success: false, Message: "获取交锋统计失败"}, nil
 		}
 		if user != nil {
 			if opponentName == "" {
@@ -55,14 +69,14 @@ func (l *GetH2HStatsLogic) GetH2HStats(req *types.H2HStatsReq) (resp *types.H2HS
 	}
 
 	if opponentName == "" {
-		return &types.H2HStatsResp{Success: false}, nil
+		return &types.H2HStatsResp{Success: false, Message: "缺少对手信息"}, nil
 	}
 
 	// 获取交锋统计
-	total, myWins, oppWins, avgDiff, maxWinStreak, err := l.svcCtx.MatchModel.GetH2HStatsByOpponent(userId, opponentId, opponentName)
+	total, myWins, oppWins, avgDiff, maxWinStreak, err := l.svcCtx.MatchModel.GetH2HStatsByOpponent(subjectUserId, opponentId, opponentName)
 	if err != nil {
 		l.Logger.Errorf("获取交锋统计失败: %v", err)
-		return &types.H2HStatsResp{Success: false}, nil
+		return &types.H2HStatsResp{Success: false, Message: "获取交锋统计失败"}, nil
 	}
 
 	// 计算胜率

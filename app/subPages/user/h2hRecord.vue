@@ -6,15 +6,15 @@
 			<view class="avatar-group">
 				<view class="avatar-section">
 					<image
-						v-if="myAvatar"
+						v-if="subjectAvatar"
 						class="avatar"
-						:src="myAvatar"
+						:src="subjectAvatar"
 						mode="aspectFill"
 					/>
 					<view v-else class="avatar-placeholder">
-						<text class="avatar-text">我</text>
+						<text class="avatar-text">{{ getAvatarText(viewModel.subjectName) }}</text>
 					</view>
-					<text class="name">你</text>
+					<text class="name">{{ viewModel.subjectName }}</text>
 				</view>
 				<view class="vs-section">
 					<text class="vs-text">VS</text>
@@ -40,7 +40,7 @@
 
 			<!-- 胜率描述 -->
 			<view class="win-rate-desc">
-				<text class="desc-text">你对{{ opponentData.name }}的胜率是{{ statsData.winRate.toFixed(2) }}%</text>
+				<text class="desc-text">{{ viewModel.winRateLabel }}{{ statsData.winRate.toFixed(2) }}%</text>
 			</view>
 
 			<!-- 统计数据 -->
@@ -147,7 +147,12 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useThemeStore } from '@/store/theme.js'
 import { useUserStore } from '@/store/user.js'
 import { getH2HStats, getH2HHistory } from '@/api/match.js'
-import { buildH2HHistoryParams } from '@/utils/h2h-record.js'
+import {
+	buildH2HHistoryParams,
+	buildH2HLoadFailureAction,
+	buildH2HViewModel,
+	normalizeH2HRecordOptions
+} from '@/utils/h2h-record.js'
 
 // ========== 状态管理 ==========
 const themeStore = useThemeStore()
@@ -158,10 +163,14 @@ const isDarkMode = computed(() => themeStore.isDarkMode)
 const isLoading = ref(true)
 const isLoadingMore = ref(false)
 const hasMore = ref(true)
+const hasHandledTargetLoadFailure = ref(false)
 
 const opponentId = ref(0)
 const opponentName = ref('')
 const myAvatar = ref('')
+const targetUserId = ref(0)
+const targetName = ref('')
+const targetAvatar = ref('')
 const currentFilter = ref(0) // 0=全部, 1=胜利, 2=失败
 
 const opponentData = reactive({
@@ -183,19 +192,33 @@ const historyList = ref([])
 const currentPage = ref(1)
 const pageSize = 20
 const total = ref(0)
+const viewModel = computed(() => buildH2HViewModel({
+	targetUserId: targetUserId.value,
+	targetName: targetName.value,
+	opponentName: opponentData.name || opponentName.value
+}))
+const subjectAvatar = computed(() => {
+	if (targetUserId.value > 0) {
+		return targetAvatar.value
+	}
+	return myAvatar.value
+})
 
 // ========== 生命周期 ==========
 onLoad((options) => {
-	if (options.opponent_id) {
-		opponentId.value = parseInt(options.opponent_id) || 0
-	}
-	if (options.opponent_name) {
-		opponentName.value = decodeURIComponent(options.opponent_name)
-	}
-	
-	// 设置页面标题
+	const normalized = normalizeH2HRecordOptions(options)
+	targetUserId.value = normalized.targetUserId
+	targetName.value = normalized.targetName
+	targetAvatar.value = normalized.targetAvatar
+	opponentId.value = normalized.opponentId
+	opponentName.value = normalized.opponentName
+
 	uni.setNavigationBarTitle({
-		title: `交锋记录 - ${opponentName.value || '对手'}`
+		title: buildH2HViewModel({
+			targetUserId: normalized.targetUserId,
+			targetName: normalized.targetName,
+			opponentName: normalized.opponentName
+		}).navigationTitle
 	})
 })
 
@@ -221,6 +244,34 @@ const loadUserInfo = () => {
 	}
 }
 
+const handleTargetLoadFailure = (error) => {
+	if (hasHandledTargetLoadFailure.value) {
+		return true
+	}
+
+	const action = buildH2HLoadFailureAction({
+		targetUserId: targetUserId.value,
+		error
+	})
+	if (!action) {
+		return false
+	}
+
+	hasHandledTargetLoadFailure.value = true
+	uni.showToast({
+		title: action.toastMessage,
+		icon: 'none'
+	})
+
+	if (action.shouldNavigateBack && getCurrentPages().length > 1) {
+		setTimeout(() => {
+			uni.navigateBack()
+		}, 1200)
+	}
+
+	return true
+}
+
 /**
  * 获取数据
  */
@@ -235,6 +286,7 @@ const fetchData = async () => {
 		])
 	} catch (error) {
 		console.error('获取数据失败:', error)
+		handleTargetLoadFailure(error)
 	} finally {
 		isLoading.value = false
 	}
@@ -246,6 +298,9 @@ const fetchData = async () => {
 const fetchStats = async () => {
 	try {
 		const params = {}
+		if (targetUserId.value > 0) {
+			params.target_user_id = targetUserId.value
+		}
 		if (opponentId.value > 0) {
 			params.opponent_id = opponentId.value
 		} else if (opponentName.value) {
@@ -295,6 +350,7 @@ const fetchHistory = async (isRefresh = false, isLoadMore = false) => {
 
 	try {
 		const params = buildH2HHistoryParams({
+			targetUserId: targetUserId.value,
 			opponentId: opponentId.value,
 			fallbackOpponentId: opponentData.id,
 			opponentName: opponentData.name || opponentName.value,
@@ -317,6 +373,7 @@ const fetchHistory = async (isRefresh = false, isLoadMore = false) => {
 		hasMore.value = historyList.value.length < total.value
 	} catch (error) {
 		console.error('获取交锋历史失败:', error)
+		handleTargetLoadFailure(error)
 		if (!isLoadMore) {
 			historyList.value = []
 		}

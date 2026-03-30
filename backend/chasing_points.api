@@ -503,6 +503,7 @@ type MatchListResp {
 
 // 交锋统计
 type H2HStatsReq {
+	TargetUserId int64  `form:"target_user_id,optional"`
 	OpponentId   int64  `form:"opponent_id,optional"`
 	OpponentName string `form:"opponent_name,optional"`
 }
@@ -524,12 +525,14 @@ type H2HStats {
 
 type H2HStatsResp {
 	Success  bool         `json:"success"`
+	Message  string       `json:"message,optional"`
 	Opponent *H2HOpponent `json:"opponent"`
 	Stats    *H2HStats    `json:"stats"`
 }
 
 // 交锋历史
 type H2HHistoryReq {
+	TargetUserId int64  `form:"target_user_id,optional"`
 	OpponentId   int64  `form:"opponent_id,optional"`
 	OpponentName string `form:"opponent_name,optional"`
 	Page         int    `form:"page,default=1"`
@@ -539,6 +542,7 @@ type H2HHistoryReq {
 
 type H2HHistoryResp {
 	Success bool            `json:"success"`
+	Message string          `json:"message,optional"`
 	Total   int64           `json:"total"`
 	List    []MatchListItem `json:"list"`
 }
@@ -709,14 +713,16 @@ type OpponentRecordItem {
 
 // 获取对手列表请求
 type GetOpponentListReq {
-	Page     int    `form:"page,default=1"`
-	PageSize int    `form:"page_size,default=20"`
-	Keyword  string `form:"keyword,optional"`
+	Page         int    `form:"page,default=1"`
+	PageSize     int    `form:"page_size,default=20"`
+	Keyword      string `form:"keyword,optional"`
+	TargetUserId int64  `form:"target_user_id,optional"`
 }
 
 // 获取对手列表响应
 type GetOpponentListResp {
 	Success        bool                 `json:"success"`
+	Message        string               `json:"message,optional"`
 	TotalOpponents int                  `json:"total_opponents"` // 总对手数
 	TotalWins      int                  `json:"total_wins"` // 总胜场
 	Total          int64                `json:"total"`

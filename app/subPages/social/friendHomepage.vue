@@ -71,7 +71,7 @@
 
 				<view class="action-list">
 					<button class="primary-btn" @tap="goToH2H">
-						<text>查看战绩</text>
+						<text>查看对方战绩</text>
 					</button>
 					<button class="secondary-btn" @tap="goToPkReport">
 						<text>PK 报表</text>
@@ -87,7 +87,7 @@ import { computed, reactive, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useThemeStore } from '@/store/theme.js'
 import { getH2HHistory, getH2HStats } from '@/api/match.js'
-import { buildFriendH2HUrl, buildFriendPkReportUrl } from '@/utils/friend-entry.js'
+import { buildFriendOpponentRecordUrl, buildFriendPkReportUrl } from '@/utils/friend-entry.js'
 import {
 	buildFriendHomepageSummary,
 	fetchFriendHomepageData,
@@ -189,7 +189,7 @@ const loadData = async () => {
 }
 
 const goToH2H = () => {
-	uni.navigateTo({ url: buildFriendH2HUrl(friendPayload.value) })
+	uni.navigateTo({ url: buildFriendOpponentRecordUrl(friendPayload.value) })
 }
 
 const goToPkReport = () => {

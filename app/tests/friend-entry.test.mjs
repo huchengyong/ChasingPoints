@@ -6,6 +6,7 @@ import {
   buildDeleteFriendPayload,
   buildFriendH2HUrl,
   buildFriendHomepageUrl,
+  buildFriendOpponentRecordUrl,
   buildFriendPkReportUrl,
   normalizeFriendListItem,
   resolveFriendUserId
@@ -37,6 +38,17 @@ test('buildFriendH2HUrl carries the canonical opponent id and display name', () 
       nickname: '球友 B'
     }),
     '/subPages/user/h2hRecord?opponent_id=52&opponent_name=%E7%90%83%E5%8F%8B%20B'
+  )
+})
+
+test('buildFriendOpponentRecordUrl carries target user context for friend battle history', () => {
+  assert.equal(
+    buildFriendOpponentRecordUrl({
+      user_id: 52,
+      nickname: '球友 B',
+      avatar: 'https://img.example/b.png'
+    }),
+    '/subPages/user/opponentRecord?target_user_id=52&target_name=%E7%90%83%E5%8F%8B%20B&target_avatar=https%3A%2F%2Fimg.example%2Fb.png'
   )
 })
 

@@ -66,6 +66,7 @@ app/
 - 主题色背景按钮文字统一使用白色 `#ffffff`。
 - 针对 button 等内置组件的 disabled 状态样式覆盖，必须使用属性选择器 `&[disabled]` 或者 `button[disabled]`，绝不能使用伪类 `&:disabled`（在 UniApp 编译到小程序/App 端时，伪类无法正确匹配组件，并会导致框架默认的灰色字体强行覆盖被激活）。
 - 自定义按钮必须隐藏 `button::after`。
+- 为确保按钮文字垂直居中，所有自定义 `button` 组件的 `line-height` 应设为与 `height` 相同的值（例如 `height: 88rpx; line-height: 88rpx;`）。
 - 页面最外层容器要注意 `box-sizing: border-box` 和首屏 margin collapse，避免顶部漏白。
 - 没有明确设计要求时，优先使用系统导航栏；自定义导航栏要和系统高度、返回行为保持一致。
 

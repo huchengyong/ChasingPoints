@@ -858,13 +858,15 @@ type GetOngoingMatchesResp struct {
 }
 
 type GetOpponentListReq struct {
-	Page     int    `form:"page,default=1"`
-	PageSize int    `form:"page_size,default=20"`
-	Keyword  string `form:"keyword,optional"`
+	Page         int    `form:"page,default=1"`
+	PageSize     int    `form:"page_size,default=20"`
+	Keyword      string `form:"keyword,optional"`
+	TargetUserId int64  `form:"target_user_id,optional"`
 }
 
 type GetOpponentListResp struct {
 	Success        bool                 `json:"success"`
+	Message        string               `json:"message,optional"`
 	TotalOpponents int                  `json:"total_opponents"` // 总对手数
 	TotalWins      int                  `json:"total_wins"`      // 总胜场
 	Total          int64                `json:"total"`
@@ -1101,6 +1103,7 @@ type GlossaryItemInfo struct {
 }
 
 type H2HHistoryReq struct {
+	TargetUserId int64  `form:"target_user_id,optional"`
 	OpponentId   int64  `form:"opponent_id,optional"`
 	OpponentName string `form:"opponent_name,optional"`
 	Page         int    `form:"page,default=1"`
@@ -1110,6 +1113,7 @@ type H2HHistoryReq struct {
 
 type H2HHistoryResp struct {
 	Success bool            `json:"success"`
+	Message string          `json:"message,optional"`
 	Total   int64           `json:"total"`
 	List    []MatchListItem `json:"list"`
 }
@@ -1130,12 +1134,14 @@ type H2HStats struct {
 }
 
 type H2HStatsReq struct {
+	TargetUserId int64  `form:"target_user_id,optional"`
 	OpponentId   int64  `form:"opponent_id,optional"`
 	OpponentName string `form:"opponent_name,optional"`
 }
 
 type H2HStatsResp struct {
 	Success  bool         `json:"success"`
+	Message  string       `json:"message,optional"`
 	Opponent *H2HOpponent `json:"opponent"`
 	Stats    *H2HStats    `json:"stats"`
 }

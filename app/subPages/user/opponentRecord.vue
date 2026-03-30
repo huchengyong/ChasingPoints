@@ -1,9 +1,9 @@
 <template>
 	<view class="opponent-record-container" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 需要登录状态 -->
-		<view class="login-required" v-if="needLogin">
+			<view class="login-required" v-if="needLogin">
 			<uni-icons type="locked" size="64" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
-			<text class="hint-text">请登录后查看对手记录</text>
+			<text class="hint-text">{{ viewModel.loginHint }}</text>
 			<button class="login-btn" @click="goLogin">去登录</button>
 		</view>
 
@@ -16,7 +16,7 @@
 						type="text"
 						v-model="searchKeyword"
 						class="search-input"
-						placeholder="搜索对手"
+						:placeholder="viewModel.searchPlaceholder"
 						@confirm="handleSearch"
 					/>
 				</view>
@@ -58,8 +58,8 @@
 			<!-- 空状态 -->
 			<view class="empty-wrapper" v-else-if="!isLoading && opponentList.length === 0">
 				<uni-icons type="contact" size="64" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
-				<text class="empty-text">暂无对手记录</text>
-				<text class="empty-hint">快去发起一场PK吧！</text>
+				<text class="empty-text">{{ viewModel.emptyText }}</text>
+				<text class="empty-hint">{{ viewModel.emptyHint }}</text>
 			</view>
 
 			<!-- 对手列表 -->
@@ -118,10 +118,16 @@
 
 <script setup>
 import { ref, reactive, computed } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useThemeStore } from '@/store/theme.js'
 import { getOpponentList } from '@/api/match.js'
 import { formatRelativeTime } from '@/utils/format.js'
+import {
+	buildOpponentH2HUrl,
+	buildOpponentRecordRequestParams,
+	buildOpponentRecordViewModel,
+	normalizeOpponentRecordOptions
+} from '@/utils/opponent-record.js'
 
 // ========== 状态管理 ==========
 const themeStore = useThemeStore()
@@ -134,6 +140,9 @@ const isLoadingMore = ref(false)
 const hasMore = ref(true)
 const searchKeyword = ref('')
 const needLogin = ref(false)
+const targetUserId = ref(0)
+const targetName = ref('')
+const targetAvatar = ref('')
 
 const opponentList = ref([])
 const currentPage = ref(1)
@@ -145,8 +154,27 @@ const statsData = reactive({
 	totalWins: 0
 })
 
+const viewModel = computed(() => buildOpponentRecordViewModel({
+	targetName: targetName.value,
+	targetUserId: targetUserId.value
+}))
+
 // ========== 生命周期 ==========
 // ========== 生命周期 ==========
+onLoad((options) => {
+	const normalized = normalizeOpponentRecordOptions(options)
+	targetUserId.value = normalized.targetUserId
+	targetName.value = normalized.targetName
+	targetAvatar.value = normalized.targetAvatar
+
+	uni.setNavigationBarTitle({
+		title: buildOpponentRecordViewModel({
+			targetName: normalized.targetName,
+			targetUserId: normalized.targetUserId
+		}).navigationTitle
+	})
+})
+
 onShow(() => {
 	// 同步主题状态并更新导航栏
 	themeStore.syncTheme()
@@ -188,11 +216,12 @@ const fetchOpponentList = async (isRefresh = false, isLoadMore = false) => {
 	}
 
 	try {
-		const res = await getOpponentList({
+		const res = await getOpponentList(buildOpponentRecordRequestParams({
 			page: currentPage.value,
-			page_size: pageSize,
-			keyword: searchKeyword.value
-		})
+			pageSize,
+			keyword: searchKeyword.value,
+			targetUserId: targetUserId.value
+		}))
 
 		const list = res.list || []
 		total.value = res.total || 0
@@ -276,7 +305,12 @@ const getWinRateClass = (winRate) => {
  */
 const handleOpponentDetail = (opponent) => {
 	uni.navigateTo({
-		url: `/subPages/user/h2hRecord?opponent_id=${opponent.id}&opponent_name=${encodeURIComponent(opponent.name)}`
+		url: buildOpponentH2HUrl({
+			opponent,
+			targetUserId: targetUserId.value,
+			targetName: targetName.value,
+			targetAvatar: targetAvatar.value
+		})
 	})
 }
 /**
