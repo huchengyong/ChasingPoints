@@ -1,3 +1,6 @@
+import { formatRelativeTime } from './format.js'
+import { resolveAdvantageLevel } from './h2h-copywriting.js'
+
 const decodeRouteValue = (value = '') => {
   if (!value) return ''
 
@@ -42,6 +45,7 @@ export const buildOpponentRecordViewModel = ({
   if (!isTargetMode) {
     return {
       isTargetMode: false,
+      subjectName: '你',
       navigationTitle: '对手记录',
       loginHint: '请登录后查看对手记录',
       searchPlaceholder: '搜索对手',
@@ -54,6 +58,7 @@ export const buildOpponentRecordViewModel = ({
 
   return {
     isTargetMode: true,
+    subjectName: resolvedTargetName,
     navigationTitle: '对方战绩',
     loginHint: '请登录后查看对方战绩',
     searchPlaceholder: '搜索 TA 的对手',
@@ -61,6 +66,86 @@ export const buildOpponentRecordViewModel = ({
     emptyHint: `还没看到${resolvedTargetName} 的历史对手记录`
   }
 }
+
+const buildRelationshipCopy = ({ advantageLevel = 'no_sample', subjectName = '你' } = {}) => {
+  const map = {
+    no_sample: `${subjectName}和他还没形成样本`,
+    balanced: `${subjectName}和他势均力敌`,
+    slight_lead: `${subjectName}略占上风`,
+    slight_trail: `${subjectName}暂时落后`,
+    clear_lead: `${subjectName}明显占优`,
+    clear_trail: `${subjectName}最近被压制`
+  }
+
+  return map[advantageLevel] || map.no_sample
+}
+
+const buildRelationshipBadge = (advantageLevel = 'no_sample') => {
+  const map = {
+    no_sample: '待交锋',
+    balanced: '均势',
+    slight_lead: '领先',
+    slight_trail: '落后',
+    clear_lead: '压制',
+    clear_trail: '复仇'
+  }
+
+  return map[advantageLevel] || '待交锋'
+}
+
+const buildToneClass = (advantageLevel = 'no_sample') => {
+  if (advantageLevel === 'slight_lead' || advantageLevel === 'clear_lead') {
+    return 'lead'
+  }
+  if (advantageLevel === 'slight_trail' || advantageLevel === 'clear_trail') {
+    return 'trail'
+  }
+  if (advantageLevel === 'balanced') {
+    return 'balanced'
+  }
+  return 'waiting'
+}
+
+export const buildOpponentStatsSummary = ({
+  totalOpponents = 0,
+  totalWins = 0,
+  targetName = '',
+  targetUserId = 0
+} = {}) => {
+  const isTargetMode = Number(targetUserId) > 0
+  const title = isTargetMode ? `${targetName || '这位球友'}的对手档案` : '你的对手档案'
+  const subtitle = totalOpponents > 0
+    ? `已经形成 ${totalOpponents} 个对手样本，累计拿下 ${totalWins} 场胜利`
+    : '先找到最值得点进复盘的那个对手'
+
+  return { title, subtitle }
+}
+
+export const buildOpponentCardViewModels = ({
+  opponents = [],
+  subjectName = '你'
+} = {}) => opponents.map((opponent = {}) => {
+  const wins = Number(opponent.wins || 0)
+  const losses = Number(opponent.losses || 0)
+  const totalMatches = Number(opponent.total_matches || 0) || (wins + losses)
+  const advantageLevel = resolveAdvantageLevel({
+    totalMatches,
+    myWins: wins,
+    opponentWins: losses
+  })
+
+  return {
+    ...opponent,
+    totalMatches,
+    winRateText: `${Math.round(Number(opponent.win_rate || 0))}%`,
+    recordText: `总交锋 ${wins} 胜 ${losses} 负`,
+    sampleText: totalMatches > 0 ? `${totalMatches} 场交锋` : '等待首场交锋',
+    lastMatchText: opponent.last_match_at ? `上次对局 ${formatRelativeTime(opponent.last_match_at)}` : '还没交过手',
+    relationshipText: buildRelationshipCopy({ advantageLevel, subjectName }),
+    relationshipBadge: buildRelationshipBadge(advantageLevel),
+    toneClass: buildToneClass(advantageLevel)
+  }
+})
 
 export const buildOpponentH2HUrl = ({
   opponent = {},

@@ -1,428 +1,417 @@
-// 对手记录页面样式
-
 .opponent-record-container {
-    min-height: 100vh;
-    background-color: #f1f5f9;
-    display: flex;
-    flex-direction: column;
-
-    // 搜索区域
-    .search-section {
-        padding: 24rpx 32rpx;
-        background-color: #f1f5f9;
-        box-sizing: border-box;
-    }
-
-    .search-box {
-        display: flex;
-        align-items: center;
-        padding: 0 24rpx;
-        height: 80rpx;
-        background-color: #ffffff;
-        border-radius: 24rpx;
-        box-sizing: border-box;
-    }
-
-    .search-input {
-        flex: 1;
-        margin-left: 16rpx;
-        font-size: 28rpx;
-        color: #1e293b;
-
-        &::placeholder {
-            color: #9ca3af;
-        }
-    }
-
-    // 统计卡片
-    .stats-card {
-        margin: 0 32rpx 24rpx;
-        padding: 40rpx;
-        background: linear-gradient(135deg, #E0AE12 0%, #C69200 100%);
-        border-radius: 32rpx;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        box-sizing: border-box;
-    }
-
-    .stats-content {
-        display: flex;
-        align-items: center;
-        gap: 48rpx;
-    }
-
-    .stat-item {
-        display: flex;
-        flex-direction: column;
-        gap: 8rpx;
-    }
-
-    .stat-label {
-        font-size: 24rpx;
-        color: rgba(255, 255, 255, 0.8);
-    }
-
-    .stat-value {
-        font-size: 52rpx;
-        font-weight: bold;
-        color: #ffffff;
-    }
-
-    .stat-divider {
-        width: 2rpx;
-        height: 60rpx;
-        background-color: rgba(255, 255, 255, 0.3);
-    }
-
-    .stats-icon {
-        width: 80rpx;
-        height: 80rpx;
-        background-color: rgba(255, 255, 255, 0.15);
-        border-radius: 16rpx;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    // 对手列表
-    .opponent-list {
-        flex: 1;
-        padding: 0 32rpx;
-        box-sizing: border-box;
-    }
-
-    // 加载状态
-    .loading-wrapper,
-    .empty-wrapper {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 120rpx 0;
-    }
-
-    .loading-text,
-    .empty-text {
-        margin-top: 24rpx;
-        font-size: 28rpx;
-        color: #64748b;
-    }
-
-    .empty-hint {
-        margin-top: 12rpx;
-        font-size: 24rpx;
-        color: #94a3b8;
-    }
-
-    // 对手项
-    .opponent-items {
-        display: flex;
-        flex-direction: column;
-        gap: 24rpx;
-        padding-bottom: 40rpx;
-    }
-
-    .opponent-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 28rpx 24rpx;
-        background-color: #ffffff;
-        border-radius: 32rpx;
-        border: 2rpx solid rgba(0, 0, 0, 0.05);
-        box-sizing: border-box;
-        transition: transform 0.1s ease;
-
-        &:active {
-            transform: scale(0.98);
-        }
-    }
-
-    .opponent-left {
-        display: flex;
-        align-items: center;
-        gap: 24rpx;
-    }
-
-    // 头像
-    .avatar-wrapper {
-        position: relative;
-        width: 96rpx;
-        height: 96rpx;
-    }
-
-    .avatar {
-        width: 96rpx;
-        height: 96rpx;
-        border-radius: 50%;
-        border: 4rpx solid #ffffff;
-    }
-
-    .avatar-placeholder {
-        width: 96rpx;
-        height: 96rpx;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #c7d2fe 0%, #a5b4fc 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 4rpx solid #ffffff;
-    }
-
-    .avatar-text {
-        font-size: 28rpx;
-        font-weight: bold;
-        color: #4f46e5;
-    }
-
-    .star-badge {
-        position: absolute;
-        bottom: -4rpx;
-        right: -4rpx;
-        width: 32rpx;
-        height: 32rpx;
-        background-color: #eab308;
-        border-radius: 50%;
-        border: 4rpx solid #ffffff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    // 对手信息
-    .opponent-info {
-        display: flex;
-        flex-direction: column;
-        gap: 8rpx;
-    }
-
-    .opponent-name {
-        font-size: 30rpx;
-        font-weight: bold;
-        color: #1e293b;
-    }
-
-    .last-match {
-        font-size: 22rpx;
-        color: #94a3b8;
-    }
-
-    // 胜负统计
-    .opponent-right {
-        text-align: right;
-    }
-
-    .win-rate-row {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: 8rpx;
-    }
-
-    .win-rate {
-        font-size: 34rpx;
-        font-weight: bold;
-
-        &.high {
-            color: #f59e0b;
-        }
-
-        &.medium {
-            color: #10b981;
-        }
-
-        &.low {
-            color: #6b7280;
-        }
-    }
-
-    .win-rate-badge {
-        padding: 4rpx 12rpx;
-        border-radius: 8rpx;
-        font-size: 18rpx;
-
-        &.high {
-            background-color: rgba(245, 158, 11, 0.1);
-            color: #d97706;
-        }
-
-        &.medium {
-            background-color: rgba(16, 185, 129, 0.1);
-            color: #059669;
-        }
-
-        &.low {
-            background-color: rgba(107, 114, 128, 0.1);
-            color: #6b7280;
-        }
-    }
-
-    .win-loss {
-        margin-top: 8rpx;
-        font-size: 22rpx;
-        color: #94a3b8;
-    }
-
-    // 加载更多
-    .load-more {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 32rpx 0;
-    }
-
-    .load-more-text {
-        font-size: 24rpx;
-        color: #94a3b8;
-    }
+  min-height: 100vh;
+  background-color: #f1f5f9;
+  display: flex;
+  flex-direction: column;
 }
 
-// 深色模式
-.opponent-record-container.dark-mode {
-    background-color: #0f172a;
-
-    .search-section {
-        background-color: #0f172a;
-    }
-
-    .search-box {
-        background-color: #1e293b;
-    }
-
-    .search-input {
-        color: #f8fafc;
-
-        &::placeholder {
-            color: #64748b;
-        }
-    }
-
-    .stats-card {
-        background: linear-gradient(135deg, #7c5b12 0%, #1e3a8a 100%);
-    }
-
-    .opponent-item {
-        background-color: #1e293b;
-        border-color: rgba(255, 255, 255, 0.05);
-    }
-
-    .opponent-name {
-        color: #f8fafc;
-    }
-
-    .last-match,
-    .win-loss {
-        color: #64748b;
-    }
-
-    .avatar {
-        border-color: #334155;
-    }
-
-    .avatar-placeholder {
-        background: linear-gradient(135deg, #312e81 0%, #4338ca 100%);
-        border-color: #334155;
-    }
-
-    .avatar-text {
-        color: #a5b4fc;
-    }
-
-    .star-badge {
-        border-color: #1e293b;
-    }
-
-    .win-rate {
-        &.high {
-            color: #fbbf24;
-        }
-
-        &.medium {
-            color: #34d399;
-        }
-
-        &.low {
-            color: #9ca3af;
-        }
-    }
-
-    .win-rate-badge {
-        &.high {
-            background-color: rgba(245, 158, 11, 0.2);
-            color: #fbbf24;
-        }
-
-        &.medium {
-            background-color: rgba(16, 185, 129, 0.2);
-            color: #34d399;
-        }
-
-        &.low {
-            background-color: rgba(107, 114, 128, 0.2);
-            color: #9ca3af;
-        }
-    }
-
-    .loading-text,
-    .empty-text {
-        color: #94a3b8;
-    }
-
-    .empty-hint {
-        color: #64748b;
-    }
-
-    .load-more-text {
-        color: #64748b;
-    }
+.search-section {
+  padding: 24rpx 32rpx;
+  background-color: #f1f5f9;
+  box-sizing: border-box;
 }
 
-// 需要登录状态
+.search-box {
+  display: flex;
+  align-items: center;
+  padding: 0 24rpx;
+  height: 80rpx;
+  background-color: #ffffff;
+  border-radius: 24rpx;
+  box-sizing: border-box;
+}
+
+.search-input {
+  flex: 1;
+  margin-left: 16rpx;
+  font-size: 28rpx;
+  color: #1e293b;
+
+  &::placeholder {
+    color: #9ca3af;
+  }
+}
+
+.stats-card {
+  margin: 0 32rpx 24rpx;
+  padding: 32rpx;
+  background: linear-gradient(135deg, #E0AE12 0%, #C69200 100%);
+  border-radius: 32rpx;
+  box-sizing: border-box;
+}
+
+.stats-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.stats-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.stats-subtitle {
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.stats-content {
+  margin-top: 24rpx;
+  display: flex;
+  align-items: center;
+  gap: 40rpx;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.stat-label {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.stat-value {
+  font-size: 52rpx;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.stat-divider {
+  width: 2rpx;
+  height: 60rpx;
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.opponent-list {
+  flex: 1;
+  padding: 0 32rpx;
+  box-sizing: border-box;
+}
+
+.loading-wrapper,
+.empty-wrapper,
+.error-wrapper,
 .login-required {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 200rpx 48rpx;
-    gap: 24rpx;
-
-    .hint-text {
-        font-size: 32rpx;
-        font-weight: 500;
-        color: #64748b;
-        margin-top: 16rpx;
-        transition: color 0.3s ease;
-    }
-
-    .login-btn {
-        margin-top: 32rpx;
-        width: 280rpx;
-        height: 88rpx;
-        line-height: 88rpx;
-        background: linear-gradient(135deg, #E0AE12 0%, #C69200 100%);
-        color: #ffffff;
-        font-size: 32rpx;
-        font-weight: 600;
-        border-radius: 44rpx;
-        border: none;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-
-        &::after {
-            display: none;
-        }
-
-        &:active {
-            transform: scale(0.96);
-        }
-    }
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 32rpx;
 }
 
-// 深色模式下的登录状态
+.loading-text,
+.empty-text,
+.error-text,
+.hint-text {
+  margin-top: 24rpx;
+  font-size: 28rpx;
+  text-align: center;
+  color: #64748b;
+}
+
+.empty-hint {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.retry-btn,
+.login-btn {
+  margin-top: 28rpx;
+  min-width: 220rpx;
+  height: 84rpx;
+  line-height: 84rpx;
+  border-radius: 999rpx;
+
+  &::after {
+    display: none;
+  }
+
+  text {
+    font-size: 28rpx;
+    font-weight: 600;
+  }
+}
+
+.retry-btn {
+  background: rgba(224, 174, 18, 0.16);
+
+  text {
+    color: #C69200;
+  }
+}
+
+.login-btn {
+  background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
+  color: #1f2937;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.opponent-items {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  padding-bottom: 40rpx;
+}
+
+.opponent-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20rpx;
+  padding: 28rpx 24rpx;
+  background-color: #ffffff;
+  border-radius: 32rpx;
+  border: 2rpx solid rgba(15, 23, 42, 0.05);
+  box-sizing: border-box;
+  transition: transform 0.1s ease;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.opponent-item.lead {
+  border-color: rgba(16, 185, 129, 0.18);
+}
+
+.opponent-item.trail {
+  border-color: rgba(239, 68, 68, 0.16);
+}
+
+.opponent-left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.avatar-wrapper {
+  width: 96rpx;
+  height: 96rpx;
+  flex-shrink: 0;
+}
+
+.avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  border: 4rpx solid #ffffff;
+}
+
+.avatar-placeholder {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f5d67a 0%, #E0AE12 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 4rpx solid #ffffff;
+}
+
+.avatar-text {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #7c5b12;
+}
+
+.opponent-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.opponent-name {
+  max-width: 320rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.relationship-badge {
+  padding: 6rpx 14rpx;
+  border-radius: 999rpx;
+  font-size: 20rpx;
+  line-height: 1;
+
+  &.lead {
+    background: rgba(16, 185, 129, 0.12);
+    color: #059669;
+  }
+
+  &.trail {
+    background: rgba(239, 68, 68, 0.12);
+    color: #dc2626;
+  }
+
+  &.balanced {
+    background: rgba(245, 158, 11, 0.12);
+    color: #d97706;
+  }
+
+  &.waiting {
+    background: rgba(148, 163, 184, 0.16);
+    color: #64748b;
+  }
+}
+
+.opponent-summary {
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: #475569;
+}
+
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+
+.meta-chip {
+  padding: 8rpx 14rpx;
+  border-radius: 999rpx;
+  background: #f8fafc;
+  font-size: 20rpx;
+  color: #64748b;
+}
+
+.opponent-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8rpx;
+  flex-shrink: 0;
+}
+
+.win-rate {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #0f172a;
+
+  &.lead {
+    color: #059669;
+  }
+
+  &.trail {
+    color: #dc2626;
+  }
+
+  &.balanced {
+    color: #d97706;
+  }
+
+  &.waiting {
+    color: #64748b;
+  }
+}
+
+.win-loss {
+  font-size: 22rpx;
+  color: #94a3b8;
+}
+
+.detail-link {
+  font-size: 22rpx;
+  font-weight: 600;
+  color: #C69200;
+}
+
+.load-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32rpx 0;
+}
+
+.load-more-text {
+  font-size: 24rpx;
+  color: #94a3b8;
+}
+
 .opponent-record-container.dark-mode {
-    .login-required {
-        .hint-text {
-            color: #94a3b8;
-        }
+  background-color: #0f172a;
+
+  .search-section {
+    background-color: #0f172a;
+  }
+
+  .search-box {
+    background-color: #1e293b;
+  }
+
+  .search-input {
+    color: #f8fafc;
+
+    &::placeholder {
+      color: #64748b;
     }
+  }
+
+  .stats-card {
+    background: linear-gradient(135deg, #7c5b12 0%, #1e3a8a 100%);
+  }
+
+  .opponent-item {
+    background-color: #1e293b;
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .avatar {
+    border-color: #334155;
+  }
+
+  .avatar-placeholder {
+    border-color: #334155;
+  }
+
+  .opponent-name,
+  .win-rate {
+    color: #f8fafc;
+  }
+
+  .opponent-summary {
+    color: #cbd5e1;
+  }
+
+  .last-match,
+  .win-loss,
+  .loading-text,
+  .empty-text,
+  .error-text,
+  .hint-text,
+  .empty-hint,
+  .load-more-text,
+  .meta-chip {
+    color: #94a3b8;
+  }
+
+  .meta-chip {
+    background: #334155;
+  }
+
+  .retry-btn {
+    background: #334155;
+
+    text {
+      color: #f8fafc;
+    }
+  }
 }

@@ -107,7 +107,7 @@ $border-color-dark: #334155;
 // 总战绩
 .total-score {
     text-align: center;
-    padding: 16rpx 0 8rpx;
+    padding: 24rpx 0 8rpx;
 
     .score-text {
         font-size: 96rpx;
@@ -118,15 +118,44 @@ $border-color-dark: #334155;
     }
 }
 
-// 胜率描述
-.win-rate-desc {
+// Hero 文案
+.hero-copy {
     text-align: center;
-    padding-bottom: 32rpx;
+    display: flex;
+    flex-direction: column;
+    gap: 12rpx;
 
-    .desc-text {
-        font-size: 30rpx;
+    .hero-title {
+        font-size: 34rpx;
+        font-weight: 700;
+        color: $text-primary-light;
+        transition: color 0.3s ease;
+    }
+
+    .hero-subtitle {
+        font-size: 26rpx;
         color: $text-secondary-light;
         transition: color 0.3s ease;
+    }
+}
+
+// 状态标签
+.badge-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16rpx;
+    padding-bottom: 32rpx;
+
+    .badge-chip {
+        padding: 12rpx 20rpx;
+        border-radius: 999rpx;
+        background-color: $stats-bg-light;
+
+        .badge-text {
+            font-size: 24rpx;
+            color: $text-secondary-light;
+        }
     }
 }
 
@@ -177,6 +206,8 @@ $border-color-dark: #334155;
 
         .filter-btn {
             flex: 1;
+            height: 72rpx;
+            line-height: 72rpx;
             border-radius: 12rpx;
             text-align: center;
             transition: all 0.2s ease;
@@ -200,6 +231,50 @@ $border-color-dark: #334155;
                 }
             }
         }
+    }
+}
+
+// 趋势区域
+.trend-section {
+    margin-bottom: 24rpx;
+}
+
+.trend-scroll {
+    padding: 0 32rpx 8rpx;
+    white-space: nowrap;
+
+    .trend-row {
+        display: inline-flex;
+        gap: 16rpx;
+    }
+
+    .trend-pill {
+        min-width: 80rpx;
+        height: 80rpx;
+        border-radius: 24rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: $card-bg-light;
+        border: 2rpx solid transparent;
+
+        &.win {
+            border-color: rgba(76, 175, 80, 0.4);
+        }
+
+        &.lose {
+            border-color: rgba(229, 115, 115, 0.4);
+        }
+
+        &.draw {
+            border-color: rgba(156, 163, 175, 0.45);
+        }
+    }
+
+    .trend-pill-text {
+        font-size: 28rpx;
+        font-weight: 700;
+        color: $text-primary-light;
     }
 }
 
@@ -269,6 +344,20 @@ $border-color-dark: #334155;
         color: $text-tertiary-light;
         transition: color 0.3s ease;
     }
+
+    .match-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12rpx;
+
+        .match-tag {
+            padding: 6rpx 14rpx;
+            border-radius: 999rpx;
+            background-color: $stats-bg-light;
+            font-size: 22rpx;
+            color: $text-secondary-light;
+        }
+    }
 }
 
 // 右侧比分和结果
@@ -304,6 +393,13 @@ $border-color-dark: #334155;
                 color: $text-tertiary-light;
             }
         }
+
+        .diff-text {
+            display: block;
+            margin-top: 4rpx;
+            font-size: 22rpx;
+            color: $text-tertiary-light;
+        }
     }
 }
 
@@ -323,6 +419,62 @@ $border-color-dark: #334155;
     }
 }
 
+// 错误状态
+.error-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 96rpx 0;
+    gap: 20rpx;
+
+    .error-text {
+        font-size: 28rpx;
+        color: $text-secondary-light;
+    }
+
+    .retry-btn {
+        width: 280rpx;
+        height: 80rpx;
+        line-height: 80rpx;
+        border-radius: 999rpx;
+        background-color: $primary-color;
+
+        &::after {
+            display: none;
+        }
+
+        text {
+            color: #ffffff;
+            font-size: 28rpx;
+            font-weight: 600;
+        }
+    }
+}
+
+.error-banner {
+    margin: 0 0 24rpx;
+    padding: 24rpx 28rpx;
+    border-radius: 20rpx;
+    background: rgba(229, 115, 115, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16rpx;
+
+    .error-banner-text {
+        flex: 1;
+        font-size: 24rpx;
+        color: $text-secondary-light;
+    }
+
+    .error-banner-link {
+        font-size: 24rpx;
+        color: $loss-red;
+        font-weight: 600;
+    }
+}
+
 // 空状态
 .empty-wrapper {
     display: flex;
@@ -337,6 +489,30 @@ $border-color-dark: #334155;
         color: $text-secondary-light;
         margin-top: 16rpx;
         transition: color 0.3s ease;
+    }
+}
+
+// 底部动作
+.action-bar {
+    padding: 0 32rpx 32rpx;
+}
+
+.primary-action-btn {
+    width: 100%;
+    height: 88rpx;
+    line-height: 88rpx;
+    border-radius: 999rpx;
+    background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+    box-sizing: border-box;
+
+    &::after {
+        display: none;
+    }
+
+    text {
+        color: #ffffff;
+        font-size: 30rpx;
+        font-weight: 700;
     }
 }
 
@@ -387,9 +563,23 @@ $border-color-dark: #334155;
         }
     }
 
-    .win-rate-desc {
-        .desc-text {
+    .hero-copy {
+        .hero-title {
+            color: $text-primary-dark;
+        }
+
+        .hero-subtitle {
             color: $text-secondary-dark;
+        }
+    }
+
+    .badge-list {
+        .badge-chip {
+            background-color: $stats-bg-dark;
+
+            .badge-text {
+                color: $text-secondary-dark;
+            }
         }
     }
 
@@ -444,6 +634,13 @@ $border-color-dark: #334155;
             .game-type {
                 color: $text-tertiary-dark;
             }
+
+            .match-tags {
+                .match-tag {
+                    background-color: $stats-bg-dark;
+                    color: $text-secondary-dark;
+                }
+            }
         }
 
         .item-right {
@@ -453,8 +650,24 @@ $border-color-dark: #334155;
         }
     }
 
+    .trend-scroll {
+        .trend-pill {
+            background-color: $card-bg-dark;
+        }
+
+        .trend-pill-text {
+            color: $text-primary-dark;
+        }
+    }
+
     .loading-wrapper {
         .loading-text {
+            color: $text-secondary-dark;
+        }
+    }
+
+    .error-wrapper {
+        .error-text {
             color: $text-secondary-dark;
         }
     }

@@ -1,8 +1,6 @@
 <template>
 	<view class="h2h-record-container" :class="{ 'dark-mode': isDarkMode }">
-		<!-- 顶部统计卡片 -->
-		<view class="h2h-summary-card" v-if="!isLoading">
-			<!-- 头像对比 -->
+		<view class="h2h-summary-card" v-if="showSummaryCard">
 			<view class="avatar-group">
 				<view class="avatar-section">
 					<image
@@ -12,9 +10,9 @@
 						mode="aspectFill"
 					/>
 					<view v-else class="avatar-placeholder">
-						<text class="avatar-text">{{ getAvatarText(viewModel.subjectName) }}</text>
+						<text class="avatar-text">{{ getAvatarText(routeViewModel.subjectName) }}</text>
 					</view>
-					<text class="name">{{ viewModel.subjectName }}</text>
+					<text class="name">{{ routeViewModel.subjectName }}</text>
 				</view>
 				<view class="vs-section">
 					<text class="vs-text">VS</text>
@@ -33,17 +31,21 @@
 				</view>
 			</view>
 
-			<!-- 总战绩 -->
+			<view class="hero-copy">
+				<text class="hero-title">{{ heroViewModel.title }}</text>
+				<text class="hero-subtitle">{{ heroViewModel.subtitle }}</text>
+			</view>
+
 			<view class="total-score">
-				<text class="score-text">{{ statsData.myWins }} : {{ statsData.opponentWins }}</text>
+				<text class="score-text">{{ heroViewModel.scoreText }}</text>
 			</view>
 
-			<!-- 胜率描述 -->
-			<view class="win-rate-desc">
-				<text class="desc-text">{{ viewModel.winRateLabel }}{{ statsData.winRate.toFixed(2) }}%</text>
+			<view class="badge-list">
+				<view class="badge-chip" v-for="badge in heroViewModel.badges" :key="badge">
+					<text class="badge-text">{{ badge }}</text>
+				</view>
 			</view>
 
-			<!-- 统计数据 -->
 			<view class="stats-grid">
 				<view class="stat-item">
 					<text class="stat-label">总场次</text>
@@ -60,8 +62,7 @@
 			</view>
 		</view>
 
-		<!-- 筛选按钮组 -->
-		<view class="filter-bar" v-if="!isLoading">
+		<view class="filter-bar" v-if="pageStatus !== 'loading' && pageStatus !== 'error'">
 			<view class="filter-buttons">
 				<button
 					class="filter-btn"
@@ -84,60 +85,106 @@
 				>
 					<text class="btn-text">失败</text>
 				</button>
+				<button
+					class="filter-btn"
+					:class="{ active: currentFilter === 3 }"
+					@click="handleFilterChange(3)"
+				>
+					<text class="btn-text">最近5场</text>
+				</button>
 			</view>
 		</view>
 
-		<!-- 历史列表标题 -->
-		<view class="history-header" v-if="!isLoading && historyList.length > 0">
+		<view class="trend-section" v-if="pageStatus !== 'loading' && pageStatus !== 'error' && trendItems.length > 0">
+			<view class="history-header">
+				<text class="header-text">最近走势</text>
+			</view>
+			<scroll-view class="trend-scroll" scroll-x>
+				<view class="trend-row">
+					<view
+						v-for="item in trendItems"
+						:key="item.matchId"
+						class="trend-pill"
+						:class="getResultClass(item.result)"
+						@click="goToMatchDetail(item.matchId)"
+					>
+						<text class="trend-pill-text">{{ item.label }}</text>
+					</view>
+				</view>
+			</scroll-view>
+		</view>
+
+		<view class="history-header" v-if="pageStatus !== 'loading' && pageStatus !== 'error' && matchCards.length > 0">
 			<text class="header-text">比赛历史</text>
 		</view>
 
-		<!-- 历史对局列表 -->
 		<scroll-view
 			class="history-list"
 			scroll-y
 			@scrolltolower="onLoadMore"
 		>
-			<!-- 加载中状态 -->
-			<view class="loading-wrapper" v-if="isLoading">
+			<view class="loading-wrapper" v-if="pageStatus === 'loading'">
 				<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
 				<text class="loading-text">加载中...</text>
 			</view>
 
-			<!-- 空状态 -->
-			<view class="empty-wrapper" v-else-if="historyList.length === 0">
-				<uni-icons type="list" size="64" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
-				<text class="empty-text">暂无对局记录</text>
+			<view class="error-wrapper" v-else-if="pageStatus === 'error'">
+				<uni-icons type="info-filled" size="52" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+				<text class="error-text">{{ loadErrorMessage || '交锋数据加载失败' }}</text>
+				<button class="retry-btn" @click="fetchData">
+					<text>重新加载</text>
+				</button>
 			</view>
 
-			<!-- 历史记录列表 -->
 			<view v-else>
-				<view
-					class="history-item"
-					:class="getResultClass(item.result)"
-					v-for="item in historyList"
-					:key="item.id"
-				>
-					<view class="item-left">
-						<text class="match-date">{{ formatMatchDate(item.match_time) }}</text>
-						<text class="game-type">{{ item.game_type_name }}</text>
-					</view>
-					<view class="item-right">
-						<text class="score">{{ item.my_score }} - {{ item.opponent_score }}</text>
-						<view class="result-wrapper">
-							<text class="result-text" :class="getResultClass(item.result)">{{ getResultText(item.result) }}</text>
-						</view>
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#64748b' : '#9ca3af'"></uni-icons>
-					</view>
+				<view class="error-banner" v-if="pageStatus === 'partial'">
+					<text class="error-banner-text">{{ loadErrorMessage || '部分数据加载失败，先展示已获取内容' }}</text>
+					<text class="error-banner-link" @click="fetchData">重新加载</text>
 				</view>
 
-				<!-- 底部加载状态 -->
-				<view class="load-more" v-if="historyList.length > 0">
-					<text v-if="isLoadingMore" class="load-more-text">加载中...</text>
-					<text v-else-if="!hasMore" class="load-more-text">没有更多了</text>
+				<view class="empty-wrapper" v-if="matchCards.length === 0">
+					<uni-icons type="list" size="64" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+					<text class="empty-text">暂无对局记录</text>
+				</view>
+
+				<view v-else>
+					<view
+						class="history-item"
+						:class="getResultClass(item.result)"
+						v-for="item in matchCards"
+						:key="item.id"
+						@click="goToMatchDetail(item.id)"
+					>
+						<view class="item-left">
+							<text class="match-date">{{ formatMatchDate(item.dateText) }}</text>
+							<text class="game-type">{{ item.gameTypeText }}</text>
+							<view class="match-tags" v-if="item.tags.length > 0">
+								<text class="match-tag" v-for="tag in item.tags" :key="tag">{{ tag }}</text>
+							</view>
+						</view>
+						<view class="item-right">
+							<text class="score">{{ item.scoreText }}</text>
+							<view class="result-wrapper">
+								<text class="result-text" :class="getResultClass(item.result)">{{ item.resultText }}</text>
+								<text class="diff-text">{{ item.diffText }}</text>
+							</view>
+							<uni-icons type="right" size="20" :color="isDarkMode ? '#64748b' : '#9ca3af'"></uni-icons>
+						</view>
+					</view>
+
+					<view class="load-more" v-if="currentFilter !== 3 && matchCards.length > 0">
+						<text v-if="isLoadingMore" class="load-more-text">加载中...</text>
+						<text v-else-if="!hasMore" class="load-more-text">没有更多了</text>
+					</view>
 				</view>
 			</view>
 		</scroll-view>
+
+		<view class="action-bar" v-if="showSummaryCard">
+			<button class="primary-action-btn" @click="openPrimaryAction">
+				<text>{{ heroViewModel.primaryActionText }}</text>
+			</button>
+		</view>
 	</view>
 </template>
 
@@ -147,6 +194,14 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useThemeStore } from '@/store/theme.js'
 import { useUserStore } from '@/store/user.js'
 import { getH2HStats, getH2HHistory } from '@/api/match.js'
+import { formatRelativeTime } from '@/utils/format.js'
+import {
+	buildH2HHeroViewModel,
+	buildH2HMatchCards,
+	buildH2HTrendItems,
+	resolveH2HPageStatus,
+	shouldShowH2HSummaryCard
+} from '@/utils/h2h-view-model.js'
 import {
 	buildH2HHistoryParams,
 	buildH2HLoadFailureAction,
@@ -154,16 +209,17 @@ import {
 	normalizeH2HRecordOptions
 } from '@/utils/h2h-record.js'
 
-// ========== 状态管理 ==========
 const themeStore = useThemeStore()
 const userStore = useUserStore()
 
-// ========== 响应式数据 ==========
 const isDarkMode = computed(() => themeStore.isDarkMode)
 const isLoading = ref(true)
 const isLoadingMore = ref(false)
 const hasMore = ref(true)
 const hasHandledTargetLoadFailure = ref(false)
+const statsLoaded = ref(false)
+const historyLoaded = ref(false)
+const loadErrorMessage = ref('')
 
 const opponentId = ref(0)
 const opponentName = ref('')
@@ -171,7 +227,7 @@ const myAvatar = ref('')
 const targetUserId = ref(0)
 const targetName = ref('')
 const targetAvatar = ref('')
-const currentFilter = ref(0) // 0=全部, 1=胜利, 2=失败
+const currentFilter = ref(0)
 
 const opponentData = reactive({
 	id: 0,
@@ -189,22 +245,53 @@ const statsData = reactive({
 })
 
 const historyList = ref([])
+const summaryHistory = ref([])
 const currentPage = ref(1)
 const pageSize = 20
 const total = ref(0)
-const viewModel = computed(() => buildH2HViewModel({
+
+const routeViewModel = computed(() => buildH2HViewModel({
 	targetUserId: targetUserId.value,
 	targetName: targetName.value,
 	opponentName: opponentData.name || opponentName.value
 }))
-const subjectAvatar = computed(() => {
-	if (targetUserId.value > 0) {
-		return targetAvatar.value
-	}
-	return myAvatar.value
-})
 
-// ========== 生命周期 ==========
+const subjectAvatar = computed(() => (
+	targetUserId.value > 0 ? targetAvatar.value : myAvatar.value
+))
+
+const heroViewModel = computed(() => buildH2HHeroViewModel({
+	stats: {
+		total_matches: statsData.totalMatches,
+		my_wins: statsData.myWins,
+		opponent_wins: statsData.opponentWins,
+		avg_score_diff: statsData.avgScoreDiff,
+		max_win_streak: statsData.maxWinStreak
+	},
+	opponent: {
+		name: opponentData.name || opponentName.value,
+		avatar: opponentData.avatar || ''
+	},
+	history: summaryHistory.value,
+	subjectName: routeViewModel.value.subjectName,
+	subjectAvatar: subjectAvatar.value
+}))
+
+const trendItems = computed(() => buildH2HTrendItems(summaryHistory.value.slice(0, 10)))
+const displayHistoryList = computed(() => currentFilter.value === 3 ? historyList.value.slice(0, 5) : historyList.value)
+const matchCards = computed(() => buildH2HMatchCards(displayHistoryList.value))
+const pageStatus = computed(() => resolveH2HPageStatus({
+	statsLoaded: statsLoaded.value,
+	historyLoaded: historyLoaded.value,
+	totalMatches: statsData.totalMatches,
+	historyLength: summaryHistory.value.length,
+	hasError: Boolean(loadErrorMessage.value)
+}))
+const showSummaryCard = computed(() => shouldShowH2HSummaryCard({
+	pageStatus: pageStatus.value,
+	statsLoaded: statsLoaded.value
+}))
+
 onLoad((options) => {
 	const normalized = normalizeH2HRecordOptions(options)
 	targetUserId.value = normalized.targetUserId
@@ -228,16 +315,10 @@ onMounted(() => {
 })
 
 onShow(() => {
-	// 同步主题状态并更新导航栏
 	themeStore.syncTheme()
 	themeStore.applyNavigationBarTheme()
 })
 
-// ========== 方法 ==========
-
-/**
- * 加载用户信息获取头像
- */
 const loadUserInfo = () => {
 	if (userStore.userInfo && userStore.userInfo.avatar) {
 		myAvatar.value = userStore.userInfo.avatar
@@ -253,6 +334,7 @@ const handleTargetLoadFailure = (error) => {
 		targetUserId: targetUserId.value,
 		error
 	})
+
 	if (!action) {
 		return false
 	}
@@ -272,14 +354,13 @@ const handleTargetLoadFailure = (error) => {
 	return true
 }
 
-/**
- * 获取数据
- */
 const fetchData = async () => {
 	isLoading.value = true
-	
+	statsLoaded.value = false
+	historyLoaded.value = false
+	loadErrorMessage.value = ''
+
 	try {
-		// 同时获取统计和历史数据
 		await Promise.all([
 			fetchStats(),
 			fetchHistory(false, false)
@@ -292,9 +373,6 @@ const fetchData = async () => {
 	}
 }
 
-/**
- * 获取交锋统计
- */
 const fetchStats = async () => {
 	try {
 		const params = {}
@@ -306,9 +384,9 @@ const fetchStats = async () => {
 		} else if (opponentName.value) {
 			params.opponent_name = opponentName.value
 		}
-		
+
 		const res = await getH2HStats(params)
-		
+
 		if (res.opponent) {
 			opponentData.id = res.opponent.id || 0
 			opponentData.name = res.opponent.name || opponentName.value
@@ -316,7 +394,7 @@ const fetchStats = async () => {
 		} else {
 			opponentData.name = opponentName.value
 		}
-		
+
 		if (res.stats) {
 			statsData.totalMatches = res.stats.total_matches || 0
 			statsData.myWins = res.stats.my_wins || 0
@@ -325,17 +403,16 @@ const fetchStats = async () => {
 			statsData.avgScoreDiff = res.stats.avg_score_diff || 0
 			statsData.maxWinStreak = res.stats.max_win_streak || 0
 		}
+
+		statsLoaded.value = true
 	} catch (error) {
 		console.error('获取交锋统计失败:', error)
-		// 使用传入的对手名称
 		opponentData.name = opponentName.value
+		loadErrorMessage.value = error?.message || '交锋统计加载失败'
 		throw error
 	}
 }
 
-/**
- * 获取交锋历史
- */
 const fetchHistory = async (isRefresh = false, isLoadMore = false) => {
 	if (isLoadingMore.value) return
 
@@ -343,9 +420,16 @@ const fetchHistory = async (isRefresh = false, isLoadMore = false) => {
 		currentPage.value = 1
 		hasMore.value = true
 	} else if (isLoadMore) {
-		if (!hasMore.value) return
+		if (!hasMore.value || currentFilter.value === 3) return
 		isLoadingMore.value = true
 		currentPage.value++
+	}
+
+	if (!isLoadMore) {
+		historyLoaded.value = false
+		if (statsLoaded.value) {
+			loadErrorMessage.value = ''
+		}
 	}
 
 	try {
@@ -356,11 +440,10 @@ const fetchHistory = async (isRefresh = false, isLoadMore = false) => {
 			opponentName: opponentData.name || opponentName.value,
 			page: currentPage.value,
 			pageSize,
-			result: currentFilter.value
+			result: currentFilter.value === 3 ? 0 : currentFilter.value
 		})
 
 		const res = await getH2HHistory(params)
-
 		const list = res.list || []
 		total.value = res.total || 0
 
@@ -370,21 +453,27 @@ const fetchHistory = async (isRefresh = false, isLoadMore = false) => {
 			historyList.value = [...historyList.value, ...list]
 		}
 
+		if (currentFilter.value === 0 || currentFilter.value === 3) {
+			summaryHistory.value = historyList.value
+		}
+
 		hasMore.value = historyList.value.length < total.value
+		historyLoaded.value = true
 	} catch (error) {
 		console.error('获取交锋历史失败:', error)
+		loadErrorMessage.value = error?.message || '交锋历史加载失败'
 		handleTargetLoadFailure(error)
 		if (!isLoadMore) {
 			historyList.value = []
+			if (currentFilter.value === 0 || currentFilter.value === 3) {
+				summaryHistory.value = []
+			}
 		}
 	} finally {
 		isLoadingMore.value = false
 	}
 }
 
-/**
- * 筛选切换
- */
 const handleFilterChange = (filter) => {
 	if (currentFilter.value === filter) return
 	currentFilter.value = filter
@@ -394,36 +483,35 @@ const handleFilterChange = (filter) => {
 	fetchHistory(true, false)
 }
 
-/**
- * 加载更多
- */
 const onLoadMore = () => {
+	if (currentFilter.value === 3) return
 	fetchHistory(false, true)
 }
 
-/**
- * 获取头像占位文字
- */
+const goToMatchDetail = (matchId) => {
+	if (!matchId) return
+	uni.navigateTo({
+		url: `/subPages/match/matchDetail?match_id=${matchId}`
+	})
+}
+
+const openPrimaryAction = () => {
+	uni.navigateTo({
+		url: '/subPages/social/challenges'
+	})
+}
+
 const getAvatarText = (name) => {
 	if (!name) return '?'
 	return name.substring(0, 1).toUpperCase()
 }
 
-/**
- * 格式化对局日期
- */
 const formatMatchDate = (dateStr) => {
 	if (!dateStr) return ''
 	const date = new Date(dateStr)
-	const year = date.getFullYear()
-	const month = date.getMonth() + 1
-	const day = date.getDate()
-	return `${year}年${month}月${day}日`
+	return `${date.getMonth() + 1}月${date.getDate()}日 · ${formatRelativeTime(dateStr)}`
 }
 
-/**
- * 获取结果样式类
- */
 const getResultClass = (result) => {
 	switch (result) {
 		case 1:
@@ -434,22 +522,6 @@ const getResultClass = (result) => {
 			return 'draw'
 		default:
 			return ''
-	}
-}
-
-/**
- * 获取结果文本
- */
-const getResultText = (result) => {
-	switch (result) {
-		case 1:
-			return '胜利'
-		case 2:
-			return '失败'
-		case 3:
-			return '平局'
-		default:
-			return '未知'
 	}
 }
 </script>

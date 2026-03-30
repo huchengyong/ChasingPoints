@@ -13,31 +13,34 @@
     }
 
     .hero-kicker,
+    .hero-meta,
     .vs-sub,
     .score-desc,
     .section-tip,
-    .trend-type,
     .loading-text,
-    .empty-state text {
+    .empty-state text,
+    .evidence-index {
       color: #94a3b8;
     }
 
+    .hero-title,
     .player-name,
     .score-text,
     .section-title,
     .summary-title,
     .summary-text,
-    .label,
-    .value,
-    .trend-date,
-    .trend-score {
+    .evidence-text {
       color: #f8fafc;
     }
 
     .summary-card,
-    .stat-item,
-    .trend-item {
+    .evidence-item,
+    .retry-btn {
       background: #334155;
+    }
+
+    .retry-btn text {
+      color: #f8fafc;
     }
   }
 }
@@ -64,6 +67,10 @@
   }
 }
 
+.error-state {
+  gap: 20rpx;
+}
+
 .report-scroll {
   min-height: 100vh;
   padding: 24rpx;
@@ -87,6 +94,23 @@
 .hero-kicker {
   font-size: 22rpx;
   color: #C69200;
+}
+
+.hero-title {
+  display: block;
+  margin-top: 18rpx;
+  font-size: 40rpx;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #0f172a;
+}
+
+.hero-meta {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: #64748b;
 }
 
 .player-row {
@@ -165,6 +189,10 @@
   padding: 20rpx;
 }
 
+.summary-card.compact {
+  margin-top: 20rpx;
+}
+
 .summary-title {
   font-size: 24rpx;
   font-weight: 600;
@@ -197,78 +225,34 @@
   color: #64748b;
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+.evidence-list {
+  margin-top: 20rpx;
+  display: flex;
+  flex-direction: column;
   gap: 16rpx;
-  margin-top: 20rpx;
 }
 
-.stat-item {
-  background: #f8fafc;
-  border-radius: 20rpx;
-  padding: 20rpx;
-}
-
-.label {
-  display: block;
-  font-size: 22rpx;
-  color: #64748b;
-}
-
-.value {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 34rpx;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.trend-list {
-  margin-top: 20rpx;
-}
-
-.trend-item {
+.evidence-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 18rpx;
   background: #f8fafc;
   border-radius: 20rpx;
-  padding: 20rpx;
-  margin-bottom: 12rpx;
+  padding: 22rpx 20rpx;
 }
 
-.trend-date,
-.trend-score {
-  display: block;
-  font-size: 26rpx;
-  color: #0f172a;
-}
-
-.trend-type {
-  display: block;
-  margin-top: 8rpx;
+.evidence-index {
+  width: 60rpx;
   font-size: 22rpx;
+  font-weight: 600;
   color: #64748b;
 }
 
-.trend-result {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 24rpx;
-  text-align: right;
-
-  &.win {
-    color: #16a34a;
-  }
-
-  &.lose {
-    color: #ef4444;
-  }
-
-  &.draw {
-    color: #f59e0b;
-  }
+.evidence-text {
+  flex: 1;
+  font-size: 28rpx;
+  line-height: 1.6;
+  color: #0f172a;
 }
 
 .actions-card {
@@ -285,8 +269,9 @@
 .primary-btn,
 .secondary-btn {
   width: 100%;
+  height: 96rpx;
+  line-height: 96rpx;
   border-radius: 18rpx;
-  padding: 24rpx 0;
 
   &::after {
     display: none;
@@ -333,4 +318,22 @@
 .poster-image {
   width: 100%;
   border-radius: 24rpx;
+}
+
+.retry-btn {
+  min-width: 220rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  border-radius: 999rpx;
+  background: rgba(224, 174, 18, 0.16);
+
+  &::after {
+    display: none;
+  }
+
+  text {
+    font-size: 28rpx;
+    font-weight: 600;
+    color: #C69200;
+  }
 }

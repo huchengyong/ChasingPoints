@@ -147,3 +147,12 @@ test('h2h record page handles target access failures with an explicit navigateBa
   assert.match(source, /buildH2HLoadFailureAction/)
   assert.match(source, /uni\.navigateBack/)
 })
+
+test('h2h record page uses view models, exposes retry copy, and links cards to match detail', () => {
+  const source = readFileSync(new URL('../subPages/user/h2hRecord.vue', import.meta.url), 'utf8')
+
+  assert.match(source, /buildH2HHeroViewModel/)
+  assert.match(source, /shouldShowH2HSummaryCard/)
+  assert.match(source, /matchDetail\?match_id=\$\{matchId\}/)
+  assert.match(source, /重新加载/)
+})
