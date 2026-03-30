@@ -5,6 +5,7 @@ import {
   buildBlacklistFriendPayload,
   buildDeleteFriendPayload,
   buildFriendH2HUrl,
+  buildFriendHomepageUrl,
   buildFriendPkReportUrl,
   normalizeFriendListItem,
   resolveFriendUserId
@@ -47,6 +48,18 @@ test('buildFriendPkReportUrl keeps avatar, name, and canonical user id aligned',
       avatar: 'https://img.example/c c.png'
     }),
     '/subPages/social/pkReport?opponent_id=99&opponent_name=%E7%90%83%E5%8F%8B%20C&opponent_avatar=https%3A%2F%2Fimg.example%2Fc%20c.png'
+  )
+})
+
+test('buildFriendHomepageUrl carries identity fields needed by the lite homepage', () => {
+  assert.equal(
+    buildFriendHomepageUrl({
+      user_id: 66,
+      nickname: '球友 D',
+      avatar: 'https://img.example/d.png',
+      rank_name: '星耀'
+    }),
+    '/subPages/social/friendHomepage?opponent_id=66&opponent_name=%E7%90%83%E5%8F%8B%20D&opponent_avatar=https%3A%2F%2Fimg.example%2Fd.png&rank_name=%E6%98%9F%E8%80%80'
   )
 })
 

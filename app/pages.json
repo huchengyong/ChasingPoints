@@ -256,6 +256,12 @@
 					}
 				},
 				{
+					"path": "friendHomepage",
+					"style": {
+						"navigationBarTitleText": "好友主页"
+					}
+				},
+				{
 					"path": "addFriend",
 					"style": {
 						"navigationBarTitleText": "添加好友"

@@ -13,7 +13,7 @@ subPages/
 ├── notification/  # index（通知中心）
 ├── rules/         # index、detail、glossary
 ├── season/        # index、report
-├── social/        # feed、postCreate、friendList、addFriend、friendRequests、challenges、pkReport
+├── social/        # feed、postCreate、friendList、friendHomepage、addFriend、friendRequests、challenges、pkReport
 ├── tournament/    # index、detail、create、bracket
 ├── user/          # matchHistory、rankExplain、notification、opponentRecord、h2hRecord、settings、statsDetail
 └── venue/         # index、detail、submit

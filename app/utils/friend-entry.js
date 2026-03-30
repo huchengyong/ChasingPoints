@@ -27,6 +27,21 @@ export const buildFriendH2HUrl = (item = {}) => {
   return `/subPages/user/h2hRecord?${query.join('&')}`
 }
 
+export const buildFriendHomepageUrl = (item = {}) => {
+  const friendUserId = resolveFriendUserId(item)
+  const query = []
+
+  if (friendUserId > 0) {
+    query.push(`opponent_id=${friendUserId}`)
+  }
+
+  query.push(`opponent_name=${encodeURIComponent(item.nickname || '球友')}`)
+  query.push(`opponent_avatar=${encodeURIComponent(item.avatar || '')}`)
+  query.push(`rank_name=${encodeURIComponent(item.rank_name || '')}`)
+
+  return `/subPages/social/friendHomepage?${query.join('&')}`
+}
+
 export const buildFriendPkReportUrl = (item = {}) => {
   const friendUserId = resolveFriendUserId(item)
   const query = []

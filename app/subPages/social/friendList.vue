@@ -93,7 +93,7 @@ import { useFriendRequestStore } from '@/store/friendRequest.js'
 import {
 	buildBlacklistFriendPayload,
 	buildDeleteFriendPayload,
-	buildFriendH2HUrl,
+	buildFriendHomepageUrl,
 	buildFriendPkReportUrl,
 	normalizeFriendListItem,
 	resolveFriendUserId
@@ -174,7 +174,7 @@ const navigateToFriendDetail = (item) => {
 		uni.navigateTo({ url: buildFriendPkReportUrl(item) })
 		return
 	}
-	uni.navigateTo({ url: buildFriendH2HUrl(item) })
+	uni.navigateTo({ url: buildFriendHomepageUrl(item) })
 }
 
 const resetSwipeState = () => {
