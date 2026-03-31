@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 
+	logicx "chasing_points/internal/logic"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -67,7 +68,7 @@ func (l *GetUserInfoLogic) GetUserInfo() (resp *types.GetUserInfoResp, err error
 			Nickname:  user.Nickname,
 			Avatar:    user.Avatar,
 			Status:    user.Status,
-			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
+			CreatedAt: logicx.FormatUTC8Time(user.CreatedAt),
 		},
 	}, nil
 }

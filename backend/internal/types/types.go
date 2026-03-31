@@ -449,6 +449,25 @@ type CommonResp struct {
 	Message string `json:"message"`
 }
 
+type CreateMemberSubscriptionOrderReq struct {
+	PlanCode   string `json:"plan_code"`
+	PayChannel string `json:"pay_channel"`
+}
+
+type CreateMemberSubscriptionOrderResp struct {
+	Success            bool                `json:"success"`
+	Message            string              `json:"message"`
+	OrderNo            string              `json:"order_no"`
+	PayChannel         string              `json:"pay_channel"`
+	PlanCode           string              `json:"plan_code"`
+	PlanName           string              `json:"plan_name"`
+	AmountFen          int                 `json:"amount_fen"`
+	AmountYuan         string              `json:"amount_yuan"`
+	Status             string              `json:"status"`
+	AlipayOrderString  string              `json:"alipay_order_string,optional"`
+	WechatAppPayParams *WechatAppPayParams `json:"wechat_app_pay_params,optional"`
+}
+
 type CreatePostReq struct {
 	Content  string   `json:"content"`
 	Images   []string `json:"images,optional"`
@@ -800,6 +819,40 @@ type GetMatchShareDataResp struct {
 	Data    *MatchShareData `json:"data"`
 }
 
+type GetMemberPlansResp struct {
+	Success     bool             `json:"success"`
+	CurrentTime string           `json:"current_time"`
+	Plans       []MemberPlanInfo `json:"plans"`
+}
+
+type GetMemberStatusResp struct {
+	Success         bool   `json:"success"`
+	IsActive        bool   `json:"is_active"`
+	CurrentTime     string `json:"current_time"`
+	PlanCode        string `json:"plan_code,optional"`
+	PlanName        string `json:"plan_name,optional"`
+	MemberExpiresAt string `json:"member_expires_at,optional"`
+}
+
+type GetMemberSubscriptionOrderStatusReq struct {
+	OrderNo string `form:"order_no"`
+}
+
+type GetMemberSubscriptionOrderStatusResp struct {
+	Success               bool   `json:"success"`
+	Message               string `json:"message,optional"`
+	OrderNo               string `json:"order_no"`
+	PayChannel            string `json:"pay_channel"`
+	PlanCode              string `json:"plan_code"`
+	PlanName              string `json:"plan_name"`
+	AmountFen             int    `json:"amount_fen"`
+	AmountYuan            string `json:"amount_yuan"`
+	Status                string `json:"status"`
+	PaidAt                string `json:"paid_at,optional"`
+	MemberExpiresAtBefore string `json:"member_expires_at_before,optional"`
+	MemberExpiresAtAfter  string `json:"member_expires_at_after,optional"`
+}
+
 type GetMyCheckinsReq struct {
 	Page     int `form:"page,default=1"`
 	PageSize int `form:"page_size,default=20"`
@@ -867,6 +920,7 @@ type GetOpponentListReq struct {
 type GetOpponentListResp struct {
 	Success        bool                 `json:"success"`
 	Message        string               `json:"message,optional"`
+	Hidden         bool                 `json:"hidden"`
 	TotalOpponents int                  `json:"total_opponents"` // 总对手数
 	TotalWins      int                  `json:"total_wins"`      // 总胜场
 	Total          int64                `json:"total"`
@@ -1055,6 +1109,11 @@ type GetUserAchievementsResp struct {
 type GetUserInfoResp struct {
 	Success  bool      `json:"success"`
 	UserInfo *UserInfo `json:"user_info"`
+}
+
+type GetUserPrivacyResp struct {
+	Success         bool `json:"success"`
+	HideMatchRecord bool `json:"hide_match_record"`
 }
 
 type GetUserRankInfoReq struct {
@@ -1361,6 +1420,17 @@ type MatchUndoResp struct {
 	MyScore                   int               `json:"my_score"`
 	OpponentScore             int               `json:"opponent_score"`
 	Message                   string            `json:"message"`
+}
+
+type MemberPlanInfo struct {
+	PlanCode      string `json:"plan_code"`
+	PlanName      string `json:"plan_name"`
+	PriceFen      int    `json:"price_fen"`
+	PriceYuan     string `json:"price_yuan"`
+	DurationDays  int    `json:"duration_days"`
+	DurationLabel string `json:"duration_label"`
+	Description   string `json:"description"`
+	Highlight     string `json:"highlight,optional"`
 }
 
 type NotificationIdReq struct {
@@ -1758,6 +1828,16 @@ type UpdateTournamentMatchReq struct {
 	MatchId           int64 `json:"match_id,optional"`
 }
 
+type UpdateUserPrivacyReq struct {
+	HideMatchRecord bool `json:"hide_match_record"`
+}
+
+type UpdateUserPrivacyResp struct {
+	Success         bool   `json:"success"`
+	Message         string `json:"message"`
+	HideMatchRecord bool   `json:"hide_match_record"`
+}
+
 type UserInfo struct {
 	Id        int64  `json:"id"`
 	Phone     string `json:"phone"`
@@ -1804,4 +1884,14 @@ type VenueInfo struct {
 	Distance      float64  `json:"distance,omitempty"`
 	CheckinCount  int      `json:"checkin_count"`
 	Status        int      `json:"status"`
+}
+
+type WechatAppPayParams struct {
+	Appid     string `json:"appid"`
+	Partnerid string `json:"partnerid"`
+	Prepayid  string `json:"prepayid"`
+	Package   string `json:"package"`
+	Noncestr  string `json:"noncestr"`
+	Timestamp string `json:"timestamp"`
+	Sign      string `json:"sign"`
 }

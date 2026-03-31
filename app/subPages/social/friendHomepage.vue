@@ -41,11 +41,11 @@
 					<view class="status-chip">
 						<text>已是好友</text>
 					</view>
-					<text class="status-desc">你们已经是好友了，接下来的每一场都会慢慢写进这份战绩。</text>
+					<text class="status-desc">这里直接看 TA 的公开战绩，想看你们之间的对比就去 PK 报表。</text>
 				</view>
 
 				<view class="hero-insight">
-					<text class="insight-label">关系里的真实战绩</text>
+					<text class="insight-label">好友近况</text>
 					<text class="insight-title">{{ summary.heroTitle }}</text>
 					<text class="insight-desc">{{ summary.heroDesc }}</text>
 				</view>
@@ -61,21 +61,67 @@
 						<text>{{ summary.recentMatchText }}</text>
 					</view>
 				</view>
+
+				<button class="primary-btn hero-primary-btn" @tap="goToPkReport">
+					<text>PK 报表</text>
+				</button>
 			</view>
 
 			<view class="section-card">
 				<view class="section-header">
-					<text class="section-title">继续查看</text>
-					<text class="section-tip">查完整记录 or 看对比</text>
+					<text class="section-title">{{ summary.battleSectionTitle }}</text>
+					<text class="section-tip">{{ summary.battleSectionTip }}</text>
 				</view>
 
-				<view class="action-list">
-					<button class="primary-btn" @tap="goToH2H">
-						<text>查看对方战绩</text>
-					</button>
-					<button class="secondary-btn" @tap="goToPkReport">
-						<text>PK 报表</text>
-					</button>
+				<view v-if="battleListHidden" class="battle-empty-card">
+					<text class="battle-empty-title">{{ summary.hiddenTitle }}</text>
+					<text class="battle-empty-desc">{{ summary.hiddenDesc }}</text>
+				</view>
+
+				<view v-else-if="battleCardViewModels.length === 0" class="battle-empty-card">
+					<text class="battle-empty-title">{{ summary.emptyTitle }}</text>
+					<text class="battle-empty-desc">{{ summary.emptyDesc }}</text>
+				</view>
+
+				<view v-else class="battle-list">
+					<view
+						v-for="item in battleCardViewModels"
+						:key="item.id || item.name"
+						class="battle-item"
+						:class="item.toneClass"
+						@tap="goToBattleDetail(item)"
+					>
+						<view class="battle-left">
+							<image
+								v-if="item.avatar"
+								class="battle-avatar"
+								:src="item.avatar"
+								mode="aspectFill"
+							/>
+							<view v-else class="battle-avatar battle-avatar-placeholder">
+								<text>{{ getBattleAvatarText(item.name) }}</text>
+							</view>
+							<view class="battle-copy">
+								<view class="battle-name-row">
+									<text class="battle-name">{{ item.name || '对手' }}</text>
+									<view class="battle-badge" :class="item.toneClass">
+										<text>{{ item.relationshipBadge }}</text>
+									</view>
+								</view>
+								<text class="battle-desc">{{ item.relationshipText }}</text>
+								<view class="battle-meta-row">
+									<text class="battle-meta">{{ item.recordText }}</text>
+									<text class="battle-meta">{{ item.lastMatchText }}</text>
+								</view>
+							</view>
+						</view>
+
+						<view class="battle-right">
+							<text class="battle-win-rate" :class="item.toneClass">{{ item.winRateText }}</text>
+							<text class="battle-sample">{{ item.sampleText }}</text>
+							<text class="battle-link">查看交锋</text>
+						</view>
+					</view>
 				</view>
 			</view>
 		</scroll-view>
@@ -86,11 +132,15 @@
 import { computed, reactive, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useThemeStore } from '@/store/theme.js'
-import { getH2HHistory, getH2HStats } from '@/api/match.js'
-import { buildFriendOpponentRecordUrl, buildFriendPkReportUrl } from '@/utils/friend-entry.js'
+import { getOpponentList } from '@/api/match.js'
+import { buildFriendPkReportUrl } from '@/utils/friend-entry.js'
+import {
+	buildOpponentCardViewModels,
+	buildOpponentH2HUrl,
+	buildOpponentRecordRequestParams
+} from '@/utils/opponent-record.js'
 import {
 	buildFriendHomepageSummary,
-	fetchFriendHomepageData,
 	normalizeFriendHomepageOptions
 } from '@/utils/friend-homepage.js'
 
@@ -101,6 +151,8 @@ const loading = ref(true)
 const loadFailed = ref(false)
 const loadErrorText = ref('加载好友主页失败，请稍后再试。')
 const lastMatchAt = ref('')
+const battleListHidden = ref(false)
+const battleOpponents = ref([])
 
 const friendProfile = reactive({
 	id: 0,
@@ -111,8 +163,7 @@ const friendProfile = reactive({
 
 const stats = reactive({
 	total_matches: 0,
-	my_wins: 0,
-	opponent_wins: 0
+	total_wins: 0
 })
 
 const summary = computed(() => buildFriendHomepageSummary({
@@ -132,21 +183,18 @@ const friendPayload = computed(() => ({
 	rank_name: friendProfile.rankName || ''
 }))
 
-const resolveQueryParams = () => {
-	const params = {}
+const battleCardViewModels = computed(() => buildOpponentCardViewModels({
+	opponents: battleOpponents.value,
+	subjectName: friendProfile.name || 'TA'
+}))
 
-	if (friendProfile.id > 0) {
-		params.opponent_id = friendProfile.id
-	} else if (friendProfile.name) {
-		params.opponent_name = friendProfile.name
-	}
-
-	return params
+const getBattleAvatarText = (name = '') => {
+	if (!name) return '友'
+	return String(name).slice(0, 1).toUpperCase()
 }
 
 const loadData = async () => {
-	const params = resolveQueryParams()
-	if (!params.opponent_id && !params.opponent_name) {
+	if (!friendProfile.id) {
 		loadFailed.value = true
 		loadErrorText.value = '好友信息异常，请返回好友列表后重试。'
 		loading.value = false
@@ -159,26 +207,17 @@ const loadData = async () => {
 	loadErrorText.value = '加载好友主页失败，请稍后再试。'
 
 	try {
-		const { statsRes, historyRes } = await fetchFriendHomepageData({
-			params,
-			getStats: getH2HStats,
-			getHistory: getH2HHistory
-		})
-
-		if (statsRes.opponent) {
-			friendProfile.id = statsRes.opponent.id || friendProfile.id
-			friendProfile.name = statsRes.opponent.name || friendProfile.name
-			friendProfile.avatar = statsRes.opponent.avatar || friendProfile.avatar
-			friendProfile.rankName = statsRes.opponent.rank_name || friendProfile.rankName
-		}
-
-		if (statsRes.stats) {
-			stats.total_matches = statsRes.stats.total_matches || 0
-			stats.my_wins = statsRes.stats.my_wins || 0
-			stats.opponent_wins = statsRes.stats.opponent_wins || 0
-		}
-
-		lastMatchAt.value = historyRes.list?.[0]?.match_time || ''
+		const response = await getOpponentList(buildOpponentRecordRequestParams({
+			page: 1,
+			pageSize: 100,
+			targetUserId: friendProfile.id
+		}))
+		const list = Array.isArray(response.list) ? response.list : []
+		battleListHidden.value = Boolean(response.hidden || response.is_hidden || response.message === '对方已隐藏战绩')
+		battleOpponents.value = battleListHidden.value ? [] : list
+		stats.total_matches = list.reduce((sum, item = {}) => sum + Number(item.total_matches || 0), 0)
+		stats.total_wins = Number(response.total_wins || 0)
+		lastMatchAt.value = list[0]?.last_match_at || ''
 	} catch (error) {
 		loadFailed.value = true
 		console.error('加载好友主页失败:', error)
@@ -188,8 +227,15 @@ const loadData = async () => {
 	}
 }
 
-const goToH2H = () => {
-	uni.navigateTo({ url: buildFriendOpponentRecordUrl(friendPayload.value) })
+const goToBattleDetail = (item) => {
+	uni.navigateTo({
+		url: buildOpponentH2HUrl({
+			opponent: item,
+			targetUserId: friendProfile.id,
+			targetName: friendProfile.name,
+			targetAvatar: friendProfile.avatar
+		})
+	})
 }
 
 const goToPkReport = () => {

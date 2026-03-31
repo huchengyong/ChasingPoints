@@ -58,6 +58,33 @@ func (l *GetOpponentListLogic) GetOpponentList(req *types.GetOpponentListReq) (r
 		subjectUserId = req.TargetUserId
 	}
 
+	if subjectUserId != viewerUserId {
+		targetUser, findErr := l.svcCtx.UserModel.FindById(subjectUserId)
+		if findErr != nil {
+			l.Logger.Errorf("查询目标用户失败: %v", findErr)
+			return &types.GetOpponentListResp{
+				Success: false,
+				Message: "获取对方战绩失败",
+				List:    []types.OpponentRecordItem{},
+			}, nil
+		}
+		if targetUser == nil {
+			return &types.GetOpponentListResp{
+				Success: false,
+				Message: "仅可查看好友的对方战绩",
+				List:    []types.OpponentRecordItem{},
+			}, nil
+		}
+		if targetUser.HideMatchRecord {
+			return &types.GetOpponentListResp{
+				Success: true,
+				Message: "对方已隐藏战绩",
+				Hidden:  true,
+				List:    []types.OpponentRecordItem{},
+			}, nil
+		}
+	}
+
 	// 分页参数
 	page := req.Page
 	if page < 1 {
@@ -116,6 +143,7 @@ func (l *GetOpponentListLogic) GetOpponentList(req *types.GetOpponentListReq) (r
 
 	return &types.GetOpponentListResp{
 		Success:        true,
+		Hidden:         false,
 		TotalOpponents: totalOpponents,
 		TotalWins:      totalWins,
 		Total:          total,

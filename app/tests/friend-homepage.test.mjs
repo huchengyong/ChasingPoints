@@ -38,13 +38,17 @@ test('buildFriendHomepageSummary exposes readable stat copy for matched friends'
     }),
     {
       hasMatches: true,
-      heroTitle: '你暂时领先',
-      heroDesc: '你们已经认真交手 12 场，你暂时领先。',
-      totalMatchesText: '12 场交手',
-      recordText: '你 7 胜 5 负',
-      recentMatchText: '最近一次交手 3天前',
+      heroTitle: '这位球友最近有 12 场真实对局',
+      heroDesc: '可以直接往下看 TA 的对手战绩列表，PK 报表里再看双方对比。',
+      totalMatchesText: '真实对局 12 场',
+      recordText: '累计胜场 7 场',
+      recentMatchText: '最近更新 3天前',
       emptyTitle: '',
-      emptyDesc: ''
+      emptyDesc: '',
+      battleSectionTitle: '对方战绩',
+      battleSectionTip: '直接查看 TA 最近的对手记录',
+      hiddenTitle: '对方已隐藏战绩',
+      hiddenDesc: '这位好友暂时没有公开自己的战绩列表'
     }
   )
 })
@@ -62,63 +66,51 @@ test('buildFriendHomepageSummary falls back to a calm empty state when no matche
     }),
     {
       hasMatches: false,
-      heroTitle: '你们还没正式交手',
-      heroDesc: '先约一场真实对局，这里就会慢慢留下你们的战绩。',
-      totalMatchesText: '0 场交手',
-      recordText: '你 0 胜 0 负',
-      recentMatchText: '最近一次交手 暂无记录',
-      emptyTitle: '你们还没有正式交手',
-      emptyDesc: '先积累一场真实对局，再来看战绩和 PK 报表'
+      heroTitle: '这位球友还没有公开的对局样本',
+      heroDesc: '等 TA 完成更多真实对局后，这里会直接更新最新战绩列表。',
+      totalMatchesText: '真实对局 0 场',
+      recordText: '累计胜场 0 场',
+      recentMatchText: '最近更新 暂无记录',
+      emptyTitle: '暂时还没有可展示的战绩',
+      emptyDesc: '等这位好友完成真实对局后，再回来看看',
+      battleSectionTitle: '对方战绩',
+      battleSectionTip: '直接查看 TA 最近的对手记录',
+      hiddenTitle: '对方已隐藏战绩',
+      hiddenDesc: '这位好友暂时没有公开自己的战绩列表'
     }
   )
 })
 
-test('buildFriendHomepageSummary uses a balanced headline for tied records', () => {
-  assert.deepEqual(
-    buildFriendHomepageSummary({
-      stats: {
-        total_matches: 6,
-        my_wins: 3,
-        opponent_wins: 3
-      },
-      lastMatchAt: '2026-03-20T12:00:00.000Z',
-      formatRelativeTime: () => '昨天'
-    }),
-    {
-      hasMatches: true,
-      heroTitle: '你们目前势均力敌',
-      heroDesc: '你们最近打得很胶着，暂时谁也没拉开差距。',
-      totalMatchesText: '6 场交手',
-      recordText: '你 3 胜 3 负',
-      recentMatchText: '最近一次交手 昨天',
-      emptyTitle: '',
-      emptyDesc: ''
-    }
-  )
+test('buildFriendHomepageSummary keeps friend homepage copy free from my-side comparison wording', () => {
+  const summary = buildFriendHomepageSummary({
+    stats: {
+      total_matches: 9,
+      my_wins: 4,
+      opponent_wins: 5
+    },
+    lastMatchAt: '2026-03-20T12:00:00.000Z',
+    formatRelativeTime: () => '前天'
+  })
+
+  assert.doesNotMatch(summary.heroTitle, /你|我们|交手|领先|落后|势均力敌/)
+  assert.doesNotMatch(summary.heroDesc, /你|我们|交手|领先|落后|追回|胶着/)
+  assert.equal(summary.recordText, '累计胜场 4 场')
+  assert.equal(summary.recentMatchText, '最近更新 前天')
 })
 
-test('buildFriendHomepageSummary uses a hopeful line when the friend is ahead', () => {
-  assert.deepEqual(
-    buildFriendHomepageSummary({
-      stats: {
-        total_matches: 9,
-        my_wins: 4,
-        opponent_wins: 5
-      },
-      lastMatchAt: '2026-03-20T12:00:00.000Z',
-      formatRelativeTime: () => '前天'
-    }),
-    {
-      hasMatches: true,
-      heroTitle: '他暂时领先',
-      heroDesc: '这位球友最近手感更好一点，你还有机会下一场追回来。',
-      totalMatchesText: '9 场交手',
-      recordText: '你 4 胜 5 负',
-      recentMatchText: '最近一次交手 前天',
-      emptyTitle: '',
-      emptyDesc: ''
-    }
-  )
+test('buildFriendHomepageSummary exposes dedicated hidden state copy for friend battle list', () => {
+  const summary = buildFriendHomepageSummary({
+    stats: {
+      total_matches: 9,
+      my_wins: 4,
+      opponent_wins: 5
+    },
+    lastMatchAt: '2026-03-20T12:00:00.000Z',
+    formatRelativeTime: () => '前天'
+  })
+
+  assert.equal(summary.hiddenTitle, '对方已隐藏战绩')
+  assert.equal(summary.hiddenDesc, '这位好友暂时没有公开自己的战绩列表')
 })
 
 test('fetchFriendHomepageData requests stats and the first history page together', async () => {

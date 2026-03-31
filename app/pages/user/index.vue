@@ -204,6 +204,23 @@
 					</button>
 				</view>
 
+					<view v-if="memberCenterCard.visible" class="subscription-entry-card" @click="handleOpenMemberCenter">
+						<view class="subscription-entry-head">
+							<view class="subscription-entry-copy">
+								<text class="subscription-entry-eyebrow">{{ memberCenterCard.eyebrow }}</text>
+								<text class="subscription-entry-title">{{ memberCenterCard.title }}</text>
+								<text class="subscription-entry-desc">{{ memberCenterCard.description }}</text>
+							</view>
+							<text class="subscription-entry-status">{{ memberCenterCard.statusText }}</text>
+						</view>
+						<view class="subscription-entry-footer">
+							<text class="subscription-entry-price">{{ memberCenterCard.priceText }}</text>
+							<button class="subscription-entry-btn">
+								<text>{{ memberCenterCard.actionText }}</text>
+							</button>
+						</view>
+					</view>
+
 				<view class="section-block">
 					<view class="section-header">
 						<text class="section-title">{{ sectionTitles.stats }}</text>
@@ -359,11 +376,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onUnmounted } from 'vue'
 import { onShow, onHide } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
-import { getFavoriteVenueRewardStatus, getUserStats } from '@/api/user.js'
+import { getFavoriteVenueRewardStatus, getUserPrivacy, getUserStats, updateUserPrivacy } from '@/api/user.js'
+import { getMemberStatus } from '@/api/member.js'
 import { getCurrentMatch, getMatchQRCode, startMatch } from '@/api/match.js'
 import { getUserRankInfo } from '@/api/rank.js'
 import { userWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
@@ -393,6 +411,7 @@ import {
 	resolveFavoriteVenueRewardTaskCard,
 	resolveFavoriteVenueMemberCard
 } from '@/utils/favorite-venue-reward.js'
+import { resolveMemberEntryCard } from '@/utils/member-center.js'
 
 const userStore = useUserStore()
 const themeStore = useThemeStore()
@@ -419,6 +438,7 @@ const qrCodeModalCopy = resolveQrCodeModalCopy()
 
 const isDarkMode = computed(() => themeStore.isDarkMode)
 const isHideMatch = ref(false)
+const hideMatchLoading = ref(false)
 const showGameTypeModal = ref(false)
 const showQrCodeModal = ref(false)
 const qrcodeLoading = ref(false)
@@ -429,6 +449,7 @@ const currentMatch = ref(null)
 const rankInfo = ref(null)
 const highestRankInfo = ref(null)
 const favoriteVenueRewardStatus = ref(null)
+const memberStatus = ref(null)
 const showFavoriteVenueRewardModal = ref(false)
 const rankGameTabs = GAME_TYPE_TABS
 
@@ -445,6 +466,7 @@ const userInfo = computed(() => ({
 const favoriteVenueMemberCard = computed(() => resolveFavoriteVenueMemberCard(favoriteVenueRewardStatus.value || {}))
 const favoriteVenueRewardCard = computed(() => resolveFavoriteVenueRewardTaskCard(favoriteVenueRewardStatus.value || {}))
 const favoriteVenueRewardPopupCopy = computed(() => resolveFavoriteVenueRewardPopupCopy(favoriteVenueRewardStatus.value || {}))
+const memberCenterCard = computed(() => resolveMemberEntryCard(memberStatus.value || {}))
 
 const userStats = reactive({
 	totalMatches: 0,
@@ -590,10 +612,6 @@ const quickActions = computed(() => ([
 	}
 ]))
 
-onMounted(() => {
-	loadHideMatchPreference()
-})
-
 onShow(() => {
 	if (isLoggedIn.value) {
 		loadHomepageData()
@@ -626,11 +644,13 @@ const loadHomepageData = async () => {
 	await Promise.all([
 		notificationStore.fetchUnreadCount(),
 		friendRequestStore.fetchPendingCount(),
+		loadUserPrivacy(),
 		loadUserStats(),
 		loadRankInfo(),
 		loadHighestRankInfo(),
 		loadCurrentMatch(),
-		loadFavoriteVenueRewardStatus()
+		loadFavoriteVenueRewardStatus(),
+		loadMemberStatus()
 	])
 	syncFavoriteVenueRewardModal()
 }
@@ -710,12 +730,34 @@ const loadFavoriteVenueRewardStatus = async () => {
 	}
 }
 
+const loadMemberStatus = async () => {
+	try {
+		const res = await getMemberStatus()
+		memberStatus.value = res.success ? res : null
+	} catch (error) {
+		console.error('获取会员状态失败:', error)
+		memberStatus.value = null
+	}
+}
+
+const loadUserPrivacy = async () => {
+	try {
+		const res = await getUserPrivacy()
+		isHideMatch.value = Boolean(res.success && res.hide_match_record)
+	} catch (error) {
+		console.error('获取用户隐私设置失败:', error)
+		isHideMatch.value = false
+	}
+}
+
 const resetHomepageState = () => {
 	currentMatch.value = null
 	rankInfo.value = null
 	highestRankInfo.value = null
 	favoriteVenueRewardStatus.value = null
+	memberStatus.value = null
 	showFavoriteVenueRewardModal.value = false
+	isHideMatch.value = false
 	userStats.totalMatches = 0
 	userStats.wins = 0
 	userStats.losses = 0
@@ -1000,17 +1042,35 @@ const handleNotificationCenter = () => {
 	uni.navigateTo({ url: '/subPages/notification/index' })
 }
 
-const loadHideMatchPreference = () => {
-	const savedHideMatch = uni.getStorageSync('user_hide_match')
-	if (savedHideMatch !== '' && savedHideMatch !== undefined) {
-		isHideMatch.value = savedHideMatch
-	}
-}
+const toggleHideMatch = async () => {
+	if (hideMatchLoading.value) return
 
-const toggleHideMatch = () => {
-	isHideMatch.value = !isHideMatch.value
-	uni.setStorageSync('user_hide_match', isHideMatch.value)
-	userStore.setHideMatch && userStore.setHideMatch(isHideMatch.value)
+	const nextValue = !isHideMatch.value
+	const previousValue = isHideMatch.value
+	isHideMatch.value = nextValue
+	hideMatchLoading.value = true
+
+	try {
+		const res = await updateUserPrivacy({ hide_match_record: nextValue })
+		if (!res.success) {
+			throw new Error(res.message || '更新隐私设置失败')
+		}
+
+		isHideMatch.value = Boolean(res.hide_match_record)
+		uni.showToast({
+			title: res.hide_match_record ? '已隐藏战绩' : '已公开战绩',
+			icon: 'none'
+		})
+	} catch (error) {
+		console.error('更新隐藏战绩失败:', error)
+		isHideMatch.value = previousValue
+		uni.showToast({
+			title: error.message || '更新失败',
+			icon: 'none'
+		})
+	} finally {
+		hideMatchLoading.value = false
+	}
 }
 
 const handleHelp = () => {
@@ -1019,6 +1079,10 @@ const handleHelp = () => {
 
 const handleSettings = () => {
 	uni.navigateTo({ url: '/subPages/user/settings' })
+}
+
+const handleOpenMemberCenter = () => {
+	uni.navigateTo({ url: '/subPages/user/memberCenter' })
 }
 
 const handleQrCode = () => {

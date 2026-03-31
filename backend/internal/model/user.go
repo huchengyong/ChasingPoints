@@ -16,6 +16,7 @@ type User struct {
 	Status          int            `gorm:"not null;default:1"`
 	PushToken       string         `gorm:"size:255;not null;default:''"`
 	MemberExpiresAt *time.Time     `gorm:"comment:会员到期时间" json:"member_expires_at"`
+	HideMatchRecord bool           `gorm:"not null;default:false" json:"hide_match_record"`
 	CreatedAt       time.Time      `gorm:"autoCreateTime"`
 	UpdatedAt       time.Time      `gorm:"autoUpdateTime"`
 	DeletedAt       gorm.DeletedAt `gorm:"index"`
@@ -87,6 +88,10 @@ func (m *UserModel) UpdateMemberExpiresAtWithTx(tx *gorm.DB, userId int64, expir
 		return errors.New("user db is nil")
 	}
 	return db.Model(&User{}).Where("id = ?", userId).Update("member_expires_at", expiresAt).Error
+}
+
+func (m *UserModel) UpdateHideMatchRecord(userId int64, hidden bool) error {
+	return m.db.Model(&User{}).Where("id = ?", userId).Update("hide_match_record", hidden).Error
 }
 
 // LockUsersForUpdate 按主键顺序锁定用户行，用于串行化涉及同一用户的关键事务。

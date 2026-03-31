@@ -217,6 +217,21 @@ type GetUserInfoResp {
 	UserInfo *UserInfo `json:"user_info"`
 }
 
+type GetUserPrivacyResp {
+	Success         bool `json:"success"`
+	HideMatchRecord bool `json:"hide_match_record"`
+}
+
+type UpdateUserPrivacyReq {
+	HideMatchRecord bool `json:"hide_match_record"`
+}
+
+type UpdateUserPrivacyResp {
+	Success         bool   `json:"success"`
+	Message         string `json:"message"`
+	HideMatchRecord bool   `json:"hide_match_record"`
+}
+
 type FavoriteVenueRewardStatusResp {
 	Success            bool   `json:"success"`
 	Enabled            bool   `json:"enabled"`
@@ -255,6 +270,14 @@ service chasing_points-api {
 	@handler GetUserInfo
 	get /info returns (GetUserInfoResp)
 
+	@doc "获取用户隐私设置"
+	@handler GetUserPrivacy
+	get /privacy returns (GetUserPrivacyResp)
+
+	@doc "更新用户隐私设置"
+	@handler UpdateUserPrivacy
+	post /privacy (UpdateUserPrivacyReq) returns (UpdateUserPrivacyResp)
+
 	@doc "获取常玩球馆奖励状态"
 	@handler GetFavoriteVenueRewardStatus
 	get /favorite-venue-reward-status returns (FavoriteVenueRewardStatusResp)
@@ -277,6 +300,118 @@ service chasing_points-api {
 type CommonResp {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
+}
+
+// ==================== 会员订阅 ====================
+type MemberPlanInfo {
+	PlanCode      string `json:"plan_code"`
+	PlanName      string `json:"plan_name"`
+	PriceFen      int    `json:"price_fen"`
+	PriceYuan     string `json:"price_yuan"`
+	DurationDays  int    `json:"duration_days"`
+	DurationLabel string `json:"duration_label"`
+	Description   string `json:"description"`
+	Highlight     string `json:"highlight,optional"`
+}
+
+type GetMemberPlansResp {
+	Success     bool             `json:"success"`
+	CurrentTime string           `json:"current_time"`
+	Plans       []MemberPlanInfo `json:"plans"`
+}
+
+type GetMemberStatusResp {
+	Success         bool   `json:"success"`
+	IsActive        bool   `json:"is_active"`
+	CurrentTime     string `json:"current_time"`
+	PlanCode        string `json:"plan_code,optional"`
+	PlanName        string `json:"plan_name,optional"`
+	MemberExpiresAt string `json:"member_expires_at,optional"`
+}
+
+type CreateMemberSubscriptionOrderReq {
+	PlanCode   string `json:"plan_code"`
+	PayChannel string `json:"pay_channel"`
+}
+
+type WechatAppPayParams {
+	Appid     string `json:"appid"`
+	Partnerid string `json:"partnerid"`
+	Prepayid  string `json:"prepayid"`
+	Package   string `json:"package"`
+	Noncestr  string `json:"noncestr"`
+	Timestamp string `json:"timestamp"`
+	Sign      string `json:"sign"`
+}
+
+type CreateMemberSubscriptionOrderResp {
+	Success            bool                `json:"success"`
+	Message            string              `json:"message"`
+	OrderNo            string              `json:"order_no"`
+	PayChannel         string              `json:"pay_channel"`
+	PlanCode           string              `json:"plan_code"`
+	PlanName           string              `json:"plan_name"`
+	AmountFen          int                 `json:"amount_fen"`
+	AmountYuan         string              `json:"amount_yuan"`
+	Status             string              `json:"status"`
+	AlipayOrderString  string              `json:"alipay_order_string,optional"`
+	WechatAppPayParams *WechatAppPayParams `json:"wechat_app_pay_params,optional"`
+}
+
+type GetMemberSubscriptionOrderStatusReq {
+	OrderNo string `form:"order_no"`
+}
+
+type GetMemberSubscriptionOrderStatusResp {
+	Success               bool   `json:"success"`
+	Message               string `json:"message,optional"`
+	OrderNo               string `json:"order_no"`
+	PayChannel            string `json:"pay_channel"`
+	PlanCode              string `json:"plan_code"`
+	PlanName              string `json:"plan_name"`
+	AmountFen             int    `json:"amount_fen"`
+	AmountYuan            string `json:"amount_yuan"`
+	Status                string `json:"status"`
+	PaidAt                string `json:"paid_at,optional"`
+	MemberExpiresAtBefore string `json:"member_expires_at_before,optional"`
+	MemberExpiresAtAfter  string `json:"member_expires_at_after,optional"`
+}
+
+@server (
+	prefix: /api/member
+	group:  member
+	jwt:    Auth
+)
+service chasing_points-api {
+	@doc "获取会员套餐列表"
+	@handler GetMemberPlans
+	get /plans returns (GetMemberPlansResp)
+
+	@doc "获取会员状态"
+	@handler GetMemberStatus
+	get /status returns (GetMemberStatusResp)
+
+	@doc "创建会员订阅订单"
+	@handler CreateMemberSubscriptionOrder
+	post /order (CreateMemberSubscriptionOrderReq) returns (CreateMemberSubscriptionOrderResp)
+
+	@doc "查询会员订阅订单状态"
+	@handler GetMemberSubscriptionOrderStatus
+	get /order/status (GetMemberSubscriptionOrderStatusReq) returns (GetMemberSubscriptionOrderStatusResp)
+}
+
+@server (
+	prefix: /api/payment
+	group:  payment
+)
+service chasing_points-api {
+	@doc "支付宝会员支付异步回调"
+	@handler AlipayMemberSubscriptionNotify
+	post /alipay/notify returns (CommonResp)
+
+	@doc "微信会员支付异步回调"
+	@handler WechatMemberSubscriptionNotify
+	post /wechat/notify returns (CommonResp)
 }
 
 // 特殊成绩项
@@ -723,6 +858,7 @@ type GetOpponentListReq {
 type GetOpponentListResp {
 	Success        bool                 `json:"success"`
 	Message        string               `json:"message,optional"`
+	Hidden         bool                 `json:"hidden"`
 	TotalOpponents int                  `json:"total_opponents"` // 总对手数
 	TotalWins      int                  `json:"total_wins"` // 总胜场
 	Total          int64                `json:"total"`

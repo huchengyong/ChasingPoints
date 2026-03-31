@@ -53,6 +53,7 @@ type ServiceContext struct {
 	GeocodeAccountModel            *model.GeocodeAccountModel
 	FavoriteVenueRewardConfigModel *model.FavoriteVenueRewardConfigModel
 	FavoriteVenueRewardRecordModel *model.FavoriteVenueRewardRecordModel
+	MemberSubscriptionOrderModel   *model.MemberSubscriptionOrderModel
 	TournamentMatchModel           *model.TournamentMatchModel
 	AdminModel                     *model.AdminModel
 	AdminLoginLogModel             *model.AdminLoginLogModel
@@ -101,6 +102,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		GeocodeAccountModel:            models.GeocodeAccountModel,
 		FavoriteVenueRewardConfigModel: models.FavoriteVenueRewardConfigModel,
 		FavoriteVenueRewardRecordModel: models.FavoriteVenueRewardRecordModel,
+		MemberSubscriptionOrderModel:   models.MemberSubscriptionOrderModel,
 		TournamentMatchModel:           models.TournamentMatchModel,
 		AdminModel:                     models.AdminModel,
 		AdminLoginLogModel:             models.AdminLoginLogModel,
@@ -136,6 +138,7 @@ type serviceModels struct {
 	GeocodeAccountModel            *model.GeocodeAccountModel
 	FavoriteVenueRewardConfigModel *model.FavoriteVenueRewardConfigModel
 	FavoriteVenueRewardRecordModel *model.FavoriteVenueRewardRecordModel
+	MemberSubscriptionOrderModel   *model.MemberSubscriptionOrderModel
 	TournamentMatchModel           *model.TournamentMatchModel
 	AdminModel                     *model.AdminModel
 	AdminLoginLogModel             *model.AdminLoginLogModel
@@ -194,6 +197,7 @@ func newServiceModels(db *gorm.DB) serviceModels {
 	geocodeAccountModel := model.NewGeocodeAccountModel(db)
 	favoriteVenueRewardConfigModel := model.NewFavoriteVenueRewardConfigModel(db)
 	favoriteVenueRewardRecordModel := model.NewFavoriteVenueRewardRecordModel(db)
+	memberSubscriptionOrderModel := model.NewMemberSubscriptionOrderModel(db)
 
 	return serviceModels{
 		UserModel:                      model.NewUserModel(db),
@@ -221,6 +225,7 @@ func newServiceModels(db *gorm.DB) serviceModels {
 		GeocodeAccountModel:            geocodeAccountModel,
 		FavoriteVenueRewardConfigModel: favoriteVenueRewardConfigModel,
 		FavoriteVenueRewardRecordModel: favoriteVenueRewardRecordModel,
+		MemberSubscriptionOrderModel:   memberSubscriptionOrderModel,
 		TournamentMatchModel:           model.NewTournamentMatchModel(db),
 		AdminModel:                     model.NewAdminModel(db),
 		AdminLoginLogModel:             model.NewAdminLoginLogModel(db),

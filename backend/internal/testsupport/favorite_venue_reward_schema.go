@@ -14,6 +14,7 @@ type favoriteVenueRewardUserSchema struct {
 	Status          int            `gorm:"not null;default:1"`
 	PushToken       string         `gorm:"size:255;not null;default:''"`
 	MemberExpiresAt *time.Time     `gorm:"comment:会员到期时间"`
+	HideMatchRecord bool           `gorm:"not null;default:false"`
 	CreatedAt       time.Time      `gorm:"autoCreateTime"`
 	UpdatedAt       time.Time      `gorm:"autoUpdateTime"`
 	DeletedAt       gorm.DeletedAt `gorm:"index"`

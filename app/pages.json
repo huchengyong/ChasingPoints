@@ -151,6 +151,14 @@
 					"style": {
 						"navigationBarTitleText": "设置"
 					}
+				},
+				{
+					"path": "memberCenter",
+					"style": {
+						"navigationBarTitleText": "会员中心",
+						"navigationBarBackgroundColor": "#f8fafc",
+						"backgroundColor": "#f8fafc"
+					}
 				}
 				,{
 					"path": "statsDetail",

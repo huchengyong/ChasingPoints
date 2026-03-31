@@ -14,8 +14,10 @@ import (
 	follow "chasing_points/internal/handler/follow"
 	friend "chasing_points/internal/handler/friend"
 	match "chasing_points/internal/handler/match"
+	member "chasing_points/internal/handler/member"
 	notification "chasing_points/internal/handler/notification"
 	opponent "chasing_points/internal/handler/opponent"
+	payment "chasing_points/internal/handler/payment"
 	public "chasing_points/internal/handler/public"
 	rank "chasing_points/internal/handler/rank"
 	rules "chasing_points/internal/handler/rules"
@@ -546,6 +548,37 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
+				// 创建会员订阅订单
+				Method:  http.MethodPost,
+				Path:    "/order",
+				Handler: member.CreateMemberSubscriptionOrderHandler(serverCtx),
+			},
+			{
+				// 查询会员订阅订单状态
+				Method:  http.MethodGet,
+				Path:    "/order/status",
+				Handler: member.GetMemberSubscriptionOrderStatusHandler(serverCtx),
+			},
+			{
+				// 获取会员套餐列表
+				Method:  http.MethodGet,
+				Path:    "/plans",
+				Handler: member.GetMemberPlansHandler(serverCtx),
+			},
+			{
+				// 获取会员状态
+				Method:  http.MethodGet,
+				Path:    "/status",
+				Handler: member.GetMemberStatusHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/member"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
 				// 删除通知
 				Method:  http.MethodPost,
 				Path:    "/delete",
@@ -597,6 +630,24 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
 		rest.WithPrefix("/api/opponent"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 支付宝会员支付异步回调
+				Method:  http.MethodPost,
+				Path:    "/alipay/notify",
+				Handler: payment.AlipayMemberSubscriptionNotifyHandler(serverCtx),
+			},
+			{
+				// 微信会员支付异步回调
+				Method:  http.MethodPost,
+				Path:    "/wechat/notify",
+				Handler: payment.WechatMemberSubscriptionNotifyHandler(serverCtx),
+			},
+		},
+		rest.WithPrefix("/api/payment"),
 	)
 
 	server.AddRoutes(
@@ -936,6 +987,18 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodPost,
 				Path:    "/nickname",
 				Handler: user.UpdateNicknameHandler(serverCtx),
+			},
+			{
+				// 获取用户隐私设置
+				Method:  http.MethodGet,
+				Path:    "/privacy",
+				Handler: user.GetUserPrivacyHandler(serverCtx),
+			},
+			{
+				// 更新用户隐私设置
+				Method:  http.MethodPost,
+				Path:    "/privacy",
+				Handler: user.UpdateUserPrivacyHandler(serverCtx),
 			},
 			{
 				// 更新推送令牌

@@ -60,4 +60,33 @@ type Config struct {
 		AutoPublish      bool   `json:",env=GEOCODE_AUTO_PUBLISH,default=true"`
 		EncryptSecret    string `json:",env=GEOCODE_ENCRYPT_SECRET,optional"`
 	}
+
+	// 支付宝支付配置
+	Alipay struct {
+		AppId      int64
+		PrivateKey string
+		PublicKey  string
+		PublicCert string
+		AppCert    string
+		RootCert   string
+		NotifyUrl  string
+		ReturnUrl  string
+		IsProd     bool
+		Charset    string
+		SignType   string
+		UseCert    bool
+	}
+
+	// 微信支付配置
+	WechatPay struct {
+		AppId      int64
+		MchId      int64
+		ApiKey     string
+		SerialNo   string
+		ApiV3Key   string
+		PrivateKey string
+		NotifyUrl  string
+		IsProd     bool
+		UseCert    bool
+	}
 }

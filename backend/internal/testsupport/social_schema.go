@@ -7,13 +7,14 @@ import (
 )
 
 type socialUserSchema struct {
-	Id              int64          `gorm:"primarykey"`
-	Phone           *string        `gorm:"uniqueIndex;size:20"`
-	Nickname        string         `gorm:"size:50;not null;default:''"`
-	Avatar          string         `gorm:"size:255;not null;default:''"`
-	Status          int            `gorm:"not null;default:1"`
-	PushToken       string         `gorm:"size:255;not null;default:''"`
+	Id              int64   `gorm:"primarykey"`
+	Phone           *string `gorm:"uniqueIndex;size:20"`
+	Nickname        string  `gorm:"size:50;not null;default:''"`
+	Avatar          string  `gorm:"size:255;not null;default:''"`
+	Status          int     `gorm:"not null;default:1"`
+	PushToken       string  `gorm:"size:255;not null;default:''"`
 	MemberExpiresAt *time.Time
+	HideMatchRecord bool           `gorm:"not null;default:false"`
 	CreatedAt       time.Time      `gorm:"autoCreateTime"`
 	UpdatedAt       time.Time      `gorm:"autoUpdateTime"`
 	DeletedAt       gorm.DeletedAt `gorm:"index"`
@@ -35,16 +36,16 @@ func (socialFollowSchema) TableName() string {
 }
 
 type socialPostSchema struct {
-	Id            int64     `gorm:"primarykey"`
-	UserId        int64     `gorm:"not null;index"`
-	Content       string    `gorm:"size:2000;not null"`
-	Images        *string   `gorm:"type:json"`
-	PostType      int       `gorm:"not null;default:3"`
-	MatchId       *int64    `gorm:"index"`
-	LikesCount    int       `gorm:"not null;default:0"`
-	CommentsCount int       `gorm:"not null;default:0"`
-	Status        int       `gorm:"not null;default:2;index"`
-	RejectReason  string    `gorm:"size:255;not null;default:''"`
+	Id            int64   `gorm:"primarykey"`
+	UserId        int64   `gorm:"not null;index"`
+	Content       string  `gorm:"size:2000;not null"`
+	Images        *string `gorm:"type:json"`
+	PostType      int     `gorm:"not null;default:3"`
+	MatchId       *int64  `gorm:"index"`
+	LikesCount    int     `gorm:"not null;default:0"`
+	CommentsCount int     `gorm:"not null;default:0"`
+	Status        int     `gorm:"not null;default:2;index"`
+	RejectReason  string  `gorm:"size:255;not null;default:''"`
 	ReviewedAt    *time.Time
 	ReviewedBy    *int64
 	CreatedAt     time.Time `gorm:"autoCreateTime"`

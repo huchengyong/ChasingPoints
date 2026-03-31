@@ -195,3 +195,42 @@ func TestGetOpponentListRejectsMissingTargetUserWithGenericMessage(t *testing.T)
 		t.Fatalf("unexpected response message: %#v", resp)
 	}
 }
+
+func TestGetOpponentListReturnsHiddenStateForFriendTargetWhoHidesMatchRecord(t *testing.T) {
+	svcCtx := newOpponentLogicTestSvc(t)
+	seedOpponentLogicUser(t, svcCtx, 101, "查看者")
+	if err := svcCtx.UserModel.Create(&model.User{
+		Id:              202,
+		Nickname:        "隐藏好友",
+		Status:          1,
+		HideMatchRecord: true,
+	}); err != nil {
+		t.Fatalf("create hidden friend: %v", err)
+	}
+
+	if err := svcCtx.FriendModel.AddFriend(101, 202); err != nil {
+		t.Fatalf("seed friendship: %v", err)
+	}
+
+	logic := NewGetOpponentListLogic(opponentLogicCtx(101), svcCtx)
+	resp, err := logic.GetOpponentList(&types.GetOpponentListReq{
+		Page:         1,
+		PageSize:     20,
+		TargetUserId: 202,
+	})
+	if err != nil {
+		t.Fatalf("get hidden friend target opponent list: %v", err)
+	}
+	if !resp.Success {
+		t.Fatalf("expected success response for hidden friend target, got %#v", resp)
+	}
+	if !resp.Hidden {
+		t.Fatalf("expected hidden state to be returned, got %#v", resp)
+	}
+	if resp.Message != "对方已隐藏战绩" {
+		t.Fatalf("unexpected hidden state message: %#v", resp)
+	}
+	if len(resp.List) != 0 {
+		t.Fatalf("expected empty list for hidden friend target, got %#v", resp.List)
+	}
+}

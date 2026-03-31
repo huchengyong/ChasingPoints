@@ -21,6 +21,24 @@ export const getFavoriteVenueRewardStatus = () => {
 }
 
 /**
+ * 获取用户隐私设置
+ * @returns {Promise}
+ */
+export const getUserPrivacy = () => {
+  return get('/api/user/privacy')
+}
+
+/**
+ * 更新用户隐私设置
+ * @param {Object} data
+ * @param {boolean} data.hide_match_record 是否隐藏战绩
+ * @returns {Promise}
+ */
+export const updateUserPrivacy = (data) => {
+  return post('/api/user/privacy', data)
+}
+
+/**
  * 更新昵称
  * @param {String} nickname 新昵称
  * @returns {Promise}
@@ -31,6 +49,8 @@ export const updateNickname = (nickname) => {
 
 export default {
   getFavoriteVenueRewardStatus,
+  getUserPrivacy,
   getUserStats,
+  updateUserPrivacy,
   updateNickname
 }

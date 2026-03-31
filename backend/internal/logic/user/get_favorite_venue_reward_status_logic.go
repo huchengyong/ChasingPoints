@@ -2,8 +2,8 @@ package user
 
 import (
 	"context"
-	"time"
 
+	logicx "chasing_points/internal/logic"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -11,8 +11,6 @@ import (
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
-
-const memberTimeLayout = "2006-01-02 15:04:05"
 
 type GetFavoriteVenueRewardStatusLogic struct {
 	logx.Logger
@@ -72,9 +70,9 @@ func (l *GetFavoriteVenueRewardStatusLogic) GetFavoriteVenueRewardStatus() (resp
 		resp.Status = "reward_granted"
 		resp.SubmittedVenueId = record.VenueId
 		if user.MemberExpiresAt != nil {
-			resp.MemberExpiresAt = user.MemberExpiresAt.Format(memberTimeLayout)
+			resp.MemberExpiresAt = logicx.FormatUTC8TimePtr(user.MemberExpiresAt)
 		} else {
-			resp.MemberExpiresAt = record.MemberExpiresAtAfter.Format(memberTimeLayout)
+			resp.MemberExpiresAt = logicx.FormatUTC8Time(record.MemberExpiresAtAfter)
 		}
 		return resp, nil
 	}
@@ -99,7 +97,7 @@ func (l *GetFavoriteVenueRewardStatusLogic) GetFavoriteVenueRewardStatus() (resp
 		}
 	}
 
-	if config.Enabled && model.FavoriteVenueRewardWindowExpired(user.CreatedAt, time.Now(), config.NewUserWindowDays) {
+	if config.Enabled && model.FavoriteVenueRewardWindowExpired(user.CreatedAt, logicx.NowUTC8(), config.NewUserWindowDays) {
 		resp.Status = "expired"
 	}
 
