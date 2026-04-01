@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"chasing_points/internal/config"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/testsupport"
@@ -83,6 +84,27 @@ func TestSocialPostReviewCreateDefaultsToPending(t *testing.T) {
 	}
 	if post.Status != model.SocialPostStatusPending {
 		t.Fatalf("expected pending status, got %d", post.Status)
+	}
+}
+
+func TestSocialPostReviewCreateBlockedInComplianceMode(t *testing.T) {
+	svcCtx := newSocialReviewTestSvc(t)
+	svcCtx.Config = config.Config{
+		Compliance: config.ComplianceConfig{
+			RestrictedMode: true,
+		},
+	}
+
+	logic := NewCreatePostLogic(socialUserCtx(101), svcCtx)
+	resp, err := logic.CreatePost(&types.CreatePostReq{
+		Content:  "今天打得不错",
+		PostType: 3,
+	})
+	if err != nil {
+		t.Fatalf("create post: %v", err)
+	}
+	if resp.Success {
+		t.Fatalf("expected compliance mode to block create post, got %#v", resp)
 	}
 }
 

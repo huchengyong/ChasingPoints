@@ -26,6 +26,10 @@ func NewGetPostCommentsLogic(ctx context.Context, svcCtx *svc.ServiceContext) *G
 }
 
 func (l *GetPostCommentsLogic) GetPostComments(req *types.GetPostCommentsReq) (resp *types.GetPostCommentsResp, err error) {
+	if !l.svcCtx.Config.SocialEnabled() {
+		return &types.GetPostCommentsResp{Success: false, Total: 0, List: []types.PostCommentInfo{}}, nil
+	}
+
 	post, err := l.svcCtx.SocialPostModel.FindById(req.PostId)
 	if err != nil {
 		l.Logger.Errorf("查询动态失败: postId=%d err=%v", req.PostId, err)

@@ -3,14 +3,14 @@
 		<view class="member-center-scroll">
 			<view class="member-hero">
 				<view class="member-hero-head">
-					<text class="member-hero-eyebrow">会员中心</text>
+					<text class="member-hero-eyebrow">{{ isComplianceMode ? '会员权益' : '会员中心' }}</text>
 					<text class="member-hero-status">{{ summary.statusText }}</text>
 				</view>
 				<text class="member-hero-title">{{ summary.title }}</text>
 				<text class="member-hero-desc">{{ summary.description }}</text>
 			</view>
 
-			<view class="member-section">
+			<view v-if="!isComplianceMode" class="member-section">
 				<view class="member-section-head">
 					<text class="member-section-title">订阅套餐</text>
 					<text class="member-section-tip">目前先开放月卡</text>
@@ -38,7 +38,7 @@
 				</view>
 			</view>
 
-			<view class="member-section">
+			<view v-if="!isComplianceMode" class="member-section">
 				<view class="member-section-head">
 					<text class="member-section-title">支付方式</text>
 				</view>
@@ -61,18 +61,24 @@
 
 			<view class="member-section">
 				<view class="member-section-head">
-					<text class="member-section-title">订阅说明</text>
+					<text class="member-section-title">{{ isComplianceMode ? '权益说明' : '订阅说明' }}</text>
 				</view>
 				<view class="tips-card">
-					<text class="tips-item">支付成功后会自动更新会员状态。</text>
-					<text class="tips-item">如果你当前会员仍在有效期内，续费会在现有到期时间基础上顺延。</text>
+					<text v-if="isComplianceMode" class="tips-item">当前会员权益由平台后台人工发放，前台不开放订阅与支付入口。</text>
+					<text v-if="isComplianceMode" class="tips-item">如你已获赠会员，状态和有效期会直接同步到这里。</text>
+					<text v-if="!isComplianceMode" class="tips-item">支付成功后会自动更新会员状态。</text>
+					<text v-if="!isComplianceMode" class="tips-item">如果你当前会员仍在有效期内，续费会在现有到期时间基础上顺延。</text>
 					<text class="tips-item">所有展示时间统一按 UTC+8 显示。</text>
 				</view>
 			</view>
 		</view>
 
 		<view class="member-action-bar">
-			<button class="member-submit-btn" :disabled="submitting || loading || !plans.length" @click="handleSubmit">
+			<button
+				class="member-submit-btn"
+				:disabled="isComplianceMode || submitting || loading || !plans.length"
+				@click="handleSubmit"
+			>
 				<text>{{ submitting ? '拉起支付中...' : summary.primaryActionText }}</text>
 			</button>
 		</view>
@@ -84,6 +90,7 @@ import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 
 import { getMemberPlans, getMemberStatus, createMemberSubscriptionOrder, getMemberSubscriptionOrderStatus } from '@/api/member.js'
+import { APP_COMPLIANCE_MODE } from '@/utils/compliance-mode.js'
 import { useThemeStore } from '@/store/theme.js'
 import {
 	createMemberPaymentRequest,
@@ -102,9 +109,12 @@ const plans = ref([])
 const selectedPlanCode = ref('member_monthly')
 const selectedPayChannel = ref('alipay')
 
+const isComplianceMode = APP_COMPLIANCE_MODE
 const isDarkMode = computed(() => themeStore.isDarkMode)
 const payChannelOptions = getMemberPayChannelOptions()
-const summary = computed(() => resolveMemberCenterSummary(memberStatus.value || {}))
+const summary = computed(() => resolveMemberCenterSummary(memberStatus.value || {}, new Date(), {
+	complianceMode: isComplianceMode
+}))
 const planCards = computed(() => resolveMemberPlanCards(plans.value, selectedPlanCode.value))
 
 onShow(() => {
@@ -116,12 +126,16 @@ const loadData = async () => {
 
 	loading.value = true
 	try {
-		const [plansRes, statusRes] = await Promise.all([
-			getMemberPlans(),
-			getMemberStatus()
-		])
+		const requests = [getMemberStatus()]
+		if (!isComplianceMode) {
+			requests.unshift(getMemberPlans())
+		}
 
-		plans.value = plansRes.success ? plansRes.plans || [] : []
+		const responses = await Promise.all(requests)
+		const plansRes = isComplianceMode ? null : responses[0]
+		const statusRes = isComplianceMode ? responses[0] : responses[1]
+
+		plans.value = plansRes?.success ? plansRes.plans || [] : []
 		memberStatus.value = statusRes.success ? statusRes : null
 
 		if (plans.value.length > 0 && !plans.value.some(item => item.plan_code === selectedPlanCode.value)) {
@@ -211,6 +225,13 @@ const requestAppPayment = (orderRes) => {
 }
 
 const handleSubmit = async () => {
+	if (isComplianceMode) {
+		uni.showToast({
+			title: '当前仅展示会员权益',
+			icon: 'none'
+		})
+		return
+	}
 	if (submitting.value || loading.value) return
 	if (!plans.value.length) {
 		uni.showToast({

@@ -81,14 +81,14 @@
       <view class="section-card actions-card">
         <view class="section-header">
           <text class="section-title">下一步</text>
-          <text class="section-tip">先表达结论，再决定要不要继续约战</text>
+          <text class="section-tip">先保存结论，再决定要不要继续约战</text>
         </view>
         <view class="action-list">
-          <button class="primary-btn" @tap="shareToPost">
-            <text>发到动态</text>
-          </button>
-          <button class="secondary-btn" @tap="savePoster">
+          <button class="primary-btn" @tap="savePoster">
             <text>{{ posterLoading ? '生成海报中' : '保存海报' }}</text>
+          </button>
+          <button class="secondary-btn" @tap="copyShareSummary">
+            <text>复制分享文案</text>
           </button>
           <button class="secondary-btn" @tap="goToH2H">
             <text>查看完整交锋</text>
@@ -278,16 +278,32 @@ const getAvatarText = (name) => {
   return name.slice(0, 1)
 }
 
-const shareToPost = () => {
+const buildShareSummary = () => {
   if (!statsData.total_matches) {
+    return ''
+  }
+
+  const evidence = evidenceList.value[0] || heroViewModel.value.metaText
+  return `${heroViewModel.value.title}，历史交锋 ${heroViewModel.value.scoreText}。${evidence}。`
+}
+
+const copyShareSummary = () => {
+  const content = buildShareSummary()
+  if (!content) {
     uni.showToast({ title: '还没有足够的交锋数据', icon: 'none' })
     return
   }
 
-  const evidence = evidenceList.value[0] || heroViewModel.value.metaText
-  const content = `${heroViewModel.value.title}，历史交锋 ${heroViewModel.value.scoreText}。${evidence}。`
-  uni.navigateTo({
-    url: `/subPages/social/postCreate?content=${encodeURIComponent(content)}&post_type=1`
+  // 合规收口：前期不开放站内发动态，仅保留复制文案与保存海报，待相关资质完成后再恢复。
+  uni.setClipboardData({
+    data: content,
+    showToast: false,
+    success: () => {
+      uni.showToast({ title: '已复制分享文案', icon: 'success' })
+    },
+    fail: () => {
+      uni.showToast({ title: '复制失败，请稍后重试', icon: 'none' })
+    }
   })
 }
 

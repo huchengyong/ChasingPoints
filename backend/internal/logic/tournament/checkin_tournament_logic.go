@@ -3,6 +3,7 @@ package tournament
 import (
 	"context"
 
+	"chasing_points/internal/config"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -26,6 +27,10 @@ func NewCheckinTournamentLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 }
 
 func (l *CheckinTournamentLogic) CheckinTournament(req *types.TournamentIdReq) (resp *types.CommonResp, err error) {
+	if !l.svcCtx.Config.UserTournamentEnabled() {
+		return &types.CommonResp{Success: false, Message: config.DisabledFeatureMessage("tournament_user_action")}, nil
+	}
+
 	userIdInt, err := utils.GetUserIDFromCtx(l.ctx)
 	if err != nil {
 		l.Logger.Errorf("获取用户ID失败: %v", err)

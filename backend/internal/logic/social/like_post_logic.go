@@ -3,6 +3,7 @@ package social
 import (
 	"context"
 
+	"chasing_points/internal/config"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -27,6 +28,10 @@ func NewLikePostLogic(ctx context.Context, svcCtx *svc.ServiceContext) *LikePost
 }
 
 func (l *LikePostLogic) LikePost(req *types.PostIdReq) (resp *types.CommonResp, err error) {
+	if !l.svcCtx.Config.SocialEnabled() {
+		return &types.CommonResp{Success: false, Message: config.DisabledFeatureMessage("social")}, nil
+	}
+
 	userIdInt, err := utils.GetUserIDFromCtx(l.ctx)
 	if err != nil {
 		l.Logger.Errorf("获取用户ID失败: %v", err)

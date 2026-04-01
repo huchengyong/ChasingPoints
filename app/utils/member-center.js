@@ -40,10 +40,51 @@ export const getMemberPayChannelOptions = () => ([
   }
 ])
 
-export const resolveMemberEntryCard = (memberStatus = {}, now = new Date()) => {
+const resolveComplianceMemberEntryCard = (expiresAtText, isActive) => {
+  if (isActive) {
+    return {
+      visible: true,
+      eyebrow: '会员权益',
+      statusText: '会员权益中',
+      title: `获赠会员有效期至 ${expiresAtText}`,
+      description: '当前会员权益由平台人工发放，如后续续期也会直接同步到这里。',
+      actionText: '查看权益',
+      priceText: ''
+    }
+  }
+
+  if (expiresAtText) {
+    return {
+      visible: true,
+      eyebrow: '会员权益',
+      statusText: '已结束',
+      title: '获赠会员已结束',
+      description: `上次获赠会员有效期到 ${expiresAtText}，新的权益到账后会继续展示。`,
+      actionText: '查看权益',
+      priceText: ''
+    }
+  }
+
+  return {
+    visible: true,
+    eyebrow: '会员权益',
+    statusText: '待发放',
+    title: '会员权益待发放',
+    description: '前期会员权益由平台人工发放，到账后会直接展示在这里。',
+    actionText: '查看权益',
+    priceText: ''
+  }
+}
+
+export const resolveMemberEntryCard = (memberStatus = {}, now = new Date(), options = {}) => {
   const expiresAtText = typeof memberStatus.member_expires_at === 'string' ? memberStatus.member_expires_at.trim() : ''
   const expiresAt = parseUtc8Time(expiresAtText)
   const isActive = Boolean(memberStatus.is_active) && expiresAt && expiresAt.getTime() > now.getTime()
+  const complianceMode = Boolean(options.complianceMode)
+
+  if (complianceMode) {
+    return resolveComplianceMemberEntryCard(expiresAtText, isActive)
+  }
 
   if (isActive) {
     return {
@@ -80,10 +121,38 @@ export const resolveMemberEntryCard = (memberStatus = {}, now = new Date()) => {
   }
 }
 
-export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date()) => {
+export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date(), options = {}) => {
   const expiresAtText = typeof memberStatus.member_expires_at === 'string' ? memberStatus.member_expires_at.trim() : ''
   const expiresAt = parseUtc8Time(expiresAtText)
   const isActive = Boolean(memberStatus.is_active) && expiresAt && expiresAt.getTime() > now.getTime()
+  const complianceMode = Boolean(options.complianceMode)
+
+  if (complianceMode) {
+    if (isActive) {
+      return {
+        statusText: '会员权益中',
+        title: '获赠会员权益已生效',
+        description: `当前有效期至 ${expiresAtText}，新的人工发放权益也会继续同步到这里。`,
+        primaryActionText: '查看权益'
+      }
+    }
+
+    if (expiresAtText) {
+      return {
+        statusText: '已结束',
+        title: '获赠会员权益已结束',
+        description: `上次获赠会员有效期到 ${expiresAtText}，如后续继续发放，会在这里展示最新状态。`,
+        primaryActionText: '查看权益'
+      }
+    }
+
+    return {
+      statusText: '待发放',
+      title: '会员权益等待发放',
+      description: '前期会员权益由平台人工发放，无需订阅或支付，到账后会自动更新这里的状态。',
+      primaryActionText: '查看权益'
+    }
+  }
 
   if (isActive) {
     return {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"chasing_points/internal/config"
 	paymentlogic "chasing_points/internal/logic/payment"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -28,6 +29,13 @@ func NewGetMemberSubscriptionOrderStatusLogic(ctx context.Context, svcCtx *svc.S
 }
 
 func (l *GetMemberSubscriptionOrderStatusLogic) GetMemberSubscriptionOrderStatus(req *types.GetMemberSubscriptionOrderStatusReq) (resp *types.GetMemberSubscriptionOrderStatusResp, err error) {
+	if !l.svcCtx.Config.MemberPaymentEnabled() {
+		return &types.GetMemberSubscriptionOrderStatusResp{
+			Success: false,
+			Message: config.DisabledFeatureMessage("member_payment"),
+		}, nil
+	}
+
 	userID, err := utils.GetUserIDFromCtx(l.ctx)
 	if err != nil {
 		l.Logger.Errorf("获取用户ID失败: %v", err)

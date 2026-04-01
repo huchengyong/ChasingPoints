@@ -52,6 +52,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
+import { canShowSocialReviewMenu } from '@/utils/complianceMode'
 
 const route = useRoute()
 const router = useRouter()
@@ -65,7 +66,8 @@ const menuList = [
   { path: '/matches', title: '对局管理', icon: 'Trophy' },
   { path: '/event-news', title: '赛事情报', icon: 'Calendar' },
   { path: '/venues', title: '球馆审核', icon: 'OfficeBuilding' },
-  { path: '/social-posts', title: '动态审核', icon: 'ChatDotRound' }
+  // 合规收口：动态审核菜单暂时隐藏，页面文件保留以便后续持证后快速恢复。
+  ...(canShowSocialReviewMenu() ? [{ path: '/social-posts', title: '动态审核', icon: 'ChatDotRound' }] : [])
 ]
 
 const handleCommand = (command: string) => {

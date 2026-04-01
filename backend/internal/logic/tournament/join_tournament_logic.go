@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"chasing_points/internal/config"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -29,6 +30,10 @@ func NewJoinTournamentLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Jo
 }
 
 func (l *JoinTournamentLogic) JoinTournament(req *types.TournamentIdReq) (resp *types.CommonResp, err error) {
+	if !l.svcCtx.Config.UserTournamentEnabled() {
+		return &types.CommonResp{Success: false, Message: config.DisabledFeatureMessage("tournament_user_action")}, nil
+	}
+
 	userIdInt, err := utils.GetUserIDFromCtx(l.ctx)
 	if err != nil {
 		l.Logger.Errorf("获取用户ID失败: %v", err)

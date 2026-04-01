@@ -27,6 +27,12 @@ func NewGetMemberPlansLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Ge
 }
 
 func (l *GetMemberPlansLogic) GetMemberPlans() (resp *types.GetMemberPlansResp, err error) {
+	if !l.svcCtx.Config.MemberPaymentEnabled() {
+		return &types.GetMemberPlansResp{
+			Success: false,
+		}, nil
+	}
+
 	plans := paymentlogic.MemberPlans()
 	items := make([]types.MemberPlanInfo, 0, len(plans))
 	for _, item := range plans {

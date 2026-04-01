@@ -76,8 +76,8 @@
 						</view>
 						<view class="explore-item" @click="openRoute('/pages/social/index', true)">
 							<view class="explore-copy">
-								<text class="explore-title">公开动态</text>
-								<text class="explore-desc">看看大家分享的战绩与打球日常</text>
+								<text class="explore-title">赛讯</text>
+								<text class="explore-desc">看看追分官方整理的赛事资讯和赛程更新</text>
 							</view>
 							<uni-icons type="right" size="18" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
 						</view>
@@ -169,7 +169,7 @@
 					<view v-if="favoriteVenueMemberCard.visible" class="member-card">
 						<view class="member-card-head">
 							<view class="member-card-copy">
-								<text class="member-card-eyebrow">订阅会员</text>
+								<text class="member-card-eyebrow">会员权益</text>
 								<text class="member-card-title">{{ favoriteVenueMemberCard.title }}</text>
 								<text class="member-card-desc">{{ favoriteVenueMemberCard.description }}</text>
 							</view>
@@ -385,6 +385,7 @@ import { getMemberStatus } from '@/api/member.js'
 import { getCurrentMatch, getMatchQRCode, startMatch } from '@/api/match.js'
 import { getUserRankInfo } from '@/api/rank.js'
 import { userWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
+import { APP_COMPLIANCE_MODE } from '@/utils/compliance-mode.js'
 import {
 	resolveGuestHeroCopy,
 	resolveHighestRankDisplay,
@@ -466,7 +467,9 @@ const userInfo = computed(() => ({
 const favoriteVenueMemberCard = computed(() => resolveFavoriteVenueMemberCard(favoriteVenueRewardStatus.value || {}))
 const favoriteVenueRewardCard = computed(() => resolveFavoriteVenueRewardTaskCard(favoriteVenueRewardStatus.value || {}))
 const favoriteVenueRewardPopupCopy = computed(() => resolveFavoriteVenueRewardPopupCopy(favoriteVenueRewardStatus.value || {}))
-const memberCenterCard = computed(() => resolveMemberEntryCard(memberStatus.value || {}))
+const memberCenterCard = computed(() => resolveMemberEntryCard(memberStatus.value || {}, new Date(), {
+	complianceMode: APP_COMPLIANCE_MODE
+}))
 
 const userStats = reactive({
 	totalMatches: 0,
@@ -562,14 +565,6 @@ const metricCards = computed(() => ([
 ]))
 
 const quickActions = computed(() => ([
-	{
-		label: '我的动态',
-		desc: '查看审核进度、发布记录和拒绝原因',
-		icon: 'compose',
-		iconColor: '#2563eb',
-		iconClass: 'blue',
-		handler: handleMyPosts
-	},
 	{
 		label: '比赛记录',
 		desc: hasRecentMatch.value ? `累计 ${userStats.totalMatches} 场` : '查看历史对局',
@@ -1009,6 +1004,13 @@ const handleMatchHistory = () => {
 }
 
 const handleMyPosts = () => {
+	if (APP_COMPLIANCE_MODE) {
+		uni.showToast({
+			title: '功能暂未开放',
+			icon: 'none'
+		})
+		return
+	}
 	uni.navigateTo({ url: '/subPages/social/myPosts' })
 }
 

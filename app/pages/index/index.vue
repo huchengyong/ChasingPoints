@@ -102,7 +102,7 @@
           </view>
           <view v-else class="section-empty">
             <text class="empty-title">还没有可看的赛事情报</text>
-            <text class="empty-desc">先去看看最近的赛事动态，稍后再来刷新。</text>
+            <text class="empty-desc">先去看看最近的赛讯更新，稍后再来刷新。</text>
           </view>
         </view>
 
@@ -131,41 +131,6 @@
           <view v-else class="section-empty">
             <text class="empty-title">排行榜还在准备中</text>
             <text class="empty-desc">打一局 PK 之后，你的成绩也会出现在这里。</text>
-          </view>
-        </view>
-
-        <view class="focus-section">
-          <view class="section-header">
-            <text class="section-title">精选内容</text>
-            <view class="section-more" @tap="goCommunity">
-              <text>更多动态</text>
-              <uni-icons type="right" size="14" :color="isDarkMode ? '#94a3b8' : '#94a3b8'"></uni-icons>
-            </view>
-          </view>
-
-          <view v-if="featuredPost" class="featured-post-card" @tap="handleFeaturedPostAction">
-            <view class="featured-top">
-              <image class="featured-avatar" :src="featuredPost.avatar || '/static/images/default-avatar.png'" mode="aspectFill"></image>
-              <view class="featured-copy">
-                <view class="featured-name-row">
-                  <text class="featured-name">{{ featuredPost.nickname || '球友' }}</text>
-                  <text class="featured-tag">{{ featuredPost.tagText }}</text>
-                </view>
-                <text class="featured-time">{{ featuredPost.relativeTime }}</text>
-              </view>
-            </view>
-            <text class="featured-content">{{ featuredPost.content || '来社区看看大家今天的竞技状态。' }}</text>
-            <view class="featured-footer">
-              <text>❤️ {{ featuredPost.likes_count || 0 }}</text>
-              <text>💬 {{ featuredPost.comments_count || 0 }}</text>
-              <view class="featured-action" @tap.stop="handleFeaturedPostAction">
-                <text>{{ featuredPost.actionText }}</text>
-              </view>
-            </view>
-          </view>
-          <view v-else class="section-empty">
-            <text class="empty-title">社区今天有点安静</text>
-            <text class="empty-desc">去发一条动态，或者晚点回来看看新的战报。</text>
           </view>
         </view>
 
@@ -207,13 +172,11 @@ import { useThemeStore } from '@/store/theme.js'
 import { useNotificationStore } from '@/store/notification.js'
 import { getFeaturedEventNews } from '@/api/event-news.js'
 import { getCurrentMatch, startMatch } from '@/api/match.js'
-import { getPublicPosts } from '@/api/social.js'
 import { getLeaderboard } from '@/api/rank.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
-import { formatRelativeTime } from '@/utils/format.js'
 import { getGameTypeLabel } from '@/utils/game-types.js'
 import { pickFeaturedEventNewsPayload } from '@/utils/event-news-response.js'
-import { buildFeaturedPostTarget, normalizeFeaturedEventNews } from '@/utils/home-index.js'
+import { normalizeFeaturedEventNews } from '@/utils/home-index.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
 
 const userStore = useUserStore()
@@ -234,10 +197,9 @@ const currentMatch = ref(null)
 const leaderboardTopThree = ref([])
 const myRanking = ref(null)
 const featuredEventNews = ref(null)
-const featuredPost = ref(null)
 
 const hasContent = computed(() => {
-  return Boolean(currentMatch.value || featuredEventNews.value || featuredPost.value || leaderboardTopThree.value.length)
+  return Boolean(currentMatch.value || featuredEventNews.value || leaderboardTopThree.value.length)
 })
 
 const headerSubtitle = computed(() => {
@@ -327,14 +289,6 @@ const recentMatchSummary = computed(() => {
     }
   }
 
-  if (featuredPost.value?.post_type === 1) {
-    return {
-      value: '焦点战报',
-      desc: `${featuredPost.value.nickname || '球友'} 刚分享了一条真实战绩`,
-      cta: featuredPost.value.actionText
-    }
-  }
-
   return {
     value: isLoggedIn.value ? '还没有最近战绩' : '登录后查看最近战绩',
     desc: isLoggedIn.value ? '打一场 PK 之后，这里会显示你的最新比分和结果。' : '登录后可查看自己的最近比分、对手和战报。',
@@ -372,8 +326,7 @@ const loadData = async () => {
   try {
     const requests = [
       getLeaderboard({ page: 1, page_size: 3 }).catch(() => ({ success: false })),
-      getFeaturedEventNews().catch(() => ({ success: false })),
-      getPublicPosts({ page: 1, page_size: 6 }).catch(() => ({ success: false }))
+      getFeaturedEventNews().catch(() => ({ success: false }))
     ]
 
     if (isLoggedIn.value) {
@@ -403,9 +356,6 @@ const loadData = async () => {
     featuredEventNews.value = featuredRes.success
       ? normalizeFeaturedEventNews(pickFeaturedEventNewsPayload(featuredRes))
       : null
-
-    const postRes = results[resultIndex]
-    featuredPost.value = postRes.success ? pickFeaturedPost(postRes.list || []) : null
   } catch (error) {
     console.error('加载首页数据失败', error)
   } finally {
@@ -417,27 +367,6 @@ const onRefresh = async () => {
   refreshing.value = true
   await Promise.all([loadData(), notificationStore.fetchUnreadCount()])
   refreshing.value = false
-}
-
-const pickFeaturedPost = (list) => {
-  const target = list.find((item) => item.post_type === 1) || list[0]
-  if (!target) return null
-
-  const action = buildFeaturedPostTarget(target)
-
-  return {
-    ...target,
-    tagText: getPostTagText(target.post_type),
-    relativeTime: formatRelativeTime(target.created_at),
-    action,
-    actionText: action.ctaText
-  }
-}
-
-const getPostTagText = (postType) => {
-  if (postType === 1) return '战报'
-  if (postType === 2) return '打卡'
-  return '动态'
 }
 
 const formatDuration = (durationSeconds) => {
@@ -473,10 +402,6 @@ const goTo = (url, isTabPage = false) => {
     return
   }
   uni.navigateTo({ url })
-}
-
-const goCommunity = () => {
-  uni.switchTab({ url: '/pages/social/index' })
 }
 
 const goLogin = () => {
@@ -522,11 +447,6 @@ const handleSummaryAction = (type) => {
       return
     }
 
-    if (featuredPost.value?.post_type === 1) {
-      handleFeaturedPostAction()
-      return
-    }
-
     if (isLoggedIn.value) {
       handleStartPK()
       return
@@ -537,20 +457,6 @@ const handleSummaryAction = (type) => {
   }
 
   goTo('/pages/ranking/index')
-}
-
-const handleFeaturedPostAction = () => {
-  if (!featuredPost.value) {
-    goCommunity()
-    return
-  }
-
-  if (featuredPost.value.action?.type === 'navigate' && featuredPost.value.action.url) {
-    uni.navigateTo({ url: featuredPost.value.action.url })
-    return
-  }
-
-  goCommunity()
 }
 
 const handleStartPK = () => {

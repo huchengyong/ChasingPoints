@@ -71,3 +71,24 @@ test('member center exposes app payment channel options', () => {
   assert.equal(options.length, 2)
   assert.deepEqual(options.map(item => item.value), ['alipay', 'wechat'])
 })
+
+test('resolveMemberCenterSummary avoids payment wording in compliance mode', () => {
+  const summary = resolveMemberCenterSummary({
+    is_active: true,
+    member_expires_at: '2026-04-30 10:00:00'
+  }, new Date('2026-03-31T10:00:00+08:00'), { complianceMode: true })
+
+  assert.equal(summary.statusText, '会员权益中')
+  assert.doesNotMatch(summary.title, /月卡|开通|续费/)
+  assert.match(summary.description, /获赠|有效期/)
+  assert.equal(summary.primaryActionText, '查看权益')
+})
+
+test('resolveMemberEntryCard avoids price wording in compliance mode', () => {
+  const card = resolveMemberEntryCard({}, new Date('2026-03-31T10:00:00+08:00'), { complianceMode: true })
+
+  assert.equal(card.statusText, '待发放')
+  assert.doesNotMatch(card.title, /月卡|开通/)
+  assert.equal(card.actionText, '查看权益')
+  assert.equal(card.priceText, '')
+})

@@ -47,7 +47,7 @@
 		{
 			"path": "pages/social/index",
 			"style": {
-				"navigationBarTitleText": "动态"
+				"navigationBarTitleText": "赛讯"
 			}
 		},
 			{
@@ -77,7 +77,7 @@
 			},
 			{
 				"pagePath": "pages/social/index",
-				"text": "动态",
+				"text": "赛讯",
 				"iconPath": "@socialIconPath",
 				"selectedIconPath": "@selectedSocialIconPath"
 			},

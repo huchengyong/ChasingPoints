@@ -3,6 +3,7 @@ package member
 import (
 	"context"
 
+	"chasing_points/internal/config"
 	paymentlogic "chasing_points/internal/logic/payment"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
@@ -28,6 +29,14 @@ func NewCreateMemberSubscriptionOrderLogic(ctx context.Context, svcCtx *svc.Serv
 }
 
 func (l *CreateMemberSubscriptionOrderLogic) CreateMemberSubscriptionOrder(req *types.CreateMemberSubscriptionOrderReq) (resp *types.CreateMemberSubscriptionOrderResp, err error) {
+	// 合规收口：上线前暂时关闭会员订阅付费，待取得相关资质或完成专项合规评估后再恢复。
+	if !l.svcCtx.Config.MemberPaymentEnabled() {
+		return &types.CreateMemberSubscriptionOrderResp{
+			Success: false,
+			Message: config.DisabledFeatureMessage("member_payment"),
+		}, nil
+	}
+
 	userID, err := utils.GetUserIDFromCtx(l.ctx)
 	if err != nil {
 		l.Logger.Errorf("获取用户ID失败: %v", err)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"chasing_points/internal/config"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -28,6 +29,10 @@ func NewCommentPostLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Comme
 }
 
 func (l *CommentPostLogic) CommentPost(req *types.CommentPostReq) (resp *types.CommonResp, err error) {
+	if !l.svcCtx.Config.SocialEnabled() {
+		return &types.CommonResp{Success: false, Message: config.DisabledFeatureMessage("social")}, nil
+	}
+
 	userIdInt, err := utils.GetUserIDFromCtx(l.ctx)
 	if err != nil {
 		l.Logger.Errorf("获取用户ID失败: %v", err)

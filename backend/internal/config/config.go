@@ -21,6 +21,9 @@ type Config struct {
 		SetupToken string `json:",env=ADMIN_SETUP_TOKEN,optional"`
 	}
 
+	// 合规收口配置
+	Compliance ComplianceConfig
+
 	// MySQL配置
 	MySQL struct {
 		DataSource string

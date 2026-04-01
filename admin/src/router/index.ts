@@ -1,5 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '@/store/user'
+import { canShowSocialReviewMenu } from '@/utils/complianceMode'
+
+const socialReviewRoutes = canShowSocialReviewMenu()
+  ? [{
+      path: 'social-posts',
+      name: 'SocialPosts',
+      component: () => import('@/views/social-posts/index.vue'),
+      meta: { title: '动态审核', icon: 'ChatDotRound' }
+    }]
+  : []
 
 const routes = [
   {
@@ -43,14 +53,9 @@ const routes = [
         name: 'Venues',
         component: () => import('@/views/venues/index.vue'),
         meta: { title: '球馆审核', icon: 'OfficeBuilding' }
-      },
-      {
-        path: 'social-posts',
-        name: 'SocialPosts',
-        component: () => import('@/views/social-posts/index.vue'),
-        meta: { title: '动态审核', icon: 'ChatDotRound' }
       }
-    ]
+    // 合规收口：动态审核入口暂时隐藏，页面文件保留以便后续持证后快速恢复。
+    ].concat(socialReviewRoutes)
   },
   {
     path: '/:pathMatch(.*)*',

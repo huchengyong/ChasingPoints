@@ -26,6 +26,10 @@ func NewGetMyPostListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Get
 }
 
 func (l *GetMyPostListLogic) GetMyPostList(req *types.GetPostListReq) (resp *types.GetPostListResp, err error) {
+	if !l.svcCtx.Config.SocialEnabled() {
+		return &types.GetPostListResp{Success: false, Total: 0, List: []types.SocialPostInfo{}}, nil
+	}
+
 	userIdInt, err := utils.GetUserIDFromCtx(l.ctx)
 	if err != nil {
 		l.Logger.Errorf("获取用户ID失败: %v", err)
