@@ -14,6 +14,11 @@ func TestModelConstructorsDoNotAutoMigrate(t *testing.T) {
 		construct func(db *gorm.DB)
 	}{
 		{
+			name:      "area model",
+			tableName: "dou_area",
+			construct: func(db *gorm.DB) { NewAreaModel(db) },
+		},
+		{
 			name:      "user model",
 			tableName: "users",
 			construct: func(db *gorm.DB) { NewUserModel(db) },

@@ -1020,6 +1020,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
+				// 获取地区选项
+				Method:  http.MethodGet,
+				Path:    "/areas",
+				Handler: venue.GetVenueAreaOptionsHandler(serverCtx),
+			},
+			{
 				// 获取球馆详情
 				Method:  http.MethodGet,
 				Path:    "/detail",

@@ -1,7 +1,7 @@
 {
   "name": "billiard-admin",
   "version": "1.0.0",
-  "description": "台球大师管理后台 - mini 版",
+  "description": "追分管理后台 - mini 版",
   "type": "module",
   "scripts": {
     "dev": "vite",

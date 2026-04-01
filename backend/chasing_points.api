@@ -1941,6 +1941,21 @@ type GetNearbyVenuesReq {
 	Limit     int     `form:"limit,optional,default=10"`
 }
 
+type VenueAreaOption {
+	AreaId   int64  `json:"area_id"`
+	ParentId int64  `json:"parent_id"`
+	Name     string `json:"name"`
+}
+
+type GetVenueAreaOptionsReq {
+	ParentId int64 `form:"parent_id,optional,default=0"`
+}
+
+type GetVenueAreaOptionsResp {
+	Success bool              `json:"success"`
+	List    []VenueAreaOption `json:"list"`
+}
+
 // 球馆公开接口
 @server (
 	prefix: /api/venue
@@ -1958,6 +1973,10 @@ service chasing_points-api {
 	@doc "获取附近球馆"
 	@handler GetNearbyVenues
 	get /nearby (GetNearbyVenuesReq) returns (GetVenueListResp)
+
+	@doc "获取地区选项"
+	@handler GetVenueAreaOptions
+	get /areas (GetVenueAreaOptionsReq) returns (GetVenueAreaOptionsResp)
 }
 
 // 球馆需登录接口

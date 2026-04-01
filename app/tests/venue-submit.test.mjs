@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  buildVenueRegionSelection,
   buildVenueSubmitPayload,
   resolveVenueSubmitCopy
 } from '../utils/venue-submit.js'
@@ -36,5 +37,34 @@ test('resolveVenueSubmitCopy describes the basics-only flow', () => {
   assert.deepEqual(resolveVenueSubmitCopy(['球馆名称', '详细地址']), {
     title: '还有 2 项未填写',
     tip: '请先填写：球馆名称、详细地址'
+  })
+})
+
+test('buildVenueRegionSelection maps province city district path into display and payload fields', () => {
+  const selection = buildVenueRegionSelection([
+    { area_id: 19, name: '广东省' },
+    { area_id: 321, name: '深圳市' },
+    { area_id: 2723, name: '南山区' }
+  ])
+
+  assert.deepEqual(selection, {
+    areaIds: [19, 321, 2723],
+    regionText: '广东省 深圳市 南山区',
+    city: '深圳市',
+    district: '南山区'
+  })
+})
+
+test('buildVenueRegionSelection keeps city when district is absent', () => {
+  const selection = buildVenueRegionSelection([
+    { area_id: 1, name: '北京' },
+    { area_id: 36, name: '北京市' }
+  ])
+
+  assert.deepEqual(selection, {
+    areaIds: [1, 36],
+    regionText: '北京 北京市',
+    city: '北京市',
+    district: ''
   })
 })

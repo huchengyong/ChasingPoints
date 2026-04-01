@@ -28,6 +28,7 @@ type ServiceContext struct {
 	Redis                          *redis.Client
 	SmsClient                      *sms.AliSmsClient
 	CodeManager                    *sms.CodeManager
+	AreaModel                      *model.AreaModel
 	UserModel                      *model.UserModel
 	OauthModel                     *model.UserOauthModel
 	MatchModel                     *model.MatchModel
@@ -77,6 +78,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		Redis:                          rdb,
 		SmsClient:                      smsClient,
 		CodeManager:                    codeManager,
+		AreaModel:                      models.AreaModel,
 		UserModel:                      models.UserModel,
 		OauthModel:                     models.OauthModel,
 		MatchModel:                     models.MatchModel,
@@ -113,6 +115,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 }
 
 type serviceModels struct {
+	AreaModel                      *model.AreaModel
 	UserModel                      *model.UserModel
 	OauthModel                     *model.UserOauthModel
 	MatchModel                     *model.MatchModel
@@ -191,6 +194,7 @@ func mustNewSmsClient(c config.Config) *sms.AliSmsClient {
 }
 
 func newServiceModels(db *gorm.DB) serviceModels {
+	areaModel := model.NewAreaModel(db)
 	venueModel := model.NewVenueModel(db)
 	venueCheckinModel := model.NewVenueCheckinModel(db)
 	venueGeocodeTaskModel := model.NewVenueGeocodeTaskModel(db)
@@ -200,6 +204,7 @@ func newServiceModels(db *gorm.DB) serviceModels {
 	memberSubscriptionOrderModel := model.NewMemberSubscriptionOrderModel(db)
 
 	return serviceModels{
+		AreaModel:                      areaModel,
 		UserModel:                      model.NewUserModel(db),
 		OauthModel:                     model.NewUserOauthModel(db),
 		MatchModel:                     model.NewMatchModel(db),

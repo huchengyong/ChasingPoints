@@ -1,4 +1,22 @@
 const trimValue = (value) => (typeof value === 'string' ? value.trim() : '')
+const normalizeAreaId = (value) => {
+  const areaId = Number(value)
+  return Number.isFinite(areaId) && areaId > 0 ? areaId : 0
+}
+
+export const buildVenueRegionSelection = (areaPath = []) => {
+  const normalizedPath = Array.isArray(areaPath)
+    ? areaPath.filter(item => item && trimValue(item.name))
+    : []
+  const names = normalizedPath.map(item => trimValue(item.name)).filter(Boolean)
+
+  return {
+    areaIds: normalizedPath.map(item => normalizeAreaId(item.area_id)).filter(Boolean),
+    regionText: names.join(' '),
+    city: names[1] || '',
+    district: names[2] || ''
+  }
+}
 
 export const buildVenueSubmitPayload = (form = {}) => ({
   name: trimValue(form.name),

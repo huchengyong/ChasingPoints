@@ -11,7 +11,7 @@
 		<view class="form-section">
 			<view class="section-head">
 				<text class="section-title">常玩球馆资料</text>
-				<text class="section-tip">请填写球馆名称、城市和详细地址，审核通过后会自动发放会员。</text>
+				<text class="section-tip">请填写球馆名称、地区和详细地址，审核通过后会自动发放会员。</text>
 			</view>
 			<view class="form-group" :class="getFieldClass('name')">
 				<view class="label-row">
@@ -25,22 +25,26 @@
 				</view>
 			</view>
 
-			<view class="form-group" :class="getFieldClass('city')">
+			<view class="form-group" :class="getFieldClass('region')">
 				<view class="label-row">
-					<text class="form-label">城市</text>
-					<text :class="requiredFieldStatus.city ? 'label-complete' : 'label-required'">{{ requiredFieldStatus.city ? '已完成' : '必填' }}</text>
+					<text class="form-label">地区</text>
+					<text :class="requiredFieldStatus.region ? 'label-complete' : 'label-required'">{{ requiredFieldStatus.region ? '已完成' : '必填' }}</text>
 				</view>
-				<input class="form-input" :class="{ 'input-missing': showValidation && !requiredFieldStatus.city }" v-model="form.city" placeholder="如：深圳" maxlength="20" />
-				<text class="field-hint">填写后更方便大家按城市查找球馆。</text>
-			</view>
-
-			<view class="form-group">
-				<view class="label-row">
-					<text class="form-label">区域</text>
-					<text class="label-optional">选填</text>
-				</view>
-				<input class="form-input" v-model="form.district" placeholder="如：南山区" maxlength="20" />
-				<text class="field-hint">填写商圈或区县后，用户更容易判断距离。</text>
+				<picker
+					mode="multiSelector"
+					:range="areaColumns"
+					range-key="name"
+					:value="areaColumnIndexes"
+					:disabled="submitting || (areaLoading && !areaReady)"
+					@change="handleAreaConfirm"
+					@columnchange="handleAreaColumnChange"
+				>
+					<view class="form-input form-picker" :class="{ 'input-missing': showValidation && !requiredFieldStatus.region, 'is-placeholder': !form.regionText }">
+						<text class="picker-value">{{ form.regionText || (areaLoading && !areaReady ? '地区加载中...' : '请选择省 / 市 / 区') }}</text>
+						<text class="picker-arrow">›</text>
+					</view>
+				</picker>
+				<text class="field-hint">选择省、市、区后，审核和定位都会更准确。</text>
 			</view>
 
 			<view class="form-group" :class="getFieldClass('address')">
@@ -69,12 +73,28 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { createVenue } from '@/api/venue.js'
-import { buildVenueSubmitPayload, resolveVenueSubmitCopy } from '@/utils/venue-submit.js'
+import { computed, onMounted, ref } from 'vue'
+import { createVenue, getVenueAreaOptions } from '@/api/venue.js'
+import {
+	buildVenueRegionSelection,
+	buildVenueSubmitPayload,
+	resolveVenueSubmitCopy
+} from '@/utils/venue-submit.js'
+
+const createAreaPlaceholderOption = (name = '暂无数据') => ({
+	area_id: 0,
+	parent_id: 0,
+	name,
+	disabled: true
+})
+
+const areaOptionsCache = new Map()
+let areaHydrateToken = 0
 
 const form = ref({
 	name: '',
+	regionText: '',
+	areaIds: [],
 	city: '',
 	district: '',
 	address: ''
@@ -82,15 +102,23 @@ const form = ref({
 
 const submitting = ref(false)
 const showValidation = ref(false)
-const requiredFieldOrder = ['name', 'city', 'address']
+const areaLoading = ref(false)
+const areaReady = ref(false)
+const areaColumns = ref([
+	[createAreaPlaceholderOption('地区加载中...')],
+	[createAreaPlaceholderOption('请选择城市')],
+	[createAreaPlaceholderOption('请选择区域')]
+])
+const areaColumnIndexes = ref([0, 0, 0])
+const requiredFieldOrder = ['name', 'region', 'address']
 const requiredFieldLabelMap = {
 	name: '球馆名称',
-	city: '城市',
+	region: '地区',
 	address: '详细地址'
 }
 const requiredFieldStatus = computed(() => ({
 	name: !!form.value.name.trim(),
-	city: !!form.value.city.trim(),
+	region: !!form.value.regionText.trim(),
 	address: !!form.value.address.trim()
 }))
 const missingRequiredKeys = computed(() => requiredFieldOrder.filter(key => !requiredFieldStatus.value[key]))
@@ -105,9 +133,124 @@ const getFieldClass = (key) => ({
 const validate = () => {
 	showValidation.value = true
 	if (!requiredFieldStatus.value.name) return '请输入球馆名称'
-	if (!requiredFieldStatus.value.city) return '请输入城市'
+	if (!requiredFieldStatus.value.region) return '请选择地区'
 	if (!requiredFieldStatus.value.address) return '请输入详细地址'
 	return ''
+}
+
+const normalizeAreaOptions = (list, emptyLabel) => {
+	if (Array.isArray(list) && list.length > 0) {
+		const normalizedList = list
+			.map(item => ({
+				area_id: Number(item.area_id || 0),
+				parent_id: Number(item.parent_id || 0),
+				name: typeof item.name === 'string' ? item.name.trim() : ''
+			}))
+			.filter(item => item.area_id > 0 && item.name)
+
+		if (normalizedList.length > 0) {
+			return normalizedList
+		}
+	}
+
+	return [createAreaPlaceholderOption(emptyLabel)]
+}
+
+const clampAreaIndex = (index, options) => {
+	if (!Array.isArray(options) || options.length === 0) return 0
+
+	const normalizedIndex = Number(index)
+	if (!Number.isInteger(normalizedIndex) || normalizedIndex < 0) {
+		return 0
+	}
+
+	return Math.min(normalizedIndex, options.length - 1)
+}
+
+const fetchAreaOptions = async (parentId = 0) => {
+	const cacheKey = String(parentId)
+	if (areaOptionsCache.has(cacheKey)) {
+		return areaOptionsCache.get(cacheKey)
+	}
+
+	const res = await getVenueAreaOptions({ parent_id: parentId })
+	const list = normalizeAreaOptions(res?.list, parentId === 0 ? '暂无地区数据' : '暂无下级地区')
+	areaOptionsCache.set(cacheKey, list)
+	return list
+}
+
+const getCurrentAreaPath = (indexes = areaColumnIndexes.value) => indexes
+	.map((index, column) => areaColumns.value[column]?.[index])
+	.filter(item => item && item.area_id > 0)
+
+const applyAreaSelection = (selection) => {
+	form.value.regionText = selection.regionText
+	form.value.areaIds = selection.areaIds
+	form.value.city = selection.city
+	form.value.district = selection.district
+}
+
+const hydrateAreaColumns = async (indexes = [0, 0, 0]) => {
+	const currentToken = ++areaHydrateToken
+	areaLoading.value = true
+
+	try {
+		const provinces = await fetchAreaOptions(0)
+		const provinceIndex = clampAreaIndex(indexes[0], provinces)
+		const province = provinces[provinceIndex]
+
+		const cities = province?.area_id > 0
+			? await fetchAreaOptions(province.area_id)
+			: [createAreaPlaceholderOption('请选择城市')]
+		const cityIndex = clampAreaIndex(indexes[1], cities)
+		const city = cities[cityIndex]
+
+		const districts = city?.area_id > 0
+			? await fetchAreaOptions(city.area_id)
+			: [createAreaPlaceholderOption('请选择区域')]
+		const districtIndex = clampAreaIndex(indexes[2], districts)
+
+		if (currentToken !== areaHydrateToken) return
+
+		areaColumns.value = [provinces, cities, districts]
+		areaColumnIndexes.value = [provinceIndex, cityIndex, districtIndex]
+		areaReady.value = provinces.some(item => item.area_id > 0)
+	} catch (error) {
+		if (currentToken !== areaHydrateToken) return
+
+		areaReady.value = false
+		uni.showToast({ title: '地区数据加载失败', icon: 'none' })
+	} finally {
+		if (currentToken === areaHydrateToken) {
+			areaLoading.value = false
+		}
+	}
+}
+
+const handleAreaColumnChange = async (event) => {
+	const nextIndexes = [...areaColumnIndexes.value]
+	nextIndexes[event.detail.column] = event.detail.value
+
+	if (event.detail.column === 0) {
+		nextIndexes[1] = 0
+		nextIndexes[2] = 0
+	}
+	if (event.detail.column === 1) {
+		nextIndexes[2] = 0
+	}
+
+	await hydrateAreaColumns(nextIndexes)
+}
+
+const handleAreaConfirm = async (event) => {
+	await hydrateAreaColumns(event.detail.value)
+	const selection = buildVenueRegionSelection(getCurrentAreaPath())
+
+	if (!selection.city) {
+		return uni.showToast({ title: '请选择完整地区', icon: 'none' })
+	}
+
+	applyAreaSelection(selection)
 }
 
 const handleSubmit = async () => {
@@ -133,6 +276,10 @@ const handleSubmit = async () => {
 		submitting.value = false
 	}
 }
+
+onMounted(() => {
+	hydrateAreaColumns().catch(() => {})
+})
 </script>
 
 <style lang="scss" scoped>

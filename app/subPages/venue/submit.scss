@@ -213,6 +213,33 @@
 	transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
+.form-picker {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20rpx;
+}
+
+.picker-value {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: #0f172a;
+}
+
+.form-picker.is-placeholder .picker-value {
+	color: #94a3b8;
+}
+
+.picker-arrow {
+	flex-shrink: 0;
+	font-size: 34rpx;
+	line-height: 1;
+	color: #94a3b8;
+}
+
 .form-textarea {
 	min-height: 220rpx;
 	padding: 22rpx 24rpx;

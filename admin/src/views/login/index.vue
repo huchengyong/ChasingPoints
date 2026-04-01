@@ -4,7 +4,7 @@
       <template #header>
         <div class="login-header">
           <el-icon size="32"><Trophy /></el-icon>
-          <h2>台球大师管理后台</h2>
+          <h2>追分管理后台</h2>
         </div>
       </template>
 

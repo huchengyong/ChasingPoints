@@ -3,22 +3,8 @@
     <view class="hero-card">
       <view class="hero-copy">
         <text class="hero-eyebrow">赛讯</text>
-        <text class="hero-title">官方赛事信息集中看，快速掌握赛程与赛况</text>
-        <text class="hero-desc">这里只保留追分官方整理的赛事情报，不展示用户动态、评论和互动内容。</text>
-      </view>
-      <view class="hero-stats">
-        <view class="hero-stat">
-          <text class="hero-stat-label">已收录</text>
-          <text class="hero-stat-value">{{ heroStats.totalCount }}</text>
-        </view>
-        <view class="hero-stat">
-          <text class="hero-stat-label">进行中</text>
-          <text class="hero-stat-value">{{ heroStats.liveCount }}</text>
-        </view>
-        <view class="hero-stat">
-          <text class="hero-stat-label">即将开始</text>
-          <text class="hero-stat-value">{{ heroStats.upcomingCount }}</text>
-        </view>
+        <text class="hero-title">官方赛事信息集中看</text>
+        <text class="hero-desc">第一时间掌握各大赛事的赛程与赛况</text>
       </view>
     </view>
 
@@ -41,16 +27,6 @@
       <view class="featured-footer">
         <text>{{ featuredCard.sourceText || '追分官方' }}</text>
         <text>查看详情</text>
-      </view>
-    </view>
-
-    <view class="feed-section-head">
-      <view class="feed-section-copy">
-        <text class="feed-section-title">最新赛讯</text>
-        <text class="feed-section-desc">按时间顺序浏览最近更新的官方赛事情报。</text>
-      </view>
-      <view class="feed-section-link" @tap="openSaiXunList">
-        <text>全部赛讯</text>
       </view>
     </view>
 
@@ -104,9 +80,6 @@
         <text class="state-icon">🗓️</text>
         <text class="state-title">暂时还没有可看的赛讯</text>
         <text class="state-text">官方赛事内容更新中，稍后再来刷新看看。</text>
-        <view class="state-cta" @tap="openSaiXunList">
-          <text>去赛事情报页</text>
-        </view>
       </view>
 
       <view v-if="hasMore && list.length > 0" class="load-more">
@@ -141,8 +114,6 @@ const pageSize = 10
 const total = ref(0)
 const hasMore = ref(false)
 const shouldRefreshOnShow = ref(true)
-
-const heroStats = computed(() => buildSaiXunHeroStats(list.value))
 
 const fetchData = async ({ replace = false } = {}) => {
   try {
@@ -190,10 +161,6 @@ const loadMore = async () => {
 const openDetail = (id) => {
   if (!id) return
   uni.navigateTo({ url: `/subPages/tournament/detail?id=${id}` })
-}
-
-const openSaiXunList = () => {
-  uni.navigateTo({ url: '/subPages/tournament/index' })
 }
 
 onShow(() => {

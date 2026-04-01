@@ -1130,6 +1130,15 @@ type GetUserTitlesResp struct {
 	List    []TitleInfo `json:"list"`
 }
 
+type GetVenueAreaOptionsReq struct {
+	ParentId int64 `form:"parent_id,optional,default=0"`
+}
+
+type GetVenueAreaOptionsResp struct {
+	Success bool              `json:"success"`
+	List    []VenueAreaOption `json:"list"`
+}
+
 type GetVenueDetailReq struct {
 	VenueId int64 `form:"venue_id"`
 }
@@ -1854,6 +1863,12 @@ type UserStatsResp struct {
 	Losses       int     `json:"losses"`         // 负场数
 	WinRate      float64 `json:"win_rate"`       // 胜率(百分比)
 	MaxWinStreak int     `json:"max_win_streak"` // 最高连胜
+}
+
+type VenueAreaOption struct {
+	AreaId   int64  `json:"area_id"`
+	ParentId int64  `json:"parent_id"`
+	Name     string `json:"name"`
 }
 
 type VenueCheckinInfo struct {
