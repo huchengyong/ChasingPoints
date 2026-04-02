@@ -21,28 +21,45 @@ func TestPrepareEventNewsSchemaCreatesUsableTables(t *testing.T) {
 	}
 
 	eventModel := model.NewEventNewsModel(db)
-	stageModel := model.NewEventNewsStageModel(db)
+	tournamentModel := model.NewTournamentModel(db)
+	matchModel := model.NewTournamentMatchModel(db)
 	now := time.Date(2026, 3, 24, 12, 0, 0, 0, time.UTC)
 
-	event := &model.EventNews{
-		Title:      "测试赛事",
+	tournament := &model.Tournament{
+		Name:       "测试赛事实体",
 		GameType:   1,
-		SourceType: "manual",
-		SourceName: "Admin",
+		Format:     1,
+		MaxPlayers: 16,
 		Status:     model.EventNewsStatusUpcoming,
-		SortTime:   &now,
+		StartTime:  &now,
+	}
+	if err := tournamentModel.Create(tournament); err != nil {
+		t.Fatalf("create tournament after schema prepare: %v", err)
+	}
+
+	event := &model.EventNews{
+		Title:        "测试赛事",
+		TournamentId: tournament.Id,
+		GameType:     1,
+		SourceType:   "manual",
+		SourceName:   "Admin",
+		Status:       model.EventNewsStatusUpcoming,
+		SortTime:     &now,
 	}
 	if err := eventModel.Create(event); err != nil {
 		t.Fatalf("create event after schema prepare: %v", err)
 	}
 
-	if err := stageModel.Create(&model.EventNewsStage{
-		EventId:    event.Id,
-		StageName:  "资格赛",
-		StageOrder: 10,
-		Status:     model.EventNewsStatusUpcoming,
-		SortTime:   &now,
+	if err := matchModel.Create(&model.TournamentMatch{
+		TournamentId:   tournament.Id,
+		RoundName:      "资格赛",
+		RoundOrder:     10,
+		MatchOrder:     1,
+		StartTime:      &now,
+		Status:         model.EventNewsStatusUpcoming,
+		HomePlayerName: "选手A",
+		AwayPlayerName: "选手B",
 	}); err != nil {
-		t.Fatalf("create stage after schema prepare: %v", err)
+		t.Fatalf("create match after schema prepare: %v", err)
 	}
 }

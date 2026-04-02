@@ -53,6 +53,10 @@ func (m *TournamentModel) Create(tournament *Tournament) error {
 	return m.db.Create(tournament).Error
 }
 
+func (m *TournamentModel) Update(tournament *Tournament) error {
+	return m.db.Save(tournament).Error
+}
+
 func (m *TournamentModel) FindById(id int64) (*Tournament, error) {
 	var tournament Tournament
 	err := m.db.First(&tournament, id).Error
@@ -69,6 +73,23 @@ func (m *TournamentModel) FindByIdWithDB(db *gorm.DB, id int64) (*Tournament, er
 		return nil, nil
 	}
 	return &tournament, err
+}
+
+func (m *TournamentModel) FindByIds(ids []int64) (map[int64]Tournament, error) {
+	result := make(map[int64]Tournament, len(ids))
+	if len(ids) == 0 {
+		return result, nil
+	}
+
+	var list []Tournament
+	if err := m.db.Where("id IN ?", ids).Find(&list).Error; err != nil {
+		return nil, err
+	}
+
+	for _, item := range list {
+		result[item.Id] = item
+	}
+	return result, nil
 }
 
 func (m *TournamentModel) FindList(page, pageSize int, city string, gameType, status int, useStatusFilter bool) ([]Tournament, int64, error) {
@@ -149,6 +170,10 @@ func (m *TournamentModel) DecrementCurrentPlayersWithDB(db *gorm.DB, tournamentI
 
 func (m *TournamentModel) Transaction(fc func(tx *gorm.DB) error) error {
 	return m.db.Transaction(fc)
+}
+
+func (m *TournamentModel) DeleteById(id int64) error {
+	return m.db.Where("id = ?", id).Delete(&Tournament{}).Error
 }
 
 type TournamentParticipantModel struct {

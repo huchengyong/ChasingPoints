@@ -8,17 +8,33 @@ import (
 )
 
 type TournamentMatch struct {
-	Id              int64     `gorm:"primarykey"`
-	TournamentId    int64     `gorm:"not null;index"`
-	RoundNumber     int       `gorm:"not null"`
-	MatchOrder      int       `gorm:"not null"`
-	Player1Id       int64     `gorm:"not null;default:0"`
-	Player2Id       int64     `gorm:"not null;default:0"`
-	WinnerId        int64     `gorm:"not null;default:0"`
-	MatchId         int64     `gorm:"default:null"`
-	BracketPosition string    `gorm:"size:32;not null;default:''"`
-	Status          int       `gorm:"not null;default:0"`
-	CreatedAt       time.Time `gorm:"autoCreateTime"`
+	Id              int64          `gorm:"primarykey"`
+	TournamentId    int64          `gorm:"not null;index"`
+	SourceType      string         `gorm:"size:32;not null;default:''"`
+	SourceMatchId   string         `gorm:"size:128;not null;default:'';index"`
+	RoundName       string         `gorm:"size:128;not null;default:''"`
+	RoundNumber     int            `gorm:"not null;default:0"`
+	RoundOrder      int            `gorm:"not null;default:0;index"`
+	MatchOrder      int            `gorm:"not null;default:0"`
+	StartTime       *time.Time     `gorm:"default:null;index"`
+	BestOf          int            `gorm:"not null;default:0"`
+	HomePlayerId    int64          `gorm:"not null;default:0"`
+	HomePlayerName  string         `gorm:"size:128;not null;default:''"`
+	AwayPlayerId    int64          `gorm:"not null;default:0"`
+	AwayPlayerName  string         `gorm:"size:128;not null;default:''"`
+	HomeScore       int            `gorm:"not null;default:0"`
+	AwayScore       int            `gorm:"not null;default:0"`
+	WinnerSide      int            `gorm:"not null;default:0"`
+	IsPlaceholder   bool           `gorm:"not null;default:false"`
+	Player1Id       int64          `gorm:"not null;default:0"`
+	Player2Id       int64          `gorm:"not null;default:0"`
+	WinnerId        int64          `gorm:"not null;default:0"`
+	MatchId         int64          `gorm:"not null;default:0"`
+	BracketPosition string         `gorm:"size:32;not null;default:''"`
+	Status          int            `gorm:"not null;default:0;index"`
+	CreatedAt       time.Time      `gorm:"autoCreateTime"`
+	UpdatedAt       time.Time      `gorm:"autoUpdateTime"`
+	DeletedAt       gorm.DeletedAt `gorm:"index"`
 }
 
 func (TournamentMatch) TableName() string {
@@ -56,9 +72,35 @@ func (m *TournamentMatchModel) FindById(id int64) (*TournamentMatch, error) {
 func (m *TournamentMatchModel) FindByTournament(tournamentId int64) ([]TournamentMatch, error) {
 	var list []TournamentMatch
 	err := m.db.Where("tournament_id = ?", tournamentId).
-		Order("round_number ASC, match_order ASC, id ASC").
+		Order("round_order ASC, round_number ASC, match_order ASC, id ASC").
 		Find(&list).Error
 	return list, err
+}
+
+func (m *TournamentMatchModel) FindByTournamentIds(tournamentIds []int64) (map[int64][]TournamentMatch, error) {
+	result := make(map[int64][]TournamentMatch, len(tournamentIds))
+	if len(tournamentIds) == 0 {
+		return result, nil
+	}
+
+	var list []TournamentMatch
+	if err := m.db.Where("tournament_id IN ?", tournamentIds).
+		Order("round_order ASC, round_number ASC, match_order ASC, id ASC").
+		Find(&list).Error; err != nil {
+		return nil, err
+	}
+
+	for _, tournamentId := range tournamentIds {
+		result[tournamentId] = []TournamentMatch{}
+	}
+	for _, item := range list {
+		result[item.TournamentId] = append(result[item.TournamentId], item)
+	}
+	return result, nil
+}
+
+func (m *TournamentMatchModel) Update(match *TournamentMatch) error {
+	return m.db.Save(match).Error
 }
 
 func (m *TournamentMatchModel) UpdateWinner(id, winnerId int64, status int) error {
@@ -88,6 +130,10 @@ func (m *TournamentMatchModel) UpdatePlayer(id int64, playerField string, player
 
 func (m *TournamentMatchModel) DeleteByTournament(tournamentId int64) error {
 	return m.db.Where("tournament_id = ?", tournamentId).Delete(&TournamentMatch{}).Error
+}
+
+func (m *TournamentMatchModel) DeleteById(id int64) error {
+	return m.db.Where("id = ?", id).Delete(&TournamentMatch{}).Error
 }
 
 func (m *TournamentParticipantModel) UpdateFinalRankAndStatus(tournamentId, userId int64, finalRank, status int) (bool, error) {

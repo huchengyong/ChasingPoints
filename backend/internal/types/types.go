@@ -37,22 +37,26 @@ type AdminDashboardStatsResp struct {
 }
 
 type AdminEventNewsCreateReq struct {
-	Title      string `json:"title"`
-	GameType   int    `json:"game_type"`
-	SourceType string `json:"source_type,optional"`
-	SourceName string `json:"source_name,optional"`
-	SourceUrl  string `json:"source_url,optional"`
-	CoverImage string `json:"cover_image,optional"`
-	Summary    string `json:"summary,optional"`
-	Content    string `json:"content,optional"`
-	Country    string `json:"country,optional"`
-	City       string `json:"city,optional"`
-	Venue      string `json:"venue,optional"`
-	StartTime  string `json:"start_time"`
-	EndTime    string `json:"end_time,optional"`
-	Status     int    `json:"status"`
-	Featured   bool   `json:"featured,optional"`
-	SortTime   string `json:"sort_time,optional"`
+	Title          string `json:"title"`
+	Summary        string `json:"summary,optional"`
+	Content        string `json:"content,optional"`
+	CoverImage     string `json:"cover_image,optional"`
+	SourceType     string `json:"source_type,optional"`
+	SourceName     string `json:"source_name,optional"`
+	SourceUrl      string `json:"source_url,optional"`
+	Featured       bool   `json:"featured,optional"`
+	Published      bool   `json:"published,optional"`
+	SortTime       string `json:"sort_time,optional"`
+	TournamentId   int64  `json:"tournament_id,optional"`
+	TournamentName string `json:"tournament_name"`
+	GameType       int    `json:"game_type"`
+	Description    string `json:"description,optional"`
+	Country        string `json:"country,optional"`
+	City           string `json:"city,optional"`
+	Venue          string `json:"venue,optional"`
+	StartTime      string `json:"start_time"`
+	EndTime        string `json:"end_time,optional"`
+	Status         int    `json:"status"`
 }
 
 type AdminEventNewsIdReq struct {
@@ -75,56 +79,89 @@ type AdminEventNewsListResp struct {
 	List    []EventNewsInfo `json:"list"`
 }
 
+type AdminEventNewsMatchCreateReq struct {
+	EventId        int64  `json:"event_id"`
+	RoundName      string `json:"round_name"`
+	RoundOrder     int    `json:"round_order"`
+	MatchOrder     int    `json:"match_order"`
+	StartTime      string `json:"start_time,optional"`
+	Status         int    `json:"status"`
+	BestOf         int    `json:"best_of,optional"`
+	HomePlayerId   int64  `json:"home_player_id,optional"`
+	HomePlayerName string `json:"home_player_name,optional"`
+	AwayPlayerId   int64  `json:"away_player_id,optional"`
+	AwayPlayerName string `json:"away_player_name,optional"`
+	HomeScore      int    `json:"home_score,optional"`
+	AwayScore      int    `json:"away_score,optional"`
+	WinnerSide     int    `json:"winner_side,optional"`
+	IsPlaceholder  bool   `json:"is_placeholder,optional"`
+	SourceType     string `json:"source_type,optional"`
+	SourceMatchId  string `json:"source_match_id,optional"`
+}
+
+type AdminEventNewsMatchIdReq struct {
+	MatchId int64 `json:"match_id"`
+}
+
+type AdminEventNewsMatchListReq struct {
+	EventId int64 `form:"event_id"`
+}
+
+type AdminEventNewsMatchListResp struct {
+	Code    int                  `json:"code"`
+	Success bool                 `json:"success"`
+	Message string               `json:"message"`
+	List    []EventNewsMatchInfo `json:"list"`
+}
+
+type AdminEventNewsMatchUpdateReq struct {
+	MatchId        int64  `json:"match_id"`
+	EventId        int64  `json:"event_id"`
+	RoundName      string `json:"round_name"`
+	RoundOrder     int    `json:"round_order"`
+	MatchOrder     int    `json:"match_order"`
+	StartTime      string `json:"start_time,optional"`
+	Status         int    `json:"status"`
+	BestOf         int    `json:"best_of,optional"`
+	HomePlayerId   int64  `json:"home_player_id,optional"`
+	HomePlayerName string `json:"home_player_name,optional"`
+	AwayPlayerId   int64  `json:"away_player_id,optional"`
+	AwayPlayerName string `json:"away_player_name,optional"`
+	HomeScore      int    `json:"home_score,optional"`
+	AwayScore      int    `json:"away_score,optional"`
+	WinnerSide     int    `json:"winner_side,optional"`
+	IsPlaceholder  bool   `json:"is_placeholder,optional"`
+	SourceType     string `json:"source_type,optional"`
+	SourceMatchId  string `json:"source_match_id,optional"`
+}
+
 type AdminEventNewsPublishReq struct {
 	EventId   int64 `json:"event_id"`
 	Published bool  `json:"published"`
 }
 
-type AdminEventNewsStageCreateReq struct {
-	EventId    int64  `json:"event_id"`
-	StageName  string `json:"stage_name"`
-	StageOrder int    `json:"stage_order"`
-	StartTime  string `json:"start_time,optional"`
-	EndTime    string `json:"end_time,optional"`
-	Status     int    `json:"status"`
-	ResultText string `json:"result_text,optional"`
-	SortTime   string `json:"sort_time,optional"`
-}
-
-type AdminEventNewsStageIdReq struct {
-	StageId int64 `json:"stage_id"`
-}
-
-type AdminEventNewsStageUpdateReq struct {
-	StageId    int64  `json:"stage_id"`
-	EventId    int64  `json:"event_id"`
-	StageName  string `json:"stage_name"`
-	StageOrder int    `json:"stage_order"`
-	StartTime  string `json:"start_time,optional"`
-	EndTime    string `json:"end_time,optional"`
-	Status     int    `json:"status"`
-	ResultText string `json:"result_text,optional"`
-	SortTime   string `json:"sort_time,optional"`
-}
-
 type AdminEventNewsUpdateReq struct {
-	EventId    int64  `json:"event_id"`
-	Title      string `json:"title"`
-	GameType   int    `json:"game_type"`
-	SourceType string `json:"source_type,optional"`
-	SourceName string `json:"source_name,optional"`
-	SourceUrl  string `json:"source_url,optional"`
-	CoverImage string `json:"cover_image,optional"`
-	Summary    string `json:"summary,optional"`
-	Content    string `json:"content,optional"`
-	Country    string `json:"country,optional"`
-	City       string `json:"city,optional"`
-	Venue      string `json:"venue,optional"`
-	StartTime  string `json:"start_time"`
-	EndTime    string `json:"end_time,optional"`
-	Status     int    `json:"status"`
-	Featured   bool   `json:"featured,optional"`
-	SortTime   string `json:"sort_time,optional"`
+	EventId        int64  `json:"event_id"`
+	Title          string `json:"title"`
+	Summary        string `json:"summary,optional"`
+	Content        string `json:"content,optional"`
+	CoverImage     string `json:"cover_image,optional"`
+	SourceType     string `json:"source_type,optional"`
+	SourceName     string `json:"source_name,optional"`
+	SourceUrl      string `json:"source_url,optional"`
+	Featured       bool   `json:"featured,optional"`
+	Published      bool   `json:"published,optional"`
+	SortTime       string `json:"sort_time,optional"`
+	TournamentId   int64  `json:"tournament_id,optional"`
+	TournamentName string `json:"tournament_name"`
+	GameType       int    `json:"game_type"`
+	Description    string `json:"description,optional"`
+	Country        string `json:"country,optional"`
+	City           string `json:"city,optional"`
+	Venue          string `json:"venue,optional"`
+	StartTime      string `json:"start_time"`
+	EndTime        string `json:"end_time,optional"`
+	Status         int    `json:"status"`
 }
 
 type AdminExistsResp struct {
@@ -568,45 +605,56 @@ type EquipTitleReq struct {
 }
 
 type EventNewsInfo struct {
-	Id               int64                `json:"id"`
-	Title            string               `json:"title"`
-	GameType         int                  `json:"game_type"`
-	SourceType       string               `json:"source_type"`
-	SourceName       string               `json:"source_name"`
-	SourceUrl        string               `json:"source_url"`
-	CoverImage       string               `json:"cover_image"`
-	Summary          string               `json:"summary"`
-	Content          string               `json:"content"`
-	Country          string               `json:"country"`
-	City             string               `json:"city"`
-	Venue            string               `json:"venue"`
-	StartTime        string               `json:"start_time"`
-	EndTime          string               `json:"end_time"`
-	Status           int                  `json:"status"` // 0:即将开始 1:进行中 2:已结束 3:已取消
-	CurrentStageText string               `json:"current_stage_text"`
-	LatestResultText string               `json:"latest_result_text"`
-	StageCount       int                  `json:"stage_count"`
-	Stages           []EventNewsStageInfo `json:"stages"`
-	Featured         bool                 `json:"featured"`
-	SortTime         string               `json:"sort_time"`
-	Published        bool                 `json:"published"`
-	PublishedAt      string               `json:"published_at"`
-	CreatedAt        string               `json:"created_at"`
-	UpdatedAt        string               `json:"updated_at"`
+	Id               int64  `json:"id"`
+	Title            string `json:"title"`
+	SourceType       string `json:"source_type"`
+	SourceName       string `json:"source_name"`
+	SourceUrl        string `json:"source_url"`
+	CoverImage       string `json:"cover_image"`
+	Summary          string `json:"summary"`
+	Content          string `json:"content"`
+	TournamentId     int64  `json:"tournament_id"`
+	TournamentName   string `json:"tournament_name"`
+	GameType         int    `json:"game_type"`
+	Country          string `json:"country"`
+	City             string `json:"city"`
+	Venue            string `json:"venue"`
+	StartTime        string `json:"start_time"`
+	EndTime          string `json:"end_time"`
+	Status           int    `json:"status"` // 0:即将开始 1:进行中 2:已结束 3:已取消
+	CurrentRoundText string `json:"current_round_text"`
+	LatestResultText string `json:"latest_result_text"`
+	MatchCount       int    `json:"match_count"`
+	Featured         bool   `json:"featured"`
+	SortTime         string `json:"sort_time"`
+	Published        bool   `json:"published"`
+	PublishedAt      string `json:"published_at"`
+	CreatedAt        string `json:"created_at"`
+	UpdatedAt        string `json:"updated_at"`
 }
 
-type EventNewsStageInfo struct {
-	Id         int64  `json:"id"`
-	EventId    int64  `json:"event_id"`
-	StageName  string `json:"stage_name"`
-	StageOrder int    `json:"stage_order"`
-	StartTime  string `json:"start_time"`
-	EndTime    string `json:"end_time"`
-	Status     int    `json:"status"`
-	ResultText string `json:"result_text"`
-	SortTime   string `json:"sort_time"`
-	CreatedAt  string `json:"created_at"`
-	UpdatedAt  string `json:"updated_at"`
+type EventNewsMatchInfo struct {
+	Id             int64  `json:"id"`
+	EventId        int64  `json:"event_id"`
+	TournamentId   int64  `json:"tournament_id"`
+	SourceType     string `json:"source_type"`
+	SourceMatchId  string `json:"source_match_id"`
+	RoundName      string `json:"round_name"`
+	RoundOrder     int    `json:"round_order"`
+	MatchOrder     int    `json:"match_order"`
+	StartTime      string `json:"start_time"`
+	Status         int    `json:"status"`
+	BestOf         int    `json:"best_of"`
+	HomePlayerId   int64  `json:"home_player_id"`
+	HomePlayerName string `json:"home_player_name"`
+	AwayPlayerId   int64  `json:"away_player_id"`
+	AwayPlayerName string `json:"away_player_name"`
+	HomeScore      int    `json:"home_score"`
+	AwayScore      int    `json:"away_score"`
+	WinnerSide     int    `json:"winner_side"`
+	IsPlaceholder  bool   `json:"is_placeholder"`
+	CreatedAt      string `json:"created_at"`
+	UpdatedAt      string `json:"updated_at"`
 }
 
 type FavoriteVenueRewardStatusResp struct {
@@ -701,16 +749,6 @@ type GetCurrentSeasonResp struct {
 	Season  *SeasonInfo `json:"season"`
 }
 
-type GetEventNewsDetailReq struct {
-	EventId int64 `form:"event_id,optional"`
-}
-
-type GetEventNewsDetailResp struct {
-	Success bool                 `json:"success"`
-	Event   *EventNewsInfo       `json:"event"`
-	Stages  []EventNewsStageInfo `json:"stages"`
-}
-
 type GetEventNewsListReq struct {
 	Page     int    `form:"page,default=1"`
 	PageSize int    `form:"page_size,default=20"`
@@ -723,6 +761,17 @@ type GetEventNewsListResp struct {
 	Success bool            `json:"success"`
 	Total   int64           `json:"total"`
 	List    []EventNewsInfo `json:"list"`
+}
+
+type GetEventNewsViewReq struct {
+	EventId int64 `form:"event_id"`
+}
+
+type GetEventNewsViewResp struct {
+	Success    bool                 `json:"success"`
+	EventNews  *EventNewsInfo       `json:"event_news"`
+	Tournament *TournamentInfo      `json:"tournament"`
+	Matches    []EventNewsMatchInfo `json:"matches"`
 }
 
 type GetFeaturedEventNewsResp struct {

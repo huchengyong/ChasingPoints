@@ -95,9 +95,36 @@ func (l *AdminUpdateEventNewsLogic) AdminUpdateEventNews(req *types.AdminEventNe
 			Message: "时间格式不正确",
 		}, nil
 	}
+	effectiveTournamentID := existing.TournamentId
+	if req.TournamentId > 0 {
+		effectiveTournamentID = req.TournamentId
+	}
+
 	existing.Title = title
+	existing.TournamentId = effectiveTournamentID
 	existing.GameType = req.GameType
 	existing.Status = req.Status
+
+	if effectiveTournamentID > 0 {
+		tournament, queryErr := l.svcCtx.TournamentModel.FindById(effectiveTournamentID)
+		if queryErr != nil {
+			l.Logger.Errorf("查询赛事失败: tournamentId=%d err=%v", effectiveTournamentID, queryErr)
+			return &types.AdminWriteResp{Code: 500, Success: false, Message: "更新赛事情报失败"}, nil
+		}
+		if tournament == nil {
+			return &types.AdminWriteResp{Code: 404, Success: false, Message: "赛事不存在"}, nil
+		}
+		if err := applyAdminTournamentUpdate(tournament, req); err != nil {
+			return &types.AdminWriteResp{Code: 400, Success: false, Message: "时间格式不正确"}, nil
+		}
+		if message := validateAdminEventNewsTimeRange(tournament.StartTime, tournament.EndTime); message != "" {
+			return &types.AdminWriteResp{Code: 400, Success: false, Message: message}, nil
+		}
+		if err := l.svcCtx.TournamentModel.Update(tournament); err != nil {
+			l.Logger.Errorf("更新赛事失败: tournamentId=%d err=%v", effectiveTournamentID, err)
+			return &types.AdminWriteResp{Code: 500, Success: false, Message: "更新赛事情报失败"}, nil
+		}
+	}
 
 	if err := l.svcCtx.EventNewsModel.Update(existing); err != nil {
 		l.Logger.Errorf("更新赛事情报失败: id=%d err=%v", req.EventId, err)

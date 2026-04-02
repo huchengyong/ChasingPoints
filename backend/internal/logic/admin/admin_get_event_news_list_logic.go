@@ -61,13 +61,15 @@ func (l *AdminGetEventNewsListLogic) AdminGetEventNewsList(req *types.AdminEvent
 		}, nil
 	}
 
-	eventIDs := make([]int64, 0, len(list))
+	tournamentIDs := make([]int64, 0, len(list))
 	for _, item := range list {
-		eventIDs = append(eventIDs, item.Id)
+		if item.TournamentId > 0 {
+			tournamentIDs = append(tournamentIDs, item.TournamentId)
+		}
 	}
-	stageMap, err := l.svcCtx.EventNewsStageModel.FindByEventIds(eventIDs)
+	tournamentRecords, err := l.svcCtx.TournamentModel.FindByIds(tournamentIDs)
 	if err != nil {
-		l.Logger.Errorf("获取赛事情报阶段失败: err=%v", err)
+		l.Logger.Errorf("获取赛事情报关联赛事失败: err=%v", err)
 		return &types.AdminEventNewsListResp{
 			Code:    500,
 			Success: false,
@@ -76,13 +78,26 @@ func (l *AdminGetEventNewsListLogic) AdminGetEventNewsList(req *types.AdminEvent
 		}, nil
 	}
 
+	matchMap, err := l.svcCtx.TournamentMatchModel.FindByTournamentIds(tournamentIDs)
+	if err != nil {
+		l.Logger.Errorf("获取赛事情报比赛失败: err=%v", err)
+		return &types.AdminEventNewsListResp{
+			Code:    500,
+			Success: false,
+			Message: "获取赛事情报列表失败",
+			List:    []types.EventNewsInfo{},
+		}, nil
+	}
+
+	tournamentMap := make(map[int64]*model.Tournament, len(tournamentRecords))
+	for id, item := range tournamentRecords {
+		tournament := item
+		tournamentMap[id] = &tournament
+	}
+
 	items := make([]types.EventNewsInfo, 0, len(list))
 	for _, item := range list {
-		stages := stageMap[item.Id]
-		if stages == nil {
-			stages = []model.EventNewsStage{}
-		}
-		items = append(items, buildAdminEventNewsInfo(item, stages))
+		items = append(items, buildAdminEventNewsInfo(item, tournamentMap[item.TournamentId], matchMap[item.TournamentId]))
 	}
 	if items == nil {
 		items = []types.EventNewsInfo{}

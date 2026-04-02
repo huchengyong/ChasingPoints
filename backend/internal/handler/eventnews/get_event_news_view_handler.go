@@ -1,25 +1,25 @@
-package admin
+package eventnews
 
 import (
 	"net/http"
 
-	"chasing_points/internal/logic/admin"
+	"chasing_points/internal/logic/eventnews"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
-// 更新赛事阶段
-func AdminUpdateEventNewsStageHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+// 获取赛事情报详情
+func GetEventNewsViewHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req types.AdminEventNewsStageUpdateReq
+		var req types.GetEventNewsViewReq
 		if err := httpx.Parse(r, &req); err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
 		}
 
-		l := admin.NewAdminUpdateEventNewsStageLogic(r.Context(), svcCtx)
-		resp, err := l.AdminUpdateEventNewsStage(&req)
+		l := eventnews.NewGetEventNewsViewLogic(r.Context(), svcCtx)
+		resp, err := l.GetEventNewsView(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 		} else {

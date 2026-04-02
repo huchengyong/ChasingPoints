@@ -3,6 +3,7 @@ package eventnews
 import (
 	"context"
 
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -39,13 +40,23 @@ func (l *GetFeaturedEventNewsLogic) GetFeaturedEventNews() (resp *types.GetFeatu
 		return &types.GetFeaturedEventNewsResp{Success: false}, nil
 	}
 
-	stages, err := l.svcCtx.EventNewsStageModel.FindByEventId(item.Id)
-	if err != nil {
-		l.Logger.Errorf("获取焦点赛事阶段失败: eventId=%d err=%v", item.Id, err)
+	var tournament *model.Tournament
+	if item.TournamentId > 0 {
+		tournamentRecord, queryErr := l.svcCtx.TournamentModel.FindById(item.TournamentId)
+		if queryErr != nil {
+			l.Logger.Errorf("获取焦点赛事失败: eventId=%d tournamentId=%d err=%v", item.Id, item.TournamentId, queryErr)
+			return &types.GetFeaturedEventNewsResp{Success: false}, nil
+		}
+		tournament = tournamentRecord
+	}
+
+	matches, err := l.svcCtx.TournamentMatchModel.FindByTournament(item.TournamentId)
+	if err != nil && item.TournamentId > 0 {
+		l.Logger.Errorf("获取焦点赛事比赛失败: eventId=%d tournamentId=%d err=%v", item.Id, item.TournamentId, err)
 		return &types.GetFeaturedEventNewsResp{Success: false}, nil
 	}
 
-	info := mapEventNewsInfo(*item, stages)
+	info := mapEventNewsInfo(*item, tournament, matches)
 	return &types.GetFeaturedEventNewsResp{
 		Success: true,
 		Event:   &info,

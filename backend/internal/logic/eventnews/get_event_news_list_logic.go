@@ -38,15 +38,16 @@ func (l *GetEventNewsListLogic) GetEventNewsList(req *types.GetEventNewsListReq)
 
 	sortEventNewsItems(items, eventNewsNow())
 	pageItems := paginateEventNewsItems(items, req.Page, req.PageSize)
-	stageMap, err := l.loadStageMap(pageItems)
+	tournamentMap, matchMap, err := l.loadTournamentData(pageItems)
 	if err != nil {
-		l.Logger.Errorf("获取赛事情报阶段失败: req=%+v err=%v", req, err)
+		l.Logger.Errorf("获取赛事情报赛事数据失败: req=%+v err=%v", req, err)
 		return &types.GetEventNewsListResp{Success: false, List: []types.EventNewsInfo{}}, nil
 	}
 
 	respItems := make([]types.EventNewsInfo, 0, len(pageItems))
 	for _, item := range pageItems {
-		respItems = append(respItems, mapEventNewsInfo(item, stageMap[item.Id]))
+		tournament := tournamentMap[item.TournamentId]
+		respItems = append(respItems, mapEventNewsInfo(item, tournament, matchMap[item.TournamentId]))
 	}
 	if respItems == nil {
 		respItems = []types.EventNewsInfo{}
@@ -59,10 +60,28 @@ func (l *GetEventNewsListLogic) GetEventNewsList(req *types.GetEventNewsListReq)
 	}, nil
 }
 
-func (l *GetEventNewsListLogic) loadStageMap(items []model.EventNews) (map[int64][]model.EventNewsStage, error) {
-	eventIDs := make([]int64, 0, len(items))
+func (l *GetEventNewsListLogic) loadTournamentData(items []model.EventNews) (map[int64]*model.Tournament, map[int64][]model.TournamentMatch, error) {
+	tournamentIDs := make([]int64, 0, len(items))
 	for _, item := range items {
-		eventIDs = append(eventIDs, item.Id)
+		if item.TournamentId > 0 {
+			tournamentIDs = append(tournamentIDs, item.TournamentId)
+		}
 	}
-	return l.svcCtx.EventNewsStageModel.FindByEventIds(eventIDs)
+
+	tournamentRecords, err := l.svcCtx.TournamentModel.FindByIds(tournamentIDs)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	tournamentMap := make(map[int64]*model.Tournament, len(tournamentRecords))
+	for id, item := range tournamentRecords {
+		tournament := item
+		tournamentMap[id] = &tournament
+	}
+
+	matchMap, err := l.svcCtx.TournamentMatchModel.FindByTournamentIds(tournamentIDs)
+	if err != nil {
+		return nil, nil, err
+	}
+	return tournamentMap, matchMap, nil
 }

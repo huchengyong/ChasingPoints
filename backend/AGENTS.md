@@ -35,7 +35,7 @@ backend/
 | 接口入口逻辑 | `internal/logic/<group>/*.go` | 与 `internal/handler/<group>/*.go` 一一对应 |
 | 公共层 helper | `internal/logic/*.go` | 只放跨领域共享工具，不放接口入口 logic |
 | 管理后台逻辑 | `internal/logic/admin/*.go` | admin 登录、首页、用户、对局、球馆审核、赛事情报 |
-| 赛事情报领域 | `internal/model/event_news.go`, `internal/model/event_news_stage.go`, `internal/logic/eventnews/*.go` | 当前使用 `event_news_events + event_news_stages` 双表结构，由 migration 管理 |
+| 赛讯领域 | `internal/model/event_news.go`, `internal/model/tournament.go`, `internal/model/tournament_match.go`, `internal/logic/eventnews/*.go` | 当前使用 `event_news_events + tournaments + tournament_matches` 结构，由 migration 管理 |
 
 ## CONVENTIONS
 - 修改 `.api` 后必须执行：`goctl api go --api chasing_points.api --dir . --style go_zero --home ~/.goctl/default`。

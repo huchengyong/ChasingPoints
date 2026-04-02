@@ -26,9 +26,10 @@ func newEventNewsAdminTestSvc(t *testing.T) *svc.ServiceContext {
 	}
 
 	return &svc.ServiceContext{
-		DB:                  db,
-		EventNewsModel:      model.NewEventNewsModel(db),
-		EventNewsStageModel: model.NewEventNewsStageModel(db),
+		DB:                   db,
+		EventNewsModel:       model.NewEventNewsModel(db),
+		TournamentModel:      model.NewTournamentModel(db),
+		TournamentMatchModel: model.NewTournamentMatchModel(db),
 	}
 }
 
@@ -52,10 +53,18 @@ func createSeedEvent(t *testing.T, svcCtx *svc.ServiceContext, item *model.Event
 	return item
 }
 
-func createSeedStage(t *testing.T, svcCtx *svc.ServiceContext, item *model.EventNewsStage) *model.EventNewsStage {
+func createSeedTournament(t *testing.T, svcCtx *svc.ServiceContext, item *model.Tournament) *model.Tournament {
 	t.Helper()
-	if err := svcCtx.EventNewsStageModel.Create(item); err != nil {
-		t.Fatalf("seed stage: %v", err)
+	if err := svcCtx.TournamentModel.Create(item); err != nil {
+		t.Fatalf("seed tournament: %v", err)
+	}
+	return item
+}
+
+func createSeedMatch(t *testing.T, svcCtx *svc.ServiceContext, item *model.TournamentMatch) *model.TournamentMatch {
+	t.Helper()
+	if err := svcCtx.TournamentMatchModel.Create(item); err != nil {
+		t.Fatalf("seed match: %v", err)
 	}
 	return item
 }
@@ -95,6 +104,9 @@ func TestAdminCreateUpdatePublishAndDeleteEventNews(t *testing.T) {
 	if total != 1 || len(list) != 1 {
 		t.Fatalf("expected one created event, got total=%d list=%#v", total, list)
 	}
+	if list[0].TournamentId <= 0 {
+		t.Fatalf("expected event to bind tournament, got %#v", list[0])
+	}
 	if list[0].Published {
 		t.Fatalf("expected draft event, got published item: %#v", list[0])
 	}
@@ -133,6 +145,9 @@ func TestAdminCreateUpdatePublishAndDeleteEventNews(t *testing.T) {
 	}
 	if refreshed == nil || refreshed.Title != "斯诺克世锦赛" || !refreshed.Featured || refreshed.Status != model.EventNewsStatusLive {
 		t.Fatalf("unexpected updated event: %#v", refreshed)
+	}
+	if refreshed.TournamentId <= 0 {
+		t.Fatalf("expected updated event to keep tournament binding, got %#v", refreshed)
 	}
 
 	publishLogic := NewAdminPublishEventNewsLogic(adminTestCtx(-100), svcCtx)
@@ -175,93 +190,110 @@ func TestAdminCreateUpdatePublishAndDeleteEventNews(t *testing.T) {
 	}
 }
 
-func TestAdminCreateUpdateAndDeleteEventNewsStageAndCascadeOnEventDelete(t *testing.T) {
+func TestAdminCreateUpdateDeleteEventNewsMatchAndCascadeOnEventDelete(t *testing.T) {
 	svcCtx := newEventNewsAdminTestSvc(t)
 	start := adminTestTime(2026, 3, 24, 11, 0, 0)
-	event := createSeedEvent(t, svcCtx, &model.EventNews{
-		Title:      "中式八球公开赛",
+	tournament := createSeedTournament(t, svcCtx, &model.Tournament{
+		Name:       "中式八球公开赛实体",
 		GameType:   3,
-		SourceType: "manual",
-		SourceName: "Admin",
-		City:       "北京",
+		Format:     1,
+		MaxPlayers: 16,
 		Status:     model.EventNewsStatusUpcoming,
 		StartTime:  &start,
-		SortTime:   &start,
-		Published:  false,
+	})
+	event := createSeedEvent(t, svcCtx, &model.EventNews{
+		Title:        "中式八球公开赛",
+		TournamentId: tournament.Id,
+		GameType:     3,
+		SourceType:   "manual",
+		SourceName:   "Admin",
+		City:         "北京",
+		Status:       model.EventNewsStatusUpcoming,
+		StartTime:    &start,
+		SortTime:     &start,
+		Published:    false,
 	})
 
-	createStageLogic := NewAdminCreateEventNewsStageLogic(adminTestCtx(-100), svcCtx)
-	resp, err := createStageLogic.AdminCreateEventNewsStage(&types.AdminEventNewsStageCreateReq{
-		EventId:    event.Id,
-		StageName:  "资格赛",
-		StageOrder: 10,
-		StartTime:  adminTestTimeString(start),
-		Status:     model.EventNewsStatusUpcoming,
-		ResultText: "待开赛",
+	createMatchLogic := NewAdminCreateEventNewsMatchLogic(adminTestCtx(-100), svcCtx)
+	resp, err := createMatchLogic.AdminCreateEventNewsMatch(&types.AdminEventNewsMatchCreateReq{
+		EventId:        event.Id,
+		RoundName:      "资格赛",
+		RoundOrder:     10,
+		MatchOrder:     1,
+		StartTime:      adminTestTimeString(start),
+		Status:         model.EventNewsStatusUpcoming,
+		HomePlayerName: "选手甲",
+		AwayPlayerName: "选手乙",
 	})
 	if err != nil {
-		t.Fatalf("create event stage: %v", err)
+		t.Fatalf("create event match: %v", err)
 	}
 	if !resp.Success || resp.Code != 0 {
-		t.Fatalf("expected stage create success, got %#v", resp)
+		t.Fatalf("expected match create success, got %#v", resp)
 	}
 
-	stages, err := svcCtx.EventNewsStageModel.FindByEventId(event.Id)
+	matches, err := svcCtx.TournamentMatchModel.FindByTournament(event.TournamentId)
 	if err != nil {
-		t.Fatalf("find stages after create: %v", err)
+		t.Fatalf("find matches after create: %v", err)
 	}
-	if len(stages) != 1 || stages[0].StageName != "资格赛" {
-		t.Fatalf("expected one created stage, got %#v", stages)
+	if len(matches) != 1 || matches[0].RoundName != "资格赛" {
+		t.Fatalf("expected one created match, got %#v", matches)
 	}
 
-	updateStageLogic := NewAdminUpdateEventNewsStageLogic(adminTestCtx(-100), svcCtx)
-	resp, err = updateStageLogic.AdminUpdateEventNewsStage(&types.AdminEventNewsStageUpdateReq{
-		StageId:    stages[0].Id,
-		EventId:    event.Id,
-		StageName:  "32强",
-		StageOrder: 20,
-		StartTime:  adminTestTimeString(start),
-		Status:     model.EventNewsStatusLive,
-		ResultText: "32强进行中",
+	updateMatchLogic := NewAdminUpdateEventNewsMatchLogic(adminTestCtx(-100), svcCtx)
+	resp, err = updateMatchLogic.AdminUpdateEventNewsMatch(&types.AdminEventNewsMatchUpdateReq{
+		MatchId:        matches[0].Id,
+		EventId:        event.Id,
+		RoundName:      "32强",
+		RoundOrder:     20,
+		MatchOrder:     1,
+		StartTime:      adminTestTimeString(start),
+		Status:         model.EventNewsStatusLive,
+		HomePlayerName: "选手甲",
+		AwayPlayerName: "选手乙",
+		HomeScore:      5,
+		AwayScore:      3,
 	})
 	if err != nil {
-		t.Fatalf("update event stage: %v", err)
+		t.Fatalf("update event match: %v", err)
 	}
 	if !resp.Success || resp.Code != 0 {
-		t.Fatalf("expected stage update success, got %#v", resp)
+		t.Fatalf("expected match update success, got %#v", resp)
 	}
 
-	refreshedStage, err := svcCtx.EventNewsStageModel.FindById(stages[0].Id)
+	refreshedMatch, err := svcCtx.TournamentMatchModel.FindById(matches[0].Id)
 	if err != nil {
-		t.Fatalf("find updated stage: %v", err)
+		t.Fatalf("find updated match: %v", err)
 	}
-	if refreshedStage == nil || refreshedStage.StageName != "32强" || refreshedStage.Status != model.EventNewsStatusLive {
-		t.Fatalf("unexpected updated stage: %#v", refreshedStage)
+	if refreshedMatch == nil || refreshedMatch.RoundName != "32强" || refreshedMatch.Status != model.EventNewsStatusLive {
+		t.Fatalf("unexpected updated match: %#v", refreshedMatch)
 	}
 
-	deleteStageLogic := NewAdminDeleteEventNewsStageLogic(adminTestCtx(-100), svcCtx)
-	resp, err = deleteStageLogic.AdminDeleteEventNewsStage(&types.AdminEventNewsStageIdReq{StageId: stages[0].Id})
+	deleteMatchLogic := NewAdminDeleteEventNewsMatchLogic(adminTestCtx(-100), svcCtx)
+	resp, err = deleteMatchLogic.AdminDeleteEventNewsMatch(&types.AdminEventNewsMatchIdReq{MatchId: matches[0].Id})
 	if err != nil {
-		t.Fatalf("delete event stage: %v", err)
+		t.Fatalf("delete event match: %v", err)
 	}
 	if !resp.Success || resp.Code != 0 {
-		t.Fatalf("expected stage delete success, got %#v", resp)
+		t.Fatalf("expected match delete success, got %#v", resp)
 	}
 
-	emptyStages, err := svcCtx.EventNewsStageModel.FindByEventId(event.Id)
+	emptyMatches, err := svcCtx.TournamentMatchModel.FindByTournament(event.TournamentId)
 	if err != nil {
-		t.Fatalf("find stages after delete: %v", err)
+		t.Fatalf("find matches after delete: %v", err)
 	}
-	if len(emptyStages) != 0 {
-		t.Fatalf("expected stages cleared after delete, got %#v", emptyStages)
+	if len(emptyMatches) != 0 {
+		t.Fatalf("expected matches cleared after delete, got %#v", emptyMatches)
 	}
 
-	createSeedStage(t, svcCtx, &model.EventNewsStage{
-		EventId:    event.Id,
-		StageName:  "16强",
-		StageOrder: 30,
-		Status:     model.EventNewsStatusUpcoming,
-		ResultText: "待更新",
+	createSeedMatch(t, svcCtx, &model.TournamentMatch{
+		TournamentId:   event.TournamentId,
+		RoundName:      "16强",
+		RoundOrder:     30,
+		MatchOrder:     1,
+		Status:         model.EventNewsStatusUpcoming,
+		HomePlayerName: "选手A",
+		AwayPlayerName: "选手B",
 	})
 	deleteEventLogic := NewAdminDeleteEventNewsLogic(adminTestCtx(-100), svcCtx)
 	resp, err = deleteEventLogic.AdminDeleteEventNews(&types.AdminEventNewsIdReq{EventId: event.Id})
@@ -280,67 +312,12 @@ func TestAdminCreateUpdateAndDeleteEventNewsStageAndCascadeOnEventDelete(t *test
 		t.Fatalf("expected event hidden after delete, got %#v", deletedEvent)
 	}
 
-	deletedStages, err := svcCtx.EventNewsStageModel.FindByEventId(event.Id)
+	deletedMatches, err := svcCtx.TournamentMatchModel.FindByTournament(event.TournamentId)
 	if err != nil {
-		t.Fatalf("find stages after event delete: %v", err)
+		t.Fatalf("find matches after event delete: %v", err)
 	}
-	if len(deletedStages) != 0 {
-		t.Fatalf("expected stage cascade delete, got %#v", deletedStages)
-	}
-}
-
-func TestAdminEventNewsStageRejectsInvalidTimeRange(t *testing.T) {
-	svcCtx := newEventNewsAdminTestSvc(t)
-	start := adminTestTime(2026, 3, 24, 11, 0, 0)
-	end := adminTestTime(2026, 3, 24, 10, 0, 0)
-	event := createSeedEvent(t, svcCtx, &model.EventNews{
-		Title:      "时间校验赛事",
-		GameType:   1,
-		SourceType: "manual",
-		SourceName: "Admin",
-		Status:     model.EventNewsStatusUpcoming,
-		StartTime:  &start,
-		SortTime:   &start,
-	})
-
-	createStageLogic := NewAdminCreateEventNewsStageLogic(adminTestCtx(-100), svcCtx)
-	createResp, err := createStageLogic.AdminCreateEventNewsStage(&types.AdminEventNewsStageCreateReq{
-		EventId:    event.Id,
-		StageName:  "资格赛",
-		StageOrder: 10,
-		StartTime:  adminTestTimeString(start),
-		EndTime:    adminTestTimeString(end),
-		Status:     model.EventNewsStatusUpcoming,
-	})
-	if err != nil {
-		t.Fatalf("create invalid range stage: %v", err)
-	}
-	if createResp.Success || createResp.Code != 400 || createResp.Message != "结束时间不能早于开始时间" {
-		t.Fatalf("expected invalid time range to be rejected on create, got %#v", createResp)
-	}
-
-	stage := createSeedStage(t, svcCtx, &model.EventNewsStage{
-		EventId:    event.Id,
-		StageName:  "32强",
-		StageOrder: 20,
-		Status:     model.EventNewsStatusUpcoming,
-	})
-
-	updateStageLogic := NewAdminUpdateEventNewsStageLogic(adminTestCtx(-100), svcCtx)
-	updateResp, err := updateStageLogic.AdminUpdateEventNewsStage(&types.AdminEventNewsStageUpdateReq{
-		StageId:    stage.Id,
-		EventId:    event.Id,
-		StageName:  "32强",
-		StageOrder: 20,
-		StartTime:  adminTestTimeString(start),
-		EndTime:    adminTestTimeString(end),
-		Status:     model.EventNewsStatusLive,
-	})
-	if err != nil {
-		t.Fatalf("update invalid range stage: %v", err)
-	}
-	if updateResp.Success || updateResp.Code != 400 || updateResp.Message != "结束时间不能早于开始时间" {
-		t.Fatalf("expected invalid time range to be rejected on update, got %#v", updateResp)
+	if len(deletedMatches) != 0 {
+		t.Fatalf("expected match cascade delete, got %#v", deletedMatches)
 	}
 }
 
@@ -348,23 +325,36 @@ func TestAdminEventNewsListFiltersAndRejectsNonAdmin(t *testing.T) {
 	svcCtx := newEventNewsAdminTestSvc(t)
 	firstStart := adminTestTime(2026, 3, 25, 9, 0, 0)
 	secondStart := adminTestTime(2026, 3, 26, 9, 0, 0)
-	first := createSeedEvent(t, svcCtx, &model.EventNews{
-		Title:      "斯诺克焦点赛",
+	tournament := createSeedTournament(t, svcCtx, &model.Tournament{
+		Name:       "斯诺克焦点赛实体",
 		GameType:   1,
-		SourceType: "official",
-		SourceName: "WST",
+		Format:     1,
+		MaxPlayers: 16,
 		Status:     model.EventNewsStatusLive,
-		Featured:   true,
-		Published:  true,
 		StartTime:  &firstStart,
-		SortTime:   &firstStart,
 	})
-	createSeedStage(t, svcCtx, &model.EventNewsStage{
-		EventId:    first.Id,
-		StageName:  "32强",
-		StageOrder: 20,
-		Status:     model.EventNewsStatusLive,
-		ResultText: "32强进行中",
+	createSeedEvent(t, svcCtx, &model.EventNews{
+		Title:        "斯诺克焦点赛",
+		TournamentId: tournament.Id,
+		GameType:     1,
+		SourceType:   "official",
+		SourceName:   "WST",
+		Status:       model.EventNewsStatusLive,
+		Featured:     true,
+		Published:    true,
+		StartTime:    &firstStart,
+		SortTime:     &firstStart,
+	})
+	createSeedMatch(t, svcCtx, &model.TournamentMatch{
+		TournamentId:   tournament.Id,
+		RoundName:      "32强",
+		RoundOrder:     20,
+		MatchOrder:     1,
+		Status:         model.EventNewsStatusLive,
+		HomePlayerName: "A",
+		AwayPlayerName: "B",
+		HomeScore:      3,
+		AwayScore:      2,
 	})
 	createSeedEvent(t, svcCtx, &model.EventNews{
 		Title:      "中式九球预告",
@@ -398,8 +388,8 @@ func TestAdminEventNewsListFiltersAndRejectsNonAdmin(t *testing.T) {
 	if resp.List[0].Title != "斯诺克焦点赛" || !resp.List[0].Published {
 		t.Fatalf("unexpected filtered event: %#v", resp.List[0])
 	}
-	if resp.List[0].CurrentStageText != "32强" || resp.List[0].LatestResultText != "32强进行中" || resp.List[0].StageCount != 1 {
-		t.Fatalf("expected stage summary fields in admin list, got %#v", resp.List[0])
+	if resp.List[0].CurrentRoundText != "32强" || resp.List[0].LatestResultText != "A 3 - 2 B" || resp.List[0].MatchCount != 1 {
+		t.Fatalf("expected match summary fields in admin list, got %#v", resp.List[0])
 	}
 
 	rejectedLogic := NewAdminCreateEventNewsLogic(adminTestCtx(100), svcCtx)

@@ -89,14 +89,14 @@
 							<text class="meta-label">地点</text>
 							<text class="meta-value">{{ item.locationText }}</text>
 						</view>
-						<view class="meta-item">
-							<text class="meta-label">当前阶段</text>
-							<text class="meta-value">{{ item.stageText }}</text>
-						</view>
-						<view class="meta-item">
-							<text class="meta-label">最新赛果</text>
-							<text class="meta-value">{{ item.resultText || item.summary }}</text>
-						</view>
+					<view class="meta-item">
+						<text class="meta-label">当前轮次</text>
+						<text class="meta-value">{{ item.currentRoundText }}</text>
+					</view>
+					<view class="meta-item">
+						<text class="meta-label">比赛数</text>
+						<text class="meta-value">{{ item.matchCountText }}</text>
+					</view>
 					</view>
 
 					<view class="card-footer">
@@ -124,7 +124,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { getEventNewsList } from '@/api/event-news.js'
-import { formatEventNewsTime, getEventNewsStatusText } from '@/utils/home-index.js'
+import { normalizeSaiXunCard } from '@/utils/saixun.js'
 
 const gameTypes = ref([
 	{ label: '全部球种', value: 0 },
@@ -141,12 +141,6 @@ const statusList = ref([
 	{ label: '已取消', value: 3 }
 ])
 
-const EVENT_GAME_TYPE_LABELS = {
-	1: '斯诺克',
-	2: '中式九球',
-	3: '中式八球'
-}
-
 const selectedGameType = ref(gameTypes.value[0])
 const selectedStatus = ref(statusList.value[0])
 
@@ -159,33 +153,6 @@ const totalCount = ref(0)
 
 const liveCount = computed(() => list.value.filter(item => item.status === 1).length)
 const upcomingCount = computed(() => list.value.filter(item => item.status === 0).length)
-
-const getGameTypeText = (gameType) => {
-	return EVENT_GAME_TYPE_LABELS[Number(gameType)] || '台球'
-}
-
-const formatLocationText = (item) => {
-	const city = typeof item.city === 'string' ? item.city.trim() : ''
-	const venue = typeof item.venue === 'string' ? item.venue.trim() : ''
-	if (city && venue) return `${city} · ${venue}`
-	return city || venue || ''
-}
-
-const normalizeEventNewsItem = (item, now = Date.now()) => {
-	const timeSource = item.start_time || item.sort_time || item.end_time || item.published_at || item.created_at
-	return {
-		...item,
-		title: item.title || '赛事情报',
-		summary: item.summary || item.latest_result_text || '最新赛况持续更新中',
-		statusText: getEventNewsStatusText(item.status, '未知状态'),
-		gameTypeText: getGameTypeText(item.game_type),
-		timeText: formatEventNewsTime(timeSource, now),
-		locationText: formatLocationText(item),
-		stageText: item.current_stage_text || '阶段待更新',
-		resultText: item.latest_result_text || '',
-		sourceText: item.source_name || ''
-	}
-}
 
 const buildQueryParams = (pageValue, gameTypeValue, statusValue) => {
 	const params = {
@@ -217,7 +184,7 @@ const fetchList = async ({
 			console.error('获取赛事情报列表失败: 返回数据格式错误')
 			return false
 		}
-		const newList = (res.list || []).map((item) => normalizeEventNewsItem(item))
+		const newList = (res.list || []).map((item) => normalizeSaiXunCard(item))
 		if (commitSelection) {
 			if (commitSelection.gameType) selectedGameType.value = commitSelection.gameType
 			if (commitSelection.status) selectedStatus.value = commitSelection.status

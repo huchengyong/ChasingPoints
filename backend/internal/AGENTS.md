@@ -48,7 +48,7 @@ internal/
 - DTO 来源于 `.api`，修改请求/响应结构要先改 `.api` 再生成，不直接改 `types`。
 - 获取当前登录用户 ID 时统一用 `utils.GetUserIDFromCtx(l.ctx)`。
 - `pkg/ws` 下的消息类型和连接参数要与前端 `utils/websocket.js` 保持一致。
-- `model` 层不负责自动建表；像赛事情报这种 migration 管理结构，测试里要手动准备 schema。当前有效表是 `event_news_events` 和 `event_news_stages`。
+- `model` 层不负责自动建表；像赛讯这种 migration 管理结构，测试里要手动准备 schema。当前有效表是 `event_news_events`、`tournaments`、`tournament_matches`。
 
 ## ANTI-PATTERNS
 - 禁止在 `handler` 中塞入复杂业务流程。

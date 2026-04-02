@@ -14,28 +14,29 @@ const (
 )
 
 type EventNews struct {
-	Id          int64          `gorm:"primarykey" json:"id"`
-	Title       string         `gorm:"size:128;not null" json:"title"`
-	GameType    int            `gorm:"not null;index" json:"game_type"`
-	SourceType  string         `gorm:"size:32;not null;default:''" json:"source_type"`
-	SourceName  string         `gorm:"size:64;not null;default:''" json:"source_name"`
-	SourceUrl   string         `gorm:"size:512;not null;default:''" json:"source_url"`
-	CoverImage  string         `gorm:"size:512;not null;default:''" json:"cover_image"`
-	Summary     string         `gorm:"size:512;not null;default:''" json:"summary"`
-	Content     string         `gorm:"type:text" json:"content"`
-	Country     string         `gorm:"size:64;not null;default:''" json:"country"`
-	City        string         `gorm:"size:64;not null;default:'';index" json:"city"`
-	Venue       string         `gorm:"size:128;not null;default:''" json:"venue"`
-	StartTime   *time.Time     `gorm:"default:null;index" json:"start_time"`
-	EndTime     *time.Time     `gorm:"default:null" json:"end_time"`
-	Status      int            `gorm:"not null;default:0;index" json:"status"`
-	Featured    bool           `gorm:"not null;default:false;index" json:"featured"`
-	SortTime    *time.Time     `gorm:"default:null;index" json:"sort_time"`
-	Published   bool           `gorm:"not null;default:false;index" json:"published"`
-	PublishedAt *time.Time     `gorm:"default:null" json:"published_at"`
-	CreatedAt   time.Time      `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt   time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
-	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at"`
+	Id           int64          `gorm:"primarykey" json:"id"`
+	Title        string         `gorm:"size:128;not null" json:"title"`
+	TournamentId int64          `gorm:"not null;default:0;index" json:"tournament_id"`
+	GameType     int            `gorm:"not null;index" json:"game_type"`
+	SourceType   string         `gorm:"size:32;not null;default:''" json:"source_type"`
+	SourceName   string         `gorm:"size:64;not null;default:''" json:"source_name"`
+	SourceUrl    string         `gorm:"size:512;not null;default:''" json:"source_url"`
+	CoverImage   string         `gorm:"size:512;not null;default:''" json:"cover_image"`
+	Summary      string         `gorm:"size:512;not null;default:''" json:"summary"`
+	Content      string         `gorm:"type:text" json:"content"`
+	Country      string         `gorm:"size:64;not null;default:''" json:"country"`
+	City         string         `gorm:"size:64;not null;default:'';index" json:"city"`
+	Venue        string         `gorm:"size:128;not null;default:''" json:"venue"`
+	StartTime    *time.Time     `gorm:"default:null;index" json:"start_time"`
+	EndTime      *time.Time     `gorm:"default:null" json:"end_time"`
+	Status       int            `gorm:"not null;default:0;index" json:"status"`
+	Featured     bool           `gorm:"not null;default:false;index" json:"featured"`
+	SortTime     *time.Time     `gorm:"default:null;index" json:"sort_time"`
+	Published    bool           `gorm:"not null;default:false;index" json:"published"`
+	PublishedAt  *time.Time     `gorm:"default:null" json:"published_at"`
+	CreatedAt    time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt    time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
+	DeletedAt    gorm.DeletedAt `gorm:"index" json:"deleted_at"`
 }
 
 func (EventNews) TableName() string {
@@ -56,6 +57,13 @@ func (m *EventNewsModel) Create(eventNews *EventNews) error {
 
 func (m *EventNewsModel) Update(eventNews *EventNews) error {
 	return m.db.Save(eventNews).Error
+}
+
+func (m *EventNewsModel) UpdateTournamentBinding(id, tournamentId int64) error {
+	return m.db.Model(&EventNews{}).
+		Where("id = ?", id).
+		Update("tournament_id", tournamentId).
+		Error
 }
 
 func (m *EventNewsModel) FindById(id int64) (*EventNews, error) {

@@ -2,6 +2,8 @@ package eventnews
 
 import (
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"chasing_points/internal/model"
@@ -25,7 +27,7 @@ func normalizeEventNewsPage(page, pageSize int) (int, int) {
 	return page, pageSize
 }
 
-func mapEventNewsInfo(item model.EventNews, stages []model.EventNewsStage) types.EventNewsInfo {
+func mapEventNewsInfo(item model.EventNews, tournament *model.Tournament, matches []model.TournamentMatch) types.EventNewsInfo {
 	resp := types.EventNewsInfo{
 		Id:         item.Id,
 		Title:      item.Title,
@@ -42,7 +44,7 @@ func mapEventNewsInfo(item model.EventNews, stages []model.EventNewsStage) types
 		Status:     item.Status,
 		Featured:   item.Featured,
 		Published:  item.Published,
-		StageCount: len(stages),
+		MatchCount: len(matches),
 	}
 	if item.StartTime != nil {
 		resp.StartTime = item.StartTime.Format(eventNewsTimeLayout)
@@ -59,34 +61,63 @@ func mapEventNewsInfo(item model.EventNews, stages []model.EventNewsStage) types
 	resp.CreatedAt = item.CreatedAt.Format(eventNewsTimeLayout)
 	resp.UpdatedAt = item.UpdatedAt.Format(eventNewsTimeLayout)
 
-	summaryStage := pickSummaryStage(stages)
-	if summaryStage != nil {
-		resp.CurrentStageText = summaryStage.StageName
-		resp.LatestResultText = summaryStage.ResultText
+	if tournament != nil {
+		resp.TournamentId = tournament.Id
+		resp.TournamentName = tournament.Name
+		if resp.GameType == 0 {
+			resp.GameType = tournament.GameType
+		}
+		if resp.City == "" {
+			resp.City = tournament.City
+		}
+		if resp.Venue == "" {
+			resp.Venue = tournament.VenueName
+		}
+		if resp.StartTime == "" && tournament.StartTime != nil {
+			resp.StartTime = tournament.StartTime.Format(eventNewsTimeLayout)
+		}
+		if resp.EndTime == "" && tournament.EndTime != nil {
+			resp.EndTime = tournament.EndTime.Format(eventNewsTimeLayout)
+		}
+	}
+	if resp.TournamentName == "" {
+		resp.TournamentName = item.Title
+	}
+
+	summaryMatch := pickSummaryMatch(matches)
+	if summaryMatch != nil {
+		resp.CurrentRoundText = summaryMatch.RoundName
+		resp.LatestResultText = formatMatchSummary(*summaryMatch)
 	}
 
 	return resp
 }
 
-func mapEventNewsStageInfo(item model.EventNewsStage) types.EventNewsStageInfo {
-	resp := types.EventNewsStageInfo{
-		Id:         item.Id,
-		EventId:    item.EventId,
-		StageName:  item.StageName,
-		StageOrder: item.StageOrder,
-		Status:     item.Status,
-		ResultText: item.ResultText,
-		CreatedAt:  item.CreatedAt.Format(eventNewsTimeLayout),
-		UpdatedAt:  item.UpdatedAt.Format(eventNewsTimeLayout),
+func mapEventNewsMatchInfo(eventID int64, item model.TournamentMatch) types.EventNewsMatchInfo {
+	resp := types.EventNewsMatchInfo{
+		Id:             item.Id,
+		EventId:        eventID,
+		TournamentId:   item.TournamentId,
+		SourceType:     item.SourceType,
+		SourceMatchId:  item.SourceMatchId,
+		RoundName:      item.RoundName,
+		RoundOrder:     item.RoundOrder,
+		MatchOrder:     item.MatchOrder,
+		Status:         item.Status,
+		BestOf:         item.BestOf,
+		HomePlayerId:   firstNonZeroInt64(item.HomePlayerId, item.Player1Id),
+		HomePlayerName: firstNonEmpty(item.HomePlayerName),
+		AwayPlayerId:   firstNonZeroInt64(item.AwayPlayerId, item.Player2Id),
+		AwayPlayerName: firstNonEmpty(item.AwayPlayerName),
+		HomeScore:      item.HomeScore,
+		AwayScore:      item.AwayScore,
+		WinnerSide:     normalizeWinnerSide(item),
+		IsPlaceholder:  item.IsPlaceholder,
+		CreatedAt:      item.CreatedAt.Format(eventNewsTimeLayout),
+		UpdatedAt:      item.UpdatedAt.Format(eventNewsTimeLayout),
 	}
 	if item.StartTime != nil {
 		resp.StartTime = item.StartTime.Format(eventNewsTimeLayout)
-	}
-	if item.EndTime != nil {
-		resp.EndTime = item.EndTime.Format(eventNewsTimeLayout)
-	}
-	if item.SortTime != nil {
-		resp.SortTime = item.SortTime.Format(eventNewsTimeLayout)
 	}
 	return resp
 }
@@ -193,45 +224,132 @@ func paginateEventNewsItems(items []model.EventNews, page, pageSize int) []model
 	return pageItems
 }
 
-func pickSummaryStage(stages []model.EventNewsStage) *model.EventNewsStage {
-	if len(stages) == 0 {
+func mapTournamentInfo(item *model.Tournament) *types.TournamentInfo {
+	if item == nil {
 		return nil
 	}
 
-	candidates := filterStagesByStatus(stages, model.EventNewsStatusLive)
+	info := &types.TournamentInfo{
+		Id:             item.Id,
+		CreatorId:      item.CreatorId,
+		Name:           item.Name,
+		Description:    item.Description,
+		GameType:       item.GameType,
+		Format:         item.Format,
+		MaxPlayers:     item.MaxPlayers,
+		CurrentPlayers: item.CurrentPlayers,
+		Status:         item.Status,
+		City:           item.City,
+		VenueName:      item.VenueName,
+		CreatedAt:      item.CreatedAt.Format(eventNewsTimeLayout),
+	}
+	if item.StartTime != nil {
+		info.StartTime = item.StartTime.Format(eventNewsTimeLayout)
+	}
+	if item.EndTime != nil {
+		info.EndTime = item.EndTime.Format(eventNewsTimeLayout)
+	}
+	return info
+}
+
+func pickSummaryMatch(matches []model.TournamentMatch) *model.TournamentMatch {
+	if len(matches) == 0 {
+		return nil
+	}
+
+	candidates := filterMatchesByStatus(matches, model.EventNewsStatusLive)
 	if len(candidates) == 0 {
-		candidates = filterStagesByStatus(stages, model.EventNewsStatusUpcoming)
+		candidates = filterMatchesByStatus(matches, model.EventNewsStatusUpcoming)
 	}
 	if len(candidates) == 0 {
-		candidates = filterStagesByStatus(stages, model.EventNewsStatusFinished)
+		candidates = filterMatchesByStatus(matches, model.EventNewsStatusFinished)
 	}
 	if len(candidates) == 0 {
-		candidates = append(candidates, stages...)
+		candidates = append(candidates, matches...)
 	}
 
 	sort.SliceStable(candidates, func(i, j int) bool {
-		if candidates[i].Status == model.EventNewsStatusUpcoming && candidates[j].Status == model.EventNewsStatusUpcoming {
-			if candidates[i].StageOrder != candidates[j].StageOrder {
-				return candidates[i].StageOrder < candidates[j].StageOrder
-			}
-			return candidates[i].Id < candidates[j].Id
+		if candidates[i].Status == model.EventNewsStatusUpcoming || candidates[j].Status == model.EventNewsStatusUpcoming {
+			return matchSortValue(candidates[i]) < matchSortValue(candidates[j])
 		}
-		if candidates[i].StageOrder != candidates[j].StageOrder {
-			return candidates[i].StageOrder > candidates[j].StageOrder
-		}
-		return candidates[i].Id > candidates[j].Id
+		return matchSortValue(candidates[i]) > matchSortValue(candidates[j])
 	})
 
 	chosen := candidates[0]
 	return &chosen
 }
 
-func filterStagesByStatus(stages []model.EventNewsStage, status int) []model.EventNewsStage {
-	filtered := make([]model.EventNewsStage, 0, len(stages))
-	for _, stage := range stages {
-		if stage.Status == status {
-			filtered = append(filtered, stage)
+func filterMatchesByStatus(matches []model.TournamentMatch, status int) []model.TournamentMatch {
+	filtered := make([]model.TournamentMatch, 0, len(matches))
+	for _, match := range matches {
+		if match.Status == status {
+			filtered = append(filtered, match)
 		}
 	}
 	return filtered
+}
+
+func matchSortValue(item model.TournamentMatch) int64 {
+	return int64(item.RoundOrder)*1_000_000 + int64(item.MatchOrder)*1_000 + int64(item.Id)
+}
+
+func formatMatchSummary(item model.TournamentMatch) string {
+	home := displayPlayerName(item.HomePlayerName, item.Player1Id)
+	away := displayPlayerName(item.AwayPlayerName, item.Player2Id)
+	scoreText := "-"
+	if item.Status == model.EventNewsStatusLive || item.Status == model.EventNewsStatusFinished {
+		scoreText = strings.TrimSpace(
+			strings.Join([]string{intToString(item.HomeScore), "-", intToString(item.AwayScore)}, " "),
+		)
+	}
+	if home == "" && away == "" {
+		return scoreText
+	}
+	return strings.TrimSpace(home + " " + scoreText + " " + away)
+}
+
+func displayPlayerName(name string, fallbackID int64) string {
+	if strings.TrimSpace(name) != "" {
+		return strings.TrimSpace(name)
+	}
+	if fallbackID > 0 {
+		return "选手#" + intToString(int(fallbackID))
+	}
+	return "待定"
+}
+
+func normalizeWinnerSide(item model.TournamentMatch) int {
+	if item.WinnerSide != 0 {
+		return item.WinnerSide
+	}
+	switch {
+	case item.WinnerId > 0 && item.WinnerId == firstNonZeroInt64(item.HomePlayerId, item.Player1Id):
+		return 1
+	case item.WinnerId > 0 && item.WinnerId == firstNonZeroInt64(item.AwayPlayerId, item.Player2Id):
+		return 2
+	default:
+		return 0
+	}
+}
+
+func firstNonZeroInt64(values ...int64) int64 {
+	for _, value := range values {
+		if value > 0 {
+			return value
+		}
+	}
+	return 0
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
+func intToString(value int) string {
+	return strconv.Itoa(value)
 }

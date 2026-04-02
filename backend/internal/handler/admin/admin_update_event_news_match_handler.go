@@ -9,17 +9,17 @@ import (
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
-// 删除赛事阶段
-func AdminDeleteEventNewsStageHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+// 更新赛事比赛
+func AdminUpdateEventNewsMatchHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req types.AdminEventNewsStageIdReq
+		var req types.AdminEventNewsMatchUpdateReq
 		if err := httpx.Parse(r, &req); err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
 		}
 
-		l := admin.NewAdminDeleteEventNewsStageLogic(r.Context(), svcCtx)
-		resp, err := l.AdminDeleteEventNewsStage(&req)
+		l := admin.NewAdminUpdateEventNewsMatchLogic(r.Context(), svcCtx)
+		resp, err := l.AdminUpdateEventNewsMatch(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 		} else {

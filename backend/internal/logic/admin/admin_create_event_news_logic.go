@@ -90,26 +90,80 @@ func (l *AdminCreateEventNewsLogic) AdminCreateEventNews(req *types.AdminEventNe
 	}
 
 	now := time.Now()
+	tournamentName := fallbackTournamentName(strings.TrimSpace(req.TournamentName), title)
+	var tournamentID int64
+	if req.TournamentId > 0 {
+		tournament, queryErr := l.svcCtx.TournamentModel.FindById(req.TournamentId)
+		if queryErr != nil {
+			l.Logger.Errorf("查询赛事失败: id=%d err=%v", req.TournamentId, queryErr)
+			return &types.AdminWriteResp{Code: 500, Success: false, Message: "创建赛事情报失败"}, nil
+		}
+		if tournament == nil {
+			return &types.AdminWriteResp{Code: 404, Success: false, Message: "赛事不存在"}, nil
+		}
+
+		updateReq := &types.AdminEventNewsUpdateReq{
+			TournamentId:   req.TournamentId,
+			TournamentName: tournamentName,
+			Title:          req.Title,
+			GameType:       req.GameType,
+			Description:    req.Description,
+			City:           req.City,
+			Venue:          req.Venue,
+			StartTime:      req.StartTime,
+			EndTime:        req.EndTime,
+			Status:         req.Status,
+		}
+		if err := applyAdminTournamentUpdate(tournament, updateReq); err != nil {
+			return &types.AdminWriteResp{Code: 400, Success: false, Message: "时间格式不正确"}, nil
+		}
+		if message := validateAdminEventNewsTimeRange(tournament.StartTime, tournament.EndTime); message != "" {
+			return &types.AdminWriteResp{Code: 400, Success: false, Message: message}, nil
+		}
+		if err := l.svcCtx.TournamentModel.Update(tournament); err != nil {
+			l.Logger.Errorf("更新赛事失败: id=%d err=%v", req.TournamentId, err)
+			return &types.AdminWriteResp{Code: 500, Success: false, Message: "创建赛事情报失败"}, nil
+		}
+		tournamentID = tournament.Id
+	} else {
+		tournament, buildErr := buildAdminTournament(req)
+		if buildErr != nil {
+			return &types.AdminWriteResp{Code: 400, Success: false, Message: "时间格式不正确"}, nil
+		}
+		if message := validateAdminEventNewsTimeRange(tournament.StartTime, tournament.EndTime); message != "" {
+			return &types.AdminWriteResp{Code: 400, Success: false, Message: message}, nil
+		}
+		if err := l.svcCtx.TournamentModel.Create(tournament); err != nil {
+			l.Logger.Errorf("创建赛事失败: err=%v", err)
+			return &types.AdminWriteResp{Code: 500, Success: false, Message: "创建赛事情报失败"}, nil
+		}
+		tournamentID = tournament.Id
+	}
+
 	news := &model.EventNews{
-		Title:      title,
-		GameType:   req.GameType,
-		SourceType: strings.TrimSpace(req.SourceType),
-		SourceName: strings.TrimSpace(req.SourceName),
-		SourceUrl:  strings.TrimSpace(req.SourceUrl),
-		CoverImage: strings.TrimSpace(req.CoverImage),
-		Summary:    strings.TrimSpace(req.Summary),
-		Content:    req.Content,
-		Country:    strings.TrimSpace(req.Country),
-		City:       strings.TrimSpace(req.City),
-		Venue:      strings.TrimSpace(req.Venue),
-		StartTime:  startTime,
-		EndTime:    endTime,
-		Status:     req.Status,
-		Featured:   req.Featured,
-		SortTime:   sortTime,
-		Published:  false,
-		CreatedAt:  now,
-		UpdatedAt:  now,
+		Title:        title,
+		TournamentId: tournamentID,
+		GameType:     req.GameType,
+		SourceType:   strings.TrimSpace(req.SourceType),
+		SourceName:   strings.TrimSpace(req.SourceName),
+		SourceUrl:    strings.TrimSpace(req.SourceUrl),
+		CoverImage:   strings.TrimSpace(req.CoverImage),
+		Summary:      strings.TrimSpace(req.Summary),
+		Content:      req.Content,
+		Country:      strings.TrimSpace(req.Country),
+		City:         strings.TrimSpace(req.City),
+		Venue:        strings.TrimSpace(req.Venue),
+		StartTime:    startTime,
+		EndTime:      endTime,
+		Status:       req.Status,
+		Featured:     req.Featured,
+		SortTime:     sortTime,
+		Published:    req.Published,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+	if req.Published {
+		news.PublishedAt = &now
 	}
 
 	if err := l.svcCtx.EventNewsModel.Create(news); err != nil {

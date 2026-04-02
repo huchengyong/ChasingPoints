@@ -86,28 +86,34 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: admin.AdminGetEventNewsListHandler(serverCtx),
 			},
 			{
+				// 创建赛事比赛
+				Method:  http.MethodPost,
+				Path:    "/match/create",
+				Handler: admin.AdminCreateEventNewsMatchHandler(serverCtx),
+			},
+			{
+				// 删除赛事比赛
+				Method:  http.MethodPost,
+				Path:    "/match/delete",
+				Handler: admin.AdminDeleteEventNewsMatchHandler(serverCtx),
+			},
+			{
+				// 更新赛事比赛
+				Method:  http.MethodPost,
+				Path:    "/match/update",
+				Handler: admin.AdminUpdateEventNewsMatchHandler(serverCtx),
+			},
+			{
+				// 获取赛事比赛列表
+				Method:  http.MethodGet,
+				Path:    "/matches",
+				Handler: admin.AdminGetEventNewsMatchesHandler(serverCtx),
+			},
+			{
 				// 发布或下线赛事情报
 				Method:  http.MethodPost,
 				Path:    "/publish",
 				Handler: admin.AdminPublishEventNewsHandler(serverCtx),
-			},
-			{
-				// 创建赛事阶段
-				Method:  http.MethodPost,
-				Path:    "/stage/create",
-				Handler: admin.AdminCreateEventNewsStageHandler(serverCtx),
-			},
-			{
-				// 删除赛事阶段
-				Method:  http.MethodPost,
-				Path:    "/stage/delete",
-				Handler: admin.AdminDeleteEventNewsStageHandler(serverCtx),
-			},
-			{
-				// 更新赛事阶段
-				Method:  http.MethodPost,
-				Path:    "/stage/update",
-				Handler: admin.AdminUpdateEventNewsStageHandler(serverCtx),
 			},
 			{
 				// 更新赛事情报
@@ -347,12 +353,6 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
-				// 获取赛事情报详情
-				Method:  http.MethodGet,
-				Path:    "/detail",
-				Handler: eventnews.GetEventNewsDetailHandler(serverCtx),
-			},
-			{
 				// 获取首页焦点赛事情报
 				Method:  http.MethodGet,
 				Path:    "/featured",
@@ -363,6 +363,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodGet,
 				Path:    "/list",
 				Handler: eventnews.GetEventNewsListHandler(serverCtx),
+			},
+			{
+				// 获取赛事情报详情
+				Method:  http.MethodGet,
+				Path:    "/view",
+				Handler: eventnews.GetEventNewsViewHandler(serverCtx),
 			},
 		},
 		rest.WithPrefix("/api/event-news"),

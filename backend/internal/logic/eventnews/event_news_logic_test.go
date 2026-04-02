@@ -26,9 +26,10 @@ func newEventNewsTestSvc(t *testing.T) *svc.ServiceContext {
 	}
 
 	return &svc.ServiceContext{
-		DB:                  db,
-		EventNewsModel:      model.NewEventNewsModel(db),
-		EventNewsStageModel: model.NewEventNewsStageModel(db),
+		DB:                   db,
+		EventNewsModel:       model.NewEventNewsModel(db),
+		TournamentModel:      model.NewTournamentModel(db),
+		TournamentMatchModel: model.NewTournamentMatchModel(db),
 	}
 }
 
@@ -46,13 +47,22 @@ func createEvent(t *testing.T, svcCtx *svc.ServiceContext, event *model.EventNew
 	return event
 }
 
-func createStage(t *testing.T, svcCtx *svc.ServiceContext, stage *model.EventNewsStage) *model.EventNewsStage {
+func createTournament(t *testing.T, svcCtx *svc.ServiceContext, tournament *model.Tournament) *model.Tournament {
 	t.Helper()
 
-	if err := svcCtx.EventNewsStageModel.Create(stage); err != nil {
-		t.Fatalf("create stage: %v", err)
+	if err := svcCtx.TournamentModel.Create(tournament); err != nil {
+		t.Fatalf("create tournament: %v", err)
 	}
-	return stage
+	return tournament
+}
+
+func createMatch(t *testing.T, svcCtx *svc.ServiceContext, match *model.TournamentMatch) *model.TournamentMatch {
+	t.Helper()
+
+	if err := svcCtx.TournamentMatchModel.Create(match); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+	return match
 }
 
 func withEventNewsNow(now time.Time) func() {
@@ -65,35 +75,42 @@ func withEventNewsNow(now time.Time) func() {
 	}
 }
 
-func TestGetEventNewsListFiltersPublishedEventParentsAndExposesStageSummary(t *testing.T) {
+func TestGetEventNewsListFiltersPublishedEventParentsAndExposesMatchSummary(t *testing.T) {
 	svcCtx := newEventNewsTestSvc(t)
 	defer withEventNewsNow(time.Date(2026, 3, 23, 12, 0, 0, 0, time.UTC))()
 
-	snooker := createEvent(t, svcCtx, &model.EventNews{
-		Title:      "2026斯诺克世锦赛",
+	tournament := createTournament(t, svcCtx, &model.Tournament{
+		Name:       "2026斯诺克世锦赛",
 		GameType:   1,
-		SourceType: "official",
-		SourceName: "WST",
+		Format:     1,
+		MaxPlayers: 16,
+		Status:     model.EventNewsStatusLive,
 		City:       "谢菲尔德",
-		Status:     model.EventNewsStatusLive,
-		Published:  true,
-		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 0, 0, 0, time.UTC)),
+		VenueName:  "Crucible",
+		StartTime:  mustTimePtr(time.Date(2026, 3, 23, 11, 0, 0, 0, time.UTC)),
 	})
-	createStage(t, svcCtx, &model.EventNewsStage{
-		EventId:    snooker.Id,
-		StageName:  "资格赛",
-		StageOrder: 10,
-		Status:     model.EventNewsStatusFinished,
-		ResultText: "资格赛收官",
-		SortTime:   mustTimePtr(time.Date(2026, 3, 22, 18, 0, 0, 0, time.UTC)),
+
+	snooker := createEvent(t, svcCtx, &model.EventNews{
+		Title:        "2026斯诺克世锦赛",
+		TournamentId: tournament.Id,
+		GameType:     1,
+		SourceType:   "official",
+		SourceName:   "WST",
+		City:         "谢菲尔德",
+		Status:       model.EventNewsStatusLive,
+		Published:    true,
+		SortTime:     mustTimePtr(time.Date(2026, 3, 23, 11, 0, 0, 0, time.UTC)),
 	})
-	createStage(t, svcCtx, &model.EventNewsStage{
-		EventId:    snooker.Id,
-		StageName:  "32强",
-		StageOrder: 20,
-		Status:     model.EventNewsStatusLive,
-		ResultText: "赵心童晋级16强",
-		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 30, 0, 0, time.UTC)),
+	createMatch(t, svcCtx, &model.TournamentMatch{
+		TournamentId:   tournament.Id,
+		RoundName:      "32强",
+		RoundOrder:     20,
+		MatchOrder:     1,
+		Status:         model.EventNewsStatusLive,
+		HomePlayerName: "赵心童",
+		AwayPlayerName: "马克",
+		HomeScore:      6,
+		AwayScore:      2,
 	})
 
 	createEvent(t, svcCtx, &model.EventNews{
@@ -134,14 +151,14 @@ func TestGetEventNewsListFiltersPublishedEventParentsAndExposesStageSummary(t *t
 	if resp.List[0].Title != snooker.Title {
 		t.Fatalf("expected snooker event, got %#v", resp.List[0])
 	}
-	if resp.List[0].CurrentStageText != "32强" {
-		t.Fatalf("expected current stage summary from stages, got %#v", resp.List[0])
+	if resp.List[0].CurrentRoundText != "32强" {
+		t.Fatalf("expected current round summary from matches, got %#v", resp.List[0])
 	}
-	if resp.List[0].LatestResultText != "赵心童晋级16强" {
-		t.Fatalf("expected latest result summary from stages, got %#v", resp.List[0])
+	if resp.List[0].LatestResultText != "赵心童 6 - 2 马克" {
+		t.Fatalf("expected latest result summary from matches, got %#v", resp.List[0])
 	}
-	if resp.List[0].StageCount != 2 {
-		t.Fatalf("expected two stages, got %#v", resp.List[0])
+	if resp.List[0].MatchCount != 1 {
+		t.Fatalf("expected one match, got %#v", resp.List[0])
 	}
 }
 
@@ -188,128 +205,137 @@ func TestGetEventNewsListFiltersByEventStatus(t *testing.T) {
 	}
 }
 
-func TestGetEventNewsDetailReturnsGroupedStagesForPublishedEvent(t *testing.T) {
+func TestGetEventNewsViewReturnsEventTournamentAndMatches(t *testing.T) {
 	svcCtx := newEventNewsTestSvc(t)
-	defer withEventNewsNow(time.Date(2026, 3, 23, 12, 0, 0, 0, time.UTC))()
+	defer withEventNewsNow(time.Date(2026, 4, 2, 12, 0, 0, 0, time.UTC))()
 
 	event := createEvent(t, svcCtx, &model.EventNews{
-		Title:      "2026斯诺克世锦赛",
+		Title:      "Sportsbet.io Tour Championship 2026",
 		GameType:   1,
 		SourceType: "official",
 		SourceName: "WST",
-		Status:     model.EventNewsStatusLive,
 		Published:  true,
-		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 50, 0, 0, time.UTC)),
-		Content:    "赛事详情正文",
-	})
-	createStage(t, svcCtx, &model.EventNewsStage{
-		EventId:    event.Id,
-		StageName:  "16强",
-		StageOrder: 30,
-		Status:     model.EventNewsStatusUpcoming,
-		ResultText: "待更新",
-	})
-	createStage(t, svcCtx, &model.EventNewsStage{
-		EventId:    event.Id,
-		StageName:  "资格赛",
-		StageOrder: 10,
-		Status:     model.EventNewsStatusFinished,
-		ResultText: "资格赛结束",
-	})
-	createStage(t, svcCtx, &model.EventNewsStage{
-		EventId:    event.Id,
-		StageName:  "32强",
-		StageOrder: 20,
 		Status:     model.EventNewsStatusLive,
-		ResultText: "32强进行中",
+		SortTime:   mustTimePtr(time.Date(2026, 4, 2, 11, 0, 0, 0, time.UTC)),
 	})
 
-	unpublished := createEvent(t, svcCtx, &model.EventNews{
-		Title:      "未发布赛事",
-		GameType:   3,
-		SourceType: "manual",
-		SourceName: "Admin",
-		Status:     model.EventNewsStatusUpcoming,
-		Published:  false,
-		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 12, 10, 0, 0, time.UTC)),
-	})
-
-	logic := NewGetEventNewsDetailLogic(context.Background(), svcCtx)
-	resp, err := logic.GetEventNewsDetail(&types.GetEventNewsDetailReq{EventId: event.Id})
-	if err != nil {
-		t.Fatalf("get published detail: %v", err)
+	tournament := &model.Tournament{
+		CreatorId:   1,
+		Name:        "Sportsbet.io Tour Championship 2026",
+		GameType:    1,
+		Status:      1,
+		City:        "Manchester",
+		VenueName:   "Manchester Central",
+		StartTime:   mustTimePtr(time.Date(2026, 3, 30, 12, 0, 0, 0, time.UTC)),
+		EndTime:     mustTimePtr(time.Date(2026, 4, 5, 12, 0, 0, 0, time.UTC)),
+		Description: "Tour Championship detail",
 	}
-	if !resp.Success || resp.Event == nil {
-		t.Fatalf("expected published detail success, got %#v", resp)
-	}
-	if resp.Event.Title != event.Title || resp.Event.Content != "赛事详情正文" {
-		t.Fatalf("unexpected event detail payload: %#v", resp.Event)
-	}
-	if len(resp.Stages) != 3 {
-		t.Fatalf("expected three ordered stages, got %#v", resp.Stages)
-	}
-	if resp.Stages[0].StageName != "资格赛" || resp.Stages[1].StageName != "32强" || resp.Stages[2].StageName != "16强" {
-		t.Fatalf("expected stages sorted by stage_order, got %#v", resp.Stages)
+	if err := svcCtx.TournamentModel.Create(tournament); err != nil {
+		t.Fatalf("create tournament: %v", err)
 	}
 
-	resp, err = logic.GetEventNewsDetail(&types.GetEventNewsDetailReq{EventId: unpublished.Id})
-	if err != nil {
-		t.Fatalf("get unpublished detail: %v", err)
+	if err := svcCtx.EventNewsModel.UpdateTournamentBinding(event.Id, tournament.Id); err != nil {
+		t.Fatalf("bind tournament: %v", err)
 	}
-	if resp.Success {
-		t.Fatalf("expected unpublished detail to be rejected, got %#v", resp)
+
+	if err := svcCtx.TournamentMatchModel.Create(&model.TournamentMatch{
+		TournamentId:   tournament.Id,
+		RoundName:      "Quarter Finals",
+		RoundOrder:     10,
+		MatchOrder:     1,
+		StartTime:      mustTimePtr(time.Date(2026, 4, 2, 12, 0, 0, 0, time.UTC)),
+		Status:         1,
+		BestOf:         19,
+		HomePlayerName: "Neil Robertson",
+		AwayPlayerName: "Barry Hawkins",
+		HomeScore:      5,
+		AwayScore:      3,
+		WinnerSide:     0,
+	}); err != nil {
+		t.Fatalf("create tournament match: %v", err)
+	}
+
+	logic := NewGetEventNewsViewLogic(context.Background(), svcCtx)
+	resp, err := logic.GetEventNewsView(&types.GetEventNewsViewReq{EventId: event.Id})
+	if err != nil {
+		t.Fatalf("get event news view: %v", err)
+	}
+	if !resp.Success {
+		t.Fatalf("expected success, got %#v", resp)
+	}
+	if resp.EventNews == nil || resp.EventNews.Id != event.Id {
+		t.Fatalf("expected event news payload, got %#v", resp)
+	}
+	if resp.Tournament == nil || resp.Tournament.Id != tournament.Id {
+		t.Fatalf("expected bound tournament payload, got %#v", resp)
+	}
+	if len(resp.Matches) != 1 {
+		t.Fatalf("expected one tournament match, got %#v", resp.Matches)
+	}
+	if resp.Matches[0].RoundName != "Quarter Finals" || resp.Matches[0].HomePlayerName != "Neil Robertson" || resp.Matches[0].AwayPlayerName != "Barry Hawkins" {
+		t.Fatalf("unexpected match payload: %#v", resp.Matches[0])
 	}
 }
 
-func TestGetEventNewsDetailRejectsMissingEventID(t *testing.T) {
-	svcCtx := newEventNewsTestSvc(t)
-	logic := NewGetEventNewsDetailLogic(context.Background(), svcCtx)
-	resp, err := logic.GetEventNewsDetail(&types.GetEventNewsDetailReq{})
-	if err != nil {
-		t.Fatalf("get detail without event id: %v", err)
-	}
-	if resp.Success || resp.Event != nil {
-		t.Fatalf("expected missing event_id to be rejected, got %#v", resp)
-	}
-}
-
-func TestGetFeaturedEventNewsPrefersFeaturedEventAndIncludesStagePreview(t *testing.T) {
+func TestGetFeaturedEventNewsPrefersFeaturedEventAndIncludesMatchPreview(t *testing.T) {
 	svcCtx := newEventNewsTestSvc(t)
 	defer withEventNewsNow(time.Date(2026, 3, 23, 12, 0, 0, 0, time.UTC))()
 
-	featured := createEvent(t, svcCtx, &model.EventNews{
-		Title:      "焦点赛事",
+	featuredTournament := createTournament(t, svcCtx, &model.Tournament{
+		Name:       "焦点赛事",
 		GameType:   1,
-		SourceType: "official",
-		SourceName: "WST",
+		Format:     1,
+		MaxPlayers: 16,
 		Status:     model.EventNewsStatusUpcoming,
-		Featured:   true,
-		Published:  true,
-		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 13, 0, 0, 0, time.UTC)),
 	})
-	createStage(t, svcCtx, &model.EventNewsStage{
-		EventId:    featured.Id,
-		StageName:  "资格赛",
-		StageOrder: 10,
-		Status:     model.EventNewsStatusUpcoming,
-		ResultText: "明日开打",
+	featured := createEvent(t, svcCtx, &model.EventNews{
+		Title:        "焦点赛事",
+		TournamentId: featuredTournament.Id,
+		GameType:     1,
+		SourceType:   "official",
+		SourceName:   "WST",
+		Status:       model.EventNewsStatusUpcoming,
+		Featured:     true,
+		Published:    true,
+		SortTime:     mustTimePtr(time.Date(2026, 3, 23, 13, 0, 0, 0, time.UTC)),
+	})
+	createMatch(t, svcCtx, &model.TournamentMatch{
+		TournamentId:   featuredTournament.Id,
+		RoundName:      "资格赛",
+		RoundOrder:     10,
+		MatchOrder:     1,
+		Status:         model.EventNewsStatusUpcoming,
+		HomePlayerName: "选手A",
+		AwayPlayerName: "选手B",
 	})
 
-	other := createEvent(t, svcCtx, &model.EventNews{
-		Title:      "普通进行中赛事",
+	otherTournament := createTournament(t, svcCtx, &model.Tournament{
+		Name:       "普通进行中赛事",
 		GameType:   1,
-		SourceType: "manual",
-		SourceName: "Admin",
+		Format:     1,
+		MaxPlayers: 16,
 		Status:     model.EventNewsStatusLive,
-		Published:  true,
-		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 55, 0, 0, time.UTC)),
 	})
-	createStage(t, svcCtx, &model.EventNewsStage{
-		EventId:    other.Id,
-		StageName:  "32强",
-		StageOrder: 20,
-		Status:     model.EventNewsStatusLive,
-		ResultText: "32强激战中",
+	createEvent(t, svcCtx, &model.EventNews{
+		Title:        "普通进行中赛事",
+		TournamentId: otherTournament.Id,
+		GameType:     1,
+		SourceType:   "manual",
+		SourceName:   "Admin",
+		Status:       model.EventNewsStatusLive,
+		Published:    true,
+		SortTime:     mustTimePtr(time.Date(2026, 3, 23, 11, 55, 0, 0, time.UTC)),
+	})
+	createMatch(t, svcCtx, &model.TournamentMatch{
+		TournamentId:   otherTournament.Id,
+		RoundName:      "32强",
+		RoundOrder:     20,
+		MatchOrder:     1,
+		Status:         model.EventNewsStatusLive,
+		HomePlayerName: "甲",
+		AwayPlayerName: "乙",
+		HomeScore:      4,
+		AwayScore:      3,
 	})
 
 	logic := NewGetFeaturedEventNewsLogic(context.Background(), svcCtx)
@@ -323,7 +349,7 @@ func TestGetFeaturedEventNewsPrefersFeaturedEventAndIncludesStagePreview(t *test
 	if resp.Event.Id != featured.Id {
 		t.Fatalf("expected featured event to win, got %#v", resp.Event)
 	}
-	if resp.Event.CurrentStageText != "资格赛" || resp.Event.LatestResultText != "明日开打" {
-		t.Fatalf("expected stage preview on featured event, got %#v", resp.Event)
+	if resp.Event.CurrentRoundText != "资格赛" || resp.Event.LatestResultText != "选手A - 选手B" {
+		t.Fatalf("expected match preview on featured event, got %#v", resp.Event)
 	}
 }

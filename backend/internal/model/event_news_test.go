@@ -16,9 +16,9 @@ func TestEventNewsTableNames(t *testing.T) {
 		t.Fatalf("expected event table name event_news_events, got %s", got)
 	}
 
-	var stage EventNewsStage
-	if got := stage.TableName(); got != "event_news_stages" {
-		t.Fatalf("expected stage table name event_news_stages, got %s", got)
+	var match TournamentMatch
+	if got := match.TableName(); got != "tournament_matches" {
+		t.Fatalf("expected tournament match table name tournament_matches, got %s", got)
 	}
 }
 
@@ -32,23 +32,39 @@ func TestEventNewsModelsCRUDAndQueries(t *testing.T) {
 	}
 
 	eventModel := NewEventNewsModel(db)
-	stageModel := NewEventNewsStageModel(db)
+	tournamentModel := NewTournamentModel(db)
+	matchModel := NewTournamentMatchModel(db)
 
 	t1 := time.Date(2026, 3, 23, 10, 0, 0, 0, time.UTC)
 	t2 := time.Date(2026, 3, 24, 10, 0, 0, 0, time.UTC)
 	t3 := time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC)
 
-	first := &EventNews{
-		Title:      "斯诺克世锦赛",
+	tournament := &Tournament{
+		Name:       "斯诺克世锦赛实体",
 		GameType:   1,
-		SourceType: "official",
-		SourceName: "WST",
-		City:       "谢菲尔德",
+		Format:     1,
+		MaxPlayers: 16,
 		Status:     EventNewsStatusLive,
-		Featured:   true,
-		Published:  true,
+		City:       "谢菲尔德",
+		VenueName:  "Crucible",
 		StartTime:  &t1,
-		SortTime:   &t1,
+	}
+	if err := tournamentModel.Create(tournament); err != nil {
+		t.Fatalf("create tournament: %v", err)
+	}
+
+	first := &EventNews{
+		Title:        "斯诺克世锦赛",
+		TournamentId: tournament.Id,
+		GameType:     1,
+		SourceType:   "official",
+		SourceName:   "WST",
+		City:         "谢菲尔德",
+		Status:       EventNewsStatusLive,
+		Featured:     true,
+		Published:    true,
+		StartTime:    &t1,
+		SortTime:     &t1,
 	}
 	second := &EventNews{
 		Title:      "中式八球公开赛",
@@ -85,25 +101,19 @@ func TestEventNewsModelsCRUDAndQueries(t *testing.T) {
 		t.Fatalf("create third event: %v", err)
 	}
 
-	if err := stageModel.Create(&EventNewsStage{
-		EventId:    first.Id,
-		StageName:  "资格赛",
-		StageOrder: 10,
-		Status:     EventNewsStatusFinished,
-		ResultText: "资格赛结束",
-		SortTime:   &t1,
+	if err := matchModel.Create(&TournamentMatch{
+		TournamentId:   tournament.Id,
+		RoundName:      "32强",
+		RoundOrder:     20,
+		MatchOrder:     1,
+		Status:         EventNewsStatusLive,
+		StartTime:      &t2,
+		HomePlayerName: "赵心童",
+		AwayPlayerName: "马克",
+		HomeScore:      6,
+		AwayScore:      2,
 	}); err != nil {
-		t.Fatalf("create first stage: %v", err)
-	}
-	if err := stageModel.Create(&EventNewsStage{
-		EventId:    first.Id,
-		StageName:  "32强",
-		StageOrder: 20,
-		Status:     EventNewsStatusLive,
-		ResultText: "赵心童晋级16强",
-		SortTime:   &t2,
-	}); err != nil {
-		t.Fatalf("create second stage: %v", err)
+		t.Fatalf("create tournament match: %v", err)
 	}
 
 	gotByID, err := eventModel.FindById(first.Id)
@@ -128,15 +138,12 @@ func TestEventNewsModelsCRUDAndQueries(t *testing.T) {
 		t.Fatalf("expected featured event first, got id %d", list[0].Id)
 	}
 
-	stages, err := stageModel.FindByEventId(first.Id)
+	matches, err := matchModel.FindByTournament(tournament.Id)
 	if err != nil {
-		t.Fatalf("find stages by event id: %v", err)
+		t.Fatalf("find matches by tournament id: %v", err)
 	}
-	if len(stages) != 2 {
-		t.Fatalf("expected 2 stages, got %#v", stages)
-	}
-	if stages[0].StageOrder != 10 || stages[1].StageOrder != 20 {
-		t.Fatalf("expected stages sorted by stage_order, got %#v", stages)
+	if len(matches) != 1 || matches[0].RoundName != "32强" {
+		t.Fatalf("expected one match, got %#v", matches)
 	}
 
 	featured, err := eventModel.FindFeatured()
@@ -171,15 +178,15 @@ func TestEventNewsModelsCRUDAndQueries(t *testing.T) {
 		t.Fatalf("expected published event with published_at, got %#v", refreshed)
 	}
 
-	if err := stageModel.SoftDeleteByEventId(first.Id); err != nil {
-		t.Fatalf("delete stages by event id: %v", err)
+	if err := eventModel.UpdateTournamentBinding(second.Id, tournament.Id); err != nil {
+		t.Fatalf("bind tournament: %v", err)
 	}
-	stages, err = stageModel.FindByEventId(first.Id)
+	refreshed, err = eventModel.FindById(second.Id)
 	if err != nil {
-		t.Fatalf("refind stages after delete: %v", err)
+		t.Fatalf("refind second event after tournament binding: %v", err)
 	}
-	if len(stages) != 0 {
-		t.Fatalf("expected 0 stages after delete, got %#v", stages)
+	if refreshed == nil || refreshed.TournamentId != tournament.Id {
+		t.Fatalf("expected tournament id to be updated, got %#v", refreshed)
 	}
 
 	deleted, err := eventModel.SoftDelete(first.Id)

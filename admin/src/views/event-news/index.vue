@@ -5,14 +5,14 @@
         <div class="card-header">
           <div class="title-block">
             <span class="title">赛事情报管理</span>
-            <span class="subtitle">按赛事维护基础信息，并在赛事下管理阶段赛程</span>
+            <span class="subtitle">按赛事维护基础信息，并在赛事下管理比赛列表</span>
           </div>
           <div class="header-actions">
             <el-select v-model="filterGameType" placeholder="球种筛选" style="width: 160px" @change="handleFilter">
               <el-option label="全部" :value="-1" />
               <el-option label="斯诺克" :value="1" />
-              <el-option label="中式八球" :value="3" />
               <el-option label="中式九球" :value="2" />
+              <el-option label="中式八球" :value="3" />
             </el-select>
             <el-select v-model="filterStatus" placeholder="状态筛选" style="width: 140px" @change="handleFilter">
               <el-option label="全部" :value="-1" />
@@ -33,22 +33,20 @@
 
       <el-table :data="eventNewsList" stripe border>
         <el-table-column type="index" width="60" label="序号" :index="(index: number) => (page - 1) * pageSize + index + 1" />
-        <el-table-column prop="title" label="赛事标题" min-width="220" show-overflow-tooltip />
-        <el-table-column prop="game_type" label="球种" width="120">
+        <el-table-column prop="title" label="赛事标题" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="tournament_name" label="赛事名称" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ row.tournament_name || row.title || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="game_type" label="球种" width="110">
           <template #default="{ row }">
             {{ getGameTypeLabel(row.game_type) }}
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="赛事状态" width="110">
+        <el-table-column prop="current_round_text" label="当前轮次" min-width="130" show-overflow-tooltip>
           <template #default="{ row }">
-            <el-tag :type="getStatusTagType(row.status)">
-              {{ getStatusLabel(row.status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="current_stage_text" label="当前阶段" min-width="140" show-overflow-tooltip>
-          <template #default="{ row }">
-            {{ row.current_stage_text || '-' }}
+            {{ row.current_round_text || '-' }}
           </template>
         </el-table-column>
         <el-table-column prop="latest_result_text" label="最新赛果" min-width="180" show-overflow-tooltip>
@@ -56,7 +54,14 @@
             {{ row.latest_result_text || '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="stage_count" label="阶段数" width="90" />
+        <el-table-column prop="match_count" label="比赛数" width="90" />
+        <el-table-column prop="status" label="赛事状态" width="110">
+          <template #default="{ row }">
+            <el-tag :type="getStatusTagType(row.status)">
+              {{ getStatusLabel(row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="featured" label="焦点" width="90">
           <template #default="{ row }">
             <el-tag :type="row.featured ? 'warning' : 'info'">
@@ -73,10 +78,10 @@
         </el-table-column>
         <el-table-column prop="start_time" label="开始时间" width="170" />
         <el-table-column prop="updated_at" label="更新时间" width="170" />
-        <el-table-column label="操作" width="300" fixed="right">
+        <el-table-column label="操作" width="320" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openEditDialog(row)">编辑</el-button>
-            <el-button link type="primary" @click="openEditDialog(row, true)">管理阶段</el-button>
+            <el-button link type="primary" @click="openMatchPanel(row)">管理比赛</el-button>
             <el-button
               link
               :type="row.published ? 'warning' : 'success'"
@@ -103,76 +108,93 @@
     </el-card>
 
     <el-dialog
-      v-model="dialogVisible"
-      :title="dialogTitle"
+      v-model="eventDialogVisible"
+      :title="eventDialogTitle"
       width="1100px"
       destroy-on-close
     >
-      <el-form ref="formRef" :model="formModel" :rules="rules" label-width="110px">
+      <el-form ref="eventFormRef" :model="eventFormModel" :rules="eventRules" label-width="110px">
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="赛事标题" prop="title">
-              <el-input v-model="formModel.title" placeholder="请输入赛事标题" maxlength="128" show-word-limit />
+              <el-input v-model="eventFormModel.title" placeholder="请输入赛事标题" maxlength="128" show-word-limit />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="赛事名称" prop="tournament_name">
+              <el-input v-model="eventFormModel.tournament_name" placeholder="请输入赛事名称" maxlength="128" show-word-limit />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="球种" prop="game_type">
-              <el-select v-model="formModel.game_type" placeholder="请选择球种" style="width: 100%">
+              <el-select v-model="eventFormModel.game_type" placeholder="请选择球种" style="width: 100%">
                 <el-option v-for="item in gameTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="赛事状态" prop="status">
+              <el-select v-model="eventFormModel.status" placeholder="请选择状态" style="width: 100%">
+                <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="来源类型">
-              <el-select v-model="formModel.source_type" placeholder="请选择来源类型" style="width: 100%">
+              <el-select v-model="eventFormModel.source_type" placeholder="请选择来源类型" style="width: 100%">
                 <el-option v-for="item in sourceTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="来源名称">
-              <el-input v-model="formModel.source_name" placeholder="如：WST / 独牙传奇" maxlength="64" />
+              <el-input v-model="eventFormModel.source_name" placeholder="如：WST / 独牙传奇" maxlength="64" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="来源链接">
-              <el-input v-model="formModel.source_url" placeholder="https://..." />
+              <el-input v-model="eventFormModel.source_url" placeholder="https://..." />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="封面图">
-              <el-input v-model="formModel.cover_image" placeholder="封面图片地址" />
+              <el-input v-model="eventFormModel.cover_image" placeholder="封面图片地址" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="摘要">
-              <el-input v-model="formModel.summary" type="textarea" :rows="2" placeholder="用于列表和首页焦点展示" maxlength="512" show-word-limit />
+              <el-input v-model="eventFormModel.summary" type="textarea" :rows="2" placeholder="用于列表和首页焦点展示" maxlength="512" show-word-limit />
             </el-form-item>
           </el-col>
           <el-col :span="24">
             <el-form-item label="正文">
-              <el-input v-model="formModel.content" type="textarea" :rows="5" placeholder="赛事介绍正文" />
+              <el-input v-model="eventFormModel.content" type="textarea" :rows="5" placeholder="赛事介绍正文" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="赛事说明">
+              <el-input v-model="eventFormModel.description" type="textarea" :rows="3" placeholder="赛事介绍、赛制说明等" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="国家">
-              <el-input v-model="formModel.country" placeholder="国家 / 地区" maxlength="64" />
+              <el-input v-model="eventFormModel.country" placeholder="国家 / 地区" maxlength="64" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="城市">
-              <el-input v-model="formModel.city" placeholder="举办城市" maxlength="64" />
+              <el-input v-model="eventFormModel.city" placeholder="举办城市" maxlength="64" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="场馆">
-              <el-input v-model="formModel.venue" placeholder="比赛场馆" maxlength="128" />
+              <el-input v-model="eventFormModel.venue" placeholder="比赛场馆" maxlength="128" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="开始时间">
               <el-date-picker
-                v-model="formModel.start_time"
+                v-model="eventFormModel.start_time"
                 type="datetime"
                 value-format="YYYY-MM-DD HH:mm:ss"
                 format="YYYY-MM-DD HH:mm:ss"
@@ -184,7 +206,7 @@
           <el-col :span="12">
             <el-form-item label="结束时间">
               <el-date-picker
-                v-model="formModel.end_time"
+                v-model="eventFormModel.end_time"
                 type="datetime"
                 value-format="YYYY-MM-DD HH:mm:ss"
                 format="YYYY-MM-DD HH:mm:ss"
@@ -194,22 +216,10 @@
               />
             </el-form-item>
           </el-col>
-          <el-col :span="8">
-            <el-form-item label="赛事状态" prop="status">
-              <el-select v-model="formModel.status" placeholder="请选择状态" style="width: 100%">
-                <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="焦点推荐">
-              <el-switch v-model="formModel.featured" active-text="是" inactive-text="否" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
+          <el-col :span="12">
             <el-form-item label="排序时间">
               <el-date-picker
-                v-model="formModel.sort_time"
+                v-model="eventFormModel.sort_time"
                 type="datetime"
                 value-format="YYYY-MM-DD HH:mm:ss"
                 format="YYYY-MM-DD HH:mm:ss"
@@ -219,137 +229,214 @@
               />
             </el-form-item>
           </el-col>
+          <el-col :span="12">
+            <el-form-item label="焦点推荐">
+              <el-switch v-model="eventFormModel.featured" active-text="是" inactive-text="否" />
+            </el-form-item>
+          </el-col>
         </el-row>
       </el-form>
 
-      <el-divider content-position="left">阶段赛程</el-divider>
-
-      <div class="stage-header">
-        <div class="stage-copy">
-          <span class="stage-title">阶段列表</span>
-          <span class="stage-tip">赛事保存后即可继续维护资格赛、32 强、16 强等阶段信息。</span>
-        </div>
-        <el-button type="primary" :disabled="!editingId" @click="openCreateStageDialog">新增阶段</el-button>
-      </div>
-
-      <el-alert
-        v-if="!editingId"
-        title="请先保存赛事基础信息，再进入编辑态维护阶段赛程。"
-        type="info"
-        :closable="false"
-        class="stage-alert"
-      />
-
-      <el-table v-else :data="stageList" border stripe class="stage-table">
-        <el-table-column type="index" width="60" label="序号" />
-        <el-table-column prop="stage_name" label="阶段名称" min-width="160" />
-        <el-table-column prop="stage_order" label="阶段排序" width="100" />
-        <el-table-column prop="status" label="状态" width="110">
-          <template #default="{ row }">
-            <el-tag :type="getStatusTagType(row.status)">
-              {{ getStatusLabel(row.status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="start_time" label="开始时间" width="170">
-          <template #default="{ row }">
-            {{ row.start_time || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="result_text" label="赛果摘要" min-width="220" show-overflow-tooltip>
-          <template #default="{ row }">
-            {{ row.result_text || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="openEditStageDialog(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDeleteStage(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSubmit">保存赛事</el-button>
+        <el-button @click="eventDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="eventSaving" @click="handleEventSubmit">保存赛事</el-button>
       </template>
     </el-dialog>
 
     <el-dialog
-      v-model="stageDialogVisible"
-      :title="stageDialogTitle"
-      width="760px"
+      v-model="matchPanelVisible"
+      :title="matchPanelTitle"
+      width="1200px"
       destroy-on-close
     >
-      <el-form ref="stageFormRef" :model="stageFormModel" :rules="stageRules" label-width="100px">
+      <div class="match-panel">
+        <div class="match-panel-header">
+          <div class="match-panel-copy">
+            <div class="match-panel-title">{{ currentEvent?.title || '-' }}</div>
+            <div class="match-panel-subtitle">
+              {{ currentEvent?.tournament_name || currentEvent?.title || '-' }}
+              <span v-if="currentEvent?.match_count"> · 共 {{ currentEvent?.match_count }} 场</span>
+            </div>
+          </div>
+          <el-button type="primary" :disabled="!currentEvent" @click="openCreateMatchDialog">新增比赛</el-button>
+        </div>
+
+        <el-table :data="matchList" border stripe class="match-table">
+          <el-table-column prop="round_name" label="轮次" min-width="140" show-overflow-tooltip />
+          <el-table-column prop="round_order" label="轮次排序" width="90" />
+          <el-table-column prop="match_order" label="场次排序" width="90" />
+          <el-table-column prop="start_time" label="开赛时间" width="170">
+            <template #default="{ row }">
+              {{ row.start_time || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="status" label="状态" width="110">
+            <template #default="{ row }">
+              <el-tag :type="getStatusTagType(row.status)">
+                {{ getStatusLabel(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="best_of" label="best_of" width="90">
+            <template #default="{ row }">
+              {{ row.best_of || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="主侧选手" min-width="180" show-overflow-tooltip>
+            <template #default="{ row }">
+              {{ formatPlayer(row.home_player_name, row.home_player_id) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="客侧选手" min-width="180" show-overflow-tooltip>
+            <template #default="{ row }">
+              {{ formatPlayer(row.away_player_name, row.away_player_id) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="比分" width="110">
+            <template #default="{ row }">
+              {{ formatScore(row.home_score, row.away_score) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="winner_side" label="胜方" width="90">
+            <template #default="{ row }">
+              {{ getWinnerSideLabel(row.winner_side) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="is_placeholder" label="占位" width="90">
+            <template #default="{ row }">
+              {{ row.is_placeholder ? '是' : '否' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="来源" min-width="200" show-overflow-tooltip>
+            <template #default="{ row }">
+              {{ formatSource(row.source_type, row.source_match_id) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="160" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="openEditMatchDialog(row)">编辑</el-button>
+              <el-button link type="danger" @click="handleDeleteMatch(row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <template #footer>
+        <el-button @click="matchPanelVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="matchDialogVisible"
+      :title="matchDialogTitle"
+      width="980px"
+      append-to-body
+      destroy-on-close
+    >
+      <el-form ref="matchFormRef" :model="matchFormModel" :rules="matchRules" label-width="110px">
         <el-row :gutter="16">
           <el-col :span="12">
-            <el-form-item label="阶段名称" prop="stage_name">
-              <el-input v-model="stageFormModel.stage_name" placeholder="如：资格赛 / 32强 / 决赛" maxlength="128" />
+            <el-form-item label="轮次名称" prop="round_name">
+              <el-input v-model="matchFormModel.round_name" placeholder="如：Quarter Finals / 决赛" maxlength="128" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="轮次排序" prop="round_order">
+              <el-input-number v-model="matchFormModel.round_order" :min="1" :step="10" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="场次排序" prop="match_order">
+              <el-input-number v-model="matchFormModel.match_order" :min="1" :step="1" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="阶段排序" prop="stage_order">
-              <el-input-number v-model="stageFormModel.stage_order" :min="1" :step="10" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="开始时间">
+            <el-form-item label="开赛时间">
               <el-date-picker
-                v-model="stageFormModel.start_time"
+                v-model="matchFormModel.start_time"
                 type="datetime"
                 value-format="YYYY-MM-DD HH:mm:ss"
                 format="YYYY-MM-DD HH:mm:ss"
-                placeholder="请选择开始时间"
+                placeholder="请选择开赛时间"
                 clearable
                 style="width: 100%"
               />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="结束时间">
-              <el-date-picker
-                v-model="stageFormModel.end_time"
-                type="datetime"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                format="YYYY-MM-DD HH:mm:ss"
-                placeholder="请选择结束时间"
-                clearable
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="阶段状态" prop="status">
-              <el-select v-model="stageFormModel.status" placeholder="请选择阶段状态" style="width: 100%">
+          <el-col :span="6">
+            <el-form-item label="状态" prop="status">
+              <el-select v-model="matchFormModel.status" placeholder="请选择状态" style="width: 100%">
                 <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="排序时间">
-              <el-date-picker
-                v-model="stageFormModel.sort_time"
-                type="datetime"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                format="YYYY-MM-DD HH:mm:ss"
-                placeholder="不填则默认使用开始时间"
-                clearable
-                style="width: 100%"
-              />
+          <el-col :span="6">
+            <el-form-item label="best_of">
+              <el-input-number v-model="matchFormModel.best_of" :min="0" :step="1" style="width: 100%" />
             </el-form-item>
           </el-col>
-          <el-col :span="24">
-            <el-form-item label="赛果摘要">
-              <el-input v-model="stageFormModel.result_text" type="textarea" :rows="3" placeholder="如：赵心童晋级16强" maxlength="255" show-word-limit />
+          <el-col :span="12">
+            <el-form-item label="主侧选手ID">
+              <el-input-number v-model="matchFormModel.home_player_id" :min="0" :step="1" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="主侧选手名">
+              <el-input v-model="matchFormModel.home_player_name" placeholder="主侧选手名称" maxlength="128" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="客侧选手ID">
+              <el-input-number v-model="matchFormModel.away_player_id" :min="0" :step="1" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="客侧选手名">
+              <el-input v-model="matchFormModel.away_player_name" placeholder="客侧选手名称" maxlength="128" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="主侧比分">
+              <el-input-number v-model="matchFormModel.home_score" :min="0" :step="1" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="客侧比分">
+              <el-input-number v-model="matchFormModel.away_score" :min="0" :step="1" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="胜方">
+              <el-select v-model="matchFormModel.winner_side" placeholder="请选择胜方" style="width: 100%">
+                <el-option label="未定" :value="0" />
+                <el-option label="主侧" :value="1" />
+                <el-option label="客侧" :value="2" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="占位">
+              <el-switch v-model="matchFormModel.is_placeholder" active-text="是" inactive-text="否" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="来源类型">
+              <el-select v-model="matchFormModel.source_type" placeholder="请选择来源类型" style="width: 100%">
+                <el-option v-for="item in sourceTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="来源比赛ID">
+              <el-input v-model="matchFormModel.source_match_id" placeholder="外部赛事源比赛ID" maxlength="128" />
             </el-form-item>
           </el-col>
         </el-row>
       </el-form>
 
       <template #footer>
-        <el-button @click="stageDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="stageSaving" @click="handleStageSubmit">保存阶段</el-button>
+        <el-button @click="matchDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="matchSaving" @click="handleMatchSubmit">保存比赛</el-button>
       </template>
     </el-dialog>
   </div>
@@ -360,39 +447,33 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import {
   createEventNews,
-  createEventNewsStage,
+  createEventNewsMatch,
   deleteEventNews,
-  deleteEventNewsStage,
+  deleteEventNewsMatch,
   getEventNewsList,
+  getEventNewsMatches,
   publishEventNews,
   updateEventNews,
-  updateEventNewsStage,
+  updateEventNewsMatch,
   type EventNewsFormPayload,
   type EventNewsItem,
-  type EventNewsStageFormPayload,
-  type EventNewsStageItem
+  type EventNewsMatchCreatePayload,
+  type EventNewsMatchItem
 } from '@/api/event-news'
 
 interface EventNewsFormModel extends EventNewsFormPayload {
   event_id?: number
 }
 
-interface EventNewsStageFormModel {
-  stage_id?: number
-  stage_name: string
-  stage_order: number
-  start_time: string
-  end_time: string
-  status: number
-  result_text: string
-  sort_time: string
+interface EventNewsMatchFormModel extends EventNewsMatchCreatePayload {
+  match_id?: number
 }
 
 const loading = ref(false)
-const saving = ref(false)
-const stageSaving = ref(false)
+const eventSaving = ref(false)
+const matchSaving = ref(false)
 const eventNewsList = ref<EventNewsItem[]>([])
-const stageList = ref<EventNewsStageItem[]>([])
+const matchList = ref<EventNewsMatchItem[]>([])
 const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
@@ -400,17 +481,18 @@ const filterGameType = ref(-1)
 const filterStatus = ref(-1)
 const filterPublished = ref(-1)
 
-const dialogVisible = ref(false)
-const dialogMode = ref<'create' | 'edit'>('create')
-const editingId = ref<number | null>(null)
-const formRef = ref<FormInstance>()
+const eventDialogVisible = ref(false)
+const eventDialogMode = ref<'create' | 'edit'>('create')
+const eventFormRef = ref<FormInstance>()
+const currentEvent = ref<EventNewsItem | null>(null)
+const matchPanelVisible = ref(false)
+const matchDialogVisible = ref(false)
+const matchDialogMode = ref<'create' | 'edit'>('create')
+const matchFormRef = ref<FormInstance>()
 
-const stageDialogVisible = ref(false)
-const stageDialogMode = ref<'create' | 'edit'>('create')
-const stageFormRef = ref<FormInstance>()
-
-const createEmptyForm = (): EventNewsFormModel => ({
+const createEmptyEventForm = (): EventNewsFormModel => ({
   title: '',
+  tournament_name: '',
   game_type: 1,
   source_type: 'manual',
   source_name: '',
@@ -418,6 +500,7 @@ const createEmptyForm = (): EventNewsFormModel => ({
   cover_image: '',
   summary: '',
   content: '',
+  description: '',
   country: '',
   city: '',
   venue: '',
@@ -425,26 +508,37 @@ const createEmptyForm = (): EventNewsFormModel => ({
   end_time: '',
   status: 0,
   featured: false,
-  sort_time: ''
+  sort_time: '',
+  published: false
 })
 
-const createEmptyStageForm = (): EventNewsStageFormModel => ({
-  stage_name: '',
-  stage_order: 10,
+const createEmptyMatchForm = (eventId = 0): EventNewsMatchFormModel => ({
+  event_id: eventId,
+  round_name: '',
+  round_order: 10,
+  match_order: 1,
   start_time: '',
-  end_time: '',
   status: 0,
-  result_text: '',
-  sort_time: ''
+  best_of: 0,
+  home_player_id: 0,
+  home_player_name: '',
+  away_player_id: 0,
+  away_player_name: '',
+  home_score: 0,
+  away_score: 0,
+  winner_side: 0,
+  is_placeholder: false,
+  source_type: 'manual',
+  source_match_id: ''
 })
 
-const formModel = ref<EventNewsFormModel>(createEmptyForm())
-const stageFormModel = ref<EventNewsStageFormModel>(createEmptyStageForm())
+const eventFormModel = ref<EventNewsFormModel>(createEmptyEventForm())
+const matchFormModel = ref<EventNewsMatchFormModel>(createEmptyMatchForm())
 
 const gameTypeOptions = [
   { label: '斯诺克', value: 1 },
-  { label: '中式八球', value: 3 },
-  { label: '中式九球', value: 2 }
+  { label: '中式九球', value: 2 },
+  { label: '中式八球', value: 3 }
 ]
 
 const sourceTypeOptions = [
@@ -460,20 +554,23 @@ const statusOptions = [
   { label: '已取消', value: 3 }
 ]
 
-const rules: FormRules = {
+const eventRules: FormRules = {
   title: [{ required: true, message: '请输入赛事标题', trigger: 'blur' }],
+  tournament_name: [{ required: true, message: '请输入赛事名称', trigger: 'blur' }],
   game_type: [{ required: true, message: '请选择球种', trigger: 'change' }],
   status: [{ required: true, message: '请选择赛事状态', trigger: 'change' }]
 }
 
-const stageRules: FormRules = {
-  stage_name: [{ required: true, message: '请输入阶段名称', trigger: 'blur' }],
-  stage_order: [{ required: true, message: '请输入阶段排序', trigger: 'change' }],
-  status: [{ required: true, message: '请选择阶段状态', trigger: 'change' }]
+const matchRules: FormRules = {
+  round_name: [{ required: true, message: '请输入轮次名称', trigger: 'blur' }],
+  round_order: [{ required: true, message: '请输入轮次排序', trigger: 'change' }],
+  match_order: [{ required: true, message: '请输入场次排序', trigger: 'change' }],
+  status: [{ required: true, message: '请选择状态', trigger: 'change' }]
 }
 
-const dialogTitle = computed(() => (dialogMode.value === 'create' ? '新建赛事' : '编辑赛事'))
-const stageDialogTitle = computed(() => (stageDialogMode.value === 'create' ? '新增阶段' : '编辑阶段'))
+const eventDialogTitle = computed(() => (eventDialogMode.value === 'create' ? '新建赛事' : '编辑赛事'))
+const matchPanelTitle = computed(() => `比赛管理${currentEvent.value?.title ? ` - ${currentEvent.value.title}` : ''}`)
+const matchDialogTitle = computed(() => (matchDialogMode.value === 'create' ? '新增比赛' : '编辑比赛'))
 
 const getGameTypeLabel = (value: number) => {
   return gameTypeOptions.find(item => item.value === value)?.label || '-'
@@ -496,30 +593,47 @@ const getStatusTagType = (value: number): 'success' | 'warning' | 'danger' | 'in
   }
 }
 
-const normalizeStages = (stages: EventNewsStageItem[] = []) => {
-  return [...stages].sort((left, right) => {
-    if (left.stage_order !== right.stage_order) {
-      return left.stage_order - right.stage_order
+const formatPlayer = (name: string, id: number) => {
+  const trimmed = (name || '').trim()
+  if (trimmed) {
+    return id > 0 ? `${trimmed} (#${id})` : trimmed
+  }
+  return id > 0 ? `#${id}` : '-'
+}
+
+const formatScore = (homeScore: number, awayScore: number) => {
+  if (homeScore === 0 && awayScore === 0) {
+    return '-'
+  }
+  return `${homeScore} - ${awayScore}`
+}
+
+const formatSource = (sourceType: string, sourceMatchId: string) => {
+  const prefix = sourceType || 'manual'
+  const suffix = (sourceMatchId || '').trim()
+  return suffix ? `${prefix} / ${suffix}` : prefix
+}
+
+const getWinnerSideLabel = (value: number) => {
+  if (value === 1) {
+    return '主侧'
+  }
+  if (value === 2) {
+    return '客侧'
+  }
+  return '-'
+}
+
+const sortMatchList = (list: EventNewsMatchItem[] = []) => {
+  return [...list].sort((left, right) => {
+    if (left.round_order !== right.round_order) {
+      return left.round_order - right.round_order
+    }
+    if (left.match_order !== right.match_order) {
+      return left.match_order - right.match_order
     }
     return left.id - right.id
   })
-}
-
-const applyEmptyForm = () => {
-  formModel.value = createEmptyForm()
-}
-
-const applyEmptyStageForm = () => {
-  stageFormModel.value = createEmptyStageForm()
-}
-
-const refreshEditingEventFromList = () => {
-  if (!editingId.value) {
-    stageList.value = []
-    return
-  }
-  const latest = eventNewsList.value.find(item => item.id === editingId.value)
-  stageList.value = normalizeStages(latest?.stages || [])
 }
 
 const loadList = async () => {
@@ -550,14 +664,37 @@ const loadList = async () => {
     if (res.success) {
       eventNewsList.value = res.list || []
       total.value = res.total || 0
-      refreshEditingEventFromList()
+      if (currentEvent.value) {
+        const refreshed = eventNewsList.value.find(item => item.id === currentEvent.value?.id)
+        currentEvent.value = refreshed || currentEvent.value
+      }
     } else {
       console.error('获取赛事情报列表失败', res.message)
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('获取赛事情报列表失败', error)
   } finally {
     loading.value = false
+  }
+}
+
+const loadMatches = async (eventId: number) => {
+  if (!eventId) {
+    matchList.value = []
+    return
+  }
+
+  try {
+    const res = await getEventNewsMatches({ event_id: eventId })
+    if (res.success) {
+      matchList.value = sortMatchList(res.list || [])
+    } else {
+      matchList.value = []
+      console.error('获取比赛列表失败', res.message)
+    }
+  } catch (error) {
+    matchList.value = []
+    console.error('获取比赛列表失败', error)
   }
 }
 
@@ -577,20 +714,19 @@ const handlePageChange = (val: number) => {
 }
 
 const openCreateDialog = () => {
-  dialogMode.value = 'create'
-  editingId.value = null
-  applyEmptyForm()
-  stageList.value = []
-  dialogVisible.value = true
-  formRef.value?.clearValidate()
+  eventDialogMode.value = 'create'
+  eventFormModel.value = createEmptyEventForm()
+  eventDialogVisible.value = true
+  eventFormRef.value?.clearValidate()
 }
 
-const openEditDialog = (row: EventNewsItem, focusStages = false) => {
-  dialogMode.value = 'edit'
-  editingId.value = row.id
-  formModel.value = {
+const openEditDialog = (row: EventNewsItem) => {
+  eventDialogMode.value = 'edit'
+  eventFormModel.value = {
     event_id: row.id,
+    tournament_id: row.tournament_id || 0,
     title: row.title,
+    tournament_name: row.tournament_name || row.title || '',
     game_type: row.game_type,
     source_type: row.source_type || 'manual',
     source_name: row.source_name || '',
@@ -598,6 +734,7 @@ const openEditDialog = (row: EventNewsItem, focusStages = false) => {
     cover_image: row.cover_image || '',
     summary: row.summary || '',
     content: row.content || '',
+    description: row.content || '',
     country: row.country || '',
     city: row.city || '',
     venue: row.venue || '',
@@ -605,26 +742,21 @@ const openEditDialog = (row: EventNewsItem, focusStages = false) => {
     end_time: row.end_time || '',
     status: row.status,
     featured: row.featured,
-    sort_time: row.sort_time || row.start_time || ''
+    sort_time: row.sort_time || row.start_time || '',
+    published: row.published
   }
-  stageList.value = normalizeStages(row.stages || [])
-  dialogVisible.value = true
-  formRef.value?.clearValidate()
-  if (focusStages) {
-    setTimeout(() => {
-      const table = document.querySelector('.stage-table')
-      table?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    }, 50)
-  }
+  eventDialogVisible.value = true
+  eventFormRef.value?.clearValidate()
 }
 
-const buildFormPayload = (): EventNewsFormPayload => {
-  const form = formModel.value
+const buildEventPayload = (): EventNewsFormPayload => {
+  const form = eventFormModel.value
   const startTime = (form.start_time || '').trim()
   const sortTime = (form.sort_time || '').trim() || startTime
 
   return {
     title: form.title.trim(),
+    tournament_name: form.tournament_name.trim() || form.title.trim(),
     game_type: form.game_type ?? 0,
     source_type: form.source_type.trim(),
     source_name: form.source_name.trim(),
@@ -632,6 +764,7 @@ const buildFormPayload = (): EventNewsFormPayload => {
     cover_image: form.cover_image.trim(),
     summary: form.summary.trim(),
     content: form.content,
+    description: (form.description || '').trim(),
     country: form.country.trim(),
     city: form.city.trim(),
     venue: form.venue.trim(),
@@ -639,137 +772,166 @@ const buildFormPayload = (): EventNewsFormPayload => {
     end_time: (form.end_time || '').trim(),
     status: form.status ?? 0,
     featured: form.featured,
-    sort_time: sortTime
+    sort_time: sortTime,
+    published: !!form.published,
+    tournament_id: form.tournament_id && form.tournament_id > 0 ? form.tournament_id : undefined
   }
 }
 
-const handleSubmit = async () => {
-  const valid = formRef.value ? await formRef.value.validate().catch(() => false) : false
+const handleEventSubmit = async () => {
+  const valid = eventFormRef.value ? await eventFormRef.value.validate().catch(() => false) : false
   if (!valid) {
     return
   }
 
-  const payload = buildFormPayload()
+  const payload = buildEventPayload()
   if (!payload.start_time && !payload.sort_time) {
     ElMessage.warning('开始时间和排序时间至少填写一个')
     return
   }
 
-  saving.value = true
+  eventSaving.value = true
   try {
-    const res = dialogMode.value === 'create'
+    const res = eventDialogMode.value === 'create'
       ? await createEventNews(payload)
       : await updateEventNews({
-          event_id: editingId.value || 0,
+          event_id: eventFormModel.value.event_id || 0,
           ...payload
         })
 
     if (res.success) {
       ElMessage.success(res.message || '保存成功')
-      dialogVisible.value = false
+      eventDialogVisible.value = false
       await loadList()
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('保存赛事失败', error)
   } finally {
-    saving.value = false
+    eventSaving.value = false
   }
 }
 
-const openCreateStageDialog = () => {
-  if (!editingId.value) {
-    ElMessage.warning('请先保存赛事基础信息')
+const openMatchPanel = async (row: EventNewsItem) => {
+  currentEvent.value = row
+  matchPanelVisible.value = true
+  await loadMatches(row.id)
+}
+
+const openCreateMatchDialog = () => {
+  if (!currentEvent.value) {
+    ElMessage.warning('请先选择赛事')
     return
   }
-  stageDialogMode.value = 'create'
-  applyEmptyStageForm()
-  stageDialogVisible.value = true
-  stageFormRef.value?.clearValidate()
+  matchDialogMode.value = 'create'
+  matchFormModel.value = createEmptyMatchForm(currentEvent.value.id)
+  matchDialogVisible.value = true
+  matchFormRef.value?.clearValidate()
 }
 
-const openEditStageDialog = (row: EventNewsStageItem) => {
-  stageDialogMode.value = 'edit'
-  stageFormModel.value = {
-    stage_id: row.id,
-    stage_name: row.stage_name || '',
-    stage_order: row.stage_order || 10,
+const openEditMatchDialog = (row: EventNewsMatchItem) => {
+  matchDialogMode.value = 'edit'
+  matchFormModel.value = {
+    match_id: row.id,
+    event_id: row.event_id,
+    round_name: row.round_name || '',
+    round_order: row.round_order || 10,
+    match_order: row.match_order || 1,
     start_time: row.start_time || '',
-    end_time: row.end_time || '',
     status: row.status,
-    result_text: row.result_text || '',
-    sort_time: row.sort_time || row.start_time || ''
+    best_of: row.best_of || 0,
+    home_player_id: row.home_player_id || 0,
+    home_player_name: row.home_player_name || '',
+    away_player_id: row.away_player_id || 0,
+    away_player_name: row.away_player_name || '',
+    home_score: row.home_score || 0,
+    away_score: row.away_score || 0,
+    winner_side: row.winner_side || 0,
+    is_placeholder: row.is_placeholder || false,
+    source_type: row.source_type || 'manual',
+    source_match_id: row.source_match_id || ''
   }
-  stageDialogVisible.value = true
-  stageFormRef.value?.clearValidate()
+  matchDialogVisible.value = true
+  matchFormRef.value?.clearValidate()
 }
 
-const buildStagePayload = (): EventNewsStageFormPayload => {
-  const form = stageFormModel.value
-  const startTime = (form.start_time || '').trim()
-  const sortTime = (form.sort_time || '').trim() || startTime
-
+const buildMatchPayload = (): EventNewsMatchCreatePayload => {
+  const form = matchFormModel.value
   return {
-    event_id: editingId.value || 0,
-    stage_name: form.stage_name.trim(),
-    stage_order: Number(form.stage_order || 0),
-    start_time: startTime,
-    end_time: (form.end_time || '').trim(),
+    event_id: form.event_id || currentEvent.value?.id || 0,
+    round_name: form.round_name.trim(),
+    round_order: Number(form.round_order || 0),
+    match_order: Number(form.match_order || 0),
+    start_time: (form.start_time || '').trim(),
     status: form.status ?? 0,
-    result_text: form.result_text.trim(),
-    sort_time: sortTime
+    best_of: Number(form.best_of || 0),
+    home_player_id: Number(form.home_player_id || 0),
+    home_player_name: form.home_player_name.trim(),
+    away_player_id: Number(form.away_player_id || 0),
+    away_player_name: form.away_player_name.trim(),
+    home_score: Number(form.home_score || 0),
+    away_score: Number(form.away_score || 0),
+    winner_side: Number(form.winner_side || 0),
+    is_placeholder: !!form.is_placeholder,
+    source_type: form.source_type.trim(),
+    source_match_id: form.source_match_id.trim()
   }
 }
 
-const handleStageSubmit = async () => {
-  if (!editingId.value) {
-    ElMessage.warning('请先保存赛事基础信息')
-    return
-  }
-  const valid = stageFormRef.value ? await stageFormRef.value.validate().catch(() => false) : false
+const handleMatchSubmit = async () => {
+  const valid = matchFormRef.value ? await matchFormRef.value.validate().catch(() => false) : false
   if (!valid) {
     return
   }
 
-  const payload = buildStagePayload()
-  stageSaving.value = true
+  const payload = buildMatchPayload()
+  if (!payload.event_id) {
+    ElMessage.warning('请先选择赛事')
+    return
+  }
+
+  matchSaving.value = true
   try {
-    const res = stageDialogMode.value === 'create'
-      ? await createEventNewsStage(payload)
-      : await updateEventNewsStage({
-          stage_id: stageFormModel.value.stage_id || 0,
+    const res = matchDialogMode.value === 'create'
+      ? await createEventNewsMatch(payload)
+      : await updateEventNewsMatch({
+          match_id: matchFormModel.value.match_id || 0,
           ...payload
         })
 
     if (res.success) {
       ElMessage.success(res.message || '保存成功')
-      stageDialogVisible.value = false
-      await loadList()
-      refreshEditingEventFromList()
+      matchDialogVisible.value = false
+      if (currentEvent.value) {
+        await loadMatches(currentEvent.value.id)
+        await loadList()
+      }
     }
-  } catch (error: any) {
-    console.error('保存阶段失败', error)
+  } catch (error) {
+    console.error('保存比赛失败', error)
   } finally {
-    stageSaving.value = false
+    matchSaving.value = false
   }
 }
 
-const handleDeleteStage = async (row: EventNewsStageItem) => {
+const handleDeleteMatch = async (row: EventNewsMatchItem) => {
   try {
-    await ElMessageBox.confirm(`确定要删除阶段「${row.stage_name}」吗？`, '确认删除', {
+    await ElMessageBox.confirm(`确定要删除轮次「${row.round_name}」中的这场比赛吗？`, '确认删除', {
       confirmButtonText: '删除',
       cancelButtonText: '取消',
       type: 'warning'
     })
 
-    const res = await deleteEventNewsStage({ stage_id: row.id })
+    const res = await deleteEventNewsMatch({ match_id: row.id })
     if (res.success) {
       ElMessage.success(res.message || '删除成功')
-      await loadList()
-      refreshEditingEventFromList()
+      if (currentEvent.value) {
+        await loadMatches(currentEvent.value.id)
+        await loadList()
+      }
     }
-  } catch (error: any) {
+  } catch (error) {
     if (error !== 'cancel' && error !== 'close') {
-      console.error('删除阶段失败', error)
+      console.error('删除比赛失败', error)
     }
   }
 }
@@ -794,7 +956,7 @@ const handlePublishToggle = async (row: EventNewsItem) => {
       ElMessage.success(res.message || `${action}成功`)
       await loadList()
     }
-  } catch (error: any) {
+  } catch (error) {
     if (error !== 'cancel' && error !== 'close') {
       console.error(`${action}赛事失败`, error)
     }
@@ -803,7 +965,7 @@ const handlePublishToggle = async (row: EventNewsItem) => {
 
 const handleDelete = async (row: EventNewsItem) => {
   try {
-    await ElMessageBox.confirm(`确定要删除「${row.title}」及其全部阶段吗？`, '确认删除', {
+    await ElMessageBox.confirm(`确定要删除「${row.title}」及其关联比赛吗？`, '确认删除', {
       confirmButtonText: '删除',
       cancelButtonText: '取消',
       type: 'warning'
@@ -812,12 +974,14 @@ const handleDelete = async (row: EventNewsItem) => {
     const res = await deleteEventNews({ event_id: row.id })
     if (res.success) {
       ElMessage.success(res.message || '删除成功')
-      if (editingId.value === row.id) {
-        dialogVisible.value = false
+      if (currentEvent.value?.id === row.id) {
+        currentEvent.value = null
+        matchList.value = []
+        matchPanelVisible.value = false
       }
       await loadList()
     }
-  } catch (error: any) {
+  } catch (error) {
     if (error !== 'cancel' && error !== 'close') {
       console.error('删除赛事失败', error)
     }
@@ -871,36 +1035,37 @@ onMounted(() => {
   justify-content: flex-end;
 }
 
-.stage-header {
+.match-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.match-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 12px;
 }
 
-.stage-copy {
+.match-panel-copy {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.stage-title {
-  font-size: 15px;
+.match-panel-title {
+  font-size: 16px;
   font-weight: 600;
   color: #303133;
 }
 
-.stage-tip {
+.match-panel-subtitle {
   font-size: 12px;
   color: #909399;
 }
 
-.stage-alert {
-  margin-bottom: 12px;
-}
-
-.stage-table {
-  margin-bottom: 12px;
+.match-table {
+  margin-top: 4px;
 }
 </style>

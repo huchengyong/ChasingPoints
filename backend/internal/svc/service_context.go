@@ -44,7 +44,6 @@ type ServiceContext struct {
 	TournamentModel                *model.TournamentModel
 	TournamentParticipantModel     *model.TournamentParticipantModel
 	EventNewsModel                 *model.EventNewsModel
-	EventNewsStageModel            *model.EventNewsStageModel
 	RulesContentModel              *model.RulesContentModel
 	SeasonModel                    *model.SeasonModel
 	SeasonRecordModel              *model.SeasonRecordModel
@@ -94,7 +93,6 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		TournamentModel:                models.TournamentModel,
 		TournamentParticipantModel:     models.TournamentParticipantModel,
 		EventNewsModel:                 models.EventNewsModel,
-		EventNewsStageModel:            models.EventNewsStageModel,
 		RulesContentModel:              models.RulesContentModel,
 		SeasonModel:                    models.SeasonModel,
 		SeasonRecordModel:              models.SeasonRecordModel,
@@ -131,7 +129,6 @@ type serviceModels struct {
 	TournamentModel                *model.TournamentModel
 	TournamentParticipantModel     *model.TournamentParticipantModel
 	EventNewsModel                 *model.EventNewsModel
-	EventNewsStageModel            *model.EventNewsStageModel
 	RulesContentModel              *model.RulesContentModel
 	SeasonModel                    *model.SeasonModel
 	SeasonRecordModel              *model.SeasonRecordModel
@@ -220,7 +217,6 @@ func newServiceModels(db *gorm.DB) serviceModels {
 		TournamentModel:                model.NewTournamentModel(db),
 		TournamentParticipantModel:     model.NewTournamentParticipantModel(db),
 		EventNewsModel:                 model.NewEventNewsModel(db),
-		EventNewsStageModel:            model.NewEventNewsStageModel(db),
 		RulesContentModel:              model.NewRulesContentModel(db),
 		SeasonModel:                    model.NewSeasonModel(db),
 		SeasonRecordModel:              model.NewSeasonRecordModel(db),

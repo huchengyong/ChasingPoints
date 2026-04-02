@@ -116,7 +116,7 @@ cd backend
 
 ## KNOWN PITFALLS
 - `app` 没有根级 `npm test` script，默认验证命令是 `node --test tests/*.test.mjs`。
-- `backend` 的赛事情报领域测试依赖显式建表；当前有效表是 `event_news_events` 和 `event_news_stages`，不要再依赖废弃的单表 `event_news`。
+- `backend` 的赛讯领域测试依赖显式建表；当前有效表是 `event_news_events`、`tournaments` 和 `tournament_matches`，不要再依赖已删除的阶段表或废弃的单表 `event_news`。
 - `backend` 的 MySQL 迁移要注意版本兼容：`CREATE TABLE IF NOT EXISTS` 可以用，但不要默认写 `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` 或 `DROP COLUMN IF EXISTS`，部分环境会直接报 1064。给已有表补字段时，先查 `information_schema.COLUMNS` 再决定是否执行 `ALTER TABLE`。
 - `app/AGENTS.md` 与 `app/GEMINI.md` 需要保持同步；仓库里当前没有 `IFLOW.md`。
 - `website` 当前下载链接、联系信息和 sitemap 仍是占位值，上线前必须替换为正式内容。

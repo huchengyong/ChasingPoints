@@ -65,7 +65,8 @@ test('normalizeFeaturedEventNews maps event news fields without roster copy', ()
     id: 11,
     title: '独牙传奇中式九球公开赛',
     latest_result_text: '资格赛今晚开打',
-    current_stage_text: '资格赛',
+    current_round_text: '资格赛',
+    match_count: 8,
     game_type: 2,
     status: 1,
     start_time: '2026-03-11T20:00:00+08:00',
@@ -84,7 +85,8 @@ test('normalizeFeaturedEventNews maps event news fields without roster copy', ()
   assert.equal(card.locationText, '杭州 · 奥体中心')
   assert.equal(card.sourceText, '独牙传奇')
   assert.equal(card.sourceUrl, 'https://example.com/event')
-  assert.equal(card.currentStageText, '资格赛')
+  assert.equal(card.currentRoundText, '资格赛')
+  assert.equal(card.matchCount, 8)
   assert.equal('playersText' in card, false)
 })
 

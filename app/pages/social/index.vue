@@ -22,7 +22,8 @@
       <view class="featured-meta">
         <text>{{ featuredCard.timeText }}</text>
         <text v-if="featuredCard.locationText">{{ featuredCard.locationText }}</text>
-        <text>{{ featuredCard.stageText }}</text>
+        <text>{{ featuredCard.currentRoundText }}</text>
+        <text>{{ featuredCard.matchCountText }}</text>
       </view>
       <view class="featured-footer">
         <text>{{ featuredCard.sourceText || '追分官方' }}</text>
@@ -65,8 +66,12 @@
               <text class="meta-value">{{ item.locationText }}</text>
             </view>
             <view class="meta-item">
-              <text class="meta-label">阶段</text>
-              <text class="meta-value">{{ item.stageText }}</text>
+              <text class="meta-label">当前轮次</text>
+              <text class="meta-value">{{ item.currentRoundText }}</text>
+            </view>
+            <view class="meta-item">
+              <text class="meta-label">比赛数</text>
+              <text class="meta-value">{{ item.matchCountText }}</text>
             </view>
           </view>
           <view class="post-footer">
@@ -99,7 +104,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { getEventNewsList, getFeaturedEventNews } from '@/api/event-news.js'
 import { useThemeStore } from '@/store/theme.js'
 import { pickFeaturedEventNewsPayload } from '@/utils/event-news-response.js'
-import { buildSaiXunHeroStats, normalizeSaiXunCard } from '@/utils/saixun.js'
+import { normalizeSaiXunCard } from '@/utils/saixun.js'
 
 const themeStore = useThemeStore()
 

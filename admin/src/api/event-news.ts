@@ -1,43 +1,54 @@
 import request from '@/utils/request'
 
-export interface EventNewsStageItem {
-  id: number
-  event_id: number
-  stage_name: string
-  stage_order: number
-  start_time: string
-  end_time: string
-  status: number
-  result_text: string
-  sort_time: string
-  created_at: string
-  updated_at: string
-}
-
 export interface EventNewsItem {
   id: number
   title: string
-  game_type: number
   source_type: string
   source_name: string
   source_url: string
   cover_image: string
   summary: string
   content: string
+  tournament_id: number
+  tournament_name: string
+  game_type: number
   country: string
   city: string
   venue: string
   start_time: string
   end_time: string
   status: number
-  current_stage_text: string
+  current_round_text: string
   latest_result_text: string
-  stage_count: number
-  stages: EventNewsStageItem[]
+  match_count: number
   featured: boolean
   sort_time: string
   published: boolean
   published_at: string
+  created_at: string
+  updated_at: string
+}
+
+export interface EventNewsMatchItem {
+  id: number
+  event_id: number
+  tournament_id: number
+  source_type: string
+  source_match_id: string
+  round_name: string
+  round_order: number
+  match_order: number
+  start_time: string
+  status: number
+  best_of: number
+  home_player_id: number
+  home_player_name: string
+  away_player_id: number
+  away_player_name: string
+  home_score: number
+  away_score: number
+  winner_side: number
+  is_placeholder: boolean
   created_at: string
   updated_at: string
 }
@@ -60,6 +71,7 @@ export interface EventNewsListResult {
 
 export interface EventNewsFormPayload {
   title: string
+  tournament_name: string
   game_type: number
   source_type: string
   source_name: string
@@ -67,6 +79,7 @@ export interface EventNewsFormPayload {
   cover_image: string
   summary: string
   content: string
+  description: string
   country: string
   city: string
   venue: string
@@ -75,6 +88,8 @@ export interface EventNewsFormPayload {
   status: number
   featured: boolean
   sort_time: string
+  published: boolean
+  tournament_id?: number
 }
 
 export interface EventNewsUpdatePayload extends EventNewsFormPayload {
@@ -90,23 +105,43 @@ export interface EventNewsDeletePayload {
   event_id: number
 }
 
-export interface EventNewsStageFormPayload {
+export interface EventNewsMatchListParams {
   event_id: number
-  stage_name: string
-  stage_order: number
+}
+
+export interface EventNewsMatchListResult {
+  code: number
+  success: boolean
+  message: string
+  list: EventNewsMatchItem[]
+}
+
+export interface EventNewsMatchCreatePayload {
+  event_id: number
+  round_name: string
+  round_order: number
+  match_order: number
   start_time: string
-  end_time: string
   status: number
-  result_text: string
-  sort_time: string
+  best_of: number
+  home_player_id: number
+  home_player_name: string
+  away_player_id: number
+  away_player_name: string
+  home_score: number
+  away_score: number
+  winner_side: number
+  is_placeholder: boolean
+  source_type: string
+  source_match_id: string
 }
 
-export interface EventNewsStageUpdatePayload extends EventNewsStageFormPayload {
-  stage_id: number
+export interface EventNewsMatchUpdatePayload extends EventNewsMatchCreatePayload {
+  match_id: number
 }
 
-export interface EventNewsStageDeletePayload {
-  stage_id: number
+export interface EventNewsMatchDeletePayload {
+  match_id: number
 }
 
 export interface WriteResult {
@@ -135,14 +170,18 @@ export const deleteEventNews = (data: EventNewsDeletePayload): Promise<WriteResu
   return request.post('/api/admin/event-news/delete', data)
 }
 
-export const createEventNewsStage = (data: EventNewsStageFormPayload): Promise<WriteResult> => {
-  return request.post('/api/admin/event-news/stage/create', data)
+export const getEventNewsMatches = (params: EventNewsMatchListParams): Promise<EventNewsMatchListResult> => {
+  return request.get('/api/admin/event-news/matches', { params })
 }
 
-export const updateEventNewsStage = (data: EventNewsStageUpdatePayload): Promise<WriteResult> => {
-  return request.post('/api/admin/event-news/stage/update', data)
+export const createEventNewsMatch = (data: EventNewsMatchCreatePayload): Promise<WriteResult> => {
+  return request.post('/api/admin/event-news/match/create', data)
 }
 
-export const deleteEventNewsStage = (data: EventNewsStageDeletePayload): Promise<WriteResult> => {
-  return request.post('/api/admin/event-news/stage/delete', data)
+export const updateEventNewsMatch = (data: EventNewsMatchUpdatePayload): Promise<WriteResult> => {
+  return request.post('/api/admin/event-news/match/update', data)
+}
+
+export const deleteEventNewsMatch = (data: EventNewsMatchDeletePayload): Promise<WriteResult> => {
+  return request.post('/api/admin/event-news/match/delete', data)
 }

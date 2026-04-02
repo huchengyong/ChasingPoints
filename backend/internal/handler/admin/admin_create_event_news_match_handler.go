@@ -9,17 +9,17 @@ import (
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
-// 创建赛事阶段
-func AdminCreateEventNewsStageHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+// 创建赛事比赛
+func AdminCreateEventNewsMatchHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req types.AdminEventNewsStageCreateReq
+		var req types.AdminEventNewsMatchCreateReq
 		if err := httpx.Parse(r, &req); err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
 		}
 
-		l := admin.NewAdminCreateEventNewsStageLogic(r.Context(), svcCtx)
-		resp, err := l.AdminCreateEventNewsStage(&req)
+		l := admin.NewAdminCreateEventNewsMatchLogic(r.Context(), svcCtx)
+		resp, err := l.AdminCreateEventNewsMatch(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 		} else {

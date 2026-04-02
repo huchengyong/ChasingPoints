@@ -1,9 +1,10 @@
 -- +goose Up
--- 赛事情报最终结构：赛事主表 + 阶段表
+-- 赛事情报最终结构：赛讯壳表，绑定赛事实体与比赛列表
 
 CREATE TABLE IF NOT EXISTS `event_news_events` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `title` VARCHAR(128) NOT NULL COMMENT '赛事标题',
+  `tournament_id` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '绑定赛事ID',
   `game_type` TINYINT NOT NULL COMMENT '球种 1=斯诺克 2=中式九球 3=中式八球 4=美式九球',
   `source_type` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '来源类型 manual/official/imported',
   `source_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '来源名称',
@@ -25,6 +26,7 @@ CREATE TABLE IF NOT EXISTS `event_news_events` (
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted_at` DATETIME DEFAULT NULL COMMENT '删除时间',
   PRIMARY KEY (`id`),
+  KEY `idx_tournament_id` (`tournament_id`),
   KEY `idx_game_type` (`game_type`),
   KEY `idx_status` (`status`),
   KEY `idx_city` (`city`),
@@ -32,33 +34,8 @@ CREATE TABLE IF NOT EXISTS `event_news_events` (
   KEY `idx_featured_published_sort_time` (`featured`, `published`, `sort_time`),
   KEY `idx_sort_time` (`sort_time`),
   KEY `idx_deleted_at` (`deleted_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='赛事情报赛事主表';
-
-CREATE TABLE IF NOT EXISTS `event_news_stages` (
-  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `event_id` BIGINT UNSIGNED NOT NULL COMMENT '所属赛事ID',
-  `stage_name` VARCHAR(128) NOT NULL COMMENT '阶段名称',
-  `stage_order` INT NOT NULL DEFAULT 0 COMMENT '阶段排序',
-  `start_time` DATETIME DEFAULT NULL COMMENT '阶段开始时间',
-  `end_time` DATETIME DEFAULT NULL COMMENT '阶段结束时间',
-  `status` TINYINT NOT NULL DEFAULT 0 COMMENT '阶段状态 0=即将开始 1=进行中 2=已结束 3=已取消',
-  `result_text` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '阶段赛果摘要',
-  `sort_time` DATETIME DEFAULT NULL COMMENT '阶段排序时间',
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `deleted_at` DATETIME DEFAULT NULL COMMENT '删除时间',
-  PRIMARY KEY (`id`),
-  KEY `idx_event_id` (`event_id`),
-  KEY `idx_stage_order` (`stage_order`),
-  KEY `idx_status` (`status`),
-  KEY `idx_sort_time` (`sort_time`),
-  KEY `idx_deleted_at` (`deleted_at`),
-  CONSTRAINT `fk_event_news_stages_event_id`
-    FOREIGN KEY (`event_id`) REFERENCES `event_news_events` (`id`)
-    ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='赛事情报阶段表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='赛讯壳表';
 
 -- +goose Down
 
-DROP TABLE IF EXISTS `event_news_stages`;
 DROP TABLE IF EXISTS `event_news_events`;

@@ -59,13 +59,15 @@ func (l *AdminDeleteEventNewsLogic) AdminDeleteEventNews(req *types.AdminEventNe
 		}, nil
 	}
 
-	if err := l.svcCtx.EventNewsStageModel.SoftDeleteByEventId(req.EventId); err != nil {
-		l.Logger.Errorf("删除赛事阶段失败: eventId=%d err=%v", req.EventId, err)
-		return &types.AdminWriteResp{
-			Code:    500,
-			Success: false,
-			Message: "删除赛事情报失败",
-		}, nil
+	if existing.TournamentId > 0 {
+		if err := l.svcCtx.TournamentMatchModel.DeleteByTournament(existing.TournamentId); err != nil {
+			l.Logger.Errorf("删除赛事比赛失败: eventId=%d tournamentId=%d err=%v", req.EventId, existing.TournamentId, err)
+			return &types.AdminWriteResp{Code: 500, Success: false, Message: "删除赛事情报失败"}, nil
+		}
+		if err := l.svcCtx.TournamentModel.DeleteById(existing.TournamentId); err != nil {
+			l.Logger.Errorf("删除赛事失败: eventId=%d tournamentId=%d err=%v", req.EventId, existing.TournamentId, err)
+			return &types.AdminWriteResp{Code: 500, Success: false, Message: "删除赛事情报失败"}, nil
+		}
 	}
 
 	if _, err := l.svcCtx.EventNewsModel.SoftDelete(req.EventId); err != nil {

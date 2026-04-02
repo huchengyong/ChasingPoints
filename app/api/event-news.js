@@ -18,13 +18,13 @@ export const getEventNewsList = (params = {}) => {
 }
 
 /**
- * 获取赛事情报详情
+ * 获取赛讯赛事视图
  * @param {Object} params 查询参数
  * @param {number} params.event_id 赛事 ID
  * @returns {Promise}
  */
-export const getEventNewsDetail = (params = {}) => {
-  return get('/api/event-news/detail', params)
+export const getEventNewsView = (params = {}) => {
+  return get('/api/event-news/view', params)
 }
 
 /**

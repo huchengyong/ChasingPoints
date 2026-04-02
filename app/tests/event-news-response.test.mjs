@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
-  pickEventNewsDetailPayload,
+  pickEventNewsViewPayload,
   pickFeaturedEventNewsPayload
 } from '../utils/event-news-response.js'
 
@@ -22,17 +22,22 @@ test('pickFeaturedEventNewsPayload ignores legacy mirror-only responses', () => 
   }), null)
 })
 
-test('pickEventNewsDetailPayload only accepts the canonical event field', () => {
-  assert.deepEqual(pickEventNewsDetailPayload({
+test('pickEventNewsViewPayload only accepts the canonical event_news field', () => {
+  assert.deepEqual(pickEventNewsViewPayload({
     success: true,
-    event: { id: 18, title: '赛事详情' },
-    eventNews: { id: 99, title: '旧字段' }
-  }), { id: 18, title: '赛事详情' })
+    event_news: { id: 18, title: '赛事详情' },
+    tournament: { id: 3, name: '赛事实体' },
+    matches: [{ id: 88 }]
+  }), {
+    eventNews: { id: 18, title: '赛事详情' },
+    tournament: { id: 3, name: '赛事实体' },
+    matches: [{ id: 88 }]
+  })
 })
 
-test('pickEventNewsDetailPayload ignores legacy detail mirrors', () => {
-  assert.equal(pickEventNewsDetailPayload({
+test('pickEventNewsViewPayload ignores missing event_news payloads', () => {
+  assert.equal(pickEventNewsViewPayload({
     success: true,
-    eventNews: { id: 99, title: '旧字段' }
+    event: { id: 99, title: '旧字段' }
   }), null)
 })

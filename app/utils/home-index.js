@@ -58,7 +58,7 @@ export const normalizeFeaturedEventNews = (item, now = Date.now()) => {
 
   return {
     id: item.id,
-    title: item.title || '赛事情报',
+    title: item.tournament_name || item.title || '赛事情报',
     summary: item.summary || item.latest_result_text || '查看最新赛程赛况',
     statusText: getEventNewsStatusText(item.status),
     timeText: formatEventNewsTime(timeSource, now),
@@ -66,8 +66,9 @@ export const normalizeFeaturedEventNews = (item, now = Date.now()) => {
     locationText,
     sourceText,
     sourceUrl: item.source_url || '',
-    currentStageText: item.current_stage_text || '',
+    currentRoundText: item.current_round_text || '',
     latestResultText: item.latest_result_text || '',
+    matchCount: Number(item.match_count || 0),
     gameType: item.game_type,
     status: item.status
   }

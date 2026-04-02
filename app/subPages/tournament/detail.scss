@@ -195,6 +195,30 @@
 	margin-top: 20rpx;
 }
 
+.round-group {
+	display: flex;
+	flex-direction: column;
+	gap: 14rpx;
+}
+
+.round-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16rpx;
+}
+
+.round-title {
+	font-size: 26rpx;
+	font-weight: 700;
+	color: #0f172a;
+}
+
+.round-tip {
+	font-size: 22rpx;
+	color: #64748b;
+}
+
 .story-item {
 	padding: 20rpx;
 	border-radius: 20rpx;
@@ -233,6 +257,44 @@
 	font-weight: 600;
 	color: #0f172a;
 	word-break: break-word;
+}
+
+.match-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16rpx;
+	margin-top: 14rpx;
+}
+
+.player-name {
+	flex: 1;
+	min-width: 0;
+	font-size: 26rpx;
+	font-weight: 600;
+	color: #0f172a;
+	line-height: 1.45;
+	word-break: break-word;
+
+	&.right {
+		text-align: right;
+	}
+
+	&.winner {
+		color: #C69200;
+	}
+}
+
+.score-pill {
+	flex-shrink: 0;
+	min-width: 112rpx;
+	padding: 10rpx 16rpx;
+	border-radius: 999rpx;
+	background: rgba(224, 174, 18, 0.14);
+	font-size: 24rpx;
+	font-weight: 700;
+	text-align: center;
+	color: #7c5b12;
 }
 
 .story-meta {
