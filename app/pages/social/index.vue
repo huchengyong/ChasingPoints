@@ -24,41 +24,24 @@
       <view v-else-if="list.length > 0" class="post-list">
         <view v-for="item in list" :key="item.id" class="post-card" @tap="openDetail(item.id)">
           <image class="post-cover" :src="item.coverImage" mode="aspectFill"></image>
-          <view class="post-topline">
-            <view class="post-chip">
-              <text>{{ item.gameTypeText }}</text>
+          <view class="post-overlay"></view>
+          <view class="post-body">
+            <view class="post-topline">
+              <view class="post-chip">
+                <text>{{ item.gameTypeText }}</text>
+              </view>
+              <view class="post-status" :class="'status-' + item.status">
+                <text>{{ item.statusText }}</text>
+              </view>
             </view>
-            <view class="post-status" :class="'status-' + item.status">
-              <text>{{ item.statusText }}</text>
+            <view class="post-content-block">
+              <text class="post-title">{{ item.title }}</text>
+              <text class="post-content">{{ item.summary }}</text>
+              <view class="post-footer">
+                <text>{{ item.sourceText || '追分官方' }}</text>
+                <text>查看详情</text>
+              </view>
             </view>
-          </view>
-          <text class="post-title">{{ item.title }}</text>
-          <text class="post-content">{{ item.summary }}</text>
-          <view class="meta-grid">
-            <view class="meta-item">
-              <text class="meta-label">日期</text>
-              <text class="meta-value">{{ item.dateText }}</text>
-            </view>
-            <view v-if="item.showTime" class="meta-item">
-              <text class="meta-label">时间</text>
-              <text class="meta-value">{{ item.timeText }}</text>
-            </view>
-            <view v-if="item.locationText" class="meta-item">
-              <text class="meta-label">地点</text>
-              <text class="meta-value">{{ item.locationText }}</text>
-            </view>
-            <view class="meta-item">
-              <text class="meta-label">当前轮次</text>
-              <text class="meta-value">{{ item.currentRoundText }}</text>
-            </view>
-            <view class="meta-item">
-              <text class="meta-label">比赛数</text>
-              <text class="meta-value">{{ item.matchCountText }}</text>
-            </view>
-          </view>
-          <view class="post-footer">
-            <text>{{ item.sourceText || '追分官方' }}</text>
-            <text>查看详情</text>
           </view>
         </view>
       </view>

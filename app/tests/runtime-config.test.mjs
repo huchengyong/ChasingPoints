@@ -8,8 +8,8 @@ import {
 
 test('resolveNetworkConfig uses tunnel host in development', () => {
   assert.deepEqual(resolveNetworkConfig({ env: 'development' }), {
-    httpBaseUrl: 'https://api-tunnel2.kekemate.com',
-    wsBaseUrl: 'wss://api-tunnel2.kekemate.com'
+    httpBaseUrl: 'https://api-zhuifen.kekemate.cn',
+    wsBaseUrl: 'wss://api-zhuifen.kekemate.cn'
   })
 })
 

@@ -18,20 +18,22 @@
 							<text>{{ eventView.statusText }}</text>
 						</view>
 					</view>
-					<text class="hero-title">{{ eventView.title }}</text>
-					<text class="hero-desc">{{ eventView.summary }}</text>
-					<view class="hero-meta">
-						<view class="hero-meta-item">
-							<text class="hero-meta-label">日期</text>
-							<text class="hero-meta-value">{{ eventView.dateText }}</text>
-						</view>
-						<view v-if="eventView.showTime" class="hero-meta-item">
-							<text class="hero-meta-label">时间</text>
-							<text class="hero-meta-value">{{ eventView.timeText }}</text>
-						</view>
-						<view class="hero-meta-item">
-							<text class="hero-meta-label">地点</text>
-							<text class="hero-meta-value">{{ eventView.locationText || '待补充' }}</text>
+					<view class="hero-content-block">
+						<text class="hero-title">{{ eventView.title }}</text>
+						<text class="hero-desc">{{ eventView.summary }}</text>
+						<view class="hero-meta">
+							<view class="hero-meta-item">
+								<text class="hero-meta-label">国家 / 地区</text>
+								<text class="hero-meta-value">{{ eventView.country || '待补充' }}</text>
+							</view>
+							<view v-if="eventView.showTime" class="hero-meta-item">
+								<text class="hero-meta-label">时间</text>
+								<text class="hero-meta-value">{{ eventView.timeText }}</text>
+							</view>
+							<view class="hero-meta-item">
+								<text class="hero-meta-label">地点</text>
+								<text class="hero-meta-value">{{ eventView.locationText || '待补充' }}</text>
+							</view>
 						</view>
 					</view>
 				</view>
@@ -44,20 +46,12 @@
 				</view>
 				<view class="info-grid">
 					<view class="grid-item">
+						<text class="grid-label">日期</text>
+						<text class="grid-value">{{ eventView.dateText }}</text>
+					</view>
+					<view class="grid-item">
 						<text class="grid-label">当前轮次</text>
 						<text class="grid-value">{{ eventView.currentRoundText }}</text>
-					</view>
-					<view class="grid-item">
-						<text class="grid-label">最新赛果</text>
-						<text class="grid-value">{{ eventView.resultText || '等待更新' }}</text>
-					</view>
-					<view class="grid-item">
-						<text class="grid-label">国家 / 地区</text>
-						<text class="grid-value">{{ eventView.country || '待补充' }}</text>
-					</view>
-					<view class="grid-item">
-						<text class="grid-label">更新时间</text>
-						<text class="grid-value">{{ eventView.updatedAtText }}</text>
 					</view>
 				</view>
 			</view>
@@ -81,14 +75,26 @@
 							<view class="match-row">
 								<view class="player-side" :class="{ winner: match.winnerSide === 1 }">
 									<image class="player-avatar" :src="match.homePlayerAvatar" mode="aspectFill"></image>
-									<text class="player-name">{{ match.homePlayerName }}</text>
+									<view class="player-copy">
+										<view class="player-copy-top">
+											<text v-if="match.homePlayerFlagEmoji" class="player-flag">{{ match.homePlayerFlagEmoji }}</text>
+											<text v-if="match.homePlayerFirstName" class="player-first-name">{{ match.homePlayerFirstName }}</text>
+										</view>
+										<text class="player-last-name">{{ match.homePlayerLastName }}</text>
+									</view>
 								</view>
 								<view class="score-pill">
 									<text>{{ match.scoreText }}</text>
 								</view>
 								<view class="player-side player-side-right" :class="{ winner: match.winnerSide === 2 }">
 									<image class="player-avatar" :src="match.awayPlayerAvatar" mode="aspectFill"></image>
-									<text class="player-name">{{ match.awayPlayerName }}</text>
+									<view class="player-copy">
+										<view class="player-copy-top">
+											<text v-if="match.awayPlayerFlagEmoji" class="player-flag">{{ match.awayPlayerFlagEmoji }}</text>
+											<text v-if="match.awayPlayerFirstName" class="player-first-name">{{ match.awayPlayerFirstName }}</text>
+										</view>
+										<text class="player-last-name">{{ match.awayPlayerLastName }}</text>
+									</view>
 								</view>
 							</view>
 							<text class="story-meta">{{ match.metaText }}</text>
@@ -145,7 +151,6 @@ import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getEventNewsView } from '@/api/event-news.js'
 import { pickEventNewsViewPayload } from '@/utils/event-news-response.js'
-import { formatRelativeTime } from '@/utils/format.js'
 import { getGameTypeLabel } from '@/utils/game-types.js'
 import {
 	DEFAULT_EVENT_COVER,
@@ -189,9 +194,7 @@ const normalizeEventView = ({ eventNews, tournament, matches }, now = Date.now()
 		sourceName: eventNews.source_name || '追分官方',
 		sourceUrl: eventNews.source_url || '',
 		country: mergedEvent.country,
-		updatedAtText: eventNews.updated_at ? formatRelativeTime(eventNews.updated_at) : '刚刚',
 		rounds,
-		resultText: eventNews.latest_result_text || eventCard.resultText || '',
 		currentRoundText: eventNews.current_round_text || eventCard.currentRoundText
 	}
 }

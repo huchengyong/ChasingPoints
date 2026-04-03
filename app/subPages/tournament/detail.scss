@@ -65,17 +65,21 @@
 	z-index: 1;
 	display: flex;
 	flex-direction: column;
-	justify-content: flex-end;
+	justify-content: space-between;
 	min-height: 520rpx;
 	padding: 32rpx 28rpx;
 	box-sizing: border-box;
+}
+
+.hero-content-block {
+	display: flex;
+	flex-direction: column;
 }
 
 .hero-topline,
 .section-head,
 .story-topline,
 .round-head,
-.player-side,
 .match-row {
 	display: flex;
 	align-items: center;
@@ -124,7 +128,6 @@
 
 .hero-title {
 	display: block;
-	margin-top: 18rpx;
 	font-size: 42rpx;
 	line-height: 1.34;
 	font-weight: 700;
@@ -287,16 +290,22 @@
 .match-row {
 	gap: 16rpx;
 	margin-top: 18rpx;
+	align-items: center;
 }
 
 .player-side {
 	flex: 1;
 	min-width: 0;
-	gap: 14rpx;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 12rpx;
 	padding: 16rpx 18rpx;
 	border-radius: 18rpx;
 	background: #ffffff;
 	border: 1rpx solid #e2e8f0;
+	text-align: center;
 
 	&.winner {
 		border-color: rgba(224, 174, 18, 0.42);
@@ -305,41 +314,74 @@
 }
 
 .player-side-right {
-	flex-direction: row-reverse;
-
 	.player-name {
-		text-align: right;
+		text-align: center;
 	}
 }
 
 .player-avatar {
-	width: 72rpx;
-	height: 72rpx;
+	width: 96rpx;
+	height: 96rpx;
 	border-radius: 50%;
 	flex-shrink: 0;
 	background: #e2e8f0;
 }
 
-.player-name {
-	flex: 1;
-	min-width: 0;
+.player-copy {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6rpx;
+	min-width: 100%;
+}
+
+.player-copy-top {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8rpx;
+	min-height: 28rpx;
+}
+
+.player-flag {
 	font-size: 26rpx;
-	line-height: 1.4;
-	font-weight: 600;
+	line-height: 1;
+}
+
+.player-first-name {
+	font-size: 20rpx;
+	line-height: 1.3;
+	color: #94a3b8;
+	word-break: break-word;
+	text-align: center;
+}
+
+.player-last-name {
+	min-width: 100%;
+	font-size: 30rpx;
+	line-height: 1.25;
+	font-weight: 700;
 	color: #0f172a;
 	word-break: break-word;
+	text-align: center;
 }
 
 .score-pill {
 	flex-shrink: 0;
-	min-width: 132rpx;
-	padding: 16rpx 18rpx;
-	border-radius: 18rpx;
-	background: #0f172a;
+	width: 92rpx;
+	min-width: 92rpx;
+	height: 112rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 10rpx;
+	border-radius: 16rpx;
+	background: #111827;
 	text-align: center;
+	box-shadow: inset 0 0 0 1rpx rgba(255, 255, 255, 0.05);
 
 	text {
-		font-size: 28rpx;
+		font-size: 26rpx;
 		font-weight: 700;
 		color: #ffffff;
 	}

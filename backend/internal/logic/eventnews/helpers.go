@@ -122,29 +122,41 @@ func mapEventNewsInfo(item model.EventNews, tournament *model.Tournament, matche
 func mapEventNewsMatchInfo(eventID int64, item model.TournamentMatch, players map[int64]model.Player) types.EventNewsMatchInfo {
 	homePlayerID := firstNonZeroInt64(item.HomePlayerId, item.Player1Id)
 	awayPlayerID := firstNonZeroInt64(item.AwayPlayerId, item.Player2Id)
+	homePlayer := players[homePlayerID]
+	awayPlayer := players[awayPlayerID]
+	homePlayerName := firstNonEmpty(item.HomePlayerName, buildPlayerDisplayName(homePlayer))
+	awayPlayerName := firstNonEmpty(item.AwayPlayerName, buildPlayerDisplayName(awayPlayer))
+	homeFirstName, homeLastName := resolvePlayerNameParts(homePlayer, homePlayerName)
+	awayFirstName, awayLastName := resolvePlayerNameParts(awayPlayer, awayPlayerName)
 	resp := types.EventNewsMatchInfo{
-		Id:             item.Id,
-		EventId:        eventID,
-		TournamentId:   item.TournamentId,
-		SourceType:     item.SourceType,
-		SourceMatchId:  item.SourceMatchId,
-		RoundName:      item.RoundName,
-		RoundOrder:     item.RoundOrder,
-		MatchOrder:     item.MatchOrder,
-		Status:         item.Status,
-		BestOf:         item.BestOf,
-		HomePlayerId:   homePlayerID,
-		HomePlayerName: firstNonEmpty(item.HomePlayerName, buildPlayerDisplayName(players[homePlayerID])),
-		HomePlayerAvatar: resolvePlayerAvatar(players, homePlayerID),
-		AwayPlayerId:   awayPlayerID,
-		AwayPlayerName: firstNonEmpty(item.AwayPlayerName, buildPlayerDisplayName(players[awayPlayerID])),
-		AwayPlayerAvatar: resolvePlayerAvatar(players, awayPlayerID),
-		HomeScore:      item.HomeScore,
-		AwayScore:      item.AwayScore,
-		WinnerSide:     normalizeWinnerSide(item),
-		IsPlaceholder:  item.IsPlaceholder,
-		CreatedAt:      item.CreatedAt.Format(eventNewsTimeLayout),
-		UpdatedAt:      item.UpdatedAt.Format(eventNewsTimeLayout),
+		Id:                  item.Id,
+		EventId:             eventID,
+		TournamentId:        item.TournamentId,
+		SourceType:          item.SourceType,
+		SourceMatchId:       item.SourceMatchId,
+		RoundName:           item.RoundName,
+		RoundOrder:          item.RoundOrder,
+		MatchOrder:          item.MatchOrder,
+		Status:              item.Status,
+		BestOf:              item.BestOf,
+		HomePlayerId:        homePlayerID,
+		HomePlayerName:      homePlayerName,
+		HomePlayerFirstName: homeFirstName,
+		HomePlayerLastName:  homeLastName,
+		HomePlayerFlagEmoji: strings.TrimSpace(homePlayer.FlagEmoji),
+		HomePlayerAvatar:    resolvePlayerAvatar(players, homePlayerID),
+		AwayPlayerId:        awayPlayerID,
+		AwayPlayerName:      awayPlayerName,
+		AwayPlayerFirstName: awayFirstName,
+		AwayPlayerLastName:  awayLastName,
+		AwayPlayerFlagEmoji: strings.TrimSpace(awayPlayer.FlagEmoji),
+		AwayPlayerAvatar:    resolvePlayerAvatar(players, awayPlayerID),
+		HomeScore:           item.HomeScore,
+		AwayScore:           item.AwayScore,
+		WinnerSide:          normalizeWinnerSide(item),
+		IsPlaceholder:       item.IsPlaceholder,
+		CreatedAt:           item.CreatedAt.Format(eventNewsTimeLayout),
+		UpdatedAt:           item.UpdatedAt.Format(eventNewsTimeLayout),
 	}
 	if item.StartTime != nil {
 		resp.StartTime = formatUTCDisplayTime(item.StartTime)
@@ -388,6 +400,31 @@ func buildPlayerDisplayName(player model.Player) string {
 		player.DisplayName,
 		strings.TrimSpace(strings.TrimSpace(player.FirstName)+" "+strings.TrimSpace(player.LastName)),
 	)
+}
+
+func resolvePlayerNameParts(player model.Player, fallbackName string) (string, string) {
+	firstName := strings.TrimSpace(player.FirstName)
+	lastName := strings.TrimSpace(player.LastName)
+	if firstName != "" || lastName != "" {
+		return firstName, lastName
+	}
+	return splitPlayerName(fallbackName)
+}
+
+func splitPlayerName(name string) (string, string) {
+	text := strings.TrimSpace(name)
+	if text == "" || text == "待定" {
+		return "", text
+	}
+
+	parts := strings.Fields(text)
+	if len(parts) <= 1 {
+		return "", text
+	}
+
+	firstName := strings.Join(parts[:len(parts)-1], " ")
+	lastName := parts[len(parts)-1]
+	return firstName, lastName
 }
 
 func reinterpretStoredUTC(value time.Time) time.Time {

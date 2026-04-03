@@ -5,6 +5,13 @@ export const DEFAULT_EVENT_COVER = 'https://images.gc.wstservices.co.uk/fit-in/4
 export const DEFAULT_PLAYER_AVATAR = '/static/images/default-avatar.png'
 
 const MATCH_ACTIVE_STATUSES = new Set([0, 1])
+const ROUND_NAME_ALIASES = Object.freeze({
+  semi_final: '半决赛',
+  semi_finals: '半决赛',
+  semifinal: '半决赛',
+  semifinals: '半决赛',
+  final: '决赛'
+})
 
 const parseDateOnly = (value) => {
   if (!value) return null
@@ -25,6 +32,21 @@ const parseDateTime = (value) => {
 const formatMonthDay = (date) => {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '日期待定'
   return `${date.getMonth() + 1}月${date.getDate()}日`
+}
+
+const normalizeRoundKey = (value) => {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+}
+
+export const standardizeRoundText = (value) => {
+  const text = String(value || '').trim()
+  if (!text) return ''
+
+  return ROUND_NAME_ALIASES[normalizeRoundKey(text)] || text
 }
 
 export const formatEventDateRange = (startDate, endDate) => {
@@ -58,7 +80,7 @@ export const buildEventLocationText = (item = {}) => {
 }
 
 export const normalizeSaiXunCard = (item = {}, now = Date.now()) => {
-  const currentRoundText = typeof item.current_round_text === 'string' ? item.current_round_text.trim() : ''
+  const currentRoundText = standardizeRoundText(item.current_round_text)
   const matchCount = Number(item.match_count || 0)
   const timeText = formatEventTimeRange(item.start_time, item.end_time, now)
 
@@ -88,6 +110,37 @@ export const buildSaiXunHeroStats = (list = []) => ({
   upcomingCount: list.filter((item) => Number(item?.status) === 0).length
 })
 
+const splitDisplayName = (name) => {
+  const text = String(name || '').trim()
+  if (!text || text === '待定') {
+    return { firstName: '', lastName: text || '待定' }
+  }
+
+  const parts = text.split(/\s+/).filter(Boolean)
+  if (parts.length <= 1) {
+    return { firstName: '', lastName: text }
+  }
+
+  return {
+    firstName: parts.slice(0, -1).join(' '),
+    lastName: parts[parts.length - 1]
+  }
+}
+
+const resolvePlayerTextParts = (firstName, lastName, fullName) => {
+  const normalizedFirstName = String(firstName || '').trim()
+  const normalizedLastName = String(lastName || '').trim()
+
+  if (normalizedFirstName || normalizedLastName) {
+    return {
+      firstName: normalizedFirstName,
+      lastName: normalizedLastName || fullName || '待定'
+    }
+  }
+
+  return splitDisplayName(fullName)
+}
+
 const buildMatchMetaText = (match) => {
   const parts = []
   if (Number(match.best_of || 0) > 0) parts.push(`Best of ${Number(match.best_of || 0)}`)
@@ -103,9 +156,11 @@ const buildScoreText = (match) => {
 
 const normalizeSaiXunMatch = (match = {}, now = Date.now()) => {
   const startAt = parseDateTime(match.start_time)
+  const homePlayerParts = resolvePlayerTextParts(match.home_player_first_name, match.home_player_last_name, match.home_player_name || '待定')
+  const awayPlayerParts = resolvePlayerTextParts(match.away_player_first_name, match.away_player_last_name, match.away_player_name || '待定')
   return {
     id: match.id,
-    roundName: match.round_name || '轮次待更新',
+    roundName: standardizeRoundText(match.round_name) || '轮次待更新',
     roundOrder: Number(match.round_order || 0),
     matchOrder: Number(match.match_order || 0),
     status: Number(match.status || 0),
@@ -113,8 +168,14 @@ const normalizeSaiXunMatch = (match = {}, now = Date.now()) => {
     startAt,
     startTimeText: startAt ? formatEventNewsTime(startAt.toISOString(), now) : '时间待定',
     homePlayerName: match.home_player_name || '待定',
+    homePlayerFirstName: homePlayerParts.firstName,
+    homePlayerLastName: homePlayerParts.lastName,
+    homePlayerFlagEmoji: String(match.home_player_flag_emoji || '').trim(),
     homePlayerAvatar: match.home_player_avatar || DEFAULT_PLAYER_AVATAR,
     awayPlayerName: match.away_player_name || '待定',
+    awayPlayerFirstName: awayPlayerParts.firstName,
+    awayPlayerLastName: awayPlayerParts.lastName,
+    awayPlayerFlagEmoji: String(match.away_player_flag_emoji || '').trim(),
     awayPlayerAvatar: match.away_player_avatar || DEFAULT_PLAYER_AVATAR,
     scoreText: buildScoreText(match),
     winnerSide: Number(match.winner_side || 0),

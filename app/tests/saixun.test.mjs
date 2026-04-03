@@ -50,7 +50,7 @@ test('normalizeSaiXunCard maps赛事摘要并在缺失封面时回退默认值',
   assert.equal(card.timeText, '')
   assert.equal(card.showTime, false)
   assert.equal(card.locationText, '曼彻斯特 · Manchester Central')
-  assert.equal(card.currentRoundText, 'Semi Finals')
+  assert.equal(card.currentRoundText, '半决赛')
   assert.equal(card.matchCountText, '11 场比赛')
   assert.equal(card.sourceText, 'WST')
   assert.equal(card.coverImage, DEFAULT_EVENT_COVER)
@@ -82,7 +82,13 @@ test('buildSaiXunDetailRounds prioritizes live and upcoming rounds while hiding 
       status: 2,
       best_of: 19,
       home_player_name: 'Neil Robertson',
+      home_player_first_name: 'Neil',
+      home_player_last_name: 'Robertson',
+      home_player_flag_emoji: '🇦🇺',
       away_player_name: 'Barry Hawkins',
+      away_player_first_name: 'Barry',
+      away_player_last_name: 'Hawkins',
+      away_player_flag_emoji: '🏴',
       home_score: 10,
       away_score: 8,
       winner_side: 1
@@ -112,10 +118,16 @@ test('buildSaiXunDetailRounds prioritizes live and upcoming rounds while hiding 
   ], '2026-04-03T12:00:00+08:00')
 
   assert.equal(rounds.length, 2)
-  assert.equal(rounds[0].roundName, 'Semi Finals')
+  assert.equal(rounds[0].roundName, '半决赛')
   assert.equal(rounds[1].roundName, 'Quarter Finals')
   assert.equal(rounds[0].matches[0].homePlayerAvatar, 'https://example.com/trump.png')
   assert.equal(rounds[0].matches[0].awayPlayerAvatar, DEFAULT_PLAYER_AVATAR)
   assert.equal(rounds[1].matches[0].scoreText, '10 : 8')
-  assert.equal(rounds.some((round) => round.roundName === 'Final'), false)
+  assert.equal(rounds[1].matches[0].homePlayerFirstName, 'Neil')
+  assert.equal(rounds[1].matches[0].homePlayerLastName, 'Robertson')
+  assert.equal(rounds[1].matches[0].homePlayerFlagEmoji, '🇦🇺')
+  assert.equal(rounds[1].matches[0].awayPlayerFirstName, 'Barry')
+  assert.equal(rounds[1].matches[0].awayPlayerLastName, 'Hawkins')
+  assert.equal(rounds[1].matches[0].awayPlayerFlagEmoji, '🏴')
+  assert.equal(rounds.some((round) => round.roundName === '决赛'), false)
 })

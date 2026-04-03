@@ -90,18 +90,18 @@ func TestGetEventNewsListFiltersPublishedEventParentsAndExposesMatchSummary(t *t
 	defer withEventNewsNow(time.Date(2026, 3, 23, 12, 0, 0, 0, time.UTC))()
 
 	tournament := createTournament(t, svcCtx, &model.Tournament{
-		Name:        "2026斯诺克世锦赛",
-		CoverImage:  "https://example.com/tournament-cover.png",
-		GameType:    1,
-		Format:      1,
-		MaxPlayers:  16,
-		Status:      model.EventNewsStatusLive,
-		Country:     "英国",
-		City:        "谢菲尔德",
-		VenueName:   "Crucible",
-		StartDate:   mustTimePtr(time.Date(2026, 3, 23, 0, 0, 0, 0, time.UTC)),
-		EndDate:     mustTimePtr(time.Date(2026, 3, 30, 0, 0, 0, 0, time.UTC)),
-		StartTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 0, 0, 0, time.UTC)),
+		Name:       "2026斯诺克世锦赛",
+		CoverImage: "https://example.com/tournament-cover.png",
+		GameType:   1,
+		Format:     1,
+		MaxPlayers: 16,
+		Status:     model.EventNewsStatusLive,
+		Country:    "英国",
+		City:       "谢菲尔德",
+		VenueName:  "Crucible",
+		StartDate:  mustTimePtr(time.Date(2026, 3, 23, 0, 0, 0, 0, time.UTC)),
+		EndDate:    mustTimePtr(time.Date(2026, 3, 30, 0, 0, 0, 0, time.UTC)),
+		StartTime:  mustTimePtr(time.Date(2026, 3, 23, 11, 0, 0, 0, time.UTC)),
 	})
 
 	snooker := createEvent(t, svcCtx, &model.EventNews{
@@ -340,5 +340,11 @@ func TestGetEventNewsViewReturnsEventTournamentAndMatches(t *testing.T) {
 	}
 	if resp.Matches[0].HomePlayerAvatar != "https://example.com/neil.png" || resp.Matches[0].AwayPlayerAvatar != "https://example.com/barry.png" {
 		t.Fatalf("expected player avatars, got %#v", resp.Matches[0])
+	}
+	if resp.Matches[0].HomePlayerFirstName != "Neil" || resp.Matches[0].HomePlayerLastName != "Robertson" || resp.Matches[0].HomePlayerFlagEmoji != "🇦🇺" {
+		t.Fatalf("expected home player name parts and flag, got %#v", resp.Matches[0])
+	}
+	if resp.Matches[0].AwayPlayerFirstName != "Barry" || resp.Matches[0].AwayPlayerLastName != "Hawkins" || resp.Matches[0].AwayPlayerFlagEmoji != "🏴" {
+		t.Fatalf("expected away player name parts and flag, got %#v", resp.Matches[0])
 	}
 }
