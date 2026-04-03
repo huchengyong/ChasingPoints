@@ -27,10 +27,11 @@ type EventNews struct {
 	Country      string         `gorm:"size:64;not null;default:''" json:"country"`
 	City         string         `gorm:"size:64;not null;default:'';index" json:"city"`
 	Venue        string         `gorm:"size:128;not null;default:''" json:"venue"`
+	StartDate    *time.Time     `gorm:"type:date;default:null;index" json:"start_date"`
+	EndDate      *time.Time     `gorm:"type:date;default:null" json:"end_date"`
 	StartTime    *time.Time     `gorm:"default:null;index" json:"start_time"`
 	EndTime      *time.Time     `gorm:"default:null" json:"end_time"`
 	Status       int            `gorm:"not null;default:0;index" json:"status"`
-	Featured     bool           `gorm:"not null;default:false;index" json:"featured"`
 	SortTime     *time.Time     `gorm:"default:null;index" json:"sort_time"`
 	Published    bool           `gorm:"not null;default:false;index" json:"published"`
 	PublishedAt  *time.Time     `gorm:"default:null" json:"published_at"`
@@ -97,7 +98,7 @@ func (m *EventNewsModel) FindPublishedMatching(gameType, status int, city string
 	}
 
 	var list []EventNews
-	err := query.Order("featured DESC, sort_time ASC, id DESC").Find(&list).Error
+	err := query.Order("sort_time DESC, id DESC").Find(&list).Error
 	if err != nil {
 		return nil, err
 	}
@@ -128,20 +129,8 @@ func (m *EventNewsModel) FindList(page, pageSize int, gameType, status int, city
 	}
 
 	var list []EventNews
-	err := query.Order("featured DESC, sort_time ASC, id DESC").Offset(offset).Limit(pageSize).Find(&list).Error
+	err := query.Order("sort_time DESC, id DESC").Offset(offset).Limit(pageSize).Find(&list).Error
 	return list, total, err
-}
-
-func (m *EventNewsModel) FindFeatured() (*EventNews, error) {
-	var eventNews EventNews
-	err := m.db.Where("featured = 1 AND published = 1").Order("sort_time ASC, id DESC").First(&eventNews).Error
-	if err == gorm.ErrRecordNotFound {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &eventNews, nil
 }
 
 func (m *EventNewsModel) UpdatePublished(id int64, published bool) (bool, error) {

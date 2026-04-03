@@ -20,10 +20,11 @@ type eventNewsEventSchema struct {
 	Country      string         `gorm:"size:64;not null;default:''"`
 	City         string         `gorm:"size:64;not null;default:'';index"`
 	Venue        string         `gorm:"size:128;not null;default:''"`
+	StartDate    *time.Time     `gorm:"type:date;default:null;index"`
+	EndDate      *time.Time     `gorm:"type:date;default:null"`
 	StartTime    *time.Time     `gorm:"default:null;index"`
 	EndTime      *time.Time     `gorm:"default:null"`
 	Status       int            `gorm:"not null;default:0;index"`
-	Featured     bool           `gorm:"not null;default:false;index"`
 	SortTime     *time.Time     `gorm:"default:null;index"`
 	Published    bool           `gorm:"not null;default:false;index"`
 	PublishedAt  *time.Time     `gorm:"default:null"`
@@ -41,13 +42,17 @@ type tournamentSchema struct {
 	CreatorId      int64      `gorm:"not null;index"`
 	Name           string     `gorm:"size:128;not null"`
 	Description    string     `gorm:"type:text"`
+	CoverImage     string     `gorm:"size:512;not null;default:''"`
 	GameType       int        `gorm:"not null;index"`
 	Format         int        `gorm:"not null;default:1"`
 	MaxPlayers     int        `gorm:"not null;default:16"`
 	CurrentPlayers int        `gorm:"not null;default:0"`
 	Status         int        `gorm:"not null;default:0;index"`
+	Country        string     `gorm:"size:64;not null;default:''"`
 	City           string     `gorm:"size:64;not null;default:'';index"`
 	VenueName      string     `gorm:"size:128;not null;default:''"`
+	StartDate      *time.Time `gorm:"type:date;default:null;index"`
+	EndDate        *time.Time `gorm:"type:date;default:null"`
 	StartTime      *time.Time `gorm:"default:null;index"`
 	EndTime        *time.Time `gorm:"default:null"`
 	CreatedAt      time.Time  `gorm:"autoCreateTime"`
@@ -91,7 +96,26 @@ func (tournamentMatchSchema) TableName() string {
 	return "tournament_matches"
 }
 
+type playerSchema struct {
+	Id             int64          `gorm:"primarykey"`
+	SourceType     string         `gorm:"size:32;not null;default:''"`
+	SourcePlayerId string         `gorm:"size:128;not null;default:'';index"`
+	FirstName      string         `gorm:"size:64;not null;default:''"`
+	LastName       string         `gorm:"size:64;not null;default:''"`
+	DisplayName    string         `gorm:"size:128;not null;default:''"`
+	Avatar         string         `gorm:"size:512;not null;default:''"`
+	CountryCode    string         `gorm:"size:32;not null;default:''"`
+	FlagEmoji      string         `gorm:"size:16;not null;default:''"`
+	CreatedAt      time.Time      `gorm:"autoCreateTime"`
+	UpdatedAt      time.Time      `gorm:"autoUpdateTime"`
+	DeletedAt      gorm.DeletedAt `gorm:"index"`
+}
+
+func (playerSchema) TableName() string {
+	return "players"
+}
+
 // PrepareEventNewsSchema bootstraps the event_news, tournament and tournament_match tables for sqlite-backed tests.
 func PrepareEventNewsSchema(db *gorm.DB) error {
-	return db.AutoMigrate(&eventNewsEventSchema{}, &tournamentSchema{}, &tournamentMatchSchema{})
+	return db.AutoMigrate(&eventNewsEventSchema{}, &tournamentSchema{}, &tournamentMatchSchema{}, &playerSchema{})
 }

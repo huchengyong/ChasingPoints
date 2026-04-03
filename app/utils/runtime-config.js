@@ -1,6 +1,6 @@
 const NETWORK_CONFIG_BY_ENV = {
   development: {
-    httpBaseUrl: 'https://api-tunnel2.kekemate.com'
+    httpBaseUrl: 'https://api-zhuifen.kekemate.cn'
   },
   production: {
     httpBaseUrl: 'https://api-bm.dianzaozao.com'

@@ -44,6 +44,25 @@ func (l *AdminUpdateEventNewsLogic) AdminUpdateEventNews(req *types.AdminEventNe
 	}
 
 	title := strings.TrimSpace(req.Title)
+	startDate, err := parseAdminEventNewsDate(req.StartDate)
+	if err != nil {
+		return &types.AdminWriteResp{
+			Code:    400,
+			Success: false,
+			Message: "开始日期格式不正确",
+		}, nil
+	}
+	endDate, err := parseAdminEventNewsDate(req.EndDate)
+	if err != nil {
+		return &types.AdminWriteResp{
+			Code:    400,
+			Success: false,
+			Message: "结束日期格式不正确",
+		}, nil
+	}
+	if endDate == nil {
+		endDate = startDate
+	}
 	startTime, err := parseAdminEventNewsTime(req.StartTime)
 	if err != nil {
 		return &types.AdminWriteResp{
@@ -63,7 +82,10 @@ func (l *AdminUpdateEventNewsLogic) AdminUpdateEventNews(req *types.AdminEventNe
 	if sortTime == nil && startTime != nil {
 		sortTime = startTime
 	}
-	if message := validateAdminEventNewsReq(title, req.GameType, req.Status, startTime, sortTime); message != "" {
+	if sortTime == nil {
+		sortTime = startDate
+	}
+	if message := validateAdminEventNewsReq(title, req.GameType, req.Status, startDate, endDate); message != "" {
 		return &types.AdminWriteResp{
 			Code:    400,
 			Success: false,
@@ -117,7 +139,7 @@ func (l *AdminUpdateEventNewsLogic) AdminUpdateEventNews(req *types.AdminEventNe
 		if err := applyAdminTournamentUpdate(tournament, req); err != nil {
 			return &types.AdminWriteResp{Code: 400, Success: false, Message: "时间格式不正确"}, nil
 		}
-		if message := validateAdminEventNewsTimeRange(tournament.StartTime, tournament.EndTime); message != "" {
+		if message := validateAdminEventNewsTimeRange(tournament.StartDate, tournament.EndDate, tournament.StartTime, tournament.EndTime); message != "" {
 			return &types.AdminWriteResp{Code: 400, Success: false, Message: message}, nil
 		}
 		if err := l.svcCtx.TournamentModel.Update(tournament); err != nil {

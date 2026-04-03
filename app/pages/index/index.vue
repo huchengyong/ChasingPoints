@@ -88,16 +88,16 @@
             </view>
           </view>
 
-          <view v-if="featuredEventNews" class="focus-card" @tap="goTo(`/subPages/tournament/detail?id=${featuredEventNews.id}`)">
+          <view v-if="topEventNews" class="focus-card" @tap="goTo(`/subPages/tournament/detail?id=${topEventNews.id}`)">
             <view class="focus-card-top">
-              <text class="focus-pill">{{ featuredEventNews.statusText }}</text>
-              <text class="focus-aside">{{ featuredEventNews.timeText }}</text>
+              <text class="focus-pill">{{ topEventNews.statusText }}</text>
+              <text class="focus-aside">{{ topEventNews.showTime ? topEventNews.timeText : topEventNews.dateText }}</text>
             </view>
-            <text class="focus-title">{{ featuredEventNews.title }}</text>
-            <text class="focus-desc">{{ featuredEventNews.summary }}</text>
+            <text class="focus-title">{{ topEventNews.title }}</text>
+            <text class="focus-desc">{{ topEventNews.summary }}</text>
             <view class="focus-footer">
-              <text>{{ featuredEventNews.typeText }}</text>
-              <text>{{ featuredEventNews.locationText || featuredEventNews.sourceText || '赛事情报' }}</text>
+              <text>{{ topEventNews.gameTypeText }}</text>
+              <text>{{ topEventNews.locationText || topEventNews.sourceText || '赛事情报' }}</text>
             </view>
           </view>
           <view v-else class="section-empty">
@@ -170,13 +170,12 @@ import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { useThemeStore } from '@/store/theme.js'
 import { useNotificationStore } from '@/store/notification.js'
-import { getFeaturedEventNews } from '@/api/event-news.js'
+import { getEventNewsList } from '@/api/event-news.js'
 import { getCurrentMatch, startMatch } from '@/api/match.js'
 import { getLeaderboard } from '@/api/rank.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { getGameTypeLabel } from '@/utils/game-types.js'
-import { pickFeaturedEventNewsPayload } from '@/utils/event-news-response.js'
-import { normalizeFeaturedEventNews } from '@/utils/home-index.js'
+import { normalizeSaiXunCard } from '@/utils/saixun.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
 
 const userStore = useUserStore()
@@ -196,10 +195,10 @@ const selectedGameType = ref(null)
 const currentMatch = ref(null)
 const leaderboardTopThree = ref([])
 const myRanking = ref(null)
-const featuredEventNews = ref(null)
+const topEventNews = ref(null)
 
 const hasContent = computed(() => {
-  return Boolean(currentMatch.value || featuredEventNews.value || leaderboardTopThree.value.length)
+  return Boolean(currentMatch.value || topEventNews.value || leaderboardTopThree.value.length)
 })
 
 const headerSubtitle = computed(() => {
@@ -326,7 +325,7 @@ const loadData = async () => {
   try {
     const requests = [
       getLeaderboard({ page: 1, page_size: 3 }).catch(() => ({ success: false })),
-      getFeaturedEventNews().catch(() => ({ success: false }))
+      getEventNewsList({ page: 1, page_size: 1 }).catch(() => ({ success: false, list: [] }))
     ]
 
     if (isLoggedIn.value) {
@@ -352,10 +351,9 @@ const loadData = async () => {
       myRanking.value = null
     }
 
-    const featuredRes = results[resultIndex++]
-    featuredEventNews.value = featuredRes.success
-      ? normalizeFeaturedEventNews(pickFeaturedEventNewsPayload(featuredRes))
-      : null
+    const eventNewsRes = results[resultIndex++]
+    const topItem = eventNewsRes.success && Array.isArray(eventNewsRes.list) ? eventNewsRes.list[0] : null
+    topEventNews.value = topItem ? normalizeSaiXunCard(topItem) : null
   } catch (error) {
     console.error('加载首页数据失败', error)
   } finally {

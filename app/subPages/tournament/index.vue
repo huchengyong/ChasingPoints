@@ -69,6 +69,7 @@
 					class="tournament-card"
 					@tap="goDetail(item.id)"
 				>
+					<image class="card-cover" :src="item.coverImage" mode="aspectFill"></image>
 					<view class="card-topline">
 						<view class="card-chip game-chip">
 							<text>{{ item.gameTypeText }}</text>
@@ -82,6 +83,10 @@
 
 					<view class="card-meta">
 						<view class="meta-item">
+							<text class="meta-label">日期</text>
+							<text class="meta-value">{{ item.dateText }}</text>
+						</view>
+						<view class="meta-item" v-if="item.showTime">
 							<text class="meta-label">时间</text>
 							<text class="meta-value">{{ item.timeText }}</text>
 						</view>

@@ -45,8 +45,11 @@ func TestEventNewsModelsCRUDAndQueries(t *testing.T) {
 		Format:     1,
 		MaxPlayers: 16,
 		Status:     EventNewsStatusLive,
+		Country:    "英国",
 		City:       "谢菲尔德",
 		VenueName:  "Crucible",
+		StartDate:  &t1,
+		EndDate:    &t2,
 		StartTime:  &t1,
 	}
 	if err := tournamentModel.Create(tournament); err != nil {
@@ -61,8 +64,8 @@ func TestEventNewsModelsCRUDAndQueries(t *testing.T) {
 		SourceName:   "WST",
 		City:         "谢菲尔德",
 		Status:       EventNewsStatusLive,
-		Featured:     true,
 		Published:    true,
+		StartDate:    &t1,
 		StartTime:    &t1,
 		SortTime:     &t1,
 	}
@@ -73,8 +76,8 @@ func TestEventNewsModelsCRUDAndQueries(t *testing.T) {
 		SourceName: "Admin",
 		City:       "北京",
 		Status:     EventNewsStatusUpcoming,
-		Featured:   false,
 		Published:  false,
+		StartDate:  &t2,
 		StartTime:  &t2,
 		SortTime:   &t2,
 	}
@@ -85,8 +88,8 @@ func TestEventNewsModelsCRUDAndQueries(t *testing.T) {
 		SourceName: "Admin",
 		City:       "上海",
 		Status:     EventNewsStatusFinished,
-		Featured:   false,
 		Published:  true,
+		StartDate:  &t3,
 		StartTime:  &t3,
 		SortTime:   &t3,
 	}
@@ -134,8 +137,8 @@ func TestEventNewsModelsCRUDAndQueries(t *testing.T) {
 	if len(list) != 2 {
 		t.Fatalf("expected 2 rows, got %d", len(list))
 	}
-	if list[0].Id != first.Id {
-		t.Fatalf("expected featured event first, got id %d", list[0].Id)
+	if list[0].Id != third.Id {
+		t.Fatalf("expected latest sort_time event first, got id %d", list[0].Id)
 	}
 
 	matches, err := matchModel.FindByTournament(tournament.Id)
@@ -144,14 +147,6 @@ func TestEventNewsModelsCRUDAndQueries(t *testing.T) {
 	}
 	if len(matches) != 1 || matches[0].RoundName != "32强" {
 		t.Fatalf("expected one match, got %#v", matches)
-	}
-
-	featured, err := eventModel.FindFeatured()
-	if err != nil {
-		t.Fatalf("find featured event: %v", err)
-	}
-	if featured == nil || featured.Id != first.Id {
-		t.Fatalf("expected first event as featured, got %#v", featured)
 	}
 
 	updated := *second

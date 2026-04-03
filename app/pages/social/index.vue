@@ -8,29 +8,6 @@
       </view>
     </view>
 
-    <view v-if="featuredCard" class="featured-card" @tap="openDetail(featuredCard.id)">
-      <view class="featured-topline">
-        <view class="featured-chip">
-          <text>{{ featuredCard.gameTypeText }}</text>
-        </view>
-        <view class="featured-status" :class="'status-' + featuredCard.status">
-          <text>{{ featuredCard.statusText }}</text>
-        </view>
-      </view>
-      <text class="featured-title">{{ featuredCard.title }}</text>
-      <text class="featured-desc">{{ featuredCard.summary }}</text>
-      <view class="featured-meta">
-        <text>{{ featuredCard.timeText }}</text>
-        <text v-if="featuredCard.locationText">{{ featuredCard.locationText }}</text>
-        <text>{{ featuredCard.currentRoundText }}</text>
-        <text>{{ featuredCard.matchCountText }}</text>
-      </view>
-      <view class="featured-footer">
-        <text>{{ featuredCard.sourceText || '追分官方' }}</text>
-        <text>查看详情</text>
-      </view>
-    </view>
-
     <scroll-view
       scroll-y
       class="feed-scroll"
@@ -46,6 +23,7 @@
 
       <view v-else-if="list.length > 0" class="post-list">
         <view v-for="item in list" :key="item.id" class="post-card" @tap="openDetail(item.id)">
+          <image class="post-cover" :src="item.coverImage" mode="aspectFill"></image>
           <view class="post-topline">
             <view class="post-chip">
               <text>{{ item.gameTypeText }}</text>
@@ -58,6 +36,10 @@
           <text class="post-content">{{ item.summary }}</text>
           <view class="meta-grid">
             <view class="meta-item">
+              <text class="meta-label">日期</text>
+              <text class="meta-value">{{ item.dateText }}</text>
+            </view>
+            <view v-if="item.showTime" class="meta-item">
               <text class="meta-label">时间</text>
               <text class="meta-value">{{ item.timeText }}</text>
             </view>
@@ -101,9 +83,8 @@
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 
-import { getEventNewsList, getFeaturedEventNews } from '@/api/event-news.js'
+import { getEventNewsList } from '@/api/event-news.js'
 import { useThemeStore } from '@/store/theme.js'
-import { pickFeaturedEventNewsPayload } from '@/utils/event-news-response.js'
 import { normalizeSaiXunCard } from '@/utils/saixun.js'
 
 const themeStore = useThemeStore()
@@ -113,7 +94,6 @@ const loading = ref(true)
 const loadingMore = ref(false)
 const refreshing = ref(false)
 const list = ref([])
-const featuredCard = ref(null)
 const page = ref(1)
 const pageSize = 10
 const total = ref(0)
@@ -122,17 +102,10 @@ const shouldRefreshOnShow = ref(true)
 
 const fetchData = async ({ replace = false } = {}) => {
   try {
-    const [featuredRes, listRes] = await Promise.all([
-      getFeaturedEventNews().catch(() => ({ success: false })),
-      getEventNewsList({
-        page: page.value,
-        page_size: pageSize
-      }).catch(() => ({ success: false, list: [], total: 0 }))
-    ])
-
-    const featuredPayload = pickFeaturedEventNewsPayload(featuredRes)
-    featuredCard.value = featuredPayload ? normalizeSaiXunCard(featuredPayload) : null
-
+    const listRes = await getEventNewsList({
+      page: page.value,
+      page_size: pageSize
+    }).catch(() => ({ success: false, list: [], total: 0 }))
     const nextList = Array.isArray(listRes.list) ? listRes.list.map((item) => normalizeSaiXunCard(item)) : []
     list.value = replace ? nextList : [...list.value, ...nextList]
     total.value = Number(listRes.total || 0)

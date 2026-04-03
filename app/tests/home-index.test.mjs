@@ -4,8 +4,7 @@ import assert from 'node:assert/strict'
 import {
   buildFeaturedPostTarget,
   formatEventNewsTime,
-  getEventNewsStatusText,
-  normalizeFeaturedEventNews
+  getEventNewsStatusText
 } from '../utils/home-index.js'
 import { shouldFetchAuthState } from '../utils/auth-guards.js'
 import { shouldShowMatchPageLoading } from '../utils/match-page.js'
@@ -58,36 +57,6 @@ test('getEventNewsStatusText maps status codes to readable labels', () => {
 test('formatEventNewsTime falls back gracefully for missing or invalid time values', () => {
   assert.equal(formatEventNewsTime('', '2026-03-11T12:00:00+08:00'), '时间待定')
   assert.equal(formatEventNewsTime('not-a-date', '2026-03-11T12:00:00+08:00'), '时间待定')
-})
-
-test('normalizeFeaturedEventNews maps event news fields without roster copy', () => {
-  const card = normalizeFeaturedEventNews({
-    id: 11,
-    title: '独牙传奇中式九球公开赛',
-    latest_result_text: '资格赛今晚开打',
-    current_round_text: '资格赛',
-    match_count: 8,
-    game_type: 2,
-    status: 1,
-    start_time: '2026-03-11T20:00:00+08:00',
-    city: '杭州',
-    venue: '奥体中心',
-    source_name: '独牙传奇',
-    source_url: 'https://example.com/event'
-  }, '2026-03-11T12:00:00+08:00')
-
-  assert.equal(card.id, 11)
-  assert.equal(card.title, '独牙传奇中式九球公开赛')
-  assert.equal(card.summary, '资格赛今晚开打')
-  assert.equal(card.statusText, '进行中')
-  assert.equal(card.timeText, '今天 20:00')
-  assert.equal(card.typeText, '九球追分')
-  assert.equal(card.locationText, '杭州 · 奥体中心')
-  assert.equal(card.sourceText, '独牙传奇')
-  assert.equal(card.sourceUrl, 'https://example.com/event')
-  assert.equal(card.currentRoundText, '资格赛')
-  assert.equal(card.matchCount, 8)
-  assert.equal('playersText' in card, false)
 })
 
 test('shouldFetchUnreadCount skips unread count requests for guests', () => {

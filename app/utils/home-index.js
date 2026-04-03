@@ -1,5 +1,3 @@
-import { getGameTypeLabel } from './game-types.js'
-
 const REPORT_POST_TYPE = 1
 const EVENT_NEWS_STATUS_MAP = Object.freeze({
   0: '即将开始',
@@ -39,39 +37,6 @@ export const formatEventNewsTime = (dateTime, now = Date.now()) => {
   if (diffDays === 2) return `后天 ${hh}:${mm}`
 
   return `${date.getMonth() + 1}月${date.getDate()}日 ${hh}:${mm}`
-}
-
-const getEventNewsLocationText = (item) => {
-  const city = typeof item.city === 'string' ? item.city.trim() : ''
-  const venue = typeof item.venue === 'string' ? item.venue.trim() : ''
-
-  if (city && venue) return `${city} · ${venue}`
-  return city || venue || ''
-}
-
-export const normalizeFeaturedEventNews = (item, now = Date.now()) => {
-  if (!item) return null
-
-  const timeSource = item.start_time || item.sort_time || item.end_time || item.published_at || item.created_at
-  const locationText = getEventNewsLocationText(item)
-  const sourceText = typeof item.source_name === 'string' ? item.source_name.trim() : ''
-
-  return {
-    id: item.id,
-    title: item.tournament_name || item.title || '赛事情报',
-    summary: item.summary || item.latest_result_text || '查看最新赛程赛况',
-    statusText: getEventNewsStatusText(item.status),
-    timeText: formatEventNewsTime(timeSource, now),
-    typeText: item.game_type != null ? getGameTypeLabel(item.game_type, '台球') : '台球',
-    locationText,
-    sourceText,
-    sourceUrl: item.source_url || '',
-    currentRoundText: item.current_round_text || '',
-    latestResultText: item.latest_result_text || '',
-    matchCount: Number(item.match_count || 0),
-    gameType: item.game_type,
-    status: item.status
-  }
 }
 
 export const buildFeaturedPostTarget = (post) => {

@@ -57,9 +57,19 @@ func (l *GetEventNewsViewLogic) GetEventNewsView(req *types.GetEventNewsViewReq)
 		}
 	}
 
+	playerMap := map[int64]model.Player{}
+	if l.svcCtx.PlayerModel != nil {
+		playerIDs := collectMatchPlayerIDs(matches)
+		playerMap, err = l.svcCtx.PlayerModel.FindByIds(playerIDs)
+		if err != nil {
+			l.Logger.Errorf("获取赛事球员失败: eventId=%d tournamentId=%d err=%v", req.EventId, item.TournamentId, err)
+			return &types.GetEventNewsViewResp{Success: false, Matches: []types.EventNewsMatchInfo{}}, nil
+		}
+	}
+
 	matchItems := make([]types.EventNewsMatchInfo, 0, len(matches))
 	for _, match := range matches {
-		matchItems = append(matchItems, mapEventNewsMatchInfo(item.Id, match))
+		matchItems = append(matchItems, mapEventNewsMatchInfo(item.Id, match, playerMap))
 	}
 	if matchItems == nil {
 		matchItems = []types.EventNewsMatchInfo{}

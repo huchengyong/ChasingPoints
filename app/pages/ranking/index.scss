@@ -250,6 +250,10 @@
     flex-direction: column;
     align-items: center;
 
+    &.is-empty {
+        pointer-events: none;
+    }
+
     &.second {
         width: 33.33%;
         margin-bottom: 70px;

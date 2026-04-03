@@ -44,6 +44,7 @@ type ServiceContext struct {
 	TournamentModel                *model.TournamentModel
 	TournamentParticipantModel     *model.TournamentParticipantModel
 	EventNewsModel                 *model.EventNewsModel
+	PlayerModel                    *model.PlayerModel
 	RulesContentModel              *model.RulesContentModel
 	SeasonModel                    *model.SeasonModel
 	SeasonRecordModel              *model.SeasonRecordModel
@@ -92,8 +93,9 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		ChallengeModel:                 models.ChallengeModel,
 		TournamentModel:                models.TournamentModel,
 		TournamentParticipantModel:     models.TournamentParticipantModel,
-		EventNewsModel:                 models.EventNewsModel,
-		RulesContentModel:              models.RulesContentModel,
+			EventNewsModel:                 models.EventNewsModel,
+			PlayerModel:                    models.PlayerModel,
+			RulesContentModel:              models.RulesContentModel,
 		SeasonModel:                    models.SeasonModel,
 		SeasonRecordModel:              models.SeasonRecordModel,
 		VenueModel:                     models.VenueModel,
@@ -129,6 +131,7 @@ type serviceModels struct {
 	TournamentModel                *model.TournamentModel
 	TournamentParticipantModel     *model.TournamentParticipantModel
 	EventNewsModel                 *model.EventNewsModel
+	PlayerModel                    *model.PlayerModel
 	RulesContentModel              *model.RulesContentModel
 	SeasonModel                    *model.SeasonModel
 	SeasonRecordModel              *model.SeasonRecordModel
@@ -216,8 +219,9 @@ func newServiceModels(db *gorm.DB) serviceModels {
 		ChallengeModel:                 model.NewChallengeModel(db),
 		TournamentModel:                model.NewTournamentModel(db),
 		TournamentParticipantModel:     model.NewTournamentParticipantModel(db),
-		EventNewsModel:                 model.NewEventNewsModel(db),
-		RulesContentModel:              model.NewRulesContentModel(db),
+			EventNewsModel:                 model.NewEventNewsModel(db),
+			PlayerModel:                    model.NewPlayerModel(db),
+			RulesContentModel:              model.NewRulesContentModel(db),
 		SeasonModel:                    model.NewSeasonModel(db),
 		SeasonRecordModel:              model.NewSeasonRecordModel(db),
 		VenueModel:                     venueModel,

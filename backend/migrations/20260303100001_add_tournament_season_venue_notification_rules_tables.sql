@@ -7,13 +7,17 @@ CREATE TABLE IF NOT EXISTS `tournaments` (
   `creator_id` BIGINT UNSIGNED NOT NULL COMMENT '创建者ID',
   `name` VARCHAR(128) NOT NULL COMMENT '赛事名称',
   `description` TEXT DEFAULT NULL COMMENT '赛事描述',
+  `cover_image` VARCHAR(512) NOT NULL DEFAULT '' COMMENT '赛事封面图',
   `game_type` TINYINT NOT NULL COMMENT '球种 1=斯诺克 2=九球追分 3=中式八球',
   `format` TINYINT NOT NULL DEFAULT 1 COMMENT '赛制 1=单败淘汰 2=双败淘汰 3=循环赛 4=瑞士轮',
   `max_players` INT NOT NULL DEFAULT 16 COMMENT '最大参赛人数(最多64)',
   `current_players` INT NOT NULL DEFAULT 0 COMMENT '当前报名人数',
   `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态 0=报名中 1=进行中 2=已结束 3=已取消',
+  `country` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '国家/地区',
   `city` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '城市',
   `venue_name` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '场馆名称',
+  `start_date` DATE DEFAULT NULL COMMENT '开始日期',
+  `end_date` DATE DEFAULT NULL COMMENT '结束日期',
   `start_time` DATETIME DEFAULT NULL COMMENT '开始时间',
   `end_time` DATETIME DEFAULT NULL COMMENT '结束时间',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -22,8 +26,29 @@ CREATE TABLE IF NOT EXISTS `tournaments` (
   KEY `idx_status` (`status`),
   KEY `idx_game_type` (`game_type`),
   KEY `idx_city` (`city`),
+  KEY `idx_start_date` (`start_date`),
   KEY `idx_start_time` (`start_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='赛事表';
+
+-- 球员表
+CREATE TABLE IF NOT EXISTS `players` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `source_type` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '来源类型 manual/official/imported',
+  `source_player_id` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '来源侧球员ID',
+  `first_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '名',
+  `last_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '姓',
+  `display_name` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '展示名称',
+  `avatar` VARCHAR(512) NOT NULL DEFAULT '' COMMENT '头像',
+  `country_code` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '国家或地区代码',
+  `flag_emoji` VARCHAR(16) NOT NULL DEFAULT '' COMMENT '国旗emoji',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` DATETIME DEFAULT NULL COMMENT '删除时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_source_player_id` (`source_player_id`),
+  KEY `idx_display_name` (`display_name`),
+  KEY `idx_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='球员表';
 
 -- 赛事参赛者表
 CREATE TABLE IF NOT EXISTS `tournament_participants` (
@@ -199,6 +224,7 @@ DROP TABLE IF EXISTS `venue_checkins`;
 DROP TABLE IF EXISTS `venues`;
 DROP TABLE IF EXISTS `season_records`;
 DROP TABLE IF EXISTS `seasons`;
+DROP TABLE IF EXISTS `players`;
 DROP TABLE IF EXISTS `tournament_matches`;
 DROP TABLE IF EXISTS `tournament_participants`;
 DROP TABLE IF EXISTS `tournaments`;

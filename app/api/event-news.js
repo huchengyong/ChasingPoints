@@ -26,12 +26,3 @@ export const getEventNewsList = (params = {}) => {
 export const getEventNewsView = (params = {}) => {
   return get('/api/event-news/view', params)
 }
-
-/**
- * 获取首页焦点赛事情报
- * @param {Object} params 查询参数（预留）
- * @returns {Promise}
- */
-export const getFeaturedEventNews = (params = {}) => {
-  return get('/api/event-news/featured', params)
-}

@@ -44,7 +44,6 @@ type AdminEventNewsCreateReq struct {
 	SourceType     string `json:"source_type,optional"`
 	SourceName     string `json:"source_name,optional"`
 	SourceUrl      string `json:"source_url,optional"`
-	Featured       bool   `json:"featured,optional"`
 	Published      bool   `json:"published,optional"`
 	SortTime       string `json:"sort_time,optional"`
 	TournamentId   int64  `json:"tournament_id,optional"`
@@ -54,7 +53,9 @@ type AdminEventNewsCreateReq struct {
 	Country        string `json:"country,optional"`
 	City           string `json:"city,optional"`
 	Venue          string `json:"venue,optional"`
-	StartTime      string `json:"start_time"`
+	StartDate      string `json:"start_date"`
+	EndDate        string `json:"end_date,optional"`
+	StartTime      string `json:"start_time,optional"`
 	EndTime        string `json:"end_time,optional"`
 	Status         int    `json:"status"`
 }
@@ -149,7 +150,6 @@ type AdminEventNewsUpdateReq struct {
 	SourceType     string `json:"source_type,optional"`
 	SourceName     string `json:"source_name,optional"`
 	SourceUrl      string `json:"source_url,optional"`
-	Featured       bool   `json:"featured,optional"`
 	Published      bool   `json:"published,optional"`
 	SortTime       string `json:"sort_time,optional"`
 	TournamentId   int64  `json:"tournament_id,optional"`
@@ -159,7 +159,9 @@ type AdminEventNewsUpdateReq struct {
 	Country        string `json:"country,optional"`
 	City           string `json:"city,optional"`
 	Venue          string `json:"venue,optional"`
-	StartTime      string `json:"start_time"`
+	StartDate      string `json:"start_date"`
+	EndDate        string `json:"end_date,optional"`
+	StartTime      string `json:"start_time,optional"`
 	EndTime        string `json:"end_time,optional"`
 	Status         int    `json:"status"`
 }
@@ -619,13 +621,14 @@ type EventNewsInfo struct {
 	Country          string `json:"country"`
 	City             string `json:"city"`
 	Venue            string `json:"venue"`
-	StartTime        string `json:"start_time"`
-	EndTime          string `json:"end_time"`
+	StartDate        string `json:"start_date"`
+	EndDate          string `json:"end_date"`
+	StartTime        string `json:"start_time,optional"`
+	EndTime          string `json:"end_time,optional"`
 	Status           int    `json:"status"` // 0:即将开始 1:进行中 2:已结束 3:已取消
 	CurrentRoundText string `json:"current_round_text"`
 	LatestResultText string `json:"latest_result_text"`
 	MatchCount       int    `json:"match_count"`
-	Featured         bool   `json:"featured"`
 	SortTime         string `json:"sort_time"`
 	Published        bool   `json:"published"`
 	PublishedAt      string `json:"published_at"`
@@ -634,27 +637,29 @@ type EventNewsInfo struct {
 }
 
 type EventNewsMatchInfo struct {
-	Id             int64  `json:"id"`
-	EventId        int64  `json:"event_id"`
-	TournamentId   int64  `json:"tournament_id"`
-	SourceType     string `json:"source_type"`
-	SourceMatchId  string `json:"source_match_id"`
-	RoundName      string `json:"round_name"`
-	RoundOrder     int    `json:"round_order"`
-	MatchOrder     int    `json:"match_order"`
-	StartTime      string `json:"start_time"`
-	Status         int    `json:"status"`
-	BestOf         int    `json:"best_of"`
-	HomePlayerId   int64  `json:"home_player_id"`
-	HomePlayerName string `json:"home_player_name"`
-	AwayPlayerId   int64  `json:"away_player_id"`
-	AwayPlayerName string `json:"away_player_name"`
-	HomeScore      int    `json:"home_score"`
-	AwayScore      int    `json:"away_score"`
-	WinnerSide     int    `json:"winner_side"`
-	IsPlaceholder  bool   `json:"is_placeholder"`
-	CreatedAt      string `json:"created_at"`
-	UpdatedAt      string `json:"updated_at"`
+	Id               int64  `json:"id"`
+	EventId          int64  `json:"event_id"`
+	TournamentId     int64  `json:"tournament_id"`
+	SourceType       string `json:"source_type"`
+	SourceMatchId    string `json:"source_match_id"`
+	RoundName        string `json:"round_name"`
+	RoundOrder       int    `json:"round_order"`
+	MatchOrder       int    `json:"match_order"`
+	StartTime        string `json:"start_time"`
+	Status           int    `json:"status"`
+	BestOf           int    `json:"best_of"`
+	HomePlayerId     int64  `json:"home_player_id"`
+	HomePlayerName   string `json:"home_player_name"`
+	HomePlayerAvatar string `json:"home_player_avatar,optional"`
+	AwayPlayerId     int64  `json:"away_player_id"`
+	AwayPlayerName   string `json:"away_player_name"`
+	AwayPlayerAvatar string `json:"away_player_avatar,optional"`
+	HomeScore        int    `json:"home_score"`
+	AwayScore        int    `json:"away_score"`
+	WinnerSide       int    `json:"winner_side"`
+	IsPlaceholder    bool   `json:"is_placeholder"`
+	CreatedAt        string `json:"created_at"`
+	UpdatedAt        string `json:"updated_at"`
 }
 
 type FavoriteVenueRewardStatusResp struct {
@@ -772,11 +777,6 @@ type GetEventNewsViewResp struct {
 	EventNews  *EventNewsInfo       `json:"event_news"`
 	Tournament *TournamentInfo      `json:"tournament"`
 	Matches    []EventNewsMatchInfo `json:"matches"`
-}
-
-type GetFeaturedEventNewsResp struct {
-	Success bool           `json:"success"`
-	Event   *EventNewsInfo `json:"event"`
 }
 
 type GetFollowListReq struct {
@@ -1828,15 +1828,19 @@ type TournamentInfo struct {
 	CreatorName    string `json:"creator_name"`
 	Name           string `json:"name"`
 	Description    string `json:"description"`
+	CoverImage     string `json:"cover_image"`
 	GameType       int    `json:"game_type"`
 	Format         int    `json:"format"`
 	MaxPlayers     int    `json:"max_players"`
 	CurrentPlayers int    `json:"current_players"`
 	Status         int    `json:"status"`
+	Country        string `json:"country"`
 	City           string `json:"city"`
 	VenueName      string `json:"venue_name"`
-	StartTime      string `json:"start_time"`
-	EndTime        string `json:"end_time"`
+	StartDate      string `json:"start_date"`
+	EndDate        string `json:"end_date"`
+	StartTime      string `json:"start_time,optional"`
+	EndTime        string `json:"end_time,optional"`
 	CreatedAt      string `json:"created_at"`
 }
 

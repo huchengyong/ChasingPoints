@@ -353,12 +353,6 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
-				// 获取首页焦点赛事情报
-				Method:  http.MethodGet,
-				Path:    "/featured",
-				Handler: eventnews.GetFeaturedEventNewsHandler(serverCtx),
-			},
-			{
 				// 获取赛事情报列表
 				Method:  http.MethodGet,
 				Path:    "/list",

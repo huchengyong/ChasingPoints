@@ -62,11 +62,12 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="featured" label="焦点" width="90">
+        <el-table-column label="赛事日期" min-width="180">
           <template #default="{ row }">
-            <el-tag :type="row.featured ? 'warning' : 'info'">
-              {{ row.featured ? '焦点' : '普通' }}
-            </el-tag>
+            <div class="date-cell">
+              <span class="date-main">{{ formatDateRange(row.start_date, row.end_date) }}</span>
+              <span v-if="hasEventTime(row)" class="date-sub">{{ formatTimeRange(row.start_time, row.end_time) }}</span>
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="published" label="发布状态" width="100">
@@ -76,7 +77,6 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="start_time" label="开始时间" width="170" />
         <el-table-column prop="updated_at" label="更新时间" width="170" />
         <el-table-column label="操作" width="320" fixed="right">
           <template #default="{ row }">
@@ -192,14 +192,40 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
+            <el-form-item label="开始日期" prop="start_date">
+              <el-date-picker
+                v-model="eventFormModel.start_date"
+                type="date"
+                value-format="YYYY-MM-DD"
+                format="YYYY-MM-DD"
+                placeholder="请选择开始日期"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="结束日期">
+              <el-date-picker
+                v-model="eventFormModel.end_date"
+                type="date"
+                value-format="YYYY-MM-DD"
+                format="YYYY-MM-DD"
+                placeholder="不填则默认开始日期"
+                clearable
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
             <el-form-item label="开始时间">
               <el-date-picker
                 v-model="eventFormModel.start_time"
                 type="datetime"
                 value-format="YYYY-MM-DD HH:mm:ss"
                 format="YYYY-MM-DD HH:mm:ss"
-                placeholder="请选择开始时间"
+                placeholder="可选，未填则不显示"
                 style="width: 100%"
+                clearable
               />
             </el-form-item>
           </el-col>
@@ -210,28 +236,15 @@
                 type="datetime"
                 value-format="YYYY-MM-DD HH:mm:ss"
                 format="YYYY-MM-DD HH:mm:ss"
-                placeholder="请选择结束时间"
+                placeholder="可选，未填则不显示"
                 clearable
                 style="width: 100%"
               />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="排序时间">
-              <el-date-picker
-                v-model="eventFormModel.sort_time"
-                type="datetime"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                format="YYYY-MM-DD HH:mm:ss"
-                placeholder="不填则默认使用开始时间"
-                clearable
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="焦点推荐">
-              <el-switch v-model="eventFormModel.featured" active-text="是" inactive-text="否" />
+            <el-form-item label="封面图">
+              <el-input v-model="eventFormModel.cover_image" placeholder="封面图片地址" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -489,6 +502,7 @@ const matchPanelVisible = ref(false)
 const matchDialogVisible = ref(false)
 const matchDialogMode = ref<'create' | 'edit'>('create')
 const matchFormRef = ref<FormInstance>()
+const defaultEventCoverImage = 'https://images.gc.wstservices.co.uk/fit-in/400x600/4ddad400-99d3-11ee-94e8-c9d138e537ff.png'
 
 const createEmptyEventForm = (): EventNewsFormModel => ({
   title: '',
@@ -497,18 +511,18 @@ const createEmptyEventForm = (): EventNewsFormModel => ({
   source_type: 'manual',
   source_name: '',
   source_url: '',
-  cover_image: '',
+  cover_image: defaultEventCoverImage,
   summary: '',
   content: '',
   description: '',
   country: '',
   city: '',
   venue: '',
+  start_date: '',
+  end_date: '',
   start_time: '',
   end_time: '',
   status: 0,
-  featured: false,
-  sort_time: '',
   published: false
 })
 
@@ -558,6 +572,7 @@ const eventRules: FormRules = {
   title: [{ required: true, message: '请输入赛事标题', trigger: 'blur' }],
   tournament_name: [{ required: true, message: '请输入赛事名称', trigger: 'blur' }],
   game_type: [{ required: true, message: '请选择球种', trigger: 'change' }],
+  start_date: [{ required: true, message: '请选择开始日期', trigger: 'change' }],
   status: [{ required: true, message: '请选择赛事状态', trigger: 'change' }]
 }
 
@@ -613,6 +628,30 @@ const formatSource = (sourceType: string, sourceMatchId: string) => {
   const suffix = (sourceMatchId || '').trim()
   return suffix ? `${prefix} / ${suffix}` : prefix
 }
+
+const formatDateRange = (startDate: string, endDate: string) => {
+  const start = (startDate || '').trim()
+  const end = (endDate || '').trim()
+
+  if (!start && !end) return '-'
+  if (start && !end) return start
+  if (!start && end) return end
+  if (start === end) return start
+  return `${start} - ${end}`
+}
+
+const formatTimeRange = (startTime: string, endTime: string) => {
+  const start = (startTime || '').trim()
+  const end = (endTime || '').trim()
+
+  if (!start && !end) return ''
+  if (start && !end) return start
+  if (!start && end) return end
+  if (start === end) return start
+  return `${start} - ${end}`
+}
+
+const hasEventTime = (row: EventNewsItem) => Boolean((row.start_time || '').trim() || (row.end_time || '').trim())
 
 const getWinnerSideLabel = (value: number) => {
   if (value === 1) {
@@ -731,18 +770,18 @@ const openEditDialog = (row: EventNewsItem) => {
     source_type: row.source_type || 'manual',
     source_name: row.source_name || '',
     source_url: row.source_url || '',
-    cover_image: row.cover_image || '',
+    cover_image: row.cover_image || defaultEventCoverImage,
     summary: row.summary || '',
     content: row.content || '',
     description: row.content || '',
     country: row.country || '',
     city: row.city || '',
     venue: row.venue || '',
+    start_date: row.start_date || '',
+    end_date: row.end_date || row.start_date || '',
     start_time: row.start_time || '',
     end_time: row.end_time || '',
     status: row.status,
-    featured: row.featured,
-    sort_time: row.sort_time || row.start_time || '',
     published: row.published
   }
   eventDialogVisible.value = true
@@ -751,8 +790,11 @@ const openEditDialog = (row: EventNewsItem) => {
 
 const buildEventPayload = (): EventNewsFormPayload => {
   const form = eventFormModel.value
+  const startDate = (form.start_date || '').trim()
+  const endDate = (form.end_date || '').trim() || startDate
   const startTime = (form.start_time || '').trim()
-  const sortTime = (form.sort_time || '').trim() || startTime
+  const endTime = (form.end_time || '').trim()
+  const coverImage = (form.cover_image || '').trim() || defaultEventCoverImage
 
   return {
     title: form.title.trim(),
@@ -761,18 +803,18 @@ const buildEventPayload = (): EventNewsFormPayload => {
     source_type: form.source_type.trim(),
     source_name: form.source_name.trim(),
     source_url: form.source_url.trim(),
-    cover_image: form.cover_image.trim(),
+    cover_image: coverImage,
     summary: form.summary.trim(),
     content: form.content,
     description: (form.description || '').trim(),
     country: form.country.trim(),
     city: form.city.trim(),
     venue: form.venue.trim(),
-    start_time: startTime,
-    end_time: (form.end_time || '').trim(),
+    start_date: startDate,
+    end_date: endDate,
+    start_time: startTime || undefined,
+    end_time: endTime || undefined,
     status: form.status ?? 0,
-    featured: form.featured,
-    sort_time: sortTime,
     published: !!form.published,
     tournament_id: form.tournament_id && form.tournament_id > 0 ? form.tournament_id : undefined
   }
@@ -785,11 +827,6 @@ const handleEventSubmit = async () => {
   }
 
   const payload = buildEventPayload()
-  if (!payload.start_time && !payload.sort_time) {
-    ElMessage.warning('开始时间和排序时间至少填写一个')
-    return
-  }
-
   eventSaving.value = true
   try {
     const res = eventDialogMode.value === 'create'
@@ -1067,5 +1104,23 @@ onMounted(() => {
 
 .match-table {
   margin-top: 4px;
+}
+
+.date-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.date-main {
+  font-size: 13px;
+  color: #303133;
+  line-height: 1.4;
+}
+
+.date-sub {
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.4;
 }
 </style>

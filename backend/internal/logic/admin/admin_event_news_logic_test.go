@@ -30,6 +30,7 @@ func newEventNewsAdminTestSvc(t *testing.T) *svc.ServiceContext {
 		EventNewsModel:       model.NewEventNewsModel(db),
 		TournamentModel:      model.NewTournamentModel(db),
 		TournamentMatchModel: model.NewTournamentMatchModel(db),
+		PlayerModel:          model.NewPlayerModel(db),
 	}
 }
 
@@ -72,7 +73,6 @@ func createSeedMatch(t *testing.T, svcCtx *svc.ServiceContext, item *model.Tourn
 func TestAdminCreateUpdatePublishAndDeleteEventNews(t *testing.T) {
 	svcCtx := newEventNewsAdminTestSvc(t)
 	logic := NewAdminCreateEventNewsLogic(adminTestCtx(-100), svcCtx)
-	start := adminTestTime(2026, 3, 23, 10, 0, 0)
 
 	resp, err := logic.AdminCreateEventNews(&types.AdminEventNewsCreateReq{
 		Title:      "斯诺克世界锦标赛",
@@ -86,9 +86,9 @@ func TestAdminCreateUpdatePublishAndDeleteEventNews(t *testing.T) {
 		Country:    "英国",
 		City:       "谢菲尔德",
 		Venue:      "Crucible",
-		StartTime:  adminTestTimeString(start),
+		StartDate:  "2026-03-23",
+		EndDate:    "2026-03-30",
 		Status:     model.EventNewsStatusUpcoming,
-		Featured:   false,
 	})
 	if err != nil {
 		t.Fatalf("create event news: %v", err)
@@ -127,10 +127,11 @@ func TestAdminCreateUpdatePublishAndDeleteEventNews(t *testing.T) {
 		Country:    "英国",
 		City:       "谢菲尔德",
 		Venue:      "Crucible Theatre",
+		StartDate:  "2026-03-24",
+		EndDate:    "2026-03-31",
 		StartTime:  adminTestTimeString(updatedStart),
 		SortTime:   adminTestTimeString(updatedSort),
 		Status:     model.EventNewsStatusLive,
-		Featured:   true,
 	})
 	if err != nil {
 		t.Fatalf("update event news: %v", err)
@@ -143,8 +144,11 @@ func TestAdminCreateUpdatePublishAndDeleteEventNews(t *testing.T) {
 	if err != nil {
 		t.Fatalf("find updated event: %v", err)
 	}
-	if refreshed == nil || refreshed.Title != "斯诺克世锦赛" || !refreshed.Featured || refreshed.Status != model.EventNewsStatusLive {
+	if refreshed == nil || refreshed.Title != "斯诺克世锦赛" || refreshed.Status != model.EventNewsStatusLive {
 		t.Fatalf("unexpected updated event: %#v", refreshed)
+	}
+	if refreshed.StartDate == nil || refreshed.StartDate.Format(adminEventNewsDateLayout) != "2026-03-24" {
+		t.Fatalf("expected start_date to update, got %#v", refreshed)
 	}
 	if refreshed.TournamentId <= 0 {
 		t.Fatalf("expected updated event to keep tournament binding, got %#v", refreshed)
@@ -209,6 +213,7 @@ func TestAdminCreateUpdateDeleteEventNewsMatchAndCascadeOnEventDelete(t *testing
 		SourceName:   "Admin",
 		City:         "北京",
 		Status:       model.EventNewsStatusUpcoming,
+		StartDate:    &start,
 		StartTime:    &start,
 		SortTime:     &start,
 		Published:    false,
@@ -340,8 +345,8 @@ func TestAdminEventNewsListFiltersAndRejectsNonAdmin(t *testing.T) {
 		SourceType:   "official",
 		SourceName:   "WST",
 		Status:       model.EventNewsStatusLive,
-		Featured:     true,
 		Published:    true,
+		StartDate:    &firstStart,
 		StartTime:    &firstStart,
 		SortTime:     &firstStart,
 	})
@@ -362,8 +367,8 @@ func TestAdminEventNewsListFiltersAndRejectsNonAdmin(t *testing.T) {
 		SourceType: "manual",
 		SourceName: "Admin",
 		Status:     model.EventNewsStatusUpcoming,
-		Featured:   false,
 		Published:  false,
+		StartDate:  &secondStart,
 		StartTime:  &secondStart,
 		SortTime:   &secondStart,
 	})
@@ -397,7 +402,8 @@ func TestAdminEventNewsListFiltersAndRejectsNonAdmin(t *testing.T) {
 		Title:      "未授权赛事",
 		GameType:   1,
 		Status:     model.EventNewsStatusUpcoming,
-		StartTime:  adminTestTimeString(firstStart),
+		StartDate:  "2026-03-25",
+		EndDate:    "2026-03-26",
 		SourceType: "manual",
 	})
 	if err != nil {

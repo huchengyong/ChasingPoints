@@ -15,13 +15,14 @@ export interface EventNewsItem {
   country: string
   city: string
   venue: string
+  start_date: string
+  end_date: string
   start_time: string
   end_time: string
   status: number
   current_round_text: string
   latest_result_text: string
   match_count: number
-  featured: boolean
   sort_time: string
   published: boolean
   published_at: string
@@ -43,8 +44,10 @@ export interface EventNewsMatchItem {
   best_of: number
   home_player_id: number
   home_player_name: string
+  home_player_avatar?: string
   away_player_id: number
   away_player_name: string
+  away_player_avatar?: string
   home_score: number
   away_score: number
   winner_side: number
@@ -83,12 +86,13 @@ export interface EventNewsFormPayload {
   country: string
   city: string
   venue: string
-  start_time: string
-  end_time: string
+  start_date: string
+  end_date?: string
+  start_time?: string
+  end_time?: string
   status: number
-  featured: boolean
-  sort_time: string
   published: boolean
+  sort_time?: string
   tournament_id?: number
 }
 

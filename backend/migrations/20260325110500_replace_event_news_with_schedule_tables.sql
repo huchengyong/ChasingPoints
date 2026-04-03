@@ -15,10 +15,11 @@ CREATE TABLE IF NOT EXISTS `event_news_events` (
   `country` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '国家',
   `city` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '城市',
   `venue` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '场馆',
+  `start_date` DATE DEFAULT NULL COMMENT '赛事开始日期',
+  `end_date` DATE DEFAULT NULL COMMENT '赛事结束日期',
   `start_time` DATETIME DEFAULT NULL COMMENT '赛事开始时间',
   `end_time` DATETIME DEFAULT NULL COMMENT '赛事结束时间',
   `status` TINYINT NOT NULL DEFAULT 0 COMMENT '赛事状态 0=即将开始 1=进行中 2=已结束 3=已取消',
-  `featured` TINYINT NOT NULL DEFAULT 0 COMMENT '是否首页焦点',
   `sort_time` DATETIME DEFAULT NULL COMMENT '排序时间',
   `published` TINYINT NOT NULL DEFAULT 0 COMMENT '是否发布 0=否 1=是',
   `published_at` DATETIME DEFAULT NULL COMMENT '发布时间',
@@ -31,7 +32,7 @@ CREATE TABLE IF NOT EXISTS `event_news_events` (
   KEY `idx_status` (`status`),
   KEY `idx_city` (`city`),
   KEY `idx_published` (`published`),
-  KEY `idx_featured_published_sort_time` (`featured`, `published`, `sort_time`),
+  KEY `idx_start_date` (`start_date`),
   KEY `idx_sort_time` (`sort_time`),
   KEY `idx_deleted_at` (`deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='赛讯壳表';

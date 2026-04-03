@@ -30,6 +30,7 @@ func newEventNewsTestSvc(t *testing.T) *svc.ServiceContext {
 		EventNewsModel:       model.NewEventNewsModel(db),
 		TournamentModel:      model.NewTournamentModel(db),
 		TournamentMatchModel: model.NewTournamentMatchModel(db),
+		PlayerModel:          model.NewPlayerModel(db),
 	}
 }
 
@@ -65,6 +66,15 @@ func createMatch(t *testing.T, svcCtx *svc.ServiceContext, match *model.Tourname
 	return match
 }
 
+func createPlayer(t *testing.T, svcCtx *svc.ServiceContext, player *model.Player) *model.Player {
+	t.Helper()
+
+	if err := svcCtx.PlayerModel.Create(player); err != nil {
+		t.Fatalf("create player: %v", err)
+	}
+	return player
+}
+
 func withEventNewsNow(now time.Time) func() {
 	old := eventNewsNow
 	eventNewsNow = func() time.Time {
@@ -80,14 +90,18 @@ func TestGetEventNewsListFiltersPublishedEventParentsAndExposesMatchSummary(t *t
 	defer withEventNewsNow(time.Date(2026, 3, 23, 12, 0, 0, 0, time.UTC))()
 
 	tournament := createTournament(t, svcCtx, &model.Tournament{
-		Name:       "2026斯诺克世锦赛",
-		GameType:   1,
-		Format:     1,
-		MaxPlayers: 16,
-		Status:     model.EventNewsStatusLive,
-		City:       "谢菲尔德",
-		VenueName:  "Crucible",
-		StartTime:  mustTimePtr(time.Date(2026, 3, 23, 11, 0, 0, 0, time.UTC)),
+		Name:        "2026斯诺克世锦赛",
+		CoverImage:  "https://example.com/tournament-cover.png",
+		GameType:    1,
+		Format:      1,
+		MaxPlayers:  16,
+		Status:      model.EventNewsStatusLive,
+		Country:     "英国",
+		City:        "谢菲尔德",
+		VenueName:   "Crucible",
+		StartDate:   mustTimePtr(time.Date(2026, 3, 23, 0, 0, 0, 0, time.UTC)),
+		EndDate:     mustTimePtr(time.Date(2026, 3, 30, 0, 0, 0, 0, time.UTC)),
+		StartTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 0, 0, 0, time.UTC)),
 	})
 
 	snooker := createEvent(t, svcCtx, &model.EventNews{
@@ -160,9 +174,15 @@ func TestGetEventNewsListFiltersPublishedEventParentsAndExposesMatchSummary(t *t
 	if resp.List[0].MatchCount != 1 {
 		t.Fatalf("expected one match, got %#v", resp.List[0])
 	}
+	if resp.List[0].CoverImage != "https://example.com/tournament-cover.png" {
+		t.Fatalf("expected tournament cover fallback, got %#v", resp.List[0])
+	}
+	if resp.List[0].StartDate != "2026-03-23" || resp.List[0].EndDate != "2026-03-30" {
+		t.Fatalf("expected date range from tournament, got %#v", resp.List[0])
+	}
 }
 
-func TestGetEventNewsListFiltersByEventStatus(t *testing.T) {
+func TestGetEventNewsListFiltersByEventStatusAndStatusPriority(t *testing.T) {
 	svcCtx := newEventNewsTestSvc(t)
 	defer withEventNewsNow(time.Date(2026, 3, 23, 12, 0, 0, 0, time.UTC))()
 
@@ -186,6 +206,18 @@ func TestGetEventNewsListFiltersByEventStatus(t *testing.T) {
 	})
 
 	logic := NewGetEventNewsListLogic(context.Background(), svcCtx)
+	fullResp, err := logic.GetEventNewsList(&types.GetEventNewsListReq{
+		Page:     1,
+		PageSize: 20,
+		Status:   -1,
+	})
+	if err != nil {
+		t.Fatalf("get full list: %v", err)
+	}
+	if len(fullResp.List) != 2 || fullResp.List[0].Title != "进行中赛事" {
+		t.Fatalf("expected live event to rank before upcoming, got %#v", fullResp.List)
+	}
+
 	resp, err := logic.GetEventNewsList(&types.GetEventNewsListReq{
 		Page:     1,
 		PageSize: 20,
@@ -216,16 +248,22 @@ func TestGetEventNewsViewReturnsEventTournamentAndMatches(t *testing.T) {
 		SourceName: "WST",
 		Published:  true,
 		Status:     model.EventNewsStatusLive,
+		StartDate:  mustTimePtr(time.Date(2026, 3, 30, 0, 0, 0, 0, time.UTC)),
+		EndDate:    mustTimePtr(time.Date(2026, 4, 5, 0, 0, 0, 0, time.UTC)),
 		SortTime:   mustTimePtr(time.Date(2026, 4, 2, 11, 0, 0, 0, time.UTC)),
 	})
 
 	tournament := &model.Tournament{
 		CreatorId:   1,
 		Name:        "Sportsbet.io Tour Championship 2026",
+		CoverImage:  "https://example.com/tour-cover.png",
 		GameType:    1,
 		Status:      1,
+		Country:     "英国",
 		City:        "Manchester",
 		VenueName:   "Manchester Central",
+		StartDate:   mustTimePtr(time.Date(2026, 3, 30, 0, 0, 0, 0, time.UTC)),
+		EndDate:     mustTimePtr(time.Date(2026, 4, 5, 0, 0, 0, 0, time.UTC)),
 		StartTime:   mustTimePtr(time.Date(2026, 3, 30, 12, 0, 0, 0, time.UTC)),
 		EndTime:     mustTimePtr(time.Date(2026, 4, 5, 12, 0, 0, 0, time.UTC)),
 		Description: "Tour Championship detail",
@@ -238,6 +276,23 @@ func TestGetEventNewsViewReturnsEventTournamentAndMatches(t *testing.T) {
 		t.Fatalf("bind tournament: %v", err)
 	}
 
+	homePlayer := createPlayer(t, svcCtx, &model.Player{
+		SourceType:  "official",
+		FirstName:   "Neil",
+		LastName:    "Robertson",
+		DisplayName: "Neil Robertson",
+		Avatar:      "https://example.com/neil.png",
+		FlagEmoji:   "🇦🇺",
+	})
+	awayPlayer := createPlayer(t, svcCtx, &model.Player{
+		SourceType:  "official",
+		FirstName:   "Barry",
+		LastName:    "Hawkins",
+		DisplayName: "Barry Hawkins",
+		Avatar:      "https://example.com/barry.png",
+		FlagEmoji:   "🏴",
+	})
+
 	if err := svcCtx.TournamentMatchModel.Create(&model.TournamentMatch{
 		TournamentId:   tournament.Id,
 		RoundName:      "Quarter Finals",
@@ -246,7 +301,9 @@ func TestGetEventNewsViewReturnsEventTournamentAndMatches(t *testing.T) {
 		StartTime:      mustTimePtr(time.Date(2026, 4, 2, 12, 0, 0, 0, time.UTC)),
 		Status:         1,
 		BestOf:         19,
+		HomePlayerId:   homePlayer.Id,
 		HomePlayerName: "Neil Robertson",
+		AwayPlayerId:   awayPlayer.Id,
 		AwayPlayerName: "Barry Hawkins",
 		HomeScore:      5,
 		AwayScore:      3,
@@ -275,81 +332,13 @@ func TestGetEventNewsViewReturnsEventTournamentAndMatches(t *testing.T) {
 	if resp.Matches[0].RoundName != "Quarter Finals" || resp.Matches[0].HomePlayerName != "Neil Robertson" || resp.Matches[0].AwayPlayerName != "Barry Hawkins" {
 		t.Fatalf("unexpected match payload: %#v", resp.Matches[0])
 	}
-}
-
-func TestGetFeaturedEventNewsPrefersFeaturedEventAndIncludesMatchPreview(t *testing.T) {
-	svcCtx := newEventNewsTestSvc(t)
-	defer withEventNewsNow(time.Date(2026, 3, 23, 12, 0, 0, 0, time.UTC))()
-
-	featuredTournament := createTournament(t, svcCtx, &model.Tournament{
-		Name:       "焦点赛事",
-		GameType:   1,
-		Format:     1,
-		MaxPlayers: 16,
-		Status:     model.EventNewsStatusUpcoming,
-	})
-	featured := createEvent(t, svcCtx, &model.EventNews{
-		Title:        "焦点赛事",
-		TournamentId: featuredTournament.Id,
-		GameType:     1,
-		SourceType:   "official",
-		SourceName:   "WST",
-		Status:       model.EventNewsStatusUpcoming,
-		Featured:     true,
-		Published:    true,
-		SortTime:     mustTimePtr(time.Date(2026, 3, 23, 13, 0, 0, 0, time.UTC)),
-	})
-	createMatch(t, svcCtx, &model.TournamentMatch{
-		TournamentId:   featuredTournament.Id,
-		RoundName:      "资格赛",
-		RoundOrder:     10,
-		MatchOrder:     1,
-		Status:         model.EventNewsStatusUpcoming,
-		HomePlayerName: "选手A",
-		AwayPlayerName: "选手B",
-	})
-
-	otherTournament := createTournament(t, svcCtx, &model.Tournament{
-		Name:       "普通进行中赛事",
-		GameType:   1,
-		Format:     1,
-		MaxPlayers: 16,
-		Status:     model.EventNewsStatusLive,
-	})
-	createEvent(t, svcCtx, &model.EventNews{
-		Title:        "普通进行中赛事",
-		TournamentId: otherTournament.Id,
-		GameType:     1,
-		SourceType:   "manual",
-		SourceName:   "Admin",
-		Status:       model.EventNewsStatusLive,
-		Published:    true,
-		SortTime:     mustTimePtr(time.Date(2026, 3, 23, 11, 55, 0, 0, time.UTC)),
-	})
-	createMatch(t, svcCtx, &model.TournamentMatch{
-		TournamentId:   otherTournament.Id,
-		RoundName:      "32强",
-		RoundOrder:     20,
-		MatchOrder:     1,
-		Status:         model.EventNewsStatusLive,
-		HomePlayerName: "甲",
-		AwayPlayerName: "乙",
-		HomeScore:      4,
-		AwayScore:      3,
-	})
-
-	logic := NewGetFeaturedEventNewsLogic(context.Background(), svcCtx)
-	resp, err := logic.GetFeaturedEventNews()
-	if err != nil {
-		t.Fatalf("get featured: %v", err)
+	if resp.EventNews.StartDate != "2026-03-30" || resp.EventNews.EndDate != "2026-04-05" {
+		t.Fatalf("expected event date range, got %#v", resp.EventNews)
 	}
-	if !resp.Success || resp.Event == nil {
-		t.Fatalf("expected featured success, got %#v", resp)
+	if resp.Matches[0].StartTime != "2026-04-02T20:00:00+08:00" {
+		t.Fatalf("expected shanghai time output, got %#v", resp.Matches[0])
 	}
-	if resp.Event.Id != featured.Id {
-		t.Fatalf("expected featured event to win, got %#v", resp.Event)
-	}
-	if resp.Event.CurrentRoundText != "资格赛" || resp.Event.LatestResultText != "选手A - 选手B" {
-		t.Fatalf("expected match preview on featured event, got %#v", resp.Event)
+	if resp.Matches[0].HomePlayerAvatar != "https://example.com/neil.png" || resp.Matches[0].AwayPlayerAvatar != "https://example.com/barry.png" {
+		t.Fatalf("expected player avatars, got %#v", resp.Matches[0])
 	}
 }

@@ -11,8 +11,11 @@ import (
 )
 
 const eventNewsTimeLayout = "2006-01-02 15:04:05"
+const eventNewsDateLayout = "2006-01-02"
+const defaultTournamentCoverImage = "https://images.gc.wstservices.co.uk/fit-in/400x600/4ddad400-99d3-11ee-94e8-c9d138e537ff.png"
 
 var eventNewsNow = time.Now
+var shanghaiLocation = time.FixedZone("UTC+8", 8*60*60)
 
 func normalizeEventNewsPage(page, pageSize int) (int, int) {
 	if page <= 0 {
@@ -35,22 +38,27 @@ func mapEventNewsInfo(item model.EventNews, tournament *model.Tournament, matche
 		SourceType: item.SourceType,
 		SourceName: item.SourceName,
 		SourceUrl:  item.SourceUrl,
-		CoverImage: item.CoverImage,
+		CoverImage: strings.TrimSpace(item.CoverImage),
 		Summary:    item.Summary,
 		Content:    item.Content,
 		Country:    item.Country,
 		City:       item.City,
 		Venue:      item.Venue,
 		Status:     item.Status,
-		Featured:   item.Featured,
 		Published:  item.Published,
 		MatchCount: len(matches),
 	}
+	if item.StartDate != nil {
+		resp.StartDate = item.StartDate.Format(eventNewsDateLayout)
+	}
+	if item.EndDate != nil {
+		resp.EndDate = item.EndDate.Format(eventNewsDateLayout)
+	}
 	if item.StartTime != nil {
-		resp.StartTime = item.StartTime.Format(eventNewsTimeLayout)
+		resp.StartTime = formatUTCDisplayTime(item.StartTime)
 	}
 	if item.EndTime != nil {
-		resp.EndTime = item.EndTime.Format(eventNewsTimeLayout)
+		resp.EndTime = formatUTCDisplayTime(item.EndTime)
 	}
 	if item.SortTime != nil {
 		resp.SortTime = item.SortTime.Format(eventNewsTimeLayout)
@@ -64,8 +72,14 @@ func mapEventNewsInfo(item model.EventNews, tournament *model.Tournament, matche
 	if tournament != nil {
 		resp.TournamentId = tournament.Id
 		resp.TournamentName = tournament.Name
+		if resp.CoverImage == "" {
+			resp.CoverImage = strings.TrimSpace(tournament.CoverImage)
+		}
 		if resp.GameType == 0 {
 			resp.GameType = tournament.GameType
+		}
+		if resp.Country == "" {
+			resp.Country = tournament.Country
 		}
 		if resp.City == "" {
 			resp.City = tournament.City
@@ -73,15 +87,27 @@ func mapEventNewsInfo(item model.EventNews, tournament *model.Tournament, matche
 		if resp.Venue == "" {
 			resp.Venue = tournament.VenueName
 		}
+		if resp.StartDate == "" && tournament.StartDate != nil {
+			resp.StartDate = tournament.StartDate.Format(eventNewsDateLayout)
+		}
+		if resp.EndDate == "" && tournament.EndDate != nil {
+			resp.EndDate = tournament.EndDate.Format(eventNewsDateLayout)
+		}
 		if resp.StartTime == "" && tournament.StartTime != nil {
-			resp.StartTime = tournament.StartTime.Format(eventNewsTimeLayout)
+			resp.StartTime = formatUTCDisplayTime(tournament.StartTime)
 		}
 		if resp.EndTime == "" && tournament.EndTime != nil {
-			resp.EndTime = tournament.EndTime.Format(eventNewsTimeLayout)
+			resp.EndTime = formatUTCDisplayTime(tournament.EndTime)
 		}
 	}
 	if resp.TournamentName == "" {
 		resp.TournamentName = item.Title
+	}
+	if resp.CoverImage == "" {
+		resp.CoverImage = defaultTournamentCoverImage
+	}
+	if resp.EndDate == "" {
+		resp.EndDate = resp.StartDate
 	}
 
 	summaryMatch := pickSummaryMatch(matches)
@@ -93,7 +119,9 @@ func mapEventNewsInfo(item model.EventNews, tournament *model.Tournament, matche
 	return resp
 }
 
-func mapEventNewsMatchInfo(eventID int64, item model.TournamentMatch) types.EventNewsMatchInfo {
+func mapEventNewsMatchInfo(eventID int64, item model.TournamentMatch, players map[int64]model.Player) types.EventNewsMatchInfo {
+	homePlayerID := firstNonZeroInt64(item.HomePlayerId, item.Player1Id)
+	awayPlayerID := firstNonZeroInt64(item.AwayPlayerId, item.Player2Id)
 	resp := types.EventNewsMatchInfo{
 		Id:             item.Id,
 		EventId:        eventID,
@@ -105,10 +133,12 @@ func mapEventNewsMatchInfo(eventID int64, item model.TournamentMatch) types.Even
 		MatchOrder:     item.MatchOrder,
 		Status:         item.Status,
 		BestOf:         item.BestOf,
-		HomePlayerId:   firstNonZeroInt64(item.HomePlayerId, item.Player1Id),
-		HomePlayerName: firstNonEmpty(item.HomePlayerName),
-		AwayPlayerId:   firstNonZeroInt64(item.AwayPlayerId, item.Player2Id),
-		AwayPlayerName: firstNonEmpty(item.AwayPlayerName),
+		HomePlayerId:   homePlayerID,
+		HomePlayerName: firstNonEmpty(item.HomePlayerName, buildPlayerDisplayName(players[homePlayerID])),
+		HomePlayerAvatar: resolvePlayerAvatar(players, homePlayerID),
+		AwayPlayerId:   awayPlayerID,
+		AwayPlayerName: firstNonEmpty(item.AwayPlayerName, buildPlayerDisplayName(players[awayPlayerID])),
+		AwayPlayerAvatar: resolvePlayerAvatar(players, awayPlayerID),
 		HomeScore:      item.HomeScore,
 		AwayScore:      item.AwayScore,
 		WinnerSide:     normalizeWinnerSide(item),
@@ -117,7 +147,7 @@ func mapEventNewsMatchInfo(eventID int64, item model.TournamentMatch) types.Even
 		UpdatedAt:      item.UpdatedAt.Format(eventNewsTimeLayout),
 	}
 	if item.StartTime != nil {
-		resp.StartTime = item.StartTime.Format(eventNewsTimeLayout)
+		resp.StartTime = formatUTCDisplayTime(item.StartTime)
 	}
 	return resp
 }
@@ -127,7 +157,9 @@ func eventNewsEffectiveTime(item model.EventNews) time.Time {
 	case item.SortTime != nil && !item.SortTime.IsZero():
 		return item.SortTime.UTC()
 	case item.StartTime != nil && !item.StartTime.IsZero():
-		return item.StartTime.UTC()
+		return reinterpretStoredUTC(*item.StartTime)
+	case item.StartDate != nil && !item.StartDate.IsZero():
+		return item.StartDate.UTC()
 	default:
 		return item.CreatedAt.UTC()
 	}
@@ -183,27 +215,6 @@ func sortEventNewsItems(items []model.EventNews, now time.Time) {
 	})
 }
 
-func pickBestFeaturedEventNews(items []model.EventNews, now time.Time) *model.EventNews {
-	if len(items) == 0 {
-		return nil
-	}
-
-	candidates := make([]model.EventNews, 0, len(items))
-	for _, item := range items {
-		if item.Featured {
-			candidates = append(candidates, item)
-		}
-	}
-
-	if len(candidates) == 0 {
-		candidates = append(candidates, items...)
-	}
-
-	sortEventNewsItems(candidates, now)
-	best := candidates[0]
-	return &best
-}
-
 func paginateEventNewsItems(items []model.EventNews, page, pageSize int) []model.EventNews {
 	page, pageSize = normalizeEventNewsPage(page, pageSize)
 	start := (page - 1) * pageSize
@@ -234,20 +245,31 @@ func mapTournamentInfo(item *model.Tournament) *types.TournamentInfo {
 		CreatorId:      item.CreatorId,
 		Name:           item.Name,
 		Description:    item.Description,
+		CoverImage:     firstNonEmpty(item.CoverImage, defaultTournamentCoverImage),
 		GameType:       item.GameType,
 		Format:         item.Format,
 		MaxPlayers:     item.MaxPlayers,
 		CurrentPlayers: item.CurrentPlayers,
 		Status:         item.Status,
+		Country:        item.Country,
 		City:           item.City,
 		VenueName:      item.VenueName,
 		CreatedAt:      item.CreatedAt.Format(eventNewsTimeLayout),
 	}
+	if item.StartDate != nil {
+		info.StartDate = item.StartDate.Format(eventNewsDateLayout)
+	}
+	if item.EndDate != nil {
+		info.EndDate = item.EndDate.Format(eventNewsDateLayout)
+	}
 	if item.StartTime != nil {
-		info.StartTime = item.StartTime.Format(eventNewsTimeLayout)
+		info.StartTime = formatUTCDisplayTime(item.StartTime)
 	}
 	if item.EndTime != nil {
-		info.EndTime = item.EndTime.Format(eventNewsTimeLayout)
+		info.EndTime = formatUTCDisplayTime(item.EndTime)
+	}
+	if info.EndDate == "" {
+		info.EndDate = info.StartDate
 	}
 	return info
 }
@@ -330,6 +352,62 @@ func normalizeWinnerSide(item model.TournamentMatch) int {
 	default:
 		return 0
 	}
+}
+
+func collectMatchPlayerIDs(matches []model.TournamentMatch) []int64 {
+	seen := make(map[int64]struct{})
+	ids := make([]int64, 0, len(matches)*2)
+	for _, match := range matches {
+		for _, id := range []int64{firstNonZeroInt64(match.HomePlayerId, match.Player1Id), firstNonZeroInt64(match.AwayPlayerId, match.Player2Id)} {
+			if id <= 0 {
+				continue
+			}
+			if _, ok := seen[id]; ok {
+				continue
+			}
+			seen[id] = struct{}{}
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+func resolvePlayerAvatar(players map[int64]model.Player, playerID int64) string {
+	if playerID <= 0 {
+		return ""
+	}
+	player, ok := players[playerID]
+	if !ok {
+		return ""
+	}
+	return strings.TrimSpace(player.Avatar)
+}
+
+func buildPlayerDisplayName(player model.Player) string {
+	return firstNonEmpty(
+		player.DisplayName,
+		strings.TrimSpace(strings.TrimSpace(player.FirstName)+" "+strings.TrimSpace(player.LastName)),
+	)
+}
+
+func reinterpretStoredUTC(value time.Time) time.Time {
+	return time.Date(
+		value.Year(),
+		value.Month(),
+		value.Day(),
+		value.Hour(),
+		value.Minute(),
+		value.Second(),
+		value.Nanosecond(),
+		time.UTC,
+	)
+}
+
+func formatUTCDisplayTime(value *time.Time) string {
+	if value == nil || value.IsZero() {
+		return ""
+	}
+	return reinterpretStoredUTC(*value).In(shanghaiLocation).Format(time.RFC3339)
 }
 
 func firstNonZeroInt64(values ...int64) int64 {
