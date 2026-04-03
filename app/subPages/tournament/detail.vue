@@ -5,22 +5,14 @@
 			<text class="loading-text">加载中...</text>
 		</view>
 
-		<view v-else-if="eventView" class="detail-content">
-			<view class="hero-card">
-				<image class="hero-cover" :src="eventView.coverImage" mode="aspectFill"></image>
-				<view class="hero-overlay"></view>
-				<view class="hero-body">
-					<view class="hero-topline">
-						<view class="hero-chip">
-							<text>{{ eventView.gameTypeText }}</text>
-						</view>
-						<view class="status-tag" :class="'status-' + eventView.status">
-							<text>{{ eventView.statusText }}</text>
-						</view>
-					</view>
-					<view class="hero-content-block">
-						<text class="hero-title">{{ eventView.title }}</text>
-						<text class="hero-desc">{{ eventView.summary }}</text>
+			<view v-else-if="eventView" class="detail-content">
+				<view class="hero-card">
+					<image class="hero-cover" :src="eventView.coverImage" mode="aspectFill"></image>
+					<view class="hero-overlay"></view>
+					<view class="hero-body">
+						<view class="hero-content-block">
+							<text class="hero-title">{{ eventView.title }}</text>
+							<text class="hero-desc">{{ eventView.summary }}</text>
 						<view class="hero-meta">
 							<view class="hero-meta-item">
 								<text class="hero-meta-label">国家 / 地区</text>
@@ -74,7 +66,9 @@
 							</view>
 							<view class="match-row">
 								<view class="player-side" :class="{ winner: match.winnerSide === 1 }">
-									<image class="player-avatar" :src="match.homePlayerAvatar" mode="aspectFill"></image>
+									<view class="player-portrait-frame" :class="{ winner: match.winnerSide === 1 }">
+										<image class="player-avatar" :src="match.homePlayerAvatar" mode="aspectFit"></image>
+									</view>
 									<view class="player-copy">
 										<view class="player-copy-top">
 											<text v-if="match.homePlayerFlagEmoji" class="player-flag">{{ match.homePlayerFlagEmoji }}</text>
@@ -87,7 +81,9 @@
 									<text>{{ match.scoreText }}</text>
 								</view>
 								<view class="player-side player-side-right" :class="{ winner: match.winnerSide === 2 }">
-									<image class="player-avatar" :src="match.awayPlayerAvatar" mode="aspectFill"></image>
+									<view class="player-portrait-frame" :class="{ winner: match.winnerSide === 2 }">
+										<image class="player-avatar" :src="match.awayPlayerAvatar" mode="aspectFit"></image>
+									</view>
 									<view class="player-copy">
 										<view class="player-copy-top">
 											<text v-if="match.awayPlayerFlagEmoji" class="player-flag">{{ match.awayPlayerFlagEmoji }}</text>

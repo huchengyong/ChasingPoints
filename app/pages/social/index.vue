@@ -27,20 +27,13 @@
           <view class="post-overlay"></view>
           <view class="post-body">
             <view class="post-topline">
-              <view class="post-chip">
-                <text>{{ item.gameTypeText }}</text>
-              </view>
               <view class="post-status" :class="'status-' + item.status">
                 <text>{{ item.statusText }}</text>
               </view>
             </view>
             <view class="post-content-block">
+              <text class="post-eyebrow">{{ item.gameTypeText }}</text>
               <text class="post-title">{{ item.title }}</text>
-              <text class="post-content">{{ item.summary }}</text>
-              <view class="post-footer">
-                <text>{{ item.sourceText || '追分官方' }}</text>
-                <text>查看详情</text>
-              </view>
             </view>
           </view>
         </view>
