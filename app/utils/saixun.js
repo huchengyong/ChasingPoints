@@ -5,7 +5,12 @@ export const DEFAULT_EVENT_COVER = 'https://images.gc.wstservices.co.uk/fit-in/4
 export const DEFAULT_PLAYER_AVATAR = '/static/images/default-avatar.png'
 
 const MATCH_ACTIVE_STATUSES = new Set([0, 1])
+const MATCH_LIVE_FALLBACK_WINDOW_MS = 12 * 60 * 60 * 1000
 const ROUND_NAME_ALIASES = Object.freeze({
+  quarter_final: '四分之一决赛',
+  quarter_finals: '四分之一决赛',
+  quarterfinal: '四分之一决赛',
+  quarterfinals: '四分之一决赛',
   semi_final: '半决赛',
   semi_finals: '半决赛',
   semifinal: '半决赛',
@@ -154,8 +159,25 @@ const buildScoreText = (match) => {
   return scoreReady ? `${Number(match.home_score || 0)} : ${Number(match.away_score || 0)}` : '-'
 }
 
+const resolveEffectiveMatchStatus = (match = {}, startAt, now = Date.now()) => {
+  const status = Number(match.status || 0)
+  if (status !== 0) return status
+
+  const nowTime = typeof now === 'string' ? new Date(now).getTime() : Number(now)
+  const startTime = startAt?.getTime?.() ?? Number.POSITIVE_INFINITY
+  const hasWinner = Number(match.winner_side || 0) > 0
+  const hasScore = Number(match.home_score || 0) > 0 || Number(match.away_score || 0) > 0
+
+  if (hasWinner && hasScore) return 2
+  if (Number.isFinite(startTime) && Number.isFinite(nowTime) && startTime <= nowTime) {
+    return nowTime - startTime <= MATCH_LIVE_FALLBACK_WINDOW_MS ? 1 : 2
+  }
+  return status
+}
+
 const normalizeSaiXunMatch = (match = {}, now = Date.now()) => {
   const startAt = parseDateTime(match.start_time)
+  const effectiveStatus = resolveEffectiveMatchStatus(match, startAt, now)
   const homePlayerParts = resolvePlayerTextParts(match.home_player_first_name, match.home_player_last_name, match.home_player_name || '待定')
   const awayPlayerParts = resolvePlayerTextParts(match.away_player_first_name, match.away_player_last_name, match.away_player_name || '待定')
   return {
@@ -163,8 +185,8 @@ const normalizeSaiXunMatch = (match = {}, now = Date.now()) => {
     roundName: standardizeRoundText(match.round_name) || '轮次待更新',
     roundOrder: Number(match.round_order || 0),
     matchOrder: Number(match.match_order || 0),
-    status: Number(match.status || 0),
-    statusText: getEventNewsStatusText(match.status, '待更新'),
+    status: effectiveStatus,
+    statusText: getEventNewsStatusText(effectiveStatus, '待更新'),
     startAt,
     startTimeText: startAt ? formatEventNewsTime(startAt.toISOString(), now) : '时间待定',
     homePlayerName: match.home_player_name || '待定',

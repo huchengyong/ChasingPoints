@@ -125,10 +125,10 @@
 
 <script setup>
 import { ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { getEventNewsView } from '@/api/event-news.js'
 import { pickEventNewsViewPayload } from '@/utils/event-news-response.js'
-import { getGameTypeLabel } from '@/utils/game-types.js'
+import { cacheSaiXunMatchAvatars } from '@/utils/image-cache.js'
 import {
 	DEFAULT_EVENT_COVER,
 	buildEventLocationText,
@@ -142,6 +142,56 @@ const loading = ref(true)
 const errorMessage = ref('')
 const eventNewsId = ref(0)
 const eventView = ref(null)
+const rawEventPayload = ref(null)
+
+let eventViewRefreshTimer = null
+
+const mergeCachedRoundAvatars = (rounds = [], previousRounds = []) => {
+	const previousMatches = new Map()
+
+	previousRounds.forEach((round) => {
+		;(round?.matches || []).forEach((match) => {
+			previousMatches.set(match.id, match)
+		})
+	})
+
+	return rounds.map((round) => ({
+		...round,
+		matches: (round.matches || []).map((match) => {
+			const previousMatch = previousMatches.get(match.id)
+			if (!previousMatch) return match
+
+			return {
+				...match,
+				homePlayerAvatar: previousMatch.homePlayerAvatar || match.homePlayerAvatar,
+				awayPlayerAvatar: previousMatch.awayPlayerAvatar || match.awayPlayerAvatar
+			}
+		})
+	}))
+}
+
+const renderEventView = (now = Date.now()) => {
+	if (!rawEventPayload.value) return
+
+	const previousRounds = eventView.value?.rounds || []
+	const nextView = normalizeEventView(rawEventPayload.value, now)
+	eventView.value = {
+		...nextView,
+		rounds: mergeCachedRoundAvatars(nextView.rounds, previousRounds)
+	}
+}
+
+const warmCachedPlayerAvatars = async (view) => {
+	if (!view || !Array.isArray(view.rounds) || view.rounds.length === 0) return
+
+	const cachedRounds = await cacheSaiXunMatchAvatars(view.rounds)
+	if (!eventView.value || eventView.value.id !== view.id) return
+
+	eventView.value = {
+		...eventView.value,
+		rounds: cachedRounds
+	}
+}
 
 const normalizeEventView = ({ eventNews, tournament, matches }, now = Date.now()) => {
 	const mergedEvent = {
@@ -162,23 +212,37 @@ const normalizeEventView = ({ eventNews, tournament, matches }, now = Date.now()
 
 	return {
 		...eventCard,
-		gameTypeText: getGameTypeLabel(mergedEvent.game_type, '台球'),
 		dateText: formatEventDateRange(mergedEvent.start_date, mergedEvent.end_date),
 		timeText: formatEventTimeRange(mergedEvent.start_time, mergedEvent.end_time, now),
 		showTime: Boolean(mergedEvent.start_time || mergedEvent.end_time),
 		locationText: buildEventLocationText(mergedEvent),
 		coverImage: mergedEvent.cover_image || DEFAULT_EVENT_COVER,
-		sourceName: eventNews.source_name || '追分官方',
-		sourceUrl: eventNews.source_url || '',
 		country: mergedEvent.country,
 		rounds,
-		currentRoundText: eventNews.current_round_text || eventCard.currentRoundText
+		currentRoundText: eventCard.currentRoundText
 	}
+}
+
+const stopEventViewRefreshTimer = () => {
+	if (eventViewRefreshTimer) {
+		clearInterval(eventViewRefreshTimer)
+		eventViewRefreshTimer = null
+	}
+}
+
+const startEventViewRefreshTimer = () => {
+	stopEventViewRefreshTimer()
+	if (!rawEventPayload.value) return
+
+	eventViewRefreshTimer = setInterval(() => {
+		renderEventView(Date.now())
+	}, 30 * 1000)
 }
 
 const fetchDetail = async () => {
 	if (!eventNewsId.value) {
 		errorMessage.value = '未找到该赛讯'
+		rawEventPayload.value = null
 		eventView.value = null
 		loading.value = false
 		return
@@ -195,40 +259,19 @@ const fetchDetail = async () => {
 		if (!payload) {
 			throw new Error('赛事数据不存在')
 		}
-		eventView.value = normalizeEventView(payload)
+		rawEventPayload.value = payload
+		renderEventView(Date.now())
+		startEventViewRefreshTimer()
+		void warmCachedPlayerAvatars(eventView.value)
 	} catch (e) {
 		console.error('获取赛事详情失败', e)
+		rawEventPayload.value = null
 		eventView.value = null
+		stopEventViewRefreshTimer()
 		errorMessage.value = e?.responseData?.message || e?.message || '加载失败，请稍后重试'
 	} finally {
 		loading.value = false
 	}
-}
-
-const handleCopySourceLink = () => {
-	if (!eventView.value?.sourceUrl) {
-		uni.showToast({
-			title: '暂无来源链接',
-			icon: 'none'
-		})
-		return
-	}
-
-	uni.setClipboardData({
-		data: eventView.value.sourceUrl,
-		success: () => {
-			uni.showToast({
-				title: '来源链接已复制',
-				icon: 'none'
-			})
-		},
-		fail: () => {
-			uni.showToast({
-				title: '复制失败，请稍后重试',
-				icon: 'none'
-			})
-		}
-	})
 }
 
 const goBack = () => {
@@ -245,6 +288,19 @@ const goBack = () => {
 onLoad((options) => {
 	eventNewsId.value = Number.parseInt(options?.id || '0', 10) || 0
 	fetchDetail()
+})
+
+onShow(() => {
+	renderEventView(Date.now())
+	startEventViewRefreshTimer()
+})
+
+onHide(() => {
+	stopEventViewRefreshTimer()
+})
+
+onUnload(() => {
+	stopEventViewRefreshTimer()
 })
 </script>
 

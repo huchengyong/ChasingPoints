@@ -119,7 +119,7 @@ test('buildSaiXunDetailRounds prioritizes live and upcoming rounds while hiding 
 
   assert.equal(rounds.length, 2)
   assert.equal(rounds[0].roundName, '半决赛')
-  assert.equal(rounds[1].roundName, 'Quarter Finals')
+  assert.equal(rounds[1].roundName, '四分之一决赛')
   assert.equal(rounds[0].matches[0].homePlayerAvatar, 'https://example.com/trump.png')
   assert.equal(rounds[0].matches[0].awayPlayerAvatar, DEFAULT_PLAYER_AVATAR)
   assert.equal(rounds[1].matches[0].scoreText, '10 : 8')
@@ -130,4 +130,76 @@ test('buildSaiXunDetailRounds prioritizes live and upcoming rounds while hiding 
   assert.equal(rounds[1].matches[0].awayPlayerLastName, 'Hawkins')
   assert.equal(rounds[1].matches[0].awayPlayerFlagEmoji, '🏴')
   assert.equal(rounds.some((round) => round.roundName === '决赛'), false)
+})
+
+test('buildSaiXunDetailRounds promotes overdue scheduled matches to live status', () => {
+  const rounds = buildSaiXunDetailRounds([
+    {
+      id: 201,
+      round_name: 'Semi Finals',
+      round_order: 3,
+      match_order: 1,
+      start_time: '2026-04-04T20:00:00+08:00',
+      status: 0,
+      home_player_name: 'John Higgins',
+      away_player_name: 'Zhao Xintong',
+      winner_side: 0
+    }
+  ], '2026-04-04T20:53:00+08:00')
+
+  assert.equal(rounds[0].matches[0].status, 1)
+  assert.equal(rounds[0].matches[0].statusText, '进行中')
+})
+
+test('buildSaiXunDetailRounds promotes overdue scored matches with winner to completed status', () => {
+  const rounds = buildSaiXunDetailRounds([
+    {
+      id: 202,
+      round_name: 'Quarter Finals',
+      round_order: 2,
+      match_order: 1,
+      start_time: '2026-04-04T18:00:00+08:00',
+      status: 0,
+      home_player_name: 'Neil Robertson',
+      away_player_name: 'Barry Hawkins',
+      home_score: 10,
+      away_score: 8,
+      winner_side: 1
+    }
+  ], '2026-04-04T20:53:00+08:00')
+
+  assert.equal(rounds[0].matches[0].status, 2)
+  assert.equal(rounds[0].matches[0].statusText, '已结束')
+})
+
+test('buildSaiXunDetailRounds marks stale overdue matches as completed instead of live forever', () => {
+  const rounds = buildSaiXunDetailRounds([
+    {
+      id: 203,
+      round_name: 'Semi Finals',
+      round_order: 3,
+      match_order: 1,
+      start_time: '2026-04-03T20:00:00+08:00',
+      status: 0,
+      home_player_name: 'Neil Robertson',
+      away_player_name: 'Judd Trump',
+      winner_side: 0
+    },
+    {
+      id: 204,
+      round_name: 'Semi Finals',
+      round_order: 3,
+      match_order: 2,
+      start_time: '2026-04-04T20:00:00+08:00',
+      status: 0,
+      home_player_name: 'John Higgins',
+      away_player_name: 'Zhao Xintong',
+      winner_side: 0
+    }
+  ], '2026-04-04T21:03:00+08:00')
+
+  assert.equal(rounds[0].matches[0].status, 1)
+  assert.equal(rounds[0].matches[0].statusText, '进行中')
+  assert.equal(rounds[0].matches[1].status, 2)
+  assert.equal(rounds[0].matches[1].statusText, '已结束')
 })
