@@ -103,25 +103,6 @@
 				</view>
 			</view>
 
-			<view class="source-card">
-				<view class="section-head">
-					<text class="section-title">来源信息</text>
-					<text class="section-tip">{{ eventView.sourceUrl ? '可复制外链' : '暂无来源链接' }}</text>
-				</view>
-				<view class="source-box">
-					<text class="source-name">{{ eventView.sourceName }}</text>
-					<text class="source-url">{{ eventView.sourceUrl || '暂无来源链接' }}</text>
-				</view>
-				<button
-					class="source-btn"
-					:class="{ disabled: !eventView.sourceUrl }"
-					:disabled="!eventView.sourceUrl"
-					hover-class="none"
-					@tap="handleCopySourceLink"
-				>
-					复制来源链接
-				</button>
-			</view>
 		</view>
 
 		<view v-else class="empty-state">

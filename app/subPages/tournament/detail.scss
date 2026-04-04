@@ -249,15 +249,15 @@
 	}
 
 	&.badge-1 {
-		background: linear-gradient(135deg, #dff4ff 0%, #bfe8ff 100%);
-		color: #075985;
-		border-color: rgba(14, 165, 233, 0.18);
+		background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+		color: #166534;
+		border-color: rgba(34, 197, 94, 0.2);
 	}
 
 	&.badge-2 {
-		background: linear-gradient(135deg, #f7d86a 0%, #e0ae12 100%);
-		color: #4a3200;
-		border-color: rgba(198, 146, 0, 0.24);
+		background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+		color: #475569;
+		border-color: rgba(148, 163, 184, 0.28);
 	}
 
 	&.badge-3 {
@@ -288,11 +288,6 @@
 	text-align: center;
 
 	&.winner {
-		.player-portrait-frame {
-			border-color: rgba(224, 174, 18, 0.5);
-			box-shadow: 0 8rpx 18rpx rgba(224, 174, 18, 0.12);
-		}
-
 		.player-first-name {
 			color: #8f6a11;
 		}
@@ -315,12 +310,12 @@
 	display: flex;
 	align-items: flex-end;
 	justify-content: center;
-	padding: 0 6rpx;
+	padding: 0;
 	box-sizing: border-box;
-	background: linear-gradient(180deg, rgba(255, 252, 245, 0.98) 0%, rgba(255, 247, 234, 0.98) 100%);
-	border: 1.5rpx solid rgba(95, 67, 5, 0.3);
-	clip-path: polygon(0 0, 100% 0, 100% 82%, 88% 100%, 0 100%);
-	box-shadow: 0 6rpx 16rpx rgba(95, 67, 5, 0.08);
+	background: transparent;
+	border: none;
+	clip-path: none;
+	box-shadow: none;
 }
 
 .player-avatar {
