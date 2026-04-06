@@ -8,6 +8,7 @@ import {
   buildSaiXunHeroStats,
   formatEventDateRange,
   formatEventTimeRange,
+  localizeTournamentTitle,
   normalizeSaiXunCard
 } from '../utils/saixun.js'
 
@@ -43,7 +44,7 @@ test('normalizeSaiXunCard maps赛事摘要并在缺失封面时回退默认值',
   }, '2026-04-01T12:00:00+08:00')
 
   assert.equal(card.id, 7)
-  assert.equal(card.title, 'Sportsbet.io Tour Championship 2026')
+  assert.equal(card.title, '斯诺克巡回锦标赛 2026')
   assert.equal(card.summary, '今晚决出冠军')
   assert.equal(card.statusText, '进行中')
   assert.equal(card.dateText, '3月30日 - 4月5日')
@@ -54,6 +55,22 @@ test('normalizeSaiXunCard maps赛事摘要并在缺失封面时回退默认值',
   assert.equal(card.matchCountText, '11 场比赛')
   assert.equal(card.sourceText, 'WST')
   assert.equal(card.coverImage, DEFAULT_EVENT_COVER)
+})
+
+test('localizeTournamentTitle strips sponsor prefix and keeps year for standard WST events', () => {
+  assert.equal(localizeTournamentTitle('Sportsbet.io Tour Championship 2026'), '斯诺克巡回锦标赛 2026')
+  assert.equal(localizeTournamentTitle('BetVictor Scottish Open 2025'), '苏格兰公开赛 2025')
+  assert.equal(localizeTournamentTitle('Victorian Plumbing UK Championship 2025'), '英国锦标赛 2025')
+  assert.equal(localizeTournamentTitle('Sportsbet.io Champion of Champions'), '冠中冠')
+})
+
+test('localizeTournamentTitle translates championship league phases and falls back for unknown titles', () => {
+  assert.equal(
+    localizeTournamentTitle('BetVictor Championship League Snooker 2025 (Stage One/WK1)'),
+    '冠军联赛 2025（第一阶段 / 第1周）'
+  )
+  assert.equal(localizeTournamentTitle('Championship League Group Three'), '冠军联赛第3组')
+  assert.equal(localizeTournamentTitle('Unknown Cup 2025'), 'Unknown Cup 2025')
 })
 
 test('buildSaiXunHeroStats counts total live and upcoming items', () => {

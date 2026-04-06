@@ -6,6 +6,8 @@ export const DEFAULT_PLAYER_AVATAR = '/static/images/default-avatar.png'
 
 const MATCH_ACTIVE_STATUSES = new Set([0, 1])
 const MATCH_LIVE_FALLBACK_WINDOW_MS = 12 * 60 * 60 * 1000
+const CJK_PATTERN = /[\u3400-\u9fff]/
+const YEAR_PATTERN = /\b(19|20)\d{2}\b/g
 const ROUND_NAME_ALIASES = Object.freeze({
   quarter_final: '四分之一决赛',
   quarter_finals: '四分之一决赛',
@@ -17,6 +19,139 @@ const ROUND_NAME_ALIASES = Object.freeze({
   semifinals: '半决赛',
   final: '决赛'
 })
+const ORDINAL_WORD_TO_NUMBER = Object.freeze({
+  one: '1',
+  two: '2',
+  three: '3',
+  four: '4',
+  five: '5',
+  six: '6',
+  seven: '7',
+  eight: '8',
+  nine: '9',
+  ten: '10'
+})
+const TOURNAMENT_SERIES_TRANSLATIONS = Object.freeze([
+  { pattern: /\bRiyadh Season Snooker Championship\b/i, zh: '利雅得狂欢季斯诺克锦标赛' },
+  { pattern: /\bSaudi Arabia Snooker Masters\b/i, zh: '沙特阿拉伯斯诺克大师赛' },
+  { pattern: /\bShanghai Masters\b/i, zh: '上海大师赛' },
+  { pattern: /\bGerman Masters\b/i, zh: '德国大师赛' },
+  { pattern: /\bTour Championship\b/i, zh: '斯诺克巡回锦标赛' },
+  { pattern: /\bPlayers Championship\b/i, zh: '球员锦标赛' },
+  { pattern: /\bChampion of Champions\b/i, zh: '冠中冠' },
+  { pattern: /\bWorld Championship\b/i, zh: '世界锦标赛' },
+  { pattern: /\bWorld Grand Prix\b/i, zh: '世界大奖赛' },
+  { pattern: /\bInternational Championship\b/i, zh: '国际锦标赛' },
+  { pattern: /\bBritish Open\b/i, zh: '英国公开赛' },
+  { pattern: /\bUK Championship\b/i, zh: '英国锦标赛' },
+  { pattern: /\bEnglish Open\b/i, zh: '英格兰公开赛' },
+  { pattern: /\bNorthern Ireland Open\b/i, zh: '北爱尔兰公开赛' },
+  { pattern: /\bScottish Open\b/i, zh: '苏格兰公开赛' },
+  { pattern: /\bWelsh Open\b/i, zh: '威尔士公开赛' },
+  { pattern: /\bWorld Open\b/i, zh: '世界公开赛' },
+  { pattern: /\bWuhan Open\b/i, zh: '武汉公开赛' },
+  { pattern: /\bXi'an Grand Prix\b/i, zh: '西安大奖赛' },
+  { pattern: /\bAsia\s*&\s*Oceania Q School\b/i, zh: '亚洲及大洋洲 Q School' },
+  { pattern: /\bQ School\b/i, zh: 'Q School' },
+  { pattern: /\bShoot Out\b/i, zh: '单局限时赛' },
+  { pattern: /\bMasters\b/i, zh: '大师赛' }
+])
+
+const toTitleWithYearAndSuffix = (label, year, suffix) => {
+  if (!label) return ''
+
+  let result = label
+  if (year) result += ` ${year}`
+  if (suffix) result += `（${suffix}）`
+  return result
+}
+
+const extractTournamentYear = (text) => {
+  const matches = Array.from(String(text || '').matchAll(YEAR_PATTERN))
+  return matches.length ? matches[matches.length - 1][0] : ''
+}
+
+const stripYearFromTitle = (text, year) => {
+  if (!year) return String(text || '').trim()
+
+  const index = String(text || '').lastIndexOf(year)
+  if (index < 0) return String(text || '').trim()
+
+  return `${text.slice(0, index)}${text.slice(index + year.length)}`
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([)\]-])/g, '$1')
+    .replace(/([([\-])\s+/g, '$1')
+    .trim()
+}
+
+const normalizeOrdinalToken = (value) => {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  if (/^\d+$/.test(text)) return text
+
+  const normalized = text.toLowerCase().replace(/[^a-z0-9]+/g, '')
+  return ORDINAL_WORD_TO_NUMBER[normalized] || text
+}
+
+const localizeLeagueStageSuffix = (value) => {
+  const text = String(value || '').trim()
+  if (!text) return ''
+
+  return text
+    .replace(/\bStage One\b/gi, '第一阶段')
+    .replace(/\bStage Two\b/gi, '第二阶段')
+    .replace(/\bStage Three\b/gi, '第三阶段')
+    .replace(/\bWK\s*(\d+)\b/gi, '第$1周')
+    .replace(/\s*&\s*Final\b/gi, '及决赛')
+    .replace(/\s*\/\s*/g, ' / ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
+const localizeTournamentSeries = (title) => {
+  const text = String(title || '').trim()
+  if (!text) return ''
+
+  const matchedSeries = TOURNAMENT_SERIES_TRANSLATIONS.find(({ pattern }) => pattern.test(text))
+  return matchedSeries?.zh || ''
+}
+
+export const localizeTournamentTitle = (value) => {
+  const title = String(value || '').trim()
+  if (!title || CJK_PATTERN.test(title)) return title
+
+  const championshipLeagueMatch = title.match(/^(?:.+?\s+)?Championship League Snooker\s+(\d{4})\s+\(([^)]+)\)$/i)
+  if (championshipLeagueMatch) {
+    const [, year, suffix] = championshipLeagueMatch
+    return toTitleWithYearAndSuffix('冠军联赛', year, localizeLeagueStageSuffix(suffix))
+  }
+
+  const groupMatch = title.match(/^Championship League Group\s+(.+)$/i)
+  if (groupMatch) {
+    const groupNumber = normalizeOrdinalToken(groupMatch[1])
+    return groupNumber ? `冠军联赛第${groupNumber}组` : '冠军联赛小组赛'
+  }
+
+  if (/^Championship League Winners Group$/i.test(title)) {
+    return '冠军联赛胜者组'
+  }
+
+  const qSchoolEventMatch = title.match(/^Q School\s+(\d{4})\s*-\s*Event\s+(\d+)$/i)
+  if (qSchoolEventMatch) {
+    const [, year, eventNo] = qSchoolEventMatch
+    return `Q School ${year} - 第${eventNo}站`
+  }
+
+  const year = extractTournamentYear(title)
+  const titleWithoutYear = stripYearFromTitle(title, year)
+  const seriesTitle = localizeTournamentSeries(titleWithoutYear)
+
+  if (seriesTitle) {
+    return toTitleWithYearAndSuffix(seriesTitle, year, '')
+  }
+
+  return title
+}
 
 const parseDateOnly = (value) => {
   if (!value) return null
@@ -88,11 +223,12 @@ export const normalizeSaiXunCard = (item = {}, now = Date.now()) => {
   const currentRoundText = standardizeRoundText(item.current_round_text)
   const matchCount = Number(item.match_count || 0)
   const timeText = formatEventTimeRange(item.start_time, item.end_time, now)
+  const rawTitle = item.tournament_name || item.title || '赛事情报'
 
   return {
     ...item,
     id: item.id,
-    title: item.tournament_name || item.title || '赛事情报',
+    title: localizeTournamentTitle(rawTitle) || rawTitle,
     summary: item.summary || item.latest_result_text || '官方赛讯持续更新中',
     statusText: getEventNewsStatusText(item.status, '赛讯更新中'),
     gameTypeText: getGameTypeLabel(item.game_type, '台球'),
