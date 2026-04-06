@@ -3,6 +3,7 @@ package wstsync
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -18,6 +19,7 @@ type DataClient interface {
 	FetchSeasons(ctx context.Context) ([]SeasonResource, error)
 	FetchTournamentsBySeason(ctx context.Context, season int) ([]TournamentResource, error)
 	FetchMatchesPage(ctx context.Context, pageNumber, pageSize int) (MatchListResponse, error)
+	FetchPageCoverImage(ctx context.Context, pageURL string) (string, error)
 }
 
 type SyncSummary struct {
@@ -98,7 +100,8 @@ func (s *Service) Sync(ctx context.Context, params SyncParams) (*SyncSummary, er
 
 	playerRecords := buildPlayerUpsertRecords(matches)
 	matchRecords := buildMatchUpsertRecords(matches)
-	tournamentRecords := buildTournamentUpsertRecords(selected, matchRecords, params.GameType, now)
+	coverImages := s.resolveTournamentCoverImages(ctx, selected)
+	tournamentRecords := buildTournamentUpsertRecords(selected, matchRecords, coverImages, params.GameType, now)
 	summary.PlayersPrepared = len(playerRecords)
 	summary.TournamentsPrepared = len(tournamentRecords)
 	summary.MatchesPrepared = len(matchRecords)
@@ -431,6 +434,7 @@ func buildPlayerUpsertRecords(matches []MatchResource) []PlayerUpsertRecord {
 func buildTournamentUpsertRecords(
 	tournaments []TournamentResource,
 	matches []MatchUpsertRecord,
+	coverImages map[string]string,
 	gameType int,
 	now time.Time,
 ) []TournamentUpsertRecord {
@@ -443,12 +447,16 @@ func buildTournamentUpsertRecords(
 	for _, item := range tournaments {
 		startDate, _ := parseDateOnly(item.Attributes.StartDate)
 		endDate, _ := parseDateOnly(item.Attributes.EndDate)
+		coverImage := strings.TrimSpace(coverImages[item.ID])
+		if coverImage == "" {
+			coverImage = defaultTournamentCoverImage
+		}
 		result = append(result, TournamentUpsertRecord{
 			SourceType:         wstSourceType,
 			SourceTournamentId: strings.TrimSpace(item.ID),
 			SourceSeasonId:     strings.TrimSpace(item.Attributes.Season.ID),
 			Name:               strings.TrimSpace(item.Attributes.Name),
-			CoverImage:         defaultTournamentCoverImage,
+			CoverImage:         coverImage,
 			GameType:           gameType,
 			Status:             resolveTournamentStatus(item, matchesByTournament[item.ID], now),
 			Country:            strings.TrimSpace(item.Attributes.Country),
@@ -461,6 +469,74 @@ func buildTournamentUpsertRecords(
 		})
 	}
 	return result
+}
+
+func (s *Service) resolveTournamentCoverImages(ctx context.Context, tournaments []TournamentResource) map[string]string {
+	result := make(map[string]string, len(tournaments))
+	if s == nil || s.client == nil {
+		return result
+	}
+
+	for _, item := range tournaments {
+		if sourceTournamentID := strings.TrimSpace(item.ID); sourceTournamentID != "" {
+			result[sourceTournamentID] = s.resolveTournamentCoverImage(ctx, item)
+		}
+	}
+	return result
+}
+
+func (s *Service) resolveTournamentCoverImage(ctx context.Context, item TournamentResource) string {
+	pageCandidates := []string{
+		normalizeWSTPageURL(item.Attributes.InformationPage),
+		normalizeWSTPageURL(item.Attributes.TicketingLink),
+	}
+
+	fallbackCover := ""
+	for _, pageURL := range pageCandidates {
+		if pageURL == "" {
+			continue
+		}
+
+		coverImage, err := s.client.FetchPageCoverImage(ctx, pageURL)
+		if err != nil {
+			continue
+		}
+
+		coverImage = strings.TrimSpace(coverImage)
+		if coverImage == "" {
+			continue
+		}
+		if fallbackCover == "" {
+			fallbackCover = coverImage
+		}
+		if coverImage != defaultTournamentCoverImage {
+			return coverImage
+		}
+	}
+
+	return fallbackCover
+}
+
+func normalizeWSTPageURL(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return ""
+	}
+
+	parsed, err := url.Parse(trimmed)
+	if err == nil && parsed.IsAbs() {
+		return parsed.String()
+	}
+
+	base, err := url.Parse(wstSiteBaseURL)
+	if err != nil {
+		return trimmed
+	}
+	ref, err := url.Parse(trimmed)
+	if err != nil {
+		return trimmed
+	}
+	return base.ResolveReference(ref).String()
 }
 
 func buildMatchUpsertRecords(matches []MatchResource) []MatchUpsertRecord {

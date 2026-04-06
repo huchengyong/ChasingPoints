@@ -11,6 +11,7 @@ const (
 
 	wstSourceType               = "official"
 	wstSourceName               = "WST"
+	wstSiteBaseURL              = "https://www.wst.tv"
 	defaultTournamentCoverImage = "https://images.gc.wstservices.co.uk/fit-in/400x600/4ddad400-99d3-11ee-94e8-c9d138e537ff.png"
 	defaultMatchesPageSize      = 200
 )

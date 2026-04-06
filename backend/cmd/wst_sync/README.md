@@ -76,5 +76,6 @@ GOCACHE=/tmp/chasingpoints-gocache go run ./cmd/wst_sync --season 2025 --dry-run
 
 - `matches` 接口不依赖服务端过滤，而是分页全扫后本地按 `tournamentID` 过滤。
 - 赛事、球员、比赛都按官方 source id 幂等 upsert。
+- 同步器会优先从 WST 赛事页或票务页抓取 `og:image` 作为赛事封面，抓不到时才回退默认图。
 - 历史同步默认会自动生成或更新 `event_news_events`，因此同步完成后会直接出现在赛讯里。
 - 如果前置球员或赛事没有成功同步，比赛 upsert 会直接报错，不会静默写脏数据。

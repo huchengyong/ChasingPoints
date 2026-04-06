@@ -14,9 +14,10 @@ import (
 )
 
 type fakeDataClient struct {
-	seasons            []SeasonResource
+	seasons             []SeasonResource
 	tournamentsBySeason map[int][]TournamentResource
-	matchesPages       []MatchListResponse
+	matchesPages        []MatchListResponse
+	pageCoverImages     map[string]string
 }
 
 func (f *fakeDataClient) FetchSeasons(ctx context.Context) ([]SeasonResource, error) {
@@ -33,6 +34,13 @@ func (f *fakeDataClient) FetchMatchesPage(ctx context.Context, pageNumber, pageS
 		return MatchListResponse{}, nil
 	}
 	return f.matchesPages[index], nil
+}
+
+func (f *fakeDataClient) FetchPageCoverImage(ctx context.Context, pageURL string) (string, error) {
+	if f.pageCoverImages == nil {
+		return "", nil
+	}
+	return f.pageCoverImages[pageURL], nil
 }
 
 func newWSTSyncServiceTestDB(t *testing.T) *gorm.DB {
@@ -266,6 +274,9 @@ func TestServiceSyncWritesFactsAndProjectsEventNews(t *testing.T) {
 				},
 			},
 		},
+		pageCoverImages: map[string]string{
+			"https://www.wst.tv/tourchampionship/": "https://images.gc.wstservices.co.uk/fit-in/1000x1000/tour-cover.jpg",
+		},
 	}
 
 	service := newWSTSyncServiceForTest(t, db, client)
@@ -307,8 +318,8 @@ func TestServiceSyncWritesFactsAndProjectsEventNews(t *testing.T) {
 	if tournament.Status != model.EventNewsStatusFinished {
 		t.Fatalf("expected finished tournament status, got %#v", tournament)
 	}
-	if tournament.CoverImage != defaultTournamentCoverImage {
-		t.Fatalf("expected default cover image, got %#v", tournament)
+	if tournament.CoverImage != "https://images.gc.wstservices.co.uk/fit-in/1000x1000/tour-cover.jpg" {
+		t.Fatalf("expected fetched cover image, got %#v", tournament)
 	}
 
 	matchMap, err := model.NewTournamentMatchModel(db).FindBySourceMatchIds("official", []string{"match-1"})
@@ -434,5 +445,26 @@ func TestServiceSyncRemovesStaleOfficialMatchesForTouchedTournament(t *testing.T
 	}
 	if _, ok := matchMap["fresh-match"]; !ok {
 		t.Fatalf("expected fresh match to remain, got %#v", matchMap)
+	}
+}
+
+func TestServiceResolveTournamentCoverImageNormalizesRelativeWSTPaths(t *testing.T) {
+	service := &Service{
+		client: &fakeDataClient{
+			pageCoverImages: map[string]string{
+				"https://www.wst.tv/themasters": "https://images.gc.wstservices.co.uk/fit-in/1000x1000/masters-cover.png",
+			},
+		},
+	}
+
+	coverImage := service.resolveTournamentCoverImage(context.Background(), TournamentResource{
+		ID: "masters-2025",
+		Attributes: TournamentAttributes{
+			InformationPage: "/themasters",
+		},
+	})
+
+	if coverImage != "https://images.gc.wstservices.co.uk/fit-in/1000x1000/masters-cover.png" {
+		t.Fatalf("expected normalized relative path to resolve cover image, got %q", coverImage)
 	}
 }

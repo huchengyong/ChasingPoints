@@ -197,6 +197,46 @@ func TestClientFetchMatchesPageRetriesTimeoutOnce(t *testing.T) {
 	}
 }
 
+func TestClientFetchPageCoverImageExtractsOpenGraphImage(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(`<!doctype html><html><head>
+			<meta property="og:title" content="Tour Championship">
+			<meta property="og:image" content="/images/tour-cover.jpg">
+			<meta name="twitter:image" content="/images/twitter-cover.jpg">
+		</head><body></body></html>`))
+	}))
+	defer srv.Close()
+
+	client := NewClient("https://example.com/seasons", "https://example.com/tournaments", "https://example.com/matches")
+	imageURL, err := client.FetchPageCoverImage(context.Background(), srv.URL+"/tour")
+	if err != nil {
+		t.Fatalf("fetch page cover image: %v", err)
+	}
+	if imageURL != srv.URL+"/images/tour-cover.jpg" {
+		t.Fatalf("unexpected cover image: %s", imageURL)
+	}
+}
+
+func TestClientFetchPageCoverImageFallsBackToTwitterImage(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(`<!doctype html><html><head>
+			<meta name="twitter:image" content="https://images.example.com/twitter-cover.png">
+		</head><body></body></html>`))
+	}))
+	defer srv.Close()
+
+	client := NewClient("https://example.com/seasons", "https://example.com/tournaments", "https://example.com/matches")
+	imageURL, err := client.FetchPageCoverImage(context.Background(), srv.URL+"/tour")
+	if err != nil {
+		t.Fatalf("fetch page cover image: %v", err)
+	}
+	if imageURL != "https://images.example.com/twitter-cover.png" {
+		t.Fatalf("unexpected twitter fallback image: %s", imageURL)
+	}
+}
+
 func TestIsRetryableRequestError(t *testing.T) {
 	testCases := []struct {
 		name string
