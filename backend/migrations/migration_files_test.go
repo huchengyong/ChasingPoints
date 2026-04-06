@@ -93,3 +93,31 @@ func TestEventNewsScheduleMigrationDoesNotRecreateLegacyTableInDown(t *testing.T
 		t.Fatal("clean baseline event news migration should not recreate legacy single-table schema in down block")
 	}
 }
+
+func TestWSTSyncMigrationAddsOfficialSourceFieldsAndIndexes(t *testing.T) {
+	content, err := os.ReadFile("20260405100000_add_wst_sync_fields_and_indexes.sql")
+	if err != nil {
+		t.Fatalf("read wst sync migration: %v", err)
+	}
+
+	text := string(content)
+	requiredSnippets := []string{
+		"`source_tournament_id`",
+		"`source_season_id`",
+		"`information_page`",
+		"`ticketing_link`",
+		"`last_synced_at`",
+		"`players`",
+		"`tournaments`",
+		"`tournament_matches`",
+		"`source_player_id`",
+		"`source_match_id`",
+		"UNIQUE",
+	}
+
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(text, snippet) {
+			t.Fatalf("expected wst sync migration to contain %q", snippet)
+		}
+	}
+}

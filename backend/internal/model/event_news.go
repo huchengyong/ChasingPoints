@@ -85,6 +85,15 @@ func (m *EventNewsModel) FindPublishedById(id int64) (*EventNews, error) {
 	return &eventNews, err
 }
 
+func (m *EventNewsModel) FindByTournamentAndSourceType(tournamentId int64, sourceType string) (*EventNews, error) {
+	var eventNews EventNews
+	err := m.db.Where("tournament_id = ? AND source_type = ?", tournamentId, sourceType).First(&eventNews).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &eventNews, err
+}
+
 func (m *EventNewsModel) FindPublishedMatching(gameType, status int, city string) ([]EventNews, error) {
 	query := m.db.Model(&EventNews{}).Where("published = ?", true)
 	if gameType > 0 {

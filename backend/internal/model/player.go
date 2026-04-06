@@ -53,3 +53,22 @@ func (m *PlayerModel) FindByIds(ids []int64) (map[int64]Player, error) {
 	}
 	return result, nil
 }
+
+func (m *PlayerModel) FindBySourcePlayerIds(sourceType string, sourcePlayerIds []string) (map[string]Player, error) {
+	result := make(map[string]Player, len(sourcePlayerIds))
+	if len(sourcePlayerIds) == 0 {
+		return result, nil
+	}
+
+	var list []Player
+	if err := m.db.
+		Where("source_type = ? AND source_player_id IN ?", sourceType, sourcePlayerIds).
+		Find(&list).Error; err != nil {
+		return nil, err
+	}
+
+	for _, item := range list {
+		result[item.SourcePlayerId] = item
+	}
+	return result, nil
+}

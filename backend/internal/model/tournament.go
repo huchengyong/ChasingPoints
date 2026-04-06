@@ -7,24 +7,30 @@ import (
 )
 
 type Tournament struct {
-	Id             int64      `gorm:"primarykey"`
-	CreatorId      int64      `gorm:"not null;index"`
-	Name           string     `gorm:"size:128;not null"`
-	Description    string     `gorm:"type:text"`
-	CoverImage     string     `gorm:"size:512;not null;default:''"`
-	GameType       int        `gorm:"not null;index"`
-	Format         int        `gorm:"not null;default:1"`
-	MaxPlayers     int        `gorm:"not null;default:16"`
-	CurrentPlayers int        `gorm:"not null;default:0"`
-	Status         int        `gorm:"not null;default:0;index"`
-	Country        string     `gorm:"size:64;not null;default:''"`
-	City           string     `gorm:"size:64;not null;default:'';index"`
-	VenueName      string     `gorm:"size:128;not null;default:''"`
-	StartDate      *time.Time `gorm:"type:date;default:null;index"`
-	EndDate        *time.Time `gorm:"type:date;default:null"`
-	StartTime      *time.Time `gorm:"default:null;index"`
-	EndTime        *time.Time `gorm:"default:null"`
-	CreatedAt      time.Time  `gorm:"autoCreateTime"`
+	Id                 int64      `gorm:"primarykey"`
+	CreatorId          int64      `gorm:"not null;index"`
+	Name               string     `gorm:"size:128;not null"`
+	Description        string     `gorm:"type:text"`
+	CoverImage         string     `gorm:"size:512;not null;default:''"`
+	GameType           int        `gorm:"not null;index"`
+	Format             int        `gorm:"not null;default:1"`
+	MaxPlayers         int        `gorm:"not null;default:16"`
+	CurrentPlayers     int        `gorm:"not null;default:0"`
+	Status             int        `gorm:"not null;default:0;index"`
+	Country            string     `gorm:"size:64;not null;default:''"`
+	City               string     `gorm:"size:64;not null;default:'';index"`
+	VenueName          string     `gorm:"size:128;not null;default:''"`
+	StartDate          *time.Time `gorm:"type:date;default:null;index"`
+	EndDate            *time.Time `gorm:"type:date;default:null"`
+	StartTime          *time.Time `gorm:"default:null;index"`
+	EndTime            *time.Time `gorm:"default:null"`
+	SourceType         string     `gorm:"size:32;not null;default:''"`
+	SourceTournamentId string     `gorm:"size:128;not null;default:'';index"`
+	SourceSeasonId     string     `gorm:"size:64;not null;default:'';index"`
+	InformationPage    string     `gorm:"size:512;not null;default:''"`
+	TicketingLink      string     `gorm:"size:512;not null;default:''"`
+	LastSyncedAt       *time.Time `gorm:"default:null;index"`
+	CreatedAt          time.Time  `gorm:"autoCreateTime"`
 }
 
 func (Tournament) TableName() string {
@@ -92,6 +98,25 @@ func (m *TournamentModel) FindByIds(ids []int64) (map[int64]Tournament, error) {
 
 	for _, item := range list {
 		result[item.Id] = item
+	}
+	return result, nil
+}
+
+func (m *TournamentModel) FindBySourceTournamentIds(sourceType string, sourceTournamentIds []string) (map[string]Tournament, error) {
+	result := make(map[string]Tournament, len(sourceTournamentIds))
+	if len(sourceTournamentIds) == 0 {
+		return result, nil
+	}
+
+	var list []Tournament
+	if err := m.db.
+		Where("source_type = ? AND source_tournament_id IN ?", sourceType, sourceTournamentIds).
+		Find(&list).Error; err != nil {
+		return nil, err
+	}
+
+	for _, item := range list {
+		result[item.SourceTournamentId] = item
 	}
 	return result, nil
 }

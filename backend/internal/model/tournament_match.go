@@ -99,6 +99,25 @@ func (m *TournamentMatchModel) FindByTournamentIds(tournamentIds []int64) (map[i
 	return result, nil
 }
 
+func (m *TournamentMatchModel) FindBySourceMatchIds(sourceType string, sourceMatchIds []string) (map[string]TournamentMatch, error) {
+	result := make(map[string]TournamentMatch, len(sourceMatchIds))
+	if len(sourceMatchIds) == 0 {
+		return result, nil
+	}
+
+	var list []TournamentMatch
+	if err := m.db.
+		Where("source_type = ? AND source_match_id IN ?", sourceType, sourceMatchIds).
+		Find(&list).Error; err != nil {
+		return nil, err
+	}
+
+	for _, item := range list {
+		result[item.SourceMatchId] = item
+	}
+	return result, nil
+}
+
 func (m *TournamentMatchModel) Update(match *TournamentMatch) error {
 	return m.db.Save(match).Error
 }
