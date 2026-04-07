@@ -1,6 +1,8 @@
 package eventnews
 
 import (
+	"errors"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -17,6 +19,11 @@ const defaultTournamentCoverImage = "https://images.gc.wstservices.co.uk/fit-in/
 var eventNewsNow = time.Now
 var shanghaiLocation = time.FixedZone("UTC+8", 8*60*60)
 
+type eventNewsDateWindow struct {
+	From string
+	To   string
+}
+
 func normalizeEventNewsPage(page, pageSize int) (int, int) {
 	if page <= 0 {
 		page = 1
@@ -28,6 +35,136 @@ func normalizeEventNewsPage(page, pageSize int) (int, int) {
 		pageSize = 100
 	}
 	return page, pageSize
+}
+
+func buildEventNewsDateWindow(req *types.GetEventNewsListReq, now time.Time) (eventNewsDateWindow, error) {
+	if req == nil {
+		return eventNewsDateWindow{}, errors.New("请求参数错误")
+	}
+
+	fromText := strings.TrimSpace(req.From)
+	toText := strings.TrimSpace(req.To)
+	hasFrom := fromText != ""
+	hasTo := toText != ""
+	if hasFrom != hasTo {
+		return eventNewsDateWindow{}, errors.New("请求参数错误")
+	}
+
+	if hasFrom {
+		fromDate, err := parseEventNewsDate(fromText)
+		if err != nil {
+			return eventNewsDateWindow{}, err
+		}
+		toDate, err := parseEventNewsDate(toText)
+		if err != nil {
+			return eventNewsDateWindow{}, err
+		}
+		if toDate.Before(fromDate) {
+			return eventNewsDateWindow{}, errors.New("请求参数错误")
+		}
+
+		return eventNewsDateWindow{
+			From: fromDate.Format(eventNewsDateLayout),
+			To:   toDate.Format(eventNewsDateLayout),
+		}, nil
+	}
+
+	year := req.Year
+	if year <= 0 {
+		year = now.In(shanghaiLocation).Year()
+	}
+	if year <= 0 {
+		return eventNewsDateWindow{}, errors.New("请求参数错误")
+	}
+
+	return eventNewsDateWindow{
+		From: fmt.Sprintf("%04d-01-01", year),
+		To:   fmt.Sprintf("%04d-12-31", year),
+	}, nil
+}
+
+func parseEventNewsDate(value string) (time.Time, error) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return time.Time{}, errors.New("请求参数错误")
+	}
+
+	parsed, err := time.Parse(eventNewsDateLayout, trimmed)
+	if err != nil {
+		return time.Time{}, errors.New("请求参数错误")
+	}
+	return parsed, nil
+}
+
+func filterEventNewsItemsByDateWindow(items []model.EventNews, tournamentMap map[int64]*model.Tournament, window eventNewsDateWindow) []model.EventNews {
+	if window.From == "" && window.To == "" {
+		return append([]model.EventNews{}, items...)
+	}
+
+	filtered := make([]model.EventNews, 0, len(items))
+	for _, item := range items {
+		tournament := tournamentMap[item.TournamentId]
+		startDate, endDate, ok := resolveEventNewsDateRange(item, tournament)
+		if !ok {
+			continue
+		}
+		if eventNewsDateWindowOverlaps(window, startDate, endDate) {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered
+}
+
+func resolveEventNewsDateRange(item model.EventNews, tournament *model.Tournament) (string, string, bool) {
+	startDate := firstNonEmptyDateString(tournamentStartDate(tournament), item.StartDate)
+	endDate := firstNonEmptyDateString(tournamentEndDate(tournament), item.EndDate)
+	if startDate == "" && endDate == "" {
+		return "", "", false
+	}
+	if startDate == "" {
+		startDate = endDate
+	}
+	if endDate == "" {
+		endDate = startDate
+	}
+	if startDate == "" || endDate == "" {
+		return "", "", false
+	}
+	if endDate < startDate {
+		return "", "", false
+	}
+	return startDate, endDate, true
+}
+
+func tournamentStartDate(item *model.Tournament) string {
+	if item == nil || item.StartDate == nil {
+		return ""
+	}
+	return item.StartDate.Format(eventNewsDateLayout)
+}
+
+func tournamentEndDate(item *model.Tournament) string {
+	if item == nil || item.EndDate == nil {
+		return ""
+	}
+	return item.EndDate.Format(eventNewsDateLayout)
+}
+
+func firstNonEmptyDateString(left string, right *time.Time) string {
+	if strings.TrimSpace(left) != "" {
+		return strings.TrimSpace(left)
+	}
+	if right == nil {
+		return ""
+	}
+	return right.Format(eventNewsDateLayout)
+}
+
+func eventNewsDateWindowOverlaps(window eventNewsDateWindow, startDate, endDate string) bool {
+	if window.From == "" || window.To == "" || startDate == "" || endDate == "" {
+		return false
+	}
+	return !(endDate < window.From || startDate > window.To)
 }
 
 func mapEventNewsInfo(item model.EventNews, tournament *model.Tournament, matches []model.TournamentMatch) types.EventNewsInfo {

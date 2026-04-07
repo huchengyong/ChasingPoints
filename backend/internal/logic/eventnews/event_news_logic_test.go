@@ -75,6 +75,37 @@ func createPlayer(t *testing.T, svcCtx *svc.ServiceContext, player *model.Player
 	return player
 }
 
+func createPublishedTournamentEvent(t *testing.T, svcCtx *svc.ServiceContext, title string, status int, tournamentStart, tournamentEnd time.Time, sortTime time.Time) (*model.Tournament, *model.EventNews) {
+	t.Helper()
+
+	tournament := createTournament(t, svcCtx, &model.Tournament{
+		Name:      title,
+		GameType:  1,
+		Status:    model.EventNewsStatusLive,
+		Country:   "英国",
+		City:      "曼彻斯特",
+		VenueName: "Manchester Central",
+		StartDate: mustTimePtr(tournamentStart),
+		EndDate:   mustTimePtr(tournamentEnd),
+		StartTime: mustTimePtr(tournamentStart),
+		EndTime:   mustTimePtr(tournamentEnd),
+	})
+
+	event := createEvent(t, svcCtx, &model.EventNews{
+		Title:        title,
+		TournamentId: tournament.Id,
+		GameType:     1,
+		SourceType:   "official",
+		SourceName:   "WST",
+		City:         "曼彻斯特",
+		Status:       status,
+		Published:    true,
+		SortTime:     mustTimePtr(sortTime),
+	})
+
+	return tournament, event
+}
+
 func withEventNewsNow(now time.Time) func() {
 	old := eventNewsNow
 	eventNewsNow = func() time.Time {
@@ -186,24 +217,8 @@ func TestGetEventNewsListFiltersByEventStatusAndStatusPriority(t *testing.T) {
 	svcCtx := newEventNewsTestSvc(t)
 	defer withEventNewsNow(time.Date(2026, 3, 23, 12, 0, 0, 0, time.UTC))()
 
-	createEvent(t, svcCtx, &model.EventNews{
-		Title:      "进行中赛事",
-		GameType:   1,
-		SourceType: "official",
-		SourceName: "WST",
-		Status:     model.EventNewsStatusLive,
-		Published:  true,
-		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 11, 55, 0, 0, time.UTC)),
-	})
-	createEvent(t, svcCtx, &model.EventNews{
-		Title:      "即将开始赛事",
-		GameType:   1,
-		SourceType: "manual",
-		SourceName: "Admin",
-		Status:     model.EventNewsStatusUpcoming,
-		Published:  true,
-		SortTime:   mustTimePtr(time.Date(2026, 3, 23, 12, 20, 0, 0, time.UTC)),
-	})
+	_, _ = createPublishedTournamentEvent(t, svcCtx, "进行中赛事", model.EventNewsStatusLive, time.Date(2026, 3, 23, 0, 0, 0, 0, time.UTC), time.Date(2026, 3, 30, 0, 0, 0, 0, time.UTC), time.Date(2026, 3, 23, 11, 55, 0, 0, time.UTC))
+	_, _ = createPublishedTournamentEvent(t, svcCtx, "即将开始赛事", model.EventNewsStatusUpcoming, time.Date(2026, 3, 23, 0, 0, 0, 0, time.UTC), time.Date(2026, 3, 30, 0, 0, 0, 0, time.UTC), time.Date(2026, 3, 23, 12, 20, 0, 0, time.UTC))
 
 	logic := NewGetEventNewsListLogic(context.Background(), svcCtx)
 	fullResp, err := logic.GetEventNewsList(&types.GetEventNewsListReq{
@@ -234,6 +249,182 @@ func TestGetEventNewsListFiltersByEventStatusAndStatusPriority(t *testing.T) {
 	}
 	if resp.List[0].Title != "进行中赛事" || resp.List[0].Status != model.EventNewsStatusLive {
 		t.Fatalf("expected only live event rows, got %#v", resp.List)
+	}
+}
+
+func TestGetEventNewsListAppliesDefaultCurrentYear(t *testing.T) {
+	svcCtx := newEventNewsTestSvc(t)
+	restoreNow := withEventNewsNow(time.Date(2026, 4, 7, 12, 0, 0, 0, time.UTC))
+	defer restoreNow()
+
+	_, _ = createPublishedTournamentEvent(t, svcCtx, "2025公开赛", model.EventNewsStatusLive, time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC), time.Date(2025, 3, 8, 0, 0, 0, 0, time.UTC), time.Date(2025, 3, 1, 11, 0, 0, 0, time.UTC))
+	_, currentYearEvent := createPublishedTournamentEvent(t, svcCtx, "2026公开赛", model.EventNewsStatusLive, time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC), time.Date(2026, 4, 8, 0, 0, 0, 0, time.UTC), time.Date(2026, 4, 1, 11, 0, 0, 0, time.UTC))
+
+	logic := NewGetEventNewsListLogic(context.Background(), svcCtx)
+	resp, err := logic.GetEventNewsList(&types.GetEventNewsListReq{
+		Page:     1,
+		PageSize: 20,
+		Status:   -1,
+	})
+	if err != nil {
+		t.Fatalf("get list: %v", err)
+	}
+	if !resp.Success {
+		t.Fatalf("expected success, got %#v", resp)
+	}
+	if resp.Total != 1 || len(resp.List) != 1 {
+		t.Fatalf("expected one current-year event, got %#v", resp)
+	}
+	if resp.List[0].Id != currentYearEvent.Id || resp.List[0].Title != currentYearEvent.Title {
+		t.Fatalf("expected current-year event only, got %#v", resp.List[0])
+	}
+}
+
+func TestGetEventNewsListFiltersByYear(t *testing.T) {
+	svcCtx := newEventNewsTestSvc(t)
+	restoreNow := withEventNewsNow(time.Date(2026, 4, 7, 12, 0, 0, 0, time.UTC))
+	defer restoreNow()
+
+	_, previousYearEvent := createPublishedTournamentEvent(t, svcCtx, "2025公开赛", model.EventNewsStatusLive, time.Date(2025, 7, 1, 0, 0, 0, 0, time.UTC), time.Date(2025, 7, 8, 0, 0, 0, 0, time.UTC), time.Date(2025, 7, 1, 11, 0, 0, 0, time.UTC))
+	_, _ = createPublishedTournamentEvent(t, svcCtx, "2026公开赛", model.EventNewsStatusLive, time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC), time.Date(2026, 4, 8, 0, 0, 0, 0, time.UTC), time.Date(2026, 4, 1, 11, 0, 0, 0, time.UTC))
+
+	logic := NewGetEventNewsListLogic(context.Background(), svcCtx)
+	resp, err := logic.GetEventNewsList(&types.GetEventNewsListReq{
+		Page:     1,
+		PageSize: 20,
+		Year:     2025,
+		Status:   -1,
+	})
+	if err != nil {
+		t.Fatalf("get list: %v", err)
+	}
+	if !resp.Success {
+		t.Fatalf("expected success, got %#v", resp)
+	}
+	if resp.Total != 1 || len(resp.List) != 1 {
+		t.Fatalf("expected one 2025 event, got %#v", resp)
+	}
+	if resp.List[0].Id != previousYearEvent.Id || resp.List[0].Title != previousYearEvent.Title {
+		t.Fatalf("expected 2025 event only, got %#v", resp.List[0])
+	}
+}
+
+func TestGetEventNewsListPrefersFromToOverYear(t *testing.T) {
+	svcCtx := newEventNewsTestSvc(t)
+	restoreNow := withEventNewsNow(time.Date(2026, 4, 7, 12, 0, 0, 0, time.UTC))
+	defer restoreNow()
+
+	_, windowEvent := createPublishedTournamentEvent(t, svcCtx, "2025巡回赛", model.EventNewsStatusLive, time.Date(2025, 10, 1, 0, 0, 0, 0, time.UTC), time.Date(2025, 10, 8, 0, 0, 0, 0, time.UTC), time.Date(2025, 10, 1, 11, 0, 0, 0, time.UTC))
+	_, _ = createPublishedTournamentEvent(t, svcCtx, "2026巡回赛", model.EventNewsStatusLive, time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), time.Date(2026, 10, 8, 0, 0, 0, 0, time.UTC), time.Date(2026, 10, 1, 11, 0, 0, 0, time.UTC))
+
+	logic := NewGetEventNewsListLogic(context.Background(), svcCtx)
+	resp, err := logic.GetEventNewsList(&types.GetEventNewsListReq{
+		Page:     1,
+		PageSize: 20,
+		Year:     2026,
+		From:     "2025-01-01",
+		To:       "2025-12-31",
+		Status:   -1,
+	})
+	if err != nil {
+		t.Fatalf("get list: %v", err)
+	}
+	if !resp.Success {
+		t.Fatalf("expected success, got %#v", resp)
+	}
+	if resp.Total != 1 || len(resp.List) != 1 {
+		t.Fatalf("expected one 2025 event, got %#v", resp)
+	}
+	if resp.List[0].Id != windowEvent.Id || resp.List[0].Title != windowEvent.Title {
+		t.Fatalf("expected from/to to take precedence over year, got %#v", resp.List[0])
+	}
+}
+
+func TestGetEventNewsListIncludesCrossYearOverlap(t *testing.T) {
+	svcCtx := newEventNewsTestSvc(t)
+	restoreNow := withEventNewsNow(time.Date(2026, 4, 7, 12, 0, 0, 0, time.UTC))
+	defer restoreNow()
+
+	_, overlapEvent := createPublishedTournamentEvent(t, svcCtx, "跨年赛事", model.EventNewsStatusLive, time.Date(2025, 12, 30, 0, 0, 0, 0, time.UTC), time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC), time.Date(2025, 12, 30, 11, 0, 0, 0, time.UTC))
+	_, _ = createPublishedTournamentEvent(t, svcCtx, "2025早期赛事", model.EventNewsStatusLive, time.Date(2025, 1, 10, 0, 0, 0, 0, time.UTC), time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC), time.Date(2025, 1, 10, 11, 0, 0, 0, time.UTC))
+
+	logic := NewGetEventNewsListLogic(context.Background(), svcCtx)
+	resp, err := logic.GetEventNewsList(&types.GetEventNewsListReq{
+		Page:     1,
+		PageSize: 20,
+		Year:     2026,
+		Status:   -1,
+	})
+	if err != nil {
+		t.Fatalf("get list: %v", err)
+	}
+	if !resp.Success {
+		t.Fatalf("expected success, got %#v", resp)
+	}
+	if resp.Total != 1 || len(resp.List) != 1 {
+		t.Fatalf("expected one overlapping event, got %#v", resp)
+	}
+	if resp.List[0].Id != overlapEvent.Id || resp.List[0].Title != overlapEvent.Title {
+		t.Fatalf("expected cross-year overlap event, got %#v", resp.List[0])
+	}
+}
+
+func TestGetEventNewsListRejectsInvalidDateParams(t *testing.T) {
+	svcCtx := newEventNewsTestSvc(t)
+	restoreNow := withEventNewsNow(time.Date(2026, 4, 7, 12, 0, 0, 0, time.UTC))
+	defer restoreNow()
+
+	createPublishedTournamentEvent(t, svcCtx, "2026公开赛", model.EventNewsStatusLive, time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC), time.Date(2026, 4, 8, 0, 0, 0, 0, time.UTC), time.Date(2026, 4, 1, 11, 0, 0, 0, time.UTC))
+
+	logic := NewGetEventNewsListLogic(context.Background(), svcCtx)
+
+	cases := []struct {
+		name string
+		req  *types.GetEventNewsListReq
+	}{
+		{
+			name: "only from",
+			req: &types.GetEventNewsListReq{
+				Page:     1,
+				PageSize: 20,
+				From:     "2026-01-01",
+				Status:   -1,
+			},
+		},
+		{
+			name: "only to",
+			req: &types.GetEventNewsListReq{
+				Page:     1,
+				PageSize: 20,
+				To:       "2026-12-31",
+				Status:   -1,
+			},
+		},
+		{
+			name: "to before from",
+			req: &types.GetEventNewsListReq{
+				Page:     1,
+				PageSize: 20,
+				From:     "2026-12-31",
+				To:       "2026-01-01",
+				Status:   -1,
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := logic.GetEventNewsList(tc.req)
+			if err != nil {
+				t.Fatalf("get list: %v", err)
+			}
+			if resp.Success {
+				t.Fatalf("expected failure response, got %#v", resp)
+			}
+			if resp.Total != 0 || len(resp.List) != 0 {
+				t.Fatalf("expected empty result, got %#v", resp)
+			}
+		})
 	}
 }
 

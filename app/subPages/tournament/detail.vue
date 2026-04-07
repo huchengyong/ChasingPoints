@@ -66,6 +66,11 @@
 							</view>
 							<view class="match-row">
 								<view class="player-side" :class="{ winner: match.winnerSide === 1 }">
+									<text
+										v-if="match.homeResultText"
+										class="player-result-tag"
+										:class="match.homeResultText === '胜' ? 'is-win' : 'is-lose'"
+									>{{ match.homeResultText }}</text>
 									<view class="player-portrait-frame" :class="{ winner: match.winnerSide === 1 }">
 										<image class="player-avatar" :src="match.homePlayerAvatar" mode="aspectFit"></image>
 									</view>
@@ -78,9 +83,14 @@
 									</view>
 								</view>
 								<view class="score-pill">
-									<text>{{ match.scoreText }}</text>
+									<text class="score-pill-text">{{ match.scoreText }}</text>
 								</view>
 								<view class="player-side player-side-right" :class="{ winner: match.winnerSide === 2 }">
+									<text
+										v-if="match.awayResultText"
+										class="player-result-tag"
+										:class="match.awayResultText === '胜' ? 'is-win' : 'is-lose'"
+									>{{ match.awayResultText }}</text>
 									<view class="player-portrait-frame" :class="{ winner: match.winnerSide === 2 }">
 										<image class="player-avatar" :src="match.awayPlayerAvatar" mode="aspectFit"></image>
 									</view>

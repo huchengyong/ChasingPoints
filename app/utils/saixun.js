@@ -295,6 +295,14 @@ const buildScoreText = (match) => {
   return scoreReady ? `${Number(match.home_score || 0)} : ${Number(match.away_score || 0)}` : '-'
 }
 
+const buildPlayerResultText = (winnerSide, side) => {
+  const normalizedWinnerSide = Number(winnerSide || 0)
+  const normalizedSide = Number(side || 0)
+  if (normalizedWinnerSide !== 1 && normalizedWinnerSide !== 2) return ''
+  if (normalizedSide !== 1 && normalizedSide !== 2) return ''
+  return normalizedWinnerSide === normalizedSide ? '胜' : '败'
+}
+
 const resolveEffectiveMatchStatus = (match = {}, startAt, now = Date.now()) => {
   const status = Number(match.status || 0)
   if (status !== 0) return status
@@ -330,11 +338,13 @@ const normalizeSaiXunMatch = (match = {}, now = Date.now()) => {
     homePlayerLastName: homePlayerParts.lastName,
     homePlayerFlagEmoji: String(match.home_player_flag_emoji || '').trim(),
     homePlayerAvatar: match.home_player_avatar || DEFAULT_PLAYER_AVATAR,
+    homeResultText: buildPlayerResultText(match.winner_side, 1),
     awayPlayerName: match.away_player_name || '待定',
     awayPlayerFirstName: awayPlayerParts.firstName,
     awayPlayerLastName: awayPlayerParts.lastName,
     awayPlayerFlagEmoji: String(match.away_player_flag_emoji || '').trim(),
     awayPlayerAvatar: match.away_player_avatar || DEFAULT_PLAYER_AVATAR,
+    awayResultText: buildPlayerResultText(match.winner_side, 2),
     scoreText: buildScoreText(match),
     winnerSide: Number(match.winner_side || 0),
     metaText: buildMatchMetaText(match),

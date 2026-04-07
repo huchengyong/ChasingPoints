@@ -1541,6 +1541,9 @@ type GetEventNewsListReq {
 	Status   int    `form:"status,optional,default=-1"`
 	GameType int    `form:"game_type,optional"`
 	City     string `form:"city,optional"`
+	Year     int    `form:"year,optional"`
+	From     string `form:"from,optional"`
+	To       string `form:"to,optional"`
 }
 
 type GetEventNewsListResp {

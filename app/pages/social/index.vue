@@ -8,6 +8,32 @@
       </view>
     </view>
 
+    <view class="filter-bar">
+      <view class="filter-chip" @tap="openYearSheet">
+        <text class="filter-chip-label">年份</text>
+        <text class="filter-chip-value">{{ filter.year }}年</text>
+      </view>
+      <view class="filter-chip" @tap="openDatePresetSheet">
+        <text class="filter-chip-label">日期</text>
+        <text class="filter-chip-value">{{ filterDateLabel }}</text>
+      </view>
+    </view>
+
+    <view v-if="showCustomDateEditor" class="custom-date-card">
+      <picker mode="date" :value="customDateDraft.from" @change="onCustomFromChange">
+        <view class="custom-date-field">
+          <text class="custom-date-label">开始日期</text>
+          <text class="custom-date-value">{{ customDateDraft.from }}</text>
+        </view>
+      </picker>
+      <picker mode="date" :value="customDateDraft.to" @change="onCustomToChange">
+        <view class="custom-date-field">
+          <text class="custom-date-label">结束日期</text>
+          <text class="custom-date-value">{{ customDateDraft.to }}</text>
+        </view>
+      </picker>
+    </view>
+
     <scroll-view
       scroll-y
       class="feed-scroll"
@@ -62,6 +88,15 @@ import { onShow } from '@dcloudio/uni-app'
 import { getEventNewsList } from '@/api/event-news.js'
 import { useThemeStore } from '@/store/theme.js'
 import { normalizeSaiXunCard } from '@/utils/saixun.js'
+import {
+  SAIXUN_DATE_PRESETS,
+  buildCurrentYearFilter,
+  buildCustomDateRange,
+  buildEventNewsListParams,
+  buildPresetDateRange,
+  buildYearOptions,
+  formatSaiXunFilterLabel
+} from '@/utils/saixun-filter.js'
 
 const themeStore = useThemeStore()
 
@@ -75,13 +110,20 @@ const pageSize = 10
 const total = ref(0)
 const hasMore = ref(false)
 const shouldRefreshOnShow = ref(true)
+const filter = ref(buildCurrentYearFilter(Date.now()))
+const customDateDraft = ref({
+  from: filter.value.from,
+  to: filter.value.to
+})
+
+const filterDateLabel = computed(() => formatSaiXunFilterLabel(filter.value))
+const yearOptions = computed(() => buildYearOptions(filter.value.year))
+const showCustomDateEditor = computed(() => filter.value.preset === 'custom')
 
 const fetchData = async ({ replace = false } = {}) => {
   try {
-    const listRes = await getEventNewsList({
-      page: page.value,
-      page_size: pageSize
-    }).catch(() => ({ success: false, list: [], total: 0 }))
+    const listRes = await getEventNewsList(buildEventNewsListParams(filter.value, page.value, pageSize))
+      .catch(() => ({ success: false, list: [], total: 0 }))
     const nextList = Array.isArray(listRes.list) ? listRes.list.map((item) => normalizeSaiXunCard(item)) : []
     list.value = replace ? nextList : [...list.value, ...nextList]
     total.value = Number(listRes.total || 0)
@@ -91,6 +133,24 @@ const fetchData = async ({ replace = false } = {}) => {
     loadingMore.value = false
     refreshing.value = false
   }
+}
+
+const applyFilter = async (nextFilter, { syncDraft = true } = {}) => {
+  filter.value = {
+    ...nextFilter
+  }
+  if (syncDraft) {
+    customDateDraft.value = {
+      from: filter.value.from,
+      to: filter.value.to
+    }
+  }
+  page.value = 1
+  list.value = []
+  total.value = 0
+  hasMore.value = false
+  loading.value = true
+  await fetchData({ replace: true })
 }
 
 const refreshData = async () => {
@@ -115,6 +175,70 @@ const loadMore = async () => {
 const openDetail = (id) => {
   if (!id) return
   uni.navigateTo({ url: `/subPages/tournament/detail?id=${id}` })
+}
+
+const openYearSheet = () => {
+  const options = yearOptions.value
+  if (!options.length) return
+
+  uni.showActionSheet({
+    itemList: options.map((item) => `${item}年`),
+    success: async (res) => {
+      const selectedYear = options[res.tapIndex]
+      if (!selectedYear || selectedYear === filter.value.year) return
+      await applyFilter({
+        year: selectedYear,
+        ...buildPresetDateRange(selectedYear, 'full_year')
+      })
+    }
+  })
+}
+
+const openDatePresetSheet = () => {
+  uni.showActionSheet({
+    itemList: SAIXUN_DATE_PRESETS.map((item) => item.label),
+    success: async (res) => {
+      const selected = SAIXUN_DATE_PRESETS[res.tapIndex]
+      if (!selected) return
+
+      if (selected.key === 'custom') {
+        filter.value = {
+          ...filter.value,
+          preset: 'custom'
+        }
+        customDateDraft.value = {
+          from: filter.value.from,
+          to: filter.value.to
+        }
+        return
+      }
+
+      await applyFilter({
+        year: filter.value.year,
+        ...buildPresetDateRange(filter.value.year, selected.key)
+      })
+    }
+  })
+}
+
+const onCustomFromChange = async (event) => {
+  const nextFrom = event?.detail?.value || customDateDraft.value.from
+  const nextFilter = buildCustomDateRange(filter.value.year, nextFrom, customDateDraft.value.to)
+  customDateDraft.value = {
+    from: nextFilter.from,
+    to: nextFilter.to
+  }
+  await applyFilter(nextFilter, { syncDraft: true })
+}
+
+const onCustomToChange = async (event) => {
+  const nextTo = event?.detail?.value || customDateDraft.value.to
+  const nextFilter = buildCustomDateRange(filter.value.year, customDateDraft.value.from, nextTo)
+  customDateDraft.value = {
+    from: nextFilter.from,
+    to: nextFilter.to
+  }
+  await applyFilter(nextFilter, { syncDraft: true })
 }
 
 onShow(() => {

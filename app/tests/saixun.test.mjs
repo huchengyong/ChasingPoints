@@ -140,6 +140,8 @@ test('buildSaiXunDetailRounds prioritizes live and upcoming rounds while hiding 
   assert.equal(rounds[0].matches[0].homePlayerAvatar, 'https://example.com/trump.png')
   assert.equal(rounds[0].matches[0].awayPlayerAvatar, DEFAULT_PLAYER_AVATAR)
   assert.equal(rounds[1].matches[0].scoreText, '10 : 8')
+  assert.equal(rounds[1].matches[0].homeResultText, '胜')
+  assert.equal(rounds[1].matches[0].awayResultText, '败')
   assert.equal(rounds[1].matches[0].homePlayerFirstName, 'Neil')
   assert.equal(rounds[1].matches[0].homePlayerLastName, 'Robertson')
   assert.equal(rounds[1].matches[0].homePlayerFlagEmoji, '🇦🇺')
@@ -187,6 +189,8 @@ test('buildSaiXunDetailRounds promotes overdue scored matches with winner to com
 
   assert.equal(rounds[0].matches[0].status, 2)
   assert.equal(rounds[0].matches[0].statusText, '已结束')
+  assert.equal(rounds[0].matches[0].homeResultText, '胜')
+  assert.equal(rounds[0].matches[0].awayResultText, '败')
 })
 
 test('buildSaiXunDetailRounds marks stale overdue matches as completed instead of live forever', () => {
@@ -219,4 +223,8 @@ test('buildSaiXunDetailRounds marks stale overdue matches as completed instead o
   assert.equal(rounds[0].matches[0].statusText, '进行中')
   assert.equal(rounds[0].matches[1].status, 2)
   assert.equal(rounds[0].matches[1].statusText, '已结束')
+  assert.equal(rounds[0].matches[0].homeResultText, '')
+  assert.equal(rounds[0].matches[0].awayResultText, '')
+  assert.equal(rounds[0].matches[1].homeResultText, '')
+  assert.equal(rounds[0].matches[1].awayResultText, '')
 })

@@ -1,4 +1,3 @@
--- +goose Up
 REPLACE INTO `players` (`id`, `source_type`, `source_player_id`, `first_name`, `last_name`, `display_name`, `avatar`, `country_code`, `flag_emoji`, `created_at`, `updated_at`, `deleted_at`) VALUES
   (1,'official','e2f3cfe7-6138-4ce6-b1dc-77dcc1d0a65f','Judd','Trump','Judd Trump','https://images.gc.wstservices.co.uk/fit-in/400x600/b217a330-9b95-11ee-a374-adc81d8d39cb.png','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-03 10:03:09','2026-04-06 12:45:06',NULL),
   (2,'official','c37aba27-5b12-4fae-8a8b-9e749c7a25f3','Mark','Allen','Mark Allen','https://images.gc.wstservices.co.uk/fit-in/400x600/159b2430-9a89-11ee-8ed5-578a471e1018.png','gb-nir','🇬🇧','2026-04-03 10:03:09','2026-04-06 12:47:02',NULL),
@@ -83,9 +82,9 @@ REPLACE INTO `players` (`id`, `source_type`, `source_player_id`, `first_name`, `
   (81,'official','823ca254-3174-4d2f-bbd3-3c28a69b5775','Onyee','Ng','Onyee Ng','https://images.gc.wstservices.co.uk/fit-in/400x600/789c7990-1783-11ef-a681-3789170a2be7.png','HK','🇭🇰','2026-04-04 10:01:54','2026-04-06 20:19:48',NULL),
   (82,'official','eae3baf0-47c3-494c-8551-eefc378cd0ce','Florian','Nuessle','Florian Nuessle','https://images.gc.wstservices.co.uk/fit-in/400x600/0d0f3b20-5262-11f0-ae96-7d412eca461f.png','AT','🇦🇹','2026-04-04 10:01:54','2026-04-06 20:19:48',NULL),
   (83,'official','ae9dffcf-4e09-472a-848e-21bf165f975e','Mink','Nutcharut','Mink Nutcharut','https://images.gc.wstservices.co.uk/fit-in/400x600/c75b2e50-9b73-11ee-913a-4bc98ac612d5.png','TH','🇹🇭','2026-04-04 10:01:54','2026-04-06 20:19:48',NULL),
-  (84,'official','c2809815-3bd0-41fa-b727-458e22c98070','Joe','O\\'Connor','Joe O\\'Connor','https://images.gc.wstservices.co.uk/fit-in/400x600/c6823e00-9b74-11ee-913a-4bc98ac612d5.png','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-04 10:01:54','2026-04-06 12:45:14',NULL),
-  (85,'official','8195961a-a4b7-4ba7-960b-08ab4778dbd3','Martin','O\\'Donnell','Martin O\\'Donnell','https://images.gc.wstservices.co.uk/fit-in/400x600/2dd3fad0-9b75-11ee-8476-6bda6da718a2.png','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-04 10:01:54','2026-04-06 12:45:14',NULL),
-  (86,'official','226c7294-655e-4925-bcde-17330ddfc438','Ronnie','O\\'Sullivan','Ronnie O\\'Sullivan','https://images.gc.wstservices.co.uk/fit-in/400x600/465528d0-9f45-11ee-891e-cf1c675ba461.png','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-04 10:01:54','2026-04-06 12:45:14',NULL),
+  (84,'official','c2809815-3bd0-41fa-b727-458e22c98070','Joe','O\'Connor','Joe O\'Connor','https://images.gc.wstservices.co.uk/fit-in/400x600/c6823e00-9b74-11ee-913a-4bc98ac612d5.png','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-04 10:01:54','2026-04-06 12:45:14',NULL),
+  (85,'official','8195961a-a4b7-4ba7-960b-08ab4778dbd3','Martin','O\'Donnell','Martin O\'Donnell','https://images.gc.wstservices.co.uk/fit-in/400x600/2dd3fad0-9b75-11ee-8476-6bda6da718a2.png','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-04 10:01:54','2026-04-06 12:45:14',NULL),
+  (86,'official','226c7294-655e-4925-bcde-17330ddfc438','Ronnie','O\'Sullivan','Ronnie O\'Sullivan','https://images.gc.wstservices.co.uk/fit-in/400x600/465528d0-9f45-11ee-891e-cf1c675ba461.png','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-04 10:01:54','2026-04-06 12:45:14',NULL),
   (87,'official','19ce247e-1824-4f94-8fe3-c94ce4056802','Jackson','Page','Jackson Page','https://images.gc.wstservices.co.uk/fit-in/400x600/080d1870-9b7c-11ee-9d0c-211390f8cca2.png','gb-wls','🏴󠁧󠁢󠁷󠁬󠁳󠁿','2026-04-04 10:01:54','2026-04-06 12:43:20',NULL),
   (88,'official','9e0b1245-cc2c-4dab-ad27-46db80701684','Lei','Peifan','Lei Peifan','https://images.gc.wstservices.co.uk/fit-in/400x600/80a1e760-5279-11f0-8f00-991a3abcf914.png','CN','🇨🇳','2026-04-04 10:01:54','2026-04-06 20:19:48',NULL),
   (89,'official','3481ae79-48df-4da2-ae40-575f21b0bc12','Yao','Pengcheng','Yao Pengcheng','https://images.gc.wstservices.co.uk/fit-in/400x600/8f5e9b20-5262-11f0-ae96-7d412eca461f.png','CN','🇨🇳','2026-04-04 10:01:54','2026-04-06 20:19:48',NULL),
@@ -139,7 +138,7 @@ REPLACE INTO `players` (`id`, `source_type`, `source_player_id`, `first_name`, `
   (137,'official','0c39e352-dd38-4ac1-9603-aee7227fa845','Shaun','Liu','Shaun Liu','','HK','🇭🇰','2026-04-06 20:19:48','2026-04-06 20:19:48',NULL),
   (138,'official','0e9da06e-a2ed-4580-aded-4ebbf63228af','Jiarui','Xu','Jiarui Xu','','CN','🇨🇳','2026-04-06 20:19:48','2026-04-06 20:19:48',NULL),
   (139,'official','0ffdae01-5fad-40c8-8b9f-8eb3a942ecac','Hammad','Miah','Hammad Miah','https://images.gc.wstservices.co.uk/fit-in/400x600/5c7359d0-9b70-11ee-8947-393ebe620596.png','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:14',NULL),
-  (140,'official','103a2c63-035c-41cf-b10f-2820d1375d24','O\\'Shay','Scott','O\\'Shay Scott','https://images.gc.wstservices.co.uk/fit-in/400x600/366f59b0-2741-11f0-9e47-bfbad92fc5d9.png','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:14',NULL),
+  (140,'official','103a2c63-035c-41cf-b10f-2820d1375d24','O\'Shay','Scott','O\'Shay Scott','https://images.gc.wstservices.co.uk/fit-in/400x600/366f59b0-2741-11f0-9e47-bfbad92fc5d9.png','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:14',NULL),
   (141,'official','10974103-0c8c-4a9c-98bb-ad547020a52f','Musab','Sayegh','Musab Sayegh','https://images.gc.wstservices.co.uk/fit-in/400x600/260398a0-661d-11f0-95b0-d74bac758867.png','SA','🇸🇦','2026-04-06 20:19:48','2026-04-06 20:19:48',NULL),
   (142,'official','1217ca89-793f-440c-ae92-8f1208e0584b','James','Burrett','James Burrett','','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:14',NULL),
   (143,'official','13338003-aeb3-4a1f-a277-ffbd8322ff74','Abdullah','Alshammari','Abdullah Alshammari','','SA','🇸🇦','2026-04-06 20:19:48','2026-04-06 20:19:48',NULL),
@@ -161,7 +160,7 @@ REPLACE INTO `players` (`id`, `source_type`, `source_player_id`, `first_name`, `
   (159,'official','28512886-e399-4cf6-bd3d-3afa077a8ffa','Rory','McLeod','Rory McLeod','https://images.gc.wstservices.co.uk/fit-in/400x600/847a9000-2726-11ef-b925-850c32cbab3e.png','JM','🇯🇲','2026-04-06 20:19:48','2026-04-06 20:19:48',NULL),
   (160,'official','286d8c62-0fd4-4638-b53d-0d78f58e3d92','David','Brown','David Brown','','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:21',NULL),
   (161,'official','2870c25d-87cd-4ba4-b2f1-aee748d4bce0','Filips','Kalnins','Filips Kalnins','','LV','🇱🇻','2026-04-06 20:19:48','2026-04-06 20:19:48',NULL),
-  (162,'official','28827252-f386-45b5-b15c-60f467d8135d','Jack','O\\'Brien','Jack O\\'Brien','https://images.gc.wstservices.co.uk/fit-in/400x600/c3d79b70-c46a-11f0-9553-a146d7d7ef51.png','IE','🇮🇪','2026-04-06 20:19:48','2026-04-06 20:19:48',NULL),
+  (162,'official','28827252-f386-45b5-b15c-60f467d8135d','Jack','O\'Brien','Jack O\'Brien','https://images.gc.wstservices.co.uk/fit-in/400x600/c3d79b70-c46a-11f0-9553-a146d7d7ef51.png','IE','🇮🇪','2026-04-06 20:19:48','2026-04-06 20:19:48',NULL),
   (163,'official','2888a366-db85-4f6b-814f-8c239c061de3','Zachary','Richardson','Zachary Richardson','https://images.gc.wstservices.co.uk/fit-in/400x600/a29f9df0-d823-11f0-9987-13a030ac3a38.png','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:21',NULL),
   (164,'official','2a1438c2-07fc-4155-9eee-c61c9517c3c2','Oliver','Briffett-Payne','Oliver Briffett-Payne','','gb-wls','🏴󠁧󠁢󠁷󠁬󠁳󠁿','2026-04-06 20:19:48','2026-04-06 12:43:20',NULL),
   (165,'official','31fce609-78a7-48b6-b893-b346d3b3c0a6','Gary','Filtness','Gary Filtness','','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:21',NULL),
@@ -191,7 +190,7 @@ REPLACE INTO `players` (`id`, `source_type`, `source_player_id`, `first_name`, `
   (189,'official','4e6a4eb3-d2b6-4a6a-ba0d-b8d70ec7af5c','Umar','Ali','Umar Ali','','NO','🇳🇴','2026-04-06 20:19:48','2026-04-06 20:19:48',NULL),
   (190,'official','4fda2c2a-f6b7-4f1e-afc6-e8971521b622','Alex','Millington','Alex Millington','','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:21',NULL),
   (191,'official','500cd8c3-84db-4088-8181-5a199c0b2dee','Ellise','Scott','Ellise Scott','https://images.gc.wstservices.co.uk/fit-in/400x600/b6e87360-c48f-11f0-abe1-3d633f4949a2.png','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:21',NULL),
-  (192,'official','50da4361-072d-418d-a2a0-721866983d02','Sean','O\\'Sullivan','Sean O\\'Sullivan','https://images.gc.wstservices.co.uk/fit-in/400x600/e9205630-9b7a-11ee-9d0c-211390f8cca2.png','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:21',NULL),
+  (192,'official','50da4361-072d-418d-a2a0-721866983d02','Sean','O\'Sullivan','Sean O\'Sullivan','https://images.gc.wstservices.co.uk/fit-in/400x600/e9205630-9b7a-11ee-9d0c-211390f8cca2.png','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:21',NULL),
   (193,'official','553222db-d4d4-42f3-8566-601eade98123','William','Hurley','William Hurley','','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:21',NULL),
   (194,'official','572dccd9-80ca-4e1c-8566-48990840723d','Ronan','Mcguirk','Ronan Mcguirk','','IE','🇮🇪','2026-04-06 20:19:48','2026-04-06 20:19:48',NULL),
   (195,'official','5a750a11-4f39-4467-95ae-4f413cc26fcb','Brian','Ochoiski','Brian Ochoiski','','FR','🇫🇷','2026-04-06 20:19:48','2026-04-06 20:19:48',NULL),
@@ -272,7 +271,7 @@ REPLACE INTO `players` (`id`, `source_type`, `source_player_id`, `first_name`, `
   (270,'official','b57f55d0-382f-4ffb-b767-6f3beb3dc8f0','Yuhang','Wang','Yuhang Wang','','CN','🇨🇳','2026-04-06 20:19:48','2026-04-06 20:19:48',NULL),
   (271,'official','b6350368-74fc-4adf-92c8-ff9126e90541','Alfie','Burden','Alfie Burden','https://images.gc.wstservices.co.uk/fit-in/400x600/abdea4c0-9a8f-11ee-a69b-29b77f2b676c.png','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:21',NULL),
   (272,'official','b6a26114-07e9-4d83-a91a-dbbd8b7ead43','Alexander','Widau','Alexander Widau','','DE','🇩🇪','2026-04-06 20:19:48','2026-04-06 20:19:48',NULL),
-  (273,'official','b6f24593-5d7d-4e32-8f10-68bd7d2a2df5','Phil','O\\'Kane','Phil O\\'Kane','','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:25',NULL),
+  (273,'official','b6f24593-5d7d-4e32-8f10-68bd7d2a2df5','Phil','O\'Kane','Phil O\'Kane','','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:25',NULL),
   (274,'official','b78a2c63-ea25-49ba-a3f6-a135d4d7c95d','Faizaan','Mohammed','Faizaan Mohammed','','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:25',NULL),
   (275,'official','b95907dd-e602-4448-9c78-00c865f4bcd5','Manasawin','Phetmalaikul','Manasawin Phetmalaikul','https://images.gc.wstservices.co.uk/fit-in/400x600/58c1d7a0-9b7d-11ee-b817-916de7e0a6fb.png','TH','🇹🇭','2026-04-06 20:19:48','2026-04-06 20:19:48',NULL),
   (276,'official','b9bb6478-9005-4bc2-89c5-79e15e56ee40','Marc','Shaw','Marc Shaw','','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:25',NULL),
@@ -281,7 +280,7 @@ REPLACE INTO `players` (`id`, `source_type`, `source_player_id`, `first_name`, `
   (279,'official','bd5ffb99-3a50-41a1-ac91-e2eb185cbc8c','Joseph','Casha','Joseph Casha','','MT','🇲🇹','2026-04-06 20:19:48','2026-04-06 20:19:48',NULL),
   (280,'official','be3d9bac-23b8-409b-9cd7-820e2ec6ca56','Velian','Dimitrov','Velian Dimitrov','','BG','🇧🇬','2026-04-06 20:19:48','2026-04-06 20:19:48',NULL),
   (281,'official','c283ce7b-ed09-47f7-81ab-a0bc28a65918','Patrick','Whelan','Patrick Whelan','https://images.gc.wstservices.co.uk/fit-in/400x600/3a1aea40-5caf-11f0-984a-1bc770f9d174.png','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:25',NULL),
-  (282,'official','c4a391c1-7962-4c67-857a-bbeba4f007d0','Jamie','O\\'Neill','Jamie O\\'Neill','','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:25',NULL),
+  (282,'official','c4a391c1-7962-4c67-857a-bbeba4f007d0','Jamie','O\'Neill','Jamie O\'Neill','','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:25',NULL),
   (283,'official','c6eb9f6e-bc19-4d00-b6bf-e48098609dea','Aidan','Murphy','Aidan Murphy','','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:25',NULL),
   (284,'official','c73bbf3e-7b57-463b-a346-145492034684','Nigel','Clarke','Nigel Clarke','','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:25',NULL),
   (285,'official','c834fc44-ade8-487b-811b-f948597aa0f7','John','Pritchett','John Pritchett','','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:25',NULL),
@@ -332,5 +331,3 @@ REPLACE INTO `players` (`id`, `source_type`, `source_player_id`, `first_name`, `
   (330,'official','ff99925c-ff30-4ab9-a0d7-8af53983d25a','Andy','Neck','Andy Neck','','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:29',NULL),
   (331,'official','ffa959a1-c365-4c01-b8f2-cc77c633152a','Stuart','Watson','Stuart Watson','','gb-eng','🏴󠁧󠁢󠁥󠁮󠁧󠁿','2026-04-06 20:19:48','2026-04-06 12:45:29',NULL);
 
--- +goose Down
-DELETE FROM `players` WHERE `id` BETWEEN 1 AND 331;

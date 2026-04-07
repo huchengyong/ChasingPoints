@@ -30,19 +30,27 @@ func (l *GetEventNewsListLogic) GetEventNewsList(req *types.GetEventNewsListReq)
 		return &types.GetEventNewsListResp{Success: false, List: []types.EventNewsInfo{}}, nil
 	}
 
+	dateWindow, err := buildEventNewsDateWindow(req, eventNewsNow())
+	if err != nil {
+		l.Logger.Errorf("获取赛事情报列表参数无效: req=%+v err=%v", req, err)
+		return &types.GetEventNewsListResp{Success: false, List: []types.EventNewsInfo{}}, nil
+	}
+
 	items, err := l.svcCtx.EventNewsModel.FindPublishedMatching(req.GameType, req.Status, req.City)
 	if err != nil {
 		l.Logger.Errorf("获取赛事情报列表失败: req=%+v err=%v", req, err)
 		return &types.GetEventNewsListResp{Success: false, List: []types.EventNewsInfo{}}, nil
 	}
 
-	sortEventNewsItems(items, eventNewsNow())
-	pageItems := paginateEventNewsItems(items, req.Page, req.PageSize)
-	tournamentMap, matchMap, err := l.loadTournamentData(pageItems)
+	tournamentMap, matchMap, err := l.loadTournamentData(items)
 	if err != nil {
 		l.Logger.Errorf("获取赛事情报赛事数据失败: req=%+v err=%v", req, err)
 		return &types.GetEventNewsListResp{Success: false, List: []types.EventNewsInfo{}}, nil
 	}
+
+	items = filterEventNewsItemsByDateWindow(items, tournamentMap, dateWindow)
+	sortEventNewsItems(items, eventNewsNow())
+	pageItems := paginateEventNewsItems(items, req.Page, req.PageSize)
 
 	respItems := make([]types.EventNewsInfo, 0, len(pageItems))
 	for _, item := range pageItems {

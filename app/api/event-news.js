@@ -8,6 +8,9 @@ import { get } from '@/utils/request.js'
  * @param {Object} params 查询参数
  * @param {number} params.page 页码
  * @param {number} params.page_size 每页条数
+ * @param {number} params.year 自然年（可选）
+ * @param {string} params.from 开始日期 YYYY-MM-DD（可选）
+ * @param {string} params.to 结束日期 YYYY-MM-DD（可选）
  * @param {number} params.game_type 球种（可选）
  * @param {number} params.status 状态（可选）
  * @param {string} params.city 城市（可选）
