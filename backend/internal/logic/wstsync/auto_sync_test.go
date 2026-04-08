@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"chasing_points/internal/config"
 	"chasing_points/internal/model"
 )
 
@@ -46,6 +45,18 @@ func (f *fakeAutoSyncRunner) Sync(ctx context.Context, params SyncParams) (*Sync
 	return &SyncSummary{}, nil
 }
 
+type fakeHotSyncChecker struct {
+	shouldRun bool
+	err       error
+}
+
+func (f *fakeHotSyncChecker) check(ctx context.Context, now time.Time) (bool, error) {
+	if f.err != nil {
+		return false, f.err
+	}
+	return f.shouldRun, nil
+}
+
 func TestAutoSyncWorkerBuildSyncParamsUsesSavedCursorWithLookback(t *testing.T) {
 	lastSuccess := time.Date(2026, 4, 5, 14, 0, 0, 0, time.UTC)
 	store := &fakeAutoSyncStateStore{
@@ -55,12 +66,7 @@ func TestAutoSyncWorkerBuildSyncParamsUsesSavedCursorWithLookback(t *testing.T) 
 		},
 	}
 	runner := &fakeAutoSyncRunner{}
-	worker := NewAutoSyncWorkerWithDeps(store, runner, config.WSTSyncConfig{
-		IntervalMinutes: 720,
-		LookbackDays:    30,
-		LookaheadDays:   7,
-		Publish:         true,
-	})
+	worker := NewAutoSyncWorkerWithDeps(autoSyncJobName, store, runner, 720, 30, 7, true, true, nil)
 
 	now := time.Date(2026, 4, 8, 9, 30, 0, 0, time.UTC)
 	worker.now = func() time.Time { return now }
@@ -83,12 +89,7 @@ func TestAutoSyncWorkerBuildSyncParamsUsesSavedCursorWithLookback(t *testing.T) 
 func TestAutoSyncWorkerRunOncePersistsCursorOnlyAfterSuccessfulSync(t *testing.T) {
 	store := &fakeAutoSyncStateStore{}
 	runner := &fakeAutoSyncRunner{}
-	worker := NewAutoSyncWorkerWithDeps(store, runner, config.WSTSyncConfig{
-		IntervalMinutes: 720,
-		LookbackDays:    30,
-		LookaheadDays:   7,
-		Publish:         true,
-	})
+	worker := NewAutoSyncWorkerWithDeps(autoSyncJobName, store, runner, 720, 30, 7, true, true, nil)
 
 	runAt := time.Date(2026, 4, 8, 11, 0, 0, 0, time.UTC)
 	worker.now = func() time.Time { return runAt }
@@ -110,5 +111,52 @@ func TestAutoSyncWorkerRunOncePersistsCursorOnlyAfterSuccessfulSync(t *testing.T
 	}
 	if store.lastSaved != nil {
 		t.Fatalf("expected cursor unchanged on failure, got %#v", store.lastSaved)
+	}
+}
+
+func TestHotAutoSyncWorkerUsesRollingWindowWithoutCursorPersistence(t *testing.T) {
+	store := &fakeAutoSyncStateStore{
+		state: &model.WSTSyncJobState{
+			JobName:              hotAutoSyncJobName,
+			LastSuccessfulSyncAt: func() *time.Time { value := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC); return &value }(),
+		},
+	}
+	runner := &fakeAutoSyncRunner{}
+	checker := &fakeHotSyncChecker{shouldRun: true}
+	worker := NewAutoSyncWorkerWithDeps(hotAutoSyncJobName, store, runner, 15, 2, 7, true, false, checker.check)
+
+	runAt := time.Date(2026, 4, 8, 11, 0, 0, 0, time.UTC)
+	worker.now = func() time.Time { return runAt }
+
+	if err := worker.RunOnce(context.Background()); err != nil {
+		t.Fatalf("run once: %v", err)
+	}
+	if len(runner.params) != 1 {
+		t.Fatalf("expected runner called once, got %d", len(runner.params))
+	}
+	wantFrom := time.Date(2026, 4, 6, 0, 0, 0, 0, time.UTC)
+	wantTo := time.Date(2026, 4, 15, 0, 0, 0, 0, time.UTC)
+	if runner.params[0].From == nil || !runner.params[0].From.Equal(wantFrom) {
+		t.Fatalf("expected hot sync from %v, got %#v", wantFrom, runner.params[0].From)
+	}
+	if runner.params[0].To == nil || !runner.params[0].To.Equal(wantTo) {
+		t.Fatalf("expected hot sync to %v, got %#v", wantTo, runner.params[0].To)
+	}
+	if store.lastSaved != nil {
+		t.Fatalf("expected hot sync to skip cursor persistence, got %#v", store.lastSaved)
+	}
+}
+
+func TestHotAutoSyncWorkerSkipsWhenNoHotTargets(t *testing.T) {
+	store := &fakeAutoSyncStateStore{}
+	runner := &fakeAutoSyncRunner{}
+	checker := &fakeHotSyncChecker{shouldRun: false}
+	worker := NewAutoSyncWorkerWithDeps(hotAutoSyncJobName, store, runner, 15, 2, 7, true, false, checker.check)
+
+	if err := worker.RunOnce(context.Background()); err != nil {
+		t.Fatalf("run once: %v", err)
+	}
+	if len(runner.params) != 0 {
+		t.Fatalf("expected no sync call when no hot targets, got %d", len(runner.params))
 	}
 }

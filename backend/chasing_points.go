@@ -62,6 +62,9 @@ func main() {
 	}
 	if c.WSTSync.Enabled {
 		go wstsync.NewAutoSyncWorker(svcCtx, c.WSTSync).Start(context.Background())
+		if c.WSTSync.HotEnabled {
+			go wstsync.NewHotAutoSyncWorker(svcCtx, c.WSTSync).Start(context.Background())
+		}
 	}
 
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)

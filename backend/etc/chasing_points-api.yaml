@@ -76,6 +76,10 @@ WSTSync:
   LookbackDays: 30
   LookaheadDays: 7
   Publish: true
+  HotEnabled: true
+  HotIntervalMinutes: 15
+  HotLookbackDays: 2
+  HotLookaheadDays: 7
 
 Log:
   Encoding: plain

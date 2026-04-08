@@ -192,10 +192,10 @@ func mapEventNewsInfo(item model.EventNews, tournament *model.Tournament, matche
 		resp.EndDate = item.EndDate.Format(eventNewsDateLayout)
 	}
 	if item.StartTime != nil {
-		resp.StartTime = formatUTCDisplayTime(item.StartTime)
+		resp.StartTime = formatDisplayTimeBySource(item.SourceType, item.StartTime)
 	}
 	if item.EndTime != nil {
-		resp.EndTime = formatUTCDisplayTime(item.EndTime)
+		resp.EndTime = formatDisplayTimeBySource(item.SourceType, item.EndTime)
 	}
 	if item.SortTime != nil {
 		resp.SortTime = item.SortTime.Format(eventNewsTimeLayout)
@@ -231,10 +231,10 @@ func mapEventNewsInfo(item model.EventNews, tournament *model.Tournament, matche
 			resp.EndDate = tournament.EndDate.Format(eventNewsDateLayout)
 		}
 		if resp.StartTime == "" && tournament.StartTime != nil {
-			resp.StartTime = formatUTCDisplayTime(tournament.StartTime)
+			resp.StartTime = formatDisplayTimeBySource(tournament.SourceType, tournament.StartTime)
 		}
 		if resp.EndTime == "" && tournament.EndTime != nil {
-			resp.EndTime = formatUTCDisplayTime(tournament.EndTime)
+			resp.EndTime = formatDisplayTimeBySource(tournament.SourceType, tournament.EndTime)
 		}
 	}
 	if resp.TournamentName == "" {
@@ -296,7 +296,7 @@ func mapEventNewsMatchInfo(eventID int64, item model.TournamentMatch, players ma
 		UpdatedAt:           item.UpdatedAt.Format(eventNewsTimeLayout),
 	}
 	if item.StartTime != nil {
-		resp.StartTime = formatUTCDisplayTime(item.StartTime)
+		resp.StartTime = formatDisplayTimeBySource(item.SourceType, item.StartTime)
 	}
 	return resp
 }
@@ -306,7 +306,7 @@ func eventNewsEffectiveTime(item model.EventNews) time.Time {
 	case item.SortTime != nil && !item.SortTime.IsZero():
 		return item.SortTime.UTC()
 	case item.StartTime != nil && !item.StartTime.IsZero():
-		return reinterpretStoredUTC(*item.StartTime)
+		return normalizeDisplayTimeBySource(item.SourceType, *item.StartTime)
 	case item.StartDate != nil && !item.StartDate.IsZero():
 		return item.StartDate.UTC()
 	default:
@@ -412,10 +412,10 @@ func mapTournamentInfo(item *model.Tournament) *types.TournamentInfo {
 		info.EndDate = item.EndDate.Format(eventNewsDateLayout)
 	}
 	if item.StartTime != nil {
-		info.StartTime = formatUTCDisplayTime(item.StartTime)
+		info.StartTime = formatDisplayTimeBySource(item.SourceType, item.StartTime)
 	}
 	if item.EndTime != nil {
-		info.EndTime = formatUTCDisplayTime(item.EndTime)
+		info.EndTime = formatDisplayTimeBySource(item.SourceType, item.EndTime)
 	}
 	if info.EndDate == "" {
 		info.EndDate = info.StartDate
@@ -582,6 +582,33 @@ func formatUTCDisplayTime(value *time.Time) string {
 		return ""
 	}
 	return reinterpretStoredUTC(*value).In(shanghaiLocation).Format(time.RFC3339)
+}
+
+func normalizeStoredShanghaiClock(value time.Time) time.Time {
+	return time.Date(
+		value.Year(),
+		value.Month(),
+		value.Day(),
+		value.Hour(),
+		value.Minute(),
+		value.Second(),
+		value.Nanosecond(),
+		shanghaiLocation,
+	)
+}
+
+func normalizeDisplayTimeBySource(sourceType string, value time.Time) time.Time {
+	if strings.EqualFold(strings.TrimSpace(sourceType), "official") {
+		return normalizeStoredShanghaiClock(value)
+	}
+	return reinterpretStoredUTC(value)
+}
+
+func formatDisplayTimeBySource(sourceType string, value *time.Time) string {
+	if value == nil || value.IsZero() {
+		return ""
+	}
+	return normalizeDisplayTimeBySource(sourceType, *value).In(shanghaiLocation).Format(time.RFC3339)
 }
 
 func firstNonZeroInt64(values ...int64) int64 {

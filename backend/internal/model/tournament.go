@@ -121,6 +121,38 @@ func (m *TournamentModel) FindBySourceTournamentIds(sourceType string, sourceTou
 	return result, nil
 }
 
+func (m *TournamentModel) HasOfficialTournamentsNeedingHotSync(now time.Time, lookbackDays, lookaheadDays int) (bool, error) {
+	if lookbackDays < 0 {
+		lookbackDays = 0
+	}
+	if lookaheadDays < 0 {
+		lookaheadDays = 0
+	}
+
+	fromDate := now.UTC().AddDate(0, 0, -lookbackDays).Format("2006-01-02")
+	toDate := now.UTC().AddDate(0, 0, lookaheadDays).Format("2006-01-02")
+
+	var count int64
+	err := m.db.Model(&Tournament{}).
+		Where("source_type = ?", "official").
+		Where(
+			`status IN (?, ?) OR (
+				COALESCE(end_date, start_date) IS NOT NULL AND
+				COALESCE(end_date, start_date) >= ? AND
+				COALESCE(start_date, end_date) <= ?
+			)`,
+			0,
+			1,
+			fromDate,
+			toDate,
+		).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 func (m *TournamentModel) FindList(page, pageSize int, city string, gameType, status int, useStatusFilter bool) ([]Tournament, int64, error) {
 	page, pageSize = normalizePage(page, pageSize)
 	offset := (page - 1) * pageSize

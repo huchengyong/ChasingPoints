@@ -539,3 +539,62 @@ func TestGetEventNewsViewReturnsEventTournamentAndMatches(t *testing.T) {
 		t.Fatalf("expected away player name parts and flag, got %#v", resp.Matches[0])
 	}
 }
+
+func TestGetEventNewsViewFormatsOfficialMatchStartTimeWithoutExtraTimezoneShift(t *testing.T) {
+	svcCtx := newEventNewsTestSvc(t)
+
+	event := createEvent(t, svcCtx, &model.EventNews{
+		Title:      "Halo World Championship 2026 Qualifiers",
+		GameType:   1,
+		SourceType: "official",
+		SourceName: "WST",
+		Published:  true,
+		Status:     model.EventNewsStatusLive,
+	})
+
+	tournament := &model.Tournament{
+		CreatorId:          0,
+		Name:               "Halo World Championship 2026 Qualifiers",
+		GameType:           1,
+		Status:             1,
+		SourceType:         "official",
+		SourceTournamentId: "wst-qualifiers",
+	}
+	if err := svcCtx.TournamentModel.Create(tournament); err != nil {
+		t.Fatalf("create tournament: %v", err)
+	}
+	if err := svcCtx.EventNewsModel.UpdateTournamentBinding(event.Id, tournament.Id); err != nil {
+		t.Fatalf("bind tournament: %v", err)
+	}
+
+	matchStart := time.Date(2026, 4, 8, 17, 0, 0, 0, shanghaiLocation)
+	if err := svcCtx.TournamentMatchModel.Create(&model.TournamentMatch{
+		TournamentId:   tournament.Id,
+		SourceType:     "official",
+		SourceMatchId:  "match-grace-hugill",
+		RoundName:      "Round 1",
+		RoundOrder:     10,
+		MatchOrder:     25,
+		StartTime:      &matchStart,
+		Status:         1,
+		BestOf:         19,
+		HomePlayerName: "David Grace",
+		AwayPlayerName: "Ashley Hugill",
+		HomeScore:      0,
+		AwayScore:      1,
+	}); err != nil {
+		t.Fatalf("create tournament match: %v", err)
+	}
+
+	logic := NewGetEventNewsViewLogic(context.Background(), svcCtx)
+	resp, err := logic.GetEventNewsView(&types.GetEventNewsViewReq{EventId: event.Id})
+	if err != nil {
+		t.Fatalf("get event news view: %v", err)
+	}
+	if len(resp.Matches) != 1 {
+		t.Fatalf("expected one match, got %#v", resp.Matches)
+	}
+	if resp.Matches[0].StartTime != "2026-04-08T17:00:00+08:00" {
+		t.Fatalf("expected official match shanghai wall clock output, got %#v", resp.Matches[0].StartTime)
+	}
+}

@@ -69,10 +69,10 @@ func buildAdminEventNewsInfo(item model.EventNews, tournament *model.Tournament,
 		info.EndDate = item.EndDate.Format(adminEventNewsDateLayout)
 	}
 	if item.StartTime != nil {
-		info.StartTime = reinterpretAdminUTC(*item.StartTime).In(adminShanghaiLocation).Format(adminEventNewsTimeLayout)
+		info.StartTime = formatAdminDisplayTime(item.SourceType, item.StartTime)
 	}
 	if item.EndTime != nil {
-		info.EndTime = reinterpretAdminUTC(*item.EndTime).In(adminShanghaiLocation).Format(adminEventNewsTimeLayout)
+		info.EndTime = formatAdminDisplayTime(item.SourceType, item.EndTime)
 	}
 	if item.SortTime != nil {
 		info.SortTime = reinterpretAdminUTC(*item.SortTime).In(adminShanghaiLocation).Format(adminEventNewsTimeLayout)
@@ -108,10 +108,10 @@ func buildAdminEventNewsInfo(item model.EventNews, tournament *model.Tournament,
 			info.EndDate = tournament.EndDate.Format(adminEventNewsDateLayout)
 		}
 		if info.StartTime == "" && tournament.StartTime != nil {
-			info.StartTime = reinterpretAdminUTC(*tournament.StartTime).In(adminShanghaiLocation).Format(adminEventNewsTimeLayout)
+			info.StartTime = formatAdminDisplayTime(tournament.SourceType, tournament.StartTime)
 		}
 		if info.EndTime == "" && tournament.EndTime != nil {
-			info.EndTime = reinterpretAdminUTC(*tournament.EndTime).In(adminShanghaiLocation).Format(adminEventNewsTimeLayout)
+			info.EndTime = formatAdminDisplayTime(tournament.SourceType, tournament.EndTime)
 		}
 	}
 	if info.TournamentName == "" {
@@ -425,7 +425,7 @@ func buildAdminEventNewsMatchInfo(eventID int64, item model.TournamentMatch) typ
 		UpdatedAt:      item.UpdatedAt.Format(adminEventNewsTimeLayout),
 	}
 	if item.StartTime != nil {
-		info.StartTime = reinterpretAdminUTC(*item.StartTime).In(adminShanghaiLocation).Format(adminEventNewsTimeLayout)
+		info.StartTime = formatAdminDisplayTime(item.SourceType, item.StartTime)
 	}
 	return info
 }
@@ -485,6 +485,29 @@ func reinterpretAdminUTC(value time.Time) time.Time {
 		value.Nanosecond(),
 		time.UTC,
 	)
+}
+
+func normalizeAdminStoredShanghaiClock(value time.Time) time.Time {
+	return time.Date(
+		value.Year(),
+		value.Month(),
+		value.Day(),
+		value.Hour(),
+		value.Minute(),
+		value.Second(),
+		value.Nanosecond(),
+		adminShanghaiLocation,
+	)
+}
+
+func formatAdminDisplayTime(sourceType string, value *time.Time) string {
+	if value == nil || value.IsZero() {
+		return ""
+	}
+	if strings.EqualFold(strings.TrimSpace(sourceType), "official") {
+		return normalizeAdminStoredShanghaiClock(*value).In(adminShanghaiLocation).Format(adminEventNewsTimeLayout)
+	}
+	return reinterpretAdminUTC(*value).In(adminShanghaiLocation).Format(adminEventNewsTimeLayout)
 }
 
 func firstNonNilTime(values ...*time.Time) *time.Time {

@@ -97,9 +97,13 @@ type Config struct {
 }
 
 type WSTSyncConfig struct {
-	Enabled         bool `json:",env=WST_SYNC_ENABLED,default=true"`
-	IntervalMinutes int  `json:",env=WST_SYNC_INTERVAL_MINUTES,default=720"`
-	LookbackDays    int  `json:",env=WST_SYNC_LOOKBACK_DAYS,default=30"`
-	LookaheadDays   int  `json:",env=WST_SYNC_LOOKAHEAD_DAYS,default=7"`
-	Publish         bool `json:",env=WST_SYNC_PUBLISH,default=true"`
+	Enabled            bool `json:",env=WST_SYNC_ENABLED,default=true"`
+	IntervalMinutes    int  `json:",env=WST_SYNC_INTERVAL_MINUTES,default=720"`
+	LookbackDays       int  `json:",env=WST_SYNC_LOOKBACK_DAYS,default=30"`
+	LookaheadDays      int  `json:",env=WST_SYNC_LOOKAHEAD_DAYS,default=7"`
+	Publish            bool `json:",env=WST_SYNC_PUBLISH,default=true"`
+	HotEnabled         bool `json:",env=WST_SYNC_HOT_ENABLED,default=true"`
+	HotIntervalMinutes int  `json:",env=WST_SYNC_HOT_INTERVAL_MINUTES,default=15"`
+	HotLookbackDays    int  `json:",env=WST_SYNC_HOT_LOOKBACK_DAYS,default=2"`
+	HotLookaheadDays   int  `json:",env=WST_SYNC_HOT_LOOKAHEAD_DAYS,default=7"`
 }
