@@ -64,6 +64,8 @@ type Config struct {
 		EncryptSecret    string `json:",env=GEOCODE_ENCRYPT_SECRET,optional"`
 	}
 
+	WSTSync WSTSyncConfig
+
 	// 支付宝支付配置
 	Alipay struct {
 		AppId      int64
@@ -92,4 +94,12 @@ type Config struct {
 		IsProd     bool
 		UseCert    bool
 	}
+}
+
+type WSTSyncConfig struct {
+	Enabled         bool `json:",env=WST_SYNC_ENABLED,default=true"`
+	IntervalMinutes int  `json:",env=WST_SYNC_INTERVAL_MINUTES,default=720"`
+	LookbackDays    int  `json:",env=WST_SYNC_LOOKBACK_DAYS,default=30"`
+	LookaheadDays   int  `json:",env=WST_SYNC_LOOKAHEAD_DAYS,default=7"`
+	Publish         bool `json:",env=WST_SYNC_PUBLISH,default=true"`
 }

@@ -9,6 +9,9 @@ const (
 	SyncModeYear   SyncMode = "year"
 	SyncModeRange  SyncMode = "range"
 
+	DefaultSeasonsURL           = "https://seasons.snooker.web.gc.wstservices.co.uk"
+	DefaultTournamentsURL       = "https://tournaments.snooker.web.gc.wstservices.co.uk"
+	DefaultMatchesURL           = "https://matches.snooker.web.gc.wstservices.co.uk"
 	wstSourceType               = "official"
 	wstSourceName               = "WST"
 	wstSiteBaseURL              = "https://www.wst.tv"

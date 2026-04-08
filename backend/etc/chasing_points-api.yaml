@@ -70,6 +70,13 @@ Geocode:
   AutoPublish: true
   EncryptSecret: ${GEOCODE_ENCRYPT_SECRET}
 
+WSTSync:
+  Enabled: true
+  IntervalMinutes: 720
+  LookbackDays: 30
+  LookaheadDays: 7
+  Publish: true
+
 Log:
   Encoding: plain
   Mode: console

@@ -121,3 +121,24 @@ func TestWSTSyncMigrationAddsOfficialSourceFieldsAndIndexes(t *testing.T) {
 		}
 	}
 }
+
+func TestWSTSyncJobStatesMigrationCreatesCursorTable(t *testing.T) {
+	content, err := os.ReadFile("20260408170000_add_wst_sync_job_states.sql")
+	if err != nil {
+		t.Fatalf("read wst sync job states migration: %v", err)
+	}
+
+	text := string(content)
+	requiredSnippets := []string{
+		"wst_sync_job_states",
+		"`job_name`",
+		"`last_successful_sync_at`",
+		"UNIQUE KEY `uk_wst_sync_job_states_job_name`",
+	}
+
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(text, snippet) {
+			t.Fatalf("expected wst sync job state migration to contain %q", snippet)
+		}
+	}
+}

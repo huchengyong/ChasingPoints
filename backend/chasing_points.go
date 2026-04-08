@@ -8,6 +8,7 @@ import (
 
 	"chasing_points/internal/config"
 	"chasing_points/internal/handler"
+	"chasing_points/internal/logic/wstsync"
 	"chasing_points/internal/middleware"
 	"chasing_points/internal/pkg/ws"
 	"chasing_points/internal/svc"
@@ -58,6 +59,9 @@ func main() {
 
 	if c.Geocode.WorkerEnabled && svcCtx.GeocodeWorker != nil {
 		go svcCtx.GeocodeWorker.Start(context.Background())
+	}
+	if c.WSTSync.Enabled {
+		go wstsync.NewAutoSyncWorker(svcCtx, c.WSTSync).Start(context.Background())
 	}
 
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)

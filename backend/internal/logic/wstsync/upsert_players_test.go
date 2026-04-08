@@ -112,4 +112,7 @@ func TestUpsertPlayersUpdatesExistingPlayerWithoutChangingID(t *testing.T) {
 	if got.LastName != "Robertson" || got.Avatar != "https://example.com/new.png" || got.CountryCode != "gb-aus" {
 		t.Fatalf("unexpected updated player: %#v", got)
 	}
+	if got.FlagEmoji != "🏴" {
+		t.Fatalf("expected manual flag emoji to be preserved, got %#v", got)
+	}
 }

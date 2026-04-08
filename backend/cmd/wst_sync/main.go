@@ -17,9 +17,6 @@ import (
 
 const (
 	defaultConfigFile = "etc/chasing_points-api.yaml"
-	wstSeasonsURL     = "https://seasons.snooker.web.gc.wstservices.co.uk"
-	wstTournamentsURL = "https://tournaments.snooker.web.gc.wstservices.co.uk"
-	wstMatchesURL     = "https://matches.snooker.web.gc.wstservices.co.uk"
 )
 
 func main() {
@@ -41,7 +38,7 @@ func main() {
 	conf.MustLoad(configFile, &c, conf.UseEnv())
 
 	svcCtx := svc.NewServiceContext(c)
-	client := wstsync.NewClient(wstSeasonsURL, wstTournamentsURL, wstMatchesURL)
+	client := wstsync.NewClient(wstsync.DefaultSeasonsURL, wstsync.DefaultTournamentsURL, wstsync.DefaultMatchesURL)
 	service := wstsync.NewService(svcCtx, client)
 
 	summary, err := service.Sync(context.Background(), params)
