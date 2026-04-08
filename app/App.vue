@@ -178,7 +178,9 @@
 
 						uni.showModal({
 							title: '你有未结束的对局',
-							content: `你和 ${currentMatch.opponent_name || '对手'} 的${currentMatch.game_type_name || 'PK'}对局仍在进行中，是否立即进入？`,
+							content: currentMatch.viewer_role === 'referee'
+								? `你担任裁判的${currentMatch.game_type_name || 'PK'}对局仍在进行中，是否立即进入？`
+								: `你和 ${currentMatch.opponent_name || '对手'} 的${currentMatch.game_type_name || 'PK'}对局仍在进行中，是否立即进入？`,
 							confirmText: '进入对局',
 							cancelText: '暂不进入',
 							success: ({ confirm }) => {

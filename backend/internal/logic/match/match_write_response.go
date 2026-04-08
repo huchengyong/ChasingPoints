@@ -20,7 +20,8 @@ func buildMatchWriteScoreView(userId int64, match *model.Match) matchWriteScoreV
 	view.CurrentFrameMyScore = match.CurrentFrameMyScore
 	view.CurrentFrameOpponentScore = match.CurrentFrameOpponentScore
 
-	if match.UserId != userId {
+	capabilities := resolveMatchViewerCapabilities(match, userId)
+	if shouldUsePlayer2Perspective(capabilities.ViewerRole) {
 		view.MyScore = match.OpponentScore
 		view.OpponentScore = match.MyScore
 		view.CurrentFrameMyScore = match.CurrentFrameOpponentScore

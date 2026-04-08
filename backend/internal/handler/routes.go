@@ -511,6 +511,18 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: match.GetMatchQRCodeHandler(serverCtx),
 			},
 			{
+				// 扫码加入并担任本场裁判
+				Method:  http.MethodPost,
+				Path:    "/referee/join",
+				Handler: match.JoinMatchRefereeHandler(serverCtx),
+			},
+			{
+				// 获取本场裁判二维码
+				Method:  http.MethodGet,
+				Path:    "/referee/qrcode",
+				Handler: match.GetMatchRefereeQRCodeHandler(serverCtx),
+			},
+			{
 				// 结束一局
 				Method:  http.MethodPost,
 				Path:    "/round/end",

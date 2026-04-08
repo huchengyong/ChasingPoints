@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import {
   buildPlayingRoute,
+  resolveMatchScanAction,
   resolveStartMatchGuardAction,
   shouldPromptOngoingMatch
 } from '../utils/ongoing-match-guard.js'
@@ -150,5 +151,40 @@ test('buildPlayingRoute encodes opponent info for navigation', () => {
   assert.equal(
     route,
     '/subPages/match/playing?match_id=52&game_type=3&opponent_name=%E7%90%83%E5%8F%8B%20G&opponent_avatar=https%3A%2F%2Fimg.example%2Favatar%20g.png'
+  )
+})
+
+test('resolveMatchScanAction identifies regular opponent payloads', () => {
+  assert.deepEqual(
+    resolveMatchScanAction(JSON.stringify({
+      user_id: 202,
+      nickname: '球友H',
+      avatar: 'avatar-h.png'
+    })),
+    {
+      type: 'start_match',
+      opponent: {
+        user_id: 202,
+        nickname: '球友H',
+        avatar: 'avatar-h.png'
+      }
+    }
+  )
+})
+
+test('resolveMatchScanAction identifies referee join payloads', () => {
+  assert.deepEqual(
+    resolveMatchScanAction(JSON.stringify({
+      type: 'match_referee',
+      match_id: 82,
+      join_token: 'token-82'
+    })),
+    {
+      type: 'join_referee',
+      refereeJoin: {
+        match_id: 82,
+        join_token: 'token-82'
+      }
+    }
   )
 })

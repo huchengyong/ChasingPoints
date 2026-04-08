@@ -45,13 +45,33 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 		return &types.FinishMatchResp{Success: false}, nil
 	}
 
-	// 验证用户权限（双方都可以结束对局）
-	isPlayer1 := match.UserId == userId
-	isPlayer2 := match.OpponentId != nil && *match.OpponentId == userId
-	if !isPlayer1 && !isPlayer2 {
-		l.Logger.Errorf("用户不是对局参与者: matchUserId=%d, matchOpponentId=%v, currentUserId=%d",
-			match.UserId, match.OpponentId, userId)
-		return &types.FinishMatchResp{Success: false}, nil
+	// 验证用户权限
+	capabilities, authorityErr := validateMatchWriteAuthority(match, userId)
+	if authorityErr != nil {
+		if authorityErr == errMatchViewerNotParticipant {
+			l.Logger.Errorf("用户不是对局参与者: matchUserId=%d, matchOpponentId=%v, refereeUserId=%v, currentUserId=%d",
+				match.UserId, match.OpponentId, match.RefereeUserId, userId)
+			return &types.FinishMatchResp{Success: false}, nil
+		}
+		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
+		if stateErr != nil {
+			l.Logger.Errorf("加载权限拒绝快照失败: matchId=%d, userId=%d, err=%v", match.Id, userId, stateErr)
+			return &types.FinishMatchResp{Success: false, Accepted: false}, nil
+		}
+		scoreView := buildMatchWriteScoreView(userId, match)
+		result := 3
+		if match.Result != nil {
+			result = *match.Result
+		}
+		return &types.FinishMatchResp{
+			Success:        false,
+			Accepted:       false,
+			Result:         result,
+			ServerRevision: view.Snapshot.ServerRevision,
+			Snapshot:       view.Snapshot,
+			MyScore:        scoreView.MyScore,
+			OpponentScore:  scoreView.OpponentScore,
+		}, nil
 	}
 	if req.ClientActionId == "" {
 		return &types.FinishMatchResp{Success: false, Accepted: false}, nil
@@ -168,7 +188,7 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 	}
 
 	actionActor := 1
-	if !isPlayer1 {
+	if capabilities.ViewerRole == matchViewerRolePlayer2 {
 		actionActor = 2
 	}
 	action := &model.MatchAction{

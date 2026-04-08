@@ -44,12 +44,30 @@ func (l *EndRoundLogic) EndRound(req *types.EndRoundReq) (resp *types.EndRoundRe
 	}
 
 	// 验证用户权限
-	isPlayer1 := match.UserId == userId
-	isPlayer2 := match.OpponentId != nil && *match.OpponentId == userId
-	if !isPlayer1 && !isPlayer2 {
-		l.Logger.Errorf("用户不是对局参与者: matchUserId=%d, matchOpponentId=%v, currentUserId=%d",
-			match.UserId, match.OpponentId, userId)
-		return &types.EndRoundResp{Success: false}, nil
+	if _, authorityErr := validateMatchWriteAuthority(match, userId); authorityErr != nil {
+		if authorityErr == errMatchViewerNotParticipant {
+			l.Logger.Errorf("用户不是对局参与者: matchUserId=%d, matchOpponentId=%v, refereeUserId=%v, currentUserId=%d",
+				match.UserId, match.OpponentId, match.RefereeUserId, userId)
+			return &types.EndRoundResp{Success: false}, nil
+		}
+		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
+		if stateErr != nil {
+			l.Logger.Errorf("加载权限拒绝快照失败: matchId=%d, userId=%d, err=%v", match.Id, userId, stateErr)
+			return &types.EndRoundResp{Success: false, Accepted: false}, nil
+		}
+		scoreView := buildMatchWriteScoreView(userId, match)
+		return &types.EndRoundResp{
+			Success:                   false,
+			Accepted:                  false,
+			ServerRevision:            view.Snapshot.ServerRevision,
+			Snapshot:                  view.Snapshot,
+			RoundNo:                   int(view.CompletedRoundCount),
+			CurrentFrameStarted:       match.CurrentFrameStarted,
+			CurrentFrameMyScore:       scoreView.CurrentFrameMyScore,
+			CurrentFrameOpponentScore: scoreView.CurrentFrameOpponentScore,
+			MyScore:                   scoreView.MyScore,
+			OpponentScore:             scoreView.OpponentScore,
+		}, nil
 	}
 	if req.ClientActionId == "" {
 		return &types.EndRoundResp{

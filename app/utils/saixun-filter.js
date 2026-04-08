@@ -35,6 +35,14 @@ const formatDisplayDate = (value) => {
   return `${parsed.year}.${pad(parsed.month)}.${pad(parsed.day)}`
 }
 
+const compareDateText = (left, right) => {
+  if (!left && !right) return 0
+  if (!left) return 1
+  if (!right) return -1
+  if (left === right) return 0
+  return left < right ? -1 : 1
+}
+
 export const buildYearDateRange = (year) => {
   const normalizedYear = Number(year)
   if (!Number.isInteger(normalizedYear) || normalizedYear <= 0) {
@@ -137,10 +145,16 @@ export const buildCustomDateRange = (year, from, to) => {
     return buildPresetDateRange(normalizedYear, DEFAULT_PRESET)
   }
 
+  const fromText = buildDateText(parsedFrom.year, parsedFrom.month, parsedFrom.day)
+  const toText = buildDateText(parsedTo.year, parsedTo.month, parsedTo.day)
+  const orderedRange = compareDateText(fromText, toText) <= 0
+    ? { from: fromText, to: toText }
+    : { from: toText, to: fromText }
+
   return {
     year: normalizedYear,
-    from: buildDateText(parsedFrom.year, parsedFrom.month, parsedFrom.day),
-    to: buildDateText(parsedTo.year, parsedTo.month, parsedTo.day),
+    from: orderedRange.from,
+    to: orderedRange.to,
     preset: 'custom'
   }
 }

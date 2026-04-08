@@ -14,6 +14,7 @@ export const WS_MESSAGE_TYPES = {
   ROUND_START: 'round_start',
   MATCH_END: 'match_end',
   MATCH_START: 'match_start',
+  MATCH_ROLE_CHANGED: 'match_role_changed',
   NOTIFICATION_UPDATE: 'notification_update',
   SYNC: 'sync',
   PING: 'ping',

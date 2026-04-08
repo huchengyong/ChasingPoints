@@ -79,5 +79,11 @@ test('buildCustomDateRange and buildYearBoundaryDate normalize date values', () 
     to: '2026-02-28',
     preset: 'custom'
   })
+  assert.deepEqual(buildCustomDateRange(2026, '2026-03-10', '2026-02-28'), {
+    year: 2026,
+    from: '2026-02-28',
+    to: '2026-03-10',
+    preset: 'custom'
+  })
   assert.equal(buildYearBoundaryDate(2026, 2, 31), '2026-02-28')
 })

@@ -16,15 +16,32 @@
 				<button class="start-button" @click="handleStartMatch">
 					<text>发起PK</text>
 				</button>
+				<button class="secondary-button" @click="handleScanAsReferee">
+					<text>扫码担任裁判</text>
+				</button>
 			</view>
 
 			<!-- 对局列表 -->
 			<view v-else class="match-list">
+				<view v-if="userStore.isLoggedIn" class="quick-actions">
+					<button class="quick-action quick-action--primary" @click="handleStartMatch">
+						<text>发起PK</text>
+					</button>
+					<button class="quick-action quick-action--secondary" @click="handleScanAsReferee">
+						<text>扫码担任裁判</text>
+					</button>
+				</view>
+
 				<!-- 进行中的对局 -->
 				<view v-if="currentMatch" class="match-card my-match" @click="handleContinueMatch(currentMatch)">
 					<!-- MY MATCH 标签 -->
 					<view class="my-match-badge">我的对局</view>
-					<view class="match-info">
+					<view v-if="currentMatch.viewer_role === 'referee'" class="referee-match-info">
+						<text class="referee-match-info__title">你正在担任本场裁判</text>
+						<text class="referee-match-info__score">{{ currentMatch.my_score }} : {{ currentMatch.opponent_score }}</text>
+						<text class="referee-match-info__hint">点击进入裁判记分页</text>
+					</view>
+					<view v-else class="match-info">
 						<!-- 我方玩家 -->
 						<view class="player">
 							<view class="avatar me-avatar" :class="{ winner: currentMatch.my_score > currentMatch.opponent_score }">
@@ -128,10 +145,10 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
-import { getCurrentMatch, getOngoingMatches, startMatch } from '@/api/match.js'
+import { getCurrentMatch, getOngoingMatches, joinMatchReferee, startMatch } from '@/api/match.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { shouldShowMatchPageLoading } from '@/utils/match-page.js'
-import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
+import { buildPlayingRoute, resolveMatchScanAction, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
 
 // ========== 状态管理 ==========
 const userStore = useUserStore()
@@ -144,6 +161,7 @@ const currentMatch = ref(null)
 const ongoingMatches = ref([]) // 平台正在进行的对局列表
 const showGameTypeModal = ref(false)
 const selectedGameType = ref(null)
+const scanIntent = ref('start')
 const isDarkMode = computed(() => themeStore.isDarkMode)
 const showPageLoading = computed(() => shouldShowMatchPageLoading(loading.value, refreshing.value))
 
@@ -326,13 +344,28 @@ const handleStartMatch = () => {
 		}, 1500)
 		return
 	}
+	scanIntent.value = 'start'
 	showGameTypeModal.value = true
+}
+
+const handleScanAsReferee = () => {
+	if (!userStore.isLoggedIn) {
+		uni.showToast({
+			title: '请先登录后再扫码担任裁判',
+			icon: 'none',
+			duration: 1500
+		})
+		return
+	}
+	scanIntent.value = 'referee'
+	handleScanCode()
 }
 
 /**
  * 处理比赛类型确认
  */
 const handleGameTypeConfirm = (gameType) => {
+	scanIntent.value = 'start'
 	selectedGameType.value = gameType
 	// 开始扫码
 	handleScanCode()
@@ -361,13 +394,35 @@ const handleScanCode = () => {
  */
 const handleMatchResult = async (scanResult) => {
 	try {
-		// 解析扫码数据
-		const opponentData = JSON.parse(scanResult)
-
-		if (!opponentData.user_id) {
-			uni.showToast({ title: '无效的二维码', icon: 'none' })
+		const scanAction = resolveMatchScanAction(scanResult)
+		if (scanAction.type === 'error') {
+			uni.showToast({ title: scanAction.message || '无效的二维码', icon: 'none' })
 			return
 		}
+
+		if (scanAction.type === 'join_referee') {
+			uni.showLoading({ title: '加入裁判中...', mask: true })
+			const res = await joinMatchReferee(scanAction.refereeJoin)
+			uni.hideLoading()
+			if (!res?.success) {
+				uni.showToast({ title: res?.message || '加入裁判失败', icon: 'none' })
+				return
+			}
+			navigateToPlayingMatch({
+				match_id: res.match_id || scanAction.refereeJoin.match_id,
+				game_type: res.match?.game_type || 3,
+				opponent_name: res.match?.opponent_name || '对手',
+				opponent_avatar: res.match?.opponent_avatar || ''
+			})
+			return
+		}
+
+		if (scanIntent.value === 'referee') {
+			uni.showToast({ title: '请扫描对局裁判码', icon: 'none' })
+			return
+		}
+
+		const opponentData = scanAction.opponent
 
 		// 显示加载中
 		uni.showLoading({ title: '匹配中...', mask: true })

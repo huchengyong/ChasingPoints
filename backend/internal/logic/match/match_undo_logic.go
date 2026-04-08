@@ -43,11 +43,32 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 		return &types.MatchUndoResp{Success: false, Message: "对局不存在"}, nil
 	}
 
-	// 验证用户权限和状态（双方都可以撤销）
-	isPlayer1 := match.UserId == userId
-	isPlayer2 := match.OpponentId != nil && *match.OpponentId == userId
-	if (!isPlayer1 && !isPlayer2) || match.Status != 1 {
+	// 验证用户权限和状态
+	if match.Status != 1 {
 		return &types.MatchUndoResp{Success: false, Message: "无法撤销"}, nil
+	}
+	if _, authorityErr := validateMatchWriteAuthority(match, userId); authorityErr != nil {
+		if authorityErr == errMatchViewerNotParticipant {
+			return &types.MatchUndoResp{Success: false, Message: "无法撤销"}, nil
+		}
+		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
+		if stateErr != nil {
+			l.Logger.Errorf("加载权限拒绝快照失败: matchId=%d, userId=%d, err=%v", match.Id, userId, stateErr)
+			return &types.MatchUndoResp{Success: false, Accepted: false, Message: authorityErr.Error()}, nil
+		}
+		scoreView := buildMatchWriteScoreView(userId, match)
+		return &types.MatchUndoResp{
+			Success:                   false,
+			Accepted:                  false,
+			Message:                   authorityErr.Error(),
+			ServerRevision:            view.Snapshot.ServerRevision,
+			Snapshot:                  view.Snapshot,
+			CurrentFrameStarted:       match.CurrentFrameStarted,
+			CurrentFrameMyScore:       scoreView.CurrentFrameMyScore,
+			CurrentFrameOpponentScore: scoreView.CurrentFrameOpponentScore,
+			MyScore:                   scoreView.MyScore,
+			OpponentScore:             scoreView.OpponentScore,
+		}, nil
 	}
 	if req.ClientActionId == "" {
 		return &types.MatchUndoResp{Success: false, Accepted: false, Message: errMissingClientActionID.Error()}, nil

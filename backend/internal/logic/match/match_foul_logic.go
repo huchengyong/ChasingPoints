@@ -48,16 +48,39 @@ func (l *MatchFoulLogic) MatchFoul(req *types.MatchFoulReq) (resp *types.MatchSc
 	}
 
 	// 验证用户权限和状态
-	isPlayer1 := match.UserId == userId
-	isPlayer2 := match.OpponentId != nil && *match.OpponentId == userId
-	if !isPlayer1 && !isPlayer2 {
-		l.Logger.Errorf("用户不是对局参与者: matchUserId=%d, matchOpponentId=%v, currentUserId=%d",
-			match.UserId, match.OpponentId, userId)
-		return &types.MatchScoreResp{Success: false}, nil
-	}
 	if match.Status != 1 {
 		l.Logger.Errorf("对局状态不是进行中: matchId=%d, status=%d", match.Id, match.Status)
 		return &types.MatchScoreResp{Success: false}, nil
+	}
+	if _, authorityErr := validateMatchWriteAuthority(match, userId); authorityErr != nil {
+		if authorityErr == errMatchViewerNotParticipant {
+			l.Logger.Errorf("用户不是对局参与者: matchUserId=%d, matchOpponentId=%v, refereeUserId=%v, currentUserId=%d",
+				match.UserId, match.OpponentId, match.RefereeUserId, userId)
+			return &types.MatchScoreResp{Success: false}, nil
+		}
+		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
+		if stateErr != nil {
+			l.Logger.Errorf("加载权限拒绝快照失败: matchId=%d, userId=%d, err=%v", match.Id, userId, stateErr)
+			return &types.MatchScoreResp{Success: false, Accepted: false, Message: authorityErr.Error()}, nil
+		}
+		scoreView := buildMatchWriteScoreView(userId, match)
+		return &types.MatchScoreResp{
+			Success:                       false,
+			Accepted:                      false,
+			Message:                       authorityErr.Error(),
+			ServerRevision:                view.Snapshot.ServerRevision,
+			Snapshot:                      view.Snapshot,
+			RedBallCount:                  view.SnookerState.RedBallCount,
+			SnookerClearanceStarted:       view.SnookerState.ClearanceStarted,
+			SnookerClearedColors:          view.SnookerState.ClearedColors,
+			SnookerExpectedClearanceScore: view.SnookerState.ExpectedClearanceScore,
+			SnookerClearanceCompleted:     view.SnookerState.ClearanceCompleted,
+			CurrentFrameStarted:           match.CurrentFrameStarted,
+			CurrentFrameMyScore:           scoreView.CurrentFrameMyScore,
+			CurrentFrameOpponentScore:     scoreView.CurrentFrameOpponentScore,
+			MyScore:                       scoreView.MyScore,
+			OpponentScore:                 scoreView.OpponentScore,
+		}, nil
 	}
 	if req.ClientActionId == "" {
 		return &types.MatchScoreResp{

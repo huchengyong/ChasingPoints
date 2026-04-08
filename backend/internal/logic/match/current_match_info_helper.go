@@ -18,7 +18,8 @@ func buildCurrentMatchInfo(svcCtx *svc.ServiceContext, userId int64, match *mode
 		roundCount, _ = svcCtx.MatchModel.GetRoundCount(match.Id)
 	}
 
-	isPlayer1 := match.UserId == userId
+	capabilities := resolveMatchViewerCapabilities(match, userId)
+	isPlayer1 := !shouldUsePlayer2Perspective(capabilities.ViewerRole)
 	myScore := match.MyScore
 	opponentScore := match.OpponentScore
 	currentFrameMyScore := match.CurrentFrameMyScore
@@ -26,8 +27,27 @@ func buildCurrentMatchInfo(svcCtx *svc.ServiceContext, userId int64, match *mode
 	opponentName := match.OpponentName
 	opponentAvatar := ""
 	opponentId := int64(0)
+	refereeName := ""
 
-	if isPlayer1 {
+	if capabilities.RefereeBound && svcCtx != nil && svcCtx.UserModel != nil {
+		if referee, err := svcCtx.UserModel.FindById(capabilities.RefereeUserId); err == nil && referee != nil {
+			refereeName = referee.Nickname
+		}
+	}
+
+	if capabilities.ViewerRole == matchViewerRoleReferee {
+		if match.OpponentId != nil {
+			opponentId = *match.OpponentId
+			if svcCtx != nil && svcCtx.UserModel != nil {
+				if user, err := svcCtx.UserModel.FindById(*match.OpponentId); err == nil && user != nil {
+					if user.Nickname != "" {
+						opponentName = user.Nickname
+					}
+					opponentAvatar = user.Avatar
+				}
+			}
+		}
+	} else if isPlayer1 {
 		if match.OpponentId != nil {
 			opponentId = *match.OpponentId
 			if svcCtx != nil && svcCtx.UserModel != nil {
@@ -65,6 +85,13 @@ func buildCurrentMatchInfo(svcCtx *svc.ServiceContext, userId int64, match *mode
 		GameType:                  match.GameType,
 		GameTypeName:              GetGameTypeName(match.GameType),
 		GameMode:                  match.GameMode,
+		ViewerRole:                capabilities.ViewerRole,
+		RefereeBound:              capabilities.RefereeBound,
+		RefereeUserId:             capabilities.RefereeUserId,
+		RefereeName:               refereeName,
+		CanScore:                  capabilities.CanScore,
+		CanUndo:                   capabilities.CanUndo,
+		CanFinish:                 capabilities.CanFinish,
 		OpponentId:                opponentId,
 		OpponentName:              opponentName,
 		OpponentAvatar:            opponentAvatar,

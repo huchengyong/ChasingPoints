@@ -10,13 +10,13 @@ func buildMatchSyncSnapshotForUser(userId int64, match *model.Match, completedRo
 		return types.MatchSyncSnapshot{}
 	}
 
+	capabilities := resolveMatchViewerCapabilities(match, userId)
 	myScore := match.MyScore
 	opponentScore := match.OpponentScore
 	currentFrameMyScore := match.CurrentFrameMyScore
 	currentFrameOpponentScore := match.CurrentFrameOpponentScore
 
-	isPlayer1 := match.UserId == userId
-	if !isPlayer1 {
+	if shouldUsePlayer2Perspective(capabilities.ViewerRole) {
 		myScore = match.OpponentScore
 		opponentScore = match.MyScore
 		currentFrameMyScore = match.CurrentFrameOpponentScore
@@ -32,6 +32,12 @@ func buildMatchSyncSnapshotForUser(userId int64, match *model.Match, completedRo
 		MatchId:                       match.Id,
 		Status:                        match.Status,
 		ServerRevision:                match.SyncRevision,
+		ViewerRole:                    capabilities.ViewerRole,
+		RefereeBound:                  capabilities.RefereeBound,
+		RefereeUserId:                 capabilities.RefereeUserId,
+		CanScore:                      capabilities.CanScore,
+		CanUndo:                       capabilities.CanUndo,
+		CanFinish:                     capabilities.CanFinish,
 		MyScore:                       myScore,
 		OpponentScore:                 opponentScore,
 		CurrentFrameStarted:           match.CurrentFrameStarted,

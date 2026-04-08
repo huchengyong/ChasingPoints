@@ -90,6 +90,37 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
     gap: 24rpx;
 }
 
+.quick-actions {
+    display: flex;
+    gap: 20rpx;
+}
+
+.quick-action {
+    flex: 1;
+    height: 88rpx;
+    line-height: 88rpx;
+    border-radius: 999rpx;
+    font-size: 28rpx;
+    font-weight: 700;
+
+    &::after {
+        display: none;
+    }
+
+    text {
+        color: #ffffff;
+    }
+
+    &--primary {
+        background-color: $primary-color;
+        box-shadow: 0 8rpx 28rpx rgba(224, 174, 18, 0.22);
+    }
+
+    &--secondary {
+        background-color: #1f2937;
+    }
+}
+
 // 对局卡片
 .match-card {
     display: flex;
@@ -151,6 +182,31 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
     display: flex;
     align-items: center;
     justify-content: space-between;
+}
+
+.referee-match-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12rpx;
+    text-align: center;
+}
+
+.referee-match-info__title {
+    font-size: 30rpx;
+    font-weight: 700;
+    color: $text-primary-light;
+}
+
+.referee-match-info__score {
+    font-size: 64rpx;
+    font-weight: 900;
+    color: $primary-color;
+}
+
+.referee-match-info__hint {
+    font-size: 24rpx;
+    color: $text-secondary-light;
 }
 
 // 玩家信息
@@ -304,6 +360,26 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
 
         text {
             font-size: 32rpx;
+            font-weight: 700;
+            color: #ffffff;
+        }
+    }
+
+    .secondary-button {
+        margin-top: 24rpx;
+        min-width: 320rpx;
+        height: 88rpx;
+        line-height: 88rpx;
+        padding: 0 48rpx;
+        border-radius: 999rpx;
+        background-color: #1f2937;
+
+        &::after {
+            display: none;
+        }
+
+        text {
+            font-size: 30rpx;
             font-weight: 700;
             color: #ffffff;
         }

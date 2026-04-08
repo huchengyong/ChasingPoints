@@ -20,6 +20,8 @@ type Match struct {
 	OpponentName              string         `gorm:"size:50;not null" json:"opponent_name"`
 	GameType                  int            `gorm:"not null" json:"game_type"` // 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
 	GameMode                  string         `gorm:"size:20" json:"game_mode"`  // 比赛模式
+	RefereeUserId             *int64         `gorm:"index" json:"referee_user_id"`
+	RefereeJoinedAt           *time.Time     `json:"referee_joined_at"`
 	MyScore                   int            `gorm:"not null;default:0" json:"my_score"`
 	OpponentScore             int            `gorm:"not null;default:0" json:"opponent_score"`
 	CurrentFrameMyScore       int            `gorm:"not null;default:0" json:"current_frame_my_score"`
@@ -163,7 +165,7 @@ func (m *MatchModel) FindCurrentByUserIdWithTx(tx *gorm.DB, userId int64) (*Matc
 	}
 
 	var match Match
-	err := db.Where("(user_id = ? OR opponent_id = ?) AND status = 1", userId, userId).
+	err := db.Where("(user_id = ? OR opponent_id = ? OR referee_user_id = ?) AND status = 1", userId, userId, userId).
 		Order("match_time DESC").
 		First(&match).Error
 	if err == gorm.ErrRecordNotFound {

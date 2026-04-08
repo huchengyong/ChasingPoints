@@ -99,6 +99,24 @@ export const getMatchQRCode = () => {
 }
 
 /**
+ * 获取本场裁判二维码
+ * @param {Object} params { match_id }
+ * @returns {Promise}
+ */
+export const getMatchRefereeQRCode = (params) => {
+  return get('/api/match/referee/qrcode', params)
+}
+
+/**
+ * 扫码加入并担任本场裁判
+ * @param {Object} data { match_id, join_token }
+ * @returns {Promise}
+ */
+export const joinMatchReferee = (data) => {
+  return post('/api/match/referee/join', data)
+}
+
+/**
  * 加分
  * @param {Object} data { match_id, actor, score }
  * @returns {Promise}

@@ -41,14 +41,14 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 		return &types.GetMatchDetailResp{Success: false}, nil
 	}
 
-	// 验证用户权限（对局双方都可以查看）
-	isPlayer1 := match.UserId == userId
-	isPlayer2 := match.OpponentId != nil && *match.OpponentId == userId
-	if !isPlayer1 && !isPlayer2 {
-		l.Logger.Errorf("用户不是对局参与者: matchUserId=%d, matchOpponentId=%v, currentUserId=%d",
-			match.UserId, match.OpponentId, userId)
+	// 验证用户权限（对局双方和裁判都可以查看）
+	capabilities := resolveMatchViewerCapabilities(match, userId)
+	if capabilities.ViewerRole == matchViewerRoleUnknown {
+		l.Logger.Errorf("用户不是对局参与者: matchUserId=%d, matchOpponentId=%v, refereeUserId=%v, currentUserId=%d",
+			match.UserId, match.OpponentId, match.RefereeUserId, userId)
 		return &types.GetMatchDetailResp{Success: false}, nil
 	}
+	isPlayer1 := capabilities.ViewerRole != matchViewerRolePlayer2
 
 	// 根据视角获取分数和玩家信息
 	var myScore, opponentScore int
@@ -74,8 +74,14 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			player2Avatar = player2.Avatar
 		}
 	}
+	refereeName := ""
+	if capabilities.RefereeBound && capabilities.RefereeUserId > 0 {
+		if referee, err := l.svcCtx.UserModel.FindById(capabilities.RefereeUserId); err == nil && referee != nil {
+			refereeName = referee.Nickname
+		}
+	}
 
-	if isPlayer1 {
+	if capabilities.ViewerRole == matchViewerRoleReferee || isPlayer1 {
 		// 当前用户是创建者，使用原始视角
 		myScore = match.MyScore
 		opponentScore = match.OpponentScore
@@ -225,6 +231,13 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			Status:                        match.Status,
 			ServerRevision:                match.SyncRevision,
 			IsPlayer1:                     isPlayer1,
+			ViewerRole:                    capabilities.ViewerRole,
+			RefereeBound:                  capabilities.RefereeBound,
+			RefereeUserId:                 capabilities.RefereeUserId,
+			RefereeName:                   refereeName,
+			CanScore:                      capabilities.CanScore,
+			CanUndo:                       capabilities.CanUndo,
+			CanFinish:                     capabilities.CanFinish,
 			MyScore:                       myScore,
 			OpponentScore:                 opponentScore,
 			MyName:                        myName,
