@@ -1,4 +1,7 @@
 const REPORT_POST_TYPE = 1
+const LOGIN_REQUIRED_TOOL_URLS = new Set([
+  '/subPages/user/statsDetail'
+])
 const EVENT_NEWS_STATUS_MAP = Object.freeze({
   0: '即将开始',
   1: '进行中',
@@ -61,4 +64,34 @@ export const buildFeaturedPostTarget = (post) => {
     url: '/pages/social/index',
     ctaText: '去社区查看更多'
   }
+}
+
+export const resolveHomeToolNavigation = ({ url = '', isLoggedIn = false, isTabPage = false } = {}) => {
+  if (isTabPage) {
+    return {
+      type: 'tab',
+      url
+    }
+  }
+
+  if (!isLoggedIn && LOGIN_REQUIRED_TOOL_URLS.has(url)) {
+    return {
+      type: 'login',
+      url: '/pages/login/login'
+    }
+  }
+
+  return {
+    type: 'navigate',
+    url
+  }
+}
+
+export const shouldShowHomeToolEdgeMask = ({ maxScrollLeft = 0, scrollLeft = 0, edgeThreshold = 4 } = {}) => {
+  const normalizedMaxScrollLeft = Number(maxScrollLeft) || 0
+  if (normalizedMaxScrollLeft <= edgeThreshold) {
+    return false
+  }
+
+  return (Number(scrollLeft) || 0) < (normalizedMaxScrollLeft - edgeThreshold)
 }

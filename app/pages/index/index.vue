@@ -138,19 +138,21 @@
           <view class="section-header">
             <text class="section-title">常用工具</text>
           </view>
-          <scroll-view scroll-x class="tool-scroll" show-scrollbar="false">
-            <view class="tool-chips">
-              <view v-for="item in toolEntries" :key="item.label" class="tool-chip" @tap="goTo(item.url, item.isTab)">
-                <view class="tool-icon">
-                  <uni-icons :type="item.icon" size="22" :color="item.iconColor"></uni-icons>
-                </view>
-                <view class="tool-copy">
-                  <text class="tool-label">{{ item.label }}</text>
-                  <text class="tool-desc">{{ item.desc }}</text>
+          <view class="tool-scroll-shell" :class="{ 'mask-hidden': !showToolScrollMask }">
+            <scroll-view scroll-x class="tool-scroll" show-scrollbar="false" @scroll="handleToolScroll">
+              <view class="tool-chips">
+                <view v-for="item in toolEntries" :key="item.label" class="tool-chip" @tap="handleToolTap(item)">
+                  <view class="tool-icon">
+                    <uni-icons :type="item.icon" size="22" :color="item.iconColor"></uni-icons>
+                  </view>
+                  <view class="tool-copy">
+                    <text class="tool-label">{{ item.label }}</text>
+                    <text class="tool-desc">{{ item.desc }}</text>
+                  </view>
                 </view>
               </view>
-            </view>
-          </scroll-view>
+            </scroll-view>
+          </view>
         </view>
 
         <view class="page-spacer"></view>
@@ -165,7 +167,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { useThemeStore } from '@/store/theme.js'
@@ -176,6 +178,7 @@ import { getLeaderboard } from '@/api/rank.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { getGameTypeLabel } from '@/utils/game-types.js'
 import { normalizeSaiXunCard } from '@/utils/saixun.js'
+import { resolveHomeToolNavigation, shouldShowHomeToolEdgeMask } from '@/utils/home-index.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
 
 const userStore = useUserStore()
@@ -196,6 +199,8 @@ const currentMatch = ref(null)
 const leaderboardTopThree = ref([])
 const myRanking = ref(null)
 const topEventNews = ref(null)
+const showToolScrollMask = ref(true)
+const toolScrollMaxLeft = ref(0)
 
 const hasContent = computed(() => {
   return Boolean(currentMatch.value || topEventNews.value || leaderboardTopThree.value.length)
@@ -402,6 +407,44 @@ const goTo = (url, isTabPage = false) => {
   uni.navigateTo({ url })
 }
 
+const handleToolTap = (item) => {
+  const target = resolveHomeToolNavigation({
+    url: item.url,
+    isTabPage: item.isTab,
+    isLoggedIn: isLoggedIn.value
+  })
+
+  if (target.type === 'login') {
+    goLogin()
+    return
+  }
+
+  goTo(target.url, target.type === 'tab')
+}
+
+const handleToolScroll = (event) => {
+  showToolScrollMask.value = shouldShowHomeToolEdgeMask({
+    maxScrollLeft: toolScrollMaxLeft.value,
+    scrollLeft: Number(event?.detail?.scrollLeft || 0)
+  })
+}
+
+const measureToolScrollRange = () => {
+  const query = uni.createSelectorQuery()
+  query.select('.tool-scroll-shell').boundingClientRect()
+  query.select('.tool-chips').boundingClientRect()
+  query.exec((result = []) => {
+    const shellRect = result[0]
+    const chipsRect = result[1]
+    const maxScrollLeft = Math.max(0, Number(chipsRect?.width || 0) - Number(shellRect?.width || 0))
+    toolScrollMaxLeft.value = maxScrollLeft
+    showToolScrollMask.value = shouldShowHomeToolEdgeMask({
+      maxScrollLeft,
+      scrollLeft: 0
+    })
+  })
+}
+
 const goLogin = () => {
   uni.navigateTo({ url: '/pages/login/login' })
 }
@@ -569,6 +612,11 @@ onShow(() => {
   themeStore.syncTheme()
   themeStore.applyNavigationBarTheme()
   notificationStore.fetchUnreadCount()
+  showToolScrollMask.value = true
+  toolScrollMaxLeft.value = 0
+  nextTick(() => {
+    measureToolScrollRange()
+  })
   loadData()
 })
 </script>

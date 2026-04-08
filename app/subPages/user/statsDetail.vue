@@ -163,7 +163,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import {
 	getStatsByGameType,
 	getRecentTrend,
@@ -297,12 +297,25 @@ onLoad((options) => {
 	if (gameTypeKeyMap[gameType]) {
 		currentGame.value = gameTypeKeyMap[gameType]
 	}
+})
+
+onShow(() => {
+	const token = uni.getStorageSync('token')
+	if (!token) {
+		goLogin()
+		return
+	}
+
 	loadAllStats()
 })
 
 watch(currentGame, () => {
 	loadAllStats()
 })
+
+const goLogin = () => {
+	uni.navigateTo({ url: '/pages/login/login' })
+}
 </script>
 
 <style lang="scss" scoped>

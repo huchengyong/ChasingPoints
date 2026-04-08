@@ -13,26 +13,36 @@
 				:key="item.id"
 				class="request-item"
 			>
-				<image
-					class="request-avatar"
-					:src="item.avatar || '/static/images/default-avatar.png'"
-					mode="aspectFill"
-				/>
-				<view class="request-info">
-					<text class="request-name">{{ item.nickname || '球友' }}</text>
-					<text v-if="item.message" class="request-message">{{ item.message }}</text>
-					<text class="request-time">{{ item.created_at || '' }}</text>
+				<view class="request-card-main">
+					<image
+						class="request-avatar"
+						:src="item.avatar || '/static/images/default-avatar.png'"
+						mode="aspectFill"
+					/>
+					<view class="request-info">
+						<view class="request-head">
+							<text class="request-name">{{ item.nickname || '球友' }}</text>
+							<text class="request-time">{{ formatRequestTime(item.created_at) }}</text>
+						</view>
+						<view class="request-meta">
+							<text class="request-message" :class="{ 'is-muted': !item.message }">
+								{{ item.message || '请求添加你为好友' }}
+							</text>
+						</view>
+					</view>
 				</view>
 				<view v-if="item.status === 0" class="request-actions">
-					<button class="action-accept" @tap="handleAccept(item)">
-						<text>接受</text>
-					</button>
-					<button class="action-reject" @tap="handleReject(item)">
+					<button class="action-button action-reject" @tap="handleReject(item)">
 						<text>拒绝</text>
+					</button>
+					<button class="action-button action-accept" @tap="handleAccept(item)">
+						<text>接受</text>
 					</button>
 				</view>
 				<view v-else class="request-status">
-					<text class="status-text">{{ item.status === 1 ? '已接受' : '已拒绝' }}</text>
+					<text class="status-text" :class="{ accepted: item.status === 1, rejected: item.status !== 1 }">
+						{{ item.status === 1 ? '已接受' : '已拒绝' }}
+					</text>
 				</view>
 			</view>
 
@@ -55,6 +65,7 @@ import { ref } from 'vue'
 import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
 import { getFriendRequests, acceptFriendRequest, rejectFriendRequest } from '@/api/friend.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
+import { formatRelativeTime } from '@/utils/format.js'
 
 const loading = ref(true)
 const requestList = ref([])
@@ -63,6 +74,13 @@ const pageSize = 20
 const total = ref(0)
 const hasMore = ref(false)
 const friendRequestStore = useFriendRequestStore()
+
+const formatRequestTime = (dateTime) => {
+	if (!dateTime) return ''
+	const parsed = new Date(dateTime)
+	if (Number.isNaN(parsed.getTime())) return String(dateTime)
+	return formatRelativeTime(parsed)
+}
 
 const loadData = async (isRefresh = false) => {
 	if (isRefresh) {
@@ -158,78 +176,144 @@ onPullDownRefresh(() => {
 
 	.request-item {
 		display: flex;
-		align-items: center;
+		flex-direction: column;
 		background: #fff;
-		border-radius: 16rpx;
-		padding: 24rpx;
-		margin-bottom: 16rpx;
+		border-radius: 24rpx;
+		padding: 26rpx 24rpx 22rpx;
+		margin-bottom: 18rpx;
+		border: 1rpx solid rgba(224, 174, 18, 0.14);
+		box-shadow: 0 12rpx 32rpx rgba(15, 23, 42, 0.06);
+		box-sizing: border-box;
+
+		.request-card-main {
+			width: 100%;
+			display: flex;
+			align-items: center;
+			gap: 20rpx;
+			min-width: 0;
+		}
 
 		.request-avatar {
-			width: 88rpx;
-			height: 88rpx;
+			width: 96rpx;
+			height: 96rpx;
 			border-radius: 50%;
-			margin-right: 20rpx;
+			border: 2rpx solid rgba(224, 174, 18, 0.16);
+			background: #f8fafc;
 			flex-shrink: 0;
 		}
 
 		.request-info {
 			flex: 1;
-			overflow: hidden;
+			min-width: 0;
+		}
 
-			.request-name {
-				font-size: 30rpx;
-				font-weight: 500;
-				color: #1e293b;
-			}
-			.request-message {
-				font-size: 24rpx;
-				color: #64748b;
-				margin-top: 4rpx;
-				overflow: hidden;
-				text-overflow: ellipsis;
-				white-space: nowrap;
-			}
-			.request-time {
-				font-size: 22rpx;
+		.request-head {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 16rpx;
+			min-width: 0;
+		}
+
+		.request-name {
+			flex: 1;
+			min-width: 0;
+			font-size: 30rpx;
+			font-weight: 600;
+			color: #1e293b;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		.request-time {
+			font-size: 22rpx;
+			color: #94a3b8;
+			white-space: nowrap;
+			flex-shrink: 0;
+		}
+
+		.request-meta {
+			margin-top: 10rpx;
+			min-width: 0;
+		}
+
+		.request-message {
+			display: block;
+			font-size: 24rpx;
+			line-height: 1.5;
+			color: #64748b;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+
+			&.is-muted {
 				color: #94a3b8;
-				margin-top: 4rpx;
 			}
 		}
 
 		.request-actions {
 			display: flex;
+			justify-content: flex-end;
 			gap: 12rpx;
-			flex-shrink: 0;
+			width: 100%;
+			margin-top: 18rpx;
+
+			.action-button {
+				min-width: 128rpx;
+				height: 64rpx;
+				line-height: 64rpx;
+				padding: 0 28rpx;
+				border-radius: 999rpx;
+				margin: 0;
+				box-sizing: border-box;
+				font-size: 24rpx;
+				font-weight: 600;
+				border: none;
+
+				&::after {
+					display: none;
+				}
+			}
+
+			.action-reject {
+				background: #f8fafc;
+				color: #64748b;
+				border: 1rpx solid rgba(148, 163, 184, 0.24);
+			}
 
 			.action-accept {
 				background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
-				color: #1f2937;
-				font-size: 24rpx;
-				padding: 0 24rpx;
-				height: 56rpx;
-				line-height: 56rpx;
-				border-radius: 28rpx;
-				border: none;
-				margin: 0;
-			}
-			.action-reject {
-				background: #f1f5f9;
-				color: #64748b;
-				font-size: 24rpx;
-				padding: 0 24rpx;
-				height: 56rpx;
-				line-height: 56rpx;
-				border-radius: 28rpx;
-				border: none;
-				margin: 0;
+				color: #ffffff;
+				box-shadow: 0 10rpx 24rpx rgba(224, 174, 18, 0.24);
 			}
 		}
 
 		.request-status {
-			flex-shrink: 0;
+			display: flex;
+			justify-content: flex-end;
+			width: 100%;
+			margin-top: 18rpx;
+
 			.status-text {
-				font-size: 24rpx;
-				color: #94a3b8;
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				padding: 0 20rpx;
+				height: 52rpx;
+				border-radius: 999rpx;
+				font-size: 22rpx;
+				font-weight: 600;
+
+				&.accepted {
+					color: #0f766e;
+					background: rgba(15, 118, 110, 0.1);
+				}
+
+				&.rejected {
+					color: #94a3b8;
+					background: #f8fafc;
+				}
 			}
 		}
 	}

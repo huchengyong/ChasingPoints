@@ -1,10 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 
 import {
   buildFeaturedPostTarget,
   formatEventNewsTime,
-  getEventNewsStatusText
+  getEventNewsStatusText,
+  resolveHomeToolNavigation,
+  shouldShowHomeToolEdgeMask
 } from '../utils/home-index.js'
 import { shouldFetchAuthState } from '../utils/auth-guards.js'
 import { shouldShowMatchPageLoading } from '../utils/match-page.js'
@@ -18,6 +21,16 @@ import {
   resolveStatusCardContent,
   resolveUserHomepageMode
 } from '../utils/user-homepage.js'
+
+const homeIndexScssSource = readFileSync(
+  new URL('../pages/index/index.scss', import.meta.url),
+  'utf8'
+)
+
+const homeIndexVueSource = readFileSync(
+  new URL('../pages/index/index.vue', import.meta.url),
+  'utf8'
+)
 
 test('buildFeaturedPostTarget prefers concrete match share route for report posts', () => {
   const target = buildFeaturedPostTarget({
@@ -222,4 +235,52 @@ test('resolveSectionTitles returns competitive naming', () => {
   assert.equal(result.stats, '竞技概览')
   assert.equal(result.quickActions, '竞技社交')
   assert.equal(result.settings, '设置与支持')
+})
+
+test('resolveHomeToolNavigation sends guests to login for stats detail tool', () => {
+  assert.deepEqual(resolveHomeToolNavigation({
+    url: '/subPages/user/statsDetail',
+    isLoggedIn: false
+  }), {
+    type: 'login',
+    url: '/pages/login/login'
+  })
+})
+
+test('resolveHomeToolNavigation keeps public tools directly navigable for guests', () => {
+  assert.deepEqual(resolveHomeToolNavigation({
+    url: '/subPages/rules/index',
+    isLoggedIn: false
+  }), {
+    type: 'navigate',
+    url: '/subPages/rules/index'
+  })
+})
+
+test('resolveHomeToolNavigation keeps stats detail navigable after login', () => {
+  assert.deepEqual(resolveHomeToolNavigation({
+    url: '/subPages/user/statsDetail',
+    isLoggedIn: true
+  }), {
+    type: 'navigate',
+    url: '/subPages/user/statsDetail'
+  })
+})
+
+test('home tool carousel leaves a trailing safe area so the last card is not visually clipped at the screen edge', () => {
+  assert.match(homeIndexVueSource, /<view class="tool-scroll-shell" :class="\{ 'mask-hidden': !showToolScrollMask \}">/)
+  assert.match(homeIndexVueSource, /<scroll-view scroll-x class="tool-scroll" show-scrollbar="false" @scroll="handleToolScroll">/)
+  assert.match(homeIndexScssSource, /\.tool-scroll-shell\s*\{[\s\S]*position:\s*relative;/)
+  assert.match(homeIndexScssSource, /\.tool-scroll\s*\{[\s\S]*&::\-webkit-scrollbar\s*\{[\s\S]*display:\s*none;/)
+  assert.match(homeIndexScssSource, /\.tool-scroll\s*\{[\s\S]*scrollbar-width:\s*none;/)
+  assert.match(homeIndexScssSource, /&::after\s*\{[\s\S]*width:\s*48rpx;/)
+  assert.match(homeIndexScssSource, /&\.mask-hidden::after\s*\{[\s\S]*opacity:\s*0;/)
+  assert.match(homeIndexScssSource, /&::after\s*\{[\s\S]*linear-gradient\(90deg,\s*rgba\(255,\s*255,\s*255,\s*0\),\s*var\(--home-bg\)/)
+})
+
+test('shouldShowHomeToolEdgeMask stays visible until the carousel reaches the right edge', () => {
+  assert.equal(shouldShowHomeToolEdgeMask({ maxScrollLeft: 180, scrollLeft: 0 }), true)
+  assert.equal(shouldShowHomeToolEdgeMask({ maxScrollLeft: 180, scrollLeft: 96 }), true)
+  assert.equal(shouldShowHomeToolEdgeMask({ maxScrollLeft: 180, scrollLeft: 176 }), false)
+  assert.equal(shouldShowHomeToolEdgeMask({ maxScrollLeft: 0, scrollLeft: 0 }), false)
 })

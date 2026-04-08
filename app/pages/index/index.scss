@@ -453,14 +453,44 @@
   color: var(--home-text-secondary);
 }
 
+.tool-scroll-shell {
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 48rpx;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0), var(--home-bg) 72%);
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.18s ease;
+  }
+
+  &.mask-hidden::after {
+    opacity: 0;
+  }
+}
+
 .tool-scroll {
   white-space: nowrap;
+
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  scrollbar-width: none;
 }
 
 .tool-chips {
   display: flex;
   gap: 16rpx;
   padding-bottom: 4rpx;
+  box-sizing: border-box;
 }
 
 .tool-chip {
