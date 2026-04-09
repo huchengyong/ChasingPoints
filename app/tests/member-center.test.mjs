@@ -92,3 +92,16 @@ test('resolveMemberEntryCard avoids price wording in compliance mode', () => {
   assert.equal(card.actionText, '查看权益')
   assert.equal(card.priceText, '')
 })
+
+test('resolveMemberEntryCard keeps active compliance copy focused on the entry itself', () => {
+  const card = resolveMemberEntryCard({
+    is_active: true,
+    member_expires_at: '2026-04-30 10:00:00'
+  }, new Date('2026-03-31T10:00:00+08:00'), { complianceMode: true })
+
+  assert.equal(card.statusText, '会员权益中')
+  assert.equal(card.title, '会员权益已生效')
+  assert.equal(card.description, '查看当前权益明细和有效期。')
+  assert.equal(card.actionText, '查看权益')
+  assert.equal(card.priceText, '')
+})

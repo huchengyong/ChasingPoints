@@ -393,24 +393,28 @@ type AdminVenueReviewResp struct {
 }
 
 type AdminVenueRewardConfigResp struct {
-	Code              int    `json:"code"`
-	Success           bool   `json:"success"`
-	Message           string `json:"message"`
-	Enabled           bool   `json:"enabled"`
-	PopupEnabled      bool   `json:"popup_enabled"`
-	RewardDays        int    `json:"reward_days"`
-	NewUserWindowDays int    `json:"new_user_window_days"`
-	StartAt           string `json:"start_at,optional"`
-	EndAt             string `json:"end_at,optional"`
+	Code                 int    `json:"code"`
+	Success              bool   `json:"success"`
+	Message              string `json:"message"`
+	Enabled              bool   `json:"enabled"`
+	PopupEnabled         bool   `json:"popup_enabled"`
+	RewardDays           int    `json:"reward_days"`
+	NewUserWindowDays    int    `json:"new_user_window_days"`
+	WelcomeRewardEnabled bool   `json:"welcome_reward_enabled"`
+	WelcomeRewardDays    int    `json:"welcome_reward_days"`
+	StartAt              string `json:"start_at,optional"`
+	EndAt                string `json:"end_at,optional"`
 }
 
 type AdminVenueRewardConfigUpdateReq struct {
-	Enabled           bool   `json:"enabled"`
-	PopupEnabled      bool   `json:"popup_enabled"`
-	RewardDays        int    `json:"reward_days"`
-	NewUserWindowDays int    `json:"new_user_window_days"`
-	StartAt           string `json:"start_at,optional"`
-	EndAt             string `json:"end_at,optional"`
+	Enabled              bool   `json:"enabled"`
+	PopupEnabled         bool   `json:"popup_enabled"`
+	RewardDays           int    `json:"reward_days"`
+	NewUserWindowDays    int    `json:"new_user_window_days"`
+	WelcomeRewardEnabled bool   `json:"welcome_reward_enabled"`
+	WelcomeRewardDays    int    `json:"welcome_reward_days"`
+	StartAt              string `json:"start_at,optional"`
+	EndAt                string `json:"end_at,optional"`
 }
 
 type AdminVenueRewardRecordInfo struct {

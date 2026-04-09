@@ -29,6 +29,9 @@ func (l *GetEventNewsViewLogic) GetEventNewsView(req *types.GetEventNewsViewReq)
 	if req == nil || req.EventId <= 0 {
 		return &types.GetEventNewsViewResp{Success: false, Matches: []types.EventNewsMatchInfo{}}, nil
 	}
+	if cached, ok := loadCachedEventNewsViewResp(l.ctx, l.svcCtx, req.EventId); ok {
+		return cached, nil
+	}
 
 	item, err := l.svcCtx.EventNewsModel.FindPublishedById(req.EventId)
 	if err != nil {
@@ -76,10 +79,12 @@ func (l *GetEventNewsViewLogic) GetEventNewsView(req *types.GetEventNewsViewReq)
 	}
 
 	eventInfo := mapEventNewsInfo(*item, tournament, matches)
-	return &types.GetEventNewsViewResp{
+	resp = &types.GetEventNewsViewResp{
 		Success:    true,
 		EventNews:  &eventInfo,
 		Tournament: mapTournamentInfo(tournament),
 		Matches:    matchItems,
-	}, nil
+	}
+	storeCachedEventNewsViewResp(l.ctx, l.svcCtx, req.EventId, resp)
+	return resp, nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"chasing_points/internal/logic/eventnews"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -155,6 +156,9 @@ func (l *AdminUpdateEventNewsLogic) AdminUpdateEventNews(req *types.AdminEventNe
 			Success: false,
 			Message: "更新赛事情报失败",
 		}, nil
+	}
+	if err := eventnews.BumpEventNewsCacheVersion(l.ctx, l.svcCtx); err != nil {
+		l.Logger.Errorf("更新赛事情报后更新缓存版本失败: eventId=%d err=%v", existing.Id, err)
 	}
 
 	return &types.AdminWriteResp{

@@ -75,6 +75,13 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
                 color: $text-secondary-dark;
             }
         }
+
+        .quick-link,
+        .secondary-link {
+            text {
+                color: $text-secondary-dark;
+            }
+        }
     }
 }
 
@@ -92,11 +99,11 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
 
 .quick-actions {
     display: flex;
-    gap: 20rpx;
+    align-items: center;
+    gap: 16rpx;
 }
 
 .quick-action {
-    flex: 1;
     height: 88rpx;
     line-height: 88rpx;
     border-radius: 999rpx;
@@ -112,12 +119,28 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
     }
 
     &--primary {
+        flex: 1;
         background-color: $primary-color;
         box-shadow: 0 8rpx 28rpx rgba(224, 174, 18, 0.22);
     }
+}
 
-    &--secondary {
-        background-color: #1f2937;
+.quick-link {
+    flex: 0 0 auto;
+    height: 68rpx;
+    line-height: 68rpx;
+    padding: 0 20rpx;
+    border-radius: 999rpx;
+    background-color: transparent;
+
+    &::after {
+        display: none;
+    }
+
+    text {
+        font-size: 24rpx;
+        font-weight: 600;
+        color: $text-secondary-light;
     }
 }
 
@@ -365,23 +388,21 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
         }
     }
 
-    .secondary-button {
+    .secondary-link {
         margin-top: 24rpx;
-        min-width: 320rpx;
-        height: 88rpx;
-        line-height: 88rpx;
-        padding: 0 48rpx;
-        border-radius: 999rpx;
-        background-color: #1f2937;
+        height: 64rpx;
+        line-height: 64rpx;
+        padding: 0 16rpx;
+        background-color: transparent;
 
         &::after {
             display: none;
         }
 
         text {
-            font-size: 30rpx;
-            font-weight: 700;
-            color: #ffffff;
+            font-size: 24rpx;
+            font-weight: 600;
+            color: $text-secondary-light;
         }
     }
 }

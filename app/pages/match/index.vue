@@ -16,8 +16,8 @@
 				<button class="start-button" @click="handleStartMatch">
 					<text>发起PK</text>
 				</button>
-				<button class="secondary-button" @click="handleScanAsReferee">
-					<text>扫码担任裁判</text>
+				<button class="secondary-link" @click="handleScanAsReferee">
+					<text>专业比赛需要裁判？扫码进入</text>
 				</button>
 			</view>
 
@@ -27,7 +27,7 @@
 					<button class="quick-action quick-action--primary" @click="handleStartMatch">
 						<text>发起PK</text>
 					</button>
-					<button class="quick-action quick-action--secondary" @click="handleScanAsReferee">
+					<button class="quick-link" @click="handleScanAsReferee">
 						<text>扫码担任裁判</text>
 					</button>
 				</view>

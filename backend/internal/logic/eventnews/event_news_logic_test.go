@@ -10,6 +10,8 @@ import (
 	"chasing_points/internal/testsupport"
 	"chasing_points/internal/types"
 
+	"github.com/alicebob/miniredis/v2"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -32,6 +34,20 @@ func newEventNewsTestSvc(t *testing.T) *svc.ServiceContext {
 		TournamentMatchModel: model.NewTournamentMatchModel(db),
 		PlayerModel:          model.NewPlayerModel(db),
 	}
+}
+
+func attachEventNewsTestRedis(t *testing.T, svcCtx *svc.ServiceContext) *miniredis.Miniredis {
+	t.Helper()
+
+	mr := miniredis.RunT(t)
+	svcCtx.Redis = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() {
+		if svcCtx.Redis != nil {
+			_ = svcCtx.Redis.Close()
+		}
+		mr.Close()
+	})
+	return mr
 }
 
 func mustTimePtr(t time.Time) *time.Time {
@@ -428,6 +444,79 @@ func TestGetEventNewsListRejectsInvalidDateParams(t *testing.T) {
 	}
 }
 
+func TestGetEventNewsListUsesRedisCacheUntilVersionBumps(t *testing.T) {
+	svcCtx := newEventNewsTestSvc(t)
+	attachEventNewsTestRedis(t, svcCtx)
+	restoreNow := withEventNewsNow(time.Date(2026, 4, 7, 12, 0, 0, 0, time.UTC))
+	defer restoreNow()
+
+	_, firstEvent := createPublishedTournamentEvent(t, svcCtx, "2026公开赛A", model.EventNewsStatusLive, time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC), time.Date(2026, 4, 8, 0, 0, 0, 0, time.UTC), time.Date(2026, 4, 1, 11, 0, 0, 0, time.UTC))
+
+	logic := NewGetEventNewsListLogic(context.Background(), svcCtx)
+	req := &types.GetEventNewsListReq{
+		Page:     1,
+		PageSize: 20,
+		Status:   -1,
+	}
+
+	firstResp, err := logic.GetEventNewsList(req)
+	if err != nil {
+		t.Fatalf("get first list: %v", err)
+	}
+	if firstResp.Total != 1 || len(firstResp.List) != 1 || firstResp.List[0].Id != firstEvent.Id {
+		t.Fatalf("expected first event in initial response, got %#v", firstResp)
+	}
+
+	_, secondEvent := createPublishedTournamentEvent(t, svcCtx, "2026公开赛B", model.EventNewsStatusUpcoming, time.Date(2026, 4, 9, 0, 0, 0, 0, time.UTC), time.Date(2026, 4, 16, 0, 0, 0, 0, time.UTC), time.Date(2026, 4, 9, 11, 0, 0, 0, time.UTC))
+	cachedResp, err := logic.GetEventNewsList(req)
+	if err != nil {
+		t.Fatalf("get cached list: %v", err)
+	}
+	if cachedResp.Total != 1 || len(cachedResp.List) != 1 {
+		t.Fatalf("expected cached response to stay at one event, got %#v", cachedResp)
+	}
+	if cachedResp.List[0].Id != firstEvent.Id {
+		t.Fatalf("expected cached response to preserve first event, got %#v", cachedResp.List[0])
+	}
+
+	if err := BumpEventNewsCacheVersion(context.Background(), svcCtx); err != nil {
+		t.Fatalf("bump cache version: %v", err)
+	}
+	refreshedResp, err := logic.GetEventNewsList(req)
+	if err != nil {
+		t.Fatalf("get refreshed list: %v", err)
+	}
+	if refreshedResp.Total != 2 || len(refreshedResp.List) != 2 {
+		t.Fatalf("expected refreshed response to include both events, got %#v", refreshedResp)
+	}
+	if refreshedResp.List[0].Id != firstEvent.Id && refreshedResp.List[0].Id != secondEvent.Id {
+		t.Fatalf("unexpected refreshed payload: %#v", refreshedResp.List)
+	}
+}
+
+func TestGetEventNewsListFallsBackWhenRedisUnavailable(t *testing.T) {
+	svcCtx := newEventNewsTestSvc(t)
+	mr := attachEventNewsTestRedis(t, svcCtx)
+	restoreNow := withEventNewsNow(time.Date(2026, 4, 7, 12, 0, 0, 0, time.UTC))
+	defer restoreNow()
+
+	_, expectedEvent := createPublishedTournamentEvent(t, svcCtx, "2026公开赛", model.EventNewsStatusLive, time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC), time.Date(2026, 4, 8, 0, 0, 0, 0, time.UTC), time.Date(2026, 4, 1, 11, 0, 0, 0, time.UTC))
+	mr.Close()
+
+	logic := NewGetEventNewsListLogic(context.Background(), svcCtx)
+	resp, err := logic.GetEventNewsList(&types.GetEventNewsListReq{
+		Page:     1,
+		PageSize: 20,
+		Status:   -1,
+	})
+	if err != nil {
+		t.Fatalf("get list with unavailable redis: %v", err)
+	}
+	if !resp.Success || resp.Total != 1 || len(resp.List) != 1 || resp.List[0].Id != expectedEvent.Id {
+		t.Fatalf("expected db fallback response, got %#v", resp)
+	}
+}
+
 func TestGetEventNewsViewReturnsEventTournamentAndMatches(t *testing.T) {
 	svcCtx := newEventNewsTestSvc(t)
 	defer withEventNewsNow(time.Date(2026, 4, 2, 12, 0, 0, 0, time.UTC))()
@@ -537,6 +626,53 @@ func TestGetEventNewsViewReturnsEventTournamentAndMatches(t *testing.T) {
 	}
 	if resp.Matches[0].AwayPlayerFirstName != "Barry" || resp.Matches[0].AwayPlayerLastName != "Hawkins" || resp.Matches[0].AwayPlayerFlagEmoji != "🏴" {
 		t.Fatalf("expected away player name parts and flag, got %#v", resp.Matches[0])
+	}
+}
+
+func TestGetEventNewsViewUsesRedisCacheUntilVersionBumps(t *testing.T) {
+	svcCtx := newEventNewsTestSvc(t)
+	attachEventNewsTestRedis(t, svcCtx)
+
+	event := createEvent(t, svcCtx, &model.EventNews{
+		Title:      "Sportsbet.io Tour Championship 2026",
+		GameType:   1,
+		SourceType: "official",
+		SourceName: "WST",
+		Published:  true,
+		Status:     model.EventNewsStatusLive,
+	})
+
+	logic := NewGetEventNewsViewLogic(context.Background(), svcCtx)
+	firstResp, err := logic.GetEventNewsView(&types.GetEventNewsViewReq{EventId: event.Id})
+	if err != nil {
+		t.Fatalf("get first view: %v", err)
+	}
+	if !firstResp.Success || firstResp.EventNews == nil || firstResp.EventNews.Title != "Sportsbet.io Tour Championship 2026" {
+		t.Fatalf("unexpected first view response: %#v", firstResp)
+	}
+
+	event.Title = "已更新的赛事标题"
+	if err := svcCtx.EventNewsModel.Update(event); err != nil {
+		t.Fatalf("update event title: %v", err)
+	}
+
+	cachedResp, err := logic.GetEventNewsView(&types.GetEventNewsViewReq{EventId: event.Id})
+	if err != nil {
+		t.Fatalf("get cached view: %v", err)
+	}
+	if cachedResp.EventNews == nil || cachedResp.EventNews.Title != "Sportsbet.io Tour Championship 2026" {
+		t.Fatalf("expected cached title before version bump, got %#v", cachedResp)
+	}
+
+	if err := BumpEventNewsCacheVersion(context.Background(), svcCtx); err != nil {
+		t.Fatalf("bump cache version: %v", err)
+	}
+	refreshedResp, err := logic.GetEventNewsView(&types.GetEventNewsViewReq{EventId: event.Id})
+	if err != nil {
+		t.Fatalf("get refreshed view: %v", err)
+	}
+	if refreshedResp.EventNews == nil || refreshedResp.EventNews.Title != "已更新的赛事标题" {
+		t.Fatalf("expected refreshed title after version bump, got %#v", refreshedResp)
 	}
 }
 

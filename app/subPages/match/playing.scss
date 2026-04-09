@@ -169,6 +169,22 @@ $success: #1bb56b;
 	text-align: center;
 }
 
+.viewer-banner__action {
+	height: 60rpx;
+	line-height: 60rpx;
+	padding: 0 18rpx;
+	border-radius: 999rpx;
+	background: transparent;
+
+	&::after {
+		display: none;
+	}
+
+	color: $text-secondary-light;
+	font-size: 22rpx;
+	font-weight: 600;
+}
+
 .readonly-panel {
 	display: flex;
 	flex-direction: column;
@@ -876,15 +892,31 @@ $success: #1bb56b;
 	.scoreboard-meta__text,
 	.scoreboard-meta__divider,
 	.player-meta__item,
-	.action-btn__desc {
+	.action-btn__desc,
+	.viewer-banner__hint,
+	.viewer-banner__action {
 		color: $text-secondary-dark;
 	}
 
 	.status-chip__text,
 	.player-name,
 	.panel-title,
-	.undo-btn {
+	.undo-btn,
+	.readonly-panel__title {
 		color: $text-primary-dark;
+	}
+
+	.readonly-panel,
+	.referee-modal-container {
+		background: rgba(24, 35, 47, 0.95);
+		border-color: rgba(255, 255, 255, 0.05);
+	}
+
+	.readonly-panel__desc,
+	.referee-modal-desc,
+	.referee-modal-hint,
+	.referee-modal-loading text {
+		color: $text-secondary-dark;
 	}
 
 	.player-compact.is-me {

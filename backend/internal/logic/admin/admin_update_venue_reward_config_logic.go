@@ -46,11 +46,11 @@ func (l *AdminUpdateVenueRewardConfigLogic) AdminUpdateVenueRewardConfig(req *ty
 			Message: "奖励天数必须大于 0",
 		}, nil
 	}
-	if req.NewUserWindowDays <= 0 {
+	if req.WelcomeRewardDays <= 0 {
 		return &types.AdminWriteResp{
 			Code:    400,
 			Success: false,
-			Message: "新用户有效期必须大于 0",
+			Message: "新用户奖励天数必须大于 0",
 		}, nil
 	}
 
@@ -78,16 +78,59 @@ func (l *AdminUpdateVenueRewardConfigLogic) AdminUpdateVenueRewardConfig(req *ty
 		}, nil
 	}
 
+	venueConfig, err := l.svcCtx.FavoriteVenueRewardConfigModel.FindByActivityKey(model.FavoriteVenueRewardActivityKey)
+	if err != nil {
+		l.Logger.Errorf("读取常玩球馆奖励配置失败: %v", err)
+		return &types.AdminWriteResp{
+			Code:    500,
+			Success: false,
+			Message: "保存奖励配置失败",
+		}, nil
+	}
+	if venueConfig == nil {
+		venueConfig = model.DefaultFavoriteVenueRewardConfig()
+	}
+
 	if err := l.svcCtx.FavoriteVenueRewardConfigModel.Upsert(&model.FavoriteVenueRewardConfig{
 		ActivityKey:       model.FavoriteVenueRewardActivityKey,
 		Enabled:           req.Enabled,
 		PopupEnabled:      req.PopupEnabled,
 		RewardDays:        req.RewardDays,
-		NewUserWindowDays: req.NewUserWindowDays,
+		NewUserWindowDays: venueConfig.NewUserWindowDays,
 		StartAt:           startAt,
 		EndAt:             endAt,
 	}); err != nil {
 		l.Logger.Errorf("更新常玩球馆奖励配置失败: %v", err)
+		return &types.AdminWriteResp{
+			Code:    500,
+			Success: false,
+			Message: "保存奖励配置失败",
+		}, nil
+	}
+
+	welcomeConfig, err := l.svcCtx.FavoriteVenueRewardConfigModel.FindByActivityKey(model.WelcomeMemberRewardActivityKey)
+	if err != nil {
+		l.Logger.Errorf("读取新用户会员奖励配置失败: %v", err)
+		return &types.AdminWriteResp{
+			Code:    500,
+			Success: false,
+			Message: "保存奖励配置失败",
+		}, nil
+	}
+	if welcomeConfig == nil {
+		welcomeConfig = model.DefaultWelcomeMemberRewardConfig()
+	}
+
+	if err := l.svcCtx.FavoriteVenueRewardConfigModel.Upsert(&model.FavoriteVenueRewardConfig{
+		ActivityKey:       model.WelcomeMemberRewardActivityKey,
+		Enabled:           req.WelcomeRewardEnabled,
+		PopupEnabled:      welcomeConfig.PopupEnabled,
+		RewardDays:        req.WelcomeRewardDays,
+		NewUserWindowDays: welcomeConfig.NewUserWindowDays,
+		StartAt:           welcomeConfig.StartAt,
+		EndAt:             welcomeConfig.EndAt,
+	}); err != nil {
+		l.Logger.Errorf("更新新用户会员奖励配置失败: %v", err)
 		return &types.AdminWriteResp{
 			Code:    500,
 			Success: false,

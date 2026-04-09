@@ -9,9 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"chasing_points/internal/logic/eventnews"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 
+	"github.com/zeromicro/go-zero/core/logx"
 	"gorm.io/gorm"
 )
 
@@ -130,6 +132,9 @@ func (s *Service) Sync(ctx context.Context, params SyncParams) (*SyncSummary, er
 		return nil
 	}); err != nil {
 		return nil, err
+	}
+	if err := eventnews.BumpEventNewsCacheVersion(ctx, s.svcCtx); err != nil {
+		logx.WithContext(ctx).Errorf("WST同步后更新赛讯缓存版本失败: err=%v", err)
 	}
 
 	return summary, nil

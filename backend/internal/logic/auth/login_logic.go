@@ -61,10 +61,11 @@ func (l *LoginLogic) Login(req *types.LoginReq) (resp *types.LoginResp, err erro
 	// 如果用户不存在，自动注册
 	if user == nil {
 		user = &model.User{
-			Phone:    &req.Phone,
-			Nickname: fmt.Sprintf("用户%s", req.Phone[7:]),
-			Avatar:   "https://cdn.dianzaozao.com/avatars/f512f44051984823941dd0d214ed84f6.jpg",
-			Status:   1,
+			Phone:           &req.Phone,
+			Nickname:        fmt.Sprintf("用户%s", req.Phone[7:]),
+			Avatar:          "https://cdn.dianzaozao.com/avatars/f512f44051984823941dd0d214ed84f6.jpg",
+			Status:          1,
+			MemberExpiresAt: resolveWelcomeMemberExpiresAt(l.svcCtx),
 		}
 		if err := l.svcCtx.UserModel.Create(user); err != nil {
 			l.Logger.Errorf("创建用户失败: %v", err)

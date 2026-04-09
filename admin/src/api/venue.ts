@@ -46,7 +46,8 @@ export interface VenueRewardConfig {
   enabled: boolean
   popup_enabled: boolean
   reward_days: number
-  new_user_window_days: number
+  welcome_reward_enabled: boolean
+  welcome_reward_days: number
   start_at: string
   end_at: string
 }

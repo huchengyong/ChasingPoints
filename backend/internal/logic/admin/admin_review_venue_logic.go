@@ -138,10 +138,6 @@ func (l *AdminReviewVenueLogic) grantFavoriteVenueRewardIfEligible(tx *gorm.DB, 
 	if user == nil {
 		return nil
 	}
-	if !model.FavoriteVenueRewardIsWithinWindow(user.CreatedAt, venue.CreatedAt, config.NewUserWindowDays) {
-		return nil
-	}
-
 	var before *time.Time
 	baseTime := now
 	if user.MemberExpiresAt != nil {

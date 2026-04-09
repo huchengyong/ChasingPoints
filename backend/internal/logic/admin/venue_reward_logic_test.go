@@ -46,6 +46,9 @@ func TestAdminVenueRewardConfigRoundTrip(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("seed reward config: %v", err)
 	}
+	if err := svcCtx.FavoriteVenueRewardConfigModel.Upsert(model.DefaultWelcomeMemberRewardConfig()); err != nil {
+		t.Fatalf("seed welcome reward config: %v", err)
+	}
 
 	getLogic := NewAdminGetVenueRewardConfigLogic(context.Background(), svcCtx)
 	getResp, err := getLogic.AdminGetVenueRewardConfig()
@@ -55,15 +58,20 @@ func TestAdminVenueRewardConfigRoundTrip(t *testing.T) {
 	if !getResp.Success || getResp.RewardDays != 30 || getResp.NewUserWindowDays != 7 {
 		t.Fatalf("unexpected get resp: %#v", getResp)
 	}
+	if !getResp.WelcomeRewardEnabled || getResp.WelcomeRewardDays != 7 {
+		t.Fatalf("unexpected welcome reward resp: %#v", getResp)
+	}
 
 	updateLogic := NewAdminUpdateVenueRewardConfigLogic(context.Background(), svcCtx)
 	updateResp, err := updateLogic.AdminUpdateVenueRewardConfig(&types.AdminVenueRewardConfigUpdateReq{
-		Enabled:           true,
-		PopupEnabled:      true,
-		RewardDays:        45,
-		NewUserWindowDays: 10,
-		StartAt:           "2026-03-26 12:00:00",
-		EndAt:             "2026-04-26 12:00:00",
+		Enabled:              true,
+		PopupEnabled:         true,
+		RewardDays:           45,
+		NewUserWindowDays:    10,
+		WelcomeRewardEnabled: true,
+		WelcomeRewardDays:    14,
+		StartAt:              "2026-03-26 12:00:00",
+		EndAt:                "2026-04-26 12:00:00",
 	})
 	if err != nil {
 		t.Fatalf("update reward config: %v", err)
@@ -82,11 +90,19 @@ func TestAdminVenueRewardConfigRoundTrip(t *testing.T) {
 	if !stored.Enabled || !stored.PopupEnabled {
 		t.Fatalf("expected enabled popup config, got %#v", stored)
 	}
-	if stored.RewardDays != 45 || stored.NewUserWindowDays != 10 {
+	if stored.RewardDays != 45 || stored.NewUserWindowDays != 7 {
 		t.Fatalf("unexpected updated reward config: %#v", stored)
 	}
 	if stored.StartAt == nil || stored.EndAt == nil {
 		t.Fatalf("expected start and end time, got %#v", stored)
+	}
+
+	welcomeStored, err := svcCtx.FavoriteVenueRewardConfigModel.FindByActivityKey(model.WelcomeMemberRewardActivityKey)
+	if err != nil {
+		t.Fatalf("find updated welcome config: %v", err)
+	}
+	if welcomeStored == nil || !welcomeStored.Enabled || welcomeStored.RewardDays != 14 {
+		t.Fatalf("unexpected updated welcome config: %#v", welcomeStored)
 	}
 }
 
@@ -95,10 +111,12 @@ func TestAdminUpdateVenueRewardConfigRejectsInvalidValues(t *testing.T) {
 	logic := NewAdminUpdateVenueRewardConfigLogic(context.Background(), svcCtx)
 
 	resp, err := logic.AdminUpdateVenueRewardConfig(&types.AdminVenueRewardConfigUpdateReq{
-		Enabled:           true,
-		PopupEnabled:      true,
-		RewardDays:        0,
-		NewUserWindowDays: 0,
+		Enabled:              true,
+		PopupEnabled:         true,
+		RewardDays:           0,
+		NewUserWindowDays:    0,
+		WelcomeRewardEnabled: true,
+		WelcomeRewardDays:    0,
 	})
 	if err != nil {
 		t.Fatalf("update reward config with invalid values: %v", err)
@@ -121,6 +139,9 @@ func TestAdminGetVenueRewardConfigReturnsDefaultDisabledWhenMissing(t *testing.T
 	}
 	if resp.RewardDays != 30 || resp.NewUserWindowDays != 7 {
 		t.Fatalf("expected default reward values, got %#v", resp)
+	}
+	if !resp.WelcomeRewardEnabled || resp.WelcomeRewardDays != 7 {
+		t.Fatalf("expected default welcome reward values, got %#v", resp)
 	}
 }
 

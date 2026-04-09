@@ -8,7 +8,10 @@ import (
 	"gorm.io/gorm"
 )
 
-const FavoriteVenueRewardActivityKey = "favorite_venue_member_reward"
+const (
+	FavoriteVenueRewardActivityKey = "favorite_venue_member_reward"
+	WelcomeMemberRewardActivityKey = "new_user_register_member_reward"
+)
 
 func DefaultFavoriteVenueRewardConfig() *FavoriteVenueRewardConfig {
 	return &FavoriteVenueRewardConfig{
@@ -16,6 +19,16 @@ func DefaultFavoriteVenueRewardConfig() *FavoriteVenueRewardConfig {
 		Enabled:           false,
 		PopupEnabled:      false,
 		RewardDays:        30,
+		NewUserWindowDays: 7,
+	}
+}
+
+func DefaultWelcomeMemberRewardConfig() *FavoriteVenueRewardConfig {
+	return &FavoriteVenueRewardConfig{
+		ActivityKey:       WelcomeMemberRewardActivityKey,
+		Enabled:           true,
+		PopupEnabled:      false,
+		RewardDays:        7,
 		NewUserWindowDays: 7,
 	}
 }

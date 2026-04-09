@@ -64,8 +64,8 @@
 					<text class="member-section-title">{{ isComplianceMode ? '权益说明' : '订阅说明' }}</text>
 				</view>
 				<view class="tips-card">
-					<text v-if="isComplianceMode" class="tips-item">当前会员权益由平台后台人工发放，前台不开放订阅与支付入口。</text>
-					<text v-if="isComplianceMode" class="tips-item">如你已获赠会员，状态和有效期会直接同步到这里。</text>
+					<text v-if="isComplianceMode" class="tips-item">新用户注册会直接获赠会员奖励，前台会自动同步会员状态。</text>
+					<text v-if="isComplianceMode" class="tips-item">补充常玩球馆并审核通过后，还可继续获赠会员，无需订阅或支付。</text>
 					<text v-if="!isComplianceMode" class="tips-item">支付成功后会自动更新会员状态。</text>
 					<text v-if="!isComplianceMode" class="tips-item">如果你当前会员仍在有效期内，续费会在现有到期时间基础上顺延。</text>
 					<text class="tips-item">所有展示时间统一按 UTC+8 显示。</text>

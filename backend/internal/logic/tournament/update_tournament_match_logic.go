@@ -3,6 +3,7 @@ package tournament
 import (
 	"context"
 
+	"chasing_points/internal/logic/eventnews"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -85,6 +86,9 @@ func (l *UpdateTournamentMatchLogic) UpdateTournamentMatch(req *types.UpdateTour
 			l.Logger.Errorf("推进淘汰赛下一轮失败: tournamentId=%d matchId=%d winnerId=%d err=%v", tournamentMatch.TournamentId, tournamentMatch.Id, req.WinnerId, err)
 			return &types.CommonResp{Success: false, Message: "更新对局失败"}, nil
 		}
+	}
+	if err := eventnews.BumpEventNewsCacheVersion(l.ctx, l.svcCtx); err != nil {
+		l.Logger.Errorf("更新赛事对局后更新缓存版本失败: matchId=%d err=%v", tournamentMatch.Id, err)
 	}
 
 	return &types.CommonResp{Success: true, Message: "更新成功"}, nil

@@ -232,7 +232,7 @@ $dark-cancel-bg: #27272a;
 					background-color: $primary-color;
 
 					text {
-						color: #231c0b;
+						color: #ffffff;
 					}
 
 				&:disabled {

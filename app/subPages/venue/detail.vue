@@ -121,7 +121,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { getVenueDetail, checkinVenue } from '@/api/venue.js'
 
 const venue = ref(null)
@@ -184,10 +185,8 @@ const callPhone = () => {
 	uni.makePhoneCall({ phoneNumber: venue.value.phone })
 }
 
-onMounted(() => {
-	const pages = getCurrentPages()
-	const currentPage = pages[pages.length - 1]
-	venueId.value = parseInt(currentPage.options.id || 0)
+onLoad((options) => {
+	venueId.value = Number.parseInt(options?.id || options?.venue_id || '0', 10) || 0
 	if (venueId.value > 0) {
 		fetchDetail()
 	} else {

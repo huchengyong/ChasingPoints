@@ -38,15 +38,29 @@ func (l *AdminGetVenueRewardConfigLogic) AdminGetVenueRewardConfig() (resp *type
 	if config == nil {
 		config = model.DefaultFavoriteVenueRewardConfig()
 	}
+	welcomeConfig, err := l.svcCtx.FavoriteVenueRewardConfigModel.FindByActivityKey(model.WelcomeMemberRewardActivityKey)
+	if err != nil {
+		l.Logger.Errorf("获取新用户会员奖励配置失败: %v", err)
+		return &types.AdminVenueRewardConfigResp{
+			Code:    500,
+			Success: false,
+			Message: "获取奖励配置失败",
+		}, nil
+	}
+	if welcomeConfig == nil {
+		welcomeConfig = model.DefaultWelcomeMemberRewardConfig()
+	}
 
 	resp = &types.AdminVenueRewardConfigResp{
-		Code:              0,
-		Success:           true,
-		Message:           "success",
-		Enabled:           config.Enabled,
-		PopupEnabled:      config.PopupEnabled,
-		RewardDays:        config.RewardDays,
-		NewUserWindowDays: config.NewUserWindowDays,
+		Code:                 0,
+		Success:              true,
+		Message:              "success",
+		Enabled:              config.Enabled,
+		PopupEnabled:         config.PopupEnabled,
+		RewardDays:           config.RewardDays,
+		NewUserWindowDays:    config.NewUserWindowDays,
+		WelcomeRewardEnabled: welcomeConfig.Enabled,
+		WelcomeRewardDays:    welcomeConfig.RewardDays,
 	}
 	if config.StartAt != nil {
 		resp.StartAt = config.StartAt.Format("2006-01-02 15:04:05")

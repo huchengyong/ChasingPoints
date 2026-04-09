@@ -78,9 +78,9 @@ test('resolveFavoriteVenueRewardTaskCard returns granted copy for rewarded users
     member_expires_at: '2026-04-26 12:00:00'
   })
 
-  assert.equal(card.visible, true)
-  assert.equal(card.title, '已获赠 1 个月会员')
-  assert.match(card.description, /2026-04-26 12:00:00/)
+  assert.equal(card.visible, false)
+  assert.equal(card.title, '')
+  assert.equal(card.description, '')
   assert.equal(card.actionText, '')
 })
 
@@ -113,9 +113,20 @@ test('resolveFavoriteVenueRewardPopupCopy uses reward duration in the title', ()
     reward_days: 30
   })
 
-  assert.equal(copy.title, '新用户福利：送 1 个月会员')
+  assert.equal(copy.title, '补充常玩球馆，送 1 个月会员')
   assert.match(copy.description, /审核通过后自动到账/)
   assert.equal(copy.primaryText, '去领取')
+})
+
+test('resolveFavoriteVenueRewardTaskCard does not use new-user wording for the default entry card', () => {
+  const card = resolveFavoriteVenueRewardTaskCard({
+    enabled: true,
+    reward_days: 30,
+    status: 'not_started'
+  })
+
+  assert.equal(card.statusText, '常玩球馆奖励')
+  assert.doesNotMatch(card.title, /新用户福利/)
 })
 
 test('resolveFavoriteVenueMemberCard returns active member summary for rewarded users', () => {
@@ -126,13 +137,9 @@ test('resolveFavoriteVenueMemberCard returns active member summary for rewarded 
 
   assert.equal(card.visible, true)
   assert.equal(card.statusText, '会员中')
-  assert.equal(card.title, '1 个月订阅会员进行中')
-  assert.match(card.description, /2026-04-26 12:00:00/)
-  assert.deepEqual(card.benefits.map(item => item.title), [
-    '有效期清晰可见',
-    '会员时长自动累计',
-    '权益会继续在这里更新'
-  ])
+  assert.equal(card.title, '会员生效中')
+  assert.equal(card.description, '有效期至 2026-04-26 12:00:00')
+  assert.deepEqual(card.benefits, [])
 })
 
 test('resolveFavoriteVenueMemberCard returns expired summary after member expires', () => {

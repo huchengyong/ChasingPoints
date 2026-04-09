@@ -166,16 +166,16 @@
 						</view>
 					</view>
 
-					<view v-if="favoriteVenueMemberCard.visible" class="member-card">
-						<view class="member-card-head">
-							<view class="member-card-copy">
-								<text class="member-card-eyebrow">会员权益</text>
-								<text class="member-card-title">{{ favoriteVenueMemberCard.title }}</text>
+						<view v-if="favoriteVenueMemberCard.visible" class="member-card" @click="handleOpenMemberCenter">
+							<view class="member-card-head">
+								<view class="member-card-copy">
+									<text class="member-card-eyebrow">会员权益</text>
+									<text class="member-card-title">{{ favoriteVenueMemberCard.title }}</text>
 								<text class="member-card-desc">{{ favoriteVenueMemberCard.description }}</text>
 							</view>
 							<text class="member-card-status">{{ favoriteVenueMemberCard.statusText }}</text>
 						</view>
-						<view class="member-benefits">
+						<view v-if="favoriteVenueMemberCard.benefits.length" class="member-benefits">
 							<view
 								v-for="item in favoriteVenueMemberCard.benefits"
 								:key="item.title"
@@ -204,22 +204,22 @@
 					</button>
 				</view>
 
-					<view v-if="memberCenterCard.visible" class="subscription-entry-card" @click="handleOpenMemberCenter">
-						<view class="subscription-entry-head">
-							<view class="subscription-entry-copy">
-								<text class="subscription-entry-eyebrow">{{ memberCenterCard.eyebrow }}</text>
-								<text class="subscription-entry-title">{{ memberCenterCard.title }}</text>
-								<text class="subscription-entry-desc">{{ memberCenterCard.description }}</text>
+						<view v-if="showMemberCenterEntryCard" class="subscription-entry-card" @click="handleOpenMemberCenter">
+							<view class="subscription-entry-head">
+								<view class="subscription-entry-copy">
+									<text class="subscription-entry-eyebrow">{{ memberCenterCard.eyebrow }}</text>
+									<text class="subscription-entry-title">{{ memberCenterCard.title }}</text>
+									<text class="subscription-entry-desc">{{ memberCenterCard.description }}</text>
+								</view>
+								<text class="subscription-entry-status">{{ memberCenterCard.statusText }}</text>
 							</view>
-							<text class="subscription-entry-status">{{ memberCenterCard.statusText }}</text>
+							<view v-if="shouldShowMemberCenterFooter" class="subscription-entry-footer">
+								<text v-if="memberCenterCard.priceText" class="subscription-entry-price">{{ memberCenterCard.priceText }}</text>
+								<button v-if="shouldShowMemberCenterButton" class="subscription-entry-btn">
+									<text>{{ memberCenterCard.actionText }}</text>
+								</button>
+							</view>
 						</view>
-						<view class="subscription-entry-footer">
-							<text class="subscription-entry-price">{{ memberCenterCard.priceText }}</text>
-							<button class="subscription-entry-btn">
-								<text>{{ memberCenterCard.actionText }}</text>
-							</button>
-						</view>
-					</view>
 
 				<view class="section-block">
 					<view class="section-header">
@@ -470,6 +470,10 @@ const favoriteVenueRewardPopupCopy = computed(() => resolveFavoriteVenueRewardPo
 const memberCenterCard = computed(() => resolveMemberEntryCard(memberStatus.value || {}, new Date(), {
 	complianceMode: APP_COMPLIANCE_MODE
 }))
+const isActiveFavoriteVenueMember = computed(() => favoriteVenueMemberCard.value.visible && favoriteVenueMemberCard.value.statusText === '会员中')
+const showMemberCenterEntryCard = computed(() => memberCenterCard.value.visible && !isActiveFavoriteVenueMember.value)
+const shouldShowMemberCenterButton = computed(() => memberCenterCard.value.actionText && memberCenterCard.value.actionText !== '查看权益')
+const shouldShowMemberCenterFooter = computed(() => memberCenterCard.value.priceText || shouldShowMemberCenterButton.value)
 
 const userStats = reactive({
 	totalMatches: 0,
@@ -502,7 +506,7 @@ const recentMatchCard = computed(() => {
 	if (!hasRecentMatch.value) return null
 
 	return {
-		title: userStats.winRate >= 50 ? '最近手感不错，继续保持' : '上一场先放下，这一局重新打回来',
+		title: userStats.winRate >= 50 ? '最近手感不错，继续保持' : '上一场先放下，下一局再接再厉',
 		description: `累计 ${userStats.totalMatches} 场对局 · 胜率 ${userStats.winRate}% · 最高连胜 ${userStats.maxStreak}`
 	}
 })

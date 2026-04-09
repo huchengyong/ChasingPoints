@@ -35,6 +35,9 @@ func (l *GetEventNewsListLogic) GetEventNewsList(req *types.GetEventNewsListReq)
 		l.Logger.Errorf("获取赛事情报列表参数无效: req=%+v err=%v", req, err)
 		return &types.GetEventNewsListResp{Success: false, List: []types.EventNewsInfo{}}, nil
 	}
+	if cached, ok := loadCachedEventNewsListResp(l.ctx, l.svcCtx, req, dateWindow); ok {
+		return cached, nil
+	}
 
 	items, err := l.svcCtx.EventNewsModel.FindPublishedMatching(req.GameType, req.Status, req.City)
 	if err != nil {
@@ -61,11 +64,13 @@ func (l *GetEventNewsListLogic) GetEventNewsList(req *types.GetEventNewsListReq)
 		respItems = []types.EventNewsInfo{}
 	}
 
-	return &types.GetEventNewsListResp{
+	resp = &types.GetEventNewsListResp{
 		Success: true,
 		Total:   int64(len(items)),
 		List:    respItems,
-	}, nil
+	}
+	storeCachedEventNewsListResp(l.ctx, l.svcCtx, req, dateWindow, resp)
+	return resp, nil
 }
 
 func (l *GetEventNewsListLogic) loadTournamentData(items []model.EventNews) (map[int64]*model.Tournament, map[int64][]model.TournamentMatch, error) {

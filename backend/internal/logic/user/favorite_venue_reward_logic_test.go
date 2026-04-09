@@ -180,7 +180,7 @@ func TestGetFavoriteVenueRewardStatusReturnsRejectedWithReason(t *testing.T) {
 	}
 }
 
-func TestGetFavoriteVenueRewardStatusReturnsExpiredAfterWindow(t *testing.T) {
+func TestGetFavoriteVenueRewardStatusKeepsVenueRewardAvailableForOlderUsers(t *testing.T) {
 	svcCtx := newFavoriteVenueRewardUserTestSvc(t)
 	seedFavoriteVenueRewardConfig(t, svcCtx, true)
 	seedRewardUser(t, svcCtx, &model.User{
@@ -194,7 +194,7 @@ func TestGetFavoriteVenueRewardStatusReturnsExpiredAfterWindow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get reward status: %v", err)
 	}
-	if !resp.Success || resp.Status != "expired" {
-		t.Fatalf("expected expired status, got %#v", resp)
+	if !resp.Success || resp.Status != "not_started" {
+		t.Fatalf("expected not_started status, got %#v", resp)
 	}
 }

@@ -45,7 +45,7 @@ export const resolveFavoriteVenueRewardPopupCopy = (rewardStatus = {}) => {
   const rewardText = formatRewardDuration(rewardStatus.reward_days || 30)
 
   return {
-    title: `新用户福利：送 ${rewardText}`,
+    title: `补充常玩球馆，送 ${rewardText}`,
     description: '补充你常玩的球馆，审核通过后自动到账，不影响正常使用。',
     primaryText: '去领取',
     secondaryText: '暂不领取'
@@ -81,11 +81,11 @@ export const resolveFavoriteVenueRewardTaskCard = (rewardStatus = {}) => {
 
   if (status === 'reward_granted') {
     return {
-      visible: true,
-      title: `已获赠 ${rewardText}`,
-      description: memberExpiresAt ? `会员已到账，有效期至 ${memberExpiresAt}。` : '会员已到账，可继续享受后续会员权益。',
+      visible: false,
+      title: '',
+      description: '',
       actionText: '',
-      statusText: '已到账'
+      statusText: ''
     }
   }
 
@@ -99,22 +99,12 @@ export const resolveFavoriteVenueRewardTaskCard = (rewardStatus = {}) => {
     }
   }
 
-  if (status === 'expired') {
-    return {
-      visible: true,
-      title: '新用户会员福利已结束',
-      description: '当前奖励窗口已结束，但你仍然可以继续补充常玩球馆，方便以后约球和签到。',
-      actionText: '去添加',
-      statusText: '已结束'
-    }
-  }
-
   return {
     visible: true,
     title: `补充常玩球馆，送 ${rewardText}`,
     description: '首次有效补充并审核通过后，会员会自动到账。',
     actionText: '去领取',
-    statusText: '新用户福利'
+    statusText: '常玩球馆奖励'
   }
 }
 
@@ -160,21 +150,8 @@ export const resolveFavoriteVenueMemberCard = (rewardStatus = {}, now = new Date
   return {
     visible: true,
     statusText: '会员中',
-    title: `${rewardText}订阅会员进行中`,
-    description: `当前有效期至 ${memberExpiresAt}，会员状态会直接展示在这里。`,
-    benefits: [
-      {
-        title: '有效期清晰可见',
-        description: '会员到期时间会直接展示，方便判断是否仍在有效期内。'
-      },
-      {
-        title: '会员时长自动累计',
-        description: '如果后续继续赠送会员，会在当前有效期基础上顺延。'
-      },
-      {
-        title: '权益会继续在这里更新',
-        description: '后续新增的会员权益上线后，会继续在这里同步展示。'
-      }
-    ]
+    title: '会员生效中',
+    description: `有效期至 ${memberExpiresAt}`,
+    benefits: []
   }
 }

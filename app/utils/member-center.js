@@ -46,8 +46,8 @@ const resolveComplianceMemberEntryCard = (expiresAtText, isActive) => {
       visible: true,
       eyebrow: '会员权益',
       statusText: '会员权益中',
-      title: `获赠会员有效期至 ${expiresAtText}`,
-      description: '当前会员权益由平台人工发放，如后续续期也会直接同步到这里。',
+      title: '会员权益已生效',
+      description: '查看当前权益明细和有效期。',
       actionText: '查看权益',
       priceText: ''
     }
@@ -70,7 +70,7 @@ const resolveComplianceMemberEntryCard = (expiresAtText, isActive) => {
     eyebrow: '会员权益',
     statusText: '待发放',
     title: '会员权益待发放',
-    description: '前期会员权益由平台人工发放，到账后会直接展示在这里。',
+    description: '新用户注册奖励或活动奖励到账后，会直接展示在这里。',
     actionText: '查看权益',
     priceText: ''
   }
@@ -132,7 +132,7 @@ export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date(), 
       return {
         statusText: '会员权益中',
         title: '获赠会员权益已生效',
-        description: `当前有效期至 ${expiresAtText}，新的人工发放权益也会继续同步到这里。`,
+        description: `当前有效期至 ${expiresAtText}，新的系统奖励或活动奖励也会继续同步到这里。`,
         primaryActionText: '查看权益'
       }
     }
@@ -149,7 +149,7 @@ export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date(), 
     return {
       statusText: '待发放',
       title: '会员权益等待发放',
-      description: '前期会员权益由平台人工发放，无需订阅或支付，到账后会自动更新这里的状态。',
+      description: '新用户注册奖励或活动奖励到账后，无需订阅或支付，会自动更新这里的状态。',
       primaryActionText: '查看权益'
     }
   }

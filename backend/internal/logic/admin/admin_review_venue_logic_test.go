@@ -215,3 +215,53 @@ func TestAdminReviewVenueRejectStoresReason(t *testing.T) {
 		t.Fatalf("expected rejected venue with reason, got %#v", venue)
 	}
 }
+
+func TestAdminReviewVenueStillGrantsRewardForOlderUsers(t *testing.T) {
+	svcCtx := newAdminReviewVenueTestSvc(t)
+	seedReviewRewardConfig(t, svcCtx, true)
+	seedReviewUser(t, svcCtx, &model.User{
+		Id:        304,
+		Nickname:  "老用户奖励",
+		CreatedAt: time.Now().Add(-30 * 24 * time.Hour),
+	})
+	seedReviewVenue(t, svcCtx, &model.Venue{
+		Id:          404,
+		Name:        "宝安球馆",
+		Address:     "大道 6 号",
+		City:        "深圳",
+		District:    "宝安区",
+		FullAddress: "深圳宝安区大道6号",
+		OwnerUserId: 304,
+		Status:      model.VenueStatusPending,
+		GeoStatus:   model.VenueGeoStatusSuccess,
+		CreatedAt:   time.Now().Add(-2 * time.Hour),
+	})
+
+	logic := NewAdminReviewVenueLogic(context.Background(), svcCtx)
+	resp, err := logic.AdminReviewVenue(&types.AdminVenueReviewReq{
+		VenueId: 404,
+		Status:  1,
+	})
+	if err != nil {
+		t.Fatalf("approve older-user venue: %v", err)
+	}
+	if !resp.Success || resp.Code != 0 {
+		t.Fatalf("expected success approve resp, got %#v", resp)
+	}
+
+	user, err := svcCtx.UserModel.FindById(304)
+	if err != nil {
+		t.Fatalf("find rewarded older user: %v", err)
+	}
+	if user == nil || user.MemberExpiresAt == nil {
+		t.Fatalf("expected older user reward, got %#v", user)
+	}
+
+	record, err := svcCtx.FavoriteVenueRewardRecordModel.FindByActivityAndUser(model.FavoriteVenueRewardActivityKey, 304)
+	if err != nil {
+		t.Fatalf("find older-user reward record: %v", err)
+	}
+	if record == nil || record.VenueId != 404 {
+		t.Fatalf("expected older-user reward record for venue 404, got %#v", record)
+	}
+}

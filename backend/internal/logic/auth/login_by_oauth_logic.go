@@ -62,9 +62,10 @@ func (l *LoginByOauthLogic) LoginByOauth(req *types.LoginByOauthReq) (resp *type
 		}
 
 		user = &model.User{
-			Nickname: nickname,
-			Avatar:   req.AvatarUrl,
-			Status:   1,
+			Nickname:        nickname,
+			Avatar:          req.AvatarUrl,
+			Status:          1,
+			MemberExpiresAt: resolveWelcomeMemberExpiresAt(l.svcCtx),
 		}
 		if err := l.svcCtx.UserModel.Create(user); err != nil {
 			l.Logger.Errorf("创建用户失败: %v", err)

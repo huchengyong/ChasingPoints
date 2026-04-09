@@ -67,6 +67,13 @@
 				<view class="viewer-banner">
 					<text class="viewer-banner__role">{{ viewerUi.roleLabel }}</text>
 					<text v-if="viewerUi.readonlyHint" class="viewer-banner__hint">{{ viewerUi.readonlyHint }}</text>
+					<button
+						v-if="showInviteRefereeAction"
+						class="viewer-banner__action"
+						@click="openRefereeQrModal"
+					>
+						邀请裁判扫码
+					</button>
 				</view>
 				<view v-if="gameType === 1" class="snooker-frame-summary">
 					<view class="snooker-frame-summary__label">
@@ -237,13 +244,6 @@
 
 		<view class="footer">
 			<view class="footer-buttons">
-				<button
-					v-if="showInviteRefereeAction"
-					class="footer-btn btn-secondary full-width"
-					@click="openRefereeQrModal"
-				>
-					邀请裁判
-				</button>
 				<button
 					v-if="gameType === 1 && viewerUi.showActionPanel"
 					class="footer-btn btn-secondary full-width"

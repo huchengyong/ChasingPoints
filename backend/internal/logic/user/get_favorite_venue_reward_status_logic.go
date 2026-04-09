@@ -97,9 +97,5 @@ func (l *GetFavoriteVenueRewardStatusLogic) GetFavoriteVenueRewardStatus() (resp
 		}
 	}
 
-	if config.Enabled && model.FavoriteVenueRewardWindowExpired(user.CreatedAt, logicx.NowUTC8(), config.NewUserWindowDays) {
-		resp.Status = "expired"
-	}
-
 	return resp, nil
 }
