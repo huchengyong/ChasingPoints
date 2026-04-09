@@ -37,27 +37,19 @@ func (l *AdminGetMatchListLogic) AdminGetMatchList(req *types.AdminMatchListReq)
 	}
 
 	list := make([]types.AdminMatchInfo, 0, len(matches))
+	playerNameMap := buildAdminPlayerNameMap(l.svcCtx, matches)
 	for _, match := range matches {
 		gameTypeName := getGameTypeName(match.GameType)
 		statusText := getMatchStatusText(match.Status)
-
-		winnerName := "-"
-		if match.Result != nil {
-			if *match.Result == 1 {
-				winnerName = "我"
-			} else if *match.Result == 2 {
-				winnerName = match.OpponentName
-			} else if *match.Result == 3 {
-				winnerName = "平局"
-			}
-		}
+		player1Name, player2Name := resolveAdminPlayerNames(match, playerNameMap)
+		winnerName := resolveAdminWinnerName(match.Result, player1Name, player2Name)
 
 		list = append(list, types.AdminMatchInfo{
 			Id:            match.Id,
 			GameType:      match.GameType,
 			GameTypeName:  gameTypeName,
-			Player1Name:   "我",
-			Player2Name:   match.OpponentName,
+			Player1Name:   player1Name,
+			Player2Name:   player2Name,
 			MyScore:       match.MyScore,
 			OpponentScore: match.OpponentScore,
 			Status:        match.Status,

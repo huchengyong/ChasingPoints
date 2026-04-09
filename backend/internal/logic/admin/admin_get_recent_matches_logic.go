@@ -37,14 +37,16 @@ func (l *AdminGetRecentMatchesLogic) AdminGetRecentMatches() (resp *types.AdminR
 	}
 
 	list := make([]types.AdminRecentMatch, 0, len(matches))
+	playerNameMap := buildAdminPlayerNameMap(l.svcCtx, matches)
 	for _, match := range matches {
 		gameTypeName := getGameTypeName(match.GameType)
+		player1Name, player2Name := resolveAdminPlayerNames(match, playerNameMap)
 		list = append(list, types.AdminRecentMatch{
 			Id:            match.Id,
 			GameType:      match.GameType,
 			GameTypeName:  gameTypeName,
-			Player1Name:   "我",
-			Player2Name:   match.OpponentName,
+			Player1Name:   player1Name,
+			Player2Name:   player2Name,
 			MyScore:       match.MyScore,
 			OpponentScore: match.OpponentScore,
 			Status:        match.Status,

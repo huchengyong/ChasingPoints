@@ -51,8 +51,32 @@ const routes = [
       {
         path: 'venues',
         name: 'Venues',
-        component: () => import('@/views/venues/index.vue'),
-        meta: { title: '球馆审核', icon: 'OfficeBuilding' }
+        redirect: '/venues/review',
+        meta: { title: '球馆管理', icon: 'OfficeBuilding' }
+      },
+      {
+        path: 'venues/review',
+        name: 'VenueReview',
+        component: () => import('@/views/venues/review.vue'),
+        meta: { title: '球馆审核', parent: '/venues' }
+      },
+      {
+        path: 'venues/reward-records',
+        name: 'VenueRewardRecords',
+        component: () => import('@/views/venues/reward-records.vue'),
+        meta: { title: '奖励发放记录', parent: '/venues' }
+      },
+      {
+        path: 'settings',
+        name: 'Settings',
+        redirect: '/settings/member-rewards',
+        meta: { title: '配置管理', icon: 'Setting' }
+      },
+      {
+        path: 'settings/member-rewards',
+        name: 'MemberRewardSettings',
+        component: () => import('@/views/config/member-rewards.vue'),
+        meta: { title: '会员奖励配置', parent: '/settings' }
       }
     // 合规收口：动态审核入口暂时隐藏，页面文件保留以便后续持证后快速恢复。
     ].concat(socialReviewRoutes)
