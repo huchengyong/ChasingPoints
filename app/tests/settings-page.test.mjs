@@ -13,7 +13,7 @@ const settingsScssSource = readFileSync(
 )
 
 test('settings page exposes a bind phone entry and reuses the bind phone sheet', () => {
-  assert.match(settingsSource, /绑定手机号/)
+  assert.match(settingsSource, /手机号/)
   assert.match(settingsSource, /<bindPhone/)
   assert.match(settingsSource, /showBindPhoneModal/)
   assert.match(settingsSource, /handleBindPhoneSuccess/)

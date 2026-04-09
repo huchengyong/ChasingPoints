@@ -217,6 +217,30 @@ type GetUserInfoResp {
 	UserInfo *UserInfo `json:"user_info"`
 }
 
+type GetQiniuUploadTokenReq {
+	FileExt string `form:"file_ext,optional"`
+}
+
+type GetQiniuUploadTokenResp {
+	Success     bool   `json:"success"`
+	Message     string `json:"message"`
+	UploadToken string `json:"upload_token,optional"`
+	Key         string `json:"key,optional"`
+	UploadUrl   string `json:"upload_url,optional"`
+	Domain      string `json:"domain,optional"`
+}
+
+type UpdateUserProfileReq {
+	Nickname string `json:"nickname,optional"`
+	Avatar   string `json:"avatar,optional"`
+}
+
+type UpdateUserProfileResp {
+	Success  bool      `json:"success"`
+	Message  string    `json:"message"`
+	UserInfo *UserInfo `json:"user_info"`
+}
+
 type GetUserPrivacyResp {
 	Success         bool `json:"success"`
 	HideMatchRecord bool `json:"hide_match_record"`
@@ -270,6 +294,10 @@ service chasing_points-api {
 	@handler GetUserInfo
 	get /info returns (GetUserInfoResp)
 
+	@doc "获取七牛上传凭证"
+	@handler GetQiniuUploadToken
+	get /upload-token (GetQiniuUploadTokenReq) returns (GetQiniuUploadTokenResp)
+
 	@doc "获取用户隐私设置"
 	@handler GetUserPrivacy
 	get /privacy returns (GetUserPrivacyResp)
@@ -289,6 +317,10 @@ service chasing_points-api {
 	@doc "更新昵称"
 	@handler UpdateNickname
 	post /nickname (UpdateNicknameReq) returns (UpdateNicknameResp)
+
+	@doc "更新用户资料"
+	@handler UpdateUserProfile
+	post /profile (UpdateUserProfileReq) returns (UpdateUserProfileResp)
 
 	@doc "更新推送令牌"
 	@handler UpdatePushToken

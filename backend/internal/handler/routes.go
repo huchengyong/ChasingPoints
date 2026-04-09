@@ -1013,6 +1013,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: user.UpdateUserPrivacyHandler(serverCtx),
 			},
 			{
+				// 更新用户资料
+				Method:  http.MethodPost,
+				Path:    "/profile",
+				Handler: user.UpdateUserProfileHandler(serverCtx),
+			},
+			{
 				// 更新推送令牌
 				Method:  http.MethodPost,
 				Path:    "/push-token",
@@ -1023,6 +1029,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodGet,
 				Path:    "/stats",
 				Handler: user.GetUserStatsHandler(serverCtx),
+			},
+			{
+				// 获取七牛上传凭证
+				Method:  http.MethodGet,
+				Path:    "/upload-token",
+				Handler: user.GetQiniuUploadTokenHandler(serverCtx),
 			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),

@@ -76,25 +76,9 @@ func (l *UpdateNicknameLogic) UpdateNickname(req *types.UpdateNicknameReq) (resp
 
 	l.Logger.Infof("用户 %d 更新昵称为 %s", userId, req.Nickname)
 
-	// 脱敏手机号
-	maskedPhone := ""
-	if user.Phone != nil {
-		phone := *user.Phone
-		if len(phone) == 11 {
-			maskedPhone = phone[:3] + "****" + phone[7:]
-		}
-	}
-
 	return &types.UpdateNicknameResp{
 		Success: true,
 		Message: "更新成功",
-		UserInfo: &types.UserInfo{
-			Id:        user.Id,
-			Phone:     maskedPhone,
-			Nickname:  user.Nickname,
-			Avatar:    user.Avatar,
-			Status:    user.Status,
-			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
-		},
+		UserInfo: buildUserInfoPayload(user),
 	}, nil
 }

@@ -53,6 +53,15 @@ type Config struct {
 		Enabled      bool   `json:",env=UNIPUSH_ENABLED,default=false"`
 	}
 
+	// 七牛上传配置
+	Qiniu struct {
+		AccessKey    string `json:",env=QINIU_ACCESS_KEY,optional"`
+		SecretKey    string `json:",env=QINIU_SECRET_KEY,optional"`
+		Bucket       string `json:",env=QINIU_BUCKET,optional"`
+		UploadUrl    string `json:",env=QINIU_UPLOAD_URL,default=https://up-z2.qiniup.com"`
+		PublicDomain string `json:",env=QINIU_PUBLIC_DOMAIN,optional"`
+	}
+
 	// 球馆地理解析配置
 	Geocode struct {
 		WorkerEnabled    bool   `json:",env=GEOCODE_WORKER_ENABLED,default=true"`

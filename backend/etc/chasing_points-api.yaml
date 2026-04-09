@@ -34,6 +34,13 @@ UniPush:
   MasterSecret: ${UNIPUSH_MASTER_SECRET}
   Enabled: false
 
+Qiniu:
+  AccessKey: ${QINIU_ACCESS_KEY}
+  SecretKey: ${QINIU_SECRET_KEY}
+  Bucket: ${QINIU_BUCKET}
+  UploadUrl: ${QINIU_UPLOAD_URL}
+  PublicDomain: ${QINIU_PUBLIC_DOMAIN}
+
 # 支付宝支付配置
 Alipay:
   AppId: ${ALIPAY_APP_ID}

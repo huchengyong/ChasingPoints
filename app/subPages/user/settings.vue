@@ -3,16 +3,40 @@
 		<view class="main-content">
 			<!-- 菜单列表 -->
 			<view class="menu-group">
+				<view class="menu-item avatar-item" @click="chooseAvatarSource">
+					<view class="menu-left">
+						<view class="avatar-preview">
+							<image class="avatar-image" :src="userAvatar" mode="aspectFill"></image>
+						</view>
+						<text class="menu-text">头像</text>
+					</view>
+					<view class="menu-right">
+						<text class="menu-value">{{ isUploadingAvatar ? '上传中...' : '点击更换' }}</text>
+						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
+					</view>
+				</view>
 				<view class="menu-item" @click="openEditNicknameModal">
 					<view class="menu-left">
 						<view class="icon-wrapper blue">
 							<uni-icons type="person" size="24" color="#E0AE12"></uni-icons>
 						</view>
-						<text class="menu-text">编辑资料</text>
+						<text class="menu-text">用户昵称</text>
 					</view>
 					<view class="menu-right">
 						<text class="menu-value">{{ userNickname }}</text>
 						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
+					</view>
+				</view>
+				<view class="menu-item" @click="handlePhoneRow">
+					<view class="menu-left">
+						<view class="icon-wrapper gold-soft">
+							<uni-icons type="phone-filled" size="24" color="#E0AE12"></uni-icons>
+						</view>
+						<text class="menu-text">手机号</text>
+					</view>
+					<view class="menu-right">
+						<text class="menu-value">{{ displayPhoneText }}</text>
+						<uni-icons v-if="canBindPhone" type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
 					</view>
 				</view>
 				<view class="menu-item" @click="toggleDarkMode">
@@ -28,18 +52,6 @@
 								<view class="switch-thumb" :class="{ active: isDarkMode }"></view>
 							</view>
 						</view>
-					</view>
-				</view>
-				<view v-if="showBindPhoneEntry" class="menu-item" @click="openBindPhoneModal">
-					<view class="menu-left">
-						<view class="icon-wrapper gold-soft">
-							<uni-icons type="phone-filled" size="24" color="#E0AE12"></uni-icons>
-						</view>
-						<text class="menu-text">绑定手机号</text>
-					</view>
-					<view class="menu-right">
-						<text class="menu-value">{{ bindPhoneEntryText }}</text>
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
 					</view>
 				</view>
 				<view class="menu-item" @click="handleNotifications">
@@ -94,7 +106,7 @@
 		<!-- 编辑昵称弹框 -->
 		<view class="modal-overlay" v-if="showEditNicknameModal" @click="closeEditNicknameModal">
 			<view class="modal-container" @click.stop>
-				<text class="modal-title">编辑昵称</text>
+				<text class="modal-title">用户昵称</text>
 				<view class="modal-input-wrapper">
 					<input
 						type="text"
@@ -122,8 +134,16 @@ import { ref, computed } from 'vue'
 import { onShow, onHide } from '@dcloudio/uni-app'
 import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
 import { useUserStore } from '@/store/user.js'
-import { updateNickname } from '@/api/user.js'
+import { getQiniuUploadToken, getUserInfo, updateUserProfile } from '@/api/user.js'
 import bindPhone from '@/components/bindPhone.vue'
+import {
+	buildQiniuAvatarObjectKey,
+	formatSettingsPhone,
+	getFileExtensionFromPath,
+	normalizeQiniuUploadResult,
+	normalizeQiniuUploadTokenResponse,
+	uploadAvatarToQiniu
+} from '@/utils/settings-profile.js'
 
 // ========== 状态管理 ==========
 const themeStore = useThemeStore()
@@ -133,18 +153,21 @@ const userStore = useUserStore()
 const isDarkMode = computed(() => themeStore.isDarkMode)
 const userNickname = computed(() => userStore.userInfo?.nickname || '用户')
 const userPhone = computed(() => userStore.userInfo?.phone || '')
-const showBindPhoneEntry = computed(() => Boolean(userStore.needBindPhone || !userPhone.value))
-const bindPhoneEntryText = computed(() => (userPhone.value ? '继续完善' : '立即绑定'))
+const userAvatar = computed(() => userStore.userInfo?.avatar || '/static/images/default-avatar.png')
+const canBindPhone = computed(() => Boolean(userStore.needBindPhone || !userPhone.value))
+const displayPhoneText = computed(() => formatSettingsPhone(userPhone.value) || '未绑定')
 const showEditNicknameModal = ref(false)
 const showBindPhoneModal = ref(false)
 const newNickname = ref('')
 const isSaving = ref(false)
+const isUploadingAvatar = ref(false)
 
 // ========== 生命周期 ==========
 onShow(() => {
 	themeStore.syncTheme()
 	themeStore.applyNavigationBarTheme()
 	uni.$on(THEME_CHANGE_EVENT, handleThemeChange)
+	fetchLatestUserInfo()
 })
 
 onHide(() => {
@@ -157,6 +180,17 @@ onHide(() => {
 const handleThemeChange = () => {
 	// 主题变化后更新导航栏
 	themeStore.applyNavigationBarTheme()
+}
+
+const fetchLatestUserInfo = async () => {
+	try {
+		const res = await getUserInfo()
+		if (res?.success && res.user_info) {
+			userStore.updateUserInfo(res.user_info)
+		}
+	} catch (error) {
+		console.error('获取用户信息失败:', error)
+	}
 }
 
 // ========== 方法 ==========
@@ -209,7 +243,10 @@ const handleSaveNickname = async () => {
 	isSaving.value = true
 	
 	try {
-		const res = await updateNickname(nickname)
+		const res = await updateUserProfile({
+			nickname,
+			avatar: userStore.userInfo?.avatar || ''
+		})
 		
 		// 更新 Store 中的用户信息
 		if (res.user_info) {
@@ -239,6 +276,102 @@ const handleSaveNickname = async () => {
  */
 const toggleDarkMode = () => {
 	themeStore.toggleTheme()
+}
+
+const handlePhoneRow = () => {
+	if (!canBindPhone.value) return
+	openBindPhoneModal()
+}
+
+const chooseAvatarSource = () => {
+	if (isUploadingAvatar.value) return
+
+	uni.showActionSheet({
+		itemList: ['拍照', '从手机相册选择'],
+		success: ({ tapIndex }) => {
+			if (tapIndex === 0) {
+				pickAvatarFromCamera()
+				return
+			}
+			if (tapIndex === 1) {
+				pickAvatarFromAlbum()
+			}
+		}
+	})
+}
+
+const pickAvatarFromCamera = () => {
+	pickAvatarImage(['camera'])
+}
+
+const pickAvatarFromAlbum = () => {
+	pickAvatarImage(['album'])
+}
+
+const pickAvatarImage = (sourceType) => {
+	uni.chooseImage({
+		count: 1,
+		sizeType: ['compressed'],
+		sourceType,
+		success: async ({ tempFilePaths }) => {
+			const filePath = tempFilePaths?.[0]
+			if (!filePath) return
+			await uploadAvatar(filePath)
+		}
+	})
+}
+
+const uploadAvatar = async (filePath) => {
+	isUploadingAvatar.value = true
+
+	try {
+		const fileExt = getFileExtensionFromPath(filePath)
+		const uploadTokenRes = await getQiniuUploadToken(fileExt)
+		const uploadTokenPayload = normalizeQiniuUploadTokenResponse(uploadTokenRes)
+		const uploadKey = uploadTokenPayload.key || buildQiniuAvatarObjectKey({
+			userId: userStore.userInfo?.id,
+			filePath
+		})
+
+		const uploadResult = await uploadAvatarToQiniu({
+			filePath,
+			uploadUrl: uploadTokenPayload.uploadUrl,
+			uploadToken: uploadTokenPayload.uploadToken,
+			key: uploadKey
+		})
+
+		const avatarUrl = normalizeQiniuUploadResult({
+			domain: uploadTokenPayload.domain,
+			key: uploadResult.key || uploadKey
+		})
+
+		if (!avatarUrl) {
+			throw new Error('头像地址生成失败')
+		}
+
+		const res = await updateUserProfile({
+			nickname: userNickname.value,
+			avatar: avatarUrl
+		})
+
+		if (res?.success && res.user_info) {
+			userStore.updateUserInfo(res.user_info)
+		} else {
+			userStore.updateUserInfo({ avatar: avatarUrl })
+		}
+
+		uni.showToast({
+			title: '头像更新成功',
+			icon: 'success'
+		})
+	} catch (error) {
+		uni.showToast({
+			title: error.message || '头像上传失败',
+			icon: 'none'
+		})
+	} finally {
+		isUploadingAvatar.value = false
+	}
 }
 
 const openBindPhoneModal = () => {

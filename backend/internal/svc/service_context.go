@@ -5,6 +5,7 @@ import (
 	"chasing_points/internal/model"
 	"chasing_points/internal/pkg/geocode"
 	"chasing_points/internal/pkg/push"
+	qiniuupload "chasing_points/internal/pkg/qiniu"
 	"chasing_points/internal/sms"
 	"time"
 
@@ -59,6 +60,7 @@ type ServiceContext struct {
 	AdminModel                     *model.AdminModel
 	AdminLoginLogModel             *model.AdminLoginLogModel
 	PushService                    *push.PushService
+	QiniuUploadService             *qiniuupload.UploadService
 	Geocoder                       geocode.Geocoder
 	GeocodeWorker                  *geocode.Worker
 }
@@ -109,6 +111,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		AdminModel:                     models.AdminModel,
 		AdminLoginLogModel:             models.AdminLoginLogModel,
 		PushService:                    newPushService(c),
+		QiniuUploadService:             newQiniuUploadService(c),
 		Geocoder:                       geocodeDeps.Client,
 		GeocodeWorker:                  geocodeDeps.Worker,
 	}
@@ -259,6 +262,20 @@ func newGeocodeDependencies(c config.Config, rdb *redis.Client, models serviceMo
 		Client: client,
 		Worker: worker,
 	}
+}
+
+func newQiniuUploadService(c config.Config) *qiniuupload.UploadService {
+	service := qiniuupload.NewUploadService(qiniuupload.Config{
+		AccessKey:    c.Qiniu.AccessKey,
+		SecretKey:    c.Qiniu.SecretKey,
+		Bucket:       c.Qiniu.Bucket,
+		UploadURL:    c.Qiniu.UploadUrl,
+		PublicDomain: c.Qiniu.PublicDomain,
+	})
+	if !service.Enabled() {
+		return nil
+	}
+	return service
 }
 
 func newPushService(c config.Config) *push.PushService {

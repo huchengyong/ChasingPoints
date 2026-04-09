@@ -53,3 +53,5 @@ backend/etc/*.override.yaml
 docs/plans
 .worktrees/
 .omx/
+.gocache
+.gomodcache

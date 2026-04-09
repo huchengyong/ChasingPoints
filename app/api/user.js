@@ -4,6 +4,10 @@
 
 import { get, post } from '@/utils/request.js'
 
+export const getUserInfo = () => {
+  return get('/api/user/info')
+}
+
 /**
  * 获取用户统计数据
  * @returns {Promise} 返回 { total_matches, wins, losses, win_rate, max_win_streak }
@@ -47,10 +51,23 @@ export const updateNickname = (nickname) => {
   return post('/api/user/nickname', { nickname })
 }
 
+export const getQiniuUploadToken = (fileExt = '') => {
+  return get('/api/user/upload-token', {
+    file_ext: fileExt
+  })
+}
+
+export const updateUserProfile = (data) => {
+  return post('/api/user/profile', data)
+}
+
 export default {
   getFavoriteVenueRewardStatus,
+  getQiniuUploadToken,
+  getUserInfo,
   getUserPrivacy,
   getUserStats,
   updateUserPrivacy,
-  updateNickname
+  updateNickname,
+  updateUserProfile
 }

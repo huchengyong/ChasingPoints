@@ -3,7 +3,6 @@ package user
 import (
 	"context"
 
-	logicx "chasing_points/internal/logic"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -51,24 +50,8 @@ func (l *GetUserInfoLogic) GetUserInfo() (resp *types.GetUserInfoResp, err error
 		}, nil
 	}
 
-	// 脱敏手机号
-	maskedPhone := ""
-	if user.Phone != nil {
-		phone := *user.Phone
-		if len(phone) == 11 {
-			maskedPhone = phone[:3] + "****" + phone[7:]
-		}
-	}
-
 	return &types.GetUserInfoResp{
 		Success: true,
-		UserInfo: &types.UserInfo{
-			Id:        user.Id,
-			Phone:     maskedPhone,
-			Nickname:  user.Nickname,
-			Avatar:    user.Avatar,
-			Status:    user.Status,
-			CreatedAt: logicx.FormatUTC8Time(user.CreatedAt),
-		},
+		UserInfo: buildUserInfoPayload(user),
 	}, nil
 }

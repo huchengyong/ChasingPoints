@@ -1048,6 +1048,19 @@ type GetPublicMatchDetailResp struct {
 	Match   *PublicMatchDetailData `json:"match"`
 }
 
+type GetQiniuUploadTokenReq struct {
+	FileExt string `form:"file_ext,optional"`
+}
+
+type GetQiniuUploadTokenResp struct {
+	Success     bool   `json:"success"`
+	Message     string `json:"message"`
+	UploadToken string `json:"upload_token,optional"`
+	Key         string `json:"key,optional"`
+	UploadUrl   string `json:"upload_url,optional"`
+	Domain      string `json:"domain,optional"`
+}
+
 type GetRankListReq struct {
 	GameType int `form:"game_type,optional,default=3"`
 }
@@ -1954,6 +1967,17 @@ type UpdateUserPrivacyResp struct {
 	Success         bool   `json:"success"`
 	Message         string `json:"message"`
 	HideMatchRecord bool   `json:"hide_match_record"`
+}
+
+type UpdateUserProfileReq struct {
+	Nickname string `json:"nickname,optional"`
+	Avatar   string `json:"avatar,optional"`
+}
+
+type UpdateUserProfileResp struct {
+	Success  bool      `json:"success"`
+	Message  string    `json:"message"`
+	UserInfo *UserInfo `json:"user_info"`
 }
 
 type UserInfo struct {
