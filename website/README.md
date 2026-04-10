@@ -48,8 +48,10 @@ npm run test
   - Android 正式下载地址。
 - `NUXT_PUBLIC_CONTACT_EMAIL`
   - 官网联系邮箱。
-- `NUXT_PUBLIC_CONTACT_WECHAT`
-  - 官网联系微信。
+- `NUXT_PUBLIC_CONTACT_PHONE`
+  - 官网联系座机。
+- `NUXT_PUBLIC_ICP_RECORD_NUMBER`
+  - 官网底部展示的 ICP 备案号。
 
 ## 当前约定
 

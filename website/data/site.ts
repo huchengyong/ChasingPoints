@@ -10,6 +10,8 @@ export interface SiteConfig {
   defaultTitle: string
   titleTemplate: string
   siteUrl: string
+  icpRecordNumber: string
+  icpRecordUrl: string
   navLinks: SiteNavLink[]
   legalLinks: SiteNavLink[]
 }
@@ -27,6 +29,8 @@ export const siteConfig: SiteConfig = {
   defaultTitle: '追分官网',
   titleTemplate: '%s | 追分官网',
   siteUrl: resolvePublicValue('NUXT_PUBLIC_SITE_URL', 'https://www.zhuifen.cn'),
+  icpRecordNumber: resolvePublicValue('NUXT_PUBLIC_ICP_RECORD_NUMBER', '沪ICP备2021037913号-11'),
+  icpRecordUrl: 'https://beian.miit.gov.cn/',
   navLinks: legalLinks,
   legalLinks
 }

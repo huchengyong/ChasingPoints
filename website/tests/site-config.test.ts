@@ -15,4 +15,8 @@ describe('siteConfig', () => {
   it('defaults the public site host to www.zhuifen.cn', () => {
     expect(siteConfig.siteUrl).toBe('https://www.zhuifen.cn')
   })
+
+  it('defaults the ICP record displayed in the site footer', () => {
+    expect(siteConfig.icpRecordNumber).toBe('沪ICP备2021037913号-11')
+  })
 })

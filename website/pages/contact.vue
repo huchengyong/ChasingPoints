@@ -31,8 +31,8 @@ usePageSeo({
         </div>
 
         <div>
-          <p class="contact-card__label">微信</p>
-          <p>{{ contactInfo.wechat }}</p>
+          <p class="contact-card__label">座机</p>
+          <a :href="`tel:${contactInfo.phone}`">{{ contactInfo.phone }}</a>
         </div>
 
         <div>
