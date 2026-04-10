@@ -113,7 +113,7 @@
 						v-model="newNickname"
 						class="modal-input"
 						placeholder="请输入昵称"
-						maxlength="20"
+						maxlength="12"
 					/>
 				</view>
 				<view class="modal-buttons">
@@ -226,9 +226,9 @@ const handleSaveNickname = async () => {
 		return
 	}
 	
-	if (nickname.length < 2 || nickname.length > 20) {
+	if (nickname.length < 2 || nickname.length > 12) {
 		uni.showToast({
-			title: '昵称长度需要在2-20个字符之间',
+			title: '昵称长度需要在2-12个字符之间',
 			icon: 'none'
 		})
 		return

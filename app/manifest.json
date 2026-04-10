@@ -17,7 +17,14 @@
             "delay" : 0
         },
         /* 模块配置 */
-        "modules" : {},
+        "modules" : {
+            "OAuth" : {},
+            "Geolocation" : {},
+            "Barcode" : {},
+            "Push" : {},
+            "Share" : {},
+            "Payment" : {}
+        },
         /* 应用发布信息 */
         "distribute" : {
             /* android打包配置 */
@@ -41,9 +48,51 @@
                 ]
             },
             /* ios打包配置 */
-            "ios" : {},
+            "ios" : {
+                "capabilities" : {
+                    "entitlements" : {
+                        "com.apple.developer.associated-domains" : [ "applinks:www.zhuifen.cn" ]
+                    }
+                }
+            },
             /* SDK配置 */
-            "sdkConfigs" : {},
+            "sdkConfigs" : {
+                "oauth" : {
+                    "univerify" : {},
+                    "apple" : {},
+                    "weixin" : {
+                        "appid" : "",
+                        "UniversalLinks" : "https://www.zhuifen.cn/uni-universallinks/__UNI__77D0D4A/"
+                    }
+                },
+                "geolocation" : {
+                    "system" : {
+                        "__platform__" : [ "ios", "android" ]
+                    }
+                },
+                "push" : {
+                    "unipush" : {
+                        "version" : "2",
+                        "offline" : false
+                    }
+                },
+                "payment" : {
+                    "alipay" : {
+                        "__platform__" : [ "ios", "android" ]
+                    },
+                    "weixin" : {
+                        "__platform__" : [ "ios", "android" ],
+                        "appid" : "",
+                        "UniversalLinks" : "https://www.zhuifen.cn/uni-universallinks/__UNI__77D0D4A/"
+                    }
+                },
+                "share" : {
+                    "weixin" : {
+                        "appid" : "",
+                        "UniversalLinks" : "https://www.zhuifen.cn/uni-universallinks/__UNI__77D0D4A/"
+                    }
+                }
+            },
             "icons" : {
                 "android" : {
                     "hdpi" : "unpackage/res/icons/72x72.png",
@@ -163,5 +212,6 @@
             "targetSdkVersion" : "6.0.0(20)",
             "compatibleSdkVersion" : "5.0.0(12)"
         }
-    }
+    },
+    "_spaceID" : "mp-88060c6f-e151-43c0-b88d-5c230e971578"
 }

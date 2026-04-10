@@ -449,10 +449,18 @@ $border-dark: #3a2e16;
 	gap: 10rpx;
 }
 
+.identity-copy {
+	min-width: 0;
+}
+
 .identity-name {
+	max-width: 260rpx;
 	font-size: 42rpx;
 	font-weight: 700;
 	line-height: 1.2;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .identity-rank-chip {

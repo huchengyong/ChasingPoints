@@ -59,10 +59,10 @@ func (l *UpdateUserProfileLogic) UpdateUserProfile(req *types.UpdateUserProfileR
 	}
 
 	nicknameLen := utf8.RuneCountInString(nickname)
-	if nicknameLen < 2 || nicknameLen > 20 {
+	if nicknameLen < 2 || nicknameLen > 12 {
 		return &types.UpdateUserProfileResp{
 			Success: false,
-			Message: "昵称长度需要在2-20个字符之间",
+			Message: "昵称长度需要在2-12个字符之间",
 		}, nil
 	}
 

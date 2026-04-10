@@ -51,6 +51,17 @@ test('user page notification badge stays within the icon button bounds', () => {
   )
 })
 
+test('user page keeps long nicknames on one line with ellipsis in the identity hero', () => {
+  assert.match(
+    styleSource,
+    /\.identity-copy\s*\{[\s\S]*min-width:\s*0;/
+  )
+  assert.match(
+    styleSource,
+    /\.identity-name\s*\{[\s\S]*max-width:\s*[0-9]+rpx;[\s\S]*overflow:\s*hidden;[\s\S]*text-overflow:\s*ellipsis;[\s\S]*white-space:\s*nowrap;/
+  )
+})
+
 test('user page only renders member benefit rows when there are actual extra benefits', () => {
   assert.match(
     source,

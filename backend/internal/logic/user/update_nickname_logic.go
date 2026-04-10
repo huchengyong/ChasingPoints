@@ -38,12 +38,12 @@ func (l *UpdateNicknameLogic) UpdateNickname(req *types.UpdateNicknameReq) (resp
 		}, nil
 	}
 
-	// 验证昵称长度 (2-20字符)
+	// 验证昵称长度 (2-12字符)，避免移动端个人中心头部被长昵称撑开。
 	nicknameLen := utf8.RuneCountInString(req.Nickname)
-	if nicknameLen < 2 || nicknameLen > 20 {
+	if nicknameLen < 2 || nicknameLen > 12 {
 		return &types.UpdateNicknameResp{
 			Success: false,
-			Message: "昵称长度需要在2-20个字符之间",
+			Message: "昵称长度需要在2-12个字符之间",
 		}, nil
 	}
 

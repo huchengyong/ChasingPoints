@@ -52,3 +52,9 @@ test('settings page exposes avatar, nickname, phone, and image picker entry poin
   assert.match(settingsSource, /getQiniuUploadToken/)
   assert.match(settingsSource, /updateUserProfile/)
 })
+
+test('settings page limits nickname input to 12 characters for profile layout safety', () => {
+  assert.match(settingsSource, /maxlength="12"/)
+  assert.match(settingsSource, /nickname\.length < 2 \|\| nickname\.length > 12/)
+  assert.match(settingsSource, /昵称长度需要在2-12个字符之间/)
+})
