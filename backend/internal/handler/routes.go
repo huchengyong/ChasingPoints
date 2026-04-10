@@ -11,6 +11,7 @@ import (
 	auth "chasing_points/internal/handler/auth"
 	challenge "chasing_points/internal/handler/challenge"
 	eventnews "chasing_points/internal/handler/eventnews"
+	feedback "chasing_points/internal/handler/feedback"
 	follow "chasing_points/internal/handler/follow"
 	friend "chasing_points/internal/handler/friend"
 	match "chasing_points/internal/handler/match"
@@ -228,6 +229,25 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
+				// 获取投诉举报与反馈工单列表
+				Method:  http.MethodGet,
+				Path:    "/list",
+				Handler: admin.AdminGetFeedbackTicketListHandler(serverCtx),
+			},
+			{
+				// 处理投诉举报与反馈工单
+				Method:  http.MethodPost,
+				Path:    "/process",
+				Handler: admin.AdminProcessFeedbackTicketHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/admin/feedback"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
 				// 获取用户列表（管理员）
 				Method:  http.MethodGet,
 				Path:    "/list",
@@ -366,6 +386,18 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			},
 		},
 		rest.WithPrefix("/api/event-news"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 公开提交投诉举报与意见反馈
+				Method:  http.MethodPost,
+				Path:    "/create",
+				Handler: feedback.CreateFeedbackTicketHandler(serverCtx),
+			},
+		},
+		rest.WithPrefix("/api/feedback"),
 	)
 
 	server.AddRoutes(
@@ -987,6 +1019,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodGet,
 				Path:    "/favorite-venue-reward-status",
 				Handler: user.GetFavoriteVenueRewardStatusHandler(serverCtx),
+			},
+			{
+				// 提交投诉举报与意见反馈
+				Method:  http.MethodPost,
+				Path:    "/feedback/create",
+				Handler: user.CreateUserFeedbackTicketHandler(serverCtx),
 			},
 			{
 				// 获取当前用户信息

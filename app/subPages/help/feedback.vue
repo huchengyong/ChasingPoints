@@ -1,33 +1,46 @@
 <template>
 	<view class="feedback-container" :class="{ 'dark-mode': isDarkMode }">
 		<view class="form-section">
-			<!-- 反馈内容 -->
+			<view class="form-tip">
+				<text>此入口受理使用问题、投诉与举报。涉及账号、内容或线下纠纷时，请尽量补充对象、时间和证据线索。</text>
+			</view>
+
 			<view class="form-item">
-				<text class="form-label">反馈内容</text>
+				<text class="form-label">提交类型</text>
+				<picker mode="selector" :range="categoryLabels" :value="categoryIndex" @change="handleCategoryChange">
+					<view class="category-picker">
+						<text>{{ selectedCategory.label }}</text>
+						<uni-icons type="right" size="16" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+					</view>
+				</picker>
+			</view>
+
+			<view class="form-item">
+				<text class="form-label">投诉举报或反馈内容</text>
 				<textarea
 					class="feedback-textarea"
 					v-model="feedbackContent"
-					placeholder="请详细描述您遇到的问题或建议..."
-					:maxlength="500"
+					placeholder="请详细描述您遇到的问题、投诉或举报事项..."
+					:maxlength="contentMaxLength"
 				/>
-				<text class="char-count">{{ feedbackContent.length }}/500</text>
+				<text class="char-count">{{ feedbackContent.length }}/{{ contentMaxLength }}</text>
 			</view>
 
-			<!-- 联系邮箱 -->
 			<view class="form-item">
-				<text class="form-label">联系邮箱 (选填)</text>
+				<text class="form-label">联系方式 (选填)</text>
 				<input
-					class="email-input"
+					class="contact-input"
 					type="text"
-					v-model="contactEmail"
-					placeholder="您的邮箱地址"
+					v-model="contactInfo"
+					placeholder="手机号或邮箱，便于处理人员联系您"
 				/>
 			</view>
 		</view>
 
-		<!-- 提交按钮 -->
 		<view class="submit-section">
-			<button class="submit-btn" @click="handleSubmit">提交</button>
+			<button class="submit-btn" :disabled="isSubmitting" @click="handleSubmit">
+				{{ isSubmitting ? '提交中...' : '提交投诉举报与反馈' }}
+			</button>
 		</view>
 	</view>
 </template>
@@ -36,16 +49,26 @@
 import { ref, computed, onUnmounted } from 'vue'
 import { onShow, onHide } from '@dcloudio/uni-app'
 import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
+import { createUserFeedbackTicket } from '@/api/feedback.js'
+import {
+	FEEDBACK_CATEGORY_OPTIONS,
+	buildFeedbackTicketPayload
+} from '@/utils/feedback-ticket.js'
 
 // ========== 状态管理 ==========
 const themeStore = useThemeStore()
 
 // ========== 响应式数据 ==========
 const feedbackContent = ref('')
-const contactEmail = ref('')
+const contactInfo = ref('')
+const categoryIndex = ref(0)
+const isSubmitting = ref(false)
+const contentMaxLength = 1000
 
 // ========== 计算属性 ==========
 const isDarkMode = computed(() => themeStore.isDarkMode)
+const categoryLabels = computed(() => FEEDBACK_CATEGORY_OPTIONS.map((item) => item.label))
+const selectedCategory = computed(() => FEEDBACK_CATEGORY_OPTIONS[categoryIndex.value] || FEEDBACK_CATEGORY_OPTIONS[0])
 
 // ========== 生命周期 ==========
 onShow(() => {
@@ -72,33 +95,58 @@ const handleThemeChange = () => {
 	themeStore.applyNavigationBarTheme()
 }
 
+const handleCategoryChange = (event) => {
+	categoryIndex.value = Number(event.detail.value) || 0
+}
 
 /**
- * 提交反馈
+ * 提交投诉举报与反馈
  */
-const handleSubmit = () => {
-	if (!feedbackContent.value.trim()) {
+const handleSubmit = async () => {
+	if (isSubmitting.value) return
+
+	const payload = buildFeedbackTicketPayload({
+		category: selectedCategory.value.value,
+		content: feedbackContent.value,
+		contact: contactInfo.value
+	})
+
+	if (!payload.content) {
 		uni.showToast({
-			title: '请输入反馈内容',
+			title: '请输入投诉举报或反馈内容',
 			icon: 'none'
 		})
 		return
 	}
 
-	// 显示提交成功弹框
-	uni.showToast({
-		title: '提交成功',
-		icon: 'success',
-		duration: 2000
-	})
-
-	// 清空表单
-	setTimeout(() => {
+	isSubmitting.value = true
+	try {
+		const res = await createUserFeedbackTicket(payload)
+		if (!res.success) {
+			throw new Error(res.message || '提交失败')
+		}
+		uni.showToast({
+			title: '提交成功',
+			icon: 'success',
+			duration: 2000
+		})
 		feedbackContent.value = ''
-		contactEmail.value = ''
-		// 返回上一页
-		uni.navigateBack()
-	}, 1500)
+		contactInfo.value = ''
+		categoryIndex.value = 0
+		setTimeout(() => {
+			uni.navigateBack()
+		}, 1200)
+	} catch (error) {
+		console.error('提交投诉举报与反馈失败:', error)
+		if (!error._isHandled) {
+			uni.showToast({
+				title: error.message || '提交失败，请稍后重试',
+				icon: 'none'
+			})
+		}
+	} finally {
+		isSubmitting.value = false
+	}
 }
 </script>
 

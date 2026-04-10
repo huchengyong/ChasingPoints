@@ -290,8 +290,8 @@
 					</view>
 					<view class="settings-item" @click="handleHelp">
 						<view class="settings-copy">
-							<text class="settings-label">帮助与反馈</text>
-							<text class="settings-desc">提交问题、建议或获取使用帮助</text>
+							<text class="settings-label">帮助、投诉与举报</text>
+							<text class="settings-desc">提交问题建议、投诉举报或获取使用帮助</text>
 						</view>
 						<uni-icons type="right" size="18" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
 					</view>

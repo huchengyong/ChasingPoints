@@ -173,6 +173,46 @@ type AdminExistsResp struct {
 	Exists  bool   `json:"exists"`
 }
 
+type AdminFeedbackTicketInfo struct {
+	Id            int64  `json:"id"`
+	UserId        int64  `json:"user_id,optional"`
+	Source        string `json:"source"`
+	SourceText    string `json:"source_text"`
+	Category      string `json:"category"`
+	CategoryText  string `json:"category_text"`
+	Content       string `json:"content"`
+	Contact       string `json:"contact"`
+	Status        int    `json:"status"`
+	StatusText    string `json:"status_text"`
+	HandlerId     int64  `json:"handler_id,optional"`
+	ProcessResult string `json:"process_result,optional"`
+	ProcessedAt   string `json:"processed_at,optional"`
+	CreatedAt     string `json:"created_at"`
+	UpdatedAt     string `json:"updated_at"`
+}
+
+type AdminFeedbackTicketListReq struct {
+	Page     int    `form:"page,default=1"`
+	PageSize int    `form:"page_size,default=20"`
+	Status   int    `form:"status,optional,default=-1"` // -1:全部 1:待处理 2:处理中 3:已办结 4:已关闭
+	Category string `form:"category,optional"`
+	Source   string `form:"source,optional"`
+}
+
+type AdminFeedbackTicketListResp struct {
+	Code    int                       `json:"code"`
+	Success bool                      `json:"success"`
+	Message string                    `json:"message"`
+	Total   int64                     `json:"total"`
+	List    []AdminFeedbackTicketInfo `json:"list"`
+}
+
+type AdminFeedbackTicketProcessReq struct {
+	TicketId      int64  `json:"ticket_id"`
+	Status        int    `json:"status"` // 2:处理中 3:已办结 4:已关闭
+	ProcessResult string `json:"process_result,optional"`
+}
+
 type AdminInfo struct {
 	Id       int64  `json:"id"`
 	Email    string `json:"email"`
@@ -490,6 +530,19 @@ type CommentPostReq struct {
 type CommonResp struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
+}
+
+type CreateFeedbackTicketReq struct {
+	Source   string `json:"source,optional,default=app"`        // app/website
+	Category string `json:"category,optional,default=feedback"` // feedback/complaint/report
+	Content  string `json:"content"`
+	Contact  string `json:"contact,optional"`
+}
+
+type CreateFeedbackTicketResp struct {
+	Success  bool   `json:"success"`
+	Message  string `json:"message"`
+	TicketId int64  `json:"ticket_id"`
 }
 
 type CreateMemberSubscriptionOrderReq struct {

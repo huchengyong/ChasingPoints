@@ -43,6 +43,12 @@ const routes = [
         meta: { title: '对局管理', icon: 'Trophy' }
       },
       {
+        path: 'feedback',
+        name: 'FeedbackTickets',
+        component: () => import('@/views/feedback/index.vue'),
+        meta: { title: '投诉举报', icon: 'WarningFilled' }
+      },
+      {
         path: 'event-news',
         name: 'EventNews',
         component: () => import('@/views/event-news/index.vue'),

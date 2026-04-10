@@ -1,3 +1,5 @@
+import { addClientAppManifestFallback } from './config/vite-client-alias'
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-03-01',
   devtools: {
@@ -21,6 +23,13 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'https://www.zhuifen.cn'
+    }
+  },
+  hooks: {
+    'vite:extendConfig'(config, { isClient }) {
+      if (isClient) {
+        addClientAppManifestFallback(config)
+      }
     }
   }
 })

@@ -56,6 +56,7 @@ type ServiceContext struct {
 	FavoriteVenueRewardConfigModel *model.FavoriteVenueRewardConfigModel
 	FavoriteVenueRewardRecordModel *model.FavoriteVenueRewardRecordModel
 	MemberSubscriptionOrderModel   *model.MemberSubscriptionOrderModel
+	FeedbackTicketModel            *model.FeedbackTicketModel
 	TournamentMatchModel           *model.TournamentMatchModel
 	AdminModel                     *model.AdminModel
 	AdminLoginLogModel             *model.AdminLoginLogModel
@@ -95,9 +96,9 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		ChallengeModel:                 models.ChallengeModel,
 		TournamentModel:                models.TournamentModel,
 		TournamentParticipantModel:     models.TournamentParticipantModel,
-			EventNewsModel:                 models.EventNewsModel,
-			PlayerModel:                    models.PlayerModel,
-			RulesContentModel:              models.RulesContentModel,
+		EventNewsModel:                 models.EventNewsModel,
+		PlayerModel:                    models.PlayerModel,
+		RulesContentModel:              models.RulesContentModel,
 		SeasonModel:                    models.SeasonModel,
 		SeasonRecordModel:              models.SeasonRecordModel,
 		VenueModel:                     models.VenueModel,
@@ -107,6 +108,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		FavoriteVenueRewardConfigModel: models.FavoriteVenueRewardConfigModel,
 		FavoriteVenueRewardRecordModel: models.FavoriteVenueRewardRecordModel,
 		MemberSubscriptionOrderModel:   models.MemberSubscriptionOrderModel,
+		FeedbackTicketModel:            models.FeedbackTicketModel,
 		TournamentMatchModel:           models.TournamentMatchModel,
 		AdminModel:                     models.AdminModel,
 		AdminLoginLogModel:             models.AdminLoginLogModel,
@@ -145,6 +147,7 @@ type serviceModels struct {
 	FavoriteVenueRewardConfigModel *model.FavoriteVenueRewardConfigModel
 	FavoriteVenueRewardRecordModel *model.FavoriteVenueRewardRecordModel
 	MemberSubscriptionOrderModel   *model.MemberSubscriptionOrderModel
+	FeedbackTicketModel            *model.FeedbackTicketModel
 	TournamentMatchModel           *model.TournamentMatchModel
 	AdminModel                     *model.AdminModel
 	AdminLoginLogModel             *model.AdminLoginLogModel
@@ -222,9 +225,9 @@ func newServiceModels(db *gorm.DB) serviceModels {
 		ChallengeModel:                 model.NewChallengeModel(db),
 		TournamentModel:                model.NewTournamentModel(db),
 		TournamentParticipantModel:     model.NewTournamentParticipantModel(db),
-			EventNewsModel:                 model.NewEventNewsModel(db),
-			PlayerModel:                    model.NewPlayerModel(db),
-			RulesContentModel:              model.NewRulesContentModel(db),
+		EventNewsModel:                 model.NewEventNewsModel(db),
+		PlayerModel:                    model.NewPlayerModel(db),
+		RulesContentModel:              model.NewRulesContentModel(db),
 		SeasonModel:                    model.NewSeasonModel(db),
 		SeasonRecordModel:              model.NewSeasonRecordModel(db),
 		VenueModel:                     venueModel,
@@ -234,6 +237,7 @@ func newServiceModels(db *gorm.DB) serviceModels {
 		FavoriteVenueRewardConfigModel: favoriteVenueRewardConfigModel,
 		FavoriteVenueRewardRecordModel: favoriteVenueRewardRecordModel,
 		MemberSubscriptionOrderModel:   memberSubscriptionOrderModel,
+		FeedbackTicketModel:            model.NewFeedbackTicketModel(db),
 		TournamentMatchModel:           model.NewTournamentMatchModel(db),
 		AdminModel:                     model.NewAdminModel(db),
 		AdminLoginLogModel:             model.NewAdminLoginLogModel(db),

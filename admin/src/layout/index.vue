@@ -83,6 +83,7 @@ const menuList = [
   { path: '/dashboard', title: '首页', icon: 'HomeFilled' },
   { path: '/users', title: '用户管理', icon: 'UserFilled' },
   { path: '/matches', title: '对局管理', icon: 'Trophy' },
+  { path: '/feedback', title: '投诉举报', icon: 'WarningFilled' },
   { path: '/event-news', title: '赛事情报', icon: 'Calendar' },
   {
     path: '/venues',

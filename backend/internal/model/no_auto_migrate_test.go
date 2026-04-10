@@ -83,6 +83,11 @@ func TestModelConstructorsDoNotAutoMigrate(t *testing.T) {
 			tableName: "member_subscription_orders",
 			construct: func(db *gorm.DB) { NewMemberSubscriptionOrderModel(db) },
 		},
+		{
+			name:      "feedback ticket model",
+			tableName: "feedback_tickets",
+			construct: func(db *gorm.DB) { NewFeedbackTicketModel(db) },
+		},
 	}
 
 	for _, tc := range testCases {
