@@ -30,6 +30,15 @@ test('resolveMemberEntryCard returns active copy when membership is still valid'
   assert.equal(card.actionText, '立即续费')
 })
 
+test('resolveMemberCenterSummary treats member_expires_at as UTC+8 instead of local device time', () => {
+  const summary = resolveMemberCenterSummary({
+    is_active: true,
+    member_expires_at: '2026-03-31 00:30:00'
+  }, new Date('2026-03-30T16:20:00Z'))
+
+  assert.equal(summary.statusText, '会员中')
+})
+
 test('resolveMemberCenterSummary returns expired copy after member expires', () => {
   const summary = resolveMemberCenterSummary({
     is_active: false,

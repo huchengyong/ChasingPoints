@@ -56,6 +56,8 @@ type ServiceContext struct {
 	FavoriteVenueRewardConfigModel *model.FavoriteVenueRewardConfigModel
 	FavoriteVenueRewardRecordModel *model.FavoriteVenueRewardRecordModel
 	MemberSubscriptionOrderModel   *model.MemberSubscriptionOrderModel
+	MemberGrowthProfileModel       *model.MemberGrowthProfileModel
+	MemberGrowthLogModel           *model.MemberGrowthLogModel
 	FeedbackTicketModel            *model.FeedbackTicketModel
 	TournamentMatchModel           *model.TournamentMatchModel
 	AdminModel                     *model.AdminModel
@@ -108,6 +110,8 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		FavoriteVenueRewardConfigModel: models.FavoriteVenueRewardConfigModel,
 		FavoriteVenueRewardRecordModel: models.FavoriteVenueRewardRecordModel,
 		MemberSubscriptionOrderModel:   models.MemberSubscriptionOrderModel,
+		MemberGrowthProfileModel:       models.MemberGrowthProfileModel,
+		MemberGrowthLogModel:           models.MemberGrowthLogModel,
 		FeedbackTicketModel:            models.FeedbackTicketModel,
 		TournamentMatchModel:           models.TournamentMatchModel,
 		AdminModel:                     models.AdminModel,
@@ -147,6 +151,8 @@ type serviceModels struct {
 	FavoriteVenueRewardConfigModel *model.FavoriteVenueRewardConfigModel
 	FavoriteVenueRewardRecordModel *model.FavoriteVenueRewardRecordModel
 	MemberSubscriptionOrderModel   *model.MemberSubscriptionOrderModel
+	MemberGrowthProfileModel       *model.MemberGrowthProfileModel
+	MemberGrowthLogModel           *model.MemberGrowthLogModel
 	FeedbackTicketModel            *model.FeedbackTicketModel
 	TournamentMatchModel           *model.TournamentMatchModel
 	AdminModel                     *model.AdminModel
@@ -208,6 +214,8 @@ func newServiceModels(db *gorm.DB) serviceModels {
 	favoriteVenueRewardConfigModel := model.NewFavoriteVenueRewardConfigModel(db)
 	favoriteVenueRewardRecordModel := model.NewFavoriteVenueRewardRecordModel(db)
 	memberSubscriptionOrderModel := model.NewMemberSubscriptionOrderModel(db)
+	memberGrowthProfileModel := model.NewMemberGrowthProfileModel(db)
+	memberGrowthLogModel := model.NewMemberGrowthLogModel(db)
 
 	return serviceModels{
 		AreaModel:                      areaModel,
@@ -237,6 +245,8 @@ func newServiceModels(db *gorm.DB) serviceModels {
 		FavoriteVenueRewardConfigModel: favoriteVenueRewardConfigModel,
 		FavoriteVenueRewardRecordModel: favoriteVenueRewardRecordModel,
 		MemberSubscriptionOrderModel:   memberSubscriptionOrderModel,
+		MemberGrowthProfileModel:       memberGrowthProfileModel,
+		MemberGrowthLogModel:           memberGrowthLogModel,
 		FeedbackTicketModel:            model.NewFeedbackTicketModel(db),
 		TournamentMatchModel:           model.NewTournamentMatchModel(db),
 		AdminModel:                     model.NewAdminModel(db),

@@ -23,9 +23,15 @@ test('user page only renders the status action row when there are visible action
   )
 })
 
-test('user page rank chip renders the computed highest rank label instead of hardcoded copy', () => {
-  assert.match(source, /<text>{{ highestRankChipText }}<\/text>/)
-  assert.doesNotMatch(source, /<text>当前段位<\/text>/)
+test('user page rank chip becomes the member level entry and links to member center', () => {
+  assert.match(source, /<view class="identity-rank-chip" @click="handleOpenMemberCenter">/)
+  assert.match(source, /<text>会员等级：\{\{ memberLevelText \}\}<\/text>/)
+  assert.doesNotMatch(source, /<text>{{ highestRankChipText }}<\/text>/)
+})
+
+test('user page identity hero no longer shows the raw id line', () => {
+  assert.doesNotMatch(source, /<text class="identity-id">会员等级：\{\{ memberLevelText \}\}<\/text>/)
+  assert.doesNotMatch(source, /<text class="identity-id">ID: \{\{ userInfo\.id \}\}<\/text>/)
 })
 
 test('user page status eyebrow uses readable muted text on the light status card', () => {

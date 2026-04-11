@@ -958,12 +958,20 @@ type GetMemberPlansResp struct {
 }
 
 type GetMemberStatusResp struct {
-	Success         bool   `json:"success"`
-	IsActive        bool   `json:"is_active"`
-	CurrentTime     string `json:"current_time"`
-	PlanCode        string `json:"plan_code,optional"`
-	PlanName        string `json:"plan_name,optional"`
-	MemberExpiresAt string `json:"member_expires_at,optional"`
+	Success               bool   `json:"success"`
+	IsActive              bool   `json:"is_active"`
+	CurrentTime           string `json:"current_time"`
+	PlanCode              string `json:"plan_code,optional"`
+	PlanName              string `json:"plan_name,optional"`
+	MemberExpiresAt       string `json:"member_expires_at,optional"`
+	GrowthLevel           int    `json:"growth_level,optional"`
+	GrowthPoints          int    `json:"growth_points,optional"`
+	TodayGrowthCount      int    `json:"today_growth_count,optional"`
+	GrowthDailyCap        int    `json:"growth_daily_cap,optional"`
+	GrowthFrozen          bool   `json:"growth_frozen,optional"`
+	NextGrowthLevel       int    `json:"next_growth_level,optional"`
+	NextGrowthLevelPoints int    `json:"next_growth_level_points,optional"`
+	RemainingGrowthPoints int    `json:"remaining_growth_points,optional"`
 }
 
 type GetMemberSubscriptionOrderStatusReq struct {

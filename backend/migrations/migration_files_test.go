@@ -142,3 +142,29 @@ func TestWSTSyncJobStatesMigrationCreatesCursorTable(t *testing.T) {
 		}
 	}
 }
+
+func TestMemberGrowthMigrationCreatesProfileAndLogTables(t *testing.T) {
+	content, err := os.ReadFile("20260411110000_add_member_growth_tables.sql")
+	if err != nil {
+		t.Fatalf("read member growth migration: %v", err)
+	}
+
+	text := string(content)
+	requiredSnippets := []string{
+		"member_growth_profiles",
+		"member_growth_logs",
+		"`growth_points`",
+		"`growth_level`",
+		"`today_growth_count`",
+		"`today_growth_date`",
+		"`match_id`",
+		"`source`",
+		"uniq_member_growth_log",
+	}
+
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(text, snippet) {
+			t.Fatalf("expected member growth migration to contain %q", snippet)
+		}
+	}
+}

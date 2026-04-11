@@ -5,15 +5,21 @@ import (
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
+	"time"
 )
 
 type RankSettlementResult = logic.RankSettlementResult
 type RankSettlementPolicy = logic.RankSettlementPolicy
+type MemberGrowthAwardResult = logic.MemberGrowthAwardResult
 
 const defaultDailyPositiveCap = logic.DefaultDailyPositiveCap
 
 func NewRankSettlementService(rankingModel *model.RankingModel) *logic.RankSettlementService {
 	return logic.NewRankSettlementService(rankingModel)
+}
+
+func NewMemberGrowthService(svcCtx *svc.ServiceContext, now func() time.Time) *logic.MemberGrowthService {
+	return logic.NewMemberGrowthService(svcCtx, now)
 }
 
 func buildRankSettlementRemark(settlement RankSettlementResult) string {

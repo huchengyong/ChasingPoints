@@ -95,12 +95,11 @@
 							<view class="identity-copy">
 								<view class="identity-name-row">
 									<text class="identity-name">{{ userInfo.nickname }}</text>
-									<view class="identity-rank-chip" @click="handleRankExplain">
+									<view class="identity-rank-chip" @click="handleOpenMemberCenter">
 										<uni-icons type="star-filled" size="12" color="#f59e0b"></uni-icons>
-										<text>{{ highestRankChipText }}</text>
+										<text>会员等级：{{ memberLevelText }}</text>
 									</view>
 								</view>
-								<text class="identity-id">ID: {{ userInfo.id }}</text>
 							</view>
 						</view>
 						<view class="identity-actions">
@@ -412,7 +411,7 @@ import {
 	resolveFavoriteVenueRewardTaskCard,
 	resolveFavoriteVenueMemberCard
 } from '@/utils/favorite-venue-reward.js'
-import { resolveMemberEntryCard } from '@/utils/member-center.js'
+import { resolveMemberEntryCard, resolveMemberGrowthCard } from '@/utils/member-center.js'
 
 const userStore = useUserStore()
 const themeStore = useThemeStore()
@@ -470,6 +469,8 @@ const favoriteVenueRewardPopupCopy = computed(() => resolveFavoriteVenueRewardPo
 const memberCenterCard = computed(() => resolveMemberEntryCard(memberStatus.value || {}, new Date(), {
 	complianceMode: APP_COMPLIANCE_MODE
 }))
+const memberGrowthCard = computed(() => resolveMemberGrowthCard(memberStatus.value || {}, new Date()))
+const memberLevelText = computed(() => memberGrowthCard.value.levelLabel || 'Lv1')
 const isActiveFavoriteVenueMember = computed(() => favoriteVenueMemberCard.value.visible && favoriteVenueMemberCard.value.statusText === '会员中')
 const showMemberCenterEntryCard = computed(() => memberCenterCard.value.visible && !isActiveFavoriteVenueMember.value)
 const shouldShowMemberCenterButton = computed(() => memberCenterCard.value.actionText && memberCenterCard.value.actionText !== '查看权益')
@@ -492,7 +493,6 @@ const displayRank = computed(() => ({
 	nextName: rankInfo.value?.next_name || '下一段位',
 	nextScore: rankInfo.value?.next_score || 0
 }))
-const highestRankChipText = computed(() => highestRankInfo.value?.name || displayRank.value.name || '未定级')
 const currentRankGameLabel = computed(() => rankGameTabs.find(item => item.value === currentRankGameType.value)?.label || '中式八球')
 
 const hasRecentMatch = computed(() => userStats.totalMatches > 0)

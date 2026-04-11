@@ -82,6 +82,7 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 		return &types.FinishMatchResp{Success: false, Accepted: false}, nil
 	}
 	if existingAction != nil {
+		l.awardMemberGrowthForMatch(match.Id, match.UserId, match.OpponentId)
 		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
 		if stateErr != nil {
 			l.Logger.Errorf("加载重放快照失败: matchId=%d, clientActionId=%s, err=%v", match.Id, req.ClientActionId, stateErr)
@@ -266,11 +267,12 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 			if replayState.Match != nil && replayState.Match.Result != nil {
 				result = *replayState.Match.Result
 			}
-			if replayState.ExistingAction != nil {
-				return &types.FinishMatchResp{
-					Accepted:       true,
-					Success:        true,
-					Result:         result,
+				if replayState.ExistingAction != nil {
+					l.awardMemberGrowthForMatch(replayState.Match.Id, replayState.Match.UserId, replayState.Match.OpponentId)
+					return &types.FinishMatchResp{
+						Accepted:       true,
+						Success:        true,
+						Result:         result,
 					ClientActionId: req.ClientActionId,
 					ServerRevision: replayState.View.Snapshot.ServerRevision,
 					Snapshot:       replayState.View.Snapshot,
@@ -297,6 +299,8 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 		l.Logger.Errorf("加载写入快照失败: matchId=%d, clientActionId=%s, err=%v", match.Id, req.ClientActionId, stateErr)
 		return &types.FinishMatchResp{Success: false, Accepted: false}, nil
 	}
+
+	l.awardMemberGrowthForMatch(match.Id, match.UserId, match.OpponentId)
 
 	l.Logger.Infof("用户 %d 结束对局 %d，比分: %d:%d，结果: %d",
 		userId, match.Id, match.MyScore, match.OpponentScore, result)
@@ -384,6 +388,25 @@ func (l *FinishMatchLogic) getAchievementRewardMap(gameType int) (map[string]int
 		rewardMap[item.AchievementType] = item.RewardScore
 	}
 	return rewardMap, nil
+}
+
+func (l *FinishMatchLogic) awardMemberGrowthForMatch(matchId, userId int64, opponentId *int64) {
+	memberGrowthService := NewMemberGrowthService(l.svcCtx, nil)
+	if growthResult, growthErr := memberGrowthService.AwardCompletedMatch(userId, matchId); growthErr != nil {
+		l.Logger.Errorf("发放创建者会员成长失败: matchId=%d, userId=%d, err=%v", matchId, userId, growthErr)
+	} else {
+		l.Logger.Infof("创建者会员成长结算完成: matchId=%d, userId=%d, granted=%v, reason=%s, growthPoints=%d",
+			matchId, userId, growthResult.Granted, growthResult.Reason, growthResult.GrowthPoints)
+	}
+
+	if opponentId != nil && *opponentId > 0 {
+		if growthResult, growthErr := memberGrowthService.AwardCompletedMatch(*opponentId, matchId); growthErr != nil {
+			l.Logger.Errorf("发放对手会员成长失败: matchId=%d, userId=%d, err=%v", matchId, *opponentId, growthErr)
+		} else {
+			l.Logger.Infof("对手会员成长结算完成: matchId=%d, userId=%d, granted=%v, reason=%s, growthPoints=%d",
+				matchId, *opponentId, growthResult.Granted, growthResult.Reason, growthResult.GrowthPoints)
+		}
+	}
 }
 
 func normalizeAchievementType(achievementType string) string {
