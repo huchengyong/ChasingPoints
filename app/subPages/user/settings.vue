@@ -137,6 +137,7 @@ import { useUserStore } from '@/store/user.js'
 import { getQiniuUploadToken, getUserInfo, updateUserProfile } from '@/api/user.js'
 import bindPhone from '@/components/bindPhone.vue'
 import {
+	prepareAvatarForUpload,
 	buildQiniuAvatarObjectKey,
 	formatSettingsPhone,
 	getFileExtensionFromPath,
@@ -325,16 +326,17 @@ const uploadAvatar = async (filePath) => {
 	isUploadingAvatar.value = true
 
 	try {
-		const fileExt = getFileExtensionFromPath(filePath)
+		const preparedFilePath = await prepareAvatarForUpload(filePath)
+		const fileExt = getFileExtensionFromPath(preparedFilePath)
 		const uploadTokenRes = await getQiniuUploadToken(fileExt)
 		const uploadTokenPayload = normalizeQiniuUploadTokenResponse(uploadTokenRes)
 		const uploadKey = uploadTokenPayload.key || buildQiniuAvatarObjectKey({
 			userId: userStore.userInfo?.id,
-			filePath
+			filePath: preparedFilePath
 		})
 
 		const uploadResult = await uploadAvatarToQiniu({
-			filePath,
+			filePath: preparedFilePath,
 			uploadUrl: uploadTokenPayload.uploadUrl,
 			uploadToken: uploadTokenPayload.uploadToken,
 			key: uploadKey

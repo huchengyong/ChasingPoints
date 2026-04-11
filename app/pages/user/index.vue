@@ -63,7 +63,7 @@
 						<view class="explore-item" @click="openRoute('/pages/ranking/index')">
 							<view class="explore-copy">
 								<text class="explore-title">排行榜</text>
-								<text class="explore-desc">先看看平台高手的段位与积分</text>
+								<text class="explore-desc">先看看平台高手的段位与段位分</text>
 							</view>
 							<uni-icons type="right" size="18" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
 						</view>
@@ -423,11 +423,11 @@ const guestBenefits = [
 	{ icon: 'flag-filled', title: '记录真实比分', desc: '每一场 PK 都能沉淀为你的个人竞技数据。' },
 	{ icon: 'bars', title: '查看竞技画像', desc: '从胜率、连胜、对手记录观察你的状态变化。' },
 	{ icon: 'chat', title: '接收待处理', desc: '挑战、好友申请和通知会集中提醒。' },
-	{ icon: 'star-filled', title: '冲击更高段位', desc: '在个人主页里持续追踪段位和积分。' }
+	{ icon: 'star-filled', title: '冲击更高段位', desc: '在个人主页里持续追踪段位和段位分。' }
 ]
 
 const previewModules = [
-	{ title: '当前段位', desc: '段位、积分和下一段位进度会统一展示' },
+	{ title: '当前段位', desc: '段位、段位分和下一段位进度会统一展示' },
 	{ title: '竞技概览', desc: '胜率、连胜和最近状态会更清楚地反馈给你' },
 	{ title: '待处理', desc: '消息、好友申请和挑战提醒会集中汇总' }
 ]
@@ -537,7 +537,7 @@ const identitySummary = computed(() => {
 
 const rankProgressText = computed(() => {
 	if (rankInfo.value?.level >= 5) return '已达到最高段位'
-	if (!rankInfo.value) return '完成首场比赛后开始计算积分'
+	if (!rankInfo.value) return '完成首场比赛后开始计算段位分'
 	return `进度 ${displayRank.value.progress}% · 下一段位 ${displayRank.value.nextName}`
 })
 
@@ -561,7 +561,7 @@ const metricCards = computed(() => ([
 		accent: false
 	},
 	{
-		label: '段位积分',
+		label: '段位分',
 		value: displayRank.value.score,
 		desc: rankInfo.value ? `当前处于 ${displayRank.value.name}` : '完成首场比赛后开始定级',
 		accent: false

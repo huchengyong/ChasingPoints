@@ -267,7 +267,7 @@ func (m *RankingModel) UpdateAfterMatch(userId int64, isWin bool, achievementSco
 		return err
 	}
 
-	// 基础积分变化
+	// 基础段位分变化
 	scoreChange := 0
 	if isWin {
 		scoreChange = 20 + achievementScores // 胜利 +20 + 特殊战绩奖励

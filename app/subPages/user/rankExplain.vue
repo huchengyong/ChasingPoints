@@ -55,7 +55,7 @@
 					<view class="rank-item">
 						<view class="rank-item-header">
 							<view class="rank-item-left">
-								<text class="rank-item-name">积分规则</text>
+								<text class="rank-item-name">段位分规则</text>
 							</view>
 						</view>
 						<view class="rank-item-content" style="display: block;">

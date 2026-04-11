@@ -1,4 +1,6 @@
 const DEFAULT_QINIU_UPLOAD_URL = 'https://up-z2.qiniup.com'
+export const AVATAR_IMAGE_MAX_EDGE = 512
+export const AVATAR_IMAGE_QUALITY = 80
 
 const padNumber = (value) => String(value).padStart(2, '0')
 
@@ -53,6 +55,92 @@ export const normalizeQiniuUploadTokenResponse = (payload = {}) => ({
   key: payload.key || '',
   domain: payload.domain || ''
 })
+
+export const getAvatarCompressionDimensions = ({
+  width = 0,
+  height = 0,
+  maxEdge = AVATAR_IMAGE_MAX_EDGE
+} = {}) => {
+  const normalizedWidth = Number(width) || 0
+  const normalizedHeight = Number(height) || 0
+  const normalizedMaxEdge = Number(maxEdge) || AVATAR_IMAGE_MAX_EDGE
+
+  if (normalizedWidth <= 0 || normalizedHeight <= 0) {
+    return {
+      width: normalizedMaxEdge,
+      height: normalizedMaxEdge
+    }
+  }
+
+  const longestEdge = Math.max(normalizedWidth, normalizedHeight)
+  if (longestEdge <= normalizedMaxEdge) {
+    return {
+      width: normalizedWidth,
+      height: normalizedHeight
+    }
+  }
+
+  const scale = normalizedMaxEdge / longestEdge
+  return {
+    width: Math.max(1, Math.round(normalizedWidth * scale)),
+    height: Math.max(1, Math.round(normalizedHeight * scale))
+  }
+}
+
+const getImageInfo = (uniApi, src) => new Promise((resolve, reject) => {
+  uniApi.getImageInfo({
+    src,
+    success: resolve,
+    fail: reject
+  })
+})
+
+const compressImage = (uniApi, options) => new Promise((resolve, reject) => {
+  uniApi.compressImage({
+    ...options,
+    success: resolve,
+    fail: reject
+  })
+})
+
+export const prepareAvatarForUpload = async (filePath, uniApi = typeof uni !== 'undefined' ? uni : null) => {
+  const normalizedFilePath = String(filePath || '').trim()
+  if (!normalizedFilePath) return ''
+
+  if (
+    !uniApi ||
+    typeof uniApi.getImageInfo !== 'function' ||
+    typeof uniApi.compressImage !== 'function'
+  ) {
+    return normalizedFilePath
+  }
+
+  try {
+    const imageInfo = await getImageInfo(uniApi, normalizedFilePath)
+    const targetSize = getAvatarCompressionDimensions({
+      width: imageInfo?.width,
+      height: imageInfo?.height
+    })
+
+    if (
+      Number(targetSize.width || 0) === Number(imageInfo?.width || 0) &&
+      Number(targetSize.height || 0) === Number(imageInfo?.height || 0)
+    ) {
+      return normalizedFilePath
+    }
+
+    const compressed = await compressImage(uniApi, {
+      src: normalizedFilePath,
+      quality: AVATAR_IMAGE_QUALITY,
+      compressedWidth: targetSize.width,
+      compressedHeight: targetSize.height
+    })
+
+    return compressed?.tempFilePath || normalizedFilePath
+  } catch (error) {
+    return normalizedFilePath
+  }
+}
 
 export const uploadAvatarToQiniu = ({
   filePath,
