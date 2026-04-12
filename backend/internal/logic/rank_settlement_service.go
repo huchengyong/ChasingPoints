@@ -9,6 +9,7 @@ import (
 
 const (
 	defaultDailyPositiveCap     = 300
+	defaultMemberAchievementDailyCap = 200
 	lossMinimumDeduction        = -2
 	sameOpponentThirdMatchRate  = 80
 	sameOpponentRepeatMatchRate = 30
@@ -31,6 +32,7 @@ type RankSettlementResult struct {
 	LossFloorAdjustment    int
 	SameOpponentAdjustment int
 	DailyCapAdjustment     int
+	MemberAchievementCapAdjustment int
 	Details                []types.RankDetail
 }
 
@@ -38,12 +40,17 @@ type RankSettlementPolicy struct {
 	TodayPositiveGain        int
 	DailyPositiveCap         int
 	SameOpponentMatchesToday int
+	TodayMemberAchievementGain int
+	DailyMemberAchievementCap  int
+	MemberLevel                int
+	MemberActive               bool
 }
 
 type rankSettlementRemark struct {
 	LossFloorAdjustment    int `json:"loss_floor_adjustment,omitempty"`
 	SameOpponentAdjustment int `json:"same_opponent_adjustment,omitempty"`
 	DailyCapAdjustment     int `json:"daily_cap_adjustment,omitempty"`
+	MemberAchievementCapAdjustment int `json:"member_achievement_cap_adjustment,omitempty"`
 }
 
 type RankSettlementService struct {
@@ -107,8 +114,16 @@ func (s *RankSettlementService) SettleWithPolicy(
 	lossFloorAdjustment := 0
 	sameOpponentAdjustment := 0
 	dailyCapAdjustment := 0
+	memberAchievementCapAdjustment := 0
 
 	if isWin {
+		memberAchievementRemaining := remainingDailyPositiveGain(policy.TodayMemberAchievementGain, policy.DailyMemberAchievementCap)
+		if achievementScore > memberAchievementRemaining {
+			memberAchievementCapAdjustment = memberAchievementRemaining - achievementScore
+			achievementScore = memberAchievementRemaining
+			finalChange = baseScore + achievementScore
+		}
+
 		sameOpponentRate := sameOpponentRankGainRate(policy.SameOpponentMatchesToday)
 		if finalChange > 0 && sameOpponentRate < 100 {
 			scaled := scalePositiveGain(finalChange, sameOpponentRate)
@@ -142,11 +157,11 @@ func (s *RankSettlementService) SettleWithPolicy(
 		{Label: "基础分", Value: baseScore},
 	}
 	if achievementScore != 0 {
-		label := "成就奖励"
-		if !isWin {
-			label = "特殊战绩减免"
-		}
+		label := "会员特殊战绩分"
 		details = append(details, types.RankDetail{Label: label, Value: achievementScore})
+	}
+	if memberAchievementCapAdjustment != 0 {
+		details = append(details, types.RankDetail{Label: "会员特殊战绩每日封顶", Value: memberAchievementCapAdjustment})
 	}
 	if lossFloorAdjustment != 0 {
 		details = append(details, types.RankDetail{Label: "失败保底", Value: lossFloorAdjustment})
@@ -177,6 +192,7 @@ func (s *RankSettlementService) SettleWithPolicy(
 		LossFloorAdjustment:    lossFloorAdjustment,
 		SameOpponentAdjustment: sameOpponentAdjustment,
 		DailyCapAdjustment:     dailyCapAdjustment,
+		MemberAchievementCapAdjustment: memberAchievementCapAdjustment,
 		Details:                details,
 	}
 }
@@ -252,9 +268,10 @@ func buildRankSettlementRemark(settlement RankSettlementResult) string {
 		LossFloorAdjustment:    settlement.LossFloorAdjustment,
 		SameOpponentAdjustment: settlement.SameOpponentAdjustment,
 		DailyCapAdjustment:     settlement.DailyCapAdjustment,
+		MemberAchievementCapAdjustment: settlement.MemberAchievementCapAdjustment,
 	}
 	if remark == (rankSettlementRemark{}) {
-		return ""
+		return "{}"
 	}
 
 	data, err := json.Marshal(remark)

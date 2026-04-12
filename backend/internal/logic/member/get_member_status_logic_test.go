@@ -41,8 +41,9 @@ func memberStatusCtx(userID int64) context.Context {
 
 func TestGetMemberStatusReturnsGrowthSnapshot(t *testing.T) {
 	svcCtx := newMemberStatusTestSvc(t)
-	now := time.Date(2026, 4, 11, 12, 0, 0, 0, time.FixedZone("UTC+8", 8*3600))
-	expiresAt := now.Add(24 * time.Hour)
+	now := time.Now().In(time.FixedZone("UTC+8", 8*3600))
+	day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.FixedZone("UTC+8", 8*3600))
+	expiresAt := time.Date(2099, 4, 11, 12, 0, 0, 0, time.FixedZone("UTC+8", 8*3600))
 
 	if err := svcCtx.UserModel.Create(&model.User{
 		Id:              1001,
@@ -56,8 +57,8 @@ func TestGetMemberStatusReturnsGrowthSnapshot(t *testing.T) {
 		GrowthPoints:     78,
 		GrowthLevel:      3,
 		TodayGrowthCount: 3,
-		TodayGrowthDate:  timePtr(time.Date(2026, 4, 11, 0, 0, 0, 0, time.FixedZone("UTC+8", 8*3600))),
-		LastGrowthAt:     timePtr(now),
+		TodayGrowthDate:  timePtr(day),
+		LastGrowthAt:     timePtr(day.Add(12 * time.Hour)),
 	}); err != nil {
 		t.Fatalf("create growth profile: %v", err)
 	}
@@ -83,8 +84,7 @@ func TestGetMemberStatusReturnsGrowthSnapshot(t *testing.T) {
 
 func TestGetMemberStatusReturnsFrozenGrowthForExpiredMember(t *testing.T) {
 	svcCtx := newMemberStatusTestSvc(t)
-	now := time.Date(2026, 4, 11, 12, 0, 0, 0, time.FixedZone("UTC+8", 8*3600))
-	expiresAt := now.Add(-time.Hour)
+	expiresAt := time.Date(2000, 4, 11, 12, 0, 0, 0, time.FixedZone("UTC+8", 8*3600))
 
 	if err := svcCtx.UserModel.Create(&model.User{
 		Id:              1002,

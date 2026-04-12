@@ -127,6 +127,13 @@
 						<uni-icons type="info" size="18" :color="isDarkMode ? '#94a3b8' : '#64748b'"></uni-icons>
 						<text class="empty-state-text">暂无特殊成就，本场战绩已正常计入记录。</text>
 					</view>
+					<view :class="['ranking-rights-card', rankingRightsSummary.tone]">
+						<view class="ranking-rights-head">
+							<text class="ranking-rights-badge">{{ rankingRightsSummary.badgeText }}</text>
+							<text class="ranking-rights-title">{{ rankingRightsSummary.title }}</text>
+						</view>
+						<text class="ranking-rights-desc">{{ rankingRightsSummary.description }}</text>
+					</view>
 				</view>
 
 				<view class="stats-section info-card">
@@ -175,6 +182,7 @@ import { onLoad, onShow, onHide } from '@dcloudio/uni-app'
 import { getMatchDetail } from '@/api/match.js'
 import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
 import { formatDateTime, formatRelativeTime } from '@/utils/format.js'
+import { resolveMatchRankingRightsSummary } from '@/utils/member-ranking-rights.js'
 
 const DEFAULT_AVATAR = '/static/default-avatar.png'
 const SHARE_LINK = 'https://appgallery.huawei.com/app/detail?id=hm.dianzaozao.ballmall&channelId=SHARE&source=appshare'
@@ -310,6 +318,8 @@ const highlightSectionCaption = computed(() => {
 	if (highlightItems.value.length) return `按${gameTypeName.value}模式提炼这场最值得记住的表现`
 	return `当前${gameTypeName.value}模式暂无可展示亮点，但战绩已完成记录`
 })
+
+const rankingRightsSummary = computed(() => resolveMatchRankingRightsSummary(matchData.value))
 
 const statsData = computed(() => {
 	const stats = Array.isArray(matchData.value.summary_stats) ? matchData.value.summary_stats : []

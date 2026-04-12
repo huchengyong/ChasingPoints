@@ -40,6 +40,42 @@
 				<text class="member-growth-desc">{{ growthCard.description }}</text>
 			</view>
 
+			<view class="member-section member-ranking-section">
+				<view class="member-section-head member-ranking-head">
+					<view class="member-ranking-head-copy">
+						<text class="member-section-title">排位权益 V2</text>
+						<text class="member-ranking-status">{{ rankingRightsCard.statusText }}</text>
+					</view>
+					<view class="member-ranking-badge">
+						<text class="member-ranking-badge-level">{{ rankingRightsCard.levelLabel }}</text>
+						<text class="member-ranking-badge-rate">{{ rankingRightsCard.currentPercentText }}</text>
+					</view>
+				</view>
+
+				<text class="member-ranking-headline">{{ rankingRightsCard.headline }}</text>
+				<text class="member-ranking-desc">{{ rankingRightsCard.description }}</text>
+
+				<view class="member-ranking-level-grid">
+					<view
+						v-for="item in rankingRightsCard.levels"
+						:key="item.level"
+						class="member-ranking-level-card"
+						:class="{ active: item.active }"
+					>
+						<text class="member-ranking-level-label">{{ item.levelLabel }}</text>
+						<text class="member-ranking-level-value">{{ item.percentText }}</text>
+					</view>
+				</view>
+
+				<view class="member-ranking-rule-list">
+					<text
+						v-for="item in rankingRightsCard.ruleItems"
+						:key="item"
+						class="member-ranking-rule-item"
+					>{{ item }}</text>
+				</view>
+			</view>
+
 			<view v-if="!isComplianceMode" class="member-section">
 				<view class="member-section-head">
 					<text class="member-section-title">订阅套餐</text>
@@ -100,6 +136,8 @@
 					<text v-if="!isComplianceMode" class="tips-item">如果你当前会员仍在有效期内，续费会在现有到期时间基础上顺延。</text>
 					<text class="tips-item">会员成长只统计真实完赛对局，每完成 1 场记 1 点成长，每天最多计入 5 场。</text>
 					<text class="tips-item">会员到期后成长会冻结但保留，续开会员后会从原进度继续成长。</text>
+					<text class="tips-item">普通用户高光会保留记录但不计入排位；会员按当前等级倍率计入特殊战绩排位分。</text>
+					<text class="tips-item">会员特殊战绩排位分仅保留单日上限，当日最多计入 200 分。</text>
 					<text class="tips-item">所有展示时间统一按 UTC+8 显示。</text>
 				</view>
 			</view>
@@ -132,6 +170,7 @@ import {
 	resolveMemberPlanCards,
 	shouldTreatMemberOrderAsPaid
 } from '@/utils/member-center.js'
+import { resolveMemberRankingRightsCard } from '@/utils/member-ranking-rights.js'
 
 const themeStore = useThemeStore()
 
@@ -149,6 +188,7 @@ const summary = computed(() => resolveMemberCenterSummary(memberStatus.value || 
 	complianceMode: isComplianceMode
 }))
 const growthCard = computed(() => resolveMemberGrowthCard(memberStatus.value || {}, new Date()))
+const rankingRightsCard = computed(() => resolveMemberRankingRightsCard(memberStatus.value || {}, new Date()))
 const planCards = computed(() => resolveMemberPlanCards(plans.value, selectedPlanCode.value))
 
 onShow(() => {

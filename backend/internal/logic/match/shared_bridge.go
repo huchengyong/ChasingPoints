@@ -13,6 +13,7 @@ type RankSettlementPolicy = logic.RankSettlementPolicy
 type MemberGrowthAwardResult = logic.MemberGrowthAwardResult
 
 const defaultDailyPositiveCap = logic.DefaultDailyPositiveCap
+const defaultMemberAchievementDailyCap = logic.DefaultMemberAchievementDailyCap
 
 func NewRankSettlementService(rankingModel *model.RankingModel) *logic.RankSettlementService {
 	return logic.NewRankSettlementService(rankingModel)
@@ -20,6 +21,10 @@ func NewRankSettlementService(rankingModel *model.RankingModel) *logic.RankSettl
 
 func NewMemberGrowthService(svcCtx *svc.ServiceContext, now func() time.Time) *logic.MemberGrowthService {
 	return logic.NewMemberGrowthService(svcCtx, now)
+}
+
+func calculateMemberAchievementRankingScore(baseAchievementScore int, isWin bool, memberActive bool, memberLevel int) int {
+	return logic.CalculateMemberAchievementRankingScore(baseAchievementScore, isWin, memberActive, memberLevel)
 }
 
 func buildRankSettlementRemark(settlement RankSettlementResult) string {

@@ -544,6 +544,67 @@ $shadow-dark: 0 24rpx 80rpx rgba(2, 6, 23, 0.5);
 	color: $text-secondary-light;
 }
 
+.ranking-rights-card {
+	margin-top: 20rpx;
+	padding: 24rpx;
+	border-radius: 24rpx;
+	border: 2rpx solid rgba(148, 163, 184, 0.14);
+	background: rgba(248, 250, 252, 0.9);
+
+	&.emerald {
+		border-color: rgba(16, 185, 129, 0.22);
+		background: linear-gradient(180deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.04));
+	}
+
+	&.blue {
+		border-color: rgba(59, 130, 246, 0.22);
+		background: linear-gradient(180deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04));
+	}
+
+	&.gold {
+		border-color: rgba(245, 158, 11, 0.22);
+		background: linear-gradient(180deg, rgba(245, 158, 11, 0.14), rgba(245, 158, 11, 0.04));
+	}
+}
+
+.ranking-rights-head {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 12rpx;
+}
+
+.ranking-rights-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 8rpx 16rpx;
+	border-radius: 999rpx;
+	background: rgba(15, 23, 42, 0.06);
+	font-size: 22rpx;
+	font-weight: 700;
+	color: $text-primary-light;
+}
+
+.ranking-rights-title,
+.ranking-rights-desc {
+	display: block;
+}
+
+.ranking-rights-title {
+	font-size: 28rpx;
+	font-weight: 700;
+	line-height: 1.4;
+	color: $text-primary-light;
+}
+
+.ranking-rights-desc {
+	margin-top: 12rpx;
+	font-size: 24rpx;
+	line-height: 1.7;
+	color: $text-secondary-light;
+}
+
 .stats-list {
 	margin-top: 24rpx;
 	display: flex;
@@ -668,7 +729,8 @@ $shadow-dark: 0 24rpx 80rpx rgba(2, 6, 23, 0.5);
 	.rank-note,
 	.highlight-label,
 	.empty-state-text,
-	.stat-desc {
+	.stat-desc,
+	.ranking-rights-desc {
 		color: $text-secondary-dark;
 	}
 
@@ -687,7 +749,9 @@ $shadow-dark: 0 24rpx 80rpx rgba(2, 6, 23, 0.5);
 	.section-title,
 	.highlight-value,
 	.stat-label,
-	.stat-value {
+	.stat-value,
+	.ranking-rights-badge,
+	.ranking-rights-title {
 		color: $text-primary-dark;
 	}
 
@@ -707,7 +771,8 @@ $shadow-dark: 0 24rpx 80rpx rgba(2, 6, 23, 0.5);
 
 	.highlight-card,
 	.stat-row,
-	.empty-state {
+	.empty-state,
+	.ranking-rights-card {
 		border: 2rpx solid rgba(148, 163, 184, 0.08);
 	}
 

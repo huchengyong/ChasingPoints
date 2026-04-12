@@ -168,3 +168,33 @@ func TestMemberGrowthMigrationCreatesProfileAndLogTables(t *testing.T) {
 		}
 	}
 }
+
+func TestMemberRankingRightsMigrationUpdatesAchievementRewardScores(t *testing.T) {
+	content, err := os.ReadFile("20260412193000_update_member_ranking_rights_achievement_scores.sql")
+	if err != nil {
+		t.Fatalf("read member ranking rights migration: %v", err)
+	}
+
+	text := string(content)
+	requiredSnippets := []string{
+		"achievement_reward_config",
+		"'break_50'",
+		"'golden_break'",
+		"'break_and_run'",
+		"'run_out'",
+		"'break_100'",
+		"'nine_on_break'",
+		"'break_147'",
+		"8",
+		"4",
+		"6",
+		"16",
+		"30",
+	}
+
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(text, snippet) {
+			t.Fatalf("expected member ranking rights migration to contain %q", snippet)
+		}
+	}
+}

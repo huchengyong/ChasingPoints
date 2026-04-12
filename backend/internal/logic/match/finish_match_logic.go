@@ -161,8 +161,8 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 
 	settlementService := NewRankSettlementService(l.svcCtx.RankingModel)
 	player1Win := result == 1
-	player1AchievementScore := 0
-	player2AchievementScore := 0
+	player1RawAchievementScore := 0
+	player2RawAchievementScore := 0
 	if result != 3 {
 		rewardMap, rewardErr := l.getAchievementRewardMap(match.GameType)
 		if rewardErr != nil {
@@ -179,7 +179,7 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 			l.Logger.Errorf("获取对局操作记录失败: %v", actionsErr)
 			return &types.FinishMatchResp{Success: false}, nil
 		}
-		player1AchievementScore, player2AchievementScore = resolveReplayAchievementScores(
+		player1RawAchievementScore, player2RawAchievementScore = resolveReplayAchievementScores(
 			match.GameType,
 			rounds,
 			actions,
@@ -222,6 +222,7 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 			return err
 		}
 
+		player1AchievementScore := calculateMemberAchievementRankingScore(player1RawAchievementScore, player1Win, player1Policy.MemberActive, player1Policy.MemberLevel)
 		player1Ranking, err := l.svcCtx.RankingModel.FindOrCreateWithTx(tx, match.UserId, match.GameType)
 		if err != nil {
 			return err
@@ -241,6 +242,7 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 			if err != nil {
 				return err
 			}
+			player2AchievementScore := calculateMemberAchievementRankingScore(player2RawAchievementScore, !player1Win, player2Policy.MemberActive, player2Policy.MemberLevel)
 			player2Ranking, err := l.svcCtx.RankingModel.FindOrCreateWithTx(tx, *match.OpponentId, match.GameType)
 			if err != nil {
 				return err

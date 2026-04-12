@@ -546,6 +546,36 @@ func (m *RankingModel) SumPositiveRankChangesByUserAndGameTypeBetween(
 	return total, err
 }
 
+// SumPositiveAchievementRankChangesByUserAndGameTypeBetween 汇总时间范围内会员特殊战绩正向涨分
+func (m *RankingModel) SumPositiveAchievementRankChangesByUserAndGameTypeBetween(
+	tx *gorm.DB,
+	userId int64,
+	gameType int,
+	start, end time.Time,
+) (int, error) {
+	db, err := m.resolveDB(tx)
+	if err != nil {
+		return 0, err
+	}
+	supportsGameType, err := m.rankChangeLogSupportsGameType(tx)
+	if err != nil {
+		return 0, err
+	}
+
+	var total int
+	query := db.Model(&RankChangeLog{}).
+		Select("COALESCE(SUM(CASE WHEN achievement_score > 0 THEN achievement_score ELSE 0 END), 0)").
+		Where("user_id = ? AND change_type = ? AND effective_at >= ? AND effective_at < ?",
+			userId,
+			rankChangeTypeMatchResult,
+			start,
+			end,
+		)
+	query = applyRankChangeLogGameTypeFilter(query, supportsGameType, gameType)
+	err = query.Scan(&total).Error
+	return total, err
+}
+
 // FindLatestRankChangeBefore 获取某个时间点之前最近的一条段位变更记录
 func (m *RankingModel) FindLatestRankChangeBefore(userId int64, at time.Time) (*RankChangeLog, error) {
 	db, err := m.resolveDB(nil)

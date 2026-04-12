@@ -192,6 +192,125 @@
 	color: #475569;
 }
 
+.member-ranking-head {
+	align-items: flex-start;
+	gap: 20rpx;
+}
+
+.member-ranking-head-copy {
+	display: flex;
+	flex-direction: column;
+	gap: 10rpx;
+	min-width: 0;
+}
+
+.member-ranking-status,
+.member-ranking-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 999rpx;
+	font-size: 22rpx;
+	font-weight: 700;
+}
+
+.member-ranking-status {
+	align-self: flex-start;
+	padding: 8rpx 16rpx;
+	background: rgba(14, 165, 233, 0.1);
+	color: #0369a1;
+}
+
+.member-ranking-badge {
+	flex-direction: column;
+	gap: 4rpx;
+	min-width: 132rpx;
+	padding: 14rpx 20rpx;
+	background: linear-gradient(135deg, rgba(224, 174, 18, 0.18) 0%, rgba(245, 158, 11, 0.12) 100%);
+	color: #0f172a;
+}
+
+.member-ranking-badge-level,
+.member-ranking-badge-rate,
+.member-ranking-headline,
+.member-ranking-desc,
+.member-ranking-level-label,
+.member-ranking-level-value,
+.member-ranking-rule-item {
+	display: block;
+}
+
+.member-ranking-badge-level {
+	font-size: 22rpx;
+	line-height: 1.2;
+}
+
+.member-ranking-badge-rate {
+	font-size: 28rpx;
+	line-height: 1.2;
+}
+
+.member-ranking-headline {
+	margin-top: 20rpx;
+	font-size: 28rpx;
+	font-weight: 700;
+	line-height: 1.5;
+	color: #0f172a;
+}
+
+.member-ranking-desc {
+	margin-top: 12rpx;
+	font-size: 24rpx;
+	line-height: 1.7;
+	color: #475569;
+}
+
+.member-ranking-level-grid {
+	display: grid;
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+	gap: 12rpx;
+	margin-top: 20rpx;
+}
+
+.member-ranking-level-card {
+	padding: 16rpx 12rpx;
+	border-radius: 18rpx;
+	text-align: center;
+	background: rgba(248, 250, 252, 0.92);
+	border: 1rpx solid rgba(148, 163, 184, 0.16);
+
+	&.active {
+		background: rgba(255, 247, 237, 0.96);
+		border-color: rgba(224, 174, 18, 0.36);
+		box-shadow: inset 0 0 0 2rpx rgba(224, 174, 18, 0.08);
+	}
+}
+
+.member-ranking-level-label {
+	font-size: 22rpx;
+	color: #64748b;
+}
+
+.member-ranking-level-value {
+	margin-top: 8rpx;
+	font-size: 26rpx;
+	font-weight: 700;
+	color: #0f172a;
+}
+
+.member-ranking-rule-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+	margin-top: 20rpx;
+}
+
+.member-ranking-rule-item {
+	font-size: 24rpx;
+	line-height: 1.7;
+	color: #475569;
+}
+
 .plan-list,
 .channel-list {
 	display: flex;
@@ -323,12 +442,14 @@
 	.member-hero-status,
 	.plan-card-highlight,
 	.channel-check,
-	.member-growth-status {
+	.member-growth-status,
+	.member-ranking-status {
 		color: #93c5fd;
 	}
 
 	.member-hero-status,
-	.member-growth-status {
+	.member-growth-status,
+	.member-ranking-status {
 		background: rgba(59, 130, 246, 0.14);
 	}
 
@@ -338,7 +459,10 @@
 	.channel-title,
 	.plan-card-price,
 	.member-growth-metric-value,
-	.member-growth-level {
+	.member-growth-level,
+	.member-ranking-badge,
+	.member-ranking-headline,
+	.member-ranking-level-value {
 		color: #e2e8f0;
 	}
 
@@ -350,7 +474,10 @@
 	.plan-card-duration,
 	.member-growth-metric-label,
 	.member-growth-next,
-	.member-growth-desc {
+	.member-growth-desc,
+	.member-ranking-desc,
+	.member-ranking-level-label,
+	.member-ranking-rule-item {
 		color: #94a3b8;
 	}
 
@@ -361,7 +488,8 @@
 
 	.plan-card,
 	.channel-card,
-	.member-growth-metric {
+	.member-growth-metric,
+	.member-ranking-level-card {
 		background: rgba(30, 41, 59, 0.92);
 		border-color: rgba(71, 85, 105, 0.3);
 	}
@@ -375,6 +503,16 @@
 
 	.member-growth-level {
 		background: linear-gradient(135deg, rgba(59, 130, 246, 0.22) 0%, rgba(14, 165, 233, 0.2) 100%);
+	}
+
+	.member-ranking-badge {
+		background: linear-gradient(135deg, rgba(224, 174, 18, 0.22) 0%, rgba(249, 115, 22, 0.2) 100%);
+	}
+
+	.member-ranking-level-card.active {
+		background: rgba(120, 53, 15, 0.28);
+		border-color: rgba(251, 191, 36, 0.34);
+		box-shadow: inset 0 0 0 2rpx rgba(251, 191, 36, 0.08);
 	}
 
 	.member-growth-progress-track {

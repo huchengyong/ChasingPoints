@@ -1,3 +1,5 @@
+import { resolveMemberRankingRightsCard } from './member-ranking-rights.js'
+
 const MONTHLY_PRICE_FEN = 1900
 const MEMBER_GROWTH_DAILY_CAP = 5
 const MEMBER_GROWTH_LEVELS = [
@@ -227,6 +229,7 @@ export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date(), 
   const todayGrowthCount = resolveTodayGrowthCount(memberStatus)
   const currentLevel = resolveCurrentLevel(growthPoints, memberStatus.growth_level)
   const growthStatus = `Lv${currentLevel.level}，今日已计入 ${todayGrowthCount}/${growthDailyCap}`
+  const rankingRightsCard = resolveMemberRankingRightsCard(memberStatus, now)
 
   if (complianceMode) {
     if (isActive) {
@@ -259,17 +262,18 @@ export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date(), 
     return {
       statusText: '会员中',
       title: '月卡会员生效中',
-      description: `当前有效期至 ${expiresAtText}，会员成长 ${growthStatus}。`,
+      description: `当前有效期至 ${expiresAtText}，会员成长 ${growthStatus}，高光排位按 ${rankingRightsCard.levelLabel} ${rankingRightsCard.currentPercentText} 计入。`,
       primaryActionText: '立即续费'
     }
   }
 
   if (expiresAtText) {
+    const hasGrowthProgress = growthPoints > 0 || currentLevel.level > 1 || Boolean(memberStatus.growth_frozen)
     return {
       statusText: '已到期',
       title: '会员已到期',
-      description: growthPoints > 0
-        ? `上次会员有效期到 ${expiresAtText}，当前成长 Lv${currentLevel.level} 已冻结，续开后恢复继续成长。`
+      description: hasGrowthProgress
+        ? `上次会员有效期到 ${expiresAtText}，当前成长 Lv${currentLevel.level} 已冻结，续开后恢复继续成长；高光排位权益会按 ${rankingRightsCard.levelLabel} ${rankingRightsCard.currentPercentText} 恢复。`
         : `上次会员有效期到 ${expiresAtText}，续费后会从当前时间重新开始计算。`,
       primaryActionText: '立即续费'
     }
@@ -278,7 +282,7 @@ export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date(), 
   return {
     statusText: '未开通',
     title: '开通月卡会员',
-    description: '目前先开放月卡订阅，开通后完成真实对局可累计会员成长。',
+    description: '目前先开放月卡订阅，开通后完成真实对局可累计会员成长，高光会按会员等级计入排位。',
     primaryActionText: '立即开通'
   }
 }

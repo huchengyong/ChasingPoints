@@ -3,6 +3,7 @@ package match
 import (
 	"time"
 
+	logicx "chasing_points/internal/logic"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 
@@ -20,6 +21,7 @@ func buildRankSettlementPolicy(
 ) (RankSettlementPolicy, error) {
 	policy := RankSettlementPolicy{
 		DailyPositiveCap: defaultDailyPositiveCap,
+		DailyMemberAchievementCap: logicx.DefaultMemberAchievementDailyCap,
 	}
 	if svcCtx == nil || userId <= 0 {
 		return policy, nil
@@ -37,6 +39,41 @@ func buildRankSettlementPolicy(
 		return policy, err
 	}
 	policy.TodayPositiveGain = todayPositiveGain
+
+	todayMemberAchievementGain, err := svcCtx.RankingModel.SumPositiveAchievementRankChangesByUserAndGameTypeBetween(
+		tx,
+		userId,
+		gameType,
+		dayStart,
+		nextDayStart,
+	)
+	if err != nil {
+		return policy, err
+	}
+	policy.TodayMemberAchievementGain = todayMemberAchievementGain
+
+	if svcCtx.UserModel != nil {
+		user, err := svcCtx.UserModel.FindById(userId)
+		if err != nil {
+			return policy, err
+		}
+		if user != nil && user.MemberExpiresAt != nil && user.MemberExpiresAt.After(effectiveAt) {
+			policy.MemberActive = true
+		}
+	}
+
+	if svcCtx.MemberGrowthProfileModel != nil {
+		profile, err := svcCtx.MemberGrowthProfileModel.FindByUserIdWithTx(tx, userId)
+		if err != nil {
+			return policy, err
+		}
+		if profile != nil {
+			policy.MemberLevel = profile.GrowthLevel
+		}
+	}
+	if policy.MemberLevel <= 0 {
+		policy.MemberLevel = 1
+	}
 
 	if opponentId != nil && *opponentId > 0 {
 		sameOpponentMatchesToday, err := svcCtx.MatchModel.CountCompletedMatchesBetweenUsersByGameTypeBetween(

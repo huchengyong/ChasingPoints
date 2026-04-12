@@ -82,11 +82,10 @@ func rankLogToDetails(log *model.RankChangeLog) []types.RankDetail {
 		{Label: "基础分", Value: log.BaseScore},
 	}
 	if log.AchievementScore != 0 {
-		label := "成就奖励"
-		if log.Result == "lose" {
-			label = "特殊战绩减免"
-		}
-		details = append(details, types.RankDetail{Label: label, Value: log.AchievementScore})
+		details = append(details, types.RankDetail{Label: "会员特殊战绩分", Value: log.AchievementScore})
+	}
+	if remark.MemberAchievementCapAdjustment != 0 {
+		details = append(details, types.RankDetail{Label: "会员特殊战绩每日封顶", Value: remark.MemberAchievementCapAdjustment})
 	}
 	if remark.LossFloorAdjustment != 0 {
 		details = append(details, types.RankDetail{Label: "失败保底", Value: remark.LossFloorAdjustment})

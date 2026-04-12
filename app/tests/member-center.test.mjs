@@ -33,21 +33,25 @@ test('resolveMemberEntryCard returns active copy when membership is still valid'
 test('resolveMemberCenterSummary treats member_expires_at as UTC+8 instead of local device time', () => {
   const summary = resolveMemberCenterSummary({
     is_active: true,
-    member_expires_at: '2026-03-31 00:30:00'
+    member_expires_at: '2026-03-31 00:30:00',
+    growth_level: 2
   }, new Date('2026-03-30T16:20:00Z'))
 
   assert.equal(summary.statusText, '会员中')
+  assert.match(summary.description, /高光排位按 Lv2 110% 计入/)
 })
 
 test('resolveMemberCenterSummary returns expired copy after member expires', () => {
   const summary = resolveMemberCenterSummary({
     is_active: false,
-    member_expires_at: '2026-03-20 10:00:00'
+    member_expires_at: '2026-03-20 10:00:00',
+    growth_level: 3
   }, new Date('2026-03-31T10:00:00+08:00'))
 
   assert.equal(summary.statusText, '已到期')
   assert.equal(summary.title, '会员已到期')
   assert.match(summary.description, /2026-03-20 10:00:00/)
+  assert.match(summary.description, /高光排位权益会按 Lv3 120% 恢复/)
 })
 
 test('resolveMemberPlanCards marks the selected plan only', () => {

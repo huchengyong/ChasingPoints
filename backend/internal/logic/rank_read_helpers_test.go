@@ -102,15 +102,18 @@ func TestRankLogToDetailsIncludesPolicyAdjustmentsFromRemark(t *testing.T) {
 		Result:           "win",
 		BaseScore:        20,
 		AchievementScore: 15,
-		Remark:           `{"same_opponent_adjustment":-7,"daily_cap_adjustment":-18}`,
+		Remark:           `{"same_opponent_adjustment":-7,"daily_cap_adjustment":-18,"member_achievement_cap_adjustment":-5}`,
 	}
 
 	details := rankLogToDetails(log)
 	if !hasRankDetail(details, "基础分", 20) {
 		t.Fatalf("expected base score detail, got %#v", details)
 	}
-	if !hasRankDetail(details, "成就奖励", 15) {
+	if !hasRankDetail(details, "会员特殊战绩分", 15) {
 		t.Fatalf("expected achievement detail, got %#v", details)
+	}
+	if !hasRankDetail(details, "会员特殊战绩每日封顶", -5) {
+		t.Fatalf("expected member achievement daily cap detail, got %#v", details)
 	}
 	if !hasRankDetail(details, "同对手衰减", -7) {
 		t.Fatalf("expected same opponent adjustment detail, got %#v", details)
@@ -124,16 +127,13 @@ func TestRankLogToDetailsUsesLossCopyForAchievementRelief(t *testing.T) {
 	log := &model.RankChangeLog{
 		Result:           "lose",
 		BaseScore:        -10,
-		AchievementScore: 15,
+		AchievementScore: 0,
 		Remark:           `{"loss_floor_adjustment":-7}`,
 	}
 
 	details := rankLogToDetails(log)
 	if !hasRankDetail(details, "基础分", -10) {
 		t.Fatalf("expected base score detail, got %#v", details)
-	}
-	if !hasRankDetail(details, "特殊战绩减免", 15) {
-		t.Fatalf("expected achievement relief detail, got %#v", details)
 	}
 	if !hasRankDetail(details, "失败保底", -7) {
 		t.Fatalf("expected loss floor detail, got %#v", details)
