@@ -58,6 +58,7 @@ type ServiceContext struct {
 	MemberSubscriptionOrderModel   *model.MemberSubscriptionOrderModel
 	MemberGrowthProfileModel       *model.MemberGrowthProfileModel
 	MemberGrowthLogModel           *model.MemberGrowthLogModel
+	MemberRightsConfigModel        *model.MemberRightsConfigModel
 	FeedbackTicketModel            *model.FeedbackTicketModel
 	TournamentMatchModel           *model.TournamentMatchModel
 	AdminModel                     *model.AdminModel
@@ -112,6 +113,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		MemberSubscriptionOrderModel:   models.MemberSubscriptionOrderModel,
 		MemberGrowthProfileModel:       models.MemberGrowthProfileModel,
 		MemberGrowthLogModel:           models.MemberGrowthLogModel,
+		MemberRightsConfigModel:        models.MemberRightsConfigModel,
 		FeedbackTicketModel:            models.FeedbackTicketModel,
 		TournamentMatchModel:           models.TournamentMatchModel,
 		AdminModel:                     models.AdminModel,
@@ -153,6 +155,7 @@ type serviceModels struct {
 	MemberSubscriptionOrderModel   *model.MemberSubscriptionOrderModel
 	MemberGrowthProfileModel       *model.MemberGrowthProfileModel
 	MemberGrowthLogModel           *model.MemberGrowthLogModel
+	MemberRightsConfigModel        *model.MemberRightsConfigModel
 	FeedbackTicketModel            *model.FeedbackTicketModel
 	TournamentMatchModel           *model.TournamentMatchModel
 	AdminModel                     *model.AdminModel
@@ -216,6 +219,7 @@ func newServiceModels(db *gorm.DB) serviceModels {
 	memberSubscriptionOrderModel := model.NewMemberSubscriptionOrderModel(db)
 	memberGrowthProfileModel := model.NewMemberGrowthProfileModel(db)
 	memberGrowthLogModel := model.NewMemberGrowthLogModel(db)
+	memberRightsConfigModel := model.NewMemberRightsConfigModel(db)
 
 	return serviceModels{
 		AreaModel:                      areaModel,
@@ -247,6 +251,7 @@ func newServiceModels(db *gorm.DB) serviceModels {
 		MemberSubscriptionOrderModel:   memberSubscriptionOrderModel,
 		MemberGrowthProfileModel:       memberGrowthProfileModel,
 		MemberGrowthLogModel:           memberGrowthLogModel,
+		MemberRightsConfigModel:        memberRightsConfigModel,
 		FeedbackTicketModel:            model.NewFeedbackTicketModel(db),
 		TournamentMatchModel:           model.NewTournamentMatchModel(db),
 		AdminModel:                     model.NewAdminModel(db),

@@ -162,8 +162,10 @@ func (l *AdminUpdateEventNewsLogic) AdminUpdateEventNews(req *types.AdminEventNe
 	}
 
 	return &types.AdminWriteResp{
-		Code:    0,
-		Success: true,
-		Message: "更新成功",
+		Code:         0,
+		Success:      true,
+		Message:      "更新成功",
+		EventId:      existing.Id,
+		TournamentId: effectiveTournamentID,
 	}, nil
 }

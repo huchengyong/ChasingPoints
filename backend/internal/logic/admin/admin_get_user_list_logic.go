@@ -3,6 +3,8 @@ package admin
 import (
 	"context"
 
+	logicx "chasing_points/internal/logic"
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -44,12 +46,14 @@ func (l *AdminGetUserListLogic) AdminGetUserList(req *types.AdminUserListReq) (r
 		}
 
 		items = append(items, types.AdminUserInfo{
-			Id:        user.Id,
-			Phone:     phone,
-			Nickname:  user.Nickname,
-			Avatar:    user.Avatar,
-			Status:    user.Status,
-			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
+			Id:              user.Id,
+			Phone:           phone,
+			Nickname:        user.Nickname,
+			Avatar:          user.Avatar,
+			Status:          user.Status,
+			MemberStatus:    resolveAdminMemberStatus(&user),
+			MemberExpiresAt: logicx.FormatUTC8TimePtr(user.MemberExpiresAt),
+			CreatedAt:       user.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 
@@ -60,4 +64,14 @@ func (l *AdminGetUserListLogic) AdminGetUserList(req *types.AdminUserListReq) (r
 		Total:   total,
 		List:    items,
 	}, nil
+}
+
+func resolveAdminMemberStatus(user *model.User) string {
+	if user == nil || user.MemberExpiresAt == nil {
+		return "未开通"
+	}
+	if logicx.InUTC8(*user.MemberExpiresAt).After(logicx.NowUTC8()) {
+		return "会员中"
+	}
+	return "已到期"
 }

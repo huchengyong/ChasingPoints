@@ -94,6 +94,11 @@ func TestModelConstructorsDoNotAutoMigrate(t *testing.T) {
 			construct: func(db *gorm.DB) { NewMemberGrowthLogModel(db) },
 		},
 		{
+			name:      "member rights config model",
+			tableName: "member_rights_configs",
+			construct: func(db *gorm.DB) { NewMemberRightsConfigModel(db) },
+		},
+		{
 			name:      "feedback ticket model",
 			tableName: "feedback_tickets",
 			construct: func(db *gorm.DB) { NewFeedbackTicketModel(db) },

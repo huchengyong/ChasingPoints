@@ -99,7 +99,8 @@ const menuList = [
     title: '配置管理',
     icon: 'Setting',
     children: [
-      { path: '/settings/member-rewards', title: '会员奖励配置' }
+      { path: '/settings/member-rewards', title: '会员奖励配置' },
+      { path: '/settings/member-ranking-rights', title: '会员排位权益配置' }
     ]
   },
   // 合规收口：动态审核菜单暂时隐藏，页面文件保留以便后续持证后快速恢复。

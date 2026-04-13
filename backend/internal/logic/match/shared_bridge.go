@@ -27,6 +27,14 @@ func calculateMemberAchievementRankingScore(baseAchievementScore int, isWin bool
 	return logic.CalculateMemberAchievementRankingScore(baseAchievementScore, isWin, memberActive, memberLevel)
 }
 
+func calculateMemberAchievementRankingScoreWithPercent(baseAchievementScore int, isWin bool, memberActive bool, multiplierPercent int) int {
+	return logic.CalculateMemberAchievementRankingScoreWithPercent(baseAchievementScore, isWin, memberActive, multiplierPercent)
+}
+
+func buildAchievementRewardMapFromRightsRules(rules model.MemberRankingRightsRulesConfig) map[string]int {
+	return logic.BuildAchievementRewardMapFromRightsRules(rules)
+}
+
 func buildRankSettlementRemark(settlement RankSettlementResult) string {
 	return logic.BuildRankSettlementRemark(settlement)
 }

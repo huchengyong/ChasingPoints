@@ -277,6 +277,46 @@ type AdminMatchListResp struct {
 	List    []AdminMatchInfo `json:"list"`
 }
 
+type AdminMemberGrowthRules struct {
+	PointsPerCompletedMatch int    `json:"points_per_completed_match"`
+	DailyCap                int    `json:"daily_cap"`
+	LevelThresholdLv2       int    `json:"level_threshold_lv2"`
+	LevelThresholdLv3       int    `json:"level_threshold_lv3"`
+	LevelThresholdLv4       int    `json:"level_threshold_lv4"`
+	LevelThresholdLv5       int    `json:"level_threshold_lv5"`
+	ExpireStrategy          string `json:"expire_strategy"`
+}
+
+type AdminMemberRankingRightsRules struct {
+	OrdinaryUserAchievementEnabled bool `json:"ordinary_user_achievement_enabled"`
+	DailyCap                       int  `json:"daily_cap"`
+	Break50Score                   int  `json:"break_50_score"`
+	GoldenBreakScore               int  `json:"golden_break_score"`
+	BreakAndRunScore               int  `json:"break_and_run_score"`
+	RunOutScore                    int  `json:"run_out_score"`
+	Break100Score                  int  `json:"break_100_score"`
+	NineOnBreakScore               int  `json:"nine_on_break_score"`
+	Break147Score                  int  `json:"break_147_score"`
+	Level1Multiplier               int  `json:"level1_multiplier"`
+	Level2Multiplier               int  `json:"level2_multiplier"`
+	Level3Multiplier               int  `json:"level3_multiplier"`
+	Level4Multiplier               int  `json:"level4_multiplier"`
+	Level5Multiplier               int  `json:"level5_multiplier"`
+}
+
+type AdminMemberRightsConfigResp struct {
+	Code          int                           `json:"code"`
+	Success       bool                          `json:"success"`
+	Message       string                        `json:"message"`
+	GrowthRules   AdminMemberGrowthRules        `json:"growth_rules"`
+	RankingRights AdminMemberRankingRightsRules `json:"ranking_rights_rules"`
+}
+
+type AdminMemberRightsConfigUpdateReq struct {
+	GrowthRules   AdminMemberGrowthRules        `json:"growth_rules"`
+	RankingRights AdminMemberRankingRightsRules `json:"ranking_rights_rules"`
+}
+
 type AdminRecentMatch struct {
 	Id            int64  `json:"id"`
 	GameType      int    `json:"game_type"`
@@ -350,12 +390,14 @@ type AdminSocialPostReviewReq struct {
 }
 
 type AdminUserInfo struct {
-	Id        int64  `json:"id"`
-	Phone     string `json:"phone"`
-	Nickname  string `json:"nickname"`
-	Avatar    string `json:"avatar"`
-	Status    int    `json:"status"`
-	CreatedAt string `json:"created_at"`
+	Id              int64  `json:"id"`
+	Phone           string `json:"phone"`
+	Nickname        string `json:"nickname"`
+	Avatar          string `json:"avatar"`
+	Status          int    `json:"status"`
+	MemberStatus    string `json:"member_status"`
+	MemberExpiresAt string `json:"member_expires_at,optional"`
+	CreatedAt       string `json:"created_at"`
 }
 
 type AdminUserInfoResp struct {
@@ -484,9 +526,11 @@ type AdminVenueRewardRecordListResp struct {
 }
 
 type AdminWriteResp struct {
-	Code    int    `json:"code"`
-	Success bool   `json:"success"`
-	Message string `json:"message"`
+	Code         int    `json:"code"`
+	Success      bool   `json:"success"`
+	Message      string `json:"message"`
+	EventId      int64  `json:"event_id,optional"`
+	TournamentId int64  `json:"tournament_id,optional"`
 }
 
 type BindPhoneReq struct {
@@ -679,6 +723,7 @@ type EventNewsInfo struct {
 	CoverImage       string `json:"cover_image"`
 	Summary          string `json:"summary"`
 	Content          string `json:"content"`
+	Description      string `json:"description"`
 	TournamentId     int64  `json:"tournament_id"`
 	TournamentName   string `json:"tournament_name"`
 	GameType         int    `json:"game_type"`

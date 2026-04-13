@@ -26,6 +26,18 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="member_status" label="会员状态" width="110">
+          <template #default="{ row }">
+            <el-tag :type="resolveMemberTagType(row.member_status)">
+              {{ row.member_status || '未开通' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="member_expires_at" label="会员到期时间" width="170">
+          <template #default="{ row }">
+            {{ row.member_expires_at || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="created_at" label="注册时间" width="160" />
         <el-table-column label="操作" width="120" fixed="right">
           <template #default="{ row }">
@@ -117,6 +129,12 @@ const handleSizeChange = (val: number) => {
 const handlePageChange = (val: number) => {
   page.value = val
   fetchUserList()
+}
+
+const resolveMemberTagType = (memberStatus: string) => {
+  if (memberStatus === '会员中') return 'warning'
+  if (memberStatus === '已到期') return 'info'
+  return undefined
 }
 
 const handleUpdateStatus = async (user: User, status: number) => {

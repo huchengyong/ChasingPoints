@@ -178,6 +178,7 @@ func mapEventNewsInfo(item model.EventNews, tournament *model.Tournament, matche
 		CoverImage: strings.TrimSpace(item.CoverImage),
 		Summary:    item.Summary,
 		Content:    item.Content,
+		Description: "",
 		Country:    item.Country,
 		City:       item.City,
 		Venue:      item.Venue,
@@ -209,6 +210,7 @@ func mapEventNewsInfo(item model.EventNews, tournament *model.Tournament, matche
 	if tournament != nil {
 		resp.TournamentId = tournament.Id
 		resp.TournamentName = tournament.Name
+		resp.Description = strings.TrimSpace(tournament.Description)
 		if resp.CoverImage == "" {
 			resp.CoverImage = strings.TrimSpace(tournament.CoverImage)
 		}

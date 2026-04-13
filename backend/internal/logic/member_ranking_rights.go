@@ -1,5 +1,7 @@
 package logic
 
+import "chasing_points/internal/model"
+
 const (
 	memberAchievementDailyCapDefault = 200
 )
@@ -22,8 +24,27 @@ func memberAchievementMultiplierPercent(level int) int {
 }
 
 func CalculateMemberAchievementRankingScore(baseAchievementScore int, isWin bool, memberActive bool, memberLevel int) int {
+	return CalculateMemberAchievementRankingScoreWithPercent(baseAchievementScore, isWin, memberActive, memberAchievementMultiplierPercent(memberLevel))
+}
+
+func CalculateMemberAchievementRankingScoreWithPercent(baseAchievementScore int, isWin bool, memberActive bool, multiplierPercent int) int {
 	if !isWin || !memberActive || baseAchievementScore <= 0 {
 		return 0
 	}
-	return baseAchievementScore * memberAchievementMultiplierPercent(memberLevel) / 100
+	if multiplierPercent <= 0 {
+		return 0
+	}
+	return baseAchievementScore * multiplierPercent / 100
+}
+
+func BuildAchievementRewardMapFromRightsRules(rules model.MemberRankingRightsRulesConfig) map[string]int {
+	return map[string]int{
+		"break_50":      rules.Break50Score,
+		"golden_break":  rules.GoldenBreakScore,
+		"break_and_run": rules.BreakAndRunScore,
+		"run_out":       rules.RunOutScore,
+		"break_100":     rules.Break100Score,
+		"nine_on_break": rules.NineOnBreakScore,
+		"break_147":     rules.Break147Score,
+	}
 }

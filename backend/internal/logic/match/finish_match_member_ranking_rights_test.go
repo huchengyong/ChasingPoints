@@ -123,7 +123,7 @@ func TestFinishMatchOrdinaryUserDoesNotGetAchievementRankingScore(t *testing.T) 
 func TestFinishMatchMemberGetsAchievementRankingScoreByLevelMultiplier(t *testing.T) {
 	svcCtx := newFinishMatchRightsTestSvc(t)
 	now := time.Date(2026, 4, 12, 11, 0, 0, 0, time.FixedZone("UTC+8", 8*3600))
-	expiresAt := now.Add(24 * time.Hour)
+	expiresAt := time.Date(2099, 4, 12, 11, 0, 0, 0, time.FixedZone("UTC+8", 8*3600))
 	seedFinishRightsUser(t, svcCtx, model.User{Id: 1001, Nickname: "会员玩家", MemberExpiresAt: &expiresAt})
 	if err := svcCtx.MemberGrowthProfileModel.Create(&model.MemberGrowthProfile{UserId: 1001, GrowthPoints: 78, GrowthLevel: 3}); err != nil {
 		t.Fatalf("create growth profile: %v", err)
@@ -175,8 +175,8 @@ func TestFinishMatchMemberGetsAchievementRankingScoreByLevelMultiplier(t *testin
 
 func TestFinishMatchMemberAchievementRankingScoreHonorsDailyCap(t *testing.T) {
 	svcCtx := newFinishMatchRightsTestSvc(t)
-	now := time.Date(2026, 4, 12, 12, 0, 0, 0, time.FixedZone("UTC+8", 8*3600))
-	expiresAt := now.Add(24 * time.Hour)
+	now := time.Now().In(time.FixedZone("UTC+8", 8*3600))
+	expiresAt := time.Date(2099, 4, 12, 12, 0, 0, 0, time.FixedZone("UTC+8", 8*3600))
 	seedFinishRightsUser(t, svcCtx, model.User{Id: 1001, Nickname: "会员玩家", MemberExpiresAt: &expiresAt})
 	if err := svcCtx.MemberGrowthProfileModel.Create(&model.MemberGrowthProfile{UserId: 1001, GrowthPoints: 760, GrowthLevel: 5}); err != nil {
 		t.Fatalf("create growth profile: %v", err)

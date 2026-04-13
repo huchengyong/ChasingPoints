@@ -198,3 +198,26 @@ func TestMemberRankingRightsMigrationUpdatesAchievementRewardScores(t *testing.T
 		}
 	}
 }
+
+func TestAdminMemberRightsConfigMigrationCreatesConfigTable(t *testing.T) {
+	content, err := os.ReadFile("20260413103000_add_member_rights_config_table.sql")
+	if err != nil {
+		t.Fatalf("read admin member rights config migration: %v", err)
+	}
+
+	text := string(content)
+	requiredSnippets := []string{
+		"member_rights_configs",
+		"`config_key`",
+		"`growth_rules_json`",
+		"`ranking_rights_rules_json`",
+		"`updated_by`",
+		"uniq_member_rights_configs_key",
+	}
+
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(text, snippet) {
+			t.Fatalf("expected admin member rights config migration to contain %q", snippet)
+		}
+	}
+}

@@ -9,6 +9,7 @@ export interface EventNewsItem {
   cover_image: string
   summary: string
   content: string
+  description: string
   tournament_id: number
   tournament_name: string
   game_type: number
@@ -152,6 +153,8 @@ export interface WriteResult {
   code: number
   success: boolean
   message: string
+  event_id?: number
+  tournament_id?: number
 }
 
 export const getEventNewsList = (params: EventNewsListParams = {}): Promise<EventNewsListResult> => {

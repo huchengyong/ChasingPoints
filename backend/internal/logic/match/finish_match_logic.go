@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	logicx "chasing_points/internal/logic"
 	"chasing_points/internal/model"
 	"chasing_points/internal/pkg/ws"
 	"chasing_points/internal/svc"
@@ -222,7 +223,12 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 			return err
 		}
 
-		player1AchievementScore := calculateMemberAchievementRankingScore(player1RawAchievementScore, player1Win, player1Policy.MemberActive, player1Policy.MemberLevel)
+		player1AchievementScore := 0
+		if player1Policy.MemberActive {
+			player1AchievementScore = calculateMemberAchievementRankingScoreWithPercent(player1RawAchievementScore, player1Win, true, player1Policy.MemberMultiplierPercent)
+		} else if player1Policy.OrdinaryUserAchievementEnabled && player1Win {
+			player1AchievementScore = player1RawAchievementScore
+		}
 		player1Ranking, err := l.svcCtx.RankingModel.FindOrCreateWithTx(tx, match.UserId, match.GameType)
 		if err != nil {
 			return err
@@ -242,7 +248,12 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 			if err != nil {
 				return err
 			}
-			player2AchievementScore := calculateMemberAchievementRankingScore(player2RawAchievementScore, !player1Win, player2Policy.MemberActive, player2Policy.MemberLevel)
+			player2AchievementScore := 0
+			if player2Policy.MemberActive {
+				player2AchievementScore = calculateMemberAchievementRankingScoreWithPercent(player2RawAchievementScore, !player1Win, true, player2Policy.MemberMultiplierPercent)
+			} else if player2Policy.OrdinaryUserAchievementEnabled && !player1Win {
+				player2AchievementScore = player2RawAchievementScore
+			}
 			player2Ranking, err := l.svcCtx.RankingModel.FindOrCreateWithTx(tx, *match.OpponentId, match.GameType)
 			if err != nil {
 				return err
@@ -380,6 +391,11 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 }
 
 func (l *FinishMatchLogic) getAchievementRewardMap(gameType int) (map[string]int, error) {
+	config, err := logicx.NewMemberRightsConfigService(l.svcCtx).GetConfig()
+	if err == nil {
+		return buildAchievementRewardMapFromRightsRules(config.RankingRights), nil
+	}
+
 	configs, err := l.svcCtx.RankingModel.GetAchievementRewardConfigs(gameType)
 	if err != nil {
 		return nil, err

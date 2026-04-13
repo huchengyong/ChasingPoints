@@ -56,18 +56,26 @@ func NewMemberGrowthService(svcCtx *svc.ServiceContext, now func() time.Time) *M
 }
 
 func MemberGrowthLevelRules() []MemberGrowthLevelRule {
+	return MemberGrowthLevelRulesFromConfig(model.DefaultMemberGrowthRulesConfig())
+}
+
+func MemberGrowthLevelRulesFromConfig(rules model.MemberGrowthRulesConfig) []MemberGrowthLevelRule {
 	return []MemberGrowthLevelRule{
 		{Level: 1, RequiredPoints: 0},
-		{Level: 2, RequiredPoints: 10},
-		{Level: 3, RequiredPoints: 60},
-		{Level: 4, RequiredPoints: 260},
-		{Level: 5, RequiredPoints: 760},
+		{Level: 2, RequiredPoints: rules.LevelThresholdLv2},
+		{Level: 3, RequiredPoints: rules.LevelThresholdLv3},
+		{Level: 4, RequiredPoints: rules.LevelThresholdLv4},
+		{Level: 5, RequiredPoints: rules.LevelThresholdLv5},
 	}
 }
 
 func ResolveMemberGrowthLevel(points int) int {
+	return ResolveMemberGrowthLevelWithRules(points, model.DefaultMemberGrowthRulesConfig())
+}
+
+func ResolveMemberGrowthLevelWithRules(points int, rules model.MemberGrowthRulesConfig) int {
 	level := 1
-	for _, rule := range MemberGrowthLevelRules() {
+	for _, rule := range MemberGrowthLevelRulesFromConfig(rules) {
 		if points >= rule.RequiredPoints {
 			level = rule.Level
 		}
@@ -76,7 +84,11 @@ func ResolveMemberGrowthLevel(points int) int {
 }
 
 func ResolveNextMemberGrowthRule(points int) (level int, requiredPoints int, remainingPoints int) {
-	for _, rule := range MemberGrowthLevelRules() {
+	return ResolveNextMemberGrowthRuleWithRules(points, model.DefaultMemberGrowthRulesConfig())
+}
+
+func ResolveNextMemberGrowthRuleWithRules(points int, rules model.MemberGrowthRulesConfig) (level int, requiredPoints int, remainingPoints int) {
+	for _, rule := range MemberGrowthLevelRulesFromConfig(rules) {
 		if rule.RequiredPoints > points {
 			return rule.Level, rule.RequiredPoints, rule.RequiredPoints - points
 		}
@@ -86,6 +98,7 @@ func ResolveNextMemberGrowthRule(points int) (level int, requiredPoints int, rem
 
 func (s *MemberGrowthService) BuildSnapshot(user *model.User, profile *model.MemberGrowthProfile) MemberGrowthSnapshot {
 	now := s.now()
+	rules := s.resolveGrowthRules()
 	profileCopy := profile
 	if profileCopy == nil {
 		profileCopy = &model.MemberGrowthProfile{
@@ -97,12 +110,12 @@ func (s *MemberGrowthService) BuildSnapshot(user *model.User, profile *model.Mem
 	if !sameGrowthDay(profileCopy.TodayGrowthDate, now) {
 		todayGrowthCount = 0
 	}
-	nextLevel, nextPoints, remaining := ResolveNextMemberGrowthRule(profileCopy.GrowthPoints)
+	nextLevel, nextPoints, remaining := ResolveNextMemberGrowthRuleWithRules(profileCopy.GrowthPoints, rules)
 	return MemberGrowthSnapshot{
 		GrowthPoints:     profileCopy.GrowthPoints,
-		GrowthLevel:      ResolveMemberGrowthLevel(profileCopy.GrowthPoints),
+		GrowthLevel:      ResolveMemberGrowthLevelWithRules(profileCopy.GrowthPoints, rules),
 		TodayGrowthCount: todayGrowthCount,
-		DailyCap:         MemberGrowthDailyCap,
+		DailyCap:         rules.DailyCap,
 		NextLevel:        nextLevel,
 		NextLevelPoints:  nextPoints,
 		RemainingPoints:  remaining,
@@ -137,6 +150,7 @@ func (s *MemberGrowthService) AwardCompletedMatch(userId, matchId int64) (Member
 	}
 
 	now := InUTC8(s.now())
+	rules := s.resolveGrowthRules()
 	var snapshot MemberGrowthSnapshot
 	err := s.svcCtx.DB.Transaction(func(tx *gorm.DB) error {
 		user, err := s.svcCtx.UserModel.FindById(userId)
@@ -179,14 +193,14 @@ func (s *MemberGrowthService) AwardCompletedMatch(userId, matchId int64) (Member
 			profile.TodayGrowthCount = 0
 		}
 
-		if profile.TodayGrowthCount >= MemberGrowthDailyCap {
+		if profile.TodayGrowthCount >= rules.DailyCap {
 			result.Reason = "daily_cap_reached"
 			snapshot = s.BuildSnapshot(user, profile)
 			return nil
 		}
 
-		profile.GrowthPoints += 1
-		profile.GrowthLevel = ResolveMemberGrowthLevel(profile.GrowthPoints)
+		profile.GrowthPoints += rules.PointsPerCompletedMatch
+		profile.GrowthLevel = ResolveMemberGrowthLevelWithRules(profile.GrowthPoints, rules)
 		profile.TodayGrowthCount += 1
 		profile.TodayGrowthDate = timePointer(startOfGrowthDay(now))
 		profile.LastGrowthAt = timePointer(now)
@@ -197,7 +211,7 @@ func (s *MemberGrowthService) AwardCompletedMatch(userId, matchId int64) (Member
 		if err := s.svcCtx.MemberGrowthLogModel.CreateWithTx(tx, &model.MemberGrowthLog{
 			UserId:       userId,
 			MatchId:      matchId,
-			GrowthPoints: 1,
+			GrowthPoints: rules.PointsPerCompletedMatch,
 			Source:       model.MemberGrowthSourceRealMatchCompleted,
 		}); err != nil {
 			return err
@@ -220,6 +234,18 @@ func (s *MemberGrowthService) AwardCompletedMatch(userId, matchId int64) (Member
 	result.RemainingPoints = snapshot.RemainingPoints
 	result.Frozen = snapshot.Frozen
 	return result, nil
+}
+
+func (s *MemberGrowthService) resolveGrowthRules() model.MemberGrowthRulesConfig {
+	defaultRules := model.DefaultMemberGrowthRulesConfig()
+	if s == nil || s.svcCtx == nil {
+		return defaultRules
+	}
+	config, err := NewMemberRightsConfigService(s.svcCtx).GetConfig()
+	if err != nil {
+		return defaultRules
+	}
+	return config.GrowthRules
 }
 
 func memberGrowthMembershipActive(user *model.User, now time.Time) bool {

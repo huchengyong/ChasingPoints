@@ -44,6 +44,8 @@ type RankSettlementPolicy struct {
 	DailyMemberAchievementCap  int
 	MemberLevel                int
 	MemberActive               bool
+	MemberMultiplierPercent     int
+	OrdinaryUserAchievementEnabled bool
 }
 
 type rankSettlementRemark struct {

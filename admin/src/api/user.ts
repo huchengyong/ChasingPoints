@@ -6,6 +6,8 @@ export interface User {
   nickname: string
   avatar: string
   status: number
+  member_status: string
+  member_expires_at: string
   created_at: string
 }
 

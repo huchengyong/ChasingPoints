@@ -167,13 +167,13 @@
             </el-form-item>
           </el-col>
           <el-col :span="24">
-            <el-form-item label="正文">
-              <el-input v-model="eventFormModel.content" type="textarea" :rows="5" placeholder="赛事介绍正文" />
+            <el-form-item label="赛讯正文">
+              <el-input v-model="eventFormModel.content" type="textarea" :rows="5" placeholder="展示在赛讯详情页的正文内容" />
             </el-form-item>
           </el-col>
           <el-col :span="24">
-            <el-form-item label="赛事说明">
-              <el-input v-model="eventFormModel.description" type="textarea" :rows="3" placeholder="赛事介绍、赛制说明等" />
+            <el-form-item label="赛事描述">
+              <el-input v-model="eventFormModel.description" type="textarea" :rows="3" placeholder="写入赛事实体描述，用于补充赛制与背景信息" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
@@ -243,8 +243,16 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="封面图">
-              <el-input v-model="eventFormModel.cover_image" placeholder="封面图片地址" />
+            <el-form-item label="排序时间">
+              <el-date-picker
+                v-model="eventFormModel.sort_time"
+                type="datetime"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                format="YYYY-MM-DD HH:mm:ss"
+                placeholder="不填则默认开始时间或开始日期"
+                clearable
+                style="width: 100%"
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -252,7 +260,11 @@
 
       <template #footer>
         <el-button @click="eventDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="eventSaving" @click="handleEventSubmit">保存赛事</el-button>
+        <template v-if="eventDialogMode === 'create'">
+          <el-button type="primary" plain :loading="eventSaving" @click="handleEventSubmit()">保存赛事</el-button>
+          <el-button type="primary" :loading="eventSaving" @click="handleEventSubmit('matches')">保存并录入比赛</el-button>
+        </template>
+        <el-button v-else type="primary" :loading="eventSaving" @click="handleEventSubmit()">保存赛事</el-button>
       </template>
     </el-dialog>
 
@@ -522,6 +534,7 @@ const createEmptyEventForm = (): EventNewsFormModel => ({
   end_date: '',
   start_time: '',
   end_time: '',
+  sort_time: '',
   status: 0,
   published: false
 })
@@ -773,7 +786,7 @@ const openEditDialog = (row: EventNewsItem) => {
     cover_image: row.cover_image || defaultEventCoverImage,
     summary: row.summary || '',
     content: row.content || '',
-    description: row.content || '',
+    description: row.description || '',
     country: row.country || '',
     city: row.city || '',
     venue: row.venue || '',
@@ -781,6 +794,7 @@ const openEditDialog = (row: EventNewsItem) => {
     end_date: row.end_date || row.start_date || '',
     start_time: row.start_time || '',
     end_time: row.end_time || '',
+    sort_time: row.sort_time || '',
     status: row.status,
     published: row.published
   }
@@ -794,6 +808,7 @@ const buildEventPayload = (): EventNewsFormPayload => {
   const endDate = (form.end_date || '').trim() || startDate
   const startTime = (form.start_time || '').trim()
   const endTime = (form.end_time || '').trim()
+  const sortTime = (form.sort_time || '').trim()
   const coverImage = (form.cover_image || '').trim() || defaultEventCoverImage
 
   return {
@@ -814,13 +829,14 @@ const buildEventPayload = (): EventNewsFormPayload => {
     end_date: endDate,
     start_time: startTime || undefined,
     end_time: endTime || undefined,
+    sort_time: sortTime || undefined,
     status: form.status ?? 0,
     published: !!form.published,
     tournament_id: form.tournament_id && form.tournament_id > 0 ? form.tournament_id : undefined
   }
 }
 
-const handleEventSubmit = async () => {
+const handleEventSubmit = async (nextAction?: 'matches') => {
   const valid = eventFormRef.value ? await eventFormRef.value.validate().catch(() => false) : false
   if (!valid) {
     return
@@ -840,6 +856,16 @@ const handleEventSubmit = async () => {
       ElMessage.success(res.message || '保存成功')
       eventDialogVisible.value = false
       await loadList()
+      if (nextAction === 'matches' && eventDialogMode.value === 'create' && res.event_id) {
+        const createdEvent = eventNewsList.value.find(item => item.id === res.event_id) || {
+          id: res.event_id,
+          title: payload.title,
+          tournament_name: payload.tournament_name,
+          match_count: 0
+        } as EventNewsItem
+        await openMatchPanel(createdEvent)
+        openCreateMatchDialog()
+      }
     }
   } catch (error) {
     console.error('保存赛事失败', error)

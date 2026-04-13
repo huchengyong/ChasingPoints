@@ -55,6 +55,7 @@ func buildAdminEventNewsInfo(item model.EventNews, tournament *model.Tournament,
 		CoverImage: strings.TrimSpace(item.CoverImage),
 		Summary:    item.Summary,
 		Content:    item.Content,
+		Description: "",
 		Country:    item.Country,
 		City:       item.City,
 		Venue:      item.Venue,
@@ -86,6 +87,7 @@ func buildAdminEventNewsInfo(item model.EventNews, tournament *model.Tournament,
 	if tournament != nil {
 		info.TournamentId = tournament.Id
 		info.TournamentName = tournament.Name
+		info.Description = strings.TrimSpace(tournament.Description)
 		if info.CoverImage == "" {
 			info.CoverImage = strings.TrimSpace(tournament.CoverImage)
 		}
@@ -212,6 +214,8 @@ func buildAdminTournament(req *types.AdminEventNewsCreateReq) (*model.Tournament
 		Country:        strings.TrimSpace(req.Country),
 		City:           strings.TrimSpace(req.City),
 		VenueName:      strings.TrimSpace(req.Venue),
+		SourceType:     strings.TrimSpace(req.SourceType),
+		InformationPage: strings.TrimSpace(req.SourceUrl),
 		StartDate:      startDate,
 		EndDate:        firstNonNilTime(endDate, startDate),
 		StartTime:      startTime,
@@ -293,6 +297,8 @@ func applyAdminTournamentUpdate(item *model.Tournament, req *types.AdminEventNew
 	item.Country = strings.TrimSpace(req.Country)
 	item.City = strings.TrimSpace(req.City)
 	item.VenueName = strings.TrimSpace(req.Venue)
+	item.SourceType = strings.TrimSpace(req.SourceType)
+	item.InformationPage = strings.TrimSpace(req.SourceUrl)
 	item.StartDate = startDate
 	item.EndDate = firstNonNilTime(endDate, startDate)
 	item.StartTime = startTime

@@ -210,6 +210,25 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
+				// 获取会员成长与排位权益配置
+				Method:  http.MethodGet,
+				Path:    "/ranking-rights-config",
+				Handler: admin.AdminGetMemberRightsConfigHandler(serverCtx),
+			},
+			{
+				// 更新会员成长与排位权益配置
+				Method:  http.MethodPost,
+				Path:    "/ranking-rights-config",
+				Handler: admin.AdminUpdateMemberRightsConfigHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/admin/member"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
 				// 获取动态列表（管理员）
 				Method:  http.MethodGet,
 				Path:    "/posts",

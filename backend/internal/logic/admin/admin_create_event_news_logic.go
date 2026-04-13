@@ -124,9 +124,15 @@ func (l *AdminCreateEventNewsLogic) AdminCreateEventNews(req *types.AdminEventNe
 			TournamentName: tournamentName,
 			Title:          req.Title,
 			GameType:       req.GameType,
+			SourceType:     req.SourceType,
+			SourceUrl:      req.SourceUrl,
+			CoverImage:     req.CoverImage,
 			Description:    req.Description,
+			Country:        req.Country,
 			City:           req.City,
 			Venue:          req.Venue,
+			StartDate:      req.StartDate,
+			EndDate:        req.EndDate,
 			StartTime:      req.StartTime,
 			EndTime:        req.EndTime,
 			Status:         req.Status,
@@ -197,8 +203,10 @@ func (l *AdminCreateEventNewsLogic) AdminCreateEventNews(req *types.AdminEventNe
 	}
 
 	return &types.AdminWriteResp{
-		Code:    0,
-		Success: true,
-		Message: "创建成功",
+		Code:         0,
+		Success:      true,
+		Message:      "创建成功",
+		EventId:      news.Id,
+		TournamentId: tournamentID,
 	}, nil
 }

@@ -22,9 +22,16 @@ func buildRankSettlementPolicy(
 	policy := RankSettlementPolicy{
 		DailyPositiveCap: defaultDailyPositiveCap,
 		DailyMemberAchievementCap: logicx.DefaultMemberAchievementDailyCap,
+		MemberMultiplierPercent: 100,
 	}
 	if svcCtx == nil || userId <= 0 {
 		return policy, nil
+	}
+
+	config, configErr := logicx.NewMemberRightsConfigService(svcCtx).GetConfig()
+	if configErr == nil {
+		policy.DailyMemberAchievementCap = config.RankingRights.DailyCap
+		policy.OrdinaryUserAchievementEnabled = config.RankingRights.OrdinaryUserAchievementEnabled
 	}
 
 	dayStart, nextDayStart := rankSettlementDayRange(effectiveAt)
@@ -73,6 +80,20 @@ func buildRankSettlementPolicy(
 	}
 	if policy.MemberLevel <= 0 {
 		policy.MemberLevel = 1
+	}
+	if configErr == nil {
+		switch policy.MemberLevel {
+		case 5:
+			policy.MemberMultiplierPercent = config.RankingRights.Level5Multiplier
+		case 4:
+			policy.MemberMultiplierPercent = config.RankingRights.Level4Multiplier
+		case 3:
+			policy.MemberMultiplierPercent = config.RankingRights.Level3Multiplier
+		case 2:
+			policy.MemberMultiplierPercent = config.RankingRights.Level2Multiplier
+		default:
+			policy.MemberMultiplierPercent = config.RankingRights.Level1Multiplier
+		}
 	}
 
 	if opponentId != nil && *opponentId > 0 {

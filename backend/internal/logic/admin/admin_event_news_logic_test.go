@@ -96,6 +96,9 @@ func TestAdminCreateUpdatePublishAndDeleteEventNews(t *testing.T) {
 	if !resp.Success || resp.Code != 0 {
 		t.Fatalf("expected create success, got %#v", resp)
 	}
+	if resp.EventId <= 0 || resp.TournamentId <= 0 {
+		t.Fatalf("expected create response ids, got %#v", resp)
+	}
 
 	list, total, err := svcCtx.EventNewsModel.FindList(1, 10, 1, model.EventNewsStatusUpcoming, "", -1)
 	if err != nil {
@@ -107,8 +110,22 @@ func TestAdminCreateUpdatePublishAndDeleteEventNews(t *testing.T) {
 	if list[0].TournamentId <= 0 {
 		t.Fatalf("expected event to bind tournament, got %#v", list[0])
 	}
+	if list[0].TournamentId != resp.TournamentId {
+		t.Fatalf("expected response tournament id %d, got %#v", resp.TournamentId, list[0])
+	}
 	if list[0].Published {
 		t.Fatalf("expected draft event, got published item: %#v", list[0])
+	}
+
+	createdTournament, err := svcCtx.TournamentModel.FindById(resp.TournamentId)
+	if err != nil {
+		t.Fatalf("find created tournament: %v", err)
+	}
+	if createdTournament == nil {
+		t.Fatal("expected created tournament")
+	}
+	if createdTournament.SourceType != "official" || createdTournament.InformationPage != "https://example.com/snooker" {
+		t.Fatalf("expected tournament source metadata, got %#v", createdTournament)
 	}
 
 	updateLogic := NewAdminUpdateEventNewsLogic(adminTestCtx(-100), svcCtx)
@@ -152,6 +169,25 @@ func TestAdminCreateUpdatePublishAndDeleteEventNews(t *testing.T) {
 	}
 	if refreshed.TournamentId <= 0 {
 		t.Fatalf("expected updated event to keep tournament binding, got %#v", refreshed)
+	}
+	if resp.EventId != refreshed.Id || resp.TournamentId != refreshed.TournamentId {
+		t.Fatalf("expected update response ids to match entity, got resp=%#v entity=%#v", resp, refreshed)
+	}
+
+	updatedTournament, err := svcCtx.TournamentModel.FindById(refreshed.TournamentId)
+	if err != nil {
+		t.Fatalf("find updated tournament: %v", err)
+	}
+	if updatedTournament == nil {
+		t.Fatal("expected updated tournament")
+	}
+	if updatedTournament.CoverImage != "https://example.com/world.jpg" ||
+		updatedTournament.Country != "英国" ||
+		updatedTournament.InformationPage != "https://example.com/world" {
+		t.Fatalf("expected tournament fields to stay aligned, got %#v", updatedTournament)
+	}
+	if updatedTournament.StartDate == nil || updatedTournament.StartDate.Format(adminEventNewsDateLayout) != "2026-03-24" {
+		t.Fatalf("expected tournament start date to update, got %#v", updatedTournament)
 	}
 
 	publishLogic := NewAdminPublishEventNewsLogic(adminTestCtx(-100), svcCtx)
