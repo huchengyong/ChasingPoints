@@ -115,7 +115,7 @@ func TestFinishMatchOrdinaryUserDoesNotGetAchievementRankingScore(t *testing.T) 
 	if err != nil || log == nil {
 		t.Fatalf("find player1 rank log: %v %+v", err, log)
 	}
-	if log.AchievementScore != 0 || log.FinalChange != 20 {
+	if log.AchievementScore != 0 || log.FinalChange != 8 {
 		t.Fatalf("expected ordinary user base-only rank gain, got %+v", log)
 	}
 }
@@ -168,8 +168,8 @@ func TestFinishMatchMemberGetsAchievementRankingScoreByLevelMultiplier(t *testin
 	if err != nil || log == nil {
 		t.Fatalf("find player1 rank log: %v %+v", err, log)
 	}
-	if log.AchievementScore != 7 || log.FinalChange != 27 {
-		t.Fatalf("expected lv3 member to get 7 achievement score and 27 final change, got %+v", log)
+	if log.AchievementScore != 7 || log.FinalChange != 15 {
+		t.Fatalf("expected lv3 member to get 7 achievement score and 15 final change, got %+v", log)
 	}
 }
 
@@ -257,7 +257,7 @@ func TestFinishMatchMemberAchievementRankingScoreHonorsDailyCap(t *testing.T) {
 	if err != nil || log == nil {
 		t.Fatalf("find player1 rank log: %v %+v", err, log)
 	}
-	if log.AchievementScore != 5 || log.FinalChange != 25 {
-		t.Fatalf("expected daily cap to clamp achievement score to 5 and final change to 25, got %+v", log)
+	if log.AchievementScore != 5 || log.FinalChange != 16 {
+		t.Fatalf("expected daily cap to clamp achievement score to 5 and final change to 16, got %+v", log)
 	}
 }

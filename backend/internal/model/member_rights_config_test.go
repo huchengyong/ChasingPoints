@@ -48,7 +48,7 @@ func TestDefaultMemberRightsConfigUsesAgreedRules(t *testing.T) {
 	if rights.OrdinaryUserAchievementEnabled {
 		t.Fatalf("expected ordinary user achievement disabled by default: %+v", rights)
 	}
-	if rights.DailyCap != 200 || rights.Break50Score != 8 || rights.GoldenBreakScore != 4 || rights.BreakAndRunScore != 6 || rights.RunOutScore != 4 || rights.Break100Score != 16 || rights.NineOnBreakScore != 6 || rights.Break147Score != 30 {
+	if rights.DailyCap != 200 || rights.DailyPositiveCap != 500 || rights.Break50Score != 8 || rights.GoldenBreakScore != 4 || rights.BreakAndRunScore != 6 || rights.RunOutScore != 4 || rights.Break100Score != 16 || rights.NineOnBreakScore != 6 || rights.Break147Score != 30 {
 		t.Fatalf("unexpected ranking rights score defaults: %+v", rights)
 	}
 	if rights.Level1Multiplier != 100 || rights.Level2Multiplier != 110 || rights.Level3Multiplier != 120 || rights.Level4Multiplier != 130 || rights.Level5Multiplier != 140 {
@@ -67,6 +67,7 @@ func TestMemberRightsConfigModelRoundTrip(t *testing.T) {
 	cfg.SetGrowthRules(growth)
 	rights := DefaultMemberRankingRightsRulesConfig()
 	rights.DailyCap = 260
+	rights.DailyPositiveCap = 520
 	cfg.SetRankingRightsRules(rights)
 
 	if err := model.Upsert(cfg); err != nil {
@@ -88,7 +89,7 @@ func TestMemberRightsConfigModelRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode stored ranking rules: %v", err)
 	}
-	if storedGrowth.DailyCap != 8 || storedRights.DailyCap != 260 || stored.UpdatedBy != 9001 {
+	if storedGrowth.DailyCap != 8 || storedRights.DailyCap != 260 || storedRights.DailyPositiveCap != 520 || stored.UpdatedBy != 9001 {
 		t.Fatalf("unexpected stored config: growth=%+v rights=%+v cfg=%+v", storedGrowth, storedRights, stored)
 	}
 }

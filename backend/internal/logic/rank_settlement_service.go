@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	defaultDailyPositiveCap     = 300
+	defaultDailyPositiveCap     = 500
 	defaultMemberAchievementDailyCap = 200
+	minimumWinnerBaseScore      = 2
 	lossMinimumDeduction        = -2
 	sameOpponentThirdMatchRate  = 80
 	sameOpponentRepeatMatchRate = 30
@@ -46,6 +47,8 @@ type RankSettlementPolicy struct {
 	MemberActive               bool
 	MemberMultiplierPercent     int
 	OrdinaryUserAchievementEnabled bool
+	CompletedRounds             int
+	OpponentCurrentRankScore    int
 }
 
 type rankSettlementRemark struct {
@@ -64,7 +67,10 @@ func NewRankSettlementService(rankingModel *model.RankingModel) *RankSettlementS
 }
 
 func (s *RankSettlementService) Settle(ranking *model.UserRanking, isWin bool, achievementScore int) RankSettlementResult {
-	return s.SettleWithPolicy(ranking, isWin, achievementScore, RankSettlementPolicy{})
+	return s.SettleWithPolicy(ranking, isWin, achievementScore, RankSettlementPolicy{
+		CompletedRounds:          1,
+		OpponentCurrentRankScore: 1 << 30,
+	})
 }
 
 func (s *RankSettlementService) SettleWithPolicy(
@@ -84,9 +90,25 @@ func (s *RankSettlementService) SettleWithPolicy(
 	}
 
 	countInStats := shouldCountRankStats(policy)
+	completedRounds := normalizeCompletedRounds(policy.CompletedRounds)
+	theoreticalWinBase := winnerBaseScoreByCompletedRounds(completedRounds)
+	theoreticalLossDeduction := loserBaseDeductionFromWinnerBase(theoreticalWinBase)
 	baseScore := 0
 	if isWin {
-		baseScore = 20
+		baseScore = theoreticalWinBase
+		if theoreticalLossDeduction > 0 {
+			if policy.OpponentCurrentRankScore < 0 {
+				baseScore = theoreticalWinBase
+			} else if policy.OpponentCurrentRankScore == 0 {
+				baseScore = minimumWinnerBaseScore
+			} else {
+				opponentDeductible := minInt(policy.OpponentCurrentRankScore, theoreticalLossDeduction)
+				baseScore = theoreticalWinBase * opponentDeductible / theoreticalLossDeduction
+				if baseScore < minimumWinnerBaseScore {
+					baseScore = minimumWinnerBaseScore
+				}
+			}
+		}
 		if countInStats {
 			current.TotalWins++
 			if current.CurrentStreak >= 0 {
@@ -99,8 +121,8 @@ func (s *RankSettlementService) SettleWithPolicy(
 			}
 		}
 	} else {
-		if current.RankScore > 0 {
-			baseScore = -10
+		if current.RankScore > 0 && theoreticalLossDeduction > 0 {
+			baseScore = -minInt(current.RankScore, theoreticalLossDeduction)
 		}
 		if countInStats {
 			current.TotalLosses++
@@ -144,9 +166,15 @@ func (s *RankSettlementService) SettleWithPolicy(
 	} else if current.RankScore <= 0 && finalChange > 0 {
 		lossFloorAdjustment = -finalChange
 		finalChange = 0
-	} else if current.RankScore > 0 && finalChange > lossMinimumDeduction {
-		lossFloorAdjustment = lossMinimumDeduction - finalChange
-		finalChange = lossMinimumDeduction
+	} else if current.RankScore > 0 {
+		minimumFinalChange := baseScore
+		if minimumFinalChange < lossMinimumDeduction {
+			minimumFinalChange = lossMinimumDeduction
+		}
+		if finalChange > minimumFinalChange {
+			lossFloorAdjustment = minimumFinalChange - finalChange
+			finalChange = minimumFinalChange
+		}
 	}
 
 	current.RankScore += finalChange
@@ -223,6 +251,45 @@ func rankingScoreOrZero(ranking *model.UserRanking) int {
 		return 0
 	}
 	return ranking.RankScore
+}
+
+func normalizeCompletedRounds(completedRounds int) int {
+	if completedRounds <= 0 {
+		return 1
+	}
+	return completedRounds
+}
+
+func winnerBaseScoreByCompletedRounds(completedRounds int) int {
+	completedRounds = normalizeCompletedRounds(completedRounds)
+	score := 8
+	if completedRounds > 1 {
+		score += (minInt(completedRounds, 5) - 1) * 3
+	}
+	if completedRounds > 5 {
+		score += (minInt(completedRounds, 10) - 5) * 2
+	}
+	if completedRounds > 10 {
+		score += minInt(completedRounds, 20) - 10
+	}
+	if score > 40 {
+		return 40
+	}
+	return score
+}
+
+func loserBaseDeductionFromWinnerBase(winnerBase int) int {
+	if winnerBase <= 0 {
+		return 0
+	}
+	return winnerBase / 2
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func sameOpponentRankGainRate(priorCompletedMatches int) int {

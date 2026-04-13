@@ -53,6 +53,17 @@ func (l *StartMatchLogic) StartMatch(req *types.StartMatchReq) (resp *types.Star
 		l.Logger.Errorf("获取用户ID失败: %v", err)
 		return &types.StartMatchResp{Success: false, Message: "获取用户信息失败"}, nil
 	}
+	if message := validateStartMatchReq(userId, req); message != "" {
+		return &types.StartMatchResp{Success: false, Message: message}, nil
+	}
+	opponentUser, err := l.svcCtx.UserModel.FindById(req.OpponentId)
+	if err != nil {
+		l.Logger.Errorf("查询对手信息失败: opponentId=%d, err=%v", req.OpponentId, err)
+		return &types.StartMatchResp{Success: false, Message: "查询对手信息失败"}, nil
+	}
+	if opponentUser == nil {
+		return &types.StartMatchResp{Success: false, Message: "请选择有效的平台对手"}, nil
+	}
 
 	var (
 		decision     startMatchDecision
@@ -213,6 +224,16 @@ func evaluateStartMatchDecision(
 	return startMatchDecision{
 		Action: startMatchActionCreated,
 	}
+}
+
+func validateStartMatchReq(userId int64, req *types.StartMatchReq) string {
+	if req == nil || req.OpponentId <= 0 {
+		return "请选择有效的平台对手"
+	}
+	if req.OpponentId == userId {
+		return "不能和自己发起 PK"
+	}
+	return ""
 }
 
 func shouldResumeExistingMatch(userId int64, req *types.StartMatchReq, match *model.Match) bool {

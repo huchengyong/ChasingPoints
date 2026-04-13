@@ -164,6 +164,7 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 	player1Win := result == 1
 	player1RawAchievementScore := 0
 	player2RawAchievementScore := 0
+	completedRounds := 0
 	if result != 3 {
 		rewardMap, rewardErr := l.getAchievementRewardMap(match.GameType)
 		if rewardErr != nil {
@@ -175,6 +176,7 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 			l.Logger.Errorf("获取对局局记录失败: %v", roundsErr)
 			return &types.FinishMatchResp{Success: false}, nil
 		}
+		completedRounds = len(rounds)
 		actions, actionsErr := l.svcCtx.MatchModel.ListActiveActions(match.Id)
 		if actionsErr != nil {
 			l.Logger.Errorf("获取对局操作记录失败: %v", actionsErr)
@@ -218,7 +220,33 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 		}
 
 		effectiveAt := resolveRankChangeEffectiveAt(match)
-		player1Policy, err := buildRankSettlementPolicy(tx, l.svcCtx, match.UserId, match.OpponentId, match.GameType, effectiveAt, match.Id)
+		player1Ranking, err := l.svcCtx.RankingModel.FindOrCreateWithTx(tx, match.UserId, match.GameType)
+		if err != nil {
+			return err
+		}
+		player1OpponentScore := -1
+		var player2Ranking *model.UserRanking
+		player2OpponentScore := -1
+		if match.OpponentId != nil && *match.OpponentId > 0 {
+			player2Ranking, err = l.svcCtx.RankingModel.FindOrCreateWithTx(tx, *match.OpponentId, match.GameType)
+			if err != nil {
+				return err
+			}
+			player1OpponentScore = player2Ranking.RankScore
+			player2OpponentScore = player1Ranking.RankScore
+		}
+
+		player1Policy, err := buildRankSettlementPolicy(
+			tx,
+			l.svcCtx,
+			match.UserId,
+			match.OpponentId,
+			match.GameType,
+			effectiveAt,
+			match.Id,
+			completedRounds,
+			player1OpponentScore,
+		)
 		if err != nil {
 			return err
 		}
@@ -228,10 +256,6 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 			player1AchievementScore = calculateMemberAchievementRankingScoreWithPercent(player1RawAchievementScore, player1Win, true, player1Policy.MemberMultiplierPercent)
 		} else if player1Policy.OrdinaryUserAchievementEnabled && player1Win {
 			player1AchievementScore = player1RawAchievementScore
-		}
-		player1Ranking, err := l.svcCtx.RankingModel.FindOrCreateWithTx(tx, match.UserId, match.GameType)
-		if err != nil {
-			return err
 		}
 		player1Settlement := settlementService.SettleWithPolicy(player1Ranking, player1Win, player1AchievementScore, player1Policy)
 		applySettlementToRanking(player1Ranking, player1Settlement)
@@ -244,7 +268,17 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 		}
 
 		if match.OpponentId != nil && *match.OpponentId > 0 {
-			player2Policy, err := buildRankSettlementPolicy(tx, l.svcCtx, *match.OpponentId, &match.UserId, match.GameType, effectiveAt, match.Id)
+			player2Policy, err := buildRankSettlementPolicy(
+				tx,
+				l.svcCtx,
+				*match.OpponentId,
+				&match.UserId,
+				match.GameType,
+				effectiveAt,
+				match.Id,
+				completedRounds,
+				player2OpponentScore,
+			)
 			if err != nil {
 				return err
 			}
@@ -253,10 +287,6 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 				player2AchievementScore = calculateMemberAchievementRankingScoreWithPercent(player2RawAchievementScore, !player1Win, true, player2Policy.MemberMultiplierPercent)
 			} else if player2Policy.OrdinaryUserAchievementEnabled && !player1Win {
 				player2AchievementScore = player2RawAchievementScore
-			}
-			player2Ranking, err := l.svcCtx.RankingModel.FindOrCreateWithTx(tx, *match.OpponentId, match.GameType)
-			if err != nil {
-				return err
 			}
 			player2Settlement := settlementService.SettleWithPolicy(player2Ranking, !player1Win, player2AchievementScore, player2Policy)
 			applySettlementToRanking(player2Ranking, player2Settlement)

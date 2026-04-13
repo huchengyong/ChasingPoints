@@ -45,6 +45,8 @@ func TestRankSettlementServiceCapsMemberAchievementScoreByDailyCap(t *testing.T)
 	}, true, 42, RankSettlementPolicy{
 		TodayMemberAchievementGain: 190,
 		DailyMemberAchievementCap:  200,
+		CompletedRounds:            5,
+		OpponentCurrentRankScore:   999,
 	})
 
 	if result.AchievementScore != 10 {

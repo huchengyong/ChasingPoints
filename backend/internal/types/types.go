@@ -290,6 +290,7 @@ type AdminMemberGrowthRules struct {
 type AdminMemberRankingRightsRules struct {
 	OrdinaryUserAchievementEnabled bool `json:"ordinary_user_achievement_enabled"`
 	DailyCap                       int  `json:"daily_cap"`
+	DailyPositiveCap               int  `json:"daily_positive_cap"`
 	Break50Score                   int  `json:"break_50_score"`
 	GoldenBreakScore               int  `json:"golden_break_score"`
 	BreakAndRunScore               int  `json:"break_and_run_score"`
@@ -1938,7 +1939,7 @@ type SocialPostInfo struct {
 type StartMatchReq struct {
 	GameType       int    `json:"game_type"`                // 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
 	GameMode       string `json:"game_mode,optional"`       // 比赛模式
-	OpponentId     int64  `json:"opponent_id,optional"`     // 对手ID
+	OpponentId     int64  `json:"opponent_id"`              // 对手ID（平台用户，必填）
 	OpponentName   string `json:"opponent_name"`            // 对手昵称
 	OpponentAvatar string `json:"opponent_avatar,optional"` // 对手头像
 }

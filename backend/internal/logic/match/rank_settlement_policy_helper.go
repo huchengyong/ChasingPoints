@@ -18,11 +18,15 @@ func buildRankSettlementPolicy(
 	gameType int,
 	effectiveAt time.Time,
 	excludeMatchId int64,
+	completedRounds int,
+	opponentCurrentRankScore int,
 ) (RankSettlementPolicy, error) {
 	policy := RankSettlementPolicy{
-		DailyPositiveCap: defaultDailyPositiveCap,
+		DailyPositiveCap:         defaultDailyPositiveCap,
 		DailyMemberAchievementCap: logicx.DefaultMemberAchievementDailyCap,
-		MemberMultiplierPercent: 100,
+		MemberMultiplierPercent:  100,
+		CompletedRounds:          completedRounds,
+		OpponentCurrentRankScore: opponentCurrentRankScore,
 	}
 	if svcCtx == nil || userId <= 0 {
 		return policy, nil
@@ -31,6 +35,7 @@ func buildRankSettlementPolicy(
 	config, configErr := logicx.NewMemberRightsConfigService(svcCtx).GetConfig()
 	if configErr == nil {
 		policy.DailyMemberAchievementCap = config.RankingRights.DailyCap
+		policy.DailyPositiveCap = config.RankingRights.DailyPositiveCap
 		policy.OrdinaryUserAchievementEnabled = config.RankingRights.OrdinaryUserAchievementEnabled
 	}
 

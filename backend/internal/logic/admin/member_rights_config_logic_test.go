@@ -36,7 +36,7 @@ func TestAdminGetMemberRightsConfigReturnsDefaultsWhenMissing(t *testing.T) {
 	if !resp.Success {
 		t.Fatalf("expected success response, got %#v", resp)
 	}
-	if resp.GrowthRules.DailyCap != 5 || resp.RankingRights.DailyCap != 200 {
+	if resp.GrowthRules.DailyCap != 5 || resp.RankingRights.DailyCap != 200 || resp.RankingRights.DailyPositiveCap != 500 {
 		t.Fatalf("unexpected default config response: %#v", resp)
 	}
 }
@@ -55,6 +55,7 @@ func TestAdminUpdateMemberRightsConfigRejectsInvalidValues(t *testing.T) {
 		},
 		RankingRights: types.AdminMemberRankingRightsRules{
 			DailyCap:         200,
+			DailyPositiveCap: 0,
 			Level1Multiplier: 100,
 			Level2Multiplier: 110,
 			Level3Multiplier: 120,
@@ -85,6 +86,7 @@ func TestAdminMemberRightsConfigRoundTrip(t *testing.T) {
 		RankingRights: types.AdminMemberRankingRightsRules{
 			OrdinaryUserAchievementEnabled: false,
 			DailyCap:                      260,
+			DailyPositiveCap:              520,
 			Break50Score:                  8,
 			GoldenBreakScore:              4,
 			BreakAndRunScore:              6,
@@ -113,7 +115,7 @@ func TestAdminMemberRightsConfigRoundTrip(t *testing.T) {
 	if !getResp.Success {
 		t.Fatalf("expected get success, got %#v", getResp)
 	}
-	if getResp.GrowthRules.DailyCap != 7 || getResp.RankingRights.DailyCap != 260 {
+	if getResp.GrowthRules.DailyCap != 7 || getResp.RankingRights.DailyCap != 260 || getResp.RankingRights.DailyPositiveCap != 520 {
 		t.Fatalf("unexpected roundtrip config: %#v", getResp)
 	}
 }

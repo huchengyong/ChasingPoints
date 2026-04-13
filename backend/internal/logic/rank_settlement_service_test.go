@@ -46,17 +46,17 @@ func TestRankSettlementServiceWinAddsAchievementScore(t *testing.T) {
 		MaxStreak:     2,
 	}, true, 15)
 
-	if result.BaseScore != 20 {
-		t.Fatalf("expected base score 20, got %d", result.BaseScore)
+	if result.BaseScore != 8 {
+		t.Fatalf("expected base score 8, got %d", result.BaseScore)
 	}
 	if result.AchievementScore != 15 {
 		t.Fatalf("expected achievement score 15, got %d", result.AchievementScore)
 	}
-	if result.FinalChange != 35 {
-		t.Fatalf("expected final change 35, got %d", result.FinalChange)
+	if result.FinalChange != 23 {
+		t.Fatalf("expected final change 23, got %d", result.FinalChange)
 	}
-	if result.AfterScore != 515 {
-		t.Fatalf("expected after score 515, got %d", result.AfterScore)
+	if result.AfterScore != 503 {
+		t.Fatalf("expected after score 503, got %d", result.AfterScore)
 	}
 	if result.AfterLevel != 2 {
 		t.Fatalf("expected after level 2, got %d", result.AfterLevel)
@@ -69,13 +69,16 @@ func TestRankSettlementServiceWinAddsAchievementScore(t *testing.T) {
 func TestRankSettlementServicePromotesAcrossThreshold(t *testing.T) {
 	service := NewRankSettlementService(&model.RankingModel{})
 
-	result := service.Settle(&model.UserRanking{
+	result := service.SettleWithPolicy(&model.UserRanking{
 		UserId:      1,
 		RankScore:   1490,
 		RankLevel:   3,
 		TotalWins:   9,
 		TotalLosses: 4,
-	}, true, 0)
+	}, true, 0, RankSettlementPolicy{
+		CompletedRounds:          5,
+		OpponentCurrentRankScore: 999,
+	})
 
 	if result.AfterScore != 1510 {
 		t.Fatalf("expected after score 1510, got %d", result.AfterScore)
@@ -96,11 +99,11 @@ func TestRankSettlementServiceDemotesAfterLoss(t *testing.T) {
 		TotalLosses: 3,
 	}, false, 0)
 
-	if result.BaseScore != -10 {
-		t.Fatalf("expected base score -10, got %d", result.BaseScore)
+	if result.BaseScore != -4 {
+		t.Fatalf("expected base score -4, got %d", result.BaseScore)
 	}
-	if result.AfterScore != 490 {
-		t.Fatalf("expected after score 490, got %d", result.AfterScore)
+	if result.AfterScore != 496 {
+		t.Fatalf("expected after score 496, got %d", result.AfterScore)
 	}
 	if result.AfterLevel != 1 {
 		t.Fatalf("expected after level 1, got %d", result.AfterLevel)
@@ -116,7 +119,9 @@ func TestRankSettlementServiceLossUsesNegativeTwoFloorWhenAchievementsOffsetLoss
 		RankLevel:   1,
 		TotalWins:   6,
 		TotalLosses: 3,
-	}, false, 15, RankSettlementPolicy{})
+	}, false, 15, RankSettlementPolicy{
+		CompletedRounds: 5,
+	})
 
 	if result.FinalChange != -2 {
 		t.Fatalf("expected final change -2, got %d", result.FinalChange)
@@ -138,7 +143,9 @@ func TestRankSettlementServiceLossAtZeroScoreWithAchievementDoesNotIncreaseRank(
 		RankLevel:   1,
 		TotalWins:   2,
 		TotalLosses: 3,
-	}, false, 15, RankSettlementPolicy{})
+	}, false, 15, RankSettlementPolicy{
+		CompletedRounds: 5,
+	})
 
 	if result.FinalChange != 0 {
 		t.Fatalf("expected final change 0, got %d", result.FinalChange)
@@ -159,6 +166,8 @@ func TestRankSettlementServiceThirdSameOpponentWinUsesEightyPercentGain(t *testi
 		TotalLosses: 1,
 	}, true, 15, RankSettlementPolicy{
 		SameOpponentMatchesToday: 2,
+		CompletedRounds:          5,
+		OpponentCurrentRankScore: 999,
 	})
 
 	if result.FinalChange != 28 {
@@ -184,6 +193,8 @@ func TestRankSettlementServiceDailyGainCapTruncatesPositiveGain(t *testing.T) {
 	}, true, 15, RankSettlementPolicy{
 		TodayPositiveGain: 295,
 		DailyPositiveCap:  300,
+		CompletedRounds:   5,
+		OpponentCurrentRankScore: 999,
 	})
 
 	if result.FinalChange != 5 {
@@ -210,6 +221,8 @@ func TestRankSettlementServiceSeventhSameOpponentMatchSkipsRankAndStats(t *testi
 		MaxStreak:     4,
 	}, true, 15, RankSettlementPolicy{
 		SameOpponentMatchesToday: 6,
+		CompletedRounds:          5,
+		OpponentCurrentRankScore: 999,
 	})
 
 	if result.FinalChange != 0 {
@@ -239,6 +252,7 @@ func TestRankSettlementServiceSeventhSameOpponentLossAlsoSkipsRankAndStats(t *te
 		MaxStreak:     4,
 	}, false, 0, RankSettlementPolicy{
 		SameOpponentMatchesToday: 6,
+		CompletedRounds:          5,
 	})
 
 	if result.FinalChange != 0 {
@@ -255,5 +269,86 @@ func TestRankSettlementServiceSeventhSameOpponentLossAlsoSkipsRankAndStats(t *te
 	}
 	if result.SameOpponentAdjustment != 10 {
 		t.Fatalf("expected same opponent relief 10, got %d", result.SameOpponentAdjustment)
+	}
+}
+
+func TestWinnerBaseScoreByCompletedRoundsUsesProgressiveCurve(t *testing.T) {
+	cases := map[int]int{
+		0:  8,
+		1:  8,
+		2:  11,
+		5:  20,
+		6:  22,
+		10: 30,
+		20: 40,
+		70: 40,
+	}
+
+	for rounds, want := range cases {
+		if got := winnerBaseScoreByCompletedRounds(rounds); got != want {
+			t.Fatalf("rounds %d expected winner base %d, got %d", rounds, want, got)
+		}
+	}
+}
+
+func TestRankSettlementServiceScalesWinnerBaseByLoserAvailableScore(t *testing.T) {
+	service := NewRankSettlementService(&model.RankingModel{})
+
+	result := service.SettleWithPolicy(&model.UserRanking{
+		UserId:    1,
+		RankScore: 480,
+		RankLevel: 1,
+	}, true, 0, RankSettlementPolicy{
+		CompletedRounds:          20,
+		OpponentCurrentRankScore: 10,
+	})
+
+	if result.BaseScore != 20 {
+		t.Fatalf("expected scaled base score 20, got %d", result.BaseScore)
+	}
+	if result.FinalChange != 20 {
+		t.Fatalf("expected final change 20, got %d", result.FinalChange)
+	}
+}
+
+func TestRankSettlementServiceUsesMinimumWinnerBaseWhenLoserScoreIsZero(t *testing.T) {
+	service := NewRankSettlementService(&model.RankingModel{})
+
+	result := service.SettleWithPolicy(&model.UserRanking{
+		UserId:    1,
+		RankScore: 480,
+		RankLevel: 1,
+	}, true, 0, RankSettlementPolicy{
+		CompletedRounds:          20,
+		OpponentCurrentRankScore: 0,
+	})
+
+	if result.BaseScore != 2 {
+		t.Fatalf("expected minimum winner base 2, got %d", result.BaseScore)
+	}
+	if result.FinalChange != 2 {
+		t.Fatalf("expected final change 2, got %d", result.FinalChange)
+	}
+}
+
+func TestRankSettlementServiceLossDoesNotOverDeductWhenCurrentScoreIsOne(t *testing.T) {
+	service := NewRankSettlementService(&model.RankingModel{})
+
+	result := service.SettleWithPolicy(&model.UserRanking{
+		UserId:    1,
+		RankScore: 1,
+		RankLevel: 1,
+	}, false, 10, RankSettlementPolicy{
+		CompletedRounds: 20,
+	})
+
+	if result.BaseScore != -1 {
+		t.Fatalf("expected actual deductible base score -1, got %d", result.BaseScore)
+	}
+	if result.FinalChange != -1 {
+		t.Fatalf("expected final change -1, got %d", result.FinalChange)
+	}
+	if result.AfterScore != 0 {
+		t.Fatalf("expected after score 0, got %d", result.AfterScore)
 	}
 }

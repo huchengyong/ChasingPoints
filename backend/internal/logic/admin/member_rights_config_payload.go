@@ -25,6 +25,7 @@ func buildAdminMemberRightsConfigResp(cfg logicx.MemberRightsRuntimeConfig) *typ
 		RankingRights: types.AdminMemberRankingRightsRules{
 			OrdinaryUserAchievementEnabled: cfg.RankingRights.OrdinaryUserAchievementEnabled,
 			DailyCap:                       cfg.RankingRights.DailyCap,
+			DailyPositiveCap:               cfg.RankingRights.DailyPositiveCap,
 			Break50Score:                   cfg.RankingRights.Break50Score,
 			GoldenBreakScore:               cfg.RankingRights.GoldenBreakScore,
 			BreakAndRunScore:               cfg.RankingRights.BreakAndRunScore,
@@ -58,6 +59,7 @@ func buildMemberRightsConfigModel(req *types.AdminMemberRightsConfigUpdateReq, u
 	cfg.SetRankingRightsRules(model.MemberRankingRightsRulesConfig{
 		OrdinaryUserAchievementEnabled: req.RankingRights.OrdinaryUserAchievementEnabled,
 		DailyCap:                       req.RankingRights.DailyCap,
+		DailyPositiveCap:               req.RankingRights.DailyPositiveCap,
 		Break50Score:                   req.RankingRights.Break50Score,
 		GoldenBreakScore:               req.RankingRights.GoldenBreakScore,
 		BreakAndRunScore:               req.RankingRights.BreakAndRunScore,
@@ -95,6 +97,9 @@ func validateMemberRightsConfigUpdateReq(req *types.AdminMemberRightsConfigUpdat
 	}
 	if req.RankingRights.DailyCap <= 0 {
 		return errors.New("会员特殊战绩日上限必须大于 0")
+	}
+	if req.RankingRights.DailyPositiveCap <= 0 {
+		return errors.New("每日总正向上限必须大于 0")
 	}
 	scores := []int{
 		req.RankingRights.Break50Score,

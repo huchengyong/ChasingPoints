@@ -31,7 +31,7 @@ func TestMemberRightsConfigServiceFallsBackToDefaultsWhenMissing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get config: %v", err)
 	}
-	if cfg.GrowthRules.DailyCap != 5 || cfg.RankingRights.DailyCap != 200 {
+	if cfg.GrowthRules.DailyCap != 5 || cfg.RankingRights.DailyCap != 200 || cfg.RankingRights.DailyPositiveCap != 500 {
 		t.Fatalf("unexpected default config: %+v", cfg)
 	}
 }
@@ -44,6 +44,7 @@ func TestMemberRightsConfigServiceReturnsPersistedRules(t *testing.T) {
 	cfg.SetGrowthRules(growth)
 	rights := model.DefaultMemberRankingRightsRulesConfig()
 	rights.DailyCap = 260
+	rights.DailyPositiveCap = 520
 	cfg.SetRankingRightsRules(rights)
 	if err := svcCtx.MemberRightsConfigModel.Upsert(cfg); err != nil {
 		t.Fatalf("upsert config: %v", err)
@@ -53,7 +54,7 @@ func TestMemberRightsConfigServiceReturnsPersistedRules(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get config: %v", err)
 	}
-	if got.GrowthRules.DailyCap != 9 || got.RankingRights.DailyCap != 260 {
+	if got.GrowthRules.DailyCap != 9 || got.RankingRights.DailyCap != 260 || got.RankingRights.DailyPositiveCap != 520 {
 		t.Fatalf("unexpected persisted config: %+v", got)
 	}
 }

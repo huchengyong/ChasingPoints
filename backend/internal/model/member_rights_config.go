@@ -29,6 +29,7 @@ type MemberGrowthRulesConfig struct {
 type MemberRankingRightsRulesConfig struct {
 	OrdinaryUserAchievementEnabled bool `json:"ordinary_user_achievement_enabled"`
 	DailyCap                      int  `json:"daily_cap"`
+	DailyPositiveCap              int  `json:"daily_positive_cap"`
 	Break50Score                  int  `json:"break_50_score"`
 	GoldenBreakScore              int  `json:"golden_break_score"`
 	BreakAndRunScore              int  `json:"break_and_run_score"`
@@ -73,6 +74,7 @@ func DefaultMemberRankingRightsRulesConfig() MemberRankingRightsRulesConfig {
 	return MemberRankingRightsRulesConfig{
 		OrdinaryUserAchievementEnabled: false,
 		DailyCap:                      200,
+		DailyPositiveCap:              500,
 		Break50Score:                  8,
 		GoldenBreakScore:              4,
 		BreakAndRunScore:              6,

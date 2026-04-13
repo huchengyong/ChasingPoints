@@ -25,6 +25,30 @@ func TestEvaluateStartMatchDecisionCreatesWhenNoOngoingMatches(t *testing.T) {
 	}
 }
 
+func TestValidateStartMatchReqRejectsMissingOpponentID(t *testing.T) {
+	message := validateStartMatchReq(100, &types.StartMatchReq{
+		GameType:     3,
+		OpponentId:   0,
+		OpponentName: "球友A",
+	})
+
+	if message != "请选择有效的平台对手" {
+		t.Fatalf("unexpected validation message: %q", message)
+	}
+}
+
+func TestValidateStartMatchReqRejectsSelfMatch(t *testing.T) {
+	message := validateStartMatchReq(100, &types.StartMatchReq{
+		GameType:     3,
+		OpponentId:   100,
+		OpponentName: "自己",
+	})
+
+	if message != "不能和自己发起 PK" {
+		t.Fatalf("unexpected validation message: %q", message)
+	}
+}
+
 func TestEvaluateStartMatchDecisionResumesExistingMatchForSameOpponentAndGameType(t *testing.T) {
 	existing := &model.Match{
 		Id:           88,

@@ -26,7 +26,7 @@
             <el-input-number v-model="config.growth_rules.daily_match_cap" :min="1" :max="100" />
           </el-form-item>
           <el-form-item label="仅真实完赛生效">
-            <el-switch v-model="config.growth_rules.only_completed_real_matches" />
+            <el-switch v-model="config.growth_rules.only_completed_real_matches" disabled />
           </el-form-item>
           <el-form-item label="到期策略">
             <el-input :model-value="expirationPolicyText" disabled />
@@ -62,14 +62,17 @@
           <el-form-item label="特殊战绩单日上限">
             <el-input-number v-model="config.ranking_rights_rules.daily_achievement_rank_score_cap" :min="1" :max="999999" />
           </el-form-item>
+          <el-form-item label="每日总正向上限">
+            <el-input-number v-model="config.ranking_rights_rules.daily_total_positive_rank_score_cap" :min="1" :max="999999" />
+          </el-form-item>
           <el-form-item label="取整方式">
             <el-input :model-value="roundingModeText" disabled />
           </el-form-item>
           <el-form-item label="仅胜方生效">
-            <el-switch v-model="config.ranking_rights_rules.win_only" />
+            <el-switch v-model="config.ranking_rights_rules.win_only" disabled />
           </el-form-item>
           <el-form-item label="不设单场上限">
-            <el-switch v-model="config.ranking_rights_rules.no_per_match_cap" />
+            <el-switch v-model="config.ranking_rights_rules.no_per_match_cap" disabled />
           </el-form-item>
         </div>
 
@@ -132,6 +135,11 @@
           <el-alert
             type="info"
             :closable="false"
+            title="每日总正向上限同时覆盖基础分和特殊战绩分，按用户 + 球种 + 当天计算。"
+          />
+          <el-alert
+            type="info"
+            :closable="false"
             title="会员特殊战绩排位分默认仅胜方可得，且只有单日上限，没有单场上限。"
           />
         </div>
@@ -184,6 +192,8 @@ const assignConfig = (nextConfig: MemberRightsConfig) => {
     nextConfig.ranking_rights_rules.ordinary_user_can_gain_achievement_rank_score
   config.ranking_rights_rules.daily_achievement_rank_score_cap =
     nextConfig.ranking_rights_rules.daily_achievement_rank_score_cap
+  config.ranking_rights_rules.daily_total_positive_rank_score_cap =
+    nextConfig.ranking_rights_rules.daily_total_positive_rank_score_cap
   config.ranking_rights_rules.rounding_mode = nextConfig.ranking_rights_rules.rounding_mode
   config.ranking_rights_rules.win_only = nextConfig.ranking_rights_rules.win_only
   config.ranking_rights_rules.no_per_match_cap = nextConfig.ranking_rights_rules.no_per_match_cap
@@ -236,6 +246,11 @@ const validateConfig = () => {
     multipliers.lv5 < multipliers.lv4
   ) {
     ElMessage.error('会员等级倍率必须按 Lv1 到 Lv5 非递减')
+    return false
+  }
+
+  if (config.ranking_rights_rules.daily_total_positive_rank_score_cap <= 0) {
+    ElMessage.error('每日总正向上限必须大于 0')
     return false
   }
 

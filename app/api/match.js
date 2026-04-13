@@ -2,6 +2,7 @@
  * 对局相关 API 接口
  */
 import { get, post } from '@/utils/request.js'
+import { validateStartMatchPayload } from '@/utils/start-match.js'
 
 /**
  * 获取对局记录列表
@@ -60,6 +61,13 @@ export const getPublicMatchDetail = (params) => {
  * @returns {Promise}
  */
 export const startMatch = (data) => {
+  const message = validateStartMatchPayload(data)
+  if (message) {
+    return Promise.resolve({
+      success: false,
+      message
+    })
+  }
   return post('/api/match/start', data)
 }
 
