@@ -100,15 +100,9 @@
 											<text>会员等级：{{ memberLevelText }}</text>
 										</view>
 									</view>
-									<view class="identity-reputation-row" :class="reputationEntryToneClass" @click="handleOpenReputation">
-										<view class="identity-reputation-copy">
-											<text class="identity-reputation-label">信誉值</text>
-											<text class="identity-reputation-status">{{ reputationEntryStatusText }}</text>
-										</view>
-										<view class="identity-reputation-value">
-											<text class="identity-reputation-score">{{ reputationEntryScoreText }}</text>
-											<uni-icons type="right" size="14" color="rgba(255, 255, 255, 0.78)"></uni-icons>
-										</view>
+									<view class="identity-reputation-row" @click="handleOpenReputation">
+										<uni-icons type="medal" size="14" color="#f59e0b"></uni-icons>
+										<text class="identity-reputation-text">信誉情况：{{ reputationEntryStatusText }}</text>
 									</view>
 								</view>
 							</view>
@@ -486,24 +480,11 @@ const isActiveFavoriteVenueMember = computed(() => favoriteVenueMemberCard.value
 const showMemberCenterEntryCard = computed(() => memberCenterCard.value.visible && !isActiveFavoriteVenueMember.value)
 const shouldShowMemberCenterButton = computed(() => memberCenterCard.value.actionText && memberCenterCard.value.actionText !== '查看权益')
 const shouldShowMemberCenterFooter = computed(() => memberCenterCard.value.priceText || shouldShowMemberCenterButton.value)
-const reputationEntryScoreText = computed(() => {
-	const score = reputationStatus.value?.score
-	return typeof score === 'number' ? String(score) : '--'
-})
 const reputationEntryStatusText = computed(() => {
 	if (reputationStatus.value?.status_text) {
 		return reputationStatus.value.status_text
 	}
 	return '暂不可用'
-})
-const reputationEntryToneClass = computed(() => {
-	if (reputationStatus.value?.status === 'restricted') {
-		return 'is-restricted'
-	}
-	if (reputationStatus.value?.status === 'good') {
-		return 'is-good'
-	}
-	return 'is-unknown'
 })
 
 const userStats = reactive({

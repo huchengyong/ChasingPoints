@@ -32,15 +32,15 @@ test('user page rank chip becomes the member level entry and links to member cen
 test('user page shows a lightweight reputation entry below the member level and links to reputation detail', () => {
   assert.match(
     source,
-    /<view class="identity-rank-chip" @click="handleOpenMemberCenter">[\s\S]*?<view class="identity-reputation-row" :class="reputationEntryToneClass" @click="handleOpenReputation">/
+    /<view class="identity-rank-chip" @click="handleOpenMemberCenter">[\s\S]*?<view class="identity-reputation-row" @click="handleOpenReputation">/
   )
-  assert.match(source, /<text class="identity-reputation-label">信誉值<\/text>/)
-  assert.match(source, /<text class="identity-reputation-status">{{ reputationEntryStatusText }}<\/text>/)
-  assert.match(source, /<text class="identity-reputation-score">{{ reputationEntryScoreText }}<\/text>/)
+  assert.match(source, /<uni-icons type="medal" size="14" color="#f59e0b"><\/uni-icons>/)
+  assert.match(source, /<text class="identity-reputation-text">信誉情况：{{ reputationEntryStatusText }}<\/text>/)
   assert.match(source, /const handleOpenReputation = \(\) => \{\s*uni\.navigateTo\(\{ url: '\/subPages\/user\/reputation' \}\)/)
+  assert.doesNotMatch(source, /reputationEntryScoreText/)
   assert.match(
     styleSource,
-    /\.identity-reputation-row\s*\{[\s\S]*margin-top:\s*16rpx;[\s\S]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.08\);/
+    /\.identity-reputation-row\s*\{[\s\S]*display:\s*inline-flex;[\s\S]*margin-top:\s*12rpx;/
   )
 })
 
