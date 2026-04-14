@@ -26,6 +26,12 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="reputation_score" label="信誉分" width="90" />
+        <el-table-column prop="ban_until" label="禁赛至" width="170">
+          <template #default="{ row }">
+            {{ row.ban_until || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="member_status" label="会员状态" width="110">
           <template #default="{ row }">
             <el-tag :type="resolveMemberTagType(row.member_status)">

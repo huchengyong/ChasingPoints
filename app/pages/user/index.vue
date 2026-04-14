@@ -92,16 +92,26 @@
 							<view class="identity-avatar">
 								<image :src="userInfo.avatar || '/static/images/default-avatar.png'" mode="aspectFill" />
 							</view>
-							<view class="identity-copy">
-								<view class="identity-name-row">
-									<text class="identity-name">{{ userInfo.nickname }}</text>
-									<view class="identity-rank-chip" @click="handleOpenMemberCenter">
-										<uni-icons type="star-filled" size="12" color="#f59e0b"></uni-icons>
-										<text>会员等级：{{ memberLevelText }}</text>
+								<view class="identity-copy">
+									<view class="identity-name-row">
+										<text class="identity-name">{{ userInfo.nickname }}</text>
+										<view class="identity-rank-chip" @click="handleOpenMemberCenter">
+											<uni-icons type="star-filled" size="12" color="#f59e0b"></uni-icons>
+											<text>会员等级：{{ memberLevelText }}</text>
+										</view>
+									</view>
+									<view class="identity-reputation-row" :class="reputationEntryToneClass" @click="handleOpenReputation">
+										<view class="identity-reputation-copy">
+											<text class="identity-reputation-label">信誉值</text>
+											<text class="identity-reputation-status">{{ reputationEntryStatusText }}</text>
+										</view>
+										<view class="identity-reputation-value">
+											<text class="identity-reputation-score">{{ reputationEntryScoreText }}</text>
+											<uni-icons type="right" size="14" color="rgba(255, 255, 255, 0.78)"></uni-icons>
+										</view>
 									</view>
 								</view>
 							</view>
-						</view>
 						<view class="identity-actions">
 							<button class="icon-btn" @click="handleNotificationCenter">
 								<uni-icons type="notification-filled" size="18" color="#e2e8f0"></uni-icons>
@@ -379,7 +389,7 @@ import { ref, reactive, computed, onUnmounted } from 'vue'
 import { onShow, onHide } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
-import { getFavoriteVenueRewardStatus, getUserPrivacy, getUserStats, updateUserPrivacy } from '@/api/user.js'
+import { getFavoriteVenueRewardStatus, getUserPrivacy, getUserReputation, getUserStats, updateUserPrivacy } from '@/api/user.js'
 import { getMemberStatus } from '@/api/member.js'
 import { getCurrentMatch, getMatchQRCode, startMatch } from '@/api/match.js'
 import { getUserRankInfo } from '@/api/rank.js'
@@ -452,6 +462,7 @@ const favoriteVenueRewardStatus = ref(null)
 const memberStatus = ref(null)
 const showFavoriteVenueRewardModal = ref(false)
 const rankGameTabs = GAME_TYPE_TABS
+const reputationStatus = ref(null)
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const pendingTotal = computed(() => notificationStore.unreadCount + friendRequestStore.pendingCount)
@@ -475,6 +486,25 @@ const isActiveFavoriteVenueMember = computed(() => favoriteVenueMemberCard.value
 const showMemberCenterEntryCard = computed(() => memberCenterCard.value.visible && !isActiveFavoriteVenueMember.value)
 const shouldShowMemberCenterButton = computed(() => memberCenterCard.value.actionText && memberCenterCard.value.actionText !== '查看权益')
 const shouldShowMemberCenterFooter = computed(() => memberCenterCard.value.priceText || shouldShowMemberCenterButton.value)
+const reputationEntryScoreText = computed(() => {
+	const score = reputationStatus.value?.score
+	return typeof score === 'number' ? String(score) : '--'
+})
+const reputationEntryStatusText = computed(() => {
+	if (reputationStatus.value?.status_text) {
+		return reputationStatus.value.status_text
+	}
+	return '暂不可用'
+})
+const reputationEntryToneClass = computed(() => {
+	if (reputationStatus.value?.status === 'restricted') {
+		return 'is-restricted'
+	}
+	if (reputationStatus.value?.status === 'good') {
+		return 'is-good'
+	}
+	return 'is-unknown'
+})
 
 const userStats = reactive({
 	totalMatches: 0,
@@ -644,6 +674,7 @@ const loadHomepageData = async () => {
 		notificationStore.fetchUnreadCount(),
 		friendRequestStore.fetchPendingCount(),
 		loadUserPrivacy(),
+		loadReputationStatus(),
 		loadUserStats(),
 		loadRankInfo(),
 		loadHighestRankInfo(),
@@ -671,6 +702,16 @@ const loadUserStats = async () => {
 		console.error('获取用户统计失败:', error)
 	} finally {
 		userStats.loading = false
+	}
+}
+
+const loadReputationStatus = async () => {
+	try {
+		const res = await getUserReputation()
+		reputationStatus.value = res?.success ? res : null
+	} catch (error) {
+		console.error('获取信誉状态失败:', error)
+		reputationStatus.value = null
 	}
 }
 
@@ -755,6 +796,7 @@ const resetHomepageState = () => {
 	highestRankInfo.value = null
 	favoriteVenueRewardStatus.value = null
 	memberStatus.value = null
+	reputationStatus.value = null
 	showFavoriteVenueRewardModal.value = false
 	isHideMatch.value = false
 	userStats.totalMatches = 0
@@ -1089,6 +1131,10 @@ const handleSettings = () => {
 
 const handleOpenMemberCenter = () => {
 	uni.navigateTo({ url: '/subPages/user/memberCenter' })
+}
+
+const handleOpenReputation = () => {
+	uni.navigateTo({ url: '/subPages/user/reputation' })
 }
 
 const handleQrCode = () => {

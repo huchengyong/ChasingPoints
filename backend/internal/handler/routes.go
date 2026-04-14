@@ -229,6 +229,31 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
+				// 获取信誉制度配置
+				Method:  http.MethodGet,
+				Path:    "/config",
+				Handler: admin.AdminGetReputationConfigHandler(serverCtx),
+			},
+			{
+				// 更新信誉制度配置
+				Method:  http.MethodPost,
+				Path:    "/config",
+				Handler: admin.AdminUpdateReputationConfigHandler(serverCtx),
+			},
+			{
+				// 获取信誉变更日志列表
+				Method:  http.MethodGet,
+				Path:    "/logs",
+				Handler: admin.AdminGetReputationLogListHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/admin/reputation"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
 				// 获取动态列表（管理员）
 				Method:  http.MethodGet,
 				Path:    "/posts",
@@ -1080,6 +1105,18 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodPost,
 				Path:    "/push-token",
 				Handler: user.UpdatePushTokenHandler(serverCtx),
+			},
+			{
+				// 获取当前用户信誉状态
+				Method:  http.MethodGet,
+				Path:    "/reputation",
+				Handler: user.GetUserReputationHandler(serverCtx),
+			},
+			{
+				// 获取当前用户信誉流水
+				Method:  http.MethodGet,
+				Path:    "/reputation/logs",
+				Handler: user.GetUserReputationLogsHandler(serverCtx),
 			},
 			{
 				// 获取用户统计数据

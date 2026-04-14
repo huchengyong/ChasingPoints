@@ -337,6 +337,9 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 		l.Logger.Errorf("结束对局事务失败: %v", err)
 		return &types.FinishMatchResp{Success: false}, nil
 	}
+
+	l.applyMatchReputation(match)
+
 	view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
 	if stateErr != nil {
 		l.Logger.Errorf("加载写入快照失败: matchId=%d, clientActionId=%s, err=%v", match.Id, req.ClientActionId, stateErr)

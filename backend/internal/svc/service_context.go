@@ -59,6 +59,9 @@ type ServiceContext struct {
 	MemberGrowthProfileModel       *model.MemberGrowthProfileModel
 	MemberGrowthLogModel           *model.MemberGrowthLogModel
 	MemberRightsConfigModel        *model.MemberRightsConfigModel
+	ReputationConfigModel          *model.ReputationConfigModel
+	UserReputationProfileModel     *model.UserReputationProfileModel
+	UserReputationLogModel         *model.UserReputationLogModel
 	FeedbackTicketModel            *model.FeedbackTicketModel
 	TournamentMatchModel           *model.TournamentMatchModel
 	AdminModel                     *model.AdminModel
@@ -114,6 +117,9 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		MemberGrowthProfileModel:       models.MemberGrowthProfileModel,
 		MemberGrowthLogModel:           models.MemberGrowthLogModel,
 		MemberRightsConfigModel:        models.MemberRightsConfigModel,
+		ReputationConfigModel:          models.ReputationConfigModel,
+		UserReputationProfileModel:     models.UserReputationProfileModel,
+		UserReputationLogModel:         models.UserReputationLogModel,
 		FeedbackTicketModel:            models.FeedbackTicketModel,
 		TournamentMatchModel:           models.TournamentMatchModel,
 		AdminModel:                     models.AdminModel,
@@ -156,6 +162,9 @@ type serviceModels struct {
 	MemberGrowthProfileModel       *model.MemberGrowthProfileModel
 	MemberGrowthLogModel           *model.MemberGrowthLogModel
 	MemberRightsConfigModel        *model.MemberRightsConfigModel
+	ReputationConfigModel          *model.ReputationConfigModel
+	UserReputationProfileModel     *model.UserReputationProfileModel
+	UserReputationLogModel         *model.UserReputationLogModel
 	FeedbackTicketModel            *model.FeedbackTicketModel
 	TournamentMatchModel           *model.TournamentMatchModel
 	AdminModel                     *model.AdminModel
@@ -220,6 +229,9 @@ func newServiceModels(db *gorm.DB) serviceModels {
 	memberGrowthProfileModel := model.NewMemberGrowthProfileModel(db)
 	memberGrowthLogModel := model.NewMemberGrowthLogModel(db)
 	memberRightsConfigModel := model.NewMemberRightsConfigModel(db)
+	reputationConfigModel := model.NewReputationConfigModel(db)
+	userReputationProfileModel := model.NewUserReputationProfileModel(db)
+	userReputationLogModel := model.NewUserReputationLogModel(db)
 
 	return serviceModels{
 		AreaModel:                      areaModel,
@@ -252,6 +264,9 @@ func newServiceModels(db *gorm.DB) serviceModels {
 		MemberGrowthProfileModel:       memberGrowthProfileModel,
 		MemberGrowthLogModel:           memberGrowthLogModel,
 		MemberRightsConfigModel:        memberRightsConfigModel,
+		ReputationConfigModel:          reputationConfigModel,
+		UserReputationProfileModel:     userReputationProfileModel,
+		UserReputationLogModel:         userReputationLogModel,
 		FeedbackTicketModel:            model.NewFeedbackTicketModel(db),
 		TournamentMatchModel:           model.NewTournamentMatchModel(db),
 		AdminModel:                     model.NewAdminModel(db),

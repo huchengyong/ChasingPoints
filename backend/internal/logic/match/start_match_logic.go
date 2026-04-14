@@ -56,6 +56,14 @@ func (l *StartMatchLogic) StartMatch(req *types.StartMatchReq) (resp *types.Star
 	if message := validateStartMatchReq(userId, req); message != "" {
 		return &types.StartMatchResp{Success: false, Message: message}, nil
 	}
+	if decision := l.loadStartMatchReputationBlock(userId); decision != nil {
+		return &types.StartMatchResp{
+			Success:     true,
+			Action:      decision.Action,
+			BlockReason: decision.BlockReason,
+			Message:     decision.Message,
+		}, nil
+	}
 	opponentUser, err := l.svcCtx.UserModel.FindById(req.OpponentId)
 	if err != nil {
 		l.Logger.Errorf("查询对手信息失败: opponentId=%d, err=%v", req.OpponentId, err)
@@ -160,7 +168,7 @@ func (l *StartMatchLogic) StartMatch(req *types.StartMatchReq) (resp *types.Star
 	l.Logger.Infof("用户 %d 开始对局 %d，对手: %s", userId, createdMatch.Id, req.OpponentName)
 
 	// 通知对手有新对局（如果对手是注册用户）
-	if req.OpponentId > 0 {
+	if req.OpponentId > 0 && ws.GlobalHub != nil {
 		// 获取当前用户信息用于通知对手
 		userInfo, _ := l.svcCtx.UserModel.FindById(userId)
 		opponentName := ""

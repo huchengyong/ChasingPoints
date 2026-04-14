@@ -217,6 +217,38 @@ type GetUserInfoResp {
 	UserInfo *UserInfo `json:"user_info"`
 }
 
+type GetUserReputationResp {
+	Success    bool   `json:"success"`
+	Score      int    `json:"score"`
+	Status     string `json:"status"`
+	StatusText string `json:"status_text"`
+	BanUntil   string `json:"ban_until,optional"`
+}
+
+type UserReputationLogItem {
+	Id             int64  `json:"id"`
+	MatchId        int64  `json:"match_id,optional"`
+	ChangeType     string `json:"change_type"`
+	ChangeTypeText string `json:"change_type_text"`
+	ReasonCode     string `json:"reason_code"`
+	ReasonText     string `json:"reason_text"`
+	ChangeScore    int    `json:"change_score"`
+	BeforeScore    int    `json:"before_score"`
+	AfterScore     int    `json:"after_score"`
+	CreatedAt      string `json:"created_at"`
+}
+
+type UserReputationLogsReq {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+}
+
+type UserReputationLogsResp {
+	Success bool                    `json:"success"`
+	Total   int64                   `json:"total"`
+	List    []UserReputationLogItem `json:"list"`
+}
+
 type GetQiniuUploadTokenReq {
 	FileExt string `form:"file_ext,optional"`
 }
@@ -293,6 +325,14 @@ service chasing_points-api {
 	@doc "获取当前用户信息"
 	@handler GetUserInfo
 	get /info returns (GetUserInfoResp)
+
+	@doc "获取当前用户信誉状态"
+	@handler GetUserReputation
+	get /reputation returns (GetUserReputationResp)
+
+	@doc "获取当前用户信誉流水"
+	@handler GetUserReputationLogs
+	get /reputation/logs (UserReputationLogsReq) returns (UserReputationLogsResp)
 
 	@doc "获取七牛上传凭证"
 	@handler GetQiniuUploadToken
@@ -2771,6 +2811,92 @@ type AdminMemberRightsConfigUpdateReq {
 	RankingRights AdminMemberRankingRightsRules `json:"ranking_rights_rules"`
 }
 
+type AdminReputationBaseRules {
+	MaxScore         int `json:"max_score"`
+	InitialScore     int `json:"initial_score"`
+	BanThreshold     int `json:"ban_threshold"`
+	BanDurationHours int `json:"ban_duration_hours"`
+	MinScore         int `json:"min_score"`
+}
+
+type AdminReputationRecoveryRules {
+	Enabled         bool `json:"enabled"`
+	RecoverPerHour  int  `json:"recover_per_hour"`
+	RecoverMaxScore int  `json:"recover_max_score"`
+}
+
+type AdminReputationDurationRule {
+	GameType                int  `json:"game_type"`
+	Enabled                 bool `json:"enabled"`
+	MinMinutesPerRound      int  `json:"min_minutes_per_round"`
+	MinTotalRounds          int  `json:"min_total_rounds"`
+	MinTotalDurationMinutes int  `json:"min_total_duration_minutes"`
+	PenaltyScore            int  `json:"penalty_score"`
+}
+
+type AdminReputationSameOpponentRule {
+	Enabled             bool `json:"enabled"`
+	WindowMinutes       int  `json:"window_minutes"`
+	MaxMatches          int  `json:"max_matches"`
+	PenaltyScore        int  `json:"penalty_score"`
+	RequireSameGameType bool `json:"require_same_game_type"`
+}
+
+type AdminReputationDetectionRules {
+	DurationRules          []AdminReputationDurationRule   `json:"duration_rules"`
+	SameOpponentRule       AdminReputationSameOpponentRule `json:"same_opponent_rule"`
+	StackPenaltiesPerMatch bool                            `json:"stack_penalties_per_match"`
+}
+
+type AdminReputationConfigResp {
+	Code           int                           `json:"code"`
+	Success        bool                          `json:"success"`
+	Message        string                        `json:"message"`
+	BaseRules      AdminReputationBaseRules      `json:"base_rules"`
+	RecoveryRules  AdminReputationRecoveryRules  `json:"recovery_rules"`
+	DetectionRules AdminReputationDetectionRules `json:"detection_rules"`
+}
+
+type AdminReputationConfigUpdateReq {
+	BaseRules      AdminReputationBaseRules      `json:"base_rules"`
+	RecoveryRules  AdminReputationRecoveryRules  `json:"recovery_rules"`
+	DetectionRules AdminReputationDetectionRules `json:"detection_rules"`
+}
+
+type AdminReputationLogListReq {
+	Page       int    `form:"page,default=1"`
+	PageSize   int    `form:"page_size,default=20"`
+	UserId     int64  `form:"user_id,optional"`
+	ChangeType string `form:"change_type,optional"`
+	ReasonCode string `form:"reason_code,optional"`
+}
+
+type AdminReputationLogItem {
+	Id              int64  `json:"id"`
+	UserId          int64  `json:"user_id"`
+	Nickname        string `json:"nickname"`
+	MatchId         int64  `json:"match_id,optional"`
+	ChangeType      string `json:"change_type"`
+	ChangeTypeText  string `json:"change_type_text"`
+	ReasonCode      string `json:"reason_code"`
+	ReasonText      string `json:"reason_text"`
+	ReasonDetail    string `json:"reason_detail,optional"`
+	ChangeScore     int    `json:"change_score"`
+	BeforeScore     int    `json:"before_score"`
+	AfterScore      int    `json:"after_score"`
+	OperatorAdminId int64  `json:"operator_admin_id,optional"`
+	OperatorText    string `json:"operator_text"`
+	CreatedAt       string `json:"created_at"`
+}
+
+type AdminReputationLogListResp {
+	Code    int                      `json:"code"`
+	Success bool                     `json:"success"`
+	Message string                   `json:"message"`
+	Total   int64                    `json:"total"`
+	List    []AdminReputationLogItem `json:"list"`
+}
+
 // ==================== Admin 动态审核 ====================
 type AdminSocialPostListReq {
 	Page     int `form:"page,default=1"`
@@ -2895,6 +3021,25 @@ service chasing_points-api {
 }
 
 @server (
+	prefix: /api/admin/reputation
+	group:  admin
+	jwt:    Auth
+)
+service chasing_points-api {
+	@doc "获取信誉制度配置"
+	@handler AdminGetReputationConfig
+	get /config returns (AdminReputationConfigResp)
+
+	@doc "更新信誉制度配置"
+	@handler AdminUpdateReputationConfig
+	post /config (AdminReputationConfigUpdateReq) returns (AdminWriteResp)
+
+	@doc "获取信誉变更日志列表"
+	@handler AdminGetReputationLogList
+	get /logs (AdminReputationLogListReq) returns (AdminReputationLogListResp)
+}
+
+@server (
 	prefix: /api/admin/social
 	group:  admin
 	jwt:    Auth
@@ -2937,6 +3082,8 @@ type AdminUserInfo {
 	Nickname        string `json:"nickname"`
 	Avatar          string `json:"avatar"`
 	Status          int    `json:"status"`
+	ReputationScore int    `json:"reputation_score"`
+	BanUntil        string `json:"ban_until,optional"`
 	MemberStatus    string `json:"member_status"`
 	MemberExpiresAt string `json:"member_expires_at,optional"`
 	CreatedAt       string `json:"created_at"`

@@ -221,3 +221,36 @@ func TestAdminMemberRightsConfigMigrationCreatesConfigTable(t *testing.T) {
 		}
 	}
 }
+
+func TestReputationMigrationCreatesConfigProfileAndLogTables(t *testing.T) {
+	content, err := os.ReadFile("20260413160000_add_reputation_tables.sql")
+	if err != nil {
+		t.Fatalf("read reputation migration: %v", err)
+	}
+
+	text := string(content)
+	requiredSnippets := []string{
+		"CREATE TABLE IF NOT EXISTS `reputation_configs`",
+		"CREATE TABLE IF NOT EXISTS `user_reputation_profiles`",
+		"CREATE TABLE IF NOT EXISTS `user_reputation_logs`",
+		"`base_rules_json` JSON NOT NULL",
+		"`recovery_rules_json` JSON NOT NULL",
+		"`detection_rules_json` JSON NOT NULL",
+		"`ban_until` DATETIME DEFAULT NULL",
+		"`match_id` BIGINT DEFAULT NULL COMMENT '对局ID，非对局变更为NULL'",
+		"UNIQUE KEY `uniq_user_match_change_type_reason_code` (`user_id`, `match_id`, `change_type`, `reason_code`)",
+		"DROP TABLE IF EXISTS `user_reputation_logs`",
+		"DROP TABLE IF EXISTS `user_reputation_profiles`",
+		"DROP TABLE IF EXISTS `reputation_configs`",
+	}
+
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(text, snippet) {
+			t.Fatalf("expected reputation migration to contain %q", snippet)
+		}
+	}
+
+	if strings.Contains(text, "`reputation_score` INT NOT NULL DEFAULT 100") {
+		t.Fatal("reputation profile schema should not hardcode a default reputation score")
+	}
+}

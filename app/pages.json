@@ -159,6 +159,12 @@
 						"navigationBarBackgroundColor": "#f8fafc",
 						"backgroundColor": "#f8fafc"
 					}
+				},
+				{
+					"path": "reputation",
+					"style": {
+						"navigationBarTitleText": "信誉明细"
+					}
 				}
 				,{
 					"path": "statsDetail",

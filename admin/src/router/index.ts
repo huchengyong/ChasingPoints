@@ -49,6 +49,12 @@ const routes = [
         meta: { title: '投诉举报', icon: 'WarningFilled' }
       },
       {
+        path: 'reputation-logs',
+        name: 'ReputationLogs',
+        component: () => import('@/views/reputation-logs/index.vue'),
+        meta: { title: '信誉日志', icon: 'Document' }
+      },
+      {
         path: 'event-news',
         name: 'EventNews',
         component: () => import('@/views/event-news/index.vue'),
@@ -89,6 +95,12 @@ const routes = [
         name: 'MemberRankingRightsSettings',
         component: () => import('@/views/config/member-ranking-rights.vue'),
         meta: { title: '会员排位权益配置', parent: '/settings' }
+      },
+      {
+        path: 'settings/reputation',
+        name: 'ReputationSettings',
+        component: () => import('@/views/config/reputation.vue'),
+        meta: { title: '信誉制度配置', parent: '/settings' }
       }
     // 合规收口：动态审核入口暂时隐藏，页面文件保留以便后续持证后快速恢复。
     ].concat(socialReviewRoutes)

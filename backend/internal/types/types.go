@@ -351,6 +351,92 @@ type AdminRecentUsersResp struct {
 	List    []AdminRecentUser `json:"list"`
 }
 
+type AdminReputationBaseRules struct {
+	MaxScore         int `json:"max_score"`
+	InitialScore     int `json:"initial_score"`
+	BanThreshold     int `json:"ban_threshold"`
+	BanDurationHours int `json:"ban_duration_hours"`
+	MinScore         int `json:"min_score"`
+}
+
+type AdminReputationConfigResp struct {
+	Code           int                           `json:"code"`
+	Success        bool                          `json:"success"`
+	Message        string                        `json:"message"`
+	BaseRules      AdminReputationBaseRules      `json:"base_rules"`
+	RecoveryRules  AdminReputationRecoveryRules  `json:"recovery_rules"`
+	DetectionRules AdminReputationDetectionRules `json:"detection_rules"`
+}
+
+type AdminReputationConfigUpdateReq struct {
+	BaseRules      AdminReputationBaseRules      `json:"base_rules"`
+	RecoveryRules  AdminReputationRecoveryRules  `json:"recovery_rules"`
+	DetectionRules AdminReputationDetectionRules `json:"detection_rules"`
+}
+
+type AdminReputationDetectionRules struct {
+	DurationRules          []AdminReputationDurationRule   `json:"duration_rules"`
+	SameOpponentRule       AdminReputationSameOpponentRule `json:"same_opponent_rule"`
+	StackPenaltiesPerMatch bool                            `json:"stack_penalties_per_match"`
+}
+
+type AdminReputationDurationRule struct {
+	GameType                int  `json:"game_type"`
+	Enabled                 bool `json:"enabled"`
+	MinMinutesPerRound      int  `json:"min_minutes_per_round"`
+	MinTotalRounds          int  `json:"min_total_rounds"`
+	MinTotalDurationMinutes int  `json:"min_total_duration_minutes"`
+	PenaltyScore            int  `json:"penalty_score"`
+}
+
+type AdminReputationLogItem struct {
+	Id              int64  `json:"id"`
+	UserId          int64  `json:"user_id"`
+	Nickname        string `json:"nickname"`
+	MatchId         int64  `json:"match_id,optional"`
+	ChangeType      string `json:"change_type"`
+	ChangeTypeText  string `json:"change_type_text"`
+	ReasonCode      string `json:"reason_code"`
+	ReasonText      string `json:"reason_text"`
+	ReasonDetail    string `json:"reason_detail,optional"`
+	ChangeScore     int    `json:"change_score"`
+	BeforeScore     int    `json:"before_score"`
+	AfterScore      int    `json:"after_score"`
+	OperatorAdminId int64  `json:"operator_admin_id,optional"`
+	OperatorText    string `json:"operator_text"`
+	CreatedAt       string `json:"created_at"`
+}
+
+type AdminReputationLogListReq struct {
+	Page       int    `form:"page,default=1"`
+	PageSize   int    `form:"page_size,default=20"`
+	UserId     int64  `form:"user_id,optional"`
+	ChangeType string `form:"change_type,optional"`
+	ReasonCode string `form:"reason_code,optional"`
+}
+
+type AdminReputationLogListResp struct {
+	Code    int                      `json:"code"`
+	Success bool                     `json:"success"`
+	Message string                   `json:"message"`
+	Total   int64                    `json:"total"`
+	List    []AdminReputationLogItem `json:"list"`
+}
+
+type AdminReputationRecoveryRules struct {
+	Enabled         bool `json:"enabled"`
+	RecoverPerHour  int  `json:"recover_per_hour"`
+	RecoverMaxScore int  `json:"recover_max_score"`
+}
+
+type AdminReputationSameOpponentRule struct {
+	Enabled             bool `json:"enabled"`
+	WindowMinutes       int  `json:"window_minutes"`
+	MaxMatches          int  `json:"max_matches"`
+	PenaltyScore        int  `json:"penalty_score"`
+	RequireSameGameType bool `json:"require_same_game_type"`
+}
+
 type AdminSocialPostInfo struct {
 	Id            int64    `json:"id"`
 	UserId        int64    `json:"user_id"`
@@ -396,6 +482,8 @@ type AdminUserInfo struct {
 	Nickname        string `json:"nickname"`
 	Avatar          string `json:"avatar"`
 	Status          int    `json:"status"`
+	ReputationScore int    `json:"reputation_score"`
+	BanUntil        string `json:"ban_until,optional"`
 	MemberStatus    string `json:"member_status"`
 	MemberExpiresAt string `json:"member_expires_at,optional"`
 	CreatedAt       string `json:"created_at"`
@@ -1324,6 +1412,14 @@ type GetUserRankInfoResp struct {
 	RankInfo *RankInfo `json:"rank_info"`
 }
 
+type GetUserReputationResp struct {
+	Success    bool   `json:"success"`
+	Score      int    `json:"score"`
+	Status     string `json:"status"`
+	StatusText string `json:"status_text"`
+	BanUntil   string `json:"ban_until,optional"`
+}
+
 type GetUserTitlesResp struct {
 	Success bool        `json:"success"`
 	List    []TitleInfo `json:"list"`
@@ -2094,6 +2190,30 @@ type UserInfo struct {
 	Avatar    string `json:"avatar"`
 	Status    int    `json:"status"`
 	CreatedAt string `json:"created_at"`
+}
+
+type UserReputationLogItem struct {
+	Id             int64  `json:"id"`
+	MatchId        int64  `json:"match_id,optional"`
+	ChangeType     string `json:"change_type"`
+	ChangeTypeText string `json:"change_type_text"`
+	ReasonCode     string `json:"reason_code"`
+	ReasonText     string `json:"reason_text"`
+	ChangeScore    int    `json:"change_score"`
+	BeforeScore    int    `json:"before_score"`
+	AfterScore     int    `json:"after_score"`
+	CreatedAt      string `json:"created_at"`
+}
+
+type UserReputationLogsReq struct {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+}
+
+type UserReputationLogsResp struct {
+	Success bool                    `json:"success"`
+	Total   int64                   `json:"total"`
+	List    []UserReputationLogItem `json:"list"`
 }
 
 type UserStatsResp struct {

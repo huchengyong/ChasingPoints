@@ -8,6 +8,14 @@ export const getUserInfo = () => {
   return get('/api/user/info')
 }
 
+export const getUserReputation = () => {
+  return get('/api/user/reputation')
+}
+
+export const getUserReputationLogs = (params = {}) => {
+  return get('/api/user/reputation/logs', params)
+}
+
 /**
  * 获取用户统计数据
  * @returns {Promise} 返回 { total_matches, wins, losses, win_rate, max_win_streak }
@@ -65,6 +73,8 @@ export default {
   getFavoriteVenueRewardStatus,
   getQiniuUploadToken,
   getUserInfo,
+  getUserReputation,
+  getUserReputationLogs,
   getUserPrivacy,
   getUserStats,
   updateUserPrivacy,

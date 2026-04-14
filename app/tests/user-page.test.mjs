@@ -29,6 +29,21 @@ test('user page rank chip becomes the member level entry and links to member cen
   assert.doesNotMatch(source, /<text>{{ highestRankChipText }}<\/text>/)
 })
 
+test('user page shows a lightweight reputation entry below the member level and links to reputation detail', () => {
+  assert.match(
+    source,
+    /<view class="identity-rank-chip" @click="handleOpenMemberCenter">[\s\S]*?<view class="identity-reputation-row" :class="reputationEntryToneClass" @click="handleOpenReputation">/
+  )
+  assert.match(source, /<text class="identity-reputation-label">信誉值<\/text>/)
+  assert.match(source, /<text class="identity-reputation-status">{{ reputationEntryStatusText }}<\/text>/)
+  assert.match(source, /<text class="identity-reputation-score">{{ reputationEntryScoreText }}<\/text>/)
+  assert.match(source, /const handleOpenReputation = \(\) => \{\s*uni\.navigateTo\(\{ url: '\/subPages\/user\/reputation' \}\)/)
+  assert.match(
+    styleSource,
+    /\.identity-reputation-row\s*\{[\s\S]*margin-top:\s*16rpx;[\s\S]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.08\);/
+  )
+})
+
 test('user page identity hero no longer shows the raw id line', () => {
   assert.doesNotMatch(source, /<text class="identity-id">会员等级：\{\{ memberLevelText \}\}<\/text>/)
   assert.doesNotMatch(source, /<text class="identity-id">ID: \{\{ userInfo\.id \}\}<\/text>/)

@@ -124,3 +124,46 @@ func TestModelConstructorsDoNotAutoMigrate(t *testing.T) {
 		})
 	}
 }
+
+func TestReputationModelConstructorsDoNotAutoMigrate(t *testing.T) {
+	testCases := []struct {
+		name      string
+		tableName string
+		construct func(db *gorm.DB)
+	}{
+		{
+			name:      "reputation config model",
+			tableName: "reputation_configs",
+			construct: func(db *gorm.DB) { NewReputationConfigModel(db) },
+		},
+		{
+			name:      "user reputation profile model",
+			tableName: "user_reputation_profiles",
+			construct: func(db *gorm.DB) { NewUserReputationProfileModel(db) },
+		},
+		{
+			name:      "user reputation log model",
+			tableName: "user_reputation_logs",
+			construct: func(db *gorm.DB) { NewUserReputationLogModel(db) },
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+			if err != nil {
+				t.Fatalf("open sqlite db: %v", err)
+			}
+
+			if db.Migrator().HasTable(tc.tableName) {
+				t.Fatalf("table %s should not exist before constructor", tc.tableName)
+			}
+
+			tc.construct(db)
+
+			if db.Migrator().HasTable(tc.tableName) {
+				t.Fatalf("constructor unexpectedly created table %s", tc.tableName)
+			}
+		})
+	}
+}
