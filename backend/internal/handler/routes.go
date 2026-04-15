@@ -361,6 +361,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: auth.LoginByOauthHandler(serverCtx),
 			},
 			{
+				// 刷新登录态
+				Method:  http.MethodPost,
+				Path:    "/refresh-token",
+				Handler: auth.RefreshTokenHandler(serverCtx),
+			},
+			{
 				// 发送短信验证码
 				Method:  http.MethodPost,
 				Path:    "/send-sms",

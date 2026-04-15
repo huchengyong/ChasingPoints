@@ -12,8 +12,9 @@ type Config struct {
 
 	// JWT配置
 	Auth struct {
-		AccessSecret string
-		AccessExpire int64
+		AccessSecret  string
+		AccessExpire  int64
+		RefreshExpire int64 `json:",default=2592000"`
 	}
 
 	// 管理后台配置

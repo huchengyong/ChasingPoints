@@ -10,6 +10,7 @@ import {
 import { NETWORK_CONFIG } from './runtime-config.js'
 
 const BASE_URL = NETWORK_CONFIG.httpBaseUrl
+let authRefreshPromise = null
 
 // 请求拦截器
 const requestInterceptor = (config) => {
@@ -24,6 +25,82 @@ const requestInterceptor = (config) => {
   return config
 }
 
+const handleUnauthorized = (silent = false) => {
+  const userStore = useUserStore(pinia)
+
+  // token 过期，清除登录状态
+  uni.removeStorageSync('token')
+  uni.removeStorageSync('refreshToken')
+  userStore.logout()
+
+  // 非静默模式下才弹出提示和跳转
+  if (!silent) {
+    uni.showToast({
+      title: '请先完成登录',
+      icon: 'none'
+    })
+    // 跳转登录页
+    setTimeout(() => {
+      uni.navigateTo({
+        url: '/pages/login/login'
+      })
+    }, 1500)
+  }
+  // 标记为已由全局处理，避免页面级重复弹出提示
+  const error = new Error('请先完成登录')
+  error._isHandled = true
+  error._isSilent = silent
+  return Promise.reject(error)
+}
+
+const refreshAuthToken = () => {
+  const refreshToken = uni.getStorageSync('refreshToken')
+  if (!refreshToken) {
+    return Promise.reject(new Error('缺少刷新令牌'))
+  }
+  if (authRefreshPromise) {
+    return authRefreshPromise
+  }
+
+  authRefreshPromise = new Promise((resolve, reject) => {
+    uni.request({
+      url: BASE_URL + '/api/auth/refresh-token',
+      method: 'POST',
+      data: {
+        refresh_token: refreshToken
+      },
+      header: {
+        'Content-Type': 'application/json'
+      },
+      timeout: 30000,
+      success: (res) => {
+        const { statusCode, data } = res
+        if (statusCode < 200 || statusCode >= 300 || !data || typeof data !== 'object' || !shouldResolveBusinessResponse(data)) {
+          reject(new Error(data?.message || data?.msg || '登录状态已失效'))
+          return
+        }
+
+        const authPayload = unwrapBusinessResponse(data)
+        if (!authPayload?.access_token) {
+          reject(new Error('刷新登录态响应无效'))
+          return
+        }
+
+        const userStore = useUserStore(pinia)
+        userStore.refreshAuth(authPayload)
+        resolve(authPayload)
+      },
+      fail: (err) => {
+        reject(new Error(err.errMsg || '刷新登录态失败'))
+      }
+    })
+  }).finally(() => {
+    authRefreshPromise = null
+  })
+
+  return authRefreshPromise
+}
+
 // 响应拦截器
 // silent 参数：为 true 时遇到401不弹出提示、不跳转登录页
 const responseInterceptor = (response, silent = false) => {
@@ -31,31 +108,7 @@ const responseInterceptor = (response, silent = false) => {
 
   // HTTP 状态码处理
   if (statusCode === 401) {
-    const userStore = useUserStore(pinia)
-
-    // token 过期，清除登录状态
-    uni.removeStorageSync('token')
-    uni.removeStorageSync('refreshToken')
-    userStore.logout()
-
-    // 非静默模式下才弹出提示和跳转
-    if (!silent) {
-      uni.showToast({
-        title: '请先完成登录',
-        icon: 'none'
-      })
-      // 跳转登录页
-      setTimeout(() => {
-        uni.navigateTo({
-          url: '/pages/login/login'
-        })
-      }, 1500)
-    }
-    // 标记为已由全局处理，避免页面级重复弹出提示
-    const error = new Error('请先完成登录')
-    error._isHandled = true
-    error._isSilent = silent
-    return Promise.reject(error)
+    return handleUnauthorized(silent)
   }
 
   if (statusCode >= 200 && statusCode < 300) {
@@ -105,6 +158,16 @@ const request = (options) => {
     uni.request({
       ...config,
       success: (res) => {
+        if (res.statusCode === 401 && !options.skipAuthRefresh) {
+          refreshAuthToken()
+            .then(() => request({ ...options, skipAuthRefresh: true }))
+            .then(resolve)
+            .catch(() => {
+              handleUnauthorized(silent).catch(reject)
+            })
+          return
+        }
+
         responseInterceptor(res, silent)
           .then(resolve)
           .catch(reject)

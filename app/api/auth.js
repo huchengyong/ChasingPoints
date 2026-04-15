@@ -41,6 +41,15 @@ export const loginByOauth = (data) => {
 }
 
 /**
+ * 刷新登录态
+ * @param {String} refreshToken 刷新令牌
+ * @returns {Promise}
+ */
+export const refreshToken = (refreshToken) => {
+	return post('/api/auth/refresh-token', { refresh_token: refreshToken })
+}
+
+/**
  * 绑定手机号
  * @param {String} phone 手机号
  * @param {String} smsCode 短信验证码
@@ -54,5 +63,6 @@ export default {
 	sendSms,
 	login,
 	loginByOauth,
+	refreshToken,
 	bindPhone
 }

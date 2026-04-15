@@ -6,7 +6,6 @@ import (
 	"regexp"
 
 	"chasing_points/internal/model"
-	"chasing_points/internal/pkg"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -75,19 +74,9 @@ func (l *LoginLogic) Login(req *types.LoginReq) (resp *types.LoginResp, err erro
 		}
 	}
 
-	// 生成Token
-	accessToken, err := pkg.GenerateToken(user.Id, l.svcCtx.Config.Auth.AccessSecret, l.svcCtx.Config.Auth.AccessExpire)
+	tokenPair, err := issueAuthTokenPair(user.Id, l.svcCtx)
 	if err != nil {
-		l.Logger.Errorf("生成Token失败: %v", err)
-		return &types.LoginResp{
-			Success: false,
-		}, fmt.Errorf("系统错误")
-	}
-
-	// 生成RefreshToken (7天)
-	refreshToken, err := pkg.GenerateToken(user.Id, l.svcCtx.Config.Auth.AccessSecret, 7*24*3600)
-	if err != nil {
-		l.Logger.Errorf("生成RefreshToken失败: %v", err)
+		l.Logger.Errorf("生成登录令牌失败: %v", err)
 		return &types.LoginResp{
 			Success: false,
 		}, fmt.Errorf("系统错误")
@@ -104,9 +93,9 @@ func (l *LoginLogic) Login(req *types.LoginReq) (resp *types.LoginResp, err erro
 
 	return &types.LoginResp{
 		Success:      true,
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		ExpiresIn:    l.svcCtx.Config.Auth.AccessExpire,
+		AccessToken:  tokenPair.AccessToken,
+		RefreshToken: tokenPair.RefreshToken,
+		ExpiresIn:    tokenPair.ExpiresIn,
 		UserInfo: &types.UserInfo{
 			Id:        user.Id,
 			Phone:     maskedPhone,

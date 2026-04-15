@@ -55,6 +55,19 @@ type LoginByOauthResp {
 	UserInfo      *UserInfo `json:"user_info"`
 }
 
+// 刷新登录态
+type RefreshTokenReq {
+	RefreshToken string `json:"refresh_token"`
+}
+
+type RefreshTokenResp {
+	Success      bool   `json:"success"`
+	Message      string `json:"message,optional"`
+	AccessToken  string `json:"access_token,optional"`
+	RefreshToken string `json:"refresh_token,optional"`
+	ExpiresIn    int64  `json:"expires_in,optional"`
+}
+
 // 绑定手机号
 type BindPhoneReq {
 	Phone   string `json:"phone"`
@@ -84,6 +97,10 @@ service chasing_points-api {
 	@doc "OAuth登录"
 	@handler LoginByOauth
 	post /login-by-oauth (LoginByOauthReq) returns (LoginByOauthResp)
+
+	@doc "刷新登录态"
+	@handler RefreshToken
+	post /refresh-token (RefreshTokenReq) returns (RefreshTokenResp)
 }
 
 // ==================== 公开接口 ====================

@@ -1891,6 +1891,18 @@ type RankItem struct {
 	IsCurrent bool   `json:"is_current"` // 是否当前段位
 }
 
+type RefreshTokenReq struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+type RefreshTokenResp struct {
+	Success      bool   `json:"success"`
+	Message      string `json:"message,optional"`
+	AccessToken  string `json:"access_token,optional"`
+	RefreshToken string `json:"refresh_token,optional"`
+	ExpiresIn    int64  `json:"expires_in,optional"`
+}
+
 type RoundRecord struct {
 	RoundNumber  int `json:"round_number"`
 	Player1Score int `json:"player1_score"`
