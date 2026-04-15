@@ -310,12 +310,12 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 			if replayState.Match != nil && replayState.Match.Result != nil {
 				result = *replayState.Match.Result
 			}
-				if replayState.ExistingAction != nil {
-					l.awardMemberGrowthForMatch(replayState.Match.Id, replayState.Match.UserId, replayState.Match.OpponentId)
-					return &types.FinishMatchResp{
-						Accepted:       true,
-						Success:        true,
-						Result:         result,
+			if replayState.ExistingAction != nil {
+				l.awardMemberGrowthForMatch(replayState.Match.Id, replayState.Match.UserId, replayState.Match.OpponentId)
+				return &types.FinishMatchResp{
+					Accepted:       true,
+					Success:        true,
+					Result:         result,
 					ClientActionId: req.ClientActionId,
 					ServerRevision: replayState.View.Snapshot.ServerRevision,
 					Snapshot:       replayState.View.Snapshot,
@@ -357,36 +357,42 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 		if result == 2 {
 			resultText = "失败"
 		}
-		_ = l.svcCtx.NotificationModel.Create(&model.Notification{
-			UserId:  match.UserId,
-			Type:    "match_result",
-			Title:   "对局已结束",
-			Content: fmt.Sprintf("你的对局已结束，结果：%s（%d:%d）", resultText, match.MyScore, match.OpponentScore),
-			Data:    buildNotificationPayload("/subPages/match/matchResult", match.Id, 0),
-			IsRead:  0,
-		})
-		if p1, pushErr := l.svcCtx.UserModel.FindById(match.UserId); pushErr == nil && p1 != nil && p1.PushToken != "" {
-			l.svcCtx.PushService.SendPush(p1.PushToken, "对局已结束", fmt.Sprintf("结果：%s（%d:%d）", resultText, match.MyScore, match.OpponentScore), map[string]interface{}{
+		content := fmt.Sprintf("你的对局已结束，结果：%s（%d:%d）", resultText, match.MyScore, match.OpponentScore)
+		if notifyErr := logicx.DispatchNotification(l.svcCtx, logicx.NotificationDispatchInput{
+			UserId:      match.UserId,
+			Type:        "match_result",
+			Title:       "对局已结束",
+			Content:     content,
+			Data:        buildNotificationPayload("/subPages/match/matchResult", match.Id, 0),
+			PushTitle:   "对局已结束",
+			PushContent: fmt.Sprintf("结果：%s（%d:%d）", resultText, match.MyScore, match.OpponentScore),
+			PushData: map[string]interface{}{
 				"url": fmt.Sprintf("/subPages/match/matchResult?match_id=%d", match.Id),
-			})
+			},
+			WSCategory: "match_result",
+		}); notifyErr != nil {
+			l.Logger.Errorf("分发己方对局结束通知失败: matchId=%d userId=%d err=%v", match.Id, match.UserId, notifyErr)
 		}
 		if match.OpponentId != nil && *match.OpponentId > 0 {
 			opResultText := "胜利"
 			if result == 1 {
 				opResultText = "失败"
 			}
-			_ = l.svcCtx.NotificationModel.Create(&model.Notification{
-				UserId:  *match.OpponentId,
-				Type:    "match_result",
-				Title:   "对局已结束",
-				Content: fmt.Sprintf("你的对局已结束，结果：%s（%d:%d）", opResultText, match.OpponentScore, match.MyScore),
-				Data:    buildNotificationPayload("/subPages/match/matchResult", match.Id, 0),
-				IsRead:  0,
-			})
-			if p2, pushErr := l.svcCtx.UserModel.FindById(*match.OpponentId); pushErr == nil && p2 != nil && p2.PushToken != "" {
-				l.svcCtx.PushService.SendPush(p2.PushToken, "对局已结束", fmt.Sprintf("结果：%s（%d:%d）", opResultText, match.OpponentScore, match.MyScore), map[string]interface{}{
+			opContent := fmt.Sprintf("你的对局已结束，结果：%s（%d:%d）", opResultText, match.OpponentScore, match.MyScore)
+			if notifyErr := logicx.DispatchNotification(l.svcCtx, logicx.NotificationDispatchInput{
+				UserId:      *match.OpponentId,
+				Type:        "match_result",
+				Title:       "对局已结束",
+				Content:     opContent,
+				Data:        buildNotificationPayload("/subPages/match/matchResult", match.Id, 0),
+				PushTitle:   "对局已结束",
+				PushContent: fmt.Sprintf("结果：%s（%d:%d）", opResultText, match.OpponentScore, match.MyScore),
+				PushData: map[string]interface{}{
 					"url": fmt.Sprintf("/subPages/match/matchResult?match_id=%d", match.Id),
-				})
+				},
+				WSCategory: "match_result",
+			}); notifyErr != nil {
+				l.Logger.Errorf("分发对手对局结束通知失败: matchId=%d userId=%d err=%v", match.Id, *match.OpponentId, notifyErr)
 			}
 		}
 	}

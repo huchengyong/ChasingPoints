@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"chasing_points/internal/config"
+	logicx "chasing_points/internal/logic"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -103,17 +104,17 @@ func (l *JoinTournamentLogic) JoinTournament(req *types.TournamentIdReq) (resp *
 		if user, userErr := l.svcCtx.UserModel.FindById(userIdInt); userErr == nil && user != nil && user.Nickname != "" {
 			userName = user.Nickname
 		}
-		_ = l.svcCtx.NotificationModel.Create(&model.Notification{
-			UserId:  tournament.CreatorId,
-			Type:    "tournament",
-			Title:   "有新选手报名",
-			Content: fmt.Sprintf("%s 报名了你的赛事「%s」", userName, tournament.Name),
-			IsRead:  0,
-		})
-
-		// 推送通知
-		if creatorUser, pushErr := l.svcCtx.UserModel.FindById(tournament.CreatorId); pushErr == nil && creatorUser != nil && creatorUser.PushToken != "" {
-			l.svcCtx.PushService.SendPush(creatorUser.PushToken, "有新选手报名", fmt.Sprintf("%s 报名了你的赛事「%s」", userName, tournament.Name), nil)
+		content := fmt.Sprintf("%s 报名了你的赛事「%s」", userName, tournament.Name)
+		if notifyErr := logicx.DispatchNotification(l.svcCtx, logicx.NotificationDispatchInput{
+			UserId:      tournament.CreatorId,
+			Type:        "tournament",
+			Title:       "有新选手报名",
+			Content:     content,
+			PushTitle:   "有新选手报名",
+			PushContent: content,
+			WSCategory:  "tournament",
+		}); notifyErr != nil {
+			l.Logger.Errorf("分发赛事报名通知失败: tournamentId=%d creator=%d err=%v", req.TournamentId, tournament.CreatorId, notifyErr)
 		}
 	}
 

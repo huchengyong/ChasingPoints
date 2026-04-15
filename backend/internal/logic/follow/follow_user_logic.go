@@ -3,7 +3,7 @@ package follow
 import (
 	"context"
 
-	"chasing_points/internal/model"
+	logicx "chasing_points/internal/logic"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -46,14 +46,16 @@ func (l *FollowUserLogic) FollowUser(req *types.FollowReq) (resp *types.CommonRe
 		return &types.CommonResp{Success: false, Message: "关注失败"}, nil
 	}
 
-	notification := &model.Notification{
-		UserId:  req.TargetUserId,
-		Type:    "follow",
-		Title:   "你有新的关注",
-		Content: "有用户关注了你",
-	}
-	if err = l.svcCtx.NotificationModel.Create(notification); err != nil {
-		l.Logger.Errorf("创建关注通知失败: target=%d err=%v", req.TargetUserId, err)
+	if notifyErr := logicx.DispatchNotification(l.svcCtx, logicx.NotificationDispatchInput{
+		UserId:      req.TargetUserId,
+		Type:        "follow",
+		Title:       "你有新的关注",
+		Content:     "有用户关注了你",
+		PushTitle:   "你有新的关注",
+		PushContent: "有用户关注了你",
+		WSCategory:  "follow",
+	}); notifyErr != nil {
+		l.Logger.Errorf("分发关注通知失败: target=%d err=%v", req.TargetUserId, notifyErr)
 	}
 
 	return &types.CommonResp{Success: true, Message: "关注成功"}, nil

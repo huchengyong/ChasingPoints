@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"chasing_points/internal/model"
+	logicx "chasing_points/internal/logic"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -62,14 +62,17 @@ func (l *RejectChallengeLogic) RejectChallenge(req *types.HandleChallengeReq) (r
 		myName = me.Nickname
 	}
 
-	if notifyErr := l.svcCtx.NotificationModel.Create(&model.Notification{
-		UserId:  challenge.FromUserId,
-		Type:    "challenge",
-		Title:   "挑战被拒绝",
-		Content: fmt.Sprintf("%s 拒绝了你的挑战", myName),
-		IsRead:  0,
+	content := fmt.Sprintf("%s 拒绝了你的挑战", myName)
+	if notifyErr := logicx.DispatchNotification(l.svcCtx, logicx.NotificationDispatchInput{
+		UserId:      challenge.FromUserId,
+		Type:        "challenge",
+		Title:       "挑战被拒绝",
+		Content:     content,
+		PushTitle:   "挑战被拒绝",
+		PushContent: content,
+		WSCategory:  "challenge",
 	}); notifyErr != nil {
-		l.Logger.Errorf("创建挑战拒绝通知失败: from=%d err=%v", challenge.FromUserId, notifyErr)
+		l.Logger.Errorf("分发挑战拒绝通知失败: from=%d err=%v", challenge.FromUserId, notifyErr)
 	}
 
 	return &types.CommonResp{Success: true, Message: "操作成功"}, nil

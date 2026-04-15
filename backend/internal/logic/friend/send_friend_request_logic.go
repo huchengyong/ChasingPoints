@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"chasing_points/internal/model"
-	"chasing_points/internal/pkg/ws"
+	logicx "chasing_points/internal/logic"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -96,31 +95,20 @@ func (l *SendFriendRequestLogic) SendFriendRequest(req *types.SendFriendRequestR
 	}
 
 	content := buildFriendRequestNotificationContent(fromUserName, req.Message)
-
-	if notifyErr := l.svcCtx.NotificationModel.Create(&model.Notification{
-		UserId:  req.ToUserId,
-		Type:    "friend_request",
-		Title:   "收到好友申请",
-		Content: content,
-		Data:    buildNotificationPayload("/subPages/social/friendRequests", 0, friendRequest.Id),
-		IsRead:  0,
-	}); notifyErr != nil {
-		l.Logger.Errorf("创建好友申请通知失败: %v", notifyErr)
-	}
-
-	if toUser.PushToken != "" {
-		l.svcCtx.PushService.SendPush(toUser.PushToken, "收到好友申请", content, map[string]interface{}{
+	if notifyErr := logicx.DispatchNotification(l.svcCtx, logicx.NotificationDispatchInput{
+		UserId:      req.ToUserId,
+		Type:        "friend_request",
+		Title:       "收到好友申请",
+		Content:     content,
+		Data:        buildNotificationPayload("/subPages/social/friendRequests", 0, friendRequest.Id),
+		PushTitle:   "收到好友申请",
+		PushContent: content,
+		PushData: map[string]interface{}{
 			"url": "/subPages/social/friendRequests",
-		})
-	}
-
-	if ws.GlobalHub != nil {
-		ws.GlobalHub.SendToUser(req.ToUserId, &ws.Message{
-			Type: "notification_update",
-			Data: map[string]interface{}{
-				"category": "friend_request",
-			},
-		})
+		},
+		WSCategory: "friend_request",
+	}); notifyErr != nil {
+		l.Logger.Errorf("分发好友申请通知失败: %v", notifyErr)
 	}
 
 	return &types.CommonResp{Success: true, Message: "发送成功"}, nil

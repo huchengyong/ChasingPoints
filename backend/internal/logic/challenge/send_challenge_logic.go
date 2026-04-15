@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	logicx "chasing_points/internal/logic"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -77,20 +78,17 @@ func (l *SendChallengeLogic) SendChallenge(req *types.SendChallengeReq) (resp *t
 		fromName = fromUser.Nickname
 	}
 
-	notification := &model.Notification{
-		UserId:  req.ToUserId,
-		Type:    "challenge",
-		Title:   "你收到了一条挑战",
-		Content: fromName + " 向你发起了挑战",
-		IsRead:  0,
-	}
-	if notifyErr := l.svcCtx.NotificationModel.Create(notification); notifyErr != nil {
-		l.Logger.Errorf("创建挑战通知失败: to=%d err=%v", req.ToUserId, notifyErr)
-	}
-
-	// 推送通知
-	if toUser.PushToken != "" {
-		l.svcCtx.PushService.SendPush(toUser.PushToken, "你收到了一条挑战", fromName+" 向你发起了挑战", nil)
+	content := fromName + " 向你发起了挑战"
+	if notifyErr := logicx.DispatchNotification(l.svcCtx, logicx.NotificationDispatchInput{
+		UserId:      req.ToUserId,
+		Type:        "challenge",
+		Title:       "你收到了一条挑战",
+		Content:     content,
+		PushTitle:   "你收到了一条挑战",
+		PushContent: content,
+		WSCategory:  "challenge",
+	}); notifyErr != nil {
+		l.Logger.Errorf("分发挑战通知失败: to=%d err=%v", req.ToUserId, notifyErr)
 	}
 
 	return &types.SendChallengeResp{Success: true, ChallengeId: challenge.Id}, nil
