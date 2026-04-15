@@ -2367,6 +2367,23 @@ type GetUnreadCountResp {
 	Count   int  `json:"count"`
 }
 
+type NotificationPreferencesResp {
+	Success              bool `json:"success"`
+	MatchResultEnabled   bool `json:"match_result_enabled"`
+	FriendRequestEnabled bool `json:"friend_request_enabled"`
+	ChallengeEnabled     bool `json:"challenge_enabled"`
+	TournamentEnabled    bool `json:"tournament_enabled"`
+	FollowEnabled        bool `json:"follow_enabled"`
+}
+
+type SaveNotificationPreferencesReq {
+	MatchResultEnabled   bool `json:"match_result_enabled"`
+	FriendRequestEnabled bool `json:"friend_request_enabled"`
+	ChallengeEnabled     bool `json:"challenge_enabled"`
+	TournamentEnabled    bool `json:"tournament_enabled"`
+	FollowEnabled        bool `json:"follow_enabled"`
+}
+
 @server (
 	prefix: /api/notification
 	group:  notification
@@ -2388,6 +2405,14 @@ service chasing_points-api {
 	@doc "获取未读数量"
 	@handler GetUnreadCount
 	get /unread-count returns (GetUnreadCountResp)
+
+	@doc "获取通知偏好"
+	@handler GetNotificationPreferences
+	get /preferences returns (NotificationPreferencesResp)
+
+	@doc "保存通知偏好"
+	@handler SaveNotificationPreferences
+	post /preferences (SaveNotificationPreferencesReq) returns (NotificationPreferencesResp)
 
 	@doc "删除通知"
 	@handler DeleteNotification

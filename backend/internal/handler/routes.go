@@ -679,6 +679,18 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: notification.GetNotificationListHandler(serverCtx),
 			},
 			{
+				// 获取通知偏好
+				Method:  http.MethodGet,
+				Path:    "/preferences",
+				Handler: notification.GetNotificationPreferencesHandler(serverCtx),
+			},
+			{
+				// 保存通知偏好
+				Method:  http.MethodPost,
+				Path:    "/preferences",
+				Handler: notification.SaveNotificationPreferencesHandler(serverCtx),
+			},
+			{
 				// 标记已读
 				Method:  http.MethodPost,
 				Path:    "/read",

@@ -1777,6 +1777,15 @@ type NotificationInfo struct {
 	CreatedAt string `json:"created_at"`
 }
 
+type NotificationPreferencesResp struct {
+	Success              bool `json:"success"`
+	MatchResultEnabled   bool `json:"match_result_enabled"`
+	FriendRequestEnabled bool `json:"friend_request_enabled"`
+	ChallengeEnabled     bool `json:"challenge_enabled"`
+	TournamentEnabled    bool `json:"tournament_enabled"`
+	FollowEnabled        bool `json:"follow_enabled"`
+}
+
 type OngoingMatchItem struct {
 	Id              int64  `json:"id"`
 	GameType        int    `json:"game_type"`
@@ -1903,6 +1912,14 @@ type RuleContentItem struct {
 	Title     string `json:"title"`
 	Content   string `json:"content"`
 	SortOrder int    `json:"sort_order"`
+}
+
+type SaveNotificationPreferencesReq struct {
+	MatchResultEnabled   bool `json:"match_result_enabled"`
+	FriendRequestEnabled bool `json:"friend_request_enabled"`
+	ChallengeEnabled     bool `json:"challenge_enabled"`
+	TournamentEnabled    bool `json:"tournament_enabled"`
+	FollowEnabled        bool `json:"follow_enabled"`
 }
 
 type SearchOpponentReq struct {
