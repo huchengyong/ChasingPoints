@@ -166,13 +166,13 @@
 import { computed, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { getPostList, getPublicPosts, likePost, unlikePost, commentPost, deletePost, getPostComments } from '@/api/social.js'
-import { useThemeStore } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { useUserStore } from '@/store/user.js'
 import { formatRelativeTime } from '@/utils/format.js'
 import { filterReportPosts, resolveFeedTab, resolveSocialEmptyState, SOCIAL_TABS } from '@/utils/social-entry.js'
 
 const tabs = SOCIAL_TABS
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
 
 const currentTab = ref('recommend')
@@ -186,7 +186,6 @@ const total = ref(0)
 const hasMore = ref(false)
 const shouldRefreshOnShow = ref(false)
 
-const isDarkMode = computed(() => themeStore.isDarkMode)
 
 const emptyState = computed(() => resolveSocialEmptyState({
 	tab: currentTab.value,
@@ -398,8 +397,6 @@ onLoad((options) => {
 })
 
 onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
 	if (!loading.value && shouldRefreshOnShow.value) {
 		shouldRefreshOnShow.value = false
 		loadData(true)

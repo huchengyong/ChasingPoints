@@ -13,15 +13,9 @@ const styleSource = readFileSync(
 )
 
 test('social page reapplies theme on show for the native navigation bar', () => {
-  assert.match(pageSource, /useThemeStore,\s*THEME_CHANGE_EVENT/)
-  assert.match(
-    pageSource,
-    /onShow\(\(\) => \{[\s\S]*themeStore\.syncTheme\(\)[\s\S]*themeStore\.applyNavigationBarTheme\(\)[\s\S]*uni\.\$off\(THEME_CHANGE_EVENT,\s*handleThemeChange\)[\s\S]*uni\.\$on\(THEME_CHANGE_EVENT,\s*handleThemeChange\)/
-  )
-  assert.match(
-    pageSource,
-    /onHide\(\(\) => \{[\s\S]*uni\.\$off\(THEME_CHANGE_EVENT,\s*handleThemeChange\)/
-  )
+  assert.match(pageSource, /usePageTheme/)
+  assert.match(pageSource, /const \{ isDarkMode \} = usePageTheme\(\)/)
+  assert.doesNotMatch(pageSource, /useThemeStore|THEME_CHANGE_EVENT|applyNavigationBarTheme/)
 })
 
 test('social page dark hero keeps light text on a dark card', () => {

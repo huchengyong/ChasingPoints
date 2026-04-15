@@ -1,5 +1,5 @@
 <template>
-	<view class="achievement-page">
+	<view class="achievement-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 当前称号 -->
 		<view class="title-bar" @tap="goToTitles">
 			<view class="title-info">
@@ -65,6 +65,9 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getAchievementList, getUserTitles } from '@/api/achievement.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const loading = ref(true)
 const achievementList = ref([])

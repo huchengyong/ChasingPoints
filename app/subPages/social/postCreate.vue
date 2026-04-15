@@ -77,16 +77,15 @@
 import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { createPost } from '@/api/social.js'
-import { useThemeStore } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { buildPostReviewSuccessCopy } from '@/utils/social-review.js'
 
 const content = ref('')
 const imageList = ref([])
 const postType = ref(3)
 const publishing = ref(false)
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 
-const isDarkMode = computed(() => themeStore.isDarkMode)
 
 const canPublish = computed(() => {
 	return content.value.trim().length > 0
@@ -102,8 +101,6 @@ onLoad((options) => {
 })
 
 onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
 })
 
 const chooseImage = () => {

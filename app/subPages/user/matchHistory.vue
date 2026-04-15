@@ -85,15 +85,14 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { useThemeStore } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { getMatchList } from '@/api/match.js'
 import { formatRelativeTime } from '@/utils/format.js'
 
 // ========== 状态管理 ==========
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 
 // ========== 响应式数据 ==========
-const isDarkMode = computed(() => themeStore.isDarkMode)
 const isLoading = ref(false)
 const isRefreshing = ref(false)
 const isLoadingMore = ref(false)
@@ -108,8 +107,6 @@ const total = ref(0)
 // ========== 生命周期 ==========
 onShow(() => {
 	// 同步主题状态并更新导航栏
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
 	
 	// 检查登录状态
 	const token = uni.getStorageSync('token')

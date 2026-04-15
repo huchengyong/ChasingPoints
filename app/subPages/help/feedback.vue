@@ -46,9 +46,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
-import { onShow, onHide } from '@dcloudio/uni-app'
-import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
+import { ref, computed } from 'vue'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { createUserFeedbackTicket } from '@/api/feedback.js'
 import {
 	FEEDBACK_CATEGORY_OPTIONS,
@@ -56,7 +55,7 @@ import {
 } from '@/utils/feedback-ticket.js'
 
 // ========== 状态管理 ==========
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 
 // ========== 响应式数据 ==========
 const feedbackContent = ref('')
@@ -66,35 +65,10 @@ const isSubmitting = ref(false)
 const contentMaxLength = 1000
 
 // ========== 计算属性 ==========
-const isDarkMode = computed(() => themeStore.isDarkMode)
 const categoryLabels = computed(() => FEEDBACK_CATEGORY_OPTIONS.map((item) => item.label))
 const selectedCategory = computed(() => FEEDBACK_CATEGORY_OPTIONS[categoryIndex.value] || FEEDBACK_CATEGORY_OPTIONS[0])
 
-// ========== 生命周期 ==========
-onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
-	// 监听主题变化事件
-	uni.$on(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-onHide(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-onUnmounted(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
 // ========== 方法 ==========
-
-/**
- * 处理主题变化事件
- */
-const handleThemeChange = () => {
-	themeStore.applyNavigationBarTheme()
-}
-
 const handleCategoryChange = (event) => {
 	categoryIndex.value = Number(event.detail.value) || 0
 }

@@ -1,7 +1,7 @@
 <template>
-	<view class="stats-page">
+	<view class="stats-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 加载中 -->
-		<view v-if="loading" class="loading-state">
+		<view v-if="isInitialLoading" class="loading-state">
 			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载统计数据...</text>
 		</view>
@@ -15,10 +15,17 @@
 						v-for="tab in gameTabs"
 						:key="tab.key"
 						class="tab-item"
-						:class="{ active: currentGame === tab.key }"
-						@tap="currentGame = tab.key"
+						:class="{ active: currentGame === tab.key, pending: isStatsRefreshing && currentGame === tab.key }"
+						@tap="handleGameChange(tab.key)"
 					>
 						<text>{{ tab.label }}</text>
+						<uni-icons
+							class="tab-loading-icon"
+							v-if="isStatsRefreshing && currentGame === tab.key"
+							type="spinner-cycle"
+							size="12"
+							color="#ffffff"
+						></uni-icons>
 					</view>
 				</view>
 				<view v-if="currentGameStats" class="stats-grid">
@@ -162,7 +169,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import {
 	getStatsByGameType,
@@ -174,8 +181,17 @@ import {
 } from '@/api/stats.js'
 import { GAME_TYPE_KEY_MAP, GAME_TYPE_STATS_TABS, GAME_TYPE_VALUE_MAP } from '@/utils/game-types.js'
 import { formatMonthKey } from '@/utils/format.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+import {
+	resolveStatsDetailLoadingMode,
+	shouldApplyStatsDetailResponse
+} from '@/utils/stats-detail.js'
 
-const loading = ref(true)
+const { isDarkMode } = usePageTheme()
+
+const isStatsFetching = ref(true)
+const hasLoadedOnce = ref(false)
+const latestStatsRequestId = ref(0)
 const currentGame = ref('chinese_eight')
 
 const gameTypeStats = ref({})
@@ -188,6 +204,12 @@ const opponentData = ref([])
 const gameTabs = GAME_TYPE_STATS_TABS
 const gameTypeKeyMap = GAME_TYPE_KEY_MAP
 const gameTypeValueMap = GAME_TYPE_VALUE_MAP
+const loadingMode = computed(() => resolveStatsDetailLoadingMode({
+	hasLoadedOnce: hasLoadedOnce.value,
+	isFetching: isStatsFetching.value
+}))
+const isInitialLoading = computed(() => loadingMode.value === 'initial')
+const isStatsRefreshing = computed(() => loadingMode.value === 'refreshing')
 
 const currentGameStats = computed(() => {
 	return gameTypeStats.value[currentGame.value] || {}
@@ -251,7 +273,9 @@ const normalizeHighScoreStats = (payload) => {
 }
 
 const loadAllStats = async () => {
-	loading.value = true
+	const requestId = latestStatsRequestId.value + 1
+	latestStatsRequestId.value = requestId
+	isStatsFetching.value = true
 	const gameType = gameTypeValueMap[currentGame.value] || 3
 	try {
 		const results = await Promise.allSettled([
@@ -262,6 +286,10 @@ const loadAllStats = async () => {
 			getMatchDurationStats({ game_type: gameType }),
 			getOpponentStrengthAnalysis()
 		])
+
+		if (!shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value })) {
+			return
+		}
 
 		if (results[0].status === 'fulfilled') {
 			const data = results[0].value
@@ -285,10 +313,18 @@ const loadAllStats = async () => {
 			const data = results[5].value
 			opponentData.value = data.tiers || data.list || data || []
 		}
+
+		hasLoadedOnce.value = true
 	} catch (e) {
+		if (!shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value })) {
+			return
+		}
+
 		console.error('加载统计数据失败:', e)
 	} finally {
-		loading.value = false
+		if (shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value })) {
+			isStatsFetching.value = false
+		}
 	}
 }
 
@@ -309,9 +345,11 @@ onShow(() => {
 	loadAllStats()
 })
 
-watch(currentGame, () => {
+const handleGameChange = (gameKey) => {
+	if (currentGame.value === gameKey) return
+	currentGame.value = gameKey
 	loadAllStats()
-})
+}
 
 const goLogin = () => {
 	uni.navigateTo({ url: '/pages/login/login' })
@@ -325,6 +363,59 @@ const goLogin = () => {
 	padding-bottom: 60rpx;
 	padding-top: 24rpx;
 	box-sizing: border-box;
+
+	&.dark-mode {
+		background: #141109;
+
+		.section {
+			background: #1e180d;
+			border: 1rpx solid #3a2e16;
+		}
+
+		.section-title,
+		.stat-value,
+		.meta-value,
+		.duration-value {
+			color: #fff7e1;
+		}
+
+		.loading-text,
+		.stat-label,
+		.trend-rate,
+		.legend-item,
+		.rank-label,
+		.meta-label,
+		.score-label,
+		.score-month,
+		.duration-label,
+		.tier-name,
+		.empty-hint {
+			color: #d7c89b;
+		}
+
+		.game-tabs .tab-item {
+			background: #241d10;
+			color: #d7c89b;
+
+			&.active {
+				background: #E0AE12;
+				color: #ffffff;
+			}
+		}
+
+		.win-rate-bar {
+			background: rgba(239, 68, 68, 0.18);
+		}
+
+		.trend-dots .dot,
+		.opponent-list .opponent-item .tier-bar {
+			background: #3a2e16;
+		}
+
+		.rank-changes .change-item {
+			border-bottom-color: #3a2e16;
+		}
+	}
 }
 
 .loading-state {
@@ -361,16 +452,36 @@ const goLogin = () => {
 
 	.tab-item {
 		flex: 1;
+		min-width: 0;
 		text-align: center;
+		position: relative;
 		padding: 12rpx 0;
 		border-radius: 10rpx;
 		background: #f1f5f9;
 		font-size: 26rpx;
 		color: #64748b;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+
+		text {
+			white-space: nowrap;
+		}
 
 		&.active {
 			background: #E0AE12;
 			color: #ffffff;
+		}
+
+		&.pending {
+			opacity: 0.78;
+		}
+
+		.tab-loading-icon {
+			position: absolute;
+			right: 6rpx;
+			top: 50%;
+			transform: translateY(-50%);
 		}
 	}
 }

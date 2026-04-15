@@ -144,10 +144,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { onLoad, onShow, onHide } from '@dcloudio/uni-app'
+import { ref, computed, onMounted } from 'vue'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
-import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { getLeaderboard } from '@/api/rank.js'
 import { startMatch } from '@/api/match.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
@@ -155,10 +155,10 @@ import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
 import { buildLeaderboardPodiumSlots } from '@/utils/ranking-podium.js'
 
+const { isDarkMode } = usePageTheme()
+
 // ========== 响应式数据 ==========
 const userStore = useUserStore()
-const themeStore = useThemeStore()
-const isDarkMode = computed(() => themeStore.isDarkMode)
 const isEmpty = computed(() => !isLoading.value && topThree.value.length === 0 && rankList.value.length === 0)
 const isLoading = ref(false)
 const isRefreshing = ref(false)
@@ -192,29 +192,7 @@ onMounted(() => {
 onShow(() => {
 	// 页面显示时刷新数据
 	fetchLeaderboard(true, false)
-	// 同步主题状态并更新导航栏
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
-	// 注册主题变化监听
-	uni.$on(THEME_CHANGE_EVENT, handleThemeChange)
 })
-
-onHide(() => {
-	// 取消主题监听
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-// 组件卸载时确保取消监听
-onUnmounted(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-/**
- * 处理主题变化
- */
-const handleThemeChange = (data) => {
-	console.log('[RankingPage] 收到主题变化事件:', data)
-}
 
 // ========== 方法 ==========
 

@@ -1,5 +1,5 @@
 <template>
-	<view class="venue-detail-page">
+	<view class="venue-detail-page" :class="{ 'dark-mode': isDarkMode }">
 		<view v-if="loading" class="loading-state">
 			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
@@ -124,6 +124,9 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getVenueDetail, checkinVenue } from '@/api/venue.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const venue = ref(null)
 const loading = ref(true)

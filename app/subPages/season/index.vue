@@ -1,5 +1,5 @@
 <template>
-	<view class="season-page">
+	<view class="season-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
 				<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
@@ -120,6 +120,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { getCurrentSeason, getSeasonLeaderboard, getMySeasonRecord } from '@/api/season.js'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const statusMap = { 0: '未开始', 1: '进行中', 2: '已结束' }
 const gameTypeTabs = GAME_TYPE_TABS

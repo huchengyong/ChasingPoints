@@ -1,5 +1,5 @@
 <template>
-	<view class="detail-page">
+	<view class="detail-page" :class="{ 'dark-mode': isDarkMode }">
 		<view v-if="loading" class="loading-state">
 			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
@@ -139,6 +139,7 @@ import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { getEventNewsView } from '@/api/event-news.js'
 import { pickEventNewsViewPayload } from '@/utils/event-news-response.js'
 import { cacheSaiXunMatchAvatars } from '@/utils/image-cache.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import {
 	DEFAULT_EVENT_COVER,
 	buildEventLocationText,
@@ -147,6 +148,8 @@ import {
 	formatEventTimeRange,
 	normalizeSaiXunCard
 } from '@/utils/saixun.js'
+
+const { isDarkMode } = usePageTheme()
 
 const loading = ref(true)
 const errorMessage = ref('')

@@ -1,5 +1,5 @@
 <template>
-	<view class="detail-page">
+	<view class="detail-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
 			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
@@ -69,6 +69,9 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getAchievementList } from '@/api/achievement.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const loading = ref(true)
 const achievement = ref(null)

@@ -1,5 +1,5 @@
 <template>
-	<view class="notification-page">
+	<view class="notification-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 顶部操作栏 -->
 		<view class="top-bar">
 			<text class="page-subtitle">全部消息</text>
@@ -57,6 +57,9 @@ import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
 import { getNotificationList, markAsRead, markAllAsRead, deleteNotification } from '@/api/notification.js'
 import { useNotificationStore } from '@/store/notification.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const notificationStore = useNotificationStore()
 const friendRequestStore = useFriendRequestStore()

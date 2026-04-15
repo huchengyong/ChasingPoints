@@ -140,11 +140,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
-import { onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app'
+import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
-import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { getCurrentMatch, getOngoingMatches, joinMatchReferee, startMatch } from '@/api/match.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { shouldShowMatchPageLoading } from '@/utils/match-page.js'
@@ -152,7 +152,7 @@ import { buildPlayingRoute, resolveMatchScanAction, resolveStartMatchGuardAction
 
 // ========== 状态管理 ==========
 const userStore = useUserStore()
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 
 // ========== 响应式数据 ==========
 const loading = ref(false)
@@ -162,7 +162,6 @@ const ongoingMatches = ref([]) // 平台正在进行的对局列表
 const showGameTypeModal = ref(false)
 const selectedGameType = ref(null)
 const scanIntent = ref('start')
-const isDarkMode = computed(() => themeStore.isDarkMode)
 const showPageLoading = computed(() => shouldShowMatchPageLoading(loading.value, refreshing.value))
 
 // 用户信息
@@ -210,34 +209,9 @@ onPullDownRefresh(async () => {
 	}
 })
 
-// 页面显示时刷新数据并注册主题监听
 onShow(() => {
 	loadData()
-	// 同步主题状态并更新导航栏
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
-	// 注册主题变化监听
-	uni.$on(THEME_CHANGE_EVENT, handleThemeChange)
 })
-
-// 页面隐藏时取消主题监听
-onHide(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-// 组件卸载时确保取消监听
-onUnmounted(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-/**
- * 处理主题变化
- */
-const handleThemeChange = (data) => {
-	console.log('[IndexPage] 收到主题变化事件:', data)
-	// 由于 isDarkMode 是 computed 属性，themeStore.isDarkMode 变化会自动触发重新计算
-	// 这里主要用于日志和可能的其他处理
-}
 
 // ========== 方法 ==========
 

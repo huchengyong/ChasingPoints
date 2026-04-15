@@ -105,7 +105,7 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import { useThemeStore } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { useUserStore } from '@/store/user.js'
 import { getH2HHistory, getH2HStats } from '@/api/match.js'
 import { formatRelativeTime } from '@/utils/format.js'
@@ -117,10 +117,9 @@ import {
   resolvePkReportStatus
 } from '@/utils/pk-report-view-model.js'
 
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
 
-const isDarkMode = computed(() => themeStore.isDarkMode)
 const posterLoading = ref(false)
 const posterPath = ref('')
 const myAvatar = ref('')
@@ -351,8 +350,6 @@ onLoad((options) => {
 })
 
 onShow(() => {
-  themeStore.syncTheme()
-  themeStore.applyNavigationBarTheme()
   loadData()
 })
 </script>

@@ -83,39 +83,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
-import { onShow, onHide } from '@dcloudio/uni-app'
-import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 
 // ========== 状态管理 ==========
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 
-// ========== 计算属性 ==========
-const isDarkMode = computed(() => themeStore.isDarkMode)
-
-// ========== 生命周期 ==========
-onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
-	// 监听主题变化事件
-	uni.$on(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-onHide(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-onUnmounted(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-// ========== 方法 ==========
-/**
- * 处理主题变化事件
- */
-const handleThemeChange = () => {
-	themeStore.applyNavigationBarTheme()
-}
 </script>
 
 <style lang="scss">

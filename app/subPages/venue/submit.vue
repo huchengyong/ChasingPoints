@@ -1,5 +1,5 @@
 <template>
-	<view class="submit-page">
+	<view class="submit-page" :class="{ 'dark-mode': isDarkMode }">
 		<view class="page-intro">
 			<view class="intro-copy">
 				<text class="intro-eyebrow">常玩球馆</text>
@@ -75,11 +75,14 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { createVenue, getVenueAreaOptions } from '@/api/venue.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import {
 	buildVenueRegionSelection,
 	buildVenueSubmitPayload,
 	resolveVenueSubmitCopy
 } from '@/utils/venue-submit.js'
+
+const { isDarkMode } = usePageTheme()
 
 const createAreaPlaceholderOption = (name = '暂无数据') => ({
 	area_id: 0,

@@ -1,5 +1,5 @@
 <template>
-	<view class="add-friend-page">
+	<view class="add-friend-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 搜索框 -->
 		<view class="search-bar">
 			<view class="search-input-wrap">
@@ -80,6 +80,9 @@
 <script setup>
 import { ref } from 'vue'
 import { searchUser, sendFriendRequest } from '@/api/friend.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const keyword = ref('')
 const searching = ref(false)

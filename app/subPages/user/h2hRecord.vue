@@ -195,7 +195,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import { useThemeStore } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { useUserStore } from '@/store/user.js'
 import { getH2HStats, getH2HHistory } from '@/api/match.js'
 import { formatRelativeTime } from '@/utils/format.js'
@@ -215,10 +215,9 @@ import {
 	shouldApplyH2HHistoryResponse
 } from '@/utils/h2h-record.js'
 
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
 
-const isDarkMode = computed(() => themeStore.isDarkMode)
 const isHistoryFetching = ref(false)
 const isLoadingMore = ref(false)
 const hasMore = ref(true)
@@ -327,8 +326,6 @@ onMounted(() => {
 })
 
 onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
 })
 
 const loadUserInfo = () => {

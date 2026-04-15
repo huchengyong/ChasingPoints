@@ -77,12 +77,11 @@
 import { computed, ref } from 'vue'
 import { onLoad, onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { deletePost, getMyPosts } from '@/api/social.js'
-import { useThemeStore } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { formatRelativeTime } from '@/utils/format.js'
 import { resolveMyPostReviewMeta } from '@/utils/social-review.js'
 
-const themeStore = useThemeStore()
-const isDarkMode = computed(() => themeStore.isDarkMode)
+const { isDarkMode } = usePageTheme()
 
 const loading = ref(true)
 const refreshing = ref(false)
@@ -94,8 +93,6 @@ onLoad((options) => {
 })
 
 onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
 	loadPosts()
 })
 

@@ -1,5 +1,5 @@
 <template>
-	<view class="detail-page">
+	<view class="detail-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 球种标题 -->
 		<view class="category-header">
 			<text class="category-emoji">{{ getCategoryEmoji() }}</text>
@@ -58,6 +58,9 @@ import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getRuleContent } from '@/api/rules.js'
 import { getRuleCategoryLabel } from '@/utils/game-types.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const category = ref('snooker')
 const currentType = ref('rule')

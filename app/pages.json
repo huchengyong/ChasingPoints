@@ -155,9 +155,7 @@
 				{
 					"path": "memberCenter",
 					"style": {
-						"navigationBarTitleText": "会员中心",
-						"navigationBarBackgroundColor": "#f8fafc",
-						"backgroundColor": "#f8fafc"
+						"navigationBarTitleText": "会员中心"
 					}
 				},
 				{
@@ -169,9 +167,7 @@
 				,{
 					"path": "statsDetail",
 					"style": {
-						"navigationBarTitleText": "深度统计",
-						"navigationBarBackgroundColor": "#f1f5f9",
-						"backgroundColor": "#f1f5f9"
+						"navigationBarTitleText": "深度统计"
 					}
 				}
 			]

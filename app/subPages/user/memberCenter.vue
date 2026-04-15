@@ -161,7 +161,7 @@ import { onShow } from '@dcloudio/uni-app'
 
 import { getMemberPlans, getMemberStatus, createMemberSubscriptionOrder, getMemberSubscriptionOrderStatus } from '@/api/member.js'
 import { APP_COMPLIANCE_MODE } from '@/utils/compliance-mode.js'
-import { useThemeStore } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import {
 	createMemberPaymentRequest,
 	getMemberPayChannelOptions,
@@ -172,7 +172,7 @@ import {
 } from '@/utils/member-center.js'
 import { resolveMemberRankingRightsCard } from '@/utils/member-ranking-rights.js'
 
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -182,7 +182,6 @@ const selectedPlanCode = ref('member_monthly')
 const selectedPayChannel = ref('alipay')
 
 const isComplianceMode = APP_COMPLIANCE_MODE
-const isDarkMode = computed(() => themeStore.isDarkMode)
 const payChannelOptions = getMemberPayChannelOptions()
 const summary = computed(() => resolveMemberCenterSummary(memberStatus.value || {}, new Date(), {
 	complianceMode: isComplianceMode

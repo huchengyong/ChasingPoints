@@ -82,11 +82,11 @@
 </template>
 
 <script setup>
-import { computed, onUnmounted, ref } from 'vue'
-import { onHide, onShow } from '@dcloudio/uni-app'
+import { computed, ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 
 import { getEventNewsList } from '@/api/event-news.js'
-import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { normalizeSaiXunCard } from '@/utils/saixun.js'
 import {
   SAIXUN_DATE_PRESETS,
@@ -98,9 +98,8 @@ import {
   formatSaiXunFilterLabel
 } from '@/utils/saixun-filter.js'
 
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 
-const isDarkMode = computed(() => themeStore.isDarkMode)
 const loading = ref(true)
 const loadingMore = ref(false)
 const refreshing = ref(false)
@@ -241,31 +240,15 @@ const onCustomToChange = async (event) => {
   await applyFilter(nextFilter, { syncDraft: true })
 }
 
-const handleThemeChange = () => {
-  themeStore.applyNavigationBarTheme()
-}
-
 onShow(() => {
-  themeStore.syncTheme()
-  themeStore.applyNavigationBarTheme()
-  uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-  uni.$on(THEME_CHANGE_EVENT, handleThemeChange)
 
-  if (!shouldRefreshOnShow.value) {
+	if (!shouldRefreshOnShow.value) {
     shouldRefreshOnShow.value = true
     return
   }
 
   // 合规收口：原动态 tab 现只保留官方赛讯展示，用户发布和互动入口暂不开放。
   refreshData()
-})
-
-onHide(() => {
-  uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-onUnmounted(() => {
-  uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
 })
 </script>
 

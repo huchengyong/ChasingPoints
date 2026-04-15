@@ -122,7 +122,7 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import { useThemeStore } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { getOpponentList } from '@/api/match.js'
 import {
   buildOpponentCardViewModels,
@@ -133,9 +133,8 @@ import {
   normalizeOpponentRecordOptions
 } from '@/utils/opponent-record.js'
 
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 
-const isDarkMode = computed(() => themeStore.isDarkMode)
 const isLoading = ref(false)
 const isRefreshing = ref(false)
 const isLoadingMore = ref(false)
@@ -204,8 +203,6 @@ onLoad((options) => {
 })
 
 onShow(() => {
-  themeStore.syncTheme()
-  themeStore.applyNavigationBarTheme()
 
   const token = uni.getStorageSync('token')
   if (!token) {

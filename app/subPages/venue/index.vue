@@ -1,5 +1,5 @@
 <template>
-	<view class="venue-page">
+	<view class="venue-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 定位与城市 -->
 		<view class="location-bar">
 			<view class="location-info" @tap="getLocation">
@@ -94,6 +94,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getVenueList, getNearbyVenues } from '@/api/venue.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const mode = ref('nearby')
 const list = ref([])

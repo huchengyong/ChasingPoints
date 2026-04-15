@@ -1,5 +1,5 @@
 <template>
-	<view class="requests-page">
+	<view class="requests-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
 			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
@@ -66,6 +66,9 @@ import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
 import { getFriendRequests, acceptFriendRequest, rejectFriendRequest } from '@/api/friend.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
 import { formatRelativeTime } from '@/utils/format.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const loading = ref(true)
 const requestList = ref([])

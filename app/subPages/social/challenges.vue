@@ -1,5 +1,5 @@
 <template>
-	<view class="challenges-page">
+	<view class="challenges-page" :class="{ 'dark-mode': isDarkMode }">
 		<view class="page-tip">
 			<uni-icons type="info" size="16" color="#E0AE12"></uni-icons>
 			<text>这里记录的是线上 PK 邀约，只用于社交互动，不会直接生成真实对局。</text>
@@ -132,6 +132,9 @@ import { formatRelativeTime } from '@/utils/format.js'
 import { GAME_TYPE_OPTIONS, getGameTypeLabel } from '@/utils/game-types.js'
 import { useUserStore } from '@/store/user.js'
 import { buildChallengePayload, normalizeChallengeListItem } from '@/utils/challenge-entry.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const statusMap = { 0: '待回应', 1: '已回应', 2: '已拒绝', 3: '已过期' }
 const gameTypes = GAME_TYPE_OPTIONS

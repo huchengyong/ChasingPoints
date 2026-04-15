@@ -382,7 +382,7 @@
 import { ref, reactive, computed, onUnmounted } from 'vue'
 import { onShow, onHide } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
-import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { getFavoriteVenueRewardStatus, getUserPrivacy, getUserReputation, getUserStats, updateUserPrivacy } from '@/api/user.js'
 import { getMemberStatus } from '@/api/member.js'
 import { getCurrentMatch, getMatchQRCode, startMatch } from '@/api/match.js'
@@ -418,7 +418,7 @@ import {
 import { resolveMemberEntryCard, resolveMemberGrowthCard } from '@/utils/member-center.js'
 
 const userStore = useUserStore()
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 const notificationStore = useNotificationStore()
 const friendRequestStore = useFriendRequestStore()
 
@@ -440,7 +440,6 @@ const sectionTitles = resolveSectionTitles()
 const pkEntryActions = resolvePkEntryActions()
 const qrCodeModalCopy = resolveQrCodeModalCopy()
 
-const isDarkMode = computed(() => themeStore.isDarkMode)
 const isHideMatch = ref(false)
 const hideMatchLoading = ref(false)
 const showGameTypeModal = ref(false)
@@ -632,23 +631,15 @@ onShow(() => {
 		notificationStore.clearUnread()
 		friendRequestStore.clearPendingCount()
 	}
-
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
-	uni.$on(THEME_CHANGE_EVENT, handleThemeChange)
 })
 
 onHide(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
 	disconnectUserWS()
 })
 
 onUnmounted(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
 	disconnectUserWS()
 })
-
-const handleThemeChange = () => {}
 
 const loadHomepageData = async () => {
 	await Promise.all([

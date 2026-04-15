@@ -105,10 +105,10 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { onLoad, onShow, onHide } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import { getMatchDetail, getPublicMatchDetail } from '@/api/match.js'
-import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 
 // ========== 响应式数据 ==========
 const loading = ref(true)
@@ -142,10 +142,9 @@ const pageLog = (message, payload) => {
 }
 
 // ========== 状态管理 ==========
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 
 // ========== 计算属性 ==========
-const isDarkMode = computed(() => themeStore.isDarkMode)
 
 // ========== 计算属性 ==========
 const gameTypeName = computed(() => {
@@ -189,10 +188,6 @@ onMounted(() => {
 })
 
 onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
-	// 监听主题变化事件
-	uni.$on(THEME_CHANGE_EVENT, handleThemeChange)
 	if (wsHandlersReady && matchId.value) {
 		if (matchWS.isConnected()) {
 			matchWS.requestSync()
@@ -200,10 +195,6 @@ onShow(() => {
 			connectWebSocket()
 		}
 	}
-})
-
-onHide(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
 })
 
 onUnmounted(() => {
@@ -214,17 +205,9 @@ onUnmounted(() => {
 	matchWS.off(WS_MESSAGE_TYPES.SYNC, handleSync)
 	// 断开WebSocket
 	matchWS.disconnect()
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
 })
 
 // ========== 方法 ==========
-
-/**
- * 处理主题变化事件
- */
-const handleThemeChange = () => {
-	themeStore.applyNavigationBarTheme()
-}
 
 /**
  * 加载对局数据

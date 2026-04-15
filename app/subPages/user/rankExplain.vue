@@ -111,16 +111,15 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import { useThemeStore } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { getUserRankInfo, getRankList } from '@/api/rank.js'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { resolveRankExplainLoadingMode, shouldApplyRankExplainResponse } from '@/utils/rank-explain.js'
 
 // ========== 状态管理 ==========
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 
 // ========== 响应式数据 ==========
-const isDarkMode = computed(() => themeStore.isDarkMode)
 const isFetching = ref(true)
 const hasLoadedOnce = ref(false)
 const expandedLevel = ref(0)
@@ -164,8 +163,6 @@ onMounted(() => {
 
 onShow(() => {
 	// 同步主题状态并更新导航栏
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
 })
 
 // ========== 方法 ==========

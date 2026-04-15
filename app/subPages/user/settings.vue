@@ -131,8 +131,8 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { onShow, onHide } from '@dcloudio/uni-app'
-import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
+import { onShow } from '@dcloudio/uni-app'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { useUserStore } from '@/store/user.js'
 import { getQiniuUploadToken, getUserInfo, updateUserProfile } from '@/api/user.js'
 import bindPhone from '@/components/bindPhone.vue'
@@ -147,11 +147,10 @@ import {
 } from '@/utils/settings-profile.js'
 
 // ========== 状态管理 ==========
-const themeStore = useThemeStore()
+const { isDarkMode, toggleTheme } = usePageTheme()
 const userStore = useUserStore()
 
 // ========== 响应式数据 ==========
-const isDarkMode = computed(() => themeStore.isDarkMode)
 const userNickname = computed(() => userStore.userInfo?.nickname || '用户')
 const userPhone = computed(() => userStore.userInfo?.phone || '')
 const userAvatar = computed(() => userStore.userInfo?.avatar || '/static/images/default-avatar.png')
@@ -165,23 +164,8 @@ const isUploadingAvatar = ref(false)
 
 // ========== 生命周期 ==========
 onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
-	uni.$on(THEME_CHANGE_EVENT, handleThemeChange)
 	fetchLatestUserInfo()
 })
-
-onHide(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-/**
- * 处理主题变化
- */
-const handleThemeChange = () => {
-	// 主题变化后更新导航栏
-	themeStore.applyNavigationBarTheme()
-}
 
 const fetchLatestUserInfo = async () => {
 	try {
@@ -276,7 +260,7 @@ const handleSaveNickname = async () => {
  * 切换深色模式
  */
 const toggleDarkMode = () => {
-	themeStore.toggleTheme()
+	toggleTheme()
 }
 
 const handlePhoneRow = () => {

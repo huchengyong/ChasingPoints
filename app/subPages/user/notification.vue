@@ -92,10 +92,9 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { getNotificationPreferences, saveNotificationPreferences } from '@/api/notification.js'
-import { useThemeStore } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 
-const themeStore = useThemeStore()
-const isDarkMode = computed(() => themeStore.isDarkMode)
+const { isDarkMode } = usePageTheme()
 const isSaving = ref(false)
 const preferences = reactive({
 	match_result_enabled: true,
@@ -110,8 +109,6 @@ onMounted(() => {
 })
 
 onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
 })
 
 const applyPreferences = (payload = {}) => {

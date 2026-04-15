@@ -100,13 +100,12 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { useThemeStore } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { getUserReputation, getUserReputationLogs } from '@/api/user.js'
 import { formatDateTime, formatRelativeTime } from '@/utils/format.js'
 
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 
-const isDarkMode = computed(() => themeStore.isDarkMode)
 
 const statusLoading = ref(false)
 const statusError = ref('')
@@ -153,8 +152,6 @@ const statusToneClass = computed(() => {
 })
 
 onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
 	refreshPageData()
 })
 

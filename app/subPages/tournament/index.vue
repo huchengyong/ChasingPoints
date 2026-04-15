@@ -1,5 +1,5 @@
 <template>
-	<view class="tournament-page">
+	<view class="tournament-page" :class="{ 'dark-mode': isDarkMode }">
 		<view class="page-hero">
 			<view class="hero-copy">
 				<text class="hero-eyebrow">赛事情报</text>
@@ -130,6 +130,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { getEventNewsList } from '@/api/event-news.js'
 import { normalizeSaiXunCard } from '@/utils/saixun.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const gameTypes = ref([
 	{ label: '全部球种', value: 0 },

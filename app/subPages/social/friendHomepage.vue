@@ -131,7 +131,7 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import { useThemeStore } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { getOpponentList } from '@/api/match.js'
 import { buildFriendPkReportUrl } from '@/utils/friend-entry.js'
 import {
@@ -144,9 +144,8 @@ import {
 	normalizeFriendHomepageOptions
 } from '@/utils/friend-homepage.js'
 
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 
-const isDarkMode = computed(() => themeStore.isDarkMode)
 const loading = ref(true)
 const loadFailed = ref(false)
 const loadErrorText = ref('加载好友主页失败，请稍后再试。')
@@ -251,8 +250,6 @@ onLoad((options) => {
 })
 
 onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
 	loadData()
 })
 </script>

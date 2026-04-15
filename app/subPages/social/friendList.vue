@@ -1,5 +1,5 @@
 <template>
-	<view class="friend-list-page">
+	<view class="friend-list-page" :class="{ 'dark-mode': isDarkMode }">
 		<view v-if="mode === 'pk-report'" class="page-banner">
 			<uni-icons type="bars" size="18" color="#E0AE12"></uni-icons>
 			<text>选择一位好友，基于你们的真实交锋记录生成 PK 报表。</text>
@@ -99,6 +99,9 @@ import {
 	resolveFriendUserId
 } from '@/utils/friend-entry.js'
 import { clampFriendSwipeOffset, resolveFriendSwipeEndOffset } from '@/utils/friend-swipe.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const FRIEND_ACTION_WIDTH_RPX = 280
 
