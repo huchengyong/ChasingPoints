@@ -66,31 +66,35 @@
 			<view class="filter-buttons">
 				<button
 					class="filter-btn"
-					:class="{ active: currentFilter === 0 }"
+					:class="{ active: currentFilter === 0, pending: isHistoryRefreshing && currentFilter === 0 }"
 					@click="handleFilterChange(0)"
 				>
 					<text class="btn-text">全部</text>
+					<uni-icons class="filter-loading-icon" v-if="isHistoryRefreshing && currentFilter === 0" type="spinner-cycle" size="13" :color="isDarkMode ? '#ffffff' : '#6b7280'"></uni-icons>
 				</button>
 				<button
 					class="filter-btn"
-					:class="{ active: currentFilter === 1 }"
+					:class="{ active: currentFilter === 1, pending: isHistoryRefreshing && currentFilter === 1 }"
 					@click="handleFilterChange(1)"
 				>
 					<text class="btn-text">胜利</text>
+					<uni-icons class="filter-loading-icon" v-if="isHistoryRefreshing && currentFilter === 1" type="spinner-cycle" size="13" :color="isDarkMode ? '#ffffff' : '#6b7280'"></uni-icons>
 				</button>
 				<button
 					class="filter-btn"
-					:class="{ active: currentFilter === 2 }"
+					:class="{ active: currentFilter === 2, pending: isHistoryRefreshing && currentFilter === 2 }"
 					@click="handleFilterChange(2)"
 				>
 					<text class="btn-text">失败</text>
+					<uni-icons class="filter-loading-icon" v-if="isHistoryRefreshing && currentFilter === 2" type="spinner-cycle" size="13" :color="isDarkMode ? '#ffffff' : '#6b7280'"></uni-icons>
 				</button>
 				<button
 					class="filter-btn"
-					:class="{ active: currentFilter === 3 }"
+					:class="{ active: currentFilter === 3, pending: isHistoryRefreshing && currentFilter === 3 }"
 					@click="handleFilterChange(3)"
 				>
 					<text class="btn-text">最近5场</text>
+					<uni-icons class="filter-loading-icon" v-if="isHistoryRefreshing && currentFilter === 3" type="spinner-cycle" size="13" :color="isDarkMode ? '#ffffff' : '#6b7280'"></uni-icons>
 				</button>
 			</view>
 		</view>
@@ -206,20 +210,23 @@ import {
 	buildH2HHistoryParams,
 	buildH2HLoadFailureAction,
 	buildH2HViewModel,
-	normalizeH2HRecordOptions
+	normalizeH2HRecordOptions,
+	resolveH2HHistoryLoadingMode,
+	shouldApplyH2HHistoryResponse
 } from '@/utils/h2h-record.js'
 
 const themeStore = useThemeStore()
 const userStore = useUserStore()
 
 const isDarkMode = computed(() => themeStore.isDarkMode)
-const isLoading = ref(true)
+const isHistoryFetching = ref(false)
 const isLoadingMore = ref(false)
 const hasMore = ref(true)
 const hasHandledTargetLoadFailure = ref(false)
 const statsLoaded = ref(false)
 const historyLoaded = ref(false)
 const loadErrorMessage = ref('')
+const latestHistoryRequestId = ref(0)
 
 const opponentId = ref(0)
 const opponentName = ref('')
@@ -291,6 +298,11 @@ const showSummaryCard = computed(() => shouldShowH2HSummaryCard({
 	pageStatus: pageStatus.value,
 	statsLoaded: statsLoaded.value
 }))
+const historyLoadingMode = computed(() => resolveH2HHistoryLoadingMode({
+	hasLoadedOnce: historyLoaded.value,
+	isFetching: isHistoryFetching.value
+}))
+const isHistoryRefreshing = computed(() => historyLoadingMode.value === 'refreshing')
 
 onLoad((options) => {
 	const normalized = normalizeH2HRecordOptions(options)
@@ -355,7 +367,6 @@ const handleTargetLoadFailure = (error) => {
 }
 
 const fetchData = async () => {
-	isLoading.value = true
 	statsLoaded.value = false
 	historyLoaded.value = false
 	loadErrorMessage.value = ''
@@ -368,8 +379,6 @@ const fetchData = async () => {
 	} catch (error) {
 		console.error('获取数据失败:', error)
 		handleTargetLoadFailure(error)
-	} finally {
-		isLoading.value = false
 	}
 }
 
@@ -414,11 +423,14 @@ const fetchStats = async () => {
 }
 
 const fetchHistory = async (isRefresh = false, isLoadMore = false) => {
-	if (isLoadingMore.value) return
+	if (isLoadingMore.value && !isRefresh) return
+	const requestId = latestHistoryRequestId.value + 1
+	latestHistoryRequestId.value = requestId
 
 	if (isRefresh) {
 		currentPage.value = 1
 		hasMore.value = true
+		isLoadingMore.value = false
 	} else if (isLoadMore) {
 		if (!hasMore.value || currentFilter.value === 3) return
 		isLoadingMore.value = true
@@ -426,7 +438,10 @@ const fetchHistory = async (isRefresh = false, isLoadMore = false) => {
 	}
 
 	if (!isLoadMore) {
-		historyLoaded.value = false
+		isHistoryFetching.value = true
+		if (!historyLoaded.value) {
+			historyLoaded.value = false
+		}
 		if (statsLoaded.value) {
 			loadErrorMessage.value = ''
 		}
@@ -444,6 +459,10 @@ const fetchHistory = async (isRefresh = false, isLoadMore = false) => {
 		})
 
 		const res = await getH2HHistory(params)
+		if (!shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value })) {
+			return
+		}
+
 		const list = res.list || []
 		total.value = res.total || 0
 
@@ -460,17 +479,30 @@ const fetchHistory = async (isRefresh = false, isLoadMore = false) => {
 		hasMore.value = historyList.value.length < total.value
 		historyLoaded.value = true
 	} catch (error) {
+		if (!shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value })) {
+			return
+		}
+
 		console.error('获取交锋历史失败:', error)
 		loadErrorMessage.value = error?.message || '交锋历史加载失败'
 		handleTargetLoadFailure(error)
 		if (!isLoadMore) {
-			historyList.value = []
+			if (!historyLoaded.value) {
+				historyList.value = []
+			}
 			if (currentFilter.value === 0 || currentFilter.value === 3) {
-				summaryHistory.value = []
+				if (!historyLoaded.value) {
+					summaryHistory.value = []
+				}
 			}
 		}
 	} finally {
-		isLoadingMore.value = false
+		if (shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value })) {
+			isLoadingMore.value = false
+			if (!isLoadMore) {
+				isHistoryFetching.value = false
+			}
+		}
 	}
 }
 
@@ -479,7 +511,6 @@ const handleFilterChange = (filter) => {
 	currentFilter.value = filter
 	currentPage.value = 1
 	hasMore.value = true
-	historyList.value = []
 	fetchHistory(true, false)
 }
 

@@ -89,3 +89,16 @@ export const buildH2HLoadFailureAction = ({
 
   return null
 }
+
+export const resolveH2HHistoryLoadingMode = ({
+  hasLoadedOnce = false,
+  isFetching = false
+} = {}) => {
+  if (!isFetching) return 'idle'
+  return hasLoadedOnce ? 'refreshing' : 'initial'
+}
+
+export const shouldApplyH2HHistoryResponse = ({
+  requestId = 0,
+  latestRequestId = 0
+} = {}) => requestId === latestRequestId

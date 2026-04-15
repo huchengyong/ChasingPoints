@@ -13,7 +13,11 @@
     background: #141109;
     color: #fff7e1;
 
-    .hero-card,
+    .hero-card {
+      background: linear-gradient(135deg, #241d10 0%, #1a1408 100%);
+      border-color: #3a2e16;
+    }
+
     .post-card {
       border-color: #3a2e16;
     }

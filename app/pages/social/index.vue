@@ -82,11 +82,11 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { computed, onUnmounted, ref } from 'vue'
+import { onHide, onShow } from '@dcloudio/uni-app'
 
 import { getEventNewsList } from '@/api/event-news.js'
-import { useThemeStore } from '@/store/theme.js'
+import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
 import { normalizeSaiXunCard } from '@/utils/saixun.js'
 import {
   SAIXUN_DATE_PRESETS,
@@ -241,7 +241,16 @@ const onCustomToChange = async (event) => {
   await applyFilter(nextFilter, { syncDraft: true })
 }
 
+const handleThemeChange = () => {
+  themeStore.applyNavigationBarTheme()
+}
+
 onShow(() => {
+  themeStore.syncTheme()
+  themeStore.applyNavigationBarTheme()
+  uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
+  uni.$on(THEME_CHANGE_EVENT, handleThemeChange)
+
   if (!shouldRefreshOnShow.value) {
     shouldRefreshOnShow.value = true
     return
@@ -249,6 +258,14 @@ onShow(() => {
 
   // 合规收口：原动态 tab 现只保留官方赛讯展示，用户发布和互动入口暂不开放。
   refreshData()
+})
+
+onHide(() => {
+  uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
+})
+
+onUnmounted(() => {
+  uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
 })
 </script>
 

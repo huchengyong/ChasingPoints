@@ -6,7 +6,9 @@ import {
   buildH2HHistoryParams,
   buildH2HLoadFailureAction,
   buildH2HViewModel,
-  normalizeH2HRecordOptions
+  normalizeH2HRecordOptions,
+  resolveH2HHistoryLoadingMode,
+  shouldApplyH2HHistoryResponse
 } from '../utils/h2h-record.js'
 
 test('buildH2HHistoryParams prefers opponent_id when available', () => {
@@ -141,6 +143,35 @@ test('buildH2HLoadFailureAction ignores generic self-mode failures', () => {
   )
 })
 
+test('resolveH2HHistoryLoadingMode keeps tab switches out of full-page loading', () => {
+  assert.equal(resolveH2HHistoryLoadingMode({
+    hasLoadedOnce: false,
+    isFetching: true
+  }), 'initial')
+
+  assert.equal(resolveH2HHistoryLoadingMode({
+    hasLoadedOnce: true,
+    isFetching: true
+  }), 'refreshing')
+
+  assert.equal(resolveH2HHistoryLoadingMode({
+    hasLoadedOnce: true,
+    isFetching: false
+  }), 'idle')
+})
+
+test('shouldApplyH2HHistoryResponse ignores stale filter responses', () => {
+  assert.equal(shouldApplyH2HHistoryResponse({
+    requestId: 4,
+    latestRequestId: 5
+  }), false)
+
+  assert.equal(shouldApplyH2HHistoryResponse({
+    requestId: 5,
+    latestRequestId: 5
+  }), true)
+})
+
 test('h2h record page handles target access failures with an explicit navigateBack flow', () => {
   const source = readFileSync(new URL('../subPages/user/h2hRecord.vue', import.meta.url), 'utf8')
 
@@ -155,4 +186,12 @@ test('h2h record page uses view models, exposes retry copy, and links cards to m
   assert.match(source, /shouldShowH2HSummaryCard/)
   assert.match(source, /matchDetail\?match_id=\$\{matchId\}/)
   assert.match(source, /重新加载/)
+})
+
+test('h2h filter tabs keep long labels on one centered line', () => {
+  const style = readFileSync(new URL('../subPages/user/h2hRecord.scss', import.meta.url), 'utf8')
+
+  assert.match(style, /\.filter-btn[\s\S]*padding: 0;/)
+  assert.match(style, /\.filter-btn[\s\S]*min-width: 0;/)
+  assert.match(style, /\.btn-text[\s\S]*white-space: nowrap;/)
 })
