@@ -1,49 +1,81 @@
 <template>
 	<view class="notification-container" :class="{ 'dark-mode': isDarkMode }">
 		<view class="settings-list">
-			<!-- 比赛更新 -->
 			<view class="settings-item">
 				<view class="item-left">
 					<view class="icon-wrapper green">
 						<uni-icons type="tune-filled" size="24" color="#E0AE12"></uni-icons>
 					</view>
-					<text class="item-text">对局通知</text>
+					<text class="item-text">对局结果</text>
 				</view>
 				<switch
-					:checked="matchUpdates"
-					@change="toggleMatchUpdates"
+					:checked="preferences.match_result_enabled"
+					:disabled="isSaving"
+					@change="(e) => togglePreference('match_result_enabled', e)"
 					color="#E0AE12"
 					style="transform:scale(0.8)"
 				/>
 			</view>
 
-			<!-- 好友请求 -->
 			<view class="settings-item">
 				<view class="item-left">
 					<view class="icon-wrapper blue">
 						<uni-icons type="staff-filled" size="24" color="#E0AE12"></uni-icons>
 					</view>
-					<text class="item-text">对手请求</text>
+					<text class="item-text">好友申请</text>
 				</view>
 				<switch
-					:checked="friendRequests"
-					@change="toggleFriendRequests"
+					:checked="preferences.friend_request_enabled"
+					:disabled="isSaving"
+					@change="(e) => togglePreference('friend_request_enabled', e)"
 					color="#E0AE12"
 					style="transform:scale(0.8)"
 				/>
 			</view>
 
-			<!-- 系统公告 -->
 			<view class="settings-item">
 				<view class="item-left">
 					<view class="icon-wrapper purple">
-						<uni-icons type="sound-filled" size="24" color="#6366f1"></uni-icons>
+						<uni-icons type="notification-filled" size="24" color="#E0AE12"></uni-icons>
 					</view>
-					<text class="item-text">系统公告</text>
+					<text class="item-text">挑战提醒</text>
 				</view>
 				<switch
-					:checked="systemAnnouncements"
-					@change="toggleSystemAnnouncements"
+					:checked="preferences.challenge_enabled"
+					:disabled="isSaving"
+					@change="(e) => togglePreference('challenge_enabled', e)"
+					color="#E0AE12"
+					style="transform:scale(0.8)"
+				/>
+			</view>
+
+			<view class="settings-item">
+				<view class="item-left">
+					<view class="icon-wrapper orange">
+						<uni-icons type="notification-filled" size="24" color="#E0AE12"></uni-icons>
+					</view>
+					<text class="item-text">赛事报名提醒</text>
+				</view>
+				<switch
+					:checked="preferences.tournament_enabled"
+					:disabled="isSaving"
+					@change="(e) => togglePreference('tournament_enabled', e)"
+					color="#E0AE12"
+					style="transform:scale(0.8)"
+				/>
+			</view>
+
+			<view class="settings-item">
+				<view class="item-left">
+					<view class="icon-wrapper gold">
+						<uni-icons type="notification-filled" size="24" color="#E0AE12"></uni-icons>
+					</view>
+					<text class="item-text">新关注提醒</text>
+				</view>
+				<switch
+					:checked="preferences.follow_enabled"
+					:disabled="isSaving"
+					@change="(e) => togglePreference('follow_enabled', e)"
 					color="#E0AE12"
 					style="transform:scale(0.8)"
 				/>
@@ -51,90 +83,88 @@
 		</view>
 
 		<text class="description-text">
-			管理您希望从应用接收的通知类型。您可以在任何时候更改这些设置。
+			管理消息中心和推送共同使用的通知类型。关闭后，仅影响后续新消息，不清理历史消息。
 		</text>
 	</view>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
+import { getNotificationPreferences, saveNotificationPreferences } from '@/api/notification.js'
 import { useThemeStore } from '@/store/theme.js'
 
-// ========== 状态管理 ==========
 const themeStore = useThemeStore()
-
-// ========== 响应式数据 ==========
 const isDarkMode = computed(() => themeStore.isDarkMode)
-const matchUpdates = ref(true)
-const friendRequests = ref(true)
-const systemAnnouncements = ref(false)
+const isSaving = ref(false)
+const preferences = reactive({
+	match_result_enabled: true,
+	friend_request_enabled: true,
+	challenge_enabled: true,
+	tournament_enabled: true,
+	follow_enabled: true
+})
 
-// ========== 生命周期 ==========
 onMounted(() => {
-	// TODO: 从本地存储或服务器加载通知设置
 	loadNotificationSettings()
 })
 
 onShow(() => {
-	// 同步主题状态并更新导航栏
 	themeStore.syncTheme()
 	themeStore.applyNavigationBarTheme()
 })
 
-// ========== 方法 ==========
+const applyPreferences = (payload = {}) => {
+	preferences.match_result_enabled = payload.match_result_enabled ?? true
+	preferences.friend_request_enabled = payload.friend_request_enabled ?? true
+	preferences.challenge_enabled = payload.challenge_enabled ?? true
+	preferences.tournament_enabled = payload.tournament_enabled ?? true
+	preferences.follow_enabled = payload.follow_enabled ?? true
+}
 
-/**
- * 加载通知设置
- */
-const loadNotificationSettings = () => {
-	const settings = uni.getStorageSync('notification_settings')
-	if (settings) {
-		try {
-			const parsed = JSON.parse(settings)
-			matchUpdates.value = parsed.matchUpdates ?? true
-			friendRequests.value = parsed.friendRequests ?? true
-			systemAnnouncements.value = parsed.systemAnnouncements ?? false
-		} catch (e) {
-			console.error('Failed to parse notification settings', e)
-		}
+const buildPreferencesPayload = () => {
+	return {
+		match_result_enabled: preferences.match_result_enabled,
+		friend_request_enabled: preferences.friend_request_enabled,
+		challenge_enabled: preferences.challenge_enabled,
+		tournament_enabled: preferences.tournament_enabled,
+		follow_enabled: preferences.follow_enabled
 	}
 }
 
-/**
- * 保存通知设置
- */
-const saveSettings = () => {
-	const settings = {
-		matchUpdates: matchUpdates.value,
-		friendRequests: friendRequests.value,
-		systemAnnouncements: systemAnnouncements.value
+const loadNotificationSettings = async () => {
+	try {
+		const res = await getNotificationPreferences()
+		applyPreferences(res)
+	} catch (error) {
+		console.error('加载通知偏好失败:', error)
+		uni.showToast({
+			title: '加载通知设置失败',
+			icon: 'none'
+		})
 	}
-	uni.setStorageSync('notification_settings', JSON.stringify(settings))
 }
 
-/**
- * 切换比赛更新通知
- */
-const toggleMatchUpdates = (e) => {
-	matchUpdates.value = e.detail.value
-	saveSettings()
-}
+const togglePreference = async (key, event) => {
+	if (isSaving.value) return
 
-/**
- * 切换好友请求通知
- */
-const toggleFriendRequests = (e) => {
-	friendRequests.value = e.detail.value
-	saveSettings()
-}
+	const previousValue = preferences[key]
+	preferences[key] = event.detail.value
+	isSaving.value = true
 
-/**
- * 切换系统公告通知
- */
-const toggleSystemAnnouncements = (e) => {
-	systemAnnouncements.value = e.detail.value
-	saveSettings()
+	try {
+		const res = await saveNotificationPreferences(buildPreferencesPayload())
+		applyPreferences(res)
+	} catch (error) {
+		preferences[key] = previousValue
+		console.error('保存通知偏好失败:', error)
+		uni.showToast({
+			title: '保存失败，请重试',
+			icon: 'none'
+		})
+	} finally {
+		isSaving.value = false
+	}
 }
 </script>
 

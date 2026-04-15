@@ -70,8 +70,10 @@ const getTypeIcon = (type) => {
 	const map = {
 		challenge: '🎯',
 		tournament: '🏆',
-		rank_change: '📊',
 		friend_request: '👥',
+		follow: '⭐',
+		match_result: '🏁',
+		rank_change: '📊',
 		system: '📢'
 	}
 	return map[type] || '🔔'
@@ -257,6 +259,8 @@ onPullDownRefresh(() => {
 
 			&.type-challenge { background: rgba(224, 174, 18, 0.14); }
 			&.type-tournament { background: #fef3c7; }
+			&.type-follow { background: rgba(251, 191, 36, 0.16); }
+			&.type-match_result { background: rgba(14, 165, 233, 0.12); }
 			&.type-rank_change { background: rgba(59, 130, 246, 0.12); }
 			&.type-friend_request { background: #f3e8ff; }
 			&.type-system { background: #f1f5f9; }

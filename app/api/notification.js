@@ -40,6 +40,23 @@ export const getUnreadCount = (params = {}) => {
 }
 
 /**
+ * 获取通知偏好
+ * @returns {Promise}
+ */
+export const getNotificationPreferences = () => {
+  return get('/api/notification/preferences')
+}
+
+/**
+ * 保存通知偏好
+ * @param {Object} data
+ * @returns {Promise}
+ */
+export const saveNotificationPreferences = (data) => {
+  return post('/api/notification/preferences', data)
+}
+
+/**
  * 删除通知
  * @param {Object} data { notification_id }
  * @returns {Promise}
