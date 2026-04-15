@@ -122,11 +122,11 @@
 <script setup>
 import { computed, onUnmounted, reactive, ref } from 'vue'
 import { onShow, onUnload } from '@dcloudio/uni-app'
-import { useThemeStore } from '@/store/theme.js'
 import { useUserStore } from '@/store/user.js'
 import { sendSms, login, loginByOauth } from '@/api/auth.js'
 import agreementConsentSheet from '@/components/agreementConsentSheet.vue'
 import bindPhone from '@/components/bindPhone.vue'
+import { usePageTheme } from '@/utils/page-theme.js'
 import {
 	canAttemptLogin,
 	canRequestSms,
@@ -154,7 +154,7 @@ let isHarmonyPlatform = false
 isHarmonyPlatform = true
 // #endif
 
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
 
 const formData = reactive({
@@ -169,7 +169,6 @@ const showBindPhoneModal = ref(false)
 const isAgreed = ref(false)
 const showAgreementSheet = ref(false)
 const pendingAgreementAction = ref('')
-const isDarkMode = computed(() => themeStore.isDarkMode)
 const showHuaweiLogin = computed(() => isHarmonyPlatform)
 const phoneError = computed(() => getPhoneError(formData.phone))
 const codeError = computed(() => getCodeError(formData.code))
@@ -444,8 +443,6 @@ const showAgreement = (type) => {
 }
 
 onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
 	const sessionActive = Boolean(uni.getStorageSync(ENTRY_FUNNEL_SESSION_KEY))
 	isAgreed.value = resolveEntryFunnelAgreementState({
 		storedAgreement: uni.getStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY),

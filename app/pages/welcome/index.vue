@@ -82,8 +82,8 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onShow, onUnload } from '@dcloudio/uni-app'
-import { useThemeStore } from '@/store/theme.js'
 import agreementConsentSheet from '@/components/agreementConsentSheet.vue'
+import { usePageTheme } from '@/utils/page-theme.js'
 import {
 	resolveEntryFunnelAgreementState,
 	resolveWelcomeActions,
@@ -100,8 +100,7 @@ isHarmonyPlatform = true
 // #endif
 
 // ========== 状态管理 ==========
-const themeStore = useThemeStore()
-const isDarkMode = computed(() => themeStore.isDarkMode)
+const { isDarkMode } = usePageTheme()
 const shouldShow = ref(false)
 const isAgreed = ref(false)
 const showAgreementSheet = ref(false)
@@ -114,8 +113,6 @@ const welcomeActions = computed(() => resolveWelcomeActions({
 // ========== 生命周期 ==========
 
 onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
 	const sessionActive = Boolean(uni.getStorageSync(ENTRY_FUNNEL_SESSION_KEY))
 	isAgreed.value = resolveEntryFunnelAgreementState({
 		storedAgreement: uni.getStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY),

@@ -11,27 +11,6 @@ const registeredRoutes = [
   ...pagesJson.subPackages.flatMap((pack) => pack.pages.map((page) => `${pack.root}/${page.path}`))
 ]
 
-const customNavigationRoutes = new Set(
-  [
-    ...pagesJson.pages.map((page) => ({ path: page.path, style: page.style || {} })),
-    ...pagesJson.subPackages.flatMap((pack) => pack.pages.map((page) => ({
-      path: `${pack.root}/${page.path}`,
-      style: page.style || {}
-    })))
-  ]
-    .filter((page) => page.style.navigationStyle === 'custom')
-    .map((page) => page.path)
-)
-
-const exemptRoutes = new Set([
-  'pages/welcome/index',
-  'pages/index/index',
-  'subPages/match/matchResult',
-  'subPages/match/playing',
-  'subPages/match/shareResult',
-  'subPages/season/report'
-])
-
 const getRouteSource = (route) => readFileSync(new URL(`../${route}.vue`, import.meta.url), 'utf8')
 
 test('all registered pages have a matching Vue file', () => {
@@ -40,14 +19,19 @@ test('all registered pages have a matching Vue file', () => {
   }
 })
 
-test('system-navigation pages use the shared page theme hook', () => {
+test('registered pages use the shared page theme hook', () => {
   for (const route of registeredRoutes) {
-    if (customNavigationRoutes.has(route) || exemptRoutes.has(route)) continue
-
     const source = getRouteSource(route)
     assert.match(source, /usePageTheme/, `${route} should use usePageTheme`)
     assert.match(source, /isDarkMode/, `${route} should expose isDarkMode`)
     assert.match(source, /dark-mode/, `${route} should bind a dark-mode class`)
+  }
+})
+
+test('registered pages do not bypass the shared page theme hook', () => {
+  for (const route of registeredRoutes) {
+    const source = getRouteSource(route)
+    assert.doesNotMatch(source, /useThemeStore|THEME_CHANGE_EVENT|applyNavigationBarTheme/, route)
   }
 })
 
@@ -65,4 +49,16 @@ test('page-specific light navigation backgrounds do not bypass runtime theme', (
   }
 
   assert.deepEqual(routesWithFixedLightNav, [])
+})
+
+test('custom fixed-visual pages expose light defaults and dark overrides', () => {
+  const shareResultSource = getRouteSource('subPages/match/shareResult')
+  assert.match(shareResultSource, /class="share-page" :class="\{ 'dark-mode': isDarkMode \}"/)
+  assert.match(shareResultSource, /\.share-page\s*\{[\s\S]*background:\s*#f8fafc;/)
+  assert.match(shareResultSource, /&\.dark-mode\s*\{[\s\S]*background:\s*#0f172a;/)
+
+  const seasonReportSource = getRouteSource('subPages/season/report')
+  assert.match(seasonReportSource, /class="report-page" :class="\{ 'dark-mode': isDarkMode \}"/)
+  assert.match(seasonReportSource, /\.report-page\s*\{[\s\S]*background:\s*linear-gradient\(180deg,\s*#f8fafc 0%,\s*#e2e8f0 100%\);/)
+  assert.match(seasonReportSource, /&\.dark-mode\s*\{[\s\S]*background:\s*linear-gradient\(180deg,\s*#1e293b 0%,\s*#0f172a 100%\);/)
 })

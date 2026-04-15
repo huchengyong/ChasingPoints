@@ -278,13 +278,13 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { onLoad, onShow, onHide } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import { matchScore, endRound, startNextRound, matchFoul, matchUndo, finishMatch, getMatchDetail, getCurrentMatch, getMatchRefereeQRCode } from '@/api/match.js'
-import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
 import { consumeResultNavigationGuard, getMatchHistoryPageUrl, getMatchHistoryTabUrl, shouldLeavePlayingPage } from '@/utils/match-navigation.js'
 import { buildMatchActionPayload } from '@/utils/match-action.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { resolvePlayingViewerUi } from '@/utils/match-role-view.js'
 import { resolveSnookerFinishMatchAction, resolveSnookerNextFrameAction } from '@/utils/snooker-frame.js'
 
@@ -361,11 +361,8 @@ const shouldApplyIncomingRevision = (revision) => {
 
 const buildActionRequest = (payload = {}) => buildMatchActionPayload(payload, serverRevision.value)
 
-// ========== 状态管理 ==========
-const themeStore = useThemeStore()
-
 // ========== 计算属性 ==========
-const isDarkMode = computed(() => themeStore.isDarkMode)
+const { isDarkMode } = usePageTheme()
 
 // 获取状态栏高度
 const systemInfo = uni.getSystemInfoSync()
@@ -552,10 +549,6 @@ onMounted(async () => {
 })
 
 onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
-	// 监听主题变化事件
-	uni.$on(THEME_CHANGE_EVENT, handleThemeChange)
 	if (wsHandlersReady && matchId.value) {
 		resumeMatchIfStillActive()
 	}
@@ -576,10 +569,6 @@ const resumeMatchIfStillActive = async () => {
 	}
 }
 
-onHide(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
 onUnmounted(() => {
 	wsHandlersReady = false
 	matchWS.off(WS_MESSAGE_TYPES.SCORE_UPDATE, handleScoreUpdate)
@@ -590,17 +579,9 @@ onUnmounted(() => {
 	matchWS.off(WS_MESSAGE_TYPES.SYNC, handleSync)
 	// 断开WebSocket
 	matchWS.disconnect()
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
 })
 
 // ========== 方法 ==========
-
-/**
- * 处理主题变化事件
- */
-const handleThemeChange = () => {
-	themeStore.applyNavigationBarTheme()
-}
 
 /**
  * 加载用户信息

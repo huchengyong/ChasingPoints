@@ -170,7 +170,6 @@
 import { computed, nextTick, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
-import { useThemeStore } from '@/store/theme.js'
 import { useNotificationStore } from '@/store/notification.js'
 import { getEventNewsList } from '@/api/event-news.js'
 import { getCurrentMatch, startMatch } from '@/api/match.js'
@@ -178,15 +177,15 @@ import { getLeaderboard } from '@/api/rank.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { getGameTypeLabel } from '@/utils/game-types.js'
 import { normalizeSaiXunCard } from '@/utils/saixun.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveHomeToolNavigation, shouldShowHomeToolEdgeMask } from '@/utils/home-index.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
 
 const userStore = useUserStore()
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 const notificationStore = useNotificationStore()
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight)
-const isDarkMode = computed(() => themeStore.isDarkMode)
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const userId = computed(() => userStore.userId)
 const userName = computed(() => userStore.nickname || '球友')
@@ -609,8 +608,6 @@ const handleContinueMatch = (match) => {
 }
 
 onShow(() => {
-  themeStore.syncTheme()
-  themeStore.applyNavigationBarTheme()
   notificationStore.fetchUnreadCount()
   showToolScrollMask.value = true
   toolScrollMaxLeft.value = 0

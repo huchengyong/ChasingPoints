@@ -177,11 +177,11 @@
 </template>
 
 <script setup>
-import { computed, ref, onUnmounted } from 'vue'
-import { onLoad, onShow, onHide } from '@dcloudio/uni-app'
+import { computed, ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { getMatchDetail } from '@/api/match.js'
-import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
 import { formatDateTime, formatRelativeTime } from '@/utils/format.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveMatchRankingRightsSummary } from '@/utils/member-ranking-rights.js'
 
 const DEFAULT_AVATAR = '/static/default-avatar.png'
@@ -213,8 +213,7 @@ const matchData = ref({
 })
 
 const statusBarHeight = ref(0)
-const themeStore = useThemeStore()
-const isDarkMode = computed(() => themeStore.isDarkMode)
+const { isDarkMode } = usePageTheme()
 const headerIconColor = computed(() => (isDarkMode.value ? '#f8fafc' : '#1f2937'))
 
 const systemInfo = uni.getSystemInfoSync()
@@ -341,24 +340,6 @@ onLoad((options) => {
 	fromHistory.value = options.from === 'history'
 	loadMatchData()
 })
-
-onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
-	uni.$on(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-onHide(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-onUnmounted(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-const handleThemeChange = () => {
-	themeStore.applyNavigationBarTheme()
-}
 
 const loadMatchData = async () => {
 	if (!matchId.value) {

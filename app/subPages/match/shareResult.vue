@@ -1,5 +1,5 @@
 <template>
-	<view class="share-page">
+	<view class="share-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- Canvas (隐藏，用于绘制) -->
 		<canvas canvas-id="matchPoster" class="poster-canvas" style="width:750px;height:2000px;position:absolute;left:-9999px;"></canvas>
 
@@ -36,7 +36,10 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getMatchShareData } from '@/api/share.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { generateMatchPoster, savePosterToAlbum } from '@/utils/posterGenerator.js'
+
+const { isDarkMode } = usePageTheme()
 
 const loading = ref(true)
 const posterPath = ref('')
@@ -117,8 +120,26 @@ onLoad((options) => {
 <style lang="scss" scoped>
 .share-page {
 	min-height: 100vh;
-	background: #0f172a;
+	background: #f8fafc;
 	padding-bottom: 140rpx;
+
+	&.dark-mode {
+		background: #0f172a;
+
+		.loading-text,
+		.error-state {
+			color: #94a3b8;
+		}
+
+		.poster-image {
+			box-shadow: 0 8rpx 32rpx rgba(0,0,0,0.5);
+		}
+
+		.action-bar {
+			background: #1e293b;
+			border-top-color: transparent;
+		}
+	}
 }
 .loading-state {
 	display: flex;
@@ -126,14 +147,14 @@ onLoad((options) => {
 	align-items: center;
 	justify-content: center;
 	min-height: 60vh;
-	.loading-text { font-size: 28rpx; color: #94a3b8; margin-top: 16rpx; }
+	.loading-text { font-size: 28rpx; color: #64748b; margin-top: 16rpx; }
 }
 .poster-preview {
 	padding: 40rpx 48rpx;
 	.poster-image {
 		width: 100%;
 		border-radius: 16rpx;
-		box-shadow: 0 8rpx 32rpx rgba(0,0,0,0.5);
+		box-shadow: 0 8rpx 32rpx rgba(15,23,42,0.12);
 	}
 }
 .error-state {
@@ -142,7 +163,7 @@ onLoad((options) => {
 	justify-content: center;
 	min-height: 50vh;
 	font-size: 28rpx;
-	color: #94a3b8;
+	color: #64748b;
 }
 .action-bar {
 	position: fixed;
@@ -151,7 +172,8 @@ onLoad((options) => {
 	right: 0;
 	padding: 20rpx 48rpx;
 	padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
-	background: #1e293b;
+	background: #ffffff;
+	border-top: 1rpx solid #e2e8f0;
 	.save-btn {
 		display: flex;
 		align-items: center;
