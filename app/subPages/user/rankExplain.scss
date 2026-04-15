@@ -13,13 +13,19 @@
 
 .game-type-tabs {
     white-space: nowrap;
-    margin-bottom: 16px;
+    flex: 1;
 
     ::-webkit-scrollbar {
         display: none;
         width: 0;
         height: 0;
     }
+}
+
+.game-type-tabs-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
 }
 
 .game-type-tab {
@@ -49,6 +55,10 @@
         text {
             color: #FFFFFF;
         }
+    }
+
+    &.pending {
+        opacity: 0.72;
     }
 }
 
@@ -93,6 +103,17 @@
         justify-content: center;
         gap: 6px;
         flex: 1;
+    }
+
+    .rank-main-refresh {
+        width: 48rpx;
+        height: 48rpx;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        border-radius: 999rpx;
+        background: rgba(148, 163, 184, 0.12);
     }
 
     .rank-label {
@@ -332,6 +353,10 @@
 
     .current-rank-card {
         background-color: rgba(30, 41, 59, 0.5);
+
+        .rank-main-refresh {
+            background: rgba(148, 163, 184, 0.16);
+        }
 
         .rank-label {
             color: #94a3b8;

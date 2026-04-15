@@ -2,23 +2,25 @@
 	<view class="rank-explain-container" :class="{ 'dark-mode': isDarkMode }">
 		<scroll-view class="content-scroll" scroll-y>
 			<!-- 加载状态 -->
-			<view class="loading-wrapper" v-if="isLoading">
+			<view class="loading-wrapper" v-if="isInitialLoading">
 				<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
 				<text class="loading-text">加载中...</text>
 			</view>
 
 			<template v-else>
-				<scroll-view class="game-type-tabs" scroll-x :show-scrollbar="false" enable-flex>
-					<view
-						v-for="item in gameTypeTabs"
-						:key="item.value"
-						class="game-type-tab"
-						:class="{ active: currentGameType === item.value }"
-						@tap="handleGameTypeChange(item.value)"
-					>
-						<text>{{ item.label }}</text>
-					</view>
-				</scroll-view>
+				<view class="game-type-tabs-row">
+					<scroll-view class="game-type-tabs" scroll-x :show-scrollbar="false" enable-flex>
+						<view
+							v-for="item in gameTypeTabs"
+							:key="item.value"
+							class="game-type-tab"
+							:class="{ active: currentGameType === item.value, pending: isRefreshing && currentGameType === item.value }"
+							@tap="handleGameTypeChange(item.value)"
+						>
+							<text>{{ item.label }}</text>
+						</view>
+					</scroll-view>
+				</view>
 
 				<!-- 当前段位卡片 -->
 				<view class="current-rank-card">
@@ -28,6 +30,9 @@
 							<text class="rank-label">当前段位</text>
 							<text class="rank-name">{{ rankInfo.name }}</text>
 							<text class="rank-score">当前排位分: {{ rankInfo.rank_score }}</text>
+						</view>
+						<view class="rank-main-refresh" v-if="isRefreshing">
+							<uni-icons type="spinner-cycle" size="16" :color="isDarkMode ? '#94a3b8' : '#64748b'"></uni-icons>
 						</view>
 					</view>
 					
@@ -109,16 +114,25 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useThemeStore } from '@/store/theme.js'
 import { getUserRankInfo, getRankList } from '@/api/rank.js'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
+import { resolveRankExplainLoadingMode, shouldApplyRankExplainResponse } from '@/utils/rank-explain.js'
 
 // ========== 状态管理 ==========
 const themeStore = useThemeStore()
 
 // ========== 响应式数据 ==========
 const isDarkMode = computed(() => themeStore.isDarkMode)
-const isLoading = ref(true)
+const isFetching = ref(true)
+const hasLoadedOnce = ref(false)
 const expandedLevel = ref(0)
 const currentGameType = ref(3)
 const gameTypeTabs = GAME_TYPE_TABS
+const latestRequestId = ref(0)
+const loadingMode = computed(() => resolveRankExplainLoadingMode({
+	hasLoadedOnce: hasLoadedOnce.value,
+	isFetching: isFetching.value
+}))
+const isInitialLoading = computed(() => loadingMode.value === 'initial')
+const isRefreshing = computed(() => loadingMode.value === 'refreshing')
 
 const rankInfo = ref({
 	level: 1,
@@ -160,7 +174,9 @@ onShow(() => {
  * 获取数据
  */
 const fetchData = async () => {
-	isLoading.value = true
+	const requestId = latestRequestId.value + 1
+	latestRequestId.value = requestId
+	isFetching.value = true
 	
 	try {
 		// 并行请求用户段位信息和段位列表
@@ -169,6 +185,10 @@ const fetchData = async () => {
 			getRankList({ game_type: currentGameType.value })
 		])
 		
+		if (!shouldApplyRankExplainResponse({ requestId, latestRequestId: latestRequestId.value })) {
+			return
+		}
+
 		if (infoRes.success && infoRes.rank_info) {
 			rankInfo.value = infoRes.rank_info
 			// 默认展开当前段位
@@ -178,14 +198,22 @@ const fetchData = async () => {
 		if (listRes.success && listRes.list) {
 			rankList.value = listRes.list
 		}
+
+		hasLoadedOnce.value = true
 	} catch (error) {
+		if (!shouldApplyRankExplainResponse({ requestId, latestRequestId: latestRequestId.value })) {
+			return
+		}
+
 		console.error('获取段位数据失败:', error)
 		uni.showToast({
 			title: error.message || '获取数据失败',
 			icon: 'none'
 		})
 	} finally {
-		isLoading.value = false
+		if (shouldApplyRankExplainResponse({ requestId, latestRequestId: latestRequestId.value })) {
+			isFetching.value = false
+		}
 	}
 }
 
