@@ -254,3 +254,55 @@ func TestReputationMigrationCreatesConfigProfileAndLogTables(t *testing.T) {
 		t.Fatal("reputation profile schema should not hardcode a default reputation score")
 	}
 }
+
+func TestAchievementTitleClosedLoopMigrationContainsClosedLoopSchema(t *testing.T) {
+	content, err := os.ReadFile("20260423110000_achievement_title_closed_loop.sql")
+	if err != nil {
+		t.Fatalf("read achievement title closed loop migration: %v", err)
+	}
+
+	text := string(content)
+	requiredSnippets := []string{
+		"match_achievements",
+		"`actor`",
+		"uk_match_actor_achievement",
+		"`match_id`, `actor`, `achievement_type`",
+		"`game_type`",
+		"`metric_key`",
+		"`progress_mode`",
+		"DEFAULT ''sum''",
+		"`reward_title_key`",
+		"`reward_title_name`",
+		"`sort`",
+		"`status`",
+		"`updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+		"`reward_granted`",
+		"`reward_granted_at`",
+		"`user_achievements` ADD COLUMN `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+		"`title_key`",
+		"`source_type`",
+		"`source_ref_id`",
+		"`source_ref_id` BIGINT UNSIGNED NOT NULL DEFAULT 0",
+		"`source_ref_name`",
+		"`granted_by_achievement_id`",
+		"`equipped_at`",
+		"`granted_at`",
+		"uk_user_title_source",
+		"`user_id`, `title_key`, `source_type`, `source_ref_id`",
+		"CREATE TABLE IF NOT EXISTS `achievement_progress_events`",
+		"`source_id`",
+		"`metric_value`",
+		"uk_user_source_metric",
+		"`user_id`, `source_type`, `source_id`, `metric_key`",
+	}
+
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(text, snippet) {
+			t.Fatalf("expected achievement title closed loop migration to contain %q", snippet)
+		}
+	}
+
+	if strings.Contains(text, "`source_ref_id` BIGINT UNSIGNED DEFAULT NULL") {
+		t.Fatal("user_titles.source_ref_id should not stay nullable, otherwise uk_user_title_source cannot deduplicate rows")
+	}
+}
