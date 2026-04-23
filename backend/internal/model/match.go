@@ -81,8 +81,9 @@ func (MatchAction) TableName() string {
 // MatchAchievement 特殊成绩
 type MatchAchievement struct {
 	Id              int64     `gorm:"primarykey" json:"id"`
-	MatchId         int64     `gorm:"not null;index" json:"match_id"`
-	AchievementType string    `gorm:"size:20;not null" json:"achievement_type"`
+	MatchId         int64     `gorm:"not null;index;uniqueIndex:uk_match_actor_achievement,priority:1" json:"match_id"`
+	Actor           int       `gorm:"not null;default:1;uniqueIndex:uk_match_actor_achievement,priority:2" json:"actor"`
+	AchievementType string    `gorm:"size:20;not null;uniqueIndex:uk_match_actor_achievement,priority:3" json:"achievement_type"`
 	Count           int       `gorm:"not null;default:0" json:"count"`
 	CreatedAt       time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
@@ -910,17 +911,31 @@ func (m *MatchModel) SaveAchievement(matchId int64, achievementType string, coun
 	return m.SaveAchievementWithTx(nil, matchId, achievementType, count)
 }
 
-func (m *MatchModel) SaveAchievementWithTx(tx *gorm.DB, matchId int64, achievementType string, count int) error {
+func (m *MatchModel) SaveAchievementWithTx(tx *gorm.DB, matchId int64, achievementType string, count int, actor ...int) error {
 	db := m.db
 	if tx != nil {
 		db = tx
 	}
+	achievementActor := 1
+	if len(actor) > 0 {
+		achievementActor = actor[0]
+	}
 
-	return db.Exec(`
-		INSERT INTO match_achievements (match_id, achievement_type, count) 
-		VALUES (?, ?, ?)
-		ON DUPLICATE KEY UPDATE count = count + ?
-	`, matchId, achievementType, count, count).Error
+	return db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{
+			{Name: "match_id"},
+			{Name: "actor"},
+			{Name: "achievement_type"},
+		},
+		DoUpdates: clause.Assignments(map[string]any{
+			"count": gorm.Expr("count + ?", count),
+		}),
+	}).Create(&MatchAchievement{
+		MatchId:         matchId,
+		Actor:           achievementActor,
+		AchievementType: achievementType,
+		Count:           count,
+	}).Error
 }
 
 // GetAchievements 获取对局的特殊成绩

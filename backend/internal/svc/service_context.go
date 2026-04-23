@@ -37,6 +37,7 @@ type ServiceContext struct {
 	AchievementModel                *model.AchievementModel
 	UserAchievementModel            *model.UserAchievementModel
 	UserTitleModel                  *model.UserTitleModel
+	AchievementProgressEventModel   *model.AchievementProgressEventModel
 	FriendModel                     *model.FriendModel
 	FollowModel                     *model.FollowModel
 	SocialPostModel                 *model.SocialPostModel
@@ -96,6 +97,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		AchievementModel:                models.AchievementModel,
 		UserAchievementModel:            models.UserAchievementModel,
 		UserTitleModel:                  models.UserTitleModel,
+		AchievementProgressEventModel:   models.AchievementProgressEventModel,
 		FriendModel:                     models.FriendModel,
 		FollowModel:                     models.FollowModel,
 		SocialPostModel:                 models.SocialPostModel,
@@ -142,6 +144,7 @@ type serviceModels struct {
 	AchievementModel                *model.AchievementModel
 	UserAchievementModel            *model.UserAchievementModel
 	UserTitleModel                  *model.UserTitleModel
+	AchievementProgressEventModel   *model.AchievementProgressEventModel
 	FriendModel                     *model.FriendModel
 	FollowModel                     *model.FollowModel
 	SocialPostModel                 *model.SocialPostModel
@@ -245,6 +248,7 @@ func newServiceModels(db *gorm.DB) serviceModels {
 		AchievementModel:                model.NewAchievementModel(db),
 		UserAchievementModel:            model.NewUserAchievementModel(db),
 		UserTitleModel:                  model.NewUserTitleModel(db),
+		AchievementProgressEventModel:   model.NewAchievementProgressEventModel(db),
 		FriendModel:                     model.NewFriendModel(db),
 		FollowModel:                     model.NewFollowModel(db),
 		SocialPostModel:                 model.NewSocialPostModel(db),

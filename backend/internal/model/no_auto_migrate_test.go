@@ -69,6 +69,21 @@ func TestModelConstructorsDoNotAutoMigrate(t *testing.T) {
 			construct: func(db *gorm.DB) { NewChallengeModel(db) },
 		},
 		{
+			name:      "achievement model",
+			tableName: "achievements",
+			construct: func(db *gorm.DB) { NewAchievementModel(db) },
+		},
+		{
+			name:      "user achievement model",
+			tableName: "user_achievements",
+			construct: func(db *gorm.DB) { NewUserAchievementModel(db) },
+		},
+		{
+			name:      "user title model",
+			tableName: "user_titles",
+			construct: func(db *gorm.DB) { NewUserTitleModel(db) },
+		},
+		{
 			name:      "favorite venue reward config model",
 			tableName: "favorite_venue_reward_configs",
 			construct: func(db *gorm.DB) { NewFavoriteVenueRewardConfigModel(db) },
@@ -102,6 +117,11 @@ func TestModelConstructorsDoNotAutoMigrate(t *testing.T) {
 			name:      "feedback ticket model",
 			tableName: "feedback_tickets",
 			construct: func(db *gorm.DB) { NewFeedbackTicketModel(db) },
+		},
+		{
+			name:      "achievement progress event model",
+			tableName: "achievement_progress_events",
+			construct: func(db *gorm.DB) { NewAchievementProgressEventModel(db) },
 		},
 	}
 
