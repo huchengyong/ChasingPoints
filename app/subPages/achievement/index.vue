@@ -63,8 +63,13 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { getAchievementList, getUserTitles } from '@/api/achievement.js'
+import {
+	ACHIEVEMENT_CATEGORY_TABS,
+	filterAchievementsByCategory,
+	getAchievementCategoryEmoji
+} from '@/utils/achievement-page.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 
 const { isDarkMode } = usePageTheme()
@@ -73,26 +78,14 @@ const loading = ref(true)
 const achievementList = ref([])
 const equippedTitle = ref('')
 const currentCategory = ref('all')
-
-const categoryTabs = [
-	{ key: 'all', label: '全部' },
-	{ key: '胜场', label: '胜场' },
-	{ key: '连胜', label: '连胜' },
-	{ key: '特殊', label: '特殊' },
-	{ key: '对局', label: '对局' },
-	{ key: '社交', label: '社交' },
-	{ key: '赛事', label: '赛事' }
-]
+const loaded = ref(false)
+const categoryTabs = ACHIEVEMENT_CATEGORY_TABS
 
 const filteredList = computed(() => {
-	if (currentCategory.value === 'all') return achievementList.value
-	return achievementList.value.filter(item => item.category === currentCategory.value)
+	return filterAchievementsByCategory(achievementList.value, currentCategory.value)
 })
 
-const getCategoryEmoji = (category) => {
-	const map = { '胜场': '🏅', '连胜': '🔥', '特殊': '⭐', '对局': '🎱', '社交': '👥', '赛事': '🏆' }
-	return map[category] || '🎯'
-}
+const getCategoryEmoji = getAchievementCategoryEmoji
 
 const getProgress = (item) => {
 	if (item.unlocked) return 100
@@ -115,16 +108,10 @@ const goToTitles = () => {
 const loadData = async () => {
 	loading.value = true
 	try {
-		const [achRes, titleRes] = await Promise.all([
-			getAchievementList(),
-			getUserTitles().catch(() => null)
-		])
+		const achRes = await getAchievementList()
 		achievementList.value = achRes.list || achRes || []
-		if (titleRes) {
-			const titles = titleRes.list || titleRes || []
-			const equipped = titles.find(t => t.equipped)
-			equippedTitle.value = equipped ? equipped.title_name : ''
-		}
+		await loadEquippedTitle()
+		loaded.value = true
 	} catch (e) {
 		console.error('加载成就数据失败:', e)
 	} finally {
@@ -132,8 +119,25 @@ const loadData = async () => {
 	}
 }
 
+const loadEquippedTitle = async () => {
+	try {
+		const titleRes = await getUserTitles()
+		const titles = titleRes.list || titleRes || []
+		const equipped = titles.find(t => t.equipped)
+		equippedTitle.value = equipped ? equipped.title_name : ''
+	} catch (e) {
+		console.error('加载当前称号失败:', e)
+	}
+}
+
 onLoad(() => {
 	loadData()
+})
+
+onShow(() => {
+	if (loaded.value) {
+		loadEquippedTitle()
+	}
 })
 </script>
 

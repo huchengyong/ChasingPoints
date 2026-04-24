@@ -125,7 +125,7 @@
 					</view>
 					<view v-else class="empty-state">
 						<uni-icons type="info" size="18" :color="isDarkMode ? '#94a3b8' : '#64748b'"></uni-icons>
-						<text class="empty-state-text">暂无特殊成就，本场战绩已正常计入记录。</text>
+						<text class="empty-state-text">暂无特殊战绩，本场战绩已正常计入记录。</text>
 					</view>
 					<view :class="['ranking-rights-card', rankingRightsSummary.tone]">
 						<view class="ranking-rights-head">

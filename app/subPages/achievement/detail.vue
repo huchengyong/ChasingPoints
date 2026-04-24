@@ -27,7 +27,7 @@
 				</view>
 				<view class="info-row">
 					<text class="info-label">分类</text>
-					<text class="info-value">{{ achievement.category }}</text>
+					<text class="info-value">{{ getAchievementCategoryLabel(achievement.category) }}</text>
 				</view>
 				<view class="info-row">
 					<text class="info-label">解锁条件</text>
@@ -69,6 +69,7 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getAchievementList } from '@/api/achievement.js'
+import { getAchievementCategoryEmoji, getAchievementCategoryLabel } from '@/utils/achievement-page.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 
 const { isDarkMode } = usePageTheme()
@@ -84,10 +85,7 @@ const progressPercent = computed(() => {
 	return Math.min(Math.round(((achievement.value.progress || 0) / t) * 100), 100)
 })
 
-const getCategoryEmoji = (category) => {
-	const map = { '胜场': '🏅', '连胜': '🔥', '特殊': '⭐', '对局': '🎱', '社交': '👥', '赛事': '🏆' }
-	return map[category] || '🎯'
-}
+const getCategoryEmoji = getAchievementCategoryEmoji
 
 const loadDetail = async () => {
 	loading.value = true

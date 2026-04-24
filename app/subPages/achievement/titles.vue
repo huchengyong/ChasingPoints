@@ -17,7 +17,7 @@
 				<view class="title-left">
 					<text class="title-name">{{ item.title_name }}</text>
 					<view class="title-source">
-						<text class="source-badge" :class="getSourceClass(item.source)">{{ item.source }}</text>
+						<text class="source-badge" :class="getTitleSourceClass(item.source)">{{ getTitleSourceLabel(item.source) }}</text>
 					</view>
 				</view>
 				<button
@@ -44,6 +44,7 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getUserTitles, equipTitle } from '@/api/achievement.js'
+import { getTitleSourceClass, getTitleSourceLabel } from '@/utils/achievement-page.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 
 const { isDarkMode } = usePageTheme()
@@ -51,11 +52,6 @@ const { isDarkMode } = usePageTheme()
 const loading = ref(true)
 const equipLoading = ref(false)
 const titleList = ref([])
-
-const getSourceClass = (source) => {
-	const map = { '成就': 'achievement', '赛季': 'season', '赛事': 'tournament' }
-	return map[source] || 'default'
-}
 
 const handleEquip = async (item) => {
 	equipLoading.value = true
