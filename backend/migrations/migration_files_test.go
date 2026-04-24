@@ -306,3 +306,31 @@ func TestAchievementTitleClosedLoopMigrationContainsClosedLoopSchema(t *testing.
 		t.Fatal("user_titles.source_ref_id should not stay nullable, otherwise uk_user_title_source cannot deduplicate rows")
 	}
 }
+
+func TestSeedMinimumAchievementsMigrationContainsClosedLoopDefinitions(t *testing.T) {
+	content, err := os.ReadFile("20260423113000_seed_minimum_achievements.sql")
+	if err != nil {
+		t.Fatalf("read seed minimum achievements migration: %v", err)
+	}
+
+	text := string(content)
+	requiredSnippets := []string{
+		"match_10",
+		"wins_100",
+		"streak_10",
+		"break_147_1",
+		"tournament_champion_1",
+		"matches_total",
+		"wins_total",
+		"max_win_streak",
+		"break_147_total",
+		"tournament_champion_total",
+		"ON DUPLICATE KEY UPDATE",
+	}
+
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(text, snippet) {
+			t.Fatalf("expected seed minimum achievements migration to contain %q", snippet)
+		}
+	}
+}
