@@ -99,6 +99,9 @@ func (l *JoinTournamentLogic) JoinTournament(req *types.TournamentIdReq) (resp *
 
 	// Send notification to tournament creator (outside transaction)
 	tournament, _ := l.svcCtx.TournamentModel.FindById(req.TournamentId)
+	if tournament != nil {
+		l.syncTournamentJoinAchievement(userIdInt, tournament)
+	}
 	if tournament != nil && tournament.CreatorId != userIdInt {
 		userName := "球友"
 		if user, userErr := l.svcCtx.UserModel.FindById(userIdInt); userErr == nil && user != nil && user.Nickname != "" {

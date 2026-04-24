@@ -86,6 +86,7 @@ func (l *FinishTournamentLogic) FinishTournament(req *types.TournamentIdReq) (re
 		fallbackRank = 1
 	}
 
+	finalSettlement := make(map[int64]tournamentSettlement, len(participants))
 	for _, participant := range participants {
 		result, ok := settlement[participant.UserId]
 		if !ok {
@@ -97,6 +98,7 @@ func (l *FinishTournamentLogic) FinishTournament(req *types.TournamentIdReq) (re
 		if result.Status != 3 {
 			result.Status = 2
 		}
+		finalSettlement[participant.UserId] = result
 
 		updated, updateErr := l.svcCtx.TournamentParticipantModel.UpdateFinalRankAndStatus(req.TournamentId, participant.UserId, result.FinalRank, result.Status)
 		if updateErr != nil {
@@ -117,6 +119,8 @@ func (l *FinishTournamentLogic) FinishTournament(req *types.TournamentIdReq) (re
 	if !updated {
 		return &types.CommonResp{Success: false, Message: "赛事结算失败"}, nil
 	}
+
+	l.syncTournamentFinishAchievements(tournament, finalSettlement, len(participants))
 
 	return &types.CommonResp{Success: true, Message: "赛事已结束"}, nil
 }
