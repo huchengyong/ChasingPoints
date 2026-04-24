@@ -496,11 +496,15 @@ func (m *RankingModel) ListRankChangesByUserBetween(userId int64, start, end tim
 
 // ListRankChangesByUserAndGameTypeBetween 获取用户某球种在时间范围内的段位变更记录
 func (m *RankingModel) ListRankChangesByUserAndGameTypeBetween(userId int64, gameType int, start, end time.Time) ([]RankChangeLog, error) {
-	db, err := m.resolveDB(nil)
+	return m.ListRankChangesByUserAndGameTypeBetweenWithTx(nil, userId, gameType, start, end)
+}
+
+func (m *RankingModel) ListRankChangesByUserAndGameTypeBetweenWithTx(tx *gorm.DB, userId int64, gameType int, start, end time.Time) ([]RankChangeLog, error) {
+	db, err := m.resolveDB(tx)
 	if err != nil {
 		return nil, err
 	}
-	supportsGameType, err := m.rankChangeLogSupportsGameType(nil)
+	supportsGameType, err := m.rankChangeLogSupportsGameType(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -595,11 +599,15 @@ func (m *RankingModel) FindLatestRankChangeBefore(userId int64, at time.Time) (*
 
 // FindLatestRankChangeBeforeByGameType 获取某个时间点之前最近的一条指定球种段位变更记录
 func (m *RankingModel) FindLatestRankChangeBeforeByGameType(userId int64, gameType int, at time.Time) (*RankChangeLog, error) {
-	db, err := m.resolveDB(nil)
+	return m.FindLatestRankChangeBeforeByGameTypeWithTx(nil, userId, gameType, at)
+}
+
+func (m *RankingModel) FindLatestRankChangeBeforeByGameTypeWithTx(tx *gorm.DB, userId int64, gameType int, at time.Time) (*RankChangeLog, error) {
+	db, err := m.resolveDB(tx)
 	if err != nil {
 		return nil, err
 	}
-	supportsGameType, err := m.rankChangeLogSupportsGameType(nil)
+	supportsGameType, err := m.rankChangeLogSupportsGameType(tx)
 	if err != nil {
 		return nil, err
 	}

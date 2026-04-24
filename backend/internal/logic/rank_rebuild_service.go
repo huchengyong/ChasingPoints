@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	achievementx "chasing_points/internal/logic/achievement"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 
@@ -110,6 +111,7 @@ func (s *RankRebuildService) Rebuild(ctx context.Context) (*RankRebuildSummary, 
 	userGamePairs := make(map[rankUserGameKey]struct{})
 	dailyPositiveGains := make(map[rankDailyGainKey]int)
 	sameOpponentDailyCounts := make(map[rankPairDailyKey]int)
+	var rebuiltSeasonRecords []model.SeasonRecord
 
 	err = s.svcCtx.DB.Transaction(func(tx *gorm.DB) error {
 		if err := s.svcCtx.RankingModel.DeleteAllRankChangeLogs(tx); err != nil {
@@ -230,14 +232,18 @@ func (s *RankRebuildService) Rebuild(ctx context.Context) (*RankRebuildSummary, 
 			updateReplaySettlementState(dailyPositiveGains, sameOpponentDailyCounts, &match, dayStart, player1Settlement.FinalChange, player2FinalChange)
 		}
 
-		records, recordsErr := s.buildSeasonRecords(userGamePairs, seasonStats, seasons)
+		records, recordsErr := s.buildSeasonRecords(tx, userGamePairs, seasonStats, seasons)
 		if recordsErr != nil {
 			return recordsErr
 		}
 		summary.SeasonRecords = len(records)
+		rebuiltSeasonRecords = records
 		return s.svcCtx.SeasonRecordModel.CreateBatchWithTx(tx, records)
 	})
 	if err != nil {
+		return nil, err
+	}
+	if err := achievementx.GrantSeasonTitles(s.svcCtx, seasons, rebuiltSeasonRecords); err != nil {
 		return nil, err
 	}
 
@@ -306,6 +312,7 @@ func (s *RankRebuildService) loadAchievementRewardMap(gameType int, rewardCache 
 }
 
 func (s *RankRebuildService) buildSeasonRecords(
+	tx *gorm.DB,
 	userGamePairs map[rankUserGameKey]struct{},
 	seasonStats map[int64]map[rankUserGameKey]*seasonUserGameStats,
 	seasons []model.Season,
@@ -321,11 +328,11 @@ func (s *RankRebuildService) buildSeasonRecords(
 				continue
 			}
 
-			seasonLogs, err := s.svcCtx.RankingModel.ListRankChangesByUserAndGameTypeBetween(pair.UserId, pair.GameType, season.StartDate, season.EndDate)
+			seasonLogs, err := s.svcCtx.RankingModel.ListRankChangesByUserAndGameTypeBetweenWithTx(tx, pair.UserId, pair.GameType, season.StartDate, season.EndDate)
 			if err != nil {
 				return nil, err
 			}
-			beforeLog, err := s.svcCtx.RankingModel.FindLatestRankChangeBeforeByGameType(pair.UserId, pair.GameType, season.StartDate)
+			beforeLog, err := s.svcCtx.RankingModel.FindLatestRankChangeBeforeByGameTypeWithTx(tx, pair.UserId, pair.GameType, season.StartDate)
 			if err != nil {
 				return nil, err
 			}
