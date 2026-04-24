@@ -6,6 +6,7 @@ import (
 	"time"
 
 	logicx "chasing_points/internal/logic"
+	achievementx "chasing_points/internal/logic/achievement"
 	"chasing_points/internal/model"
 	"chasing_points/internal/pkg/ws"
 	"chasing_points/internal/svc"
@@ -84,6 +85,7 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 	}
 	if existingAction != nil {
 		l.awardMemberGrowthForMatch(match.Id, match.UserId, match.OpponentId)
+		l.syncAchievementProgressForCompletedMatch(match)
 		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
 		if stateErr != nil {
 			l.Logger.Errorf("加载重放快照失败: matchId=%d, clientActionId=%s, err=%v", match.Id, req.ClientActionId, stateErr)
@@ -347,6 +349,7 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 	}
 
 	l.awardMemberGrowthForMatch(match.Id, match.UserId, match.OpponentId)
+	l.syncAchievementProgressForCompletedMatch(match)
 
 	l.Logger.Infof("用户 %d 结束对局 %d，比分: %d:%d，结果: %d",
 		userId, match.Id, match.MyScore, match.OpponentScore, result)
@@ -463,6 +466,118 @@ func (l *FinishMatchLogic) awardMemberGrowthForMatch(matchId, userId int64, oppo
 			l.Logger.Infof("对手会员成长结算完成: matchId=%d, userId=%d, granted=%v, reason=%s, growthPoints=%d",
 				matchId, *opponentId, growthResult.Granted, growthResult.Reason, growthResult.GrowthPoints)
 		}
+	}
+}
+
+func (l *FinishMatchLogic) syncAchievementProgressForCompletedMatch(match *model.Match) {
+	if err := l.syncAchievementProgressForCompletedMatchWithError(match); err != nil {
+		l.Logger.Errorf("同步对局成就进度失败: matchId=%d, err=%v", match.Id, err)
+	}
+}
+
+func (l *FinishMatchLogic) syncAchievementProgressForCompletedMatchWithError(match *model.Match) error {
+	if match == nil || l.svcCtx == nil || l.svcCtx.DB == nil || l.svcCtx.MatchModel == nil ||
+		l.svcCtx.RankingModel == nil || l.svcCtx.AchievementProgressEventModel == nil {
+		return nil
+	}
+	if match.Status != 2 || match.Result == nil || *match.Result == 3 {
+		return nil
+	}
+	if match.OpponentId == nil || *match.OpponentId <= 0 || *match.OpponentId == match.UserId {
+		return nil
+	}
+
+	roundCount, err := l.svcCtx.MatchModel.GetRoundCount(match.Id)
+	if err != nil {
+		return err
+	}
+	if roundCount == 0 {
+		return nil
+	}
+
+	player1ID := match.UserId
+	player2ID := *match.OpponentId
+	playerIDs := []int64{player1ID, player2ID}
+	userByActor := map[int]int64{1: player1ID, 2: player2ID}
+	progressService := achievementx.NewAchievementProgressService(l.svcCtx)
+
+	for _, playerID := range playerIDs {
+		if err := appendMatchAchievementProgressEvent(progressService, playerID, match, achievementx.MetricMatchesTotal, 1); err != nil {
+			return err
+		}
+	}
+
+	winnerID := player1ID
+	if *match.Result == 2 {
+		winnerID = player2ID
+	}
+	if err := appendMatchAchievementProgressEvent(progressService, winnerID, match, achievementx.MetricWinsTotal, 1); err != nil {
+		return err
+	}
+
+	for _, playerID := range playerIDs {
+		ranking, err := l.svcCtx.RankingModel.FindOrCreateByGameType(playerID, match.GameType)
+		if err != nil {
+			return err
+		}
+		if err := appendMatchAchievementProgressEvent(progressService, playerID, match, achievementx.MetricMaxWinStreak, ranking.MaxStreak); err != nil {
+			return err
+		}
+	}
+
+	records, err := l.svcCtx.MatchModel.GetAchievements(match.Id)
+	if err != nil {
+		return err
+	}
+	for _, record := range records {
+		metricKey := metricKeyFromMatchAchievement(record.AchievementType)
+		playerID, ok := userByActor[record.Actor]
+		if !ok || metricKey == "" || record.Count <= 0 {
+			continue
+		}
+		if err := appendMatchAchievementProgressEvent(progressService, playerID, match, metricKey, record.Count); err != nil {
+			return err
+		}
+	}
+
+	for _, playerID := range playerIDs {
+		if err := progressService.RefreshUserAchievements(playerID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func appendMatchAchievementProgressEvent(service *achievementx.AchievementProgressService, userId int64, match *model.Match, metricKey string, metricValue int) error {
+	_, err := service.AppendEvent(achievementx.AchievementProgressEventInput{
+		UserId:      userId,
+		SourceType:  achievementx.SourceTypeMatch,
+		SourceId:    match.Id,
+		GameType:    match.GameType,
+		MetricKey:   metricKey,
+		MetricValue: metricValue,
+	})
+	return err
+}
+
+func metricKeyFromMatchAchievement(achievementType string) string {
+	switch normalizeAchievementType(achievementType) {
+	case "break_and_run":
+		return achievementx.MetricBreakClearTotal
+	case "run_out":
+		return achievementx.MetricContinueClearTotal
+	case "golden_break":
+		return achievementx.MetricGoldenBreakTotal
+	case "nine_on_break":
+		return achievementx.MetricNineOnBreakTotal
+	case "break_50":
+		return achievementx.MetricBreak50Total
+	case "break_100":
+		return achievementx.MetricBreak100Total
+	case "break_147":
+		return achievementx.MetricBreak147Total
+	default:
+		return ""
 	}
 }
 

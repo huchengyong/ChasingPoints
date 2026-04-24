@@ -186,7 +186,7 @@ func (l *EndRoundLogic) EndRound(req *types.EndRoundReq) (resp *types.EndRoundRe
 			return err
 		}
 		if achievementType := normalizeStoredAchievementType(req.WinType); achievementType != "" {
-			if err := l.svcCtx.MatchModel.SaveAchievementWithTx(tx, match.Id, achievementType, 1); err != nil {
+			if err := l.svcCtx.MatchModel.SaveAchievementWithTx(tx, match.Id, achievementType, 1, req.Winner); err != nil {
 				return err
 			}
 		}
