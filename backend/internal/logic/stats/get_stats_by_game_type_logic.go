@@ -57,18 +57,13 @@ func (l *GetStatsByGameTypeLogic) GetStatsByGameType() (resp *types.GetStatsByGa
 
 	list := make([]types.GameTypeStats, 0, len(rows))
 	for _, row := range rows {
-		winRate := 0.0
-		if row.TotalMatches > 0 {
-			winRate = float64(row.Wins) / float64(row.TotalMatches)
-		}
-
 		list = append(list, types.GameTypeStats{
 			GameType:     row.GameType,
 			GameTypeName: GetGameTypeName(row.GameType),
 			TotalMatches: row.TotalMatches,
 			Wins:         row.Wins,
 			Losses:       row.Losses,
-			WinRate:      winRate,
+			WinRate:      calculateWinRatePercent(row.Wins, row.TotalMatches),
 			HighestScore: row.HighestScore,
 		})
 	}

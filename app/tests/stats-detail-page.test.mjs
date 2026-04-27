@@ -60,6 +60,13 @@ test('stats detail game switch keeps content mounted and shows tab-local loading
   assert.match(statsDetailSource, /class="tab-loading-icon"/)
 })
 
+test('stats detail formats percent values from backend percent numbers', () => {
+  assert.match(statsDetailSource, /const formatPercent = \(value\) => \{/)
+  assert.match(statsDetailSource, /{{ formatPercent\(currentGameStats\.win_rate\) }}%/)
+  assert.match(statsDetailSource, /:style="\{ width: formatPercent\(currentGameStats\?\.win_rate\) \+ '%' \}"/)
+  assert.match(statsDetailSource, /{{ formatPercent\(tier\.win_rate\) }}%/)
+})
+
 test('stats detail page exposes dark-mode styles for its main surfaces', () => {
   assert.match(statsDetailSource, /class="stats-page" :class="\{ 'dark-mode': isDarkMode \}"/)
   assert.match(statsDetailSource, /\.stats-page\s*\{[\s\S]*&\.dark-mode\s*\{[\s\S]*background:\s*#141109;/)

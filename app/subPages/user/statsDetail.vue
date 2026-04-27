@@ -30,7 +30,7 @@
 				</view>
 				<view v-if="currentGameStats" class="stats-grid">
 					<view class="stat-item">
-						<text class="stat-value highlight">{{ currentGameStats.win_rate || 0 }}%</text>
+						<text class="stat-value highlight">{{ formatPercent(currentGameStats.win_rate) }}%</text>
 						<text class="stat-label">胜率</text>
 					</view>
 					<view class="stat-item">
@@ -47,7 +47,7 @@
 					</view>
 				</view>
 				<view class="win-rate-bar">
-					<view class="bar-fill" :style="{ width: (currentGameStats?.win_rate || 0) + '%' }"></view>
+					<view class="bar-fill" :style="{ width: formatPercent(currentGameStats?.win_rate) + '%' }"></view>
 				</view>
 			</view>
 
@@ -153,11 +153,11 @@
 						<view class="tier-bar">
 							<view
 								class="tier-fill"
-								:style="{ width: (tier.win_rate || 0) + '%' }"
+								:style="{ width: formatPercent(tier.win_rate) + '%' }"
 								:class="{ good: tier.win_rate >= 50, bad: tier.win_rate < 50 }"
 							></view>
 						</view>
-						<text class="tier-rate" :class="{ good: tier.win_rate >= 50, bad: tier.win_rate < 50 }">{{ tier.win_rate || 0 }}%</text>
+						<text class="tier-rate" :class="{ good: tier.win_rate >= 50, bad: tier.win_rate < 50 }">{{ formatPercent(tier.win_rate) }}%</text>
 					</view>
 				</view>
 				<view v-if="opponentData.length === 0" class="empty-hint">
@@ -243,6 +243,12 @@ const formatDuration = (seconds) => {
 	const mins = Math.floor(seconds / 60)
 	const secs = seconds % 60
 	return mins + ':' + String(secs).padStart(2, '0')
+}
+
+const formatPercent = (value) => {
+	const percent = Number(value || 0)
+	if (!Number.isFinite(percent)) return 0
+	return Number.isInteger(percent) ? percent : Number(percent.toFixed(2))
 }
 
 const normalizeGameTypeStats = (payload) => {

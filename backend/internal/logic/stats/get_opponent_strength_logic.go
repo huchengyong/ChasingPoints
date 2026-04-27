@@ -58,16 +58,11 @@ func (l *GetOpponentStrengthLogic) GetOpponentStrength() (resp *types.GetOpponen
 
 	list := make([]types.OpponentStrengthItem, 0, len(rows))
 	for _, row := range rows {
-		winRate := 0.0
-		if row.Matches > 0 {
-			winRate = float64(row.Wins) / float64(row.Matches)
-		}
-
 		list = append(list, types.OpponentStrengthItem{
 			RankRange: row.RankRange,
 			Matches:   row.Matches,
 			Wins:      row.Wins,
-			WinRate:   winRate,
+			WinRate:   calculateWinRatePercent(row.Wins, row.Matches),
 		})
 	}
 
