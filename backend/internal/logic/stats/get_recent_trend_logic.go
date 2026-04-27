@@ -2,6 +2,7 @@ package stats
 
 import (
 	"context"
+	"time"
 
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -39,13 +40,14 @@ func (l *GetRecentTrendLogic) GetRecentTrend(req *types.GetRecentTrendReq) (resp
 
 	type trendMatchRow struct {
 		Id        int64
-		MatchTime string
+		UserId    int64
+		MatchTime time.Time
 		Result    *int
 	}
 
 	query := l.svcCtx.DB.Table("matches").
-		Select("id, DATE_FORMAT(match_time, '%Y-%m-%d') AS match_time, result").
-		Where("user_id = ? AND status = 2", userIdInt)
+		Select("id, user_id, match_time, result").
+		Where("(user_id = ? OR opponent_id = ?) AND status = 2", userIdInt, userIdInt)
 
 	if req != nil && req.GameType > 0 {
 		query = query.Where("game_type = ?", req.GameType)
@@ -63,6 +65,13 @@ func (l *GetRecentTrendLogic) GetRecentTrend(req *types.GetRecentTrendReq) (resp
 		result := 0
 		if row.Result != nil {
 			result = *row.Result
+			if row.UserId != userIdInt {
+				if result == 1 {
+					result = 2
+				} else if result == 2 {
+					result = 1
+				}
+			}
 		}
 		if result == 1 {
 			wins++
@@ -71,7 +80,7 @@ func (l *GetRecentTrendLogic) GetRecentTrend(req *types.GetRecentTrendReq) (resp
 		winRate := float64(wins) / float64(i+1)
 		list = append(list, types.TrendPoint{
 			MatchId: row.Id,
-			Date:    row.MatchTime,
+			Date:    row.MatchTime.Format("2006-01-02"),
 			WinRate: winRate,
 			Result:  result,
 		})

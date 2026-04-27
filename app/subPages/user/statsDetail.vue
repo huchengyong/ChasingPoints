@@ -290,7 +290,7 @@ const loadAllStats = async () => {
 			getRankScoreTrend({ game_type: gameType }),
 			getSingleHighScore({ game_type: gameType }),
 			getMatchDurationStats({ game_type: gameType }),
-			getOpponentStrengthAnalysis()
+			getOpponentStrengthAnalysis({ game_type: gameType })
 		])
 
 		if (!shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value })) {

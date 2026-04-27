@@ -2587,6 +2587,10 @@ type GetOpponentStrengthResp {
 	List    []OpponentStrengthItem `json:"list"`
 }
 
+type GetOpponentStrengthReq {
+	GameType int `form:"game_type,optional"`
+}
+
 @server (
 	prefix: /api/stats
 	group:  stats
@@ -2615,7 +2619,7 @@ service chasing_points-api {
 
 	@doc "强弱对手分析"
 	@handler GetOpponentStrength
-	get /opponent-strength returns (GetOpponentStrengthResp)
+	get /opponent-strength (GetOpponentStrengthReq) returns (GetOpponentStrengthResp)
 }
 
 // ==================== Admin 管理后台 ====================

@@ -45,10 +45,11 @@ func (l *GetStatsByGameTypeLogic) GetStatsByGameType() (resp *types.GetStatsByGa
 		Select(`
 			game_type,
 			COUNT(*) AS total_matches,
-			SUM(CASE WHEN result = 1 THEN 1 ELSE 0 END) AS wins,
-			SUM(CASE WHEN result = 2 THEN 1 ELSE 0 END) AS losses,
-			COALESCE(MAX(my_score), 0) AS highest_score`).
-		Where("user_id = ? AND status = 2", userIdInt).
+			SUM(CASE WHEN (user_id = ? AND result = 1) OR (opponent_id = ? AND result = 2) THEN 1 ELSE 0 END) AS wins,
+			SUM(CASE WHEN (user_id = ? AND result = 2) OR (opponent_id = ? AND result = 1) THEN 1 ELSE 0 END) AS losses,
+			COALESCE(MAX(CASE WHEN user_id = ? THEN my_score WHEN opponent_id = ? THEN opponent_score ELSE 0 END), 0) AS highest_score`,
+			userIdInt, userIdInt, userIdInt, userIdInt, userIdInt, userIdInt).
+		Where("(user_id = ? OR opponent_id = ?) AND status = 2", userIdInt, userIdInt).
 		Group("game_type").
 		Scan(&rows).Error
 	if err != nil {

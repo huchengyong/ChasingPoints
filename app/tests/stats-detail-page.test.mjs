@@ -67,6 +67,10 @@ test('stats detail formats percent values from backend percent numbers', () => {
   assert.match(statsDetailSource, /{{ formatPercent\(tier\.win_rate\) }}%/)
 })
 
+test('stats detail requests opponent strength for the selected game type', () => {
+  assert.match(statsDetailSource, /getOpponentStrengthAnalysis\(\{ game_type: gameType \}\)/)
+})
+
 test('stats detail page exposes dark-mode styles for its main surfaces', () => {
   assert.match(statsDetailSource, /class="stats-page" :class="\{ 'dark-mode': isDarkMode \}"/)
   assert.match(statsDetailSource, /\.stats-page\s*\{[\s\S]*&\.dark-mode\s*\{[\s\S]*background:\s*#141109;/)
