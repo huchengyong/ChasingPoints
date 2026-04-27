@@ -1,5 +1,4 @@
-export const ACHIEVEMENT_CATEGORY_TABS = [
-  { key: 'all', label: '全部' },
+export const ACHIEVEMENT_CATEGORY_GROUPS = [
   { key: 'wins', label: '胜场' },
   { key: 'streak', label: '连胜' },
   { key: 'special', label: '特殊' },
@@ -43,18 +42,39 @@ const titleSourceClassMap = {
   赛事: 'tournament'
 }
 
-export const filterAchievementsByCategory = (list, category) => {
-  if (!Array.isArray(list)) return []
-  if (!category || category === 'all') return list
-  return list.filter(item => item.category === category)
-}
-
 export const getAchievementCategoryLabel = (category) => {
   return categoryLabelMap[category] || category || '其他'
 }
 
 export const getAchievementCategoryEmoji = (category) => {
   return categoryEmojiMap[category] || '🎯'
+}
+
+export const groupAchievementsByCategory = (list) => {
+  if (!Array.isArray(list)) return []
+
+  const bucket = new Map()
+  list.forEach((item) => {
+    const key = item && item.category ? item.category : 'other'
+    if (!bucket.has(key)) bucket.set(key, [])
+    bucket.get(key).push(item)
+  })
+
+  const knownKeys = new Set(ACHIEVEMENT_CATEGORY_GROUPS.map(group => group.key))
+  const groups = ACHIEVEMENT_CATEGORY_GROUPS
+    .filter(group => bucket.has(group.key))
+    .map(group => ({
+      ...group,
+      list: bucket.get(group.key)
+    }))
+
+  bucket.forEach((items, key) => {
+    if (knownKeys.has(key)) return
+    const label = getAchievementCategoryLabel(key)
+    groups.push({ key, label, list: items })
+  })
+
+  return groups
 }
 
 export const getTitleSourceLabel = (source) => {

@@ -3,10 +3,10 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 import {
-  ACHIEVEMENT_CATEGORY_TABS,
-  filterAchievementsByCategory,
+  ACHIEVEMENT_CATEGORY_GROUPS,
   getAchievementCategoryEmoji,
   getAchievementCategoryLabel,
+  groupAchievementsByCategory,
   getTitleSourceClass,
   getTitleSourceLabel
 } from '../utils/achievement-page.js'
@@ -28,10 +28,10 @@ const matchResultSource = readFileSync(
   'utf8'
 )
 
-test('achievement category tabs use backend codes and Chinese display labels', () => {
+test('achievement category groups use backend codes and Chinese display labels', () => {
   assert.deepEqual(
-    ACHIEVEMENT_CATEGORY_TABS.map(tab => tab.key),
-    ['all', 'wins', 'streak', 'special', 'match', 'tournament']
+    ACHIEVEMENT_CATEGORY_GROUPS.map(group => group.key),
+    ['wins', 'streak', 'special', 'match', 'tournament']
   )
   assert.equal(getAchievementCategoryLabel('wins'), '胜场')
   assert.equal(getAchievementCategoryLabel('streak'), '连胜')
@@ -41,15 +41,24 @@ test('achievement category tabs use backend codes and Chinese display labels', (
   assert.equal(getAchievementCategoryEmoji('wins'), '🏅')
 })
 
-test('achievement list filters by backend category code', () => {
+test('achievement list groups by backend category code and hides empty groups', () => {
   const list = [
     { id: 1, category: 'wins' },
-    { id: 2, category: '胜场' },
-    { id: 3, category: 'tournament' }
+    { id: 2, category: 'streak' },
+    { id: 3, category: 'wins' },
+    { id: 4, category: 'tournament' }
   ]
+  const groups = groupAchievementsByCategory(list)
 
-  assert.deepEqual(filterAchievementsByCategory(list, 'wins'), [{ id: 1, category: 'wins' }])
-  assert.deepEqual(filterAchievementsByCategory(list, 'all'), list)
+  assert.deepEqual(
+    groups.map(group => ({ key: group.key, count: group.list.length })),
+    [
+      { key: 'wins', count: 2 },
+      { key: 'streak', count: 1 },
+      { key: 'tournament', count: 1 }
+    ]
+  )
+  assert.deepEqual(groups[0].list.map(item => item.id), [1, 3])
 })
 
 test('title sources display Chinese labels while keeping stable style classes', () => {
@@ -60,9 +69,16 @@ test('title sources display Chinese labels while keeping stable style classes', 
   assert.equal(getTitleSourceClass('赛季'), 'season')
 })
 
+test('achievement index uses grouped full-row cards instead of category tabs', () => {
+  assert.match(achievementIndexSource, /achievementGroups/)
+  assert.match(achievementIndexSource, /achievement-section/)
+  assert.match(achievementIndexSource, /achievement-row/)
+  assert.doesNotMatch(achievementIndexSource, /category-tabs/)
+  assert.doesNotMatch(achievementIndexSource, /switchCategory/)
+})
+
 test('achievement pages use shared mapping and refresh equipped title on show', () => {
-  assert.match(achievementIndexSource, /ACHIEVEMENT_CATEGORY_TABS/)
-  assert.match(achievementIndexSource, /filterAchievementsByCategory/)
+  assert.match(achievementIndexSource, /groupAchievementsByCategory/)
   assert.match(achievementIndexSource, /onShow/)
   assert.match(achievementDetailSource, /getAchievementCategoryLabel/)
 })
