@@ -23,15 +23,6 @@
 
 			<!-- 对局列表 -->
 			<view v-else class="match-list">
-				<view v-if="userStore.isLoggedIn" class="quick-actions">
-					<button class="quick-action quick-action--primary" @click="handleStartMatch">
-						<text>发起PK</text>
-					</button>
-					<button class="quick-link" @click="handleScanAsReferee">
-						<text>扫码担任裁判</text>
-					</button>
-				</view>
-
 				<!-- 进行中的对局 -->
 				<view v-if="currentMatch" class="match-card my-match" @click="handleContinueMatch(currentMatch)">
 					<!-- MY MATCH 标签 -->
@@ -60,7 +51,7 @@
 						<!-- 对手玩家 -->
 						<view class="player">
 							<view class="avatar" :class="{ winner: currentMatch.opponent_score > currentMatch.my_score }">
-								<image src="/static/images/default-avatar.png" mode="aspectFill" />
+								<image :src="currentMatch.opponent_avatar || '/static/images/default-avatar.png'" mode="aspectFill" />
 							</view>
 							<text class="name">{{ currentMatch.opponent_name }}</text>
 						</view>
@@ -174,6 +165,10 @@ const userId = computed(() => userStore.userInfo?.id || 0)
  */
 const isMyMatch = (match) => {
 	if (!userStore.isLoggedIn || !userId.value) return false
+	// CurrentMatchInfo 结构：必然是当前用户的对局
+	if (match.player1_id === undefined && match.player2_id === undefined) {
+		return match.opponent_id !== undefined
+	}
 	return match.player1_id === userId.value || match.player2_id === userId.value
 }
 
@@ -472,6 +467,11 @@ const handleContinueMatch = (match) => {
  * 获取对手名称（根据当前用户判断）
  */
 const getOpponentName = (match) => {
+	// CurrentMatchInfo 结构：直接取 opponent_name
+	if (match.opponent_name !== undefined) {
+		return match.opponent_name || '对手'
+	}
+	// 平台对局结构：根据当前用户位置取对方名称
 	if (isPlayer1Me(match)) {
 		return match.player2_name || '对手'
 	}
@@ -482,6 +482,11 @@ const getOpponentName = (match) => {
  * 获取对手头像（根据当前用户判断）
  */
 const getOpponentAvatar = (match) => {
+	// CurrentMatchInfo 结构：直接取 opponent_avatar
+	if (match.opponent_avatar !== undefined) {
+		return match.opponent_avatar || ''
+	}
+	// 平台对局结构：根据当前用户位置取对方头像
 	if (isPlayer1Me(match)) {
 		return match.player2_avatar || ''
 	}
