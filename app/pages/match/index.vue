@@ -287,12 +287,35 @@ const getGameTypeClass = (gameType) => {
  * @param {number} durationSeconds 对局持续秒数
  */
 const formatDuration = (durationSeconds) => {
-	if (!durationSeconds || durationSeconds < 0) return '00:00'
+	if (!durationSeconds || durationSeconds < 0) return '0分'
 
-	const minutes = Math.floor(durationSeconds / 60)
-	const seconds = durationSeconds % 60
+	const totalMinutes = Math.floor(durationSeconds / 60)
 
-	return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+	if (totalMinutes < 1) {
+		return `${durationSeconds}秒`
+	}
+
+	if (totalMinutes < 60) {
+		return `${totalMinutes}分`
+	}
+
+	const hours = Math.floor(totalMinutes / 60)
+	const remainMinutes = totalMinutes % 60
+
+	if (hours < 24) {
+		if (remainMinutes > 0) {
+			return `${hours}小时${remainMinutes}分`
+		}
+		return `${hours}小时`
+	}
+
+	const days = Math.floor(hours / 24)
+	const remainHours = hours % 24
+
+	if (remainHours > 0) {
+		return `${days}天${remainHours}小时`
+	}
+	return `${days}天`
 }
 
 /**

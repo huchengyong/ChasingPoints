@@ -139,7 +139,53 @@
 					</view>
 				</view>
 
-					<view class="status-card">
+					<!-- ongoing 模式：可视化对局卡片 -->
+					<view v-if="homepageMode === 'ongoing' && currentMatch" class="match-card my-match" @click="handleContinueCurrentMatch">
+						<view class="my-match-badge">继续当前对局</view>
+
+						<!-- 裁判模式 -->
+						<view v-if="currentMatch.viewer_role === 'referee'" class="referee-match-info">
+							<text class="referee-match-info__title">你正在担任本场裁判</text>
+							<text class="referee-match-info__score">{{ currentMatch.my_score }} : {{ currentMatch.opponent_score }}</text>
+							<text class="referee-match-info__hint">点击进入裁判记分页</text>
+						</view>
+
+						<!-- 玩家模式 -->
+						<view v-else class="match-info">
+							<view class="player">
+								<view class="avatar me-avatar" :class="{ winner: currentMatch.my_score > currentMatch.opponent_score }">
+									<image :src="userInfo.avatar || '/static/images/default-avatar.png'" mode="aspectFill" />
+									<view class="me-badge">我</view>
+								</view>
+								<text class="name">{{ userInfo.nickname }}</text>
+							</view>
+
+							<view class="score-area">
+								<text class="score">{{ currentMatch.my_score }} : {{ currentMatch.opponent_score }}</text>
+								<text class="vs-text">VS</text>
+							</view>
+
+							<view class="player">
+								<view class="avatar" :class="{ winner: currentMatch.opponent_score > currentMatch.my_score }">
+									<image :src="currentMatch.opponent_avatar || '/static/images/default-avatar.png'" mode="aspectFill" />
+								</view>
+								<text class="name">{{ currentMatch.opponent_name }}</text>
+							</view>
+						</view>
+
+						<view class="match-footer">
+							<view :class="['game-type-tag', getGameTypeClass(currentMatch.game_type)]">
+								{{ currentMatch.game_type_name }}
+							</view>
+							<view class="match-status">
+								<uni-icons type="circle" size="14" color="#22c55e"></uni-icons>
+								<text>进行中 {{ formatDuration(currentMatch.duration_seconds) }}</text>
+							</view>
+						</view>
+					</view>
+
+					<!-- 其他模式：保留原有文字 status-card -->
+					<view v-else class="status-card">
 						<text class="status-eyebrow">{{ statusCard.eyebrow }}</text>
 						<text class="status-title">{{ statusCard.title }}</text>
 						<text class="status-description">{{ statusCard.description }}</text>
@@ -395,7 +441,8 @@ import {
 	resolveStatusActionVisibility,
 	resolveSectionTitles,
 	resolveStatusCardContent,
-	resolveUserHomepageMode
+	resolveUserHomepageMode,
+	formatDuration
 } from '@/utils/user-homepage.js'
 import { resolvePkEntryActions, resolveQrCodeModalCopy } from '@/utils/pk-entry-actions.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
@@ -439,6 +486,19 @@ const guestHeroCopy = resolveGuestHeroCopy()
 const sectionTitles = resolveSectionTitles()
 const pkEntryActions = resolvePkEntryActions()
 const qrCodeModalCopy = resolveQrCodeModalCopy()
+
+const getGameTypeClass = (gameType) => {
+	switch (gameType) {
+		case 1:
+			return 'snooker'
+		case 2:
+		case 4:
+			return 'american-9ball'
+		case 3:
+		default:
+			return 'chinese-8ball'
+	}
+}
 
 const isHideMatch = ref(false)
 const hideMatchLoading = ref(false)
@@ -531,7 +591,7 @@ const statusActionVisibility = computed(() => resolveStatusActionVisibility({
 	mode: homepageMode.value,
 	statusCard: statusCard.value
 }))
-const showPkEntryActions = computed(() => isLoggedIn.value)
+const showPkEntryActions = computed(() => isLoggedIn.value && homepageMode.value !== 'ongoing')
 const showPrimaryStatusAction = computed(() => statusActionVisibility.value.showPrimary)
 const showSecondaryStatusAction = computed(() => statusActionVisibility.value.showSecondary)
 

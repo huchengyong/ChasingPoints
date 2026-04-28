@@ -238,11 +238,36 @@ const currentRankScore = computed(() => rankTrendList.value[0]?.score || 0)
 const peakRankScore = computed(() => rankTrendList.value.length ? Math.max(...rankTrendList.value.map(item => item.score || 0)) : 0)
 const lowestRankScore = computed(() => rankTrendList.value.length ? Math.min(...rankTrendList.value.map(item => item.score || 0)) : 0)
 
-const formatDuration = (seconds) => {
-	if (!seconds) return '0:00'
-	const mins = Math.floor(seconds / 60)
-	const secs = seconds % 60
-	return mins + ':' + String(secs).padStart(2, '0')
+const formatDuration = (durationSeconds) => {
+	if (!durationSeconds || durationSeconds < 0) return '0分'
+
+	const totalMinutes = Math.floor(durationSeconds / 60)
+
+	if (totalMinutes < 1) {
+		return `${durationSeconds}秒`
+	}
+
+	if (totalMinutes < 60) {
+		return `${totalMinutes}分`
+	}
+
+	const hours = Math.floor(totalMinutes / 60)
+	const remainMinutes = totalMinutes % 60
+
+	if (hours < 24) {
+		if (remainMinutes > 0) {
+			return `${hours}小时${remainMinutes}分`
+		}
+		return `${hours}小时`
+	}
+
+	const days = Math.floor(hours / 24)
+	const remainHours = hours % 24
+
+	if (remainHours > 0) {
+		return `${days}天${remainHours}小时`
+	}
+	return `${days}天`
 }
 
 const formatPercent = (value) => {

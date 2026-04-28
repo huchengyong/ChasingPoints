@@ -601,6 +601,190 @@ $border-dark: #3a2e16;
 	color: $text-secondary-light;
 }
 
+// ======================
+// Match Card (ongoing match visual card)
+// 与对局大厅一致的视觉化对局卡片
+// ======================
+
+.match-card {
+	display: flex;
+	flex-direction: column;
+	gap: 24rpx;
+	padding: 32rpx;
+	margin-top: 24rpx;
+	background-color: $card-bg-light;
+	border-radius: 24rpx;
+	position: relative;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+	box-sizing: border-box;
+
+	&:active {
+		background-color: $card-bg-soft-light;
+	}
+
+	&.my-match {
+		border: 3rpx solid $primary-color;
+		box-shadow: 0 4rpx 24rpx rgba(224, 174, 18, 0.22);
+	}
+}
+
+.my-match-badge {
+	position: absolute;
+	top: 0;
+	left: 50%;
+	transform: translateX(-50%);
+	padding: 8rpx 20rpx;
+	background-color: $primary-color;
+	color: #ffffff;
+	font-size: 20rpx;
+	font-weight: 700;
+	border-radius: 0 0 12rpx 12rpx;
+	letter-spacing: 0.5px;
+}
+
+.match-info {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.player {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16rpx;
+
+	.avatar {
+		width: 112rpx;
+		height: 112rpx;
+		border-radius: 50%;
+		border: 4rpx solid transparent;
+		overflow: hidden;
+
+		image {
+			width: 100%;
+			height: 100%;
+		}
+
+		&.winner {
+			border-color: $primary-color;
+		}
+	}
+
+	.name {
+		font-size: 28rpx;
+		font-weight: 500;
+		color: $text-primary-light;
+		max-width: 150rpx;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+}
+
+.me-avatar {
+	position: relative;
+
+	.me-badge {
+		position: absolute;
+		bottom: -4rpx;
+		left: 50%;
+		transform: translateX(-50%);
+		padding: 4rpx 16rpx;
+		background-color: $primary-color;
+		color: #ffffff;
+		font-size: 18rpx;
+		font-weight: 700;
+		border-radius: 999rpx;
+	}
+}
+
+.score-area {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+
+	.score {
+		font-size: 64rpx;
+		font-weight: 900;
+		color: $primary-color;
+		letter-spacing: -0.02em;
+	}
+
+	.vs-text {
+		font-size: 24rpx;
+		font-weight: 700;
+		color: $text-muted-light;
+		margin-top: -8rpx;
+	}
+}
+
+.referee-match-info {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12rpx;
+	text-align: center;
+}
+
+.referee-match-info__title {
+	font-size: 30rpx;
+	font-weight: 700;
+	color: $text-primary-light;
+}
+
+.referee-match-info__score {
+	font-size: 64rpx;
+	font-weight: 900;
+	color: $primary-color;
+}
+
+.referee-match-info__hint {
+	font-size: 24rpx;
+	color: $text-secondary-light;
+}
+
+.match-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding-top: 24rpx;
+	border-top: 2rpx solid $border-light;
+	margin-top: 8rpx;
+}
+
+.game-type-tag {
+	display: inline-flex;
+	align-items: center;
+	padding: 8rpx 20rpx;
+	border-radius: 999rpx;
+	font-size: 24rpx;
+	font-weight: 600;
+
+	&.chinese-8ball {
+		background-color: rgba(224, 174, 18, 0.16);
+		color: $primary-color;
+	}
+
+	&.american-9ball {
+		background-color: rgba(34, 197, 94, 0.2);
+		color: #4ade80;
+	}
+
+	&.snooker {
+		background-color: rgba(239, 68, 68, 0.2);
+		color: #f87171;
+	}
+}
+
+.match-status {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+	font-size: 24rpx;
+	color: $text-secondary-light;
+}
+
 .metrics-grid {
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -1263,6 +1447,45 @@ $border-dark: #3a2e16;
 	.status-card {
 		background: $card-bg-dark;
 		border-color: rgba(148, 163, 184, 0.16);
+	}
+
+	// Match card dark mode overrides
+	.match-card {
+		background-color: $card-bg-dark;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.18);
+
+		&:active {
+			background-color: $card-bg-soft-dark;
+		}
+
+		&.my-match {
+			border-color: $primary-color;
+			box-shadow: 0 4rpx 24rpx rgba(224, 174, 18, 0.18);
+		}
+	}
+
+	.player .name {
+		color: $text-primary-dark;
+	}
+
+	.score-area .vs-text {
+		color: $text-muted-dark;
+	}
+
+	.match-footer {
+		border-top-color: $border-dark;
+	}
+
+	.match-status {
+		color: $text-secondary-dark;
+	}
+
+	.referee-match-info__title {
+		color: $text-primary-dark;
+	}
+
+	.referee-match-info__hint {
+		color: $text-secondary-dark;
 	}
 
 	.section-block-light,
