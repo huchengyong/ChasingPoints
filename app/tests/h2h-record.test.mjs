@@ -120,6 +120,25 @@ test('buildH2HViewModel switches to friend-vs-opponent copy in target mode', () 
   )
 })
 
+test('buildH2HViewModel exposes a current-user opponent marker in friend detail mode', () => {
+  assert.deepEqual(
+    buildH2HViewModel({
+      targetUserId: 52,
+      targetName: '球友 B',
+      opponentId: 18,
+      opponentName: '我自己',
+      currentUserId: 18
+    }),
+    {
+      isTargetMode: true,
+      navigationTitle: '战绩详情 - 球友 B',
+      subjectName: '球友 B',
+      winRateLabel: '球友 B 对我自己的胜率是',
+      isOpponentMe: true
+    }
+  )
+})
+
 test('buildH2HLoadFailureAction requests a toast and navigateBack for target access failures', () => {
   assert.deepEqual(
     buildH2HLoadFailureAction({

@@ -27,7 +27,10 @@
 					<view v-else class="avatar-placeholder">
 						<text class="avatar-text">{{ getAvatarText(opponentData.name) }}</text>
 					</view>
-					<text class="name">{{ opponentData.name }}</text>
+					<view class="name-row">
+						<text class="name">{{ opponentData.name }}</text>
+						<text v-if="routeViewModel.isOpponentMe" class="me-badge">我</text>
+					</view>
 				</view>
 			</view>
 
@@ -259,6 +262,8 @@ const total = ref(0)
 const routeViewModel = computed(() => buildH2HViewModel({
 	targetUserId: targetUserId.value,
 	targetName: targetName.value,
+	opponentId: opponentId.value || opponentData.id,
+	currentUserId: userStore.userId,
 	opponentName: opponentData.name || opponentName.value
 }))
 

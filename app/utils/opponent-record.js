@@ -123,11 +123,14 @@ export const buildOpponentStatsSummary = ({
 
 export const buildOpponentCardViewModels = ({
   opponents = [],
-  subjectName = '你'
+  subjectName = '你',
+  currentUserId = 0,
+  showWinRateLabel = false
 } = {}) => opponents.map((opponent = {}) => {
   const wins = Number(opponent.wins || 0)
   const losses = Number(opponent.losses || 0)
   const totalMatches = Number(opponent.total_matches || 0) || (wins + losses)
+  const isMeOpponent = Number(currentUserId) > 0 && Number(opponent.id) === Number(currentUserId)
   const advantageLevel = resolveAdvantageLevel({
     totalMatches,
     myWins: wins,
@@ -137,7 +140,8 @@ export const buildOpponentCardViewModels = ({
   return {
     ...opponent,
     totalMatches,
-    winRateText: `${Math.round(Number(opponent.win_rate || 0))}%`,
+    isMeOpponent,
+    winRateText: `${Math.round(Number(opponent.win_rate || 0))}%${showWinRateLabel ? ' 胜率' : ''}`,
     recordText: `总交锋 ${wins} 胜 ${losses} 负`,
     sampleText: totalMatches > 0 ? `${totalMatches} 场交锋` : '等待首场交锋',
     lastMatchText: opponent.last_match_at ? `上次对局 ${formatRelativeTime(opponent.last_match_at)}` : '还没交过手',

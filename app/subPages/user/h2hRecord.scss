@@ -88,6 +88,35 @@ $border-color-dark: #334155;
             color: $text-primary-light;
             transition: color 0.3s ease;
         }
+
+        .name-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8rpx;
+            max-width: 180rpx;
+
+            .name {
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+        }
+
+        .me-badge {
+            flex-shrink: 0;
+            min-width: 36rpx;
+            height: 36rpx;
+            padding: 0 10rpx;
+            border-radius: 999rpx;
+            background-color: #E0AE12;
+            color: #ffffff;
+            font-size: 20rpx;
+            font-weight: 700;
+            line-height: 36rpx;
+            text-align: center;
+        }
     }
 
     .vs-section {

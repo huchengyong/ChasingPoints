@@ -128,6 +128,25 @@ test('buildOpponentCardViewModels converts raw records into replay-friendly card
   assert.equal(card.winRateText, '58%')
 })
 
+test('buildOpponentCardViewModels marks the current user in friend opponent lists and labels win rate', () => {
+  const [card] = buildOpponentCardViewModels({
+    subjectName: '球友 B',
+    currentUserId: 18,
+    showWinRateLabel: true,
+    opponents: [{
+      id: 18,
+      name: '我自己',
+      wins: 3,
+      losses: 2,
+      win_rate: 60,
+      last_match_at: '2026-03-27 18:30:00'
+    }]
+  })
+
+  assert.equal(card.isMeOpponent, true)
+  assert.equal(card.winRateText, '60% 胜率')
+})
+
 test('buildOpponentCardViewModels uses backend total_matches as the sample source of truth', () => {
   const [card] = buildOpponentCardViewModels({
     subjectName: '你',

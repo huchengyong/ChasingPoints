@@ -104,6 +104,9 @@
 							<view class="battle-copy">
 								<view class="battle-name-row">
 									<text class="battle-name">{{ item.name || '对手' }}</text>
+									<view v-if="item.isMeOpponent" class="me-badge">
+										<text>我</text>
+									</view>
 									<view class="battle-badge" :class="item.toneClass">
 										<text>{{ item.relationshipBadge }}</text>
 									</view>
@@ -132,6 +135,7 @@
 import { computed, reactive, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { useUserStore } from '@/store/user.js'
 import { getOpponentList } from '@/api/match.js'
 import { buildFriendPkReportUrl } from '@/utils/friend-entry.js'
 import {
@@ -145,6 +149,7 @@ import {
 } from '@/utils/friend-homepage.js'
 
 const { isDarkMode } = usePageTheme()
+const userStore = useUserStore()
 
 const loading = ref(true)
 const loadFailed = ref(false)
@@ -184,7 +189,9 @@ const friendPayload = computed(() => ({
 
 const battleCardViewModels = computed(() => buildOpponentCardViewModels({
 	opponents: battleOpponents.value,
-	subjectName: friendProfile.name || 'TA'
+	subjectName: friendProfile.name || 'TA',
+	currentUserId: userStore.userId,
+	showWinRateLabel: true
 }))
 
 const getBattleAvatarText = (name = '') => {

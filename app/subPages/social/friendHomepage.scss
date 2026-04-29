@@ -434,6 +434,24 @@
 	color: #0f172a;
 }
 
+.me-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 36rpx;
+	height: 36rpx;
+	padding: 0 10rpx;
+	border-radius: 999rpx;
+	background: #E0AE12;
+
+	text {
+		font-size: 20rpx;
+		font-weight: 700;
+		color: #ffffff;
+		line-height: 36rpx;
+	}
+}
+
 .battle-badge {
 	padding: 6rpx 14rpx;
 	border-radius: 999rpx;

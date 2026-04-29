@@ -51,9 +51,12 @@ export const normalizeH2HRecordOptions = (options = {}) => ({
 export const buildH2HViewModel = ({
   targetUserId = 0,
   targetName = '',
+  opponentId = 0,
+  currentUserId = 0,
   opponentName = ''
 } = {}) => {
   const isTargetMode = Number(targetUserId) > 0
+  const isOpponentMe = isTargetMode && Number(currentUserId) > 0 && Number(opponentId) === Number(currentUserId)
   const resolvedOpponentName = opponentName || '对手'
 
   if (!isTargetMode) {
@@ -70,7 +73,8 @@ export const buildH2HViewModel = ({
     isTargetMode: true,
     navigationTitle: `战绩详情 - ${resolvedTargetName}`,
     subjectName: resolvedTargetName,
-    winRateLabel: `${resolvedTargetName} 对${resolvedOpponentName}的胜率是`
+    winRateLabel: `${resolvedTargetName} 对${resolvedOpponentName}的胜率是`,
+    ...(isOpponentMe ? { isOpponentMe: true } : {})
   }
 }
 
