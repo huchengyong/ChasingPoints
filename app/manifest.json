@@ -61,7 +61,7 @@
                     "univerify" : {},
                     "apple" : {},
                     "weixin" : {
-                        "appid" : "",
+                        "appid" : "wx741bd0137318c753",
                         "UniversalLinks" : "https://www.zhuifen.cn/uni-universallinks/__UNI__77D0D4A/"
                     }
                 },
@@ -82,13 +82,13 @@
                     },
                     "weixin" : {
                         "__platform__" : [ "ios", "android" ],
-                        "appid" : "",
+                        "appid" : "wx741bd0137318c753",
                         "UniversalLinks" : "https://www.zhuifen.cn/uni-universallinks/__UNI__77D0D4A/"
                     }
                 },
                 "share" : {
                     "weixin" : {
-                        "appid" : "",
+                        "appid" : "wx741bd0137318c753",
                         "UniversalLinks" : "https://www.zhuifen.cn/uni-universallinks/__UNI__77D0D4A/"
                     }
                 }
@@ -207,7 +207,7 @@
             },
             "splashScreens" : {
                 "startWindowBackground" : "#FFD700",
-                "startWindowIcon" : "/Users/wisesearch/Pictures/chasing_points_icons/boot.png"
+                "startWindowIcon" : "/Users/wisesearch/Pictures/chasing_points_icons/ChatGPT Image 2026年4月29日 16_09_32.png"
             },
             "targetSdkVersion" : "6.0.0(20)",
             "compatibleSdkVersion" : "5.0.0(12)"

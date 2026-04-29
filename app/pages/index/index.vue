@@ -134,6 +134,50 @@
           </view>
         </view>
 
+        <view class="focus-section nearby-venue-section">
+          <view class="section-header">
+            <text class="section-title">附近球房</text>
+            <view class="section-more" @tap="goTo('/subPages/venue/index')">
+              <text>查看球房</text>
+              <uni-icons type="right" size="14" :color="isDarkMode ? '#94a3b8' : '#94a3b8'"></uni-icons>
+            </view>
+          </view>
+
+          <view v-if="nearbyVenueLoading && nearbyVenues.length === 0" class="section-empty">
+            <text class="empty-title">正在寻找附近球房</text>
+            <text class="empty-desc">定位成功后，会优先展示 5km 内最适合马上开局的球房。</text>
+          </view>
+
+          <view v-else-if="nearbyVenues.length > 0" class="venue-preview-list">
+            <view
+              v-for="item in nearbyVenues"
+              :key="item.id"
+              class="venue-preview-card"
+              @tap="goToVenueDetail(item.id)"
+            >
+              <view class="venue-preview-main">
+                <text class="venue-preview-name">{{ item.name || '球房' }}</text>
+                <text class="venue-preview-address">{{ item.address || item.city || '地址待补充' }}</text>
+                <view class="venue-preview-tags">
+                  <text v-if="item.distance" class="venue-preview-tag accent">{{ formatVenueDistance(item.distance) }}</text>
+                  <text v-if="item.table_count" class="venue-preview-tag">{{ item.table_count }}台</text>
+                  <text v-if="item.price_range" class="venue-preview-tag">{{ item.price_range }}</text>
+                  <text v-if="item.checkin_count" class="venue-preview-tag">{{ item.checkin_count }}人签到</text>
+                </view>
+              </view>
+              <uni-icons type="right" size="18" :color="isDarkMode ? '#8b7a50' : '#cbd5e1'"></uni-icons>
+            </view>
+          </view>
+
+          <view v-else class="section-empty venue-empty-card">
+            <text class="empty-title">附近暂无球房</text>
+            <text class="empty-desc">{{ homeVenueEmptyAction.desc }}</text>
+            <view class="empty-action" @tap="goTo(homeVenueEmptyAction.url)">
+              <text>{{ homeVenueEmptyAction.text }}</text>
+            </view>
+          </view>
+        </view>
+
         <view class="focus-section">
           <view class="section-header">
             <text class="section-title">常用工具</text>
@@ -174,11 +218,19 @@ import { useNotificationStore } from '@/store/notification.js'
 import { getEventNewsList } from '@/api/event-news.js'
 import { getCurrentMatch, startMatch } from '@/api/match.js'
 import { getLeaderboard } from '@/api/rank.js'
+import { getFavoriteVenueRewardStatus } from '@/api/user.js'
+import { getNearbyVenues } from '@/api/venue.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { getGameTypeLabel } from '@/utils/game-types.js'
 import { normalizeSaiXunCard } from '@/utils/saixun.js'
 import { usePageTheme } from '@/utils/page-theme.js'
-import { resolveHomeToolNavigation, shouldShowHomeToolEdgeMask } from '@/utils/home-index.js'
+import {
+  buildHomeNearbyVenueParams,
+  formatHomeVenueDistance,
+  resolveHomeVenueEmptyAction,
+  resolveHomeToolNavigation,
+  shouldShowHomeToolEdgeMask
+} from '@/utils/home-index.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
 
 const userStore = useUserStore()
@@ -198,12 +250,17 @@ const currentMatch = ref(null)
 const leaderboardTopThree = ref([])
 const myRanking = ref(null)
 const topEventNews = ref(null)
+const nearbyVenues = ref([])
+const nearbyVenueLoading = ref(false)
+const favoriteVenueRewardStatus = ref(null)
 const showToolScrollMask = ref(true)
 const toolScrollMaxLeft = ref(0)
 
 const hasContent = computed(() => {
-  return Boolean(currentMatch.value || topEventNews.value || leaderboardTopThree.value.length)
+  return Boolean(currentMatch.value || topEventNews.value || leaderboardTopThree.value.length || nearbyVenues.value.length)
 })
+
+const homeVenueEmptyAction = computed(() => resolveHomeVenueEmptyAction(favoriteVenueRewardStatus.value))
 
 const headerSubtitle = computed(() => {
   if (notificationStore.unreadCount > 0) {
@@ -327,6 +384,7 @@ const loadData = async () => {
   homeLoading.value = true
 
   try {
+    const nearbyVenueRequest = loadNearbyVenues()
     const requests = [
       getLeaderboard({ page: 1, page_size: 3 }).catch(() => ({ success: false })),
       getEventNewsList({ page: 1, page_size: 1 }).catch(() => ({ success: false, list: [] }))
@@ -334,6 +392,9 @@ const loadData = async () => {
 
     if (isLoggedIn.value) {
       requests.unshift(getCurrentMatch({ silent: true }).catch(() => ({ success: false })))
+      requests.push(loadFavoriteVenueRewardStatus())
+    } else {
+      favoriteVenueRewardStatus.value = null
     }
 
     const results = await Promise.all(requests)
@@ -358,10 +419,53 @@ const loadData = async () => {
     const eventNewsRes = results[resultIndex++]
     const topItem = eventNewsRes.success && Array.isArray(eventNewsRes.list) ? eventNewsRes.list[0] : null
     topEventNews.value = topItem ? normalizeSaiXunCard(topItem) : null
+    await nearbyVenueRequest
   } catch (error) {
     console.error('加载首页数据失败', error)
   } finally {
     homeLoading.value = false
+  }
+}
+
+const loadFavoriteVenueRewardStatus = async () => {
+  try {
+    const res = await getFavoriteVenueRewardStatus({ silent: true })
+    favoriteVenueRewardStatus.value = res.success ? res : null
+  } catch (error) {
+    favoriteVenueRewardStatus.value = null
+  }
+}
+
+const getHomeLocation = () => new Promise((resolve) => {
+  uni.getLocation({
+    type: 'gcj02',
+    success: (res) => resolve({
+      latitude: res.latitude,
+      longitude: res.longitude
+    }),
+    fail: () => resolve(null)
+  })
+})
+
+const loadNearbyVenues = async () => {
+  if (nearbyVenueLoading.value) return
+
+  nearbyVenueLoading.value = true
+  try {
+    const location = await getHomeLocation()
+    const params = buildHomeNearbyVenueParams(location || {})
+    if (!params) {
+      nearbyVenues.value = []
+      return
+    }
+
+    const res = await getNearbyVenues(params)
+    nearbyVenues.value = res.success && Array.isArray(res.list) ? res.list.slice(0, params.limit) : []
+  } catch (error) {
+    console.error('加载首页附近球房失败', error)
+    nearbyVenues.value = []
+  } finally {
+    nearbyVenueLoading.value = false
   }
 }
 
@@ -476,6 +580,13 @@ const goLogin = () => {
 const goNotification = () => {
   uni.navigateTo({ url: '/subPages/notification/index' })
 }
+
+const goToVenueDetail = (id) => {
+  if (!id) return
+  goTo(`/subPages/venue/detail?id=${id}`)
+}
+
+const formatVenueDistance = (meters) => formatHomeVenueDistance(meters)
 
 const handlePrimaryAction = () => {
   if (heroMode.value === 'ongoing' && currentMatch.value) {

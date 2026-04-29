@@ -2,6 +2,8 @@ const REPORT_POST_TYPE = 1
 const LOGIN_REQUIRED_TOOL_URLS = new Set([
   '/subPages/user/statsDetail'
 ])
+export const HOME_NEARBY_VENUE_RADIUS_METERS = 5000
+export const HOME_NEARBY_VENUE_LIMIT = 3
 const EVENT_NEWS_STATUS_MAP = Object.freeze({
   0: '即将开始',
   1: '进行中',
@@ -94,4 +96,35 @@ export const shouldShowHomeToolEdgeMask = ({ maxScrollLeft = 0, scrollLeft = 0, 
   }
 
   return (Number(scrollLeft) || 0) < (normalizedMaxScrollLeft - edgeThreshold)
+}
+
+export const buildHomeNearbyVenueParams = ({ latitude = 0, longitude = 0 } = {}) => {
+  const lat = Number(latitude) || 0
+  const lng = Number(longitude) || 0
+
+  if (!lat || !lng) return null
+
+  return {
+    latitude: lat,
+    longitude: lng,
+    radius: HOME_NEARBY_VENUE_RADIUS_METERS,
+    limit: HOME_NEARBY_VENUE_LIMIT
+  }
+}
+
+export const formatHomeVenueDistance = (meters = 0) => {
+  const value = Number(meters) || 0
+  if (value <= 0) return ''
+  if (value < 1000) return `${Math.round(value)}m`
+  return `${(value / 1000).toFixed(1)}km`
+}
+
+export const resolveHomeVenueEmptyAction = (rewardStatus) => {
+  const rewardEnabled = rewardStatus?.enabled === true
+
+  return {
+    text: rewardEnabled ? '添加球馆领取会员' : '添加附近球馆',
+    desc: rewardEnabled ? '你可以提交常玩球馆，审核通过后会员会自动到账。' : '你可以提交常去球馆，审核通过后会展示给附近球友。',
+    url: '/subPages/venue/submit'
+  }
 }

@@ -3,9 +3,14 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 import {
+  buildHomeNearbyVenueParams,
   buildFeaturedPostTarget,
   formatEventNewsTime,
+  formatHomeVenueDistance,
   getEventNewsStatusText,
+  HOME_NEARBY_VENUE_LIMIT,
+  HOME_NEARBY_VENUE_RADIUS_METERS,
+  resolveHomeVenueEmptyAction,
   resolveHomeToolNavigation,
   shouldShowHomeToolEdgeMask
 } from '../utils/home-index.js'
@@ -283,4 +288,59 @@ test('shouldShowHomeToolEdgeMask stays visible until the carousel reaches the ri
   assert.equal(shouldShowHomeToolEdgeMask({ maxScrollLeft: 180, scrollLeft: 96 }), true)
   assert.equal(shouldShowHomeToolEdgeMask({ maxScrollLeft: 180, scrollLeft: 176 }), false)
   assert.equal(shouldShowHomeToolEdgeMask({ maxScrollLeft: 0, scrollLeft: 0 }), false)
+})
+
+test('home nearby venue params use a 5km radius and three-card preview limit', () => {
+  assert.equal(HOME_NEARBY_VENUE_RADIUS_METERS, 5000)
+  assert.equal(HOME_NEARBY_VENUE_LIMIT, 3)
+  assert.deepEqual(buildHomeNearbyVenueParams({
+    latitude: 22.5431,
+    longitude: 114.0579
+  }), {
+    latitude: 22.5431,
+    longitude: 114.0579,
+    radius: 5000,
+    limit: 3
+  })
+})
+
+test('home nearby venue params reject missing coordinates', () => {
+  assert.equal(buildHomeNearbyVenueParams({ latitude: 0, longitude: 114.0579 }), null)
+  assert.equal(buildHomeNearbyVenueParams({ latitude: 22.5431, longitude: 0 }), null)
+})
+
+test('formatHomeVenueDistance keeps home cards compact', () => {
+  assert.equal(formatHomeVenueDistance(860), '860m')
+  assert.equal(formatHomeVenueDistance(1260), '1.3km')
+  assert.equal(formatHomeVenueDistance(0), '')
+})
+
+test('home nearby venue empty action mentions member reward only when activity is enabled', () => {
+  assert.deepEqual(resolveHomeVenueEmptyAction({ enabled: true }), {
+    text: '添加球馆领取会员',
+    desc: '你可以提交常玩球馆，审核通过后会员会自动到账。',
+    url: '/subPages/venue/submit'
+  })
+  assert.deepEqual(resolveHomeVenueEmptyAction({ enabled: false }), {
+    text: '添加附近球馆',
+    desc: '你可以提交常去球馆，审核通过后会展示给附近球友。',
+    url: '/subPages/venue/submit'
+  })
+  assert.deepEqual(resolveHomeVenueEmptyAction(null), {
+    text: '添加附近球馆',
+    desc: '你可以提交常去球馆，审核通过后会展示给附近球友。',
+    url: '/subPages/venue/submit'
+  })
+})
+
+test('home page exposes nearby venues preview and configurable add venue CTA', () => {
+  assert.match(homeIndexVueSource, /getNearbyVenues/)
+  assert.match(homeIndexVueSource, /getFavoriteVenueRewardStatus/)
+  assert.match(homeIndexVueSource, /nearby-venue-section/)
+  assert.match(homeIndexVueSource, /查看球房/)
+  assert.match(homeIndexVueSource, /\/subPages\/venue\/index/)
+  assert.match(homeIndexVueSource, /homeVenueEmptyAction\.text/)
+  assert.match(homeIndexVueSource, /homeVenueEmptyAction\.url/)
+  assert.match(homeIndexScssSource, /\.venue-empty-card\s*\{[\s\S]*text-align:\s*center;/)
+  assert.match(homeIndexScssSource, /\.venue-empty-card\s*\{[\s\S]*\.empty-action\s*\{[\s\S]*align-self:\s*center;/)
 })

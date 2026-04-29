@@ -434,8 +434,84 @@
   flex-shrink: 0;
 }
 
+.venue-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.venue-preview-card {
+  padding: 24rpx;
+  border-radius: 24rpx;
+  background: var(--home-surface);
+  border: 1rpx solid var(--home-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  box-sizing: border-box;
+}
+
+.venue-preview-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.venue-preview-name {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--home-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.venue-preview-address {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 23rpx;
+  line-height: 1.45;
+  color: var(--home-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.venue-preview-tags {
+  margin-top: 14rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+
+.venue-preview-tag {
+  padding: 7rpx 12rpx;
+  border-radius: 999rpx;
+  background: var(--home-surface-secondary);
+  font-size: 21rpx;
+  line-height: 1.2;
+  color: var(--home-text-secondary);
+
+  &.accent {
+    background: var(--home-accent-soft);
+    color: var(--home-accent);
+    font-weight: 600;
+  }
+}
+
 .section-empty {
   padding: 28rpx 24rpx;
+}
+
+.venue-empty-card {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+
+  .empty-action {
+    align-self: center;
+  }
 }
 
 .empty-title {
@@ -451,6 +527,23 @@
   font-size: 23rpx;
   line-height: 1.55;
   color: var(--home-text-secondary);
+}
+
+.empty-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 22rpx;
+  height: 70rpx;
+  padding: 0 28rpx;
+  border-radius: 18rpx;
+  background: var(--home-accent);
+
+  text {
+    font-size: 25rpx;
+    font-weight: 700;
+    color: #ffffff;
+  }
 }
 
 .tool-scroll-shell {
@@ -537,6 +630,8 @@
 
 .summary-card:active,
 .focus-card:active,
+.venue-preview-card:active,
+.empty-action:active,
 .tool-chip:active,
 .section-more:active,
 .header-right:active,
