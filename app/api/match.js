@@ -38,6 +38,18 @@ export const getOngoingMatches = (params = {}) => {
 }
 
 /**
+ * 获取公开观赛对局列表
+ * @param {Object} params 查询参数
+ * @param {string} params.scope hall/friends
+ * @param {number} params.status 大厅状态筛选：1=进行中 2=已结束
+ * @param {number} params.game_type 球种（可选）
+ * @returns {Promise}
+ */
+export const getPublicMatches = (params = {}) => {
+  return get('/api/public/matches', params)
+}
+
+/**
  * 获取对局详情
  * @param {Object} params { match_id }
  * @returns {Promise}

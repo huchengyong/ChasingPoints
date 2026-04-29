@@ -1131,6 +1131,23 @@ type OngoingMatch struct {
 	Player2Avatar string `json:"player2_avatar"`
 }
 
+type PublicMatchListOptions struct {
+	Scope        string
+	ViewerUserId int64
+	Status       int
+	GameType     int
+	Offset       int
+	Limit        int
+}
+
+type PublicMatchListRow struct {
+	Match
+	Player1Name   string `json:"player1_name"`
+	Player1Avatar string `json:"player1_avatar"`
+	Player2Name   string `json:"player2_name"`
+	Player2Avatar string `json:"player2_avatar"`
+}
+
 // ListOngoingMatches 获取所有正在进行的对局列表
 func (m *MatchModel) ListOngoingMatches(offset, limit int) ([]OngoingMatch, int64, error) {
 	// 查询总数
@@ -1151,6 +1168,61 @@ func (m *MatchModel) ListOngoingMatches(offset, limit int) ([]OngoingMatch, int6
 		Where("matches.status = 1 AND matches.deleted_at IS NULL").
 		Order("matches.match_time DESC").
 		Offset(offset).
+		Limit(limit).
+		Scan(&list).Error
+
+	return list, total, err
+}
+
+func (m *MatchModel) ListPublicMatches(options PublicMatchListOptions) ([]PublicMatchListRow, int64, error) {
+	limit := options.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+
+	base := m.db.Table("matches").
+		Where("matches.deleted_at IS NULL")
+
+	if options.Scope == "friends" {
+		base = base.
+			Where("matches.status IN ?", []int{1, 2}).
+			Where(`EXISTS (
+				SELECT 1 FROM friends
+				WHERE friends.status = 1
+				AND (
+					(friends.user_id = ? AND (friends.friend_id = matches.user_id OR friends.friend_id = matches.opponent_id))
+					OR
+					(friends.friend_id = ? AND (friends.user_id = matches.user_id OR friends.user_id = matches.opponent_id))
+				)
+			)`, options.ViewerUserId, options.ViewerUserId)
+	} else {
+		status := options.Status
+		if status != 2 {
+			status = 1
+		}
+		base = base.Where("matches.status = ?", status)
+	}
+
+	if options.GameType > 0 {
+		base = base.Where("matches.game_type = ?", options.GameType)
+	}
+
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var list []PublicMatchListRow
+	err := base.
+		Select(`matches.*,
+			COALESCE(u1.nickname, '玩家') as player1_name,
+			COALESCE(u1.avatar, '') as player1_avatar,
+			matches.opponent_name as player2_name,
+			COALESCE(u2.avatar, '') as player2_avatar`).
+		Joins("LEFT JOIN users u1 ON matches.user_id = u1.id").
+		Joins("LEFT JOIN users u2 ON matches.opponent_id = u2.id").
+		Order("matches.match_time DESC").
+		Offset(options.Offset).
 		Limit(limit).
 		Scan(&list).Error
 

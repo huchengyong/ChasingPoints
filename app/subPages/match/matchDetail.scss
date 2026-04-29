@@ -281,6 +281,11 @@ $loss-color: #E57373;
         color: $win-color;
         font-size: 28rpx;
     }
+
+    .status-finished {
+        color: $text-muted-light;
+        font-size: 28rpx;
+    }
 }
 
 // ========== 局记录列表 ==========

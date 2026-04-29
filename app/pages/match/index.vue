@@ -2,6 +2,46 @@
 	<view class="match-container" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 主内容区 -->
 		<view class="main-content">
+			<view class="lobby-toolbar">
+				<view class="scope-tabs">
+					<button
+						v-for="item in scopeOptions"
+						:key="item.value"
+						class="scope-tab"
+						:class="{ active: currentScope === item.value }"
+						@click="handleScopeChange(item.value)"
+					>
+						<text>{{ item.label }}</text>
+					</button>
+				</view>
+
+				<view v-if="currentScope === 'hall'" class="status-tabs">
+					<button
+						v-for="item in statusOptions"
+						:key="item.value"
+						class="status-tab"
+						:class="{ active: currentStatus === item.value }"
+						@click="handleStatusChange(item.value)"
+					>
+						<text>{{ item.label }}</text>
+					</button>
+				</view>
+
+				<scroll-view class="game-type-filter" scroll-x>
+					<view class="game-type-filter-row">
+						<button
+							v-for="item in gameTypeOptions"
+							:key="item.value"
+							class="game-type-filter-chip"
+							:class="{ active: currentGameType === item.value }"
+							@click="handleGameTypeChange(item.value)"
+						>
+							<text>{{ item.label }}</text>
+						</button>
+					</view>
+				</scroll-view>
+			</view>
+
 			<!-- 加载状态 -->
 			<view v-if="showPageLoading" class="loading-container">
 					<uni-icons type="spinner-cycle" size="48" color="#E0AE12"></uni-icons>
@@ -9,10 +49,10 @@
 			</view>
 
 			<!-- 空数据状态 -->
-			<view v-else-if="!currentMatch && ongoingMatches.length === 0" class="empty-state">
+			<view v-else-if="!visibleCurrentMatch && spectatorMatches.length === 0" class="empty-state">
 				<uni-icons type="medal" size="128" color="#6b7280" class="empty-icon"></uni-icons>
-				<text class="empty-title">暂无正在进行的对局</text>
-				<text class="empty-subtitle">是时候展现你的台球技巧了！</text>
+				<text class="empty-title">{{ emptyState.title }}</text>
+				<text class="empty-subtitle">{{ emptyState.subtitle }}</text>
 				<button class="start-button" @click="handleStartMatch">
 					<text>发起PK</text>
 				</button>
@@ -24,18 +64,18 @@
 			<!-- 对局列表 -->
 			<view v-else class="match-list">
 				<!-- 进行中的对局 -->
-				<view v-if="currentMatch" class="match-card my-match" @click="handleContinueMatch(currentMatch)">
+				<view v-if="visibleCurrentMatch" class="match-card my-match" @click="handleContinueMatch(visibleCurrentMatch)">
 					<!-- MY MATCH 标签 -->
 					<view class="my-match-badge">我的对局</view>
-					<view v-if="currentMatch.viewer_role === 'referee'" class="referee-match-info">
+					<view v-if="visibleCurrentMatch.viewer_role === 'referee'" class="referee-match-info">
 						<text class="referee-match-info__title">你正在担任本场裁判</text>
-						<text class="referee-match-info__score">{{ currentMatch.my_score }} : {{ currentMatch.opponent_score }}</text>
+						<text class="referee-match-info__score">{{ visibleCurrentMatch.my_score }} : {{ visibleCurrentMatch.opponent_score }}</text>
 						<text class="referee-match-info__hint">点击进入裁判记分页</text>
 					</view>
 					<view v-else class="match-info">
 						<!-- 我方玩家 -->
 						<view class="player">
-							<view class="avatar me-avatar" :class="{ winner: currentMatch.my_score > currentMatch.opponent_score }">
+							<view class="avatar me-avatar" :class="{ winner: visibleCurrentMatch.my_score > visibleCurrentMatch.opponent_score }">
 								<image :src="userAvatar || '/static/images/default-avatar.png'" mode="aspectFill" />
 								<view class="me-badge">我</view>
 							</view>
@@ -44,34 +84,34 @@
 
 						<!-- 比分 -->
 						<view class="score-area">
-							<text class="score">{{ currentMatch.my_score }} : {{ currentMatch.opponent_score }}</text>
+							<text class="score">{{ visibleCurrentMatch.my_score }} : {{ visibleCurrentMatch.opponent_score }}</text>
 							<text class="vs-text">VS</text>
 						</view>
 
 						<!-- 对手玩家 -->
 						<view class="player">
-							<view class="avatar" :class="{ winner: currentMatch.opponent_score > currentMatch.my_score }">
-								<image :src="currentMatch.opponent_avatar || '/static/images/default-avatar.png'" mode="aspectFill" />
+							<view class="avatar" :class="{ winner: visibleCurrentMatch.opponent_score > visibleCurrentMatch.my_score }">
+								<image :src="visibleCurrentMatch.opponent_avatar || '/static/images/default-avatar.png'" mode="aspectFill" />
 							</view>
-							<text class="name">{{ currentMatch.opponent_name }}</text>
+							<text class="name">{{ visibleCurrentMatch.opponent_name }}</text>
 						</view>
 					</view>
 
 					<!-- 底部信息 -->
 					<view class="match-footer">
-						<view :class="['game-type-tag', getGameTypeClass(currentMatch.game_type)]">
-							{{ currentMatch.game_type_name }}
+						<view :class="['game-type-tag', getGameTypeClass(visibleCurrentMatch.game_type)]">
+							{{ visibleCurrentMatch.game_type_name }}
 						</view>
 						<view class="match-status">
 							<uni-icons type="circle" size="14" color="#22c55e"></uni-icons>
-							<text>进行中 {{ formatDuration(currentMatch.duration_seconds) }}</text>
+							<text>{{ getStatusText(visibleCurrentMatch) }}</text>
 						</view>
 					</view>
 				</view>
 
-				<!-- 平台正在进行的对局列表 -->
+				<!-- 公开观赛对局列表 -->
 				<view
-					v-for="match in ongoingMatches"
+					v-for="match in spectatorMatches"
 					:key="match.id"
 					:class="['match-card', { 'my-match': isMyMatch(match) }]"
 					@click="handleMatchClick(match)"
@@ -113,9 +153,9 @@
 						<view :class="['game-type-tag', getGameTypeClass(match.game_type)]">
 							{{ match.game_type_name }}
 						</view>
-						<view class="match-status">
-							<uni-icons type="circle" size="14" color="#22c55e"></uni-icons>
-							<text>进行中 {{ formatDuration(match.duration_seconds) }}</text>
+						<view class="match-status" :class="{ finished: match.status === 2 }">
+							<uni-icons type="circle" size="14" :color="match.status === 2 ? '#94a3b8' : '#22c55e'"></uni-icons>
+							<text>{{ getStatusText(match) }}</text>
 						</view>
 					</view>
 				</view>
@@ -136,10 +176,19 @@ import { ref, computed, onMounted } from 'vue'
 import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { usePageTheme } from '@/utils/page-theme.js'
-import { getCurrentMatch, getOngoingMatches, joinMatchReferee, startMatch } from '@/api/match.js'
+import { getCurrentMatch, getPublicMatches, joinMatchReferee, startMatch } from '@/api/match.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { shouldShowMatchPageLoading } from '@/utils/match-page.js'
 import { buildPlayingRoute, resolveMatchScanAction, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
+import { GAME_TYPE_FILTER_OPTIONS_WITH_ALL } from '@/utils/game-types.js'
+import {
+	SPECTATOR_SCOPES,
+	SPECTATOR_STATUS_OPTIONS,
+	buildSpectatorMatchListParams,
+	getSpectatorEmptyState,
+	getSpectatorMatchStatusText,
+	shouldOpenPlayingForSpectatorMatch
+} from '@/utils/spectator-lobby.js'
 
 // ========== 状态管理 ==========
 const userStore = useUserStore()
@@ -149,16 +198,32 @@ const { isDarkMode } = usePageTheme()
 const loading = ref(false)
 const refreshing = ref(false)
 const currentMatch = ref(null)
-const ongoingMatches = ref([]) // 平台正在进行的对局列表
+const spectatorMatches = ref([])
 const showGameTypeModal = ref(false)
 const selectedGameType = ref(null)
 const scanIntent = ref('start')
+const currentScope = ref('hall')
+const currentStatus = ref(1)
+const currentGameType = ref(0)
 const showPageLoading = computed(() => shouldShowMatchPageLoading(loading.value, refreshing.value))
+const scopeOptions = SPECTATOR_SCOPES
+const statusOptions = SPECTATOR_STATUS_OPTIONS
+const gameTypeOptions = GAME_TYPE_FILTER_OPTIONS_WITH_ALL
 
 // 用户信息
 const userName = computed(() => userStore.userInfo?.nickname || '我')
 const userAvatar = computed(() => userStore.userInfo?.avatar || '')
 const userId = computed(() => userStore.userInfo?.id || 0)
+const visibleCurrentMatch = computed(() => {
+	if (currentScope.value !== 'hall' || currentStatus.value !== 1 || !currentMatch.value) return null
+	if (currentGameType.value > 0 && Number(currentMatch.value.game_type) !== Number(currentGameType.value)) return null
+	return currentMatch.value
+})
+const emptyState = computed(() => getSpectatorEmptyState({
+	scope: currentScope.value,
+	status: currentStatus.value,
+	gameType: currentGameType.value
+}))
 
 /**
  * 判断是否是当前用户参与的对局
@@ -186,6 +251,11 @@ const isPlayer1Me = (match) => {
 const isPlayer2Me = (match) => {
 	if (!userStore.isLoggedIn || !userId.value) return false
 	return match.player2_id === userId.value
+}
+
+const filteredSpectatorList = (list = []) => {
+	if (!visibleCurrentMatch.value) return list
+	return list.filter(match => match.id !== visibleCurrentMatch.value.id)
 }
 
 // ========== 生命周期 ==========
@@ -220,7 +290,13 @@ const loadData = async () => {
 	try {
 		// 并行请求：如果已登录则获取自己进行中的对局，同时获取平台所有正在进行的对局
 		const requests = [
-			getOngoingMatches({ page: 1, page_size: 20 }).catch(() => ({ success: false, list: [] }))
+			getPublicMatches(buildSpectatorMatchListParams({
+				scope: currentScope.value,
+				status: currentStatus.value,
+				gameType: currentGameType.value,
+				page: 1,
+				pageSize: 20
+			})).catch(() => ({ success: false, list: [] }))
 		]
 
 		// 如果已登录，也获取自己进行中的对局
@@ -239,24 +315,21 @@ const loadData = async () => {
 				currentMatch.value = null
 			}
 
-			// 设置平台正在进行的对局列表（过滤掉自己的对局）
-			const ongoingRes = results[1]
-			if (ongoingRes.success && ongoingRes.list) {
-				// 如果有自己的对局，从列表中过滤掉
-				if (currentMatch.value) {
-					ongoingMatches.value = ongoingRes.list.filter(
-						m => m.id !== currentMatch.value.id
-					)
-				} else {
-					ongoingMatches.value = ongoingRes.list
-				}
+			// 设置公开观赛对局列表
+			const matchListRes = results[1]
+			if (matchListRes.success && matchListRes.list) {
+				spectatorMatches.value = filteredSpectatorList(matchListRes.list)
+			} else {
+				spectatorMatches.value = []
 			}
 		} else {
 			currentMatch.value = null
-			// 设置平台正在进行的对局列表
-			const ongoingRes = results[0]
-			if (ongoingRes.success && ongoingRes.list) {
-				ongoingMatches.value = ongoingRes.list
+			// 设置公开观赛对局列表
+			const matchListRes = results[0]
+			if (matchListRes.success && matchListRes.list) {
+				spectatorMatches.value = matchListRes.list
+			} else {
+				spectatorMatches.value = []
 			}
 		}
 	} catch (error) {
@@ -264,6 +337,24 @@ const loadData = async () => {
 	} finally {
 		loading.value = false
 	}
+}
+
+const handleScopeChange = (scope) => {
+	if (currentScope.value === scope) return
+	currentScope.value = scope
+	loadData()
+}
+
+const handleStatusChange = (status) => {
+	if (currentStatus.value === status) return
+	currentStatus.value = status
+	loadData()
+}
+
+const handleGameTypeChange = (gameType) => {
+	if (currentGameType.value === gameType) return
+	currentGameType.value = gameType
+	loadData()
 }
 
 /**
@@ -282,40 +373,11 @@ const getGameTypeClass = (gameType) => {
 	}
 }
 
-/**
- * 格式化对局时长（使用服务端返回的秒数）
- * @param {number} durationSeconds 对局持续秒数
- */
-const formatDuration = (durationSeconds) => {
-	if (!durationSeconds || durationSeconds < 0) return '0分'
-
-	const totalMinutes = Math.floor(durationSeconds / 60)
-
-	if (totalMinutes < 1) {
-		return `${durationSeconds}秒`
-	}
-
-	if (totalMinutes < 60) {
-		return `${totalMinutes}分`
-	}
-
-	const hours = Math.floor(totalMinutes / 60)
-	const remainMinutes = totalMinutes % 60
-
-	if (hours < 24) {
-		if (remainMinutes > 0) {
-			return `${hours}小时${remainMinutes}分`
-		}
-		return `${hours}小时`
-	}
-
-	const days = Math.floor(hours / 24)
-	const remainHours = hours % 24
-
-	if (remainHours > 0) {
-		return `${days}天${remainHours}小时`
-	}
-	return `${days}天`
+const getStatusText = (match) => {
+	return getSpectatorMatchStatusText({
+		status: match.status || 1,
+		durationSeconds: match.duration_seconds || 0
+	})
 }
 
 /**
@@ -520,7 +582,11 @@ const getOpponentAvatar = (match) => {
  * 点击对局卡片
  */
 const handleMatchClick = (match) => {
-	if (isMyMatch(match)) {
+	if (shouldOpenPlayingForSpectatorMatch({
+		match,
+		userId: userId.value,
+		isLoggedIn: userStore.isLoggedIn
+	})) {
 		// 自己参与的对局，继续对局（进入 playing.vue）
 		handleContinueMatch(match)
 	} else {

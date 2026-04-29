@@ -66,7 +66,7 @@
 					</view>
 					<view class="stat-item">
 						<text class="stat-label">状态</text>
-						<text class="stat-value status-ongoing">进行中</text>
+						<text class="stat-value" :class="matchData.status === 2 ? 'status-finished' : 'status-ongoing'">{{ matchStatusText }}</text>
 					</view>
 				</view>
 			</view>
@@ -118,6 +118,7 @@ const matchData = ref({
 	player1_score: 0,
 	player2_score: 0,
 	game_type: 3,
+	status: 0,
 	duration_seconds: 0,
 	current_round: 1,
 	total_rounds: 0
@@ -157,6 +158,12 @@ const gameTypeName = computed(() => {
 	}
 })
 
+const matchStatusText = computed(() => {
+	if (matchData.value.status === 2) return '已结束'
+	if (matchData.value.status === 3) return '已取消'
+	return '进行中'
+})
+
 // ========== 生命周期 ==========
 onLoad((options) => {
 	if (options.match_id) {
@@ -184,11 +191,13 @@ onMounted(() => {
 	matchWS.on(WS_MESSAGE_TYPES.ROUND_END, handleRoundEnd)
 	matchWS.on(WS_MESSAGE_TYPES.MATCH_END, handleMatchEnd)
 	matchWS.on(WS_MESSAGE_TYPES.SYNC, handleSync)
-	connectWebSocket()
+	if (matchData.value.status === 1) {
+		connectWebSocket()
+	}
 })
 
 onShow(() => {
-	if (wsHandlersReady && matchId.value) {
+	if (wsHandlersReady && matchId.value && matchData.value.status === 1) {
 		if (matchWS.isConnected()) {
 			matchWS.requestSync()
 		} else {
@@ -227,6 +236,7 @@ const loadMatchData = async () => {
 				player1_score: res.match.player1_score || 0,
 				player2_score: res.match.player2_score || 0,
 				game_type: res.match.game_type || 3,
+				status: res.match.status || 1,
 				duration_seconds: res.match.duration_seconds || 0,
 				current_round: res.match.current_round || 1,
 				total_rounds: res.match.total_rounds || 0
@@ -243,6 +253,9 @@ const loadMatchData = async () => {
 			if (res.match.rounds) {
 				roundRecords.value = res.match.rounds
 			}
+			if (wsHandlersReady && matchData.value.status === 1 && !matchWS.isConnected()) {
+				connectWebSocket()
+			}
 		}
 	} catch (error) {
 		console.error('[MatchDetail] 加载对局详情失败', { matchId: matchId.value, error })
@@ -257,6 +270,7 @@ const loadMatchData = async () => {
  */
 const connectWebSocket = async () => {
 	if (!matchId.value) return
+	if (matchData.value.status !== 1) return
 	
 	try {
 		await matchWS.connect(matchId.value, { allowAnonymous: isSpectateMode.value })

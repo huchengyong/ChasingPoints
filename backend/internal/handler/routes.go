@@ -765,6 +765,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: public.GetPublicMatchDetailHandler(serverCtx),
 			},
 			{
+				// 获取公开观赛对局列表
+				Method:  http.MethodGet,
+				Path:    "/matches",
+				Handler: public.GetPublicMatchesHandler(serverCtx),
+			},
+			{
 				// 获取正在进行的对局列表
 				Method:  http.MethodGet,
 				Path:    "/matches/ongoing",

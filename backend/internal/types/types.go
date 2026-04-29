@@ -1868,6 +1868,42 @@ type PublicMatchDetailData struct {
 	CreatedAt                string        `json:"created_at"`
 }
 
+type PublicMatchListItem struct {
+	Id              int64  `json:"id"`
+	GameType        int    `json:"game_type"`
+	GameTypeName    string `json:"game_type_name"`
+	Status          int    `json:"status"`
+	StatusText      string `json:"status_text"`
+	Player1Id       int64  `json:"player1_id"`
+	Player1Name     string `json:"player1_name"`
+	Player1Avatar   string `json:"player1_avatar"`
+	Player2Id       int64  `json:"player2_id"`
+	Player2Name     string `json:"player2_name"`
+	Player2Avatar   string `json:"player2_avatar"`
+	Player1Score    int    `json:"player1_score"`
+	Player2Score    int    `json:"player2_score"`
+	CurrentRound    int    `json:"current_round"`
+	Result          int    `json:"result,optional"`
+	MatchTime       string `json:"match_time"`
+	EndTime         string `json:"end_time,optional"`
+	DurationSeconds int64  `json:"duration_seconds"`
+}
+
+type PublicMatchListReq struct {
+	Scope    string `form:"scope,optional"`            // hall/friends
+	Status   int    `form:"status,optional,default=1"` // 1=进行中 2=已完成，仅大厅模式使用
+	GameType int    `form:"game_type,optional"`        // 0=全部 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
+	Page     int    `form:"page,default=1"`
+	PageSize int    `form:"page_size,default=20"`
+}
+
+type PublicMatchListResp struct {
+	Success bool                  `json:"success"`
+	Message string                `json:"message,optional"`
+	Total   int64                 `json:"total"`
+	List    []PublicMatchListItem `json:"list"`
+}
+
 type RankDetail struct {
 	Label string `json:"label"`
 	Value int    `json:"value"`

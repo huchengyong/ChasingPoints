@@ -34,7 +34,7 @@
 		{
 			"path": "pages/match/index",
 			"style": {
-				"navigationBarTitleText": "对局大厅",
+				"navigationBarTitleText": "观赛",
 				"enablePullDownRefresh": true
 			}
 		},
@@ -71,7 +71,7 @@
 			},
 			{
 				"pagePath": "pages/match/index",
-				"text": "对局",
+				"text": "观赛",
 				"iconPath": "@matchIconPath",
 				"selectedIconPath": "@selectedMatchIconPath"
 			},

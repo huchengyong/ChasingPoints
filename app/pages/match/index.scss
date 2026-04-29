@@ -82,12 +82,93 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
                 color: $text-secondary-dark;
             }
         }
+
+        .lobby-toolbar,
+        .status-tabs {
+            background-color: $card-bg-dark;
+        }
+
+        .scope-tab,
+        .status-tab,
+        .game-type-filter-chip {
+            text {
+                color: $text-secondary-dark;
+            }
+
+            &.active {
+                text {
+                    color: #ffffff;
+                }
+            }
+        }
     }
 }
 
 // 主内容区
 .main-content {
     padding: 32rpx;
+}
+
+.lobby-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 20rpx;
+    padding: 20rpx;
+    margin-bottom: 24rpx;
+    background-color: #f8fafc;
+    border-radius: 24rpx;
+}
+
+.scope-tabs,
+.status-tabs {
+    display: flex;
+    gap: 12rpx;
+}
+
+.scope-tab,
+.status-tab,
+.game-type-filter-chip {
+    height: 64rpx;
+    line-height: 64rpx;
+    padding: 0 28rpx;
+    border-radius: 999rpx;
+    background-color: transparent;
+
+    &::after {
+        display: none;
+    }
+
+    text {
+        font-size: 26rpx;
+        font-weight: 700;
+        color: $text-secondary-light;
+    }
+
+    &.active {
+        background-color: $primary-color;
+
+        text {
+            color: #ffffff;
+        }
+    }
+}
+
+.scope-tab,
+.status-tab {
+    flex: 1;
+}
+
+.game-type-filter {
+    white-space: nowrap;
+}
+
+.game-type-filter-row {
+    display: inline-flex;
+    gap: 12rpx;
+}
+
+.game-type-filter-chip {
+    background-color: #ffffff;
 }
 
 // 对局列表
@@ -330,6 +411,10 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
     gap: 8rpx;
     font-size: 24rpx;
     color: $text-secondary-light;
+
+    &.finished {
+        color: $text-tertiary-light;
+    }
 }
 
 // ========== 空数据状态 ==========
