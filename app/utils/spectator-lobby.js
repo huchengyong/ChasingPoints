@@ -103,3 +103,48 @@ export const shouldOpenPlayingForSpectatorMatch = ({
   if (!isLoggedIn || !userId || Number(match.status) !== 1) return false
   return Number(match.player1_id) === Number(userId) || Number(match.player2_id) === Number(userId)
 }
+
+const appendPlayerQuery = (query, keyPrefix, player = {}) => {
+  if (Number(player.id) > 0) {
+    query.push(`${keyPrefix}_id=${Number(player.id)}`)
+  }
+  query.push(`${keyPrefix}_name=${encodeURIComponent(player.name || '对手')}`)
+}
+
+export const buildSpectatorFinishedMatchDetailUrl = ({
+  match = {},
+  userId = 0
+} = {}) => {
+  if (Number(match.status) !== 2) return ''
+
+  const currentUserId = Number(userId) || 0
+  const player1 = {
+    id: Number(match.player1_id || 0),
+    name: match.player1_name || '玩家1',
+    avatar: match.player1_avatar || ''
+  }
+  const player2 = {
+    id: Number(match.player2_id || 0),
+    name: match.player2_name || '玩家2',
+    avatar: match.player2_avatar || ''
+  }
+
+  const query = []
+  if (currentUserId > 0 && player1.id === currentUserId) {
+    appendPlayerQuery(query, 'opponent', player2)
+    return `/subPages/user/h2hRecord?${query.join('&')}`
+  }
+
+  if (currentUserId > 0 && player2.id === currentUserId) {
+    appendPlayerQuery(query, 'opponent', player1)
+    return `/subPages/user/h2hRecord?${query.join('&')}`
+  }
+
+  if (player1.id <= 0) return ''
+
+  query.push(`target_user_id=${player1.id}`)
+  query.push(`target_name=${encodeURIComponent(player1.name || '球友')}`)
+  query.push(`target_avatar=${encodeURIComponent(player1.avatar || '')}`)
+  appendPlayerQuery(query, 'opponent', player2)
+  return `/subPages/user/h2hRecord?${query.join('&')}`
+}

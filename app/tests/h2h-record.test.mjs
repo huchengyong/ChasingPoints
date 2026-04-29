@@ -113,7 +113,7 @@ test('buildH2HViewModel switches to friend-vs-opponent copy in target mode', () 
     }),
     {
       isTargetMode: true,
-      navigationTitle: '战绩详情 - 球友 B',
+      navigationTitle: '球友 B的交锋记录',
       subjectName: '球友 B',
       winRateLabel: '球友 B 对阿杰的胜率是'
     }
@@ -131,7 +131,7 @@ test('buildH2HViewModel exposes a current-user opponent marker in friend detail 
     }),
     {
       isTargetMode: true,
-      navigationTitle: '战绩详情 - 球友 B',
+      navigationTitle: '球友 B的交锋记录',
       subjectName: '球友 B',
       winRateLabel: '球友 B 对我自己的胜率是',
       isOpponentMe: true

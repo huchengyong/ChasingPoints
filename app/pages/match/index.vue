@@ -3,43 +3,22 @@
 		<!-- 主内容区 -->
 		<view class="main-content">
 			<view class="lobby-toolbar">
-				<view class="scope-tabs">
-					<button
-						v-for="item in scopeOptions"
-						:key="item.value"
-						class="scope-tab"
-						:class="{ active: currentScope === item.value }"
-						@click="handleScopeChange(item.value)"
-					>
-						<text>{{ item.label }}</text>
-					</button>
-				</view>
-
-				<view v-if="currentScope === 'hall'" class="status-tabs">
-					<button
-						v-for="item in statusOptions"
-						:key="item.value"
-						class="status-tab"
-						:class="{ active: currentStatus === item.value }"
-						@click="handleStatusChange(item.value)"
-					>
-						<text>{{ item.label }}</text>
-					</button>
-				</view>
-
-				<scroll-view class="game-type-filter" scroll-x>
-					<view class="game-type-filter-row">
+				<view class="lobby-toolbar-row">
+					<view class="scope-tabs">
 						<button
-							v-for="item in gameTypeOptions"
+							v-for="item in scopeOptions"
 							:key="item.value"
-							class="game-type-filter-chip"
-							:class="{ active: currentGameType === item.value }"
-							@click="handleGameTypeChange(item.value)"
+							class="scope-tab"
+							:class="{ active: currentScope === item.value }"
+							@click="handleScopeChange(item.value)"
 						>
 							<text>{{ item.label }}</text>
 						</button>
 					</view>
-				</scroll-view>
+					<button class="filter-button" :class="{ active: isSpectatorFilterActive }" @click="openFilterPanel">
+						<uni-icons type="tune-filled" size="20" :color="isSpectatorFilterActive ? '#ffffff' : (isDarkMode ? '#d7c89b' : '#64748b')"></uni-icons>
+					</button>
+				</view>
 			</view>
 
 			<!-- 加载状态 -->
@@ -167,11 +146,67 @@
 			v-model:visible="showGameTypeModal"
 			@confirm="handleGameTypeConfirm"
 		/>
+
+		<view v-if="showFilterPanel" class="filter-panel-mask" @click="closeFilterPanel">
+			<view class="filter-panel" @click.stop>
+				<view class="filter-panel-header">
+					<text class="filter-panel-title">筛选对局</text>
+					<button class="filter-close" @click="closeFilterPanel">
+						<uni-icons type="closeempty" size="20" :color="isDarkMode ? '#d7c89b' : '#64748b'"></uni-icons>
+					</button>
+				</view>
+
+				<view v-if="currentScope === 'hall'" class="filter-group">
+					<text class="filter-group-title">状态</text>
+					<view class="status-segmented">
+						<button
+							v-for="item in statusOptions"
+							:key="item.value"
+							class="status-segmented-item"
+							:class="{ active: draftStatus === item.value }"
+							@click="draftStatus = item.value"
+						>
+							<text>{{ item.label }}</text>
+						</button>
+					</view>
+				</view>
+
+				<view class="filter-group">
+					<text class="filter-group-title">球种</text>
+					<view class="game-type-choice-list">
+						<view
+							v-for="item in gameTypeOptions"
+							:key="item.value"
+							class="game-type-choice"
+							:class="{ active: draftGameType === item.value }"
+							@click="draftGameType = item.value"
+						>
+							<text class="game-type-choice-label">{{ item.label }}</text>
+							<uni-icons
+								v-if="draftGameType === item.value"
+								type="checkmarkempty"
+								size="18"
+								color="#E0AE12"
+							></uni-icons>
+						</view>
+					</view>
+				</view>
+
+				<view class="filter-actions">
+					<button class="filter-cancel" @click="closeFilterPanel">
+						<text>取消</text>
+					</button>
+					<button class="filter-confirm" @click="confirmSpectatorFilters">
+						<text>确定</text>
+					</button>
+				</view>
+			</view>
+		</view>
 	</view>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
@@ -184,6 +219,7 @@ import { GAME_TYPE_FILTER_OPTIONS_WITH_ALL } from '@/utils/game-types.js'
 import {
 	SPECTATOR_SCOPES,
 	SPECTATOR_STATUS_OPTIONS,
+	buildSpectatorFinishedMatchDetailUrl,
 	buildSpectatorMatchListParams,
 	getSpectatorEmptyState,
 	getSpectatorMatchStatusText,
@@ -202,13 +238,19 @@ const spectatorMatches = ref([])
 const showGameTypeModal = ref(false)
 const selectedGameType = ref(null)
 const scanIntent = ref('start')
+const showFilterPanel = ref(false)
 const currentScope = ref('hall')
 const currentStatus = ref(1)
 const currentGameType = ref(0)
+const draftStatus = ref(1)
+const draftGameType = ref(0)
 const showPageLoading = computed(() => shouldShowMatchPageLoading(loading.value, refreshing.value))
 const scopeOptions = SPECTATOR_SCOPES
 const statusOptions = SPECTATOR_STATUS_OPTIONS
 const gameTypeOptions = GAME_TYPE_FILTER_OPTIONS_WITH_ALL
+const isSpectatorFilterActive = computed(() => {
+	return currentGameType.value > 0 || (currentScope.value === 'hall' && currentStatus.value !== 1)
+})
 
 // 用户信息
 const userName = computed(() => userStore.userInfo?.nickname || '我')
@@ -342,20 +384,41 @@ const loadData = async () => {
 const handleScopeChange = (scope) => {
 	if (currentScope.value === scope) return
 	currentScope.value = scope
+	showFilterPanel.value = false
 	loadData()
 }
 
-const handleStatusChange = (status) => {
-	if (currentStatus.value === status) return
-	currentStatus.value = status
-	loadData()
+const openFilterPanel = () => {
+	draftStatus.value = currentStatus.value
+	draftGameType.value = currentGameType.value
+	showFilterPanel.value = true
+	uni.hideTabBar({ animation: true })
 }
 
-const handleGameTypeChange = (gameType) => {
-	if (currentGameType.value === gameType) return
-	currentGameType.value = gameType
-	loadData()
+const closeFilterPanel = () => {
+	showFilterPanel.value = false
+	uni.showTabBar({ animation: true })
 }
+
+const confirmSpectatorFilters = () => {
+	const nextStatus = currentScope.value === 'hall' ? draftStatus.value : currentStatus.value
+	const nextGameType = draftGameType.value
+	const changed = currentStatus.value !== nextStatus || currentGameType.value !== nextGameType
+
+	currentStatus.value = nextStatus
+	currentGameType.value = nextGameType
+	closeFilterPanel()
+
+	if (changed) {
+		loadData()
+	}
+}
+
+onUnmounted(() => {
+	if (showFilterPanel.value) {
+		uni.showTabBar({ animation: false })
+	}
+})
 
 /**
  * 获取游戏类型样式类
@@ -582,6 +645,15 @@ const getOpponentAvatar = (match) => {
  * 点击对局卡片
  */
 const handleMatchClick = (match) => {
+	const finishedDetailUrl = buildSpectatorFinishedMatchDetailUrl({
+		match,
+		userId: userId.value
+	})
+	if (finishedDetailUrl) {
+		uni.navigateTo({ url: finishedDetailUrl })
+		return
+	}
+
 	if (shouldOpenPlayingForSpectatorMatch({
 		match,
 		userId: userId.value,

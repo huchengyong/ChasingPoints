@@ -67,6 +67,8 @@ app/
 - 针对 button 等内置组件的 disabled 状态样式覆盖，必须使用属性选择器 `&[disabled]` 或者 `button[disabled]`，绝不能使用伪类 `&:disabled`（在 UniApp 编译到小程序/App 端时，伪类无法正确匹配组件，并会导致框架默认的灰色字体强行覆盖被激活）。
 - 自定义按钮必须隐藏 `button::after`。
 - 为确保按钮文字垂直居中，所有自定义 `button` 组件的 `line-height` 应设为与 `height` 相同的值（例如 `height: 88rpx; line-height: 88rpx;`）。
+- UniApp 原生 `button` 自带默认 `margin`，会在 flex/grid、筛选 chip、底部抽屉操作区中把元素推散；自定义按钮必须显式设置 `margin: 0`，并按需设置 `padding`、`width`、`height`、`box-sizing`。
+- 底部弹层、筛选抽屉、操作面板如果覆盖 tabBar 区域，必须处理底部安全区与 tabBar：优先在打开时 `uni.hideTabBar`、关闭/卸载时 `uni.showTabBar`，或明确预留 `env(safe-area-inset-bottom)`，避免确认/取消按钮与 tabBar 重叠。
 - 页面最外层容器要注意 `box-sizing: border-box` 和首屏 margin collapse，避免顶部漏白。
 - 没有明确设计要求时，优先使用系统导航栏；自定义导航栏要和系统高度、返回行为保持一致。
 

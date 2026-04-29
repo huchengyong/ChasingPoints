@@ -71,7 +71,7 @@ export const buildH2HViewModel = ({
   const resolvedTargetName = targetName || '这位球友'
   return {
     isTargetMode: true,
-    navigationTitle: `战绩详情 - ${resolvedTargetName}`,
+    navigationTitle: `${resolvedTargetName}的交锋记录`,
     subjectName: resolvedTargetName,
     winRateLabel: `${resolvedTargetName} 对${resolvedOpponentName}的胜率是`,
     ...(isOpponentMe ? { isOpponentMe: true } : {})
