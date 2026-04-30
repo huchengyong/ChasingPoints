@@ -3,7 +3,7 @@ import { formatRelativeTime } from './format.js'
 const HIDDEN_TITLE = '对方已隐藏战绩'
 const HIDDEN_DESC = '这位好友暂时没有公开自己的战绩列表'
 const BATTLE_SECTION_TITLE = '对方战绩'
-const BATTLE_SECTION_TIP = '直接查看 TA 最近的对手记录'
+const BATTLE_SECTION_TIP = '直接查看 TA 最近的过往对手'
 
 const decodeQueryValue = (value = '') => {
   if (!value) return ''

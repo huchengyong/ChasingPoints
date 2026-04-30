@@ -137,7 +137,7 @@
 				{
 					"path": "opponentRecord",
 					"style": {
-						"navigationBarTitleText": "对手记录"
+						"navigationBarTitleText": "过往对手"
 					}
 				},
 				{
@@ -167,7 +167,7 @@
 				,{
 					"path": "statsDetail",
 					"style": {
-						"navigationBarTitleText": "深度统计"
+						"navigationBarTitleText": "竞技分析"
 					}
 				}
 			]

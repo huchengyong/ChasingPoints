@@ -4,10 +4,12 @@ import { readFileSync } from 'node:fs'
 
 import {
   buildH2HHistoryParams,
+  buildH2HCurrentMonthKey,
+  buildH2HMonthDateRange,
+  shiftH2HMonthKey,
   buildH2HLoadFailureAction,
   buildH2HViewModel,
   normalizeH2HRecordOptions,
-  resolveH2HHistoryLoadingMode,
   shouldApplyH2HHistoryResponse
 } from '../utils/h2h-record.js'
 
@@ -67,6 +69,44 @@ test('buildH2HHistoryParams carries target_user_id in friend mode', () => {
       result: 2
     }
   )
+})
+
+test('buildH2HHistoryParams includes optional date range for calendar requests', () => {
+  assert.deepEqual(
+    buildH2HHistoryParams({
+      opponentId: 18,
+      page: 1,
+      pageSize: 100,
+      startDate: '2026-04-01',
+      endDate: '2026-04-30'
+    }),
+    {
+      opponent_id: 18,
+      page: 1,
+      page_size: 100,
+      start_date: '2026-04-01',
+      end_date: '2026-04-30'
+    }
+  )
+})
+
+test('buildH2HMonthDateRange returns the inclusive month boundary dates', () => {
+  assert.deepEqual(
+    buildH2HMonthDateRange('2026-04'),
+    {
+      startDate: '2026-04-01',
+      endDate: '2026-04-30'
+    }
+  )
+})
+
+test('buildH2HCurrentMonthKey returns the local calendar month', () => {
+  assert.equal(buildH2HCurrentMonthKey(new Date(2026, 3, 30, 10, 0, 0)), '2026-04')
+})
+
+test('shiftH2HMonthKey moves across year boundaries', () => {
+  assert.equal(shiftH2HMonthKey('2026-01', -1), '2025-12')
+  assert.equal(shiftH2HMonthKey('2026-12', 1), '2027-01')
 })
 
 test('normalizeH2HRecordOptions decodes both target user and opponent context', () => {
@@ -162,23 +202,6 @@ test('buildH2HLoadFailureAction ignores generic self-mode failures', () => {
   )
 })
 
-test('resolveH2HHistoryLoadingMode keeps tab switches out of full-page loading', () => {
-  assert.equal(resolveH2HHistoryLoadingMode({
-    hasLoadedOnce: false,
-    isFetching: true
-  }), 'initial')
-
-  assert.equal(resolveH2HHistoryLoadingMode({
-    hasLoadedOnce: true,
-    isFetching: true
-  }), 'refreshing')
-
-  assert.equal(resolveH2HHistoryLoadingMode({
-    hasLoadedOnce: true,
-    isFetching: false
-  }), 'idle')
-})
-
 test('shouldApplyH2HHistoryResponse ignores stale filter responses', () => {
   assert.equal(shouldApplyH2HHistoryResponse({
     requestId: 4,
@@ -202,15 +225,30 @@ test('h2h record page uses view models, exposes retry copy, and links cards to m
   const source = readFileSync(new URL('../subPages/user/h2hRecord.vue', import.meta.url), 'utf8')
 
   assert.match(source, /buildH2HHeroViewModel/)
+  assert.match(source, /buildH2HCalendarViewModel/)
   assert.match(source, /shouldShowH2HSummaryCard/)
-  assert.match(source, /matchDetail\?match_id=\$\{matchId\}/)
+  assert.match(source, /matchDetail\?match_id=\$\{matchId\}&source=history&perspective_user_id=\$\{subjectUserId\}/)
   assert.match(source, /重新加载/)
 })
 
-test('h2h filter tabs keep long labels on one centered line', () => {
+test('h2h record page merges calendar and list into one month-filtered history section', () => {
+  const source = readFileSync(new URL('../subPages/user/h2hRecord.vue', import.meta.url), 'utf8')
   const style = readFileSync(new URL('../subPages/user/h2hRecord.scss', import.meta.url), 'utf8')
 
-  assert.match(style, /\.filter-btn[\s\S]*padding: 0;/)
-  assert.match(style, /\.filter-btn[\s\S]*min-width: 0;/)
-  assert.match(style, /\.btn-text[\s\S]*white-space: nowrap;/)
+  assert.match(source, /<text class="history-section-title">比赛历史<\/text>/)
+  assert.match(source, /<view class="history-section-header">[\s\S]*<view class="history-month-row">[\s\S]*<view class="history-view-switch">/)
+  assert.match(source, /historyViewMode/)
+  assert.match(source, /shiftHistoryMonth/)
+  assert.match(source, /pageSize = 10/)
+  assert.doesNotMatch(source, />全部</)
+  assert.doesNotMatch(source, />胜利</)
+  assert.doesNotMatch(source, />失败</)
+  assert.doesNotMatch(source, />最近5场</)
+  assert.match(source, /calendarViewModel\.weekdays/)
+  assert.match(source, /cell\.winCount/)
+  assert.match(source, /cell\.lossCount/)
+  assert.match(style, /\.history-view-switch/)
+  assert.match(style, /\.history-month-button/)
+  assert.match(style, /\.calendar-result-dot[\s\S]*&\.win[\s\S]*background-color: \$primary-color;/)
+  assert.match(style, /\.calendar-result-dot[\s\S]*&\.lose[\s\S]*background-color: \$loss-red;/)
 })

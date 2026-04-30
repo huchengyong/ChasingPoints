@@ -2,6 +2,7 @@ package stats
 
 import (
 	"context"
+	"fmt"
 
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -25,6 +26,13 @@ func NewGetMatchDurationStatsLogic(ctx context.Context, svcCtx *svc.ServiceConte
 	}
 }
 
+func matchDurationSecondsExpr(dialect string) string {
+	if dialect == "sqlite" {
+		return "(strftime('%s', end_time) - strftime('%s', match_time))"
+	}
+	return "TIMESTAMPDIFF(SECOND, match_time, end_time)"
+}
+
 func (l *GetMatchDurationStatsLogic) GetMatchDurationStats(req *types.GetMatchDurationStatsReq) (resp *types.GetMatchDurationStatsResp, err error) {
 	userIdInt, err := utils.GetUserIDFromCtx(l.ctx)
 	if err != nil {
@@ -39,13 +47,14 @@ func (l *GetMatchDurationStatsLogic) GetMatchDurationStats(req *types.GetMatchDu
 		TotalMatches   int
 	}
 
+	durationExpr := matchDurationSecondsExpr(l.svcCtx.DB.Dialector.Name())
 	query := l.svcCtx.DB.Table("matches").
-		Select(`
-			COALESCE(AVG(TIMESTAMPDIFF(SECOND, match_time, end_time)), 0) AS average_seconds,
-			COALESCE(MIN(TIMESTAMPDIFF(SECOND, match_time, end_time)), 0) AS fastest_seconds,
-			COALESCE(MAX(TIMESTAMPDIFF(SECOND, match_time, end_time)), 0) AS longest_seconds,
-			COUNT(*) AS total_matches`).
-		Where("user_id = ? AND status = 2 AND end_time IS NOT NULL", userIdInt)
+		Select(fmt.Sprintf(`
+			COALESCE(AVG(%[1]s), 0) AS average_seconds,
+			COALESCE(MIN(%[1]s), 0) AS fastest_seconds,
+			COALESCE(MAX(%[1]s), 0) AS longest_seconds,
+			COUNT(*) AS total_matches`, durationExpr)).
+		Where("(user_id = ? OR opponent_id = ?) AND status = 2 AND end_time IS NOT NULL", userIdInt, userIdInt)
 
 	if req != nil && req.GameType > 0 {
 		query = query.Where("game_type = ?", req.GameType)

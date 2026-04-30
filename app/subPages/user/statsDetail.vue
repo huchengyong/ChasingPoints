@@ -53,17 +53,41 @@
 
 			<!-- 近期趋势 -->
 			<view class="section">
-				<text class="section-title">近期趋势</text>
-				<view class="trend-summary">
-					<text class="trend-rate">近{{ trendData.length }}场胜率：{{ trendWinRate }}%</text>
+				<view class="section-header">
+					<text class="section-title">近期趋势</text>
+					<view class="month-switch">
+						<view class="month-btn" @tap="handleStatsMonthChange(-1)">‹</view>
+						<text class="month-label">{{ trendCalendar.title }}</text>
+						<view class="month-btn" @tap="handleStatsMonthChange(1)">›</view>
+					</view>
 				</view>
-				<view class="trend-dots">
-					<view
-						v-for="(match, index) in trendData.slice(-30)"
-						:key="index"
-						class="dot"
-						:class="{ win: match.result === 1, loss: match.result === 2 }"
-					></view>
+				<view class="trend-summary">
+					<text class="trend-rate">本月{{ trendCalendar.summary.matchCount }}场，胜率{{ trendCalendar.summary.winRate }}%</text>
+				</view>
+				<view class="stats-calendar">
+					<view class="calendar-weekdays">
+						<text v-for="weekday in trendCalendar.weekdays" :key="weekday">{{ weekday }}</text>
+					</view>
+					<view class="calendar-grid">
+						<view
+							v-for="cell in trendCalendar.cells"
+							:key="cell.dateKey"
+							class="calendar-cell"
+							:class="{ muted: !cell.isCurrentMonth, active: cell.hasMatches }"
+						>
+							<text class="calendar-day">{{ cell.day }}</text>
+							<view v-if="cell.isCurrentMonth && cell.hasMatches" class="calendar-results">
+								<view v-if="cell.winCount > 0" class="calendar-result-row">
+									<view class="calendar-dot win"></view>
+									<text>×{{ cell.winCount }}</text>
+								</view>
+								<view v-if="cell.lossCount > 0" class="calendar-result-row">
+									<view class="calendar-dot loss"></view>
+									<text>×{{ cell.lossCount }}</text>
+								</view>
+							</view>
+						</view>
+					</view>
 				</view>
 				<view class="trend-legend">
 					<view class="legend-item"><view class="dot-sample win"></view><text>胜</text></view>
@@ -73,7 +97,14 @@
 
 			<!-- 段位分变化 -->
 			<view class="section">
-				<text class="section-title">段位分变化</text>
+				<view class="section-header">
+					<text class="section-title">段位分变化</text>
+					<view class="month-switch">
+						<view class="month-btn" @tap="handleStatsMonthChange(-1)">‹</view>
+						<text class="month-label">{{ rankDeltaChart.title }}</text>
+						<view class="month-btn" @tap="handleStatsMonthChange(1)">›</view>
+					</view>
+				</view>
 				<view class="rank-summary">
 					<view class="rank-current">
 						<text class="rank-value">{{ currentRankScore }}</text>
@@ -85,21 +116,43 @@
 							<text class="meta-label">最高分</text>
 						</view>
 						<view class="meta-item">
-							<text class="meta-value">{{ lowestRankScore }}</text>
-							<text class="meta-label">最低分</text>
+							<text class="meta-value" :class="{ up: rankDeltaChart.summary.netDelta > 0, down: rankDeltaChart.summary.netDelta < 0 }">
+								{{ rankDeltaChart.summary.netDelta > 0 ? '+' : '' }}{{ rankDeltaChart.summary.netDelta }}
+							</text>
+							<text class="meta-label">本月净变</text>
 						</view>
 					</view>
 				</view>
-				<view v-if="rankTrendList.length > 0" class="rank-changes">
-					<view
-						v-for="(change, index) in rankTrendList.slice(0, 10)"
-						:key="index"
-						class="change-item"
-					>
-						<text class="change-date">{{ change.date || '' }}</text>
-						<text class="change-delta" :class="{ up: change.delta > 0, down: change.delta < 0 }">
-							{{ change.delta > 0 ? '+' : '' }}{{ change.delta || 0 }}
-						</text>
+				<view v-if="rankDeltaChart.summary.upDays + rankDeltaChart.summary.downDays > 0" class="rank-chart">
+					<view class="rank-chart-body">
+						<view class="rank-zero-line"></view>
+						<view
+							v-for="day in rankDeltaChart.days"
+							:key="day.dateKey"
+							class="rank-chart-day"
+						>
+							<view class="bar-half upper">
+								<view
+									v-if="day.isUp"
+									class="rank-bar up"
+									:style="{ height: day.heightPercent + '%' }"
+								></view>
+							</view>
+							<view class="bar-half lower">
+								<view
+									v-if="day.isDown"
+									class="rank-bar down"
+									:style="{ height: day.heightPercent + '%' }"
+								></view>
+							</view>
+						</view>
+					</view>
+					<view class="rank-chart-axis">
+						<text
+							v-for="day in rankDeltaChart.days"
+							:key="day.dateKey"
+							:class="{ visible: day.showTick }"
+						>{{ day.showTick ? day.label : '' }}</text>
 					</view>
 				</view>
 				<view v-else class="empty-hint">
@@ -183,7 +236,12 @@ import { GAME_TYPE_KEY_MAP, GAME_TYPE_STATS_TABS, GAME_TYPE_VALUE_MAP } from '@/
 import { formatMonthKey } from '@/utils/format.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import {
+	buildRankDeltaChartViewModel,
+	buildStatsTrendCalendarViewModel,
+	normalizeDurationStats,
+	normalizeOpponentStrengthStats,
 	resolveStatsDetailLoadingMode,
+	shiftMonthKey,
 	shouldApplyStatsDetailResponse
 } from '@/utils/stats-detail.js'
 
@@ -193,6 +251,7 @@ const isStatsFetching = ref(true)
 const hasLoadedOnce = ref(false)
 const latestStatsRequestId = ref(0)
 const currentGame = ref('chinese_eight')
+const selectedStatsMonthKey = ref(formatMonthKey(new Date()))
 
 const gameTypeStats = ref({})
 const trendData = ref([])
@@ -215,11 +274,13 @@ const currentGameStats = computed(() => {
 	return gameTypeStats.value[currentGame.value] || {}
 })
 
-const trendWinRate = computed(() => {
-	if (!trendData.value || trendData.value.length === 0) return 0
-	const wins = trendData.value.filter(m => m.result === 1).length
-	return Math.round((wins / trendData.value.length) * 100)
-})
+const trendCalendar = computed(() => buildStatsTrendCalendarViewModel(trendData.value, {
+	monthKey: selectedStatsMonthKey.value
+}))
+
+const rankDeltaChart = computed(() => buildRankDeltaChartViewModel(rankData.value, {
+	monthKey: selectedStatsMonthKey.value
+}))
 
 const rankTrendList = computed(() => {
 	const list = Array.isArray(rankData.value?.list) ? rankData.value.list : Array.isArray(rankData.value) ? rankData.value : []
@@ -236,7 +297,6 @@ const rankTrendList = computed(() => {
 
 const currentRankScore = computed(() => rankTrendList.value[0]?.score || 0)
 const peakRankScore = computed(() => rankTrendList.value.length ? Math.max(...rankTrendList.value.map(item => item.score || 0)) : 0)
-const lowestRankScore = computed(() => rankTrendList.value.length ? Math.min(...rankTrendList.value.map(item => item.score || 0)) : 0)
 
 const formatDuration = (durationSeconds) => {
 	if (!durationSeconds || durationSeconds < 0) return '0分'
@@ -311,8 +371,8 @@ const loadAllStats = async () => {
 	try {
 		const results = await Promise.allSettled([
 			getStatsByGameType(),
-			getRecentTrend({ limit: 30, game_type: gameType }),
-			getRankScoreTrend({ game_type: gameType }),
+			getRecentTrend({ limit: 300, game_type: gameType }),
+			getRankScoreTrend({ limit: 300, game_type: gameType }),
 			getSingleHighScore({ game_type: gameType }),
 			getMatchDurationStats({ game_type: gameType }),
 			getOpponentStrengthAnalysis({ game_type: gameType })
@@ -338,11 +398,10 @@ const loadAllStats = async () => {
 			highScore.value = normalizeHighScoreStats(results[3].value)
 		}
 		if (results[4].status === 'fulfilled') {
-			durationData.value = results[4].value || {}
+			durationData.value = normalizeDurationStats(results[4].value)
 		}
 		if (results[5].status === 'fulfilled') {
-			const data = results[5].value
-			opponentData.value = data.tiers || data.list || data || []
+			opponentData.value = normalizeOpponentStrengthStats(results[5].value)
 		}
 
 		hasLoadedOnce.value = true
@@ -380,6 +439,10 @@ const handleGameChange = (gameKey) => {
 	if (currentGame.value === gameKey) return
 	currentGame.value = gameKey
 	loadAllStats()
+}
+
+const handleStatsMonthChange = (offset) => {
+	selectedStatsMonthKey.value = shiftMonthKey(selectedStatsMonthKey.value, offset)
 }
 
 const goLogin = () => {
@@ -438,13 +501,27 @@ const goLogin = () => {
 			background: rgba(239, 68, 68, 0.18);
 		}
 
-		.trend-dots .dot,
+		.stats-calendar .calendar-cell,
 		.opponent-list .opponent-item .tier-bar {
 			background: #3a2e16;
 		}
 
-		.rank-changes .change-item {
-			border-bottom-color: #3a2e16;
+		.stats-calendar .calendar-weekdays,
+		.month-label,
+		.rank-chart-axis text {
+			color: #d7c89b;
+		}
+
+		.stats-calendar .calendar-cell .calendar-day {
+			color: #fff7e1;
+		}
+
+		.rank-chart-body {
+			background: #241d10;
+		}
+
+		.rank-zero-line {
+			background: #3a2e16;
 		}
 	}
 }
@@ -473,6 +550,44 @@ const goLogin = () => {
 		color: #1e293b;
 		margin-bottom: 20rpx;
 		display: block;
+	}
+}
+
+.section-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16rpx;
+	margin-bottom: 20rpx;
+
+	.section-title {
+		margin-bottom: 0;
+	}
+}
+
+.month-switch {
+	display: flex;
+	align-items: center;
+	gap: 10rpx;
+	flex-shrink: 0;
+
+	.month-btn {
+		width: 44rpx;
+		height: 44rpx;
+		line-height: 40rpx;
+		text-align: center;
+		border-radius: 22rpx;
+		background: #f1f5f9;
+		color: #64748b;
+		font-size: 30rpx;
+		font-weight: 700;
+	}
+
+	.month-label {
+		min-width: 132rpx;
+		text-align: center;
+		font-size: 24rpx;
+		color: #64748b;
 	}
 }
 
@@ -567,19 +682,70 @@ const goLogin = () => {
 	}
 }
 
-.trend-dots {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8rpx;
+.stats-calendar {
+	.calendar-weekdays {
+		display: grid;
+		grid-template-columns: repeat(7, 1fr);
+		margin-bottom: 8rpx;
+		font-size: 22rpx;
+		color: #94a3b8;
+		text-align: center;
+	}
 
-	.dot {
-		width: 20rpx;
-		height: 20rpx;
-		border-radius: 4rpx;
-		background: #e2e8f0;
+	.calendar-grid {
+		display: grid;
+		grid-template-columns: repeat(7, 1fr);
+		gap: 8rpx;
+	}
 
-		&.win { background: #22c55e; }
-		&.loss { background: #ef4444; }
+	.calendar-cell {
+		min-height: 78rpx;
+		border-radius: 10rpx;
+		background: #f8fafc;
+		padding: 6rpx;
+		box-sizing: border-box;
+		opacity: 1;
+
+		&.muted {
+			opacity: 0.35;
+		}
+
+		&.active {
+			background: #fff7e6;
+		}
+
+		.calendar-day {
+			display: block;
+			font-size: 20rpx;
+			line-height: 22rpx;
+			color: #64748b;
+		}
+
+		.calendar-results {
+			margin-top: 4rpx;
+			display: flex;
+			flex-direction: column;
+			gap: 2rpx;
+		}
+
+		.calendar-result-row {
+			display: flex;
+			align-items: center;
+			gap: 3rpx;
+			font-size: 18rpx;
+			line-height: 20rpx;
+			color: #475569;
+		}
+
+		.calendar-dot {
+			width: 10rpx;
+			height: 10rpx;
+			border-radius: 50%;
+			flex-shrink: 0;
+
+			&.win { background: #22c55e; }
+			&.loss { background: #ef4444; }
+		}
 	}
 }
 
@@ -641,6 +807,9 @@ const goLogin = () => {
 				font-size: 32rpx;
 				font-weight: 600;
 				color: #1e293b;
+
+				&.up { color: #22c55e; }
+				&.down { color: #ef4444; }
 			}
 			.meta-label {
 				font-size: 22rpx;
@@ -650,24 +819,75 @@ const goLogin = () => {
 	}
 }
 
-.rank-changes {
-	.change-item {
+.rank-chart {
+	.rank-chart-body {
+		position: relative;
+		height: 220rpx;
 		display: flex;
-		justify-content: space-between;
-		padding: 12rpx 0;
-		border-bottom: 1rpx solid #f1f5f9;
+		align-items: stretch;
+		background: #f8fafc;
+		border-radius: 12rpx;
+		padding: 12rpx 8rpx;
+		box-sizing: border-box;
+		overflow: hidden;
+	}
 
-		&:last-child { border-bottom: none; }
+	.rank-zero-line {
+		position: absolute;
+		left: 8rpx;
+		right: 8rpx;
+		top: 50%;
+		height: 1rpx;
+		background: #e2e8f0;
+	}
 
-		.change-date {
-			font-size: 24rpx;
-			color: #94a3b8;
-		}
-		.change-delta {
-			font-size: 26rpx;
-			font-weight: 600;
-			&.up { color: #22c55e; }
-			&.down { color: #ef4444; }
+	.rank-chart-day {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		z-index: 1;
+	}
+
+	.bar-half {
+		width: 100%;
+		height: 50%;
+		display: flex;
+		justify-content: center;
+	}
+
+	.bar-half.upper {
+		align-items: flex-end;
+	}
+
+	.bar-half.lower {
+		align-items: flex-start;
+	}
+
+	.rank-bar {
+		width: 8rpx;
+		min-height: 8rpx;
+		border-radius: 4rpx;
+
+		&.up { background: #22c55e; }
+		&.down { background: #ef4444; }
+	}
+
+	.rank-chart-axis {
+		display: flex;
+		margin-top: 8rpx;
+
+		text {
+			flex: 1;
+			min-width: 0;
+			text-align: center;
+			font-size: 18rpx;
+			color: transparent;
+
+			&.visible {
+				color: #94a3b8;
+			}
 		}
 	}
 }

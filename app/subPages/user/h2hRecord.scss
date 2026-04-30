@@ -221,126 +221,209 @@ $border-color-dark: #334155;
     }
 }
 
-// 筛选按钮组
-.filter-bar {
+// 比赛历史版块
+.history-section {
     margin: 0 32rpx 24rpx;
-    padding: 10rpx;
+}
+
+.history-section-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 12rpx;
+    margin-bottom: 20rpx;
+}
+
+.history-section-title {
+    font-size: 32rpx;
+    font-weight: 700;
+    color: $text-primary-light;
+    transition: color 0.3s ease;
+    white-space: nowrap;
+}
+
+.history-view-switch {
+    display: flex;
+    justify-self: end;
+    padding: 4rpx;
+    border-radius: 999rpx;
     background-color: $card-bg-light;
-    border-radius: 16rpx;
+    transition: background-color 0.3s ease;
+}
+
+.history-view-button {
+    width: 78rpx;
+    height: 48rpx;
+    line-height: 48rpx;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    border-radius: 999rpx;
+    background-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &::after {
+        display: none;
+    }
+
+    text {
+        font-size: 24rpx;
+        font-weight: 600;
+        color: $text-secondary-light;
+        transition: color 0.3s ease;
+    }
+
+    &.active {
+        background-color: $stats-bg-light;
+
+        text {
+            color: $text-primary-light;
+        }
+    }
+}
+
+.history-month-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8rpx;
+}
+
+.history-month-button {
+    width: 48rpx;
+    height: 48rpx;
+    line-height: 48rpx;
+    padding: 0;
+    margin: 0;
+    border-radius: 50%;
+    background-color: $card-bg-light;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: background-color 0.3s ease;
 
-    .filter-buttons {
-        display: flex;
-        gap: 20rpx;
-
-        .filter-btn {
-            flex: 1;
-            min-width: 0;
-            height: 72rpx;
-            line-height: 72rpx;
-            padding: 0;
-            border-radius: 12rpx;
-            text-align: center;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-
-            &::after {
-                display: none;
-            }
-
-            .btn-text {
-                font-size: 28rpx;
-                font-weight: 600;
-                color: $text-secondary-light;
-                white-space: nowrap;
-                transition: color 0.3s ease;
-            }
-
-            .filter-loading-icon {
-                position: absolute;
-                right: 8rpx;
-                top: 50%;
-                transform: translateY(-50%);
-            }
-
-            &.active {
-                background-color: $stats-bg-light;
-
-                .btn-text {
-                    color: $text-primary-light;
-                }
-            }
-
-            &.pending {
-                opacity: 0.78;
-            }
-        }
+    &::after {
+        display: none;
     }
 }
 
-// 趋势区域
-.trend-section {
-    margin-bottom: 24rpx;
+.history-month-text {
+    min-width: 132rpx;
+    text-align: center;
+    font-size: 28rpx;
+    font-weight: 700;
+    color: $text-primary-light;
+    transition: color 0.3s ease;
 }
 
-.trend-scroll {
-    padding: 0 32rpx 8rpx;
-    white-space: nowrap;
+.calendar-legend {
+    display: flex;
+    align-items: center;
+    gap: 16rpx;
 
-    .trend-row {
-        display: inline-flex;
-        gap: 16rpx;
-    }
-
-    .trend-pill {
-        min-width: 80rpx;
-        height: 80rpx;
-        border-radius: 24rpx;
+    .calendar-legend-item {
         display: flex;
         align-items: center;
-        justify-content: center;
-        background-color: $card-bg-light;
-        border: 2rpx solid transparent;
-
-        &.win {
-            border-color: rgba(76, 175, 80, 0.4);
-        }
-
-        &.lose {
-            border-color: rgba(229, 115, 115, 0.4);
-        }
-
-        &.draw {
-            border-color: rgba(156, 163, 175, 0.45);
-        }
-    }
-
-    .trend-pill-text {
-        font-size: 28rpx;
-        font-weight: 700;
-        color: $text-primary-light;
-    }
-}
-
-// 历史列表标题
-.history-header {
-    padding: 0 40rpx 16rpx;
-
-    .header-text {
-        font-size: 28rpx;
-        font-weight: 600;
+        gap: 6rpx;
+        font-size: 22rpx;
         color: $text-tertiary-light;
         transition: color 0.3s ease;
     }
 }
 
-// 历史对局列表
-.history-list {
-    flex: 1;
-    padding: 0 32rpx 32rpx;
+.h2h-calendar-card {
+    padding: 20rpx;
+    background-color: $card-bg-light;
+    border-radius: 24rpx;
+    transition: background-color 0.3s ease;
+}
+
+.calendar-week-row,
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.calendar-weekday {
+    height: 44rpx;
+    line-height: 44rpx;
+    text-align: center;
+    font-size: 22rpx;
+    color: $text-tertiary-light;
+    transition: color 0.3s ease;
+}
+
+.calendar-day {
+    min-height: 96rpx;
+    padding: 8rpx 4rpx;
+    border-radius: 12rpx;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4rpx;
+
+    &.active {
+        background-color: $stats-bg-light;
+    }
+
+    &.outside {
+        opacity: 0.42;
+    }
+}
+
+.calendar-date {
+    font-size: 24rpx;
+    font-weight: 600;
+    color: $text-secondary-light;
+    line-height: 28rpx;
+    transition: color 0.3s ease;
+}
+
+.calendar-results {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rpx;
+}
+
+.calendar-result-line {
+    height: 24rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4rpx;
+}
+
+.calendar-result-dot {
+    width: 12rpx;
+    height: 12rpx;
+    border-radius: 50%;
+    flex-shrink: 0;
+
+    &.win {
+        background-color: $primary-color;
+    }
+
+    &.lose {
+        background-color: $loss-red;
+    }
+}
+
+.calendar-result-count {
+    font-size: 20rpx;
+    font-weight: 700;
+    line-height: 24rpx;
+    color: $text-primary-light;
+    transition: color 0.3s ease;
+}
+
+.history-list-panel {
+    display: flex;
+    flex-direction: column;
 }
 
 // 单条历史记录
@@ -644,30 +727,34 @@ $border-color-dark: #334155;
         }
     }
 
-    .filter-bar {
+    .history-section-title {
+        color: $text-primary-dark;
+    }
+
+    .history-view-switch {
         background-color: $card-bg-dark;
+    }
 
-        .filter-buttons {
-            .filter-btn {
-                .btn-text {
-                    color: $text-secondary-dark;
-                }
+    .history-view-button {
+        text {
+            color: $text-secondary-dark;
+        }
 
-                &.active {
-                    background-color: $bg-dark;
+        &.active {
+            background-color: $bg-dark;
 
-                    .btn-text {
-                        color: #ffffff;
-                    }
-                }
+            text {
+                color: #ffffff;
             }
         }
     }
 
-    .history-header {
-        .header-text {
-            color: $text-tertiary-dark;
-        }
+    .history-month-button {
+        background-color: $card-bg-dark;
+    }
+
+    .history-month-text {
+        color: $text-primary-dark;
     }
 
     .history-item {
@@ -697,14 +784,32 @@ $border-color-dark: #334155;
         }
     }
 
-    .trend-scroll {
-        .trend-pill {
-            background-color: $card-bg-dark;
+    .calendar-legend {
+        .calendar-legend-item {
+            color: $text-tertiary-dark;
         }
+    }
 
-        .trend-pill-text {
-            color: $text-primary-dark;
+    .h2h-calendar-card {
+        background-color: $card-bg-dark;
+    }
+
+    .calendar-weekday {
+        color: $text-tertiary-dark;
+    }
+
+    .calendar-day {
+        &.active {
+            background-color: $stats-bg-dark;
         }
+    }
+
+    .calendar-date {
+        color: $text-secondary-dark;
+    }
+
+    .calendar-result-count {
+        color: $text-primary-dark;
     }
 
     .loading-wrapper {

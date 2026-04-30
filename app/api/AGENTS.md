@@ -18,7 +18,7 @@ api/
 ├── season.js        # 当前赛季、赛季榜、赛季报告
 ├── share.js         # 对局/赛事分享
 ├── social.js        # 动态流、发帖、评论、点赞
-├── stats.js         # 深度统计、趋势、对手强度
+├── stats.js         # 竞技分析、趋势、对手强度
 ├── tournament.js    # 赛事列表、创建、详情、报名、对阵
 ├── user.js          # 用户资料、昵称、推送 token
 └── venue.js         # 球房列表、详情、附近球房、签到、提交
@@ -41,7 +41,7 @@ api/
 | 社交关系链 | `friend.js`, `social.js`, `challenge.js` | 当前仓库没有单独的 `follow.js` 文件 |
 | 赛事与赛季 | `tournament.js`, `season.js` | 赛事分享和赛季报告是独立模块 |
 | 球房与规则 | `venue.js`, `rules.js` | 对应分包页面较多 |
-| 分享和深度统计 | `share.js`, `stats.js` | 对局海报、赛季报告、用户深度统计 |
+| 分享和竞技分析 | `share.js`, `stats.js` | 对局海报、赛季报告、用户竞技分析 |
 
 ## CONVENTIONS
 - 页面层不要直接 import `utils/request.js`；只能 import `api/*.js`。

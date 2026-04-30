@@ -65,93 +65,95 @@
 			</view>
 		</view>
 
-		<view class="filter-bar" v-if="pageStatus !== 'loading' && pageStatus !== 'error'">
-			<view class="filter-buttons">
-				<button
-					class="filter-btn"
-					:class="{ active: currentFilter === 0, pending: isHistoryRefreshing && currentFilter === 0 }"
-					@click="handleFilterChange(0)"
-				>
-					<text class="btn-text">全部</text>
-					<uni-icons class="filter-loading-icon" v-if="isHistoryRefreshing && currentFilter === 0" type="spinner-cycle" size="13" :color="isDarkMode ? '#ffffff' : '#6b7280'"></uni-icons>
-				</button>
-				<button
-					class="filter-btn"
-					:class="{ active: currentFilter === 1, pending: isHistoryRefreshing && currentFilter === 1 }"
-					@click="handleFilterChange(1)"
-				>
-					<text class="btn-text">胜利</text>
-					<uni-icons class="filter-loading-icon" v-if="isHistoryRefreshing && currentFilter === 1" type="spinner-cycle" size="13" :color="isDarkMode ? '#ffffff' : '#6b7280'"></uni-icons>
-				</button>
-				<button
-					class="filter-btn"
-					:class="{ active: currentFilter === 2, pending: isHistoryRefreshing && currentFilter === 2 }"
-					@click="handleFilterChange(2)"
-				>
-					<text class="btn-text">失败</text>
-					<uni-icons class="filter-loading-icon" v-if="isHistoryRefreshing && currentFilter === 2" type="spinner-cycle" size="13" :color="isDarkMode ? '#ffffff' : '#6b7280'"></uni-icons>
-				</button>
-				<button
-					class="filter-btn"
-					:class="{ active: currentFilter === 3, pending: isHistoryRefreshing && currentFilter === 3 }"
-					@click="handleFilterChange(3)"
-				>
-					<text class="btn-text">最近5场</text>
-					<uni-icons class="filter-loading-icon" v-if="isHistoryRefreshing && currentFilter === 3" type="spinner-cycle" size="13" :color="isDarkMode ? '#ffffff' : '#6b7280'"></uni-icons>
-				</button>
-			</view>
+		<view class="loading-wrapper" v-if="pageStatus === 'loading'">
+			<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+			<text class="loading-text">加载中...</text>
 		</view>
 
-		<view class="trend-section" v-if="pageStatus !== 'loading' && pageStatus !== 'error' && trendItems.length > 0">
-			<view class="history-header">
-				<text class="header-text">最近走势</text>
-			</view>
-			<scroll-view class="trend-scroll" scroll-x>
-				<view class="trend-row">
-					<view
-						v-for="item in trendItems"
-						:key="item.matchId"
-						class="trend-pill"
-						:class="getResultClass(item.result)"
-						@click="goToMatchDetail(item.matchId)"
+		<view class="error-wrapper" v-else-if="pageStatus === 'error'">
+			<uni-icons type="info-filled" size="52" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+			<text class="error-text">{{ loadErrorMessage || '交锋数据加载失败' }}</text>
+			<button class="retry-btn" @click="fetchData">
+				<text>重新加载</text>
+			</button>
+		</view>
+
+		<view class="history-section" v-else>
+			<view class="history-section-header">
+				<text class="history-section-title">比赛历史</text>
+				<view class="history-month-row">
+					<button class="history-month-button" @click="shiftHistoryMonth(-1)">
+						<uni-icons type="left" size="18" :color="isDarkMode ? '#cbd5e1' : '#6b7280'"></uni-icons>
+					</button>
+					<text class="history-month-text">{{ calendarViewModel.title }}</text>
+					<button class="history-month-button" @click="shiftHistoryMonth(1)">
+						<uni-icons type="right" size="18" :color="isDarkMode ? '#cbd5e1' : '#6b7280'"></uni-icons>
+					</button>
+				</view>
+				<view class="history-view-switch">
+					<button
+						class="history-view-button"
+						:class="{ active: historyViewMode === 'calendar' }"
+						@click="setHistoryViewMode('calendar')"
 					>
-						<text class="trend-pill-text">{{ item.label }}</text>
+						<text>月历</text>
+					</button>
+					<button
+						class="history-view-button"
+						:class="{ active: historyViewMode === 'list' }"
+						@click="setHistoryViewMode('list')"
+					>
+						<text>列表</text>
+					</button>
+				</view>
+			</view>
+			<view class="error-banner" v-if="pageStatus === 'partial'">
+				<text class="error-banner-text">{{ loadErrorMessage || '部分数据加载失败，先展示已获取内容' }}</text>
+				<text class="error-banner-link" @click="fetchData">重新加载</text>
+			</view>
+
+			<view class="h2h-calendar-card" v-if="historyViewMode === 'calendar'">
+				<view class="calendar-legend">
+					<view class="calendar-legend-item">
+						<view class="calendar-result-dot win"></view>
+						<text>胜</text>
+					</view>
+					<view class="calendar-legend-item">
+						<view class="calendar-result-dot lose"></view>
+						<text>负</text>
 					</view>
 				</view>
-			</scroll-view>
-		</view>
-
-		<view class="history-header" v-if="pageStatus !== 'loading' && pageStatus !== 'error' && matchCards.length > 0">
-			<text class="header-text">比赛历史</text>
-		</view>
-
-		<scroll-view
-			class="history-list"
-			scroll-y
-			@scrolltolower="onLoadMore"
-		>
-			<view class="loading-wrapper" v-if="pageStatus === 'loading'">
-				<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
-				<text class="loading-text">加载中...</text>
-			</view>
-
-			<view class="error-wrapper" v-else-if="pageStatus === 'error'">
-				<uni-icons type="info-filled" size="52" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
-				<text class="error-text">{{ loadErrorMessage || '交锋数据加载失败' }}</text>
-				<button class="retry-btn" @click="fetchData">
-					<text>重新加载</text>
-				</button>
-			</view>
-
-			<view v-else>
-				<view class="error-banner" v-if="pageStatus === 'partial'">
-					<text class="error-banner-text">{{ loadErrorMessage || '部分数据加载失败，先展示已获取内容' }}</text>
-					<text class="error-banner-link" @click="fetchData">重新加载</text>
+				<view class="calendar-week-row">
+					<text class="calendar-weekday" v-for="weekday in calendarViewModel.weekdays" :key="weekday">{{ weekday }}</text>
 				</view>
+				<view class="calendar-grid">
+					<view
+						v-for="cell in calendarViewModel.cells"
+						:key="cell.dateKey"
+						class="calendar-day"
+						:class="{ outside: !cell.isCurrentMonth, active: cell.hasMatches }"
+					>
+						<text class="calendar-date">{{ cell.day }}</text>
+						<view class="calendar-results" v-if="cell.hasMatches">
+							<view class="calendar-result-line win" v-if="cell.winCount > 0">
+								<view class="calendar-result-dot win"></view>
+								<text class="calendar-result-count">×{{ cell.winCount }}</text>
+							</view>
+							<view class="calendar-result-line lose" v-if="cell.lossCount > 0">
+								<view class="calendar-result-dot lose"></view>
+								<text class="calendar-result-count">×{{ cell.lossCount }}</text>
+							</view>
+						</view>
+					</view>
+				</view>
+				<view class="empty-wrapper compact" v-if="!hasCalendarMatches">
+					<text class="empty-text">本月暂无对局记录</text>
+				</view>
+			</view>
 
-				<view class="empty-wrapper" v-if="matchCards.length === 0">
-					<uni-icons type="list" size="64" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
-					<text class="empty-text">暂无对局记录</text>
+			<view class="history-list-panel" v-else>
+				<view class="empty-wrapper compact" v-if="matchCards.length === 0">
+					<text class="empty-text">本月暂无对局记录</text>
 				</view>
 
 				<view v-else>
@@ -179,13 +181,13 @@
 						</view>
 					</view>
 
-					<view class="load-more" v-if="currentFilter !== 3 && matchCards.length > 0">
+					<view class="load-more" v-if="matchCards.length > 0">
 						<text v-if="isLoadingMore" class="load-more-text">加载中...</text>
 						<text v-else-if="!hasMore" class="load-more-text">没有更多了</text>
 					</view>
 				</view>
 			</view>
-		</scroll-view>
+		</view>
 
 		<view class="action-bar" v-if="showSummaryCard">
 			<button class="primary-action-btn" @click="openPrimaryAction">
@@ -197,31 +199,32 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { onLoad, onReachBottom, onShow } from '@dcloudio/uni-app'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { useUserStore } from '@/store/user.js'
 import { getH2HStats, getH2HHistory } from '@/api/match.js'
 import { formatRelativeTime } from '@/utils/format.js'
 import {
+	buildH2HCalendarViewModel,
 	buildH2HHeroViewModel,
 	buildH2HMatchCards,
-	buildH2HTrendItems,
 	resolveH2HPageStatus,
 	shouldShowH2HSummaryCard
 } from '@/utils/h2h-view-model.js'
 import {
 	buildH2HHistoryParams,
+	buildH2HCurrentMonthKey,
+	buildH2HMonthDateRange,
 	buildH2HLoadFailureAction,
 	buildH2HViewModel,
 	normalizeH2HRecordOptions,
-	resolveH2HHistoryLoadingMode,
+	shiftH2HMonthKey,
 	shouldApplyH2HHistoryResponse
 } from '@/utils/h2h-record.js'
 
 const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
 
-const isHistoryFetching = ref(false)
 const isLoadingMore = ref(false)
 const hasMore = ref(true)
 const hasHandledTargetLoadFailure = ref(false)
@@ -236,7 +239,8 @@ const myAvatar = ref('')
 const targetUserId = ref(0)
 const targetName = ref('')
 const targetAvatar = ref('')
-const currentFilter = ref(0)
+const historyViewMode = ref('calendar')
+const selectedMonthKey = ref(buildH2HCurrentMonthKey())
 
 const opponentData = reactive({
 	id: 0,
@@ -255,8 +259,10 @@ const statsData = reactive({
 
 const historyList = ref([])
 const summaryHistory = ref([])
+const calendarHistory = ref([])
 const currentPage = ref(1)
-const pageSize = 20
+const pageSize = 10
+const calendarPageSize = 100
 const total = ref(0)
 
 const routeViewModel = computed(() => buildH2HViewModel({
@@ -288,26 +294,25 @@ const heroViewModel = computed(() => buildH2HHeroViewModel({
 	subjectAvatar: subjectAvatar.value
 }))
 
-const trendItems = computed(() => buildH2HTrendItems(summaryHistory.value.slice(0, 10)))
-const displayHistoryList = computed(() => currentFilter.value === 3 ? historyList.value.slice(0, 5) : historyList.value)
-const matchCards = computed(() => buildH2HMatchCards(displayHistoryList.value))
+const calendarSourceHistory = computed(() => (
+	calendarHistory.value.length > 0 ? calendarHistory.value : summaryHistory.value
+))
+const calendarViewModel = computed(() => buildH2HCalendarViewModel(calendarSourceHistory.value, {
+	monthKey: selectedMonthKey.value
+}))
+const hasCalendarMatches = computed(() => calendarViewModel.value.cells.some((cell) => cell.hasMatches))
+const matchCards = computed(() => buildH2HMatchCards(historyList.value))
 const pageStatus = computed(() => resolveH2HPageStatus({
 	statsLoaded: statsLoaded.value,
 	historyLoaded: historyLoaded.value,
 	totalMatches: statsData.totalMatches,
-	historyLength: summaryHistory.value.length,
+	historyLength: calendarHistory.value.length || historyList.value.length,
 	hasError: Boolean(loadErrorMessage.value)
 }))
 const showSummaryCard = computed(() => shouldShowH2HSummaryCard({
 	pageStatus: pageStatus.value,
 	statsLoaded: statsLoaded.value
 }))
-const historyLoadingMode = computed(() => resolveH2HHistoryLoadingMode({
-	hasLoadedOnce: historyLoaded.value,
-	isFetching: isHistoryFetching.value
-}))
-const isHistoryRefreshing = computed(() => historyLoadingMode.value === 'refreshing')
-
 onLoad((options) => {
 	const normalized = normalizeH2HRecordOptions(options)
 	targetUserId.value = normalized.targetUserId
@@ -331,6 +336,10 @@ onMounted(() => {
 })
 
 onShow(() => {
+})
+
+onReachBottom(() => {
+	onLoadMore()
 })
 
 const loadUserInfo = () => {
@@ -372,11 +381,13 @@ const fetchData = async () => {
 	statsLoaded.value = false
 	historyLoaded.value = false
 	loadErrorMessage.value = ''
+	currentPage.value = 1
+	hasMore.value = true
 
 	try {
 		await Promise.all([
 			fetchStats(),
-			fetchHistory(false, false)
+			fetchMonthHistory(false)
 		])
 	} catch (error) {
 		console.error('获取数据失败:', error)
@@ -434,13 +445,12 @@ const fetchHistory = async (isRefresh = false, isLoadMore = false) => {
 		hasMore.value = true
 		isLoadingMore.value = false
 	} else if (isLoadMore) {
-		if (!hasMore.value || currentFilter.value === 3) return
+		if (!hasMore.value) return
 		isLoadingMore.value = true
 		currentPage.value++
 	}
 
 	if (!isLoadMore) {
-		isHistoryFetching.value = true
 		if (!historyLoaded.value) {
 			historyLoaded.value = false
 		}
@@ -450,6 +460,7 @@ const fetchHistory = async (isRefresh = false, isLoadMore = false) => {
 	}
 
 	try {
+		const range = buildH2HMonthDateRange(selectedMonthKey.value)
 		const params = buildH2HHistoryParams({
 			targetUserId: targetUserId.value,
 			opponentId: opponentId.value,
@@ -457,7 +468,9 @@ const fetchHistory = async (isRefresh = false, isLoadMore = false) => {
 			opponentName: opponentData.name || opponentName.value,
 			page: currentPage.value,
 			pageSize,
-			result: currentFilter.value === 3 ? 0 : currentFilter.value
+			result: 0,
+			startDate: range?.startDate || '',
+			endDate: range?.endDate || ''
 		})
 
 		const res = await getH2HHistory(params)
@@ -474,7 +487,7 @@ const fetchHistory = async (isRefresh = false, isLoadMore = false) => {
 			historyList.value = [...historyList.value, ...list]
 		}
 
-		if (currentFilter.value === 0 || currentFilter.value === 3) {
+		if (!isLoadMore) {
 			summaryHistory.value = historyList.value
 		}
 
@@ -492,39 +505,72 @@ const fetchHistory = async (isRefresh = false, isLoadMore = false) => {
 			if (!historyLoaded.value) {
 				historyList.value = []
 			}
-			if (currentFilter.value === 0 || currentFilter.value === 3) {
-				if (!historyLoaded.value) {
-					summaryHistory.value = []
-				}
+			if (!historyLoaded.value) {
+				summaryHistory.value = []
 			}
 		}
 	} finally {
 		if (shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value })) {
 			isLoadingMore.value = false
-			if (!isLoadMore) {
-				isHistoryFetching.value = false
-			}
 		}
 	}
 }
 
-const handleFilterChange = (filter) => {
-	if (currentFilter.value === filter) return
-	currentFilter.value = filter
+const fetchCalendarHistory = async () => {
+	const range = buildH2HMonthDateRange(selectedMonthKey.value)
+	if (!range) {
+		calendarHistory.value = summaryHistory.value
+		return
+	}
+
+	try {
+		const params = buildH2HHistoryParams({
+			targetUserId: targetUserId.value,
+			opponentId: opponentId.value,
+			fallbackOpponentId: opponentData.id,
+			opponentName: opponentData.name || opponentName.value,
+			page: 1,
+			pageSize: calendarPageSize,
+			result: 0,
+			startDate: range.startDate,
+			endDate: range.endDate
+		})
+		const res = await getH2HHistory(params)
+		calendarHistory.value = res.list || []
+	} catch (error) {
+		console.error('获取交锋日历失败:', error)
+		calendarHistory.value = summaryHistory.value
+	}
+}
+
+const fetchMonthHistory = async (isRefresh = true) => {
+	await Promise.all([
+		fetchHistory(isRefresh, false),
+		fetchCalendarHistory()
+	])
+}
+
+const setHistoryViewMode = (mode) => {
+	historyViewMode.value = mode
+}
+
+const shiftHistoryMonth = (offset) => {
+	selectedMonthKey.value = shiftH2HMonthKey(selectedMonthKey.value, offset)
 	currentPage.value = 1
 	hasMore.value = true
-	fetchHistory(true, false)
+	fetchMonthHistory(true)
 }
 
 const onLoadMore = () => {
-	if (currentFilter.value === 3) return
+	if (historyViewMode.value !== 'list') return
 	fetchHistory(false, true)
 }
 
 const goToMatchDetail = (matchId) => {
 	if (!matchId) return
+	const subjectUserId = Number(targetUserId.value || userStore.userId || 0)
 	uni.navigateTo({
-		url: `/subPages/match/matchDetail?match_id=${matchId}`
+		url: `/subPages/match/matchDetail?match_id=${matchId}&source=history&perspective_user_id=${subjectUserId}`
 	})
 }
 

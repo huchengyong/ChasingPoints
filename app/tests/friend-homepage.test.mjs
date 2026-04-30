@@ -46,7 +46,7 @@ test('buildFriendHomepageSummary exposes readable stat copy for matched friends'
       emptyTitle: '',
       emptyDesc: '',
       battleSectionTitle: '对方战绩',
-      battleSectionTip: '直接查看 TA 最近的对手记录',
+      battleSectionTip: '直接查看 TA 最近的过往对手',
       hiddenTitle: '对方已隐藏战绩',
       hiddenDesc: '这位好友暂时没有公开自己的战绩列表'
     }
@@ -74,7 +74,7 @@ test('buildFriendHomepageSummary falls back to a calm empty state when no matche
       emptyTitle: '暂时还没有可展示的战绩',
       emptyDesc: '等这位好友完成真实对局后，再回来看看',
       battleSectionTitle: '对方战绩',
-      battleSectionTip: '直接查看 TA 最近的对手记录',
+      battleSectionTip: '直接查看 TA 最近的过往对手',
       hiddenTitle: '对方已隐藏战绩',
       hiddenDesc: '这位好友暂时没有公开自己的战绩列表'
     }

@@ -348,7 +348,7 @@ func TestMatchModelListByOpponentNameReturnsAnonymousHistory(t *testing.T) {
 		}
 	}
 
-	list, total, err := matchModel.ListByOpponentName(1, "线下朋友", 0, 0, 20)
+	list, total, err := matchModel.ListByOpponentName(1, "线下朋友", 0, 0, 20, nil, nil)
 	if err != nil {
 		t.Fatalf("list by opponent name: %v", err)
 	}
@@ -361,5 +361,68 @@ func TestMatchModelListByOpponentNameReturnsAnonymousHistory(t *testing.T) {
 	}
 	if list[0].Result != 2 || list[1].Result != 1 {
 		t.Fatalf("expected preserved anonymous results, got %#v", list)
+	}
+}
+
+func TestMatchModelListByOpponentIdFiltersByDateRange(t *testing.T) {
+	db := newMatchH2HTestDB(t)
+	userModel := NewUserModel(db)
+	matchModel := NewMatchModel(db)
+
+	if err := userModel.Create(&User{Id: 1, Nickname: "我"}); err != nil {
+		t.Fatalf("create user 1: %v", err)
+	}
+	if err := userModel.Create(&User{Id: 2, Nickname: "球友"}); err != nil {
+		t.Fatalf("create user 2: %v", err)
+	}
+
+	userID := int64(1)
+	opponentID := int64(2)
+	win := 1
+	for _, match := range []*Match{
+		{Id: 601, UserId: userID, OpponentId: &opponentID, OpponentName: "球友", GameType: 3, MyScore: 5, OpponentScore: 3, Status: 2, Result: &win, MatchTime: time.Date(2026, 3, 31, 12, 0, 0, 0, time.UTC)},
+		{Id: 602, UserId: userID, OpponentId: &opponentID, OpponentName: "球友", GameType: 3, MyScore: 5, OpponentScore: 3, Status: 2, Result: &win, MatchTime: time.Date(2026, 4, 15, 12, 0, 0, 0, time.UTC)},
+		{Id: 603, UserId: userID, OpponentId: &opponentID, OpponentName: "球友", GameType: 3, MyScore: 5, OpponentScore: 3, Status: 2, Result: &win, MatchTime: time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)},
+	} {
+		if err := matchModel.Create(match); err != nil {
+			t.Fatalf("create match %d: %v", match.Id, err)
+		}
+	}
+
+	start := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	list, total, err := matchModel.ListByOpponentId(userID, opponentID, 0, 0, 20, &start, &end)
+	if err != nil {
+		t.Fatalf("list by opponent id: %v", err)
+	}
+
+	if total != 1 || len(list) != 1 || list[0].Id != 602 {
+		t.Fatalf("expected only April match, got total=%d list=%#v", total, list)
+	}
+}
+
+func TestMatchModelListByOpponentNameFiltersByDateRange(t *testing.T) {
+	db := newMatchH2HTestDB(t)
+	matchModel := NewMatchModel(db)
+
+	win := 1
+	for _, match := range []*Match{
+		{Id: 701, UserId: 1, OpponentName: "线下朋友", GameType: 2, MyScore: 21, OpponentScore: 18, Status: 2, Result: &win, MatchTime: time.Date(2026, 3, 31, 12, 0, 0, 0, time.UTC)},
+		{Id: 702, UserId: 1, OpponentName: "线下朋友", GameType: 2, MyScore: 21, OpponentScore: 18, Status: 2, Result: &win, MatchTime: time.Date(2026, 4, 20, 12, 0, 0, 0, time.UTC)},
+	} {
+		if err := matchModel.Create(match); err != nil {
+			t.Fatalf("create match %d: %v", match.Id, err)
+		}
+	}
+
+	start := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	list, total, err := matchModel.ListByOpponentName(1, "线下朋友", 0, 0, 20, &start, &end)
+	if err != nil {
+		t.Fatalf("list by opponent name: %v", err)
+	}
+
+	if total != 1 || len(list) != 1 || list[0].Id != 702 {
+		t.Fatalf("expected only April anonymous match, got total=%d list=%#v", total, list)
 	}
 }

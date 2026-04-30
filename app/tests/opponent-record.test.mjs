@@ -52,10 +52,10 @@ test('buildOpponentRecordViewModel keeps current copy for self mode', () => {
     {
       isTargetMode: false,
       subjectName: '你',
-      navigationTitle: '对手记录',
-      loginHint: '请登录后查看对手记录',
+      navigationTitle: '过往对手',
+      loginHint: '请登录后查看过往对手',
       searchPlaceholder: '搜索对手',
-      emptyText: '暂无对手记录',
+      emptyText: '暂无过往对手',
       emptyHint: '快去发起一场PK吧！'
     }
   )
@@ -74,7 +74,7 @@ test('buildOpponentRecordViewModel switches to friend-focused copy in target mod
       loginHint: '请登录后查看对方战绩',
       searchPlaceholder: '搜索 TA 的对手',
       emptyText: '暂无对方战绩',
-      emptyHint: '还没看到球友 B 的历史对手记录'
+      emptyHint: '还没看到球友 B 的历史过往对手'
     }
   )
 })

@@ -307,6 +307,14 @@
 						<text class="section-hint">按需查看</text>
 					</view>
 					<view class="service-list">
+						<view class="service-item" @click="handleStatsDetail">
+							<text>竞技分析</text>
+							<uni-icons type="right" size="16" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+						</view>
+						<view class="service-item" @click="openRoute('/subPages/rules/index')">
+							<text>规则说明</text>
+							<uni-icons type="right" size="16" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+						</view>
 						<view class="service-item" @click="openRoute('/subPages/tournament/index')">
 							<text>赛事中心</text>
 							<uni-icons type="right" size="16" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
@@ -471,7 +479,7 @@ const friendRequestStore = useFriendRequestStore()
 
 const guestBenefits = [
 	{ icon: 'flag-filled', title: '记录真实比分', desc: '每一场 PK 都能沉淀为你的个人竞技数据。' },
-	{ icon: 'bars', title: '查看竞技画像', desc: '从胜率、连胜、对手记录观察你的状态变化。' },
+	{ icon: 'bars', title: '查看竞技画像', desc: '从胜率、连胜、过往对手观察你的状态变化。' },
 	{ icon: 'chat', title: '接收待处理', desc: '挑战、好友申请和通知会集中提醒。' },
 	{ icon: 'star-filled', title: '冲击更高段位', desc: '在个人主页里持续追踪段位和段位分。' }
 ]
@@ -648,20 +656,12 @@ const quickActions = computed(() => ([
 		handler: handleMatchHistory
 	},
 	{
-		label: '对手记录',
+		label: '过往对手',
 		desc: '回看你和不同对手的交锋结果',
 		icon: 'contact',
 		iconColor: '#f59e0b',
 		iconClass: 'amber',
 		handler: handleOpponentRecord
-	},
-	{
-		label: '竞技分析',
-		desc: '查看更完整的竞技画像',
-		icon: 'bars',
-		iconColor: '#E0AE12',
-		iconClass: 'green',
-		handler: handleStatsDetail
 	},
 	{
 		label: '荣誉墙',

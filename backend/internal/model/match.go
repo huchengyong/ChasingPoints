@@ -445,6 +445,7 @@ func (m *MatchModel) ListByOpponentId(
 	opponentUserId int64,
 	result int,
 	offset, limit int,
+	startTime, endTime *time.Time,
 ) ([]H2HMatchRecord, int64, error) {
 	// 查询条件：
 	// 1. 用户作为发起方(user_id)，对手是 opponent_id
@@ -454,16 +455,22 @@ func (m *MatchModel) ListByOpponentId(
 		Match
 		CreatorNickname string
 	}
-	err := m.db.Table("matches").
+	query := m.db.Table("matches").
 		Select("matches.*, COALESCE(u.nickname, '') as creator_nickname").
 		Joins("LEFT JOIN users u ON matches.user_id = u.id").
 		Where(`(
 			(matches.user_id = ? AND matches.opponent_id = ?) OR
 			(matches.user_id = ? AND matches.opponent_id = ?)
 		) AND matches.status = 2 AND matches.deleted_at IS NULL`,
-			userId, opponentUserId, opponentUserId, userId).
-		Order("matches.match_time DESC").
-		Scan(&rawList).Error
+			userId, opponentUserId, opponentUserId, userId)
+	if startTime != nil {
+		query = query.Where("matches.match_time >= ?", *startTime)
+	}
+	if endTime != nil {
+		query = query.Where("matches.match_time < ?", *endTime)
+	}
+
+	err := query.Order("matches.match_time DESC").Scan(&rawList).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -537,6 +544,7 @@ func (m *MatchModel) ListByOpponentName(
 	opponentName string,
 	result int,
 	offset, limit int,
+	startTime, endTime *time.Time,
 ) ([]H2HMatchRecord, int64, error) {
 	if opponentName == "" {
 		return []H2HMatchRecord{}, 0, nil
@@ -551,11 +559,17 @@ func (m *MatchModel) ListByOpponentName(
 		Result        *int
 		MatchTime     time.Time
 	}
-	err := m.db.Model(&Match{}).
+	query := m.db.Model(&Match{}).
 		Select("id, game_type, opponent_name, my_score, opponent_score, result, match_time").
-		Where("user_id = ? AND opponent_name = ? AND status = 2 AND deleted_at IS NULL", userId, opponentName).
-		Order("match_time DESC").
-		Find(&rawList).Error
+		Where("user_id = ? AND opponent_name = ? AND status = 2 AND deleted_at IS NULL", userId, opponentName)
+	if startTime != nil {
+		query = query.Where("match_time >= ?", *startTime)
+	}
+	if endTime != nil {
+		query = query.Where("match_time < ?", *endTime)
+	}
+
+	err := query.Order("match_time DESC").Find(&rawList).Error
 	if err != nil {
 		return nil, 0, err
 	}

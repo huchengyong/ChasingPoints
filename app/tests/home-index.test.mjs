@@ -272,15 +272,9 @@ test('resolveHomeToolNavigation keeps stats detail navigable after login', () =>
   })
 })
 
-test('home tool carousel leaves a trailing safe area so the last card is not visually clipped at the screen edge', () => {
-  assert.match(homeIndexVueSource, /<view class="tool-scroll-shell" :class="\{ 'mask-hidden': !showToolScrollMask \}">/)
-  assert.match(homeIndexVueSource, /<scroll-view scroll-x class="tool-scroll" show-scrollbar="false" @scroll="handleToolScroll">/)
-  assert.match(homeIndexScssSource, /\.tool-scroll-shell\s*\{[\s\S]*position:\s*relative;/)
-  assert.match(homeIndexScssSource, /\.tool-scroll\s*\{[\s\S]*&::\-webkit-scrollbar\s*\{[\s\S]*display:\s*none;/)
-  assert.match(homeIndexScssSource, /\.tool-scroll\s*\{[\s\S]*scrollbar-width:\s*none;/)
-  assert.match(homeIndexScssSource, /&::after\s*\{[\s\S]*width:\s*48rpx;/)
-  assert.match(homeIndexScssSource, /&\.mask-hidden::after\s*\{[\s\S]*opacity:\s*0;/)
-  assert.match(homeIndexScssSource, /&::after\s*\{[\s\S]*linear-gradient\(90deg,\s*rgba\(255,\s*255,\s*255,\s*0\),\s*var\(--home-bg\)/)
+test('home page hides the common tools section after moving tools to user services', () => {
+  assert.doesNotMatch(homeIndexVueSource, /<text class="section-title">常用工具<\/text>/)
+  assert.doesNotMatch(homeIndexVueSource, /label: '规则说明'/)
 })
 
 test('shouldShowHomeToolEdgeMask stays visible until the carousel reaches the right edge', () => {

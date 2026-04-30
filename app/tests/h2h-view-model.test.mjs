@@ -2,8 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  buildH2HCalendarViewModel,
   buildH2HHeroViewModel,
-  buildH2HTrendItems,
   buildH2HMatchCards,
   resolveH2HPageStatus,
   shouldShowH2HSummaryCard
@@ -39,19 +39,28 @@ test('buildH2HHeroViewModel exposes title, subtitle and badges from stats/histor
   assert.equal(viewModel.badges.length, 3)
 })
 
-test('buildH2HTrendItems maps results into tappable trend pills', () => {
-  assert.deepEqual(
-    buildH2HTrendItems([
-      { id: 1, result: 1 },
-      { id: 2, result: 2 },
-      { id: 3, result: 3 }
-    ]),
-    [
-      { matchId: 1, result: 1, label: '胜' },
-      { matchId: 2, result: 2, label: '负' },
-      { matchId: 3, result: 3, label: '平' }
-    ]
-  )
+test('buildH2HCalendarViewModel aggregates same-day wins and losses', () => {
+  const calendar = buildH2HCalendarViewModel([
+    { id: 1, result: 1, match_time: '2026-04-15T10:00:00+08:00' },
+    { id: 2, result: 1, match_time: '2026-04-15T12:00:00+08:00' },
+    { id: 3, result: 2, match_time: '2026-04-15T14:00:00+08:00' },
+    { id: 4, result: 2, match_time: '2026-04-17T18:00:00+08:00' }
+  ], { monthKey: '2026-04' })
+
+  assert.equal(calendar.title, '2026年4月')
+  assert.equal(calendar.cells.length, 42)
+
+  const day15 = calendar.cells.find((cell) => cell.dateKey === '2026-04-15')
+  assert.equal(day15.day, 15)
+  assert.equal(day15.isCurrentMonth, true)
+  assert.equal(day15.winCount, 2)
+  assert.equal(day15.lossCount, 1)
+  assert.equal(day15.matchCount, 3)
+  assert.deepEqual(day15.matchIds, [1, 2, 3])
+
+  const leadingCell = calendar.cells[0]
+  assert.equal(leadingCell.dateKey, '2026-03-29')
+  assert.equal(leadingCell.isCurrentMonth, false)
 })
 
 test('buildH2HMatchCards produces cards with diff and default tags', () => {

@@ -1476,6 +1476,8 @@ type H2HHistoryReq struct {
 	Page         int    `form:"page,default=1"`
 	PageSize     int    `form:"page_size,default=20"`
 	Result       int    `form:"result,optional"`
+	StartDate    string `form:"start_date,optional"`
+	EndDate      string `form:"end_date,optional"`
 }
 
 type H2HHistoryResp struct {

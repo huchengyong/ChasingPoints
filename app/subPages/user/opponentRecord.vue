@@ -54,7 +54,7 @@
 
         <view class="error-wrapper" v-else-if="loadFailed && cardViewModels.length === 0">
           <uni-icons type="info-filled" size="52" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
-          <text class="error-text">{{ loadErrorMessage || '对手记录加载失败' }}</text>
+          <text class="error-text">{{ loadErrorMessage || '过往对手加载失败' }}</text>
           <button class="retry-btn" @click="fetchOpponentList">
             <text>重新加载</text>
           </button>
@@ -261,7 +261,7 @@ const fetchOpponentList = async (isRefresh = false, isLoadMore = false) => {
       currentPage.value = Math.max(currentPage.value - 1, 1)
     }
     loadFailed.value = opponentList.value.length === 0
-    loadErrorMessage.value = error.message || '获取对手记录失败'
+    loadErrorMessage.value = error.message || '获取过往对手失败'
     uni.showToast({
       title: loadErrorMessage.value,
       icon: 'none'

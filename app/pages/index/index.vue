@@ -178,27 +178,6 @@
           </view>
         </view>
 
-        <view class="focus-section">
-          <view class="section-header">
-            <text class="section-title">常用工具</text>
-          </view>
-          <view class="tool-scroll-shell" :class="{ 'mask-hidden': !showToolScrollMask }">
-            <scroll-view scroll-x class="tool-scroll" show-scrollbar="false" @scroll="handleToolScroll">
-              <view class="tool-chips">
-                <view v-for="item in toolEntries" :key="item.label" class="tool-chip" @tap="handleToolTap(item)">
-                  <view class="tool-icon">
-                    <uni-icons :type="item.icon" size="22" :color="item.iconColor"></uni-icons>
-                  </view>
-                  <view class="tool-copy">
-                    <text class="tool-label">{{ item.label }}</text>
-                    <text class="tool-desc">{{ item.desc }}</text>
-                  </view>
-                </view>
-              </view>
-            </scroll-view>
-          </view>
-        </view>
-
         <view class="page-spacer"></view>
       </view>
     </scroll-view>
@@ -211,7 +190,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { useNotificationStore } from '@/store/notification.js'
@@ -227,9 +206,7 @@ import { usePageTheme } from '@/utils/page-theme.js'
 import {
   buildHomeNearbyVenueParams,
   formatHomeVenueDistance,
-  resolveHomeVenueEmptyAction,
-  resolveHomeToolNavigation,
-  shouldShowHomeToolEdgeMask
+  resolveHomeVenueEmptyAction
 } from '@/utils/home-index.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
 
@@ -253,8 +230,6 @@ const topEventNews = ref(null)
 const nearbyVenues = ref([])
 const nearbyVenueLoading = ref(false)
 const favoriteVenueRewardStatus = ref(null)
-const showToolScrollMask = ref(true)
-const toolScrollMaxLeft = ref(0)
 
 const hasContent = computed(() => {
   return Boolean(currentMatch.value || topEventNews.value || leaderboardTopThree.value.length || nearbyVenues.value.length)
@@ -371,14 +346,6 @@ const rankingSummary = computed(() => {
     cta: '去排行榜'
   }
 })
-
-const toolEntries = computed(() => [
-  { label: 'PK记录', desc: '查看邀约与结果', icon: 'flag-filled', iconColor: '#E0AE12', url: '/subPages/social/challenges' },
-  { label: '深度统计', desc: '看你的竞技画像', icon: 'bars', iconColor: '#E0AE12', url: '/subPages/user/statsDetail' },
-  { label: '规则说明', desc: '快速查台球规则', icon: 'help', iconColor: '#7c3aed', url: '/subPages/rules/index' },
-  { label: '赛事情报', desc: '查看最近赛程赛况', icon: 'calendar', iconColor: '#ea580c', url: '/subPages/tournament/index' },
-  { label: '球房场馆', desc: '寻找附近球房', icon: 'location', iconColor: '#0f766e', url: '/subPages/venue/index' }
-])
 
 const loadData = async () => {
   homeLoading.value = true
@@ -533,44 +500,6 @@ const goTo = (url, isTabPage = false) => {
     return
   }
   uni.navigateTo({ url })
-}
-
-const handleToolTap = (item) => {
-  const target = resolveHomeToolNavigation({
-    url: item.url,
-    isTabPage: item.isTab,
-    isLoggedIn: isLoggedIn.value
-  })
-
-  if (target.type === 'login') {
-    goLogin()
-    return
-  }
-
-  goTo(target.url, target.type === 'tab')
-}
-
-const handleToolScroll = (event) => {
-  showToolScrollMask.value = shouldShowHomeToolEdgeMask({
-    maxScrollLeft: toolScrollMaxLeft.value,
-    scrollLeft: Number(event?.detail?.scrollLeft || 0)
-  })
-}
-
-const measureToolScrollRange = () => {
-  const query = uni.createSelectorQuery()
-  query.select('.tool-scroll-shell').boundingClientRect()
-  query.select('.tool-chips').boundingClientRect()
-  query.exec((result = []) => {
-    const shellRect = result[0]
-    const chipsRect = result[1]
-    const maxScrollLeft = Math.max(0, Number(chipsRect?.width || 0) - Number(shellRect?.width || 0))
-    toolScrollMaxLeft.value = maxScrollLeft
-    showToolScrollMask.value = shouldShowHomeToolEdgeMask({
-      maxScrollLeft,
-      scrollLeft: 0
-    })
-  })
 }
 
 const goLogin = () => {
@@ -745,11 +674,6 @@ const handleContinueMatch = (match) => {
 
 onShow(() => {
   notificationStore.fetchUnreadCount()
-  showToolScrollMask.value = true
-  toolScrollMaxLeft.value = 0
-  nextTick(() => {
-    measureToolScrollRange()
-  })
   loadData()
 })
 </script>

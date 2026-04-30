@@ -115,3 +115,18 @@ test('user page does not render a separate view-benefits button for member cards
     /<button v-if="shouldShowMemberCenterButton" class="subscription-entry-btn">/
   )
 })
+
+test('user page moves analysis and rules into more competitive services', () => {
+  assert.doesNotMatch(
+    source,
+    /const quickActions = computed\(\(\) => \(\[[\s\S]*label: '竞技分析'[\s\S]*\]\)\)/
+  )
+  assert.match(
+    source,
+    /<text class="section-title">\{\{ sectionTitles\.secondaryServices \}\}<\/text>[\s\S]*<view class="service-item" @click="handleStatsDetail">[\s\S]*<text>竞技分析<\/text>/
+  )
+  assert.match(
+    source,
+    /<text class="section-title">\{\{ sectionTitles\.secondaryServices \}\}<\/text>[\s\S]*<view class="service-item" @click="openRoute\('\/subPages\/rules\/index'\)">[\s\S]*<text>规则说明<\/text>/
+  )
+})

@@ -15,7 +15,9 @@ export const buildH2HHistoryParams = ({
   opponentName = '',
   page = 1,
   pageSize = 20,
-  result = 0
+  result = 0,
+  startDate = '',
+  endDate = ''
 } = {}) => {
   const resolvedOpponentId = Number(opponentId) || Number(fallbackOpponentId) || 0
   const params = {
@@ -36,8 +38,44 @@ export const buildH2HHistoryParams = ({
   if (result > 0) {
     params.result = result
   }
+  if (startDate) {
+    params.start_date = startDate
+  }
+  if (endDate) {
+    params.end_date = endDate
+  }
 
   return params
+}
+
+export const buildH2HMonthDateRange = (monthKey = '') => {
+  const matched = String(monthKey).match(/^(\d{4})-(\d{2})$/)
+  if (!matched) return null
+
+  const year = Number(matched[1])
+  const month = Number(matched[2])
+  if (month < 1 || month > 12) return null
+
+  const lastDay = new Date(year, month, 0).getDate()
+  return {
+    startDate: `${year}-${String(month).padStart(2, '0')}-01`,
+    endDate: `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+  }
+}
+
+export const buildH2HCurrentMonthKey = (date = new Date()) => {
+  const resolved = date instanceof Date ? date : new Date(date)
+  if (Number.isNaN(resolved.getTime())) return buildH2HCurrentMonthKey(new Date())
+
+  return `${resolved.getFullYear()}-${String(resolved.getMonth() + 1).padStart(2, '0')}`
+}
+
+export const shiftH2HMonthKey = (monthKey = '', offset = 0) => {
+  const matched = String(monthKey).match(/^(\d{4})-(\d{2})$/)
+  if (!matched) return buildH2HCurrentMonthKey()
+
+  const date = new Date(Number(matched[1]), Number(matched[2]) - 1 + Number(offset || 0), 1)
+  return buildH2HCurrentMonthKey(date)
 }
 
 export const normalizeH2HRecordOptions = (options = {}) => ({
@@ -92,14 +130,6 @@ export const buildH2HLoadFailureAction = ({
   }
 
   return null
-}
-
-export const resolveH2HHistoryLoadingMode = ({
-  hasLoadedOnce = false,
-  isFetching = false
-} = {}) => {
-  if (!isFetching) return 'idle'
-  return hasLoadedOnce ? 'refreshing' : 'initial'
 }
 
 export const shouldApplyH2HHistoryResponse = ({

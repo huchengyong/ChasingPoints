@@ -91,8 +91,8 @@
 					<view class="round-result">
 						<text class="round-score">{{ round.player1_score }} - {{ round.player2_score }}</text>
 						<view class="result-badge">
-							<text :class="['result-text', round.winner === 1 ? 'win' : 'loss']">
-								{{ round.winner === 1 ? '玩家1胜' : '玩家2胜' }}
+							<text :class="['result-text', getRoundResultTone(round)]">
+								{{ getRoundResultText(round) }}
 							</text>
 						</view>
 						<uni-icons type="right" size="16" color="#64748b"></uni-icons>
@@ -109,11 +109,18 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import { getMatchDetail, getPublicMatchDetail } from '@/api/match.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import {
+	normalizeMatchDetailPayload,
+	shouldShowSpectateBadge,
+	shouldUsePublicMatchDetail
+} from '@/utils/match-detail.js'
 
 // ========== 响应式数据 ==========
 const loading = ref(true)
 const matchId = ref(null)
 const isSpectateMode = ref(false)
+const detailSource = ref('')
+const perspectiveUserId = ref(0)
 const matchData = ref({
 	player1_score: 0,
 	player2_score: 0,
@@ -169,8 +176,10 @@ onLoad((options) => {
 	if (options.match_id) {
 		matchId.value = parseInt(options.match_id)
 	}
-	if (options.mode === 'spectate') {
-		isSpectateMode.value = true
+	detailSource.value = options.source || ''
+	perspectiveUserId.value = Number(options.perspective_user_id || 0)
+	isSpectateMode.value = shouldShowSpectateBadge(options)
+	if (isSpectateMode.value) {
 		// 设置导航栏标题
 		uni.setNavigationBarTitle({
 			title: '观战'
@@ -228,31 +237,19 @@ const loadMatchData = async () => {
 	}
 	
 	try {
-		// 观战模式使用公开接口（无需登录），否则使用私有接口
-		const apiCall = isSpectateMode.value ? getPublicMatchDetail : getMatchDetail
+		const apiCall = shouldUsePublicMatchDetail({
+			mode: isSpectateMode.value ? 'spectate' : '',
+			source: detailSource.value
+		}) ? getPublicMatchDetail : getMatchDetail
 		const res = await apiCall({ match_id: matchId.value })
 		if (res.success && res.match) {
-			matchData.value = {
-				player1_score: res.match.player1_score || 0,
-				player2_score: res.match.player2_score || 0,
-				game_type: res.match.game_type || 3,
-				status: res.match.status || 1,
-				duration_seconds: res.match.duration_seconds || 0,
-				current_round: res.match.current_round || 1,
-				total_rounds: res.match.total_rounds || 0
-			}
-			player1Info.value = {
-				name: res.match.player1_name || '玩家1',
-				avatar: res.match.player1_avatar || ''
-			}
-			player2Info.value = {
-				name: res.match.player2_name || '玩家2',
-				avatar: res.match.player2_avatar || ''
-			}
-			// 加载局记录
-			if (res.match.rounds) {
-				roundRecords.value = res.match.rounds
-			}
+			const normalized = normalizeMatchDetailPayload(res.match, {
+				perspectiveUserId: perspectiveUserId.value
+			})
+			matchData.value = normalized.matchData
+			player1Info.value = normalized.player1Info
+			player2Info.value = normalized.player2Info
+			roundRecords.value = normalized.roundRecords
 			if (wsHandlersReady && matchData.value.status === 1 && !matchWS.isConnected()) {
 				connectWebSocket()
 			}
@@ -396,8 +393,16 @@ const formatDuration = (durationSeconds) => {
  * 获取局结果样式类
  */
 const getRoundResultClass = (round) => {
-	if (round.winner === 1) return 'win-round'
+	if (round.result === 'win' || round.winner === 1) return 'win-round'
 	return 'loss-round'
+}
+
+const getRoundResultTone = (round) => {
+	return round.result === 'win' || round.winner === 1 ? 'win' : 'loss'
+}
+
+const getRoundResultText = (round) => {
+	return round.resultText || (round.result === 'win' || round.winner === 1 ? '胜' : '负')
 }
 </script>
 

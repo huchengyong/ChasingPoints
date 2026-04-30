@@ -186,6 +186,42 @@ func TestRecentTrendUsesViewerPerspectiveForOpponentMatches(t *testing.T) {
 	}
 }
 
+func TestMatchDurationStatsIncludesOpponentCreatedMatches(t *testing.T) {
+	svcCtx := newStatsLogicTestSvc(t)
+	viewerID := int64(101)
+	opponentID := int64(202)
+	win := 1
+	start := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	end := start.Add(2 * time.Minute)
+
+	seedStatsMatch(t, svcCtx, &model.Match{
+		Id:            10,
+		UserId:        opponentID,
+		OpponentId:    &viewerID,
+		OpponentName:  "查看者",
+		GameType:      3,
+		MyScore:       5,
+		OpponentScore: 7,
+		Status:        2,
+		Result:        &win,
+		MatchTime:     start,
+		EndTime:       &end,
+	})
+
+	resp, err := NewGetMatchDurationStatsLogic(statsLogicCtx(viewerID), svcCtx).GetMatchDurationStats(&types.GetMatchDurationStatsReq{
+		GameType: 3,
+	})
+	if err != nil {
+		t.Fatalf("get match duration stats: %v", err)
+	}
+	if resp.Stats.TotalMatches != 1 {
+		t.Fatalf("total matches = %d, want opponent-created match counted", resp.Stats.TotalMatches)
+	}
+	if resp.Stats.AverageSeconds != 120 || resp.Stats.FastestSeconds != 120 || resp.Stats.LongestSeconds != 120 {
+		t.Fatalf("duration stats = %#v, want all 120 seconds", resp.Stats)
+	}
+}
+
 func TestOpponentStrengthFiltersGameTypeAndUsesActualOpponent(t *testing.T) {
 	svcCtx := newStatsLogicTestSvc(t)
 	seedStatsViewerPerspectiveFixtures(t, svcCtx)

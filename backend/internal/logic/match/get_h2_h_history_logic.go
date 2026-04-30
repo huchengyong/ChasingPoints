@@ -2,6 +2,7 @@ package match
 
 import (
 	"context"
+	"time"
 
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
@@ -10,6 +11,8 @@ import (
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
+
+const h2hHistoryDateLayout = "2006-01-02"
 
 type GetH2HHistoryLogic struct {
 	logx.Logger
@@ -63,12 +66,16 @@ func (l *GetH2HHistoryLogic) GetH2HHistory(req *types.H2HHistoryReq) (resp *type
 		pageSize = 20
 	}
 	offset := (page - 1) * pageSize
+	startTime, endTime, dateErr := parseH2HHistoryDateRange(req.StartDate, req.EndDate)
+	if dateErr != nil {
+		return &types.H2HHistoryResp{Success: false, Message: "日期格式错误"}, nil
+	}
 
 	// 查询与指定对手的交锋历史（支持注册用户双向查询和匿名对手名称兜底）
 	var matches []model.H2HMatchRecord
 	var total int64
 	if req.OpponentId > 0 {
-		idMatches, idTotal, queryErr := l.svcCtx.MatchModel.ListByOpponentId(subjectUserId, req.OpponentId, req.Result, offset, pageSize)
+		idMatches, idTotal, queryErr := l.svcCtx.MatchModel.ListByOpponentId(subjectUserId, req.OpponentId, req.Result, offset, pageSize, startTime, endTime)
 		if queryErr != nil {
 			l.Logger.Errorf("查询交锋历史失败: %v", queryErr)
 			return &types.H2HHistoryResp{Success: false, Message: "获取交锋历史失败"}, nil
@@ -76,7 +83,7 @@ func (l *GetH2HHistoryLogic) GetH2HHistory(req *types.H2HHistoryReq) (resp *type
 		matches = idMatches
 		total = idTotal
 	} else {
-		nameMatches, nameTotal, queryErr := l.svcCtx.MatchModel.ListByOpponentName(subjectUserId, req.OpponentName, req.Result, offset, pageSize)
+		nameMatches, nameTotal, queryErr := l.svcCtx.MatchModel.ListByOpponentName(subjectUserId, req.OpponentName, req.Result, offset, pageSize, startTime, endTime)
 		if queryErr != nil {
 			l.Logger.Errorf("查询匿名对手交锋历史失败: %v", queryErr)
 			return &types.H2HHistoryResp{Success: false, Message: "获取交锋历史失败"}, nil
@@ -105,4 +112,32 @@ func (l *GetH2HHistoryLogic) GetH2HHistory(req *types.H2HHistoryReq) (resp *type
 		Total:   total,
 		List:    list,
 	}, nil
+}
+
+func parseH2HHistoryDateRange(startDate, endDate string) (*time.Time, *time.Time, error) {
+	location, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		location = time.FixedZone("Asia/Shanghai", 8*60*60)
+	}
+
+	var startTime *time.Time
+	if startDate != "" {
+		parsed, parseErr := time.ParseInLocation(h2hHistoryDateLayout, startDate, location)
+		if parseErr != nil {
+			return nil, nil, parseErr
+		}
+		startTime = &parsed
+	}
+
+	var endTime *time.Time
+	if endDate != "" {
+		parsed, parseErr := time.ParseInLocation(h2hHistoryDateLayout, endDate, location)
+		if parseErr != nil {
+			return nil, nil, parseErr
+		}
+		exclusiveEnd := parsed.AddDate(0, 0, 1)
+		endTime = &exclusiveEnd
+	}
+
+	return startTime, endTime, nil
 }
