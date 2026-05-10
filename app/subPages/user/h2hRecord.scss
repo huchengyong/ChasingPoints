@@ -321,15 +321,22 @@ $border-color-dark: #334155;
 .calendar-legend {
     display: flex;
     align-items: center;
-    gap: 16rpx;
+    gap: 24rpx;
+    margin-top: 16rpx;
 
     .calendar-legend-item {
         display: flex;
         align-items: center;
-        gap: 6rpx;
+        gap: 8rpx;
         font-size: 22rpx;
         color: $text-tertiary-light;
         transition: color 0.3s ease;
+
+        .calendar-result-dot {
+            width: 16rpx;
+            height: 16rpx;
+            border-radius: 4rpx;
+        }
     }
 }
 
@@ -346,9 +353,15 @@ $border-color-dark: #334155;
     grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
+.calendar-week-row {
+    margin-bottom: 8rpx;
+}
+
+.calendar-grid {
+    gap: 8rpx;
+}
+
 .calendar-weekday {
-    height: 44rpx;
-    line-height: 44rpx;
     text-align: center;
     font-size: 22rpx;
     color: $text-tertiary-light;
@@ -356,68 +369,64 @@ $border-color-dark: #334155;
 }
 
 .calendar-day {
-    min-height: 96rpx;
-    padding: 8rpx 4rpx;
-    border-radius: 12rpx;
+    min-height: 78rpx;
+    padding: 6rpx;
+    border-radius: 10rpx;
+    background-color: #f8fafc;
     box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4rpx;
+    transition: background-color 0.3s ease, opacity 0.3s ease;
 
     &.active {
-        background-color: $stats-bg-light;
+        background-color: #fff7e6;
     }
 
     &.outside {
-        opacity: 0.42;
+        opacity: 0.35;
     }
 }
 
 .calendar-date {
-    font-size: 24rpx;
-    font-weight: 600;
+    display: block;
+    font-size: 20rpx;
+    font-weight: 400;
     color: $text-secondary-light;
-    line-height: 28rpx;
+    line-height: 22rpx;
     transition: color 0.3s ease;
 }
 
 .calendar-results {
-    width: 100%;
+    margin-top: 4rpx;
     display: flex;
     flex-direction: column;
-    align-items: center;
     gap: 2rpx;
 }
 
 .calendar-result-line {
-    height: 24rpx;
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 4rpx;
+    gap: 3rpx;
 }
 
 .calendar-result-dot {
-    width: 12rpx;
-    height: 12rpx;
+    width: 10rpx;
+    height: 10rpx;
     border-radius: 50%;
     flex-shrink: 0;
 
     &.win {
-        background-color: $primary-color;
+        background-color: #22c55e;
     }
 
     &.lose {
-        background-color: $loss-red;
+        background-color: #ef4444;
     }
 }
 
 .calendar-result-count {
-    font-size: 20rpx;
-    font-weight: 700;
-    line-height: 24rpx;
-    color: $text-primary-light;
+    font-size: 18rpx;
+    font-weight: 400;
+    line-height: 20rpx;
+    color: #475569;
     transition: color 0.3s ease;
 }
 
@@ -799,8 +808,10 @@ $border-color-dark: #334155;
     }
 
     .calendar-day {
+        background-color: $stats-bg-dark;
+
         &.active {
-            background-color: $stats-bg-dark;
+            background-color: rgba(76, 175, 80, 0.18);
         }
     }
 
@@ -809,7 +820,7 @@ $border-color-dark: #334155;
     }
 
     .calendar-result-count {
-        color: $text-primary-dark;
+        color: $text-secondary-dark;
     }
 
     .loading-wrapper {

@@ -202,12 +202,12 @@
                 }
             },
             "icons" : {
-                "foreground" : "/Users/wisesearch/Pictures/chasing_points_icons/frontend.png",
-                "background" : "/Users/wisesearch/Pictures/chasing_points_icons/backend.png"
+                "foreground" : "/Users/wisesearch/Pictures/chasing_points_icons/logo_new.png",
+                "background" : "/Users/wisesearch/Pictures/chasing_points_icons/logo_new.png"
             },
             "splashScreens" : {
                 "startWindowBackground" : "#FFD700",
-                "startWindowIcon" : "/Users/wisesearch/Pictures/chasing_points_icons/ChatGPT Image 2026年4月29日 16_09_32.png"
+                "startWindowIcon" : "/Users/wisesearch/Pictures/chasing_points_icons/boot.png"
             },
             "targetSdkVersion" : "6.0.0(20)",
             "compatibleSdkVersion" : "5.0.0(12)"

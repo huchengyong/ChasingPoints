@@ -113,16 +113,6 @@
 			</view>
 
 			<view class="h2h-calendar-card" v-if="historyViewMode === 'calendar'">
-				<view class="calendar-legend">
-					<view class="calendar-legend-item">
-						<view class="calendar-result-dot win"></view>
-						<text>胜</text>
-					</view>
-					<view class="calendar-legend-item">
-						<view class="calendar-result-dot lose"></view>
-						<text>负</text>
-					</view>
-				</view>
 				<view class="calendar-week-row">
 					<text class="calendar-weekday" v-for="weekday in calendarViewModel.weekdays" :key="weekday">{{ weekday }}</text>
 				</view>
@@ -134,7 +124,7 @@
 						:class="{ outside: !cell.isCurrentMonth, active: cell.hasMatches }"
 					>
 						<text class="calendar-date">{{ cell.day }}</text>
-						<view class="calendar-results" v-if="cell.hasMatches">
+						<view class="calendar-results" v-if="cell.isCurrentMonth && cell.hasMatches">
 							<view class="calendar-result-line win" v-if="cell.winCount > 0">
 								<view class="calendar-result-dot win"></view>
 								<text class="calendar-result-count">×{{ cell.winCount }}</text>
@@ -146,8 +136,15 @@
 						</view>
 					</view>
 				</view>
-				<view class="empty-wrapper compact" v-if="!hasCalendarMatches">
-					<text class="empty-text">本月暂无对局记录</text>
+				<view class="calendar-legend">
+					<view class="calendar-legend-item">
+						<view class="calendar-result-dot win"></view>
+						<text>胜</text>
+					</view>
+					<view class="calendar-legend-item">
+						<view class="calendar-result-dot lose"></view>
+						<text>负</text>
+					</view>
 				</view>
 			</view>
 
