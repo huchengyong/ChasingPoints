@@ -206,8 +206,8 @@
                 "background" : "/Users/wisesearch/Pictures/chasing_points_icons/logo_new.png"
             },
             "splashScreens" : {
-                "startWindowBackground" : "#FFD700",
-                "startWindowIcon" : "/Users/wisesearch/Pictures/chasing_points_icons/boot.png"
+                "startWindowBackground" : "#FFFFFF",
+                "startWindowIcon" : "/Users/wisesearch/Pictures/chasing_points_icons/启动页-画板-定稿-白色背景.png"
             },
             "targetSdkVersion" : "6.0.0(20)",
             "compatibleSdkVersion" : "5.0.0(12)"
