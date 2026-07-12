@@ -21,6 +21,10 @@ export function canAttemptLogin({ phone, code, isLogging }) {
   return isPhoneValid(phone) && isCodeValid(code) && !isLogging
 }
 
+export function canAttemptWechatMiniLogin({ isAgreed, isLogging }) {
+  return Boolean(isAgreed) && !isLogging
+}
+
 export function canSubmitLogin({ phone, code, isAgreed, isLogging }) {
   return canAttemptLogin({ phone, code, isLogging }) && Boolean(isAgreed)
 }
@@ -85,7 +89,19 @@ export function shouldClearEntryFunnelAgreementSession({ currentRoute, visibleRo
   return !visibleRoutes.some((route) => route !== currentRoute && ENTRY_FUNNEL_ROUTES.has(route))
 }
 
-export function resolveWelcomeActions({ isHarmony, isAgreed }) {
+export function resolveWelcomeActions({ isHarmony, isWechatMini = false, isAgreed, isLogging = false }) {
+  if (isWechatMini) {
+    return {
+      primaryText: isLogging ? '进入中...' : '微信一键进入',
+      secondaryText: '手机号登录',
+      tertiaryText: '先逛逛',
+      showHuaweiLogin: false,
+      showPhoneLogin: true,
+      primaryDisabled: Boolean(isLogging),
+      secondaryDisabled: false
+    }
+  }
+
   return {
     primaryText: '手机号登录 / 注册',
     secondaryText: '华为账号登录',

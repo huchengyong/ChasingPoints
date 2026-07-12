@@ -55,6 +55,21 @@ type LoginByOauthResp {
 	UserInfo      *UserInfo `json:"user_info"`
 }
 
+// 微信小程序一键登录
+type WechatMiniLoginReq {
+	Code string `json:"code"`
+}
+
+type WechatMiniLoginResp {
+	Success       bool      `json:"success"`
+	Message       string    `json:"message,optional"`
+	AccessToken   string    `json:"access_token,optional"`
+	RefreshToken  string    `json:"refresh_token,optional"`
+	ExpiresIn     int64     `json:"expires_in,optional"`
+	NeedBindPhone bool      `json:"need_bind_phone"`
+	UserInfo      *UserInfo `json:"user_info,optional"`
+}
+
 // 刷新登录态
 type RefreshTokenReq {
 	RefreshToken string `json:"refresh_token"`
@@ -80,6 +95,22 @@ type BindPhoneResp {
 	MergedAccount bool   `json:"merged_account"`
 }
 
+// 微信小程序绑定手机号
+type WechatMiniBindPhoneReq {
+	Code string `json:"code"`
+}
+
+type WechatMiniBindPhoneResp {
+	Success       bool      `json:"success"`
+	Message       string    `json:"message"`
+	MergedAccount bool      `json:"merged_account"`
+	AccessToken   string    `json:"access_token,optional"`
+	RefreshToken  string    `json:"refresh_token,optional"`
+	ExpiresIn     int64     `json:"expires_in,optional"`
+	NeedBindPhone bool      `json:"need_bind_phone"`
+	UserInfo      *UserInfo `json:"user_info,optional"`
+}
+
 // ==================== 服务定义 ====================
 @server (
 	prefix: /api/auth
@@ -97,6 +128,10 @@ service chasing_points-api {
 	@doc "OAuth登录"
 	@handler LoginByOauth
 	post /login-by-oauth (LoginByOauthReq) returns (LoginByOauthResp)
+
+	@doc "微信小程序一键登录"
+	@handler WechatMiniLogin
+	post /wechat-mini-login (WechatMiniLoginReq) returns (WechatMiniLoginResp)
 
 	@doc "刷新登录态"
 	@handler RefreshToken
@@ -257,6 +292,10 @@ service chasing_points-api {
 	@doc "绑定手机号"
 	@handler BindPhone
 	post /bind-phone (BindPhoneReq) returns (BindPhoneResp)
+
+	@doc "微信小程序绑定手机号"
+	@handler WechatMiniBindPhone
+	post /wechat-mini-bind-phone (WechatMiniBindPhoneReq) returns (WechatMiniBindPhoneResp)
 }
 
 // ==================== 用户相关 ====================

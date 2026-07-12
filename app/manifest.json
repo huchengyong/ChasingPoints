@@ -134,9 +134,15 @@
     "quickapp" : {},
     /* 小程序特有相关 */
     "mp-weixin" : {
-        "appid" : "",
+        "appid" : "wx3196c9366b3b39ba",
         "setting" : {
             "urlCheck" : false
+        },
+        "requiredPrivateInfos" : [ "getLocation" ],
+        "permission" : {
+            "scope.userLocation" : {
+                "desc" : "用于获取当前位置并展示附近球房"
+            }
         },
         "usingComponents" : true
     },

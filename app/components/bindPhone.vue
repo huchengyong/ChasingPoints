@@ -14,6 +14,28 @@
 			<text class="sheet-title">绑定手机号</text>
 			<text class="sheet-subtitle">为了保障您的账户安全，并为您匹配对手。</text>
 			
+			<!-- #ifdef MP-WEIXIN -->
+			<view class="wechat-phone-copy">
+				<text>授权微信手机号后即可完成绑定，可随时稍后处理。</text>
+			</view>
+
+			<view class="bind-btn-container">
+				<button
+					class="bind-btn"
+					:class="{ active: isAgreed }"
+					:disabled="!isAgreed || loading"
+					open-type="getPhoneNumber"
+					@getphonenumber="handleWechatPhoneNumber"
+				>
+					{{ loading ? '绑定中...' : '授权微信手机号' }}
+				</button>
+				<button v-if="closable" class="close-text-btn" @click="handleClose">
+					稍后绑定
+				</button>
+			</view>
+			<!-- #endif -->
+
+			<!-- #ifndef MP-WEIXIN -->
 			<!-- 手机号输入 -->
 			<view class="input-group">
 				<text class="input-label">手机号</text>
@@ -66,6 +88,7 @@
 					稍后绑定
 				</button>
 			</view>
+			<!-- #endif -->
 			
 			<!-- 协议文本 -->
 			<view class="agreement-section">
@@ -86,10 +109,11 @@
 </template>
 
 <script>
-import { sendSms, bindPhone } from '@/api/auth.js'
+import { sendSms, bindPhone, wechatMiniBindPhone } from '@/api/auth.js'
 import { useUserStore } from '@/store/user.js'
 import {
 	canRequestBindPhoneSms,
+	getWechatPhoneNumberCode,
 	isValidBindPhone,
 	resolveBindPhoneSuccess,
 	shouldResetBindPhoneVerification
@@ -267,24 +291,7 @@ export default {
 			try {
 				const res = await bindPhone(this.phone, this.code)
 				
-				if (res.success) {
-					const userStore = useUserStore()
-					const outcome = resolveBindPhoneSuccess({
-						response: res,
-						phone: this.phone
-					})
-
-					if (outcome.action === 'complete') {
-						userStore.bindPhoneSuccess(outcome.maskedPhone)
-					}
-
-					this.$emit('success', outcome)
-				} else {
-					uni.showToast({
-						title: res.message || '绑定失败',
-						icon: 'none'
-					})
-				}
+				this.handleBindResponse(res, this.phone)
 			} catch (error) {
 				console.error('绑定手机号失败:', error)
 				uni.showToast({
@@ -294,6 +301,44 @@ export default {
 			} finally {
 				this.loading = false
 			}
+		},
+
+		async handleWechatPhoneNumber(event) {
+			const code = getWechatPhoneNumberCode(event)
+			if (!code || !this.isAgreed || this.loading) return
+
+			this.loading = true
+			try {
+				const res = await wechatMiniBindPhone(code)
+				this.handleBindResponse(res, '')
+			} catch (error) {
+				uni.showToast({
+					title: error.message || '绑定失败',
+					icon: 'none'
+				})
+			} finally {
+				this.loading = false
+			}
+		},
+
+		handleBindResponse(res, phone) {
+			if (!res.success) {
+				uni.showToast({
+					title: res.message || '绑定失败',
+					icon: 'none'
+				})
+				return
+			}
+
+			const userStore = useUserStore()
+			const outcome = resolveBindPhoneSuccess({ response: res, phone })
+			if (outcome.sessionReplaced) {
+				userStore.login(res)
+			} else if (outcome.action === 'complete') {
+				userStore.bindPhoneSuccess(outcome.maskedPhone)
+			}
+
+			this.$emit('success', outcome)
 		},
 		
 		openUserAgreement() {
@@ -492,9 +537,21 @@ $dark-input-bg: transparent;
 			color: #ffffff;
 		}
 
+		&[disabled] {
+			background-color: #e5e5e5;
+			color: #9ca3af;
+		}
+
 		&::after {
 			display: none;
 		}
+	}
+
+	.wechat-phone-copy {
+		display: block;
+		font-size: 28rpx;
+		line-height: 1.6;
+		color: $light-text-secondary;
 	}
 
 	.close-text-btn {

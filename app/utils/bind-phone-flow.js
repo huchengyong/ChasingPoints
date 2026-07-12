@@ -20,11 +20,27 @@ export function shouldResetBindPhoneVerification(previousPhone, nextPhone) {
   return Boolean(previousPhone) && Boolean(nextPhone) && previousPhone !== nextPhone
 }
 
+export function getWechatPhoneNumberCode(event) {
+  const code = event?.detail?.code
+  return typeof code === 'string' ? code.trim() : ''
+}
+
 export function resolveBindPhoneSuccess({ response, phone }) {
   const message = response?.message || '绑定成功'
-  const maskedPhone = maskBindPhone(phone)
+  const returnedPhone = String(response?.user_info?.phone || '').trim()
+  const maskedPhone = returnedPhone || maskBindPhone(phone)
 
   if (response?.merged_account) {
+		if (response?.access_token && response?.refresh_token) {
+			return {
+				action: 'complete',
+				message,
+				maskedPhone,
+				phone,
+				sessionReplaced: true
+			}
+		}
+
     return {
       action: 'relogin',
       message,

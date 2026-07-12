@@ -4,6 +4,7 @@
 	import { getCurrentMatch } from '@/api/match.js'
 	import { post } from '@/utils/request.js'
 	import { buildPlayingRoute, shouldPromptOngoingMatch } from '@/utils/ongoing-match-guard.js'
+	import { applyRuntimeTheme } from '@/utils/theme-application.js'
 
 	export default {
 		themeChangeCallback: null, // 保存主题变化回调函数引用
@@ -90,39 +91,11 @@
 
 				console.log('[App] applyTheme:', theme)
 
-				if (theme === 'dark') {
-					// 暗色主题
-					uni.setNavigationBarColor({
-						frontColor: '#ffffff',
-						backgroundColor: '#141109',
-						animation: {
-							duration: 400,
-							timingFunc: 'easeIn'
-						}
-					})
-					uni.setTabBarStyle({
-						backgroundColor: '#141109',
-						borderStyle: 'white',
-						color: '#c6b78c',
-						selectedColor: '#E0AE12'
-					})
-				} else {
-					// 亮色主题
-					uni.setNavigationBarColor({
-						frontColor: '#000000',
-						backgroundColor: '#ffffff',
-						animation: {
-							duration: 400,
-							timingFunc: 'easeIn'
-						}
-					})
-					uni.setTabBarStyle({
-						backgroundColor: '#ffffff',
-						borderStyle: 'black',
-						color: '#64748b',
-						selectedColor: '#E0AE12'
-					})
-				}
+				applyRuntimeTheme({
+					uniApi: uni,
+					isDarkMode: theme === 'dark',
+					animationDuration: 400
+				})
 			},
 			getCurrentRoute() {
 				const pages = getCurrentPages()
@@ -212,11 +185,13 @@
 	}
 
 	/* 全局盒模型设置 - 避免 width: 100% + padding 导致元素超出容器 */
+	/* #ifndef MP-WEIXIN */
 	*,
 	*::before,
 	*::after {
 		box-sizing: border-box;
 	}
+	/* #endif */
 
 	/* 全局 CSS 变量定义 - 亮色主题（默认） */
 	page {

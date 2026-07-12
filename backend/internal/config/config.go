@@ -104,6 +104,13 @@ type Config struct {
 		IsProd     bool
 		UseCert    bool
 	}
+
+	// 微信小程序登录配置
+	WechatMiniProgram struct {
+		AppId            string
+		AppSecret        string
+		RequestTimeoutMs int `json:",default=5000"`
+	}
 }
 
 type WSTSyncConfig struct {

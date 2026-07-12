@@ -381,7 +381,9 @@ const handleBindPhoneSuccess = (payload) => {
 		return
 	}
 
-	userStore.bindPhoneSuccess(payload?.maskedPhone || payload?.phone || '')
+	if (!payload?.sessionReplaced) {
+		userStore.bindPhoneSuccess(payload?.maskedPhone || payload?.phone || '')
+	}
 	uni.showToast({
 		title: payload?.message || '绑定成功',
 		icon: 'success'
