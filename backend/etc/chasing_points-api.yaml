@@ -74,6 +74,8 @@ WechatMiniProgram:
   AppId: ${WECHAT_MINI_PROGRAM_APP_ID}
   AppSecret: ${WECHAT_MINI_PROGRAM_APP_SECRET}
   RequestTimeoutMs: 5000
+  MessagePushToken: ${WECHAT_MINI_MESSAGE_PUSH_TOKEN}
+  MessagePushEncodingAESKey: ${WECHAT_MINI_MESSAGE_PUSH_ENCODING_AES_KEY}
 
 Geocode:
   WorkerEnabled: true

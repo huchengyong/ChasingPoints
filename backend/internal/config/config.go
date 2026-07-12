@@ -107,9 +107,11 @@ type Config struct {
 
 	// 微信小程序登录配置
 	WechatMiniProgram struct {
-		AppId            string
-		AppSecret        string
-		RequestTimeoutMs int `json:",default=5000"`
+		AppId                     string
+		AppSecret                 string
+		RequestTimeoutMs          int `json:",default=5000"`
+		MessagePushToken          string
+		MessagePushEncodingAESKey string
 	}
 }
 
