@@ -92,6 +92,7 @@
 				console.log('[App] applyTheme:', theme)
 
 				applyRuntimeTheme({
+					uniApi: uni,
 					isDarkMode: theme === 'dark',
 					animationDuration: 400
 				})
@@ -184,11 +185,13 @@
 	}
 
 	/* 全局盒模型设置 - 避免 width: 100% + padding 导致元素超出容器 */
+	/* #ifndef MP-WEIXIN */
 	*,
 	*::before,
 	*::after {
 		box-sizing: border-box;
 	}
+	/* #endif */
 
 	/* 全局 CSS 变量定义 - 亮色主题（默认） */
 	page {

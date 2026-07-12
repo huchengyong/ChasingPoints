@@ -54,7 +54,7 @@ const getThemeStyles = ({ isDarkMode, animationDuration }) => {
 }
 
 export const applyRuntimeTheme = ({
-  uniApi = uni,
+  uniApi,
   route = getCurrentRoute(),
   isDarkMode,
   animationDuration = 300

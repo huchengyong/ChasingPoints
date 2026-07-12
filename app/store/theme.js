@@ -60,6 +60,7 @@ export const useThemeStore = defineStore('theme', {
      */
     applyNavigationBarTheme() {
       applyRuntimeTheme({
+        uniApi: uni,
         isDarkMode: this.isDarkMode,
         animationDuration: 300
       })

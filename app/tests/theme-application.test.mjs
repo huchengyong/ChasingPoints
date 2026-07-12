@@ -1,10 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 
 import {
   applyRuntimeTheme,
   isConfiguredTabBarRoute
 } from '../utils/theme-application.js'
+
+const readAppSource = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 
 const createUniRecorder = () => {
   const calls = []
@@ -34,6 +37,20 @@ test('isConfiguredTabBarRoute rejects non-tabBar routes', () => {
   assert.equal(isConfiguredTabBarRoute('pages/login/login'), false)
   assert.equal(isConfiguredTabBarRoute('subPages/user/settings'), false)
   assert.equal(isConfiguredTabBarRoute(''), false)
+})
+
+test('applyRuntimeTheme does not depend on an implicit uni global', () => {
+  const source = readAppSource('utils/theme-application.js')
+
+  assert.doesNotMatch(source, /uniApi\s*=\s*uni/)
+})
+
+test('runtime theme call sites inject the UniApp API explicitly', () => {
+  const appSource = readAppSource('App.vue')
+  const storeSource = readAppSource('store/theme.js')
+
+  assert.match(appSource, /applyRuntimeTheme\(\{\s*uniApi:\s*uni,/)
+  assert.match(storeSource, /applyRuntimeTheme\(\{\s*uniApi:\s*uni,/)
 })
 
 test('applyRuntimeTheme applies navigation colors but skips tabBar on non-tabBar pages', () => {

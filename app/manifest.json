@@ -138,6 +138,12 @@
         "setting" : {
             "urlCheck" : false
         },
+        "requiredPrivateInfos" : [ "getLocation" ],
+        "permission" : {
+            "scope.userLocation" : {
+                "desc" : "用于获取当前位置并展示附近球房"
+            }
+        },
         "usingComponents" : true
     },
     "mp-alipay" : {
