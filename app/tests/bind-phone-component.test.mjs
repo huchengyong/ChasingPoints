@@ -47,6 +47,14 @@ test('bind phone theme follows an explicit incoming prop instead of forcing dark
   assert.doesNotMatch(source, /isDarkMode:\s*true/)
 })
 
+test('bind phone uses native WeChat phone authorization only for mini programs', () => {
+  assert.match(source, /#ifdef MP-WEIXIN/)
+  assert.match(source, /open-type="getPhoneNumber"/)
+  assert.match(source, /@getphonenumber="handleWechatPhoneNumber"/)
+  assert.match(source, /wechatMiniBindPhone/)
+  assert.match(source, /sessionReplaced/)
+})
+
 const loginSource = readFileSync(
   new URL('../pages/login/login.vue', import.meta.url),
   'utf8'

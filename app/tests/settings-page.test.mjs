@@ -19,6 +19,10 @@ test('settings page exposes a bind phone entry and reuses the bind phone sheet',
   assert.match(settingsSource, /handleBindPhoneSuccess/)
 })
 
+test('settings page keeps a replacement mini-program session instead of logging out', () => {
+  assert.match(settingsSource, /sessionReplaced/)
+})
+
 test('settings page adds a bottom logout action', () => {
   assert.match(settingsSource, /handleLogout/)
   assert.match(settingsSource, /退出登录/)

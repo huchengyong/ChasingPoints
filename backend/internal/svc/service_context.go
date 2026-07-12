@@ -6,6 +6,7 @@ import (
 	"chasing_points/internal/pkg/geocode"
 	"chasing_points/internal/pkg/push"
 	qiniuupload "chasing_points/internal/pkg/qiniu"
+	"chasing_points/internal/pkg/wechatmini"
 	"chasing_points/internal/sms"
 	"time"
 
@@ -72,6 +73,7 @@ type ServiceContext struct {
 	QiniuUploadService              *qiniuupload.UploadService
 	Geocoder                        geocode.Geocoder
 	GeocodeWorker                   *geocode.Worker
+	WechatMiniClient                wechatmini.Client
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -82,6 +84,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 
 	models := newServiceModels(db)
 	geocodeDeps := newGeocodeDependencies(c, rdb, models)
+	wechatMiniClient := newWechatMiniClient(c)
 
 	return &ServiceContext{
 		Config:                          c,
@@ -132,7 +135,16 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		QiniuUploadService:              newQiniuUploadService(c),
 		Geocoder:                        geocodeDeps.Client,
 		GeocodeWorker:                   geocodeDeps.Worker,
+		WechatMiniClient:                wechatMiniClient,
 	}
+}
+
+func newWechatMiniClient(c config.Config) wechatmini.Client {
+	return wechatmini.NewHTTPClient(
+		c.WechatMiniProgram.AppId,
+		c.WechatMiniProgram.AppSecret,
+		time.Duration(c.WechatMiniProgram.RequestTimeoutMs)*time.Millisecond,
+	)
 }
 
 type serviceModels struct {

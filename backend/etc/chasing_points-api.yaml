@@ -69,6 +69,12 @@ WechatPay:
   IsProd: ${WECHAT_IS_PROD}
   UseCert: ${WECHAT_USE_CERT}
 
+# 微信小程序登录配置
+WechatMiniProgram:
+  AppId: ${WECHAT_MINI_PROGRAM_APP_ID}
+  AppSecret: ${WECHAT_MINI_PROGRAM_APP_SECRET}
+  RequestTimeoutMs: 5000
+
 Geocode:
   WorkerEnabled: true
   PollIntervalMs: 3000

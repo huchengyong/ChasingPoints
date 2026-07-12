@@ -13,11 +13,44 @@
 						<image src="/static/logo.png" mode="aspectFit" />
 					</view>
 				</view>
-				<text class="title">手机号登录 / 注册</text>
-				<text class="subtitle">未注册手机号验证后将自动创建账号</text>
+				<text class="title">{{ isWechatMiniProgram ? '微信一键进入' : '手机号登录 / 注册' }}</text>
+				<text class="subtitle">{{ isWechatMiniProgram ? '授权后即可进入，手机号可在需要时再绑定' : '未注册手机号验证后将自动创建账号' }}</text>
 			</view>
 
 			<view class="form-card">
+				<!-- #ifdef MP-WEIXIN -->
+				<view v-if="isWechatMiniProgram" class="wechat-login-section">
+					<button
+						class="wechat-login-btn"
+						:disabled="isWechatLogging"
+						@click="handleWechatMiniLogin"
+					>
+						{{ isWechatLogging ? '进入中...' : '微信一键进入' }}
+					</button>
+					<text class="wechat-login-hint">无需先绑定手机号</text>
+				</view>
+
+				<view v-if="isWechatMiniProgram" class="agreement-block">
+					<view class="agreement-row" @click="toggleAgreement">
+						<view class="checkbox" :class="{ checked: isAgreed }">
+							<uni-icons v-if="isAgreed" type="checkmarkempty" size="14" color="#231c0b"></uni-icons>
+						</view>
+						<text class="agreement-text">我已阅读并同意</text>
+					</view>
+					<view class="agreement-links">
+						<text class="link" @click.stop="showAgreement('user')">用户协议</text>
+						<text class="separator">和</text>
+						<text class="link" @click.stop="showAgreement('privacy')">隐私政策</text>
+					</view>
+				</view>
+
+				<view v-if="isWechatMiniProgram" class="divider">
+					<view class="divider-line"></view>
+					<text class="divider-text">手机号登录</text>
+					<view class="divider-line"></view>
+				</view>
+				<!-- #endif -->
+
 				<view class="form-section">
 					<view class="form-item">
 						<text class="form-label">手机号</text>
@@ -60,6 +93,7 @@
 					</view>
 				</view>
 
+				<!-- #ifndef MP-WEIXIN -->
 				<view class="agreement-block">
 					<view class="agreement-row" @click="toggleAgreement">
 						<view class="checkbox" :class="{ checked: isAgreed }">
@@ -73,6 +107,7 @@
 						<text class="link" @click.stop="showAgreement('privacy')">隐私政策</text>
 					</view>
 				</view>
+				<!-- #endif -->
 
 				<view class="login-btn-container">
 					<button class="login-btn" :disabled="!canSubmit" @click="handleLogin">
@@ -123,12 +158,13 @@
 import { computed, onUnmounted, reactive, ref } from 'vue'
 import { onShow, onUnload } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
-import { sendSms, login, loginByOauth } from '@/api/auth.js'
+import { sendSms, login, loginByOauth, wechatMiniLogin } from '@/api/auth.js'
 import agreementConsentSheet from '@/components/agreementConsentSheet.vue'
 import bindPhone from '@/components/bindPhone.vue'
 import { usePageTheme } from '@/utils/page-theme.js'
 import {
 	canAttemptLogin,
+	canAttemptWechatMiniLogin,
 	canRequestSms,
 	getCodeError,
 	getPhoneError,
@@ -154,6 +190,11 @@ let isHarmonyPlatform = false
 isHarmonyPlatform = true
 // #endif
 
+let isWechatMiniProgram = false
+// #ifdef MP-WEIXIN
+isWechatMiniProgram = true
+// #endif
+
 const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
 
@@ -165,6 +206,7 @@ const formData = reactive({
 const countdown = ref(0)
 const isSending = ref(false)
 const isLogging = ref(false)
+const isWechatLogging = ref(false)
 const showBindPhoneModal = ref(false)
 const isAgreed = ref(false)
 const showAgreementSheet = ref(false)
@@ -181,6 +223,10 @@ const canSubmit = computed(() => canAttemptLogin({
 	phone: formData.phone,
 	code: formData.code,
 	isLogging: isLogging.value
+}))
+const canAttemptWechatLogin = computed(() => canAttemptWechatMiniLogin({
+	isAgreed: isAgreed.value,
+	isLogging: isWechatLogging.value
 }))
 const sendCodeText = computed(() => {
 	if (countdown.value > 0) {
@@ -324,6 +370,46 @@ const handleLogin = async () => {
 	}
 }
 
+const handleWechatMiniLogin = async () => {
+	if (!isAgreed.value) {
+		requestAgreementFor('wechat-mini')
+		return
+	}
+	if (!canAttemptWechatLogin.value) return
+
+	// #ifdef MP-WEIXIN
+	isWechatLogging.value = true
+	try {
+		const loginResult = await new Promise((resolve, reject) => {
+			uni.login({
+				success: resolve,
+				fail: reject
+			})
+		})
+		if (!loginResult?.code) {
+			throw new Error('微信登录失败，请重试')
+		}
+
+		const response = await wechatMiniLogin(loginResult.code)
+		userStore.login(response)
+		uni.setStorageSync(WELCOME_PAGE_VIEWED_KEY, true)
+		completedLoginFlow = true
+		navigateAfterLogin()
+		uni.showToast({
+			title: '登录成功',
+			icon: 'success'
+		})
+	} catch (error) {
+		uni.showToast({
+			title: error.message || '微信登录失败，请重试',
+			icon: 'none'
+		})
+	} finally {
+		isWechatLogging.value = false
+	}
+	// #endif
+}
+
 const handleHuaweiLogin = async () => {
 	if (!isAgreed.value) {
 		requestAgreementFor('huawei')
@@ -397,6 +483,10 @@ const handleAgreementAccepted = () => {
 
 	if (action === 'huawei') {
 		handleHuaweiLogin()
+		return
+	}
+	if (action === 'wechat-mini') {
+		handleWechatMiniLogin()
 		return
 	}
 
@@ -845,6 +935,50 @@ onUnmounted(() => {
 		box-shadow: none;
 		color: #ffffff !important;
 	}
+}
+
+.wechat-login-section {
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+}
+
+.wechat-login-btn {
+	width: 100%;
+	height: 100rpx;
+	margin: 0;
+	padding: 0;
+	border-radius: 999rpx;
+	background: #07c160;
+	color: #ffffff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 32rpx;
+	font-weight: 700;
+	line-height: 100rpx;
+	text-align: center;
+	box-shadow: 0 18rpx 34rpx rgba(7, 193, 96, 0.24);
+
+	&::after {
+		display: none;
+	}
+
+	&[disabled] {
+		opacity: 0.45;
+		box-shadow: none;
+		color: #ffffff !important;
+	}
+}
+
+.wechat-login-hint {
+	font-size: 24rpx;
+	text-align: center;
+	color: #8c805f;
+}
+
+.dark-mode .wechat-login-hint {
+	color: #9f926e;
 }
 
 .cta-hint {

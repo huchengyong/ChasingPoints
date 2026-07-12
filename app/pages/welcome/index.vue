@@ -11,6 +11,9 @@
 
 			<!-- 标题区域 -->
 			<view class="hero-section">
+				<!-- #ifdef MP-WEIXIN -->
+				<image class="hero-logo" src="/static/logo.png" mode="aspectFit"></image>
+				<!-- #endif -->
 				<view class="hero-badge">
 					<text class="hero-badge-text">追分竞技记录</text>
 				</view>
@@ -23,18 +26,29 @@
 			<view class="action-panel">
 				<view class="panel-copy">
 					<text class="panel-title">快速开始你的竞技主页</text>
-					<text class="panel-subtitle">手机号验证即可进入，未注册手机号将自动创建账号</text>
+					<text class="panel-subtitle">
+						{{ isWechatMiniProgram ? '微信授权后即可进入，手机号可在需要时再绑定' : '手机号验证即可进入，未注册手机号将自动创建账号' }}
+					</text>
 				</view>
 
 				<!-- 按钮区域 -->
 				<view class="button-section">
 					<button
 						class="btn-primary"
+						:class="{ 'wechat-primary': isWechatMiniProgram }"
 						:disabled="welcomeActions.primaryDisabled"
 						@click="handlePrimaryEntry"
 					>
 						{{ welcomeActions.primaryText }}
 					</button>
+
+					<text
+						v-if="welcomeActions.showPhoneLogin"
+						class="phone-login-link"
+						@click="navigateToLogin"
+					>
+						{{ welcomeActions.secondaryText }}
+					</text>
 
 					<button
 						v-if="welcomeActions.showHuaweiLogin"
@@ -83,6 +97,8 @@
 import { ref, computed } from 'vue'
 import { onShow, onUnload } from '@dcloudio/uni-app'
 import agreementConsentSheet from '@/components/agreementConsentSheet.vue'
+import { wechatMiniLogin } from '@/api/auth.js'
+import { useUserStore } from '@/store/user.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import {
 	resolveEntryFunnelAgreementState,
@@ -99,15 +115,24 @@ let isHarmonyPlatform = false
 isHarmonyPlatform = true
 // #endif
 
+let isWechatMiniProgram = false
+// #ifdef MP-WEIXIN
+isWechatMiniProgram = true
+// #endif
+
 // ========== 状态管理 ==========
 const { isDarkMode } = usePageTheme()
+const userStore = useUserStore()
 const shouldShow = ref(false)
 const isAgreed = ref(false)
+const isWechatLogging = ref(false)
 const showAgreementSheet = ref(false)
 const pendingAgreementAction = ref('')
 const welcomeActions = computed(() => resolveWelcomeActions({
 	isHarmony: isHarmonyPlatform,
-	isAgreed: isAgreed.value
+	isWechatMini: isWechatMiniProgram,
+	isAgreed: isAgreed.value,
+	isLogging: isWechatLogging.value
 }))
 
 // ========== 生命周期 ==========
@@ -203,11 +228,53 @@ const navigateToLogin = () => {
  * 主入口
  */
 const handlePrimaryEntry = () => {
+	if (isWechatMiniProgram) {
+		handleWechatMiniLogin()
+		return
+	}
+
 	if (!isAgreed.value) {
 		requestAgreementFor('primary')
 		return
 	}
 	navigateToLogin()
+}
+
+const handleWechatMiniLogin = async () => {
+	if (!isAgreed.value) {
+		requestAgreementFor('wechat-mini')
+		return
+	}
+	if (isWechatLogging.value) return
+
+	isWechatLogging.value = true
+	try {
+		const loginResult = await new Promise((resolve, reject) => {
+			uni.login({
+				success: resolve,
+				fail: reject
+			})
+		})
+		if (!loginResult?.code) {
+			throw new Error('微信登录失败，请重试')
+		}
+
+		const response = await wechatMiniLogin(loginResult.code)
+		userStore.login(response)
+		uni.setStorageSync(WELCOME_PAGE_VIEWED_KEY, true)
+		navigateToHome()
+		uni.showToast({
+			title: '登录成功',
+			icon: 'success'
+		})
+	} catch (error) {
+		uni.showToast({
+			title: error.message || '微信登录失败，请重试',
+			icon: 'none'
+		})
+	} finally {
+		isWechatLogging.value = false
+	}
 }
 
 /**
@@ -229,6 +296,10 @@ const handleAgreementAccepted = () => {
 
 	if (action === 'huawei') {
 		handleHuaweiLogin()
+		return
+	}
+	if (action === 'wechat-mini') {
+		handleWechatMiniLogin()
 		return
 	}
 
