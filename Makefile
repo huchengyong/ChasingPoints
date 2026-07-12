@@ -5,8 +5,10 @@ ENV_FILE_ABS := $(abspath $(ENV_FILE))
 BACKEND_DIR := backend
 BACKEND_CMD := go run chasing_points.go -f etc/chasing_points-api.yaml
 PORT_WAIT_SECONDS ?= 30
+BUILD_DIR := bin
+BUILD_BINARY := $(BUILD_DIR)/chasing_points
 
-.PHONY: server
+.PHONY: server build
 server:
 	@if [ ! -f "$(ENV_FILE)" ]; then \
 		echo "Missing env file: $(ENV_FILE)"; \
@@ -79,3 +81,8 @@ server:
 	fi; \
 	echo "Starting cloudflared tunnel"; \
 	cloudflared tunnel run --token "$$CF_TUNNEL_TOKEN"
+
+build:
+	@mkdir -p "$(BUILD_DIR)"
+	@echo "Building $(BUILD_BINARY) for linux/amd64"
+	@cd "$(BACKEND_DIR)" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "../$(BUILD_BINARY)" .
