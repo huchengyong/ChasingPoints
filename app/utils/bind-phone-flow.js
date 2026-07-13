@@ -16,6 +16,10 @@ export function canRequestBindPhoneSms({ phone, countdown, isSending }) {
   return isValidBindPhone(phone) && countdown <= 0 && !isSending
 }
 
+export function canCloseBindPhone({ isBinding = false } = {}) {
+  return !Boolean(isBinding)
+}
+
 export function shouldResetBindPhoneVerification(previousPhone, nextPhone) {
   return Boolean(previousPhone) && Boolean(nextPhone) && previousPhone !== nextPhone
 }

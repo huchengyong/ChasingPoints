@@ -1,86 +1,83 @@
 <template>
-	<view class="welcome-container" :class="{ 'dark-mode': isDarkMode }" v-if="shouldShow">
-		<!-- 背景图片层 -->
-		<image class="bg-image" src="/static/images/welcome-bg.jpg" mode="aspectFill"></image>
-		<view class="bg-overlay"></view>
-
-		<!-- 内容层 -->
+	<view v-if="shouldShow" class="welcome-container" :class="{ 'dark-mode': isDarkMode }">
 		<view class="content">
-			<!-- 占位区域，用于将内容推到底部 -->
-			<view class="spacer"></view>
-
-			<!-- 标题区域 -->
-			<view class="hero-section">
-				<!-- #ifdef MP-WEIXIN -->
-				<image class="hero-logo" src="/static/logo.png" mode="aspectFit"></image>
-				<!-- #endif -->
-				<view class="hero-badge">
-					<text class="hero-badge-text">追分竞技记录</text>
-				</view>
-				<view class="title-section">
-					<text class="main-title">每一杆，都值得被记录</text>
-					<text class="sub-title">记录战绩、生成战报、找到真正旗鼓相当的对手</text>
+			<view class="brand-row">
+				<image class="brand-logo" src="/static/logo.png" mode="aspectFit"></image>
+				<view class="brand-copy">
+					<text class="brand-name">追分竞技</text>
+					<text class="brand-en">CHASING POINTS</text>
 				</view>
 			</view>
 
-			<view class="action-panel">
-				<view class="panel-copy">
-					<text class="panel-title">快速开始你的竞技主页</text>
-					<text class="panel-subtitle">
-						{{ isWechatMiniProgram ? '微信授权后即可进入，手机号可在需要时再绑定' : '手机号验证即可进入，未注册手机号将自动创建账号' }}
-					</text>
+			<view class="hero-section">
+				<text class="eyebrow">台球竞技记录</text>
+				<text class="main-title">每一杆，</text>
+				<text class="main-title">都值得被记录</text>
+				<text class="sub-title">记录战绩、生成战报，找到真正旗鼓相当的对手。</text>
+				<view class="benefit-list">
+					<text>对局记录</text>
+					<text>竞技排名</text>
+					<text>战报分享</text>
 				</view>
+			</view>
 
-				<!-- 按钮区域 -->
-				<view class="button-section">
-					<button
-						class="btn-primary"
-						:class="{ 'wechat-primary': isWechatMiniProgram }"
-						:disabled="welcomeActions.primaryDisabled"
-						@click="handlePrimaryEntry"
-					>
-						{{ welcomeActions.primaryText }}
-					</button>
+			<view class="button-section">
+				<button
+					class="btn-primary"
+					:class="{ 'wechat-primary': isWechatMiniProgram }"
+					:disabled="welcomeActions.primaryDisabled"
+					@click="handlePrimaryEntry"
+				>
+					{{ welcomeActions.primaryText }}
+				</button>
 
-					<text
-						v-if="welcomeActions.showPhoneLogin"
-						class="phone-login-link"
-						@click="navigateToLogin"
-					>
-						{{ welcomeActions.secondaryText }}
-					</text>
+				<button
+					v-if="welcomeActions.showPhoneLogin"
+					class="phone-login-btn"
+					:disabled="authGate.isAuthenticating"
+					@click="navigateToLogin"
+				>
+					{{ welcomeActions.secondaryText }}
+				</button>
 
-					<button
-						v-if="welcomeActions.showHuaweiLogin"
-						class="btn-secondary"
-						:disabled="welcomeActions.secondaryDisabled"
-						@click="handleHuaweiLogin"
-					>
-						<image class="button-icon" src="/static/images/huawei.svg" mode="aspectFit"></image>
-						<text>{{ welcomeActions.secondaryText }}</text>
-					</button>
+				<button
+					v-if="welcomeActions.showHuaweiLogin"
+					class="btn-secondary"
+					:disabled="welcomeActions.secondaryDisabled"
+					@click="handleHuaweiLogin"
+				>
+					<image class="button-icon" src="/static/images/huawei.svg" mode="aspectFit"></image>
+					<text>{{ welcomeActions.secondaryText }}</text>
+				</button>
 
-					<button class="btn-tertiary" @click="handleBrowse">
-						{{ welcomeActions.tertiaryText }}
-					</button>
+				<button class="btn-tertiary" :disabled="authGate.isAuthenticating" @click="handleBrowse">
+					{{ welcomeActions.tertiaryText }}
+				</button>
+			</view>
+
+			<view class="agreement">
+				<view class="agreement-row" @click="toggleAgreement">
+					<view class="checkbox" :class="{ checked: isAgreed }">
+						<uni-icons v-if="isAgreed" type="checkmarkempty" size="14" color="#231c0b"></uni-icons>
+					</view>
+					<text class="agreement-text">我已阅读并同意</text>
 				</view>
-
-				<!-- 协议和隐私 -->
-				<view class="agreement">
-					<view class="agreement-row" @click="toggleAgreement">
-						<view class="checkbox" :class="{ checked: isAgreed }">
-							<uni-icons v-if="isAgreed" type="checkmarkempty" size="14" color="#231c0b"></uni-icons>
-						</view>
-						<text class="agreement-text">我已阅读并同意</text>
-					</view>
-					<view class="agreement-links">
-						<text class="link" @click.stop="openUserAgreement">用户协议</text>
-						<text class="separator">和</text>
-						<text class="link" @click.stop="openPrivacyPolicy">隐私政策</text>
-					</view>
+				<view class="agreement-links">
+					<text class="link" @click.stop="openUserAgreement">《用户协议》</text>
+					<text class="separator">和</text>
+					<text class="link" @click.stop="openPrivacyPolicy">《隐私政策》</text>
 				</view>
 			</view>
 		</view>
+
+		<bindPhone
+			:show="showBindPhoneModal"
+			:closable="true"
+			:is-dark-mode="isDarkMode"
+			:require-agreement="false"
+			@close="handleBindPhoneClose"
+			@success="handleBindPhoneSuccess"
+		/>
 
 		<agreementConsentSheet
 			:show="showAgreementSheet"
@@ -94,14 +91,17 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 import { onShow, onUnload } from '@dcloudio/uni-app'
 import agreementConsentSheet from '@/components/agreementConsentSheet.vue'
+import bindPhone from '@/components/bindPhone.vue'
 import { wechatMiniLogin } from '@/api/auth.js'
 import { useUserStore } from '@/store/user.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import {
+	resolveAuthenticationGate,
 	resolveEntryFunnelAgreementState,
+	resolveWechatPostLoginState,
 	resolveWelcomeActions,
 	shouldClearEntryFunnelAgreementSession
 } from '@/utils/entry-funnel.js'
@@ -120,14 +120,19 @@ let isWechatMiniProgram = false
 isWechatMiniProgram = true
 // #endif
 
-// ========== 状态管理 ==========
 const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
 const shouldShow = ref(false)
+const isPageActive = ref(true)
 const isAgreed = ref(false)
 const isWechatLogging = ref(false)
+const showBindPhoneModal = ref(false)
 const showAgreementSheet = ref(false)
 const pendingAgreementAction = ref('')
+const authGate = computed(() => resolveAuthenticationGate({
+	isWechatLogging: isWechatLogging.value,
+	isPageActive: isPageActive.value
+}))
 const welcomeActions = computed(() => resolveWelcomeActions({
 	isHarmony: isHarmonyPlatform,
 	isWechatMini: isWechatMiniProgram,
@@ -135,9 +140,8 @@ const welcomeActions = computed(() => resolveWelcomeActions({
 	isLogging: isWechatLogging.value
 }))
 
-// ========== 生命周期 ==========
-
 onShow(() => {
+	isPageActive.value = true
 	const sessionActive = Boolean(uni.getStorageSync(ENTRY_FUNNEL_SESSION_KEY))
 	isAgreed.value = resolveEntryFunnelAgreementState({
 		storedAgreement: uni.getStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY),
@@ -150,15 +154,16 @@ onShow(() => {
 	}
 
 	const hasViewed = uni.getStorageSync(WELCOME_PAGE_VIEWED_KEY)
-	if (hasViewed) {
+	if (hasViewed && !showBindPhoneModal.value) {
 		navigateToHome()
-	} else {
-		// 只有需要显示 welcome 页面时才渲染内容
-		shouldShow.value = true
+		return
 	}
+
+	shouldShow.value = true
 })
 
 onUnload(() => {
+	isPageActive.value = false
 	const visibleRoutes = getCurrentPages().map((page) => page.route)
 	if (shouldClearEntryFunnelAgreementSession({
 		currentRoute: 'pages/welcome/index',
@@ -168,8 +173,6 @@ onUnload(() => {
 		uni.removeStorageSync(ENTRY_FUNNEL_SESSION_KEY)
 	}
 })
-
-// ========== 方法 ==========
 
 const persistAgreementState = (value) => {
 	uni.setStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY, Boolean(value))
@@ -190,43 +193,30 @@ const closeAgreementSheet = () => {
 	pendingAgreementAction.value = ''
 }
 
-/**
- * 标记已查看并跳转到首页
- */
-const markAsViewedAndNavigate = () => {
-	uni.setStorageSync(WELCOME_PAGE_VIEWED_KEY, true)
-	navigateToHome()
-}
-
-/**
- * 跳转到首页
- */
 const navigateToHome = () => {
 	uni.reLaunch({
 		url: '/pages/index/index'
 	})
 }
 
-/**
- * 处理浏览按钮点击
- */
+const markAsViewedAndNavigate = () => {
+	uni.setStorageSync(WELCOME_PAGE_VIEWED_KEY, true)
+	navigateToHome()
+}
+
 const handleBrowse = () => {
+	if (!authGate.value.canLeave) return
 	markAsViewedAndNavigate()
 }
 
-/**
- * 进入登录页
- */
 const navigateToLogin = () => {
+	if (!authGate.value.canLeave) return
 	uni.setStorageSync(WELCOME_PAGE_VIEWED_KEY, true)
 	uni.navigateTo({
-		url: '/pages/login/login'
+		url: '/pages/login/login?method=phone'
 	})
 }
 
-/**
- * 主入口
- */
 const handlePrimaryEntry = () => {
 	if (isWechatMiniProgram) {
 		handleWechatMiniLogin()
@@ -241,6 +231,7 @@ const handlePrimaryEntry = () => {
 }
 
 const handleWechatMiniLogin = async () => {
+	if (!authGate.value.canStart) return
 	if (!isAgreed.value) {
 		requestAgreementFor('wechat-mini')
 		return
@@ -255,19 +246,25 @@ const handleWechatMiniLogin = async () => {
 				fail: reject
 			})
 		})
+		if (!authGate.value.shouldHandleResult) return
 		if (!loginResult?.code) {
 			throw new Error('微信登录失败，请重试')
 		}
 
 		const response = await wechatMiniLogin(loginResult.code)
+		if (!authGate.value.shouldHandleResult) return
 		userStore.login(response)
 		uni.setStorageSync(WELCOME_PAGE_VIEWED_KEY, true)
-		navigateToHome()
-		uni.showToast({
-			title: '登录成功',
-			icon: 'success'
+		const postLoginState = resolveWechatPostLoginState({
+			needBindPhone: response.need_bind_phone
 		})
+		if (postLoginState.action === 'bind-phone') {
+			showBindPhoneModal.value = true
+			return
+		}
+		navigateToHome()
 	} catch (error) {
+		if (!authGate.value.shouldHandleResult) return
 		uni.showToast({
 			title: error.message || '微信登录失败，请重试',
 			icon: 'none'
@@ -277,15 +274,35 @@ const handleWechatMiniLogin = async () => {
 	}
 }
 
-/**
- * 华为登录
- */
 const handleHuaweiLogin = () => {
 	if (!isAgreed.value) {
 		requestAgreementFor('huawei')
 		return
 	}
 	navigateToLogin()
+}
+
+const handleBindPhoneSuccess = (payload) => {
+	showBindPhoneModal.value = false
+	navigateToHome()
+	uni.showToast({
+		title: payload?.message || '绑定成功',
+		icon: 'success'
+	})
+}
+
+const handleBindPhoneClose = () => {
+	const postLoginState = resolveWechatPostLoginState({
+		needBindPhone: userStore.needBindPhone,
+		bindingSkipped: true
+	})
+	userStore.setNeedBindPhone(postLoginState.needBindPhone)
+	showBindPhoneModal.value = false
+	navigateToHome()
+	uni.showToast({
+		title: '可稍后绑定手机号',
+		icon: 'none'
+	})
 }
 
 const handleAgreementAccepted = () => {
@@ -306,18 +323,12 @@ const handleAgreementAccepted = () => {
 	handlePrimaryEntry()
 }
 
-/**
- * 用户协议
- */
 const openUserAgreement = () => {
 	uni.navigateTo({
 		url: '/subPages/agreement/userAgreement'
 	})
 }
 
-/**
- * 隐私政策
- */
 const openPrivacyPolicy = () => {
 	uni.navigateTo({
 		url: '/subPages/agreement/privacyPolicy'

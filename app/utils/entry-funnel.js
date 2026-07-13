@@ -5,6 +5,47 @@ const ENTRY_FUNNEL_ROUTES = new Set([
   'pages/login/login'
 ])
 
+export function resolveLoginMode({ isWechatMini, requestedMethod = '' } = {}) {
+  if (!isWechatMini) {
+    return 'phone'
+  }
+
+  return requestedMethod === 'phone' ? 'phone' : 'wechat'
+}
+
+export function resolveAlternateLoginMode(currentMode) {
+  return currentMode === 'wechat' ? 'phone' : 'wechat'
+}
+
+export function resolveAuthenticationGate({
+  isWechatLogging = false,
+  isPhoneLogging = false,
+  isPageActive = true
+} = {}) {
+  const isAuthenticating = Boolean(isWechatLogging || isPhoneLogging)
+  const canInteract = Boolean(isPageActive) && !isAuthenticating
+
+  return {
+    isAuthenticating,
+    canStart: canInteract,
+    canLeave: canInteract,
+    shouldHandleResult: Boolean(isPageActive)
+  }
+}
+
+export function resolveWechatPostLoginState({
+  needBindPhone,
+  bindingSkipped = false,
+  bindingCompleted = false
+} = {}) {
+  const remainsUnbound = Boolean(needBindPhone) && !bindingCompleted
+
+  return {
+    action: remainsUnbound && !bindingSkipped ? 'bind-phone' : 'navigate',
+    needBindPhone: remainsUnbound
+  }
+}
+
 export function isPhoneValid(phone) {
   return PHONE_REGEXP.test(String(phone || '').trim())
 }

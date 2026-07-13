@@ -3,7 +3,7 @@ const NETWORK_CONFIG_BY_ENV = {
     httpBaseUrl: 'https://api-zhuifen.kekemate.cn'
   },
   production: {
-    httpBaseUrl: 'https://api-bm.dianzaozao.com'
+    httpBaseUrl: 'https://api.zhuifen.cn'
   }
 }
 

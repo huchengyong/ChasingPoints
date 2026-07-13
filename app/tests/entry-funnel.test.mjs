@@ -10,13 +10,80 @@ import {
   isCodeValid,
   isPhoneValid,
   maskPhone,
+  resolveAlternateLoginMode,
+  resolveAuthenticationGate,
   resolveEntryFunnelAgreementState,
+  resolveLoginMode,
   resolvePostLoginNavigation,
   resolveSmsFeedback,
+  resolveWechatPostLoginState,
   shouldClearEntryFunnelAgreementSession,
   resolveWelcomeActions,
   shouldClearPendingPostLoginIntent
 } from '../utils/entry-funnel.js'
+
+test('resolveLoginMode defaults WeChat mini programs to WeChat and honors an explicit phone request', () => {
+  assert.equal(resolveLoginMode({ isWechatMini: true }), 'wechat')
+  assert.equal(resolveLoginMode({ isWechatMini: true, requestedMethod: 'phone' }), 'phone')
+})
+
+test('resolveLoginMode keeps non-WeChat targets on the phone flow', () => {
+  assert.equal(resolveLoginMode({ isWechatMini: false }), 'phone')
+  assert.equal(resolveLoginMode({ isWechatMini: false, requestedMethod: 'wechat' }), 'phone')
+})
+
+test('resolveAlternateLoginMode switches between WeChat and phone tasks', () => {
+  assert.equal(resolveAlternateLoginMode('wechat'), 'phone')
+  assert.equal(resolveAlternateLoginMode('phone'), 'wechat')
+})
+
+test('resolveAuthenticationGate blocks competing auth actions and ignores results after unload', () => {
+  assert.deepEqual(resolveAuthenticationGate(), {
+    isAuthenticating: false,
+    canStart: true,
+    canLeave: true,
+    shouldHandleResult: true
+  })
+  assert.deepEqual(resolveAuthenticationGate({ isWechatLogging: true }), {
+    isAuthenticating: true,
+    canStart: false,
+    canLeave: false,
+    shouldHandleResult: true
+  })
+  assert.deepEqual(resolveAuthenticationGate({ isPhoneLogging: true }), {
+    isAuthenticating: true,
+    canStart: false,
+    canLeave: false,
+    shouldHandleResult: true
+  })
+  assert.deepEqual(resolveAuthenticationGate({ isPageActive: false }), {
+    isAuthenticating: false,
+    canStart: false,
+    canLeave: false,
+    shouldHandleResult: false
+  })
+})
+
+test('resolveWechatPostLoginState prompts only unbound users before navigation', () => {
+  assert.deepEqual(resolveWechatPostLoginState({ needBindPhone: false }), {
+    action: 'navigate',
+    needBindPhone: false
+  })
+  assert.deepEqual(resolveWechatPostLoginState({ needBindPhone: true }), {
+    action: 'bind-phone',
+    needBindPhone: true
+  })
+})
+
+test('resolveWechatPostLoginState keeps the unbound flag when binding is skipped', () => {
+  assert.deepEqual(resolveWechatPostLoginState({
+    needBindPhone: true,
+    bindingSkipped: true
+  }), {
+    action: 'navigate',
+    needBindPhone: true
+  })
+})
 
 test('resolveWelcomeActions hides Huawei login outside HarmonyOS', () => {
   const result = resolveWelcomeActions({ isHarmony: false, isAgreed: false })

@@ -5,31 +5,36 @@
 			<!-- 拖拽条和关闭按钮 -->
 			<view class="sheet-header">
 				<view class="drag-handle"></view>
-				<view class="close-btn" @click="handleClose" v-if="closable">
+				<view class="close-btn" :class="{ disabled: !canClose }" @click="handleClose" v-if="closable">
 					<text class="close-icon">×</text>
 				</view>
 			</view>
 			
 			<!-- 标题 -->
 			<text class="sheet-title">绑定手机号</text>
-			<text class="sheet-subtitle">为了保障您的账户安全，并为您匹配对手。</text>
+			<text class="sheet-subtitle">用于账号找回、重要赛事通知和已有账号安全合并</text>
 			
 			<!-- #ifdef MP-WEIXIN -->
 			<view class="wechat-phone-copy">
 				<text>授权微信手机号后即可完成绑定，可随时稍后处理。</text>
 			</view>
+			<view class="binding-benefits">
+				<text>账号找回</text>
+				<text>赛事通知</text>
+				<text>账号合并</text>
+			</view>
 
 			<view class="bind-btn-container">
 				<button
 					class="bind-btn"
-					:class="{ active: isAgreed }"
-					:disabled="!isAgreed || loading"
+					:class="{ active: canAuthorizeWechatPhone }"
+					:disabled="!canAuthorizeWechatPhone || loading"
 					open-type="getPhoneNumber"
 					@getphonenumber="handleWechatPhoneNumber"
 				>
 					{{ loading ? '绑定中...' : '授权微信手机号' }}
 				</button>
-				<button v-if="closable" class="close-text-btn" @click="handleClose">
+				<button v-if="closable" class="close-text-btn" :disabled="!canClose" @click="handleClose">
 					稍后绑定
 				</button>
 			</view>
@@ -84,14 +89,14 @@
 				>
 					{{ loading ? '绑定中...' : '立即绑定' }}
 				</button>
-				<button v-if="closable" class="close-text-btn" @click="handleClose">
+				<button v-if="closable" class="close-text-btn" :disabled="!canClose" @click="handleClose">
 					稍后绑定
 				</button>
 			</view>
 			<!-- #endif -->
 			
 			<!-- 协议文本 -->
-			<view class="agreement-section">
+			<view v-if="requireAgreement" class="agreement-section">
 				<view class="agreement-row" @click="toggleAgreement">
 					<view class="checkbox" :class="{ checked: isAgreed }">
 						<uni-icons v-if="isAgreed" type="checkmarkempty" size="14" color="#231c0b"></uni-icons>
@@ -112,6 +117,7 @@
 import { sendSms, bindPhone, wechatMiniBindPhone } from '@/api/auth.js'
 import { useUserStore } from '@/store/user.js'
 import {
+	canCloseBindPhone,
 	canRequestBindPhoneSms,
 	getWechatPhoneNumberCode,
 	isValidBindPhone,
@@ -135,6 +141,10 @@ export default {
 			default: false
 		},
 		closable: {
+			type: Boolean,
+			default: true
+		},
+		requireAgreement: {
 			type: Boolean,
 			default: true
 		}
@@ -166,8 +176,14 @@ export default {
 				isSending: this.isSendingCode
 			})
 		},
+		canAuthorizeWechatPhone() {
+			return !this.requireAgreement || this.isAgreed
+		},
+		canClose() {
+			return canCloseBindPhone({ isBinding: this.loading })
+		},
 		canBind() {
-			return isValidBindPhone(this.phone) && this.code.length === 6 && this.isAgreed
+			return isValidBindPhone(this.phone) && this.code.length === 6 && this.canAuthorizeWechatPhone
 		}
 	},
 	watch: {
@@ -215,6 +231,7 @@ export default {
 		},
 		
 		handleClose() {
+			if (!this.canClose) return
 			this.resetFormState()
 			this.$emit('close')
 		},
@@ -305,7 +322,14 @@ export default {
 
 		async handleWechatPhoneNumber(event) {
 			const code = getWechatPhoneNumberCode(event)
-			if (!code || !this.isAgreed || this.loading) return
+			if (!code) {
+				uni.showToast({
+					title: '未授权手机号，可稍后绑定',
+					icon: 'none'
+				})
+				return
+			}
+			if (!this.canAuthorizeWechatPhone || this.loading) return
 
 			this.loading = true
 			try {
@@ -363,7 +387,7 @@ export default {
 <style lang="scss" scoped>
 // 浅色模式变量
 $light-bg: #ffffff;
-$light-sheet-bg: #f5f5f5;
+$light-sheet-bg: #fffdf9;
 $light-text-primary: #1a1a1a;
 $light-text-secondary: rgba(0, 0, 0, 0.6);
 $light-border: #e5e5e5;
@@ -371,7 +395,7 @@ $light-input-bg: #ffffff;
 
 // 深色模式变量
 $dark-bg: rgba(0, 0, 0, 0.5);
-$dark-sheet-bg: #1e1e1e;
+$dark-sheet-bg: #1b170f;
 $dark-text-primary: #ffffff;
 $dark-text-secondary: rgba(255, 255, 255, 0.7);
 $dark-border: #4a4a4a;
@@ -392,8 +416,8 @@ $dark-input-bg: transparent;
 	// 浅色模式样式
 	.bind-phone-sheet {
 		background-color: $light-sheet-bg;
-		border-radius: 24rpx 24rpx 0 0;
-		padding: 0 48rpx 64rpx;
+		border-radius: 32rpx 32rpx 0 0;
+		padding: 0 40rpx calc(40rpx + env(safe-area-inset-bottom));
 	}
 
 	.sheet-header {
@@ -420,6 +444,11 @@ $dark-input-bg: transparent;
 		align-items: center;
 		justify-content: center;
 		border-radius: 50%;
+
+		&.disabled {
+			opacity: 0.45;
+			pointer-events: none;
+		}
 	}
 
 	.close-icon {
@@ -429,17 +458,18 @@ $dark-input-bg: transparent;
 
 	.sheet-title {
 		display: block;
-		font-size: 48rpx;
+		font-size: 40rpx;
 		font-weight: bold;
 		color: $light-text-primary;
-		margin-bottom: 8rpx;
+		margin-bottom: 12rpx;
 	}
 
 	.sheet-subtitle {
 		display: block;
-		font-size: 28rpx;
+		font-size: 26rpx;
+		line-height: 1.6;
 		color: $light-text-secondary;
-		margin-bottom: 48rpx;
+		margin-bottom: 20rpx;
 	}
 
 	.input-group {
@@ -518,7 +548,9 @@ $dark-input-bg: transparent;
 
 	.bind-btn {
 		width: 100%;
-		height: 112rpx;
+		height: 96rpx;
+		line-height: 96rpx;
+		margin: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -527,7 +559,6 @@ $dark-input-bg: transparent;
 		color: #9ca3af;
 		font-size: 32rpx;
 		font-weight: bold;
-		line-height: 1;
 		text-align: center;
 		border-radius: 24rpx;
 		border: none;
@@ -549,9 +580,25 @@ $dark-input-bg: transparent;
 
 	.wechat-phone-copy {
 		display: block;
-		font-size: 28rpx;
+		font-size: 24rpx;
 		line-height: 1.6;
 		color: $light-text-secondary;
+	}
+
+	.binding-benefits {
+		display: flex;
+		gap: 12rpx;
+		margin-top: 20rpx;
+
+		text {
+			flex: 1;
+			padding: 14rpx 8rpx;
+			border-radius: 14rpx;
+			background: #f8f3e8;
+			color: #766a52;
+			font-size: 22rpx;
+			text-align: center;
+		}
 	}
 
 	.close-text-btn {
@@ -571,6 +618,10 @@ $dark-input-bg: transparent;
 
 		&::after {
 			display: none;
+		}
+
+		&[disabled] {
+			opacity: 0.45;
 		}
 	}
 
@@ -657,6 +708,10 @@ $dark-input-bg: transparent;
 			color: $dark-text-secondary;
 		}
 
+		.wechat-phone-copy {
+			color: $dark-text-secondary;
+		}
+
 		.input-label {
 			color: $dark-text-primary;
 		}
@@ -685,9 +740,14 @@ $dark-input-bg: transparent;
 			color: #6b7280;
 
 			&.active {
-				background-color: #006400;
+				background: linear-gradient(135deg, #e5b928 0%, #c99700 100%);
 				color: #ffffff;
 			}
+		}
+
+		.binding-benefits text {
+			background: rgba(255, 255, 255, 0.05);
+			color: #d7c89b;
 		}
 
 		.close-text-btn {

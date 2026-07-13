@@ -1,36 +1,39 @@
 <template>
 	<view class="login-container" :class="{ 'dark-mode': isDarkMode }">
-		<view class="ambient-glow ambient-glow-top"></view>
-		<view class="ambient-glow ambient-glow-bottom"></view>
-
 		<view class="login-content">
-			<view class="header-section">
-				<view class="header-badge">
-					<text class="header-badge-text">追分竞技入口</text>
+			<view class="brand-row">
+				<image class="brand-logo" src="/static/logo.png" mode="aspectFit"></image>
+				<view class="brand-copy">
+					<text class="brand-name">追分竞技</text>
+					<text class="brand-en">CHASING POINTS</text>
 				</view>
-				<view class="logo-shell">
-					<view class="logo">
-						<image src="/static/logo.png" mode="aspectFit" />
-					</view>
-				</view>
-				<text class="title">{{ isWechatMiniProgram ? '微信一键进入' : '手机号登录 / 注册' }}</text>
-				<text class="subtitle">{{ isWechatMiniProgram ? '授权后即可进入，手机号可在需要时再绑定' : '未注册手机号验证后将自动创建账号' }}</text>
 			</view>
 
-			<view class="form-card">
-				<!-- #ifdef MP-WEIXIN -->
-				<view v-if="isWechatMiniProgram" class="wechat-login-section">
-					<button
-						class="wechat-login-btn"
-						:disabled="isWechatLogging"
-						@click="handleWechatMiniLogin"
-					>
-						{{ isWechatLogging ? '进入中...' : '微信一键进入' }}
-					</button>
-					<text class="wechat-login-hint">无需先绑定手机号</text>
+			<view v-if="authMode === 'wechat'" class="auth-mode wechat-mode">
+				<view class="hero-section">
+					<text class="eyebrow">台球竞技记录</text>
+					<text class="title">每一杆，</text>
+					<text class="title">都值得被记录</text>
+					<text class="subtitle">记录战绩、生成战报，找到真正旗鼓相当的对手。</text>
+					<view class="benefit-list">
+						<text>对局记录</text>
+						<text>竞技排名</text>
+						<text>战报分享</text>
+					</view>
 				</view>
 
-				<view v-if="isWechatMiniProgram" class="agreement-block">
+				<view class="wechat-actions">
+					<button
+						class="wechat-login-btn"
+						:disabled="authGate.isAuthenticating"
+						@click="handleWechatMiniLogin"
+					>
+						{{ isWechatLogging ? '正在进入...' : '微信一键进入' }}
+					</button>
+					<button class="phone-login-btn" :disabled="authGate.isAuthenticating" @click="switchLoginMode">手机号登录</button>
+				</view>
+
+				<view class="agreement-block">
 					<view class="agreement-row" @click="toggleAgreement">
 						<view class="checkbox" :class="{ checked: isAgreed }">
 							<uni-icons v-if="isAgreed" type="checkmarkempty" size="14" color="#231c0b"></uni-icons>
@@ -38,24 +41,31 @@
 						<text class="agreement-text">我已阅读并同意</text>
 					</view>
 					<view class="agreement-links">
-						<text class="link" @click.stop="showAgreement('user')">用户协议</text>
+						<text class="link" @click.stop="showAgreement('user')">《用户协议》</text>
 						<text class="separator">和</text>
-						<text class="link" @click.stop="showAgreement('privacy')">隐私政策</text>
+						<text class="link" @click.stop="showAgreement('privacy')">《隐私政策》</text>
 					</view>
 				</view>
+			</view>
 
-				<view v-if="isWechatMiniProgram" class="divider">
-					<view class="divider-line"></view>
-					<text class="divider-text">手机号登录</text>
-					<view class="divider-line"></view>
+			<view v-else class="auth-mode phone-mode">
+				<text
+					v-if="isWechatMiniProgram"
+					class="mode-back"
+					:class="{ disabled: authGate.isAuthenticating }"
+					@click="switchLoginMode"
+				>‹ 微信登录</text>
+
+				<view class="phone-heading">
+					<text class="phone-title">手机号登录</text>
+					<text class="phone-subtitle">未注册手机号验证后将自动创建账号</text>
 				</view>
-				<!-- #endif -->
 
 				<view class="form-section">
 					<view class="form-item">
 						<text class="form-label">手机号</text>
 						<view class="input-container" :class="{ invalid: phoneError }">
-							<uni-icons class="input-icon" type="phone-filled" size="24"></uni-icons>
+							<text class="country-code">+86</text>
 							<input
 								type="tel"
 								v-model="formData.phone"
@@ -68,12 +78,8 @@
 					</view>
 
 					<view class="form-item">
-						<view class="label-row">
-							<text class="form-label">短信验证码</text>
-							<text class="field-hint">验证码可用于登录或自动注册</text>
-						</view>
+						<text class="form-label">短信验证码</text>
 						<view class="input-container" :class="{ invalid: codeError }">
-							<uni-icons class="input-icon" type="locked-filled" size="24"></uni-icons>
 							<input
 								type="number"
 								v-model="formData.code"
@@ -81,11 +87,7 @@
 								class="form-input code-input"
 								maxlength="6"
 							/>
-							<button
-								class="send-code-btn"
-								:disabled="!canSendCode"
-								@click="handleSendCode"
-							>
+							<button class="send-code-btn" :disabled="!canSendCode" @click="handleSendCode">
 								{{ sendCodeText }}
 							</button>
 						</view>
@@ -93,8 +95,7 @@
 					</view>
 				</view>
 
-				<!-- #ifndef MP-WEIXIN -->
-				<view class="agreement-block">
+				<view class="agreement-block phone-agreement">
 					<view class="agreement-row" @click="toggleAgreement">
 						<view class="checkbox" :class="{ checked: isAgreed }">
 							<uni-icons v-if="isAgreed" type="checkmarkempty" size="14" color="#231c0b"></uni-icons>
@@ -102,21 +103,21 @@
 						<text class="agreement-text">我已阅读并同意</text>
 					</view>
 					<view class="agreement-links">
-						<text class="link" @click.stop="showAgreement('user')">用户协议</text>
+						<text class="link" @click.stop="showAgreement('user')">《用户协议》</text>
 						<text class="separator">和</text>
-						<text class="link" @click.stop="showAgreement('privacy')">隐私政策</text>
+						<text class="link" @click.stop="showAgreement('privacy')">《隐私政策》</text>
 					</view>
 				</view>
-				<!-- #endif -->
 
-				<view class="login-btn-container">
-					<button class="login-btn" :disabled="!canSubmit" @click="handleLogin">
-						{{ isLogging ? '进入中...' : '立即进入' }}
-					</button>
-					<text class="cta-hint">
-						{{ isAgreed ? '验证成功后将立即进入首页' : '勾选协议后即可继续' }}
-					</text>
-				</view>
+				<button class="login-btn" :disabled="!canSubmit" @click="handleLogin">
+					{{ isLogging ? '正在进入...' : '登录 / 注册' }}
+				</button>
+				<text
+					v-if="isWechatMiniProgram"
+					class="mode-switch"
+					:class="{ disabled: authGate.isAuthenticating }"
+					@click="switchLoginMode"
+				>切换到微信一键进入</text>
 
 				<view v-if="showHuaweiLogin" class="third-party-login">
 					<view class="divider">
@@ -124,10 +125,7 @@
 						<text class="divider-text">其他可用方式</text>
 						<view class="divider-line"></view>
 					</view>
-					<button
-						class="third-party-btn"
-						@click="handleHuaweiLogin"
-					>
+					<button class="third-party-btn" @click="handleHuaweiLogin">
 						<image src="/static/images/huawei.svg" mode="aspectFit" />
 						<text>华为账号登录</text>
 					</button>
@@ -139,6 +137,7 @@
 			:show="showBindPhoneModal"
 			:closable="true"
 			:is-dark-mode="isDarkMode"
+			:require-agreement="!isWechatMiniProgram"
 			@close="handleBindPhoneClose"
 			@success="handleBindPhoneSuccess"
 		/>
@@ -156,7 +155,7 @@
 
 <script setup>
 import { computed, onUnmounted, reactive, ref } from 'vue'
-import { onShow, onUnload } from '@dcloudio/uni-app'
+import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { sendSms, login, loginByOauth, wechatMiniLogin } from '@/api/auth.js'
 import agreementConsentSheet from '@/components/agreementConsentSheet.vue'
@@ -170,9 +169,13 @@ import {
 	getPhoneError,
 	isCodeValid,
 	isPhoneValid,
+	resolveAlternateLoginMode,
+	resolveAuthenticationGate,
 	resolveEntryFunnelAgreementState,
+	resolveLoginMode,
 	resolvePostLoginNavigation,
 	resolveSmsFeedback,
+	resolveWechatPostLoginState,
 	shouldClearEntryFunnelAgreementSession,
 	shouldClearPendingPostLoginIntent
 } from '@/utils/entry-funnel.js'
@@ -197,6 +200,7 @@ isWechatMiniProgram = true
 
 const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
+const authMode = ref(resolveLoginMode({ isWechatMini: isWechatMiniProgram }))
 
 const formData = reactive({
 	phone: '',
@@ -207,26 +211,32 @@ const countdown = ref(0)
 const isSending = ref(false)
 const isLogging = ref(false)
 const isWechatLogging = ref(false)
+const isPageActive = ref(true)
 const showBindPhoneModal = ref(false)
 const isAgreed = ref(false)
 const showAgreementSheet = ref(false)
 const pendingAgreementAction = ref('')
+const authGate = computed(() => resolveAuthenticationGate({
+	isWechatLogging: isWechatLogging.value,
+	isPhoneLogging: isLogging.value,
+	isPageActive: isPageActive.value
+}))
 const showHuaweiLogin = computed(() => isHarmonyPlatform)
 const phoneError = computed(() => getPhoneError(formData.phone))
 const codeError = computed(() => getCodeError(formData.code))
 const canSendCode = computed(() => canRequestSms({
 	phone: formData.phone,
 	countdown: countdown.value,
-	isSending: isSending.value
+	isSending: isSending.value || authGate.value.isAuthenticating
 }))
 const canSubmit = computed(() => canAttemptLogin({
 	phone: formData.phone,
 	code: formData.code,
-	isLogging: isLogging.value
+	isLogging: authGate.value.isAuthenticating
 }))
 const canAttemptWechatLogin = computed(() => canAttemptWechatMiniLogin({
 	isAgreed: isAgreed.value,
-	isLogging: isWechatLogging.value
+	isLogging: authGate.value.isAuthenticating
 }))
 const sendCodeText = computed(() => {
 	if (countdown.value > 0) {
@@ -238,6 +248,12 @@ const sendCodeText = computed(() => {
 
 let countdownTimer = null
 let completedLoginFlow = false
+
+const switchLoginMode = () => {
+	if (!isWechatMiniProgram) return
+	if (!authGate.value.canLeave) return
+	authMode.value = resolveAlternateLoginMode(authMode.value)
+}
 
 const persistAgreementState = (value) => {
 	uni.setStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY, Boolean(value))
@@ -323,6 +339,7 @@ const handleSendCode = async () => {
 }
 
 const handleLogin = async () => {
+	if (!authGate.value.canStart) return
 	if (!isAgreed.value) {
 		requestAgreementFor('submit')
 		return
@@ -351,6 +368,7 @@ const handleLogin = async () => {
 			phone: formData.phone.trim(),
 			sms_code: formData.code.trim()
 		})
+		if (!authGate.value.shouldHandleResult) return
 
 		userStore.login(res)
 		uni.setStorageSync(WELCOME_PAGE_VIEWED_KEY, true)
@@ -361,6 +379,7 @@ const handleLogin = async () => {
 			icon: 'success'
 		})
 	} catch (error) {
+		if (!authGate.value.shouldHandleResult) return
 		uni.showToast({
 			title: error.message || '登录失败，请重试',
 			icon: 'none'
@@ -371,6 +390,7 @@ const handleLogin = async () => {
 }
 
 const handleWechatMiniLogin = async () => {
+	if (!authGate.value.canStart) return
 	if (!isAgreed.value) {
 		requestAgreementFor('wechat-mini')
 		return
@@ -386,20 +406,26 @@ const handleWechatMiniLogin = async () => {
 				fail: reject
 			})
 		})
+		if (!authGate.value.shouldHandleResult) return
 		if (!loginResult?.code) {
 			throw new Error('微信登录失败，请重试')
 		}
 
 		const response = await wechatMiniLogin(loginResult.code)
+		if (!authGate.value.shouldHandleResult) return
 		userStore.login(response)
 		uni.setStorageSync(WELCOME_PAGE_VIEWED_KEY, true)
 		completedLoginFlow = true
-		navigateAfterLogin()
-		uni.showToast({
-			title: '登录成功',
-			icon: 'success'
+		const postLoginState = resolveWechatPostLoginState({
+			needBindPhone: response.need_bind_phone
 		})
+		if (postLoginState.action === 'bind-phone') {
+			showBindPhoneModal.value = true
+			return
+		}
+		navigateAfterLogin()
 	} catch (error) {
+		if (!authGate.value.shouldHandleResult) return
 		uni.showToast({
 			title: error.message || '微信登录失败，请重试',
 			icon: 'none'
@@ -518,6 +544,11 @@ const handleBindPhoneSuccess = (payload) => {
 const handleBindPhoneClose = () => {
 	showBindPhoneModal.value = false
 	completedLoginFlow = true
+	const postLoginState = resolveWechatPostLoginState({
+		needBindPhone: userStore.needBindPhone,
+		bindingSkipped: true
+	})
+	userStore.setNeedBindPhone(postLoginState.needBindPhone)
 	navigateAfterLogin()
 	uni.showToast({
 		title: '可稍后绑定手机号',
@@ -532,7 +563,15 @@ const showAgreement = (type) => {
 	uni.navigateTo({ url })
 }
 
+onLoad((options) => {
+	authMode.value = resolveLoginMode({
+		isWechatMini: isWechatMiniProgram,
+		requestedMethod: options?.method
+	})
+})
+
 onShow(() => {
+	isPageActive.value = true
 	const sessionActive = Boolean(uni.getStorageSync(ENTRY_FUNNEL_SESSION_KEY))
 	isAgreed.value = resolveEntryFunnelAgreementState({
 		storedAgreement: uni.getStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY),
@@ -546,6 +585,7 @@ onShow(() => {
 })
 
 onUnload(() => {
+	isPageActive.value = false
 	const visibleRoutes = getCurrentPages().map((page) => page.route)
 	if (shouldClearEntryFunnelAgreementSession({
 		currentRoute: 'pages/login/login',
@@ -573,293 +613,223 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 .login-container {
-	position: relative;
 	min-height: 100vh;
-	padding: 64rpx 32rpx 48rpx;
+	box-sizing: border-box;
+	padding: calc(44rpx + env(safe-area-inset-top)) 40rpx calc(32rpx + env(safe-area-inset-bottom));
 	background:
-		radial-gradient(circle at top, rgba(224, 174, 18, 0.18), transparent 32%),
-		linear-gradient(180deg, #faf8f2 0%, #f3ecdd 100%);
-	overflow: hidden;
+		radial-gradient(circle at 88% 5%, rgba(224, 174, 18, 0.18), transparent 28%),
+		linear-gradient(180deg, #fffdf8 0%, #f8f3e9 100%);
+	overflow-y: auto;
 
 	&.dark-mode {
 		background:
-			radial-gradient(circle at top, rgba(247, 216, 106, 0.16), transparent 30%),
-			linear-gradient(180deg, #181209 0%, #141109 58%, #0c0905 100%);
+			radial-gradient(circle at 88% 6%, rgba(224, 174, 18, 0.15), transparent 28%),
+			linear-gradient(180deg, #1b170f 0%, #12100b 100%);
 	}
-}
-
-.ambient-glow {
-	position: absolute;
-	border-radius: 50%;
-	filter: blur(40rpx);
-	opacity: 0.58;
-}
-
-.ambient-glow-top {
-	top: 40rpx;
-	right: -80rpx;
-	width: 260rpx;
-	height: 260rpx;
-	background: rgba(247, 216, 106, 0.28);
-}
-
-.ambient-glow-bottom {
-	left: -90rpx;
-	bottom: 200rpx;
-	width: 220rpx;
-	height: 220rpx;
-	background: rgba(198, 146, 0, 0.14);
 }
 
 .login-content {
-	position: relative;
-	z-index: 1;
+	min-height: calc(100vh - 76rpx - env(safe-area-inset-top) - env(safe-area-inset-bottom));
 	display: flex;
 	flex-direction: column;
-	gap: 32rpx;
 }
 
-.header-section {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: 18rpx;
-	padding-top: 20rpx;
-}
-
-.header-badge {
-	padding: 12rpx 24rpx;
-	border-radius: 999rpx;
-	background: rgba(255, 247, 225, 0.72);
-	border: 1rpx solid rgba(224, 174, 18, 0.18);
-}
-
-.dark-mode .header-badge {
-	background: rgba(255, 247, 225, 0.08);
-	border-color: rgba(247, 231, 168, 0.18);
-}
-
-.header-badge-text {
-	color: #8a6510;
-	font-size: 24rpx;
-	font-weight: 700;
-	letter-spacing: 2rpx;
-}
-
-.dark-mode .header-badge-text {
-	color: #f7e7a8;
-}
-
-.logo-shell {
-	padding: 12rpx;
-	border-radius: 28rpx;
-	background: rgba(255, 255, 255, 0.72);
-	box-shadow: 0 16rpx 32rpx rgba(198, 146, 0, 0.12);
-}
-
-.dark-mode .logo-shell {
-	background: rgba(30, 24, 13, 0.92);
-	box-shadow: 0 16rpx 32rpx rgba(0, 0, 0, 0.2);
-}
-
-.logo {
-	width: 112rpx;
-	height: 112rpx;
-	border-radius: 24rpx;
-	background: linear-gradient(135deg, #f7d86a 0%, #c69200 100%);
+.brand-row {
 	display: flex;
 	align-items: center;
-	justify-content: center;
-	overflow: hidden;
+	gap: 18rpx;
+}
 
-	image {
-		width: 100%;
-		height: 100%;
-	}
+.brand-logo {
+	width: 76rpx;
+	height: 76rpx;
+	border-radius: 22rpx;
+	box-shadow: 0 14rpx 30rpx rgba(198, 146, 0, 0.18);
+}
+
+.brand-copy {
+	display: flex;
+	flex-direction: column;
+	gap: 4rpx;
+}
+
+.brand-name {
+	color: #2a2419;
+	font-size: 26rpx;
+	font-weight: 800;
+	letter-spacing: 1rpx;
+}
+
+.brand-en {
+	color: #a08c5d;
+	font-size: 16rpx;
+	letter-spacing: 3rpx;
+}
+
+.dark-mode .brand-name {
+	color: #fff8e8;
+}
+
+.dark-mode .brand-en {
+	color: #a99a77;
+}
+
+.auth-mode {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+}
+
+.hero-section {
+	margin-top: 116rpx;
+	display: flex;
+	flex-direction: column;
+}
+
+.eyebrow {
+	margin-bottom: 18rpx;
+	color: #a47a14;
+	font-size: 20rpx;
+	font-weight: 800;
+	letter-spacing: 4rpx;
 }
 
 .title {
-	color: #231c0b;
+	color: #211e18;
 	font-size: 54rpx;
-	font-weight: 700;
-	line-height: 1.2;
-}
-
-.dark-mode .title {
-	color: #fff7e1;
+	font-weight: 800;
+	line-height: 1.18;
+	letter-spacing: -1rpx;
 }
 
 .subtitle {
-	max-width: 620rpx;
-	color: #6e6242;
-	font-size: 28rpx;
+	max-width: 590rpx;
+	margin-top: 22rpx;
+	color: #746b5a;
+	font-size: 27rpx;
 	line-height: 1.6;
 }
 
+.benefit-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12rpx;
+	margin-top: 30rpx;
+
+	text {
+		padding: 9rpx 16rpx;
+		border: 1rpx solid #eadfbf;
+		border-radius: 999rpx;
+		background: rgba(255, 255, 255, 0.56);
+		color: #856a2b;
+		font-size: 20rpx;
+	}
+}
+
+.dark-mode .eyebrow {
+	color: #e1b63a;
+}
+
+.dark-mode .title {
+	color: #fff8e8;
+}
+
 .dark-mode .subtitle {
+	color: #c9bea2;
+}
+
+.dark-mode .benefit-list text {
+	border-color: rgba(224, 174, 18, 0.28);
+	background: rgba(255, 255, 255, 0.04);
 	color: #d7c89b;
 }
 
-.form-card {
-	padding: 36rpx 28rpx;
-	border-radius: 32rpx;
-	background: rgba(255, 255, 255, 0.82);
-	border: 1rpx solid rgba(224, 174, 18, 0.08);
-	box-shadow: 0 28rpx 60rpx rgba(35, 28, 11, 0.08);
-	backdrop-filter: blur(18px);
-}
-
-.dark-mode .form-card {
-	background: rgba(30, 24, 13, 0.96);
-	border-color: rgba(247, 231, 168, 0.12);
-	box-shadow: 0 28rpx 60rpx rgba(0, 0, 0, 0.22);
-}
-
-.form-section {
+.wechat-actions {
 	display: flex;
 	flex-direction: column;
-	gap: 28rpx;
+	gap: 18rpx;
+	margin-top: auto;
 }
 
-.form-item {
-	display: flex;
-	flex-direction: column;
-	gap: 14rpx;
-}
-
-.label-row {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 16rpx;
-}
-
-.form-label {
-	font-size: 28rpx;
-	font-weight: 700;
-	color: #231c0b;
-}
-
-.dark-mode .form-label {
-	color: #fff7e1;
-}
-
-.field-hint {
-	font-size: 22rpx;
-	color: #8c805f;
-}
-
-.input-container {
-	position: relative;
-	display: flex;
-	align-items: center;
-	border: 2rpx solid rgba(224, 174, 18, 0.12);
-	border-radius: 20rpx;
-	background: rgba(250, 248, 242, 0.92);
-	transition: border-color 0.2s ease, box-shadow 0.2s ease;
-
-	&.invalid {
-		border-color: rgba(239, 68, 68, 0.52);
-		box-shadow: 0 0 0 6rpx rgba(239, 68, 68, 0.08);
-	}
-}
-
-.dark-mode .input-container {
-	background: rgba(20, 17, 9, 0.92);
-	border-color: rgba(247, 231, 168, 0.12);
-}
-
-.input-icon {
-	position: absolute;
-	left: 24rpx;
-	z-index: 1;
-	color: #8a6510;
-}
-
-.dark-mode .input-icon {
-	color: #f7e7a8;
-}
-
-.form-input {
-	flex: 1;
-	height: 104rpx;
-	padding-left: 78rpx;
-	padding-right: 28rpx;
-	font-size: 30rpx;
-	color: #231c0b;
-	background: transparent;
-
-	&.code-input {
-		padding-right: 238rpx;
-	}
-}
-
-.dark-mode .form-input {
-	color: #fff7e1;
-}
-
-.send-code-btn {
-	position: absolute;
-	right: 14rpx;
-	height: 72rpx;
-	line-height: 72rpx;
-	padding: 0 24rpx;
-	border-radius: 14rpx;
-	background: linear-gradient(135deg, #f7d86a 0%, #e0ae12 48%, #c69200 100%);
-	color: #ffffff;
-	font-size: 28rpx;
-	font-weight: 700;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	box-shadow: 0 4rpx 8rpx rgba(224, 174, 18, 0.3);
+.wechat-login-btn,
+.phone-login-btn,
+.login-btn,
+.third-party-btn {
+	width: 100%;
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+	text-align: center;
 
 	&::after {
 		display: none;
 	}
+}
+
+.wechat-login-btn,
+.phone-login-btn,
+.login-btn {
+	height: 96rpx;
+	line-height: 96rpx;
+	border-radius: 28rpx;
+	font-size: 30rpx;
+	font-weight: 800;
+}
+
+.wechat-login-btn {
+	background: #07c160;
+	color: #ffffff;
+	box-shadow: 0 16rpx 30rpx rgba(7, 193, 96, 0.17);
 
 	&[disabled] {
-		opacity: 0.45;
-		box-shadow: none;
+		opacity: 0.5;
 		color: #ffffff !important;
+		box-shadow: none;
 	}
 }
 
-.dark-mode .send-code-btn {
-	background: linear-gradient(135deg, #f7d86a 0%, #e0ae12 48%, #c69200 100%);
-	color: #ffffff;
+.phone-login-btn {
+	border: 1rpx solid #e5cf93;
+	background: rgba(255, 255, 255, 0.66);
+	color: #7d5d11;
 }
 
-.field-error {
-	font-size: 24rpx;
-	color: #dc2626;
-	padding-left: 6rpx;
+.phone-login-btn[disabled] {
+	opacity: 0.45;
+}
+
+.dark-mode .phone-login-btn {
+	border-color: rgba(224, 174, 18, 0.42);
+	background: rgba(255, 255, 255, 0.04);
+	color: #efd476;
 }
 
 .agreement-block {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 10rpx;
-	margin-top: 32rpx;
+	gap: 8rpx;
+	margin-top: 22rpx;
 }
 
-.agreement-row {
+.agreement-row,
+.agreement-links {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 }
 
 .checkbox {
-	width: 34rpx;
-	height: 34rpx;
-	margin-right: 12rpx;
+	width: 32rpx;
+	height: 32rpx;
+	margin-right: 10rpx;
+	border: 2rpx solid rgba(224, 174, 18, 0.42);
 	border-radius: 8rpx;
-	border: 2rpx solid rgba(224, 174, 18, 0.18);
 	background: rgba(255, 255, 255, 0.72);
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	box-sizing: border-box;
 
 	&.checked {
 		background: #f7d86a;
@@ -867,135 +837,230 @@ onUnmounted(() => {
 	}
 }
 
-.dark-mode .checkbox {
-	background: rgba(255, 247, 225, 0.06);
-	border-color: rgba(247, 231, 168, 0.18);
-}
-
-.agreement-text {
-	font-size: 24rpx;
-	color: #6e6242;
-}
-
-.dark-mode .agreement-text {
-	color: #c6b78c;
-}
-
+.agreement-text,
 .agreement-links {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-wrap: wrap;
-	font-size: 24rpx;
+	color: #918978;
+	font-size: 22rpx;
 }
 
 .link {
-	color: #8a6510;
-	margin: 0 8rpx;
-	text-decoration: underline;
-}
-
-.dark-mode .link {
-	color: #f7e7a8;
+	margin: 0 4rpx;
+	color: #846414;
 }
 
 .separator {
-	color: #9a8c67;
+	color: #918978;
 }
 
-.login-btn-container {
+.dark-mode .checkbox {
+	border-color: rgba(224, 174, 18, 0.42);
+	background: rgba(255, 255, 255, 0.04);
+}
+
+.dark-mode .agreement-text,
+.dark-mode .agreement-links,
+.dark-mode .separator {
+	color: #8d836c;
+}
+
+.dark-mode .link {
+	color: #efd476;
+}
+
+.phone-mode {
+	padding-top: 34rpx;
+}
+
+.mode-back {
+	align-self: flex-start;
+	padding: 12rpx 0;
+	color: #7d6d4e;
+	font-size: 24rpx;
+	font-weight: 700;
+}
+
+.phone-heading {
 	display: flex;
 	flex-direction: column;
-	gap: 16rpx;
-	margin-top: 32rpx;
+	gap: 14rpx;
+	margin-top: 54rpx;
+}
+
+.phone-title {
+	color: #211e18;
+	font-size: 50rpx;
+	font-weight: 800;
+}
+
+.phone-subtitle {
+	color: #817867;
+	font-size: 25rpx;
+	line-height: 1.5;
+}
+
+.dark-mode .mode-back {
+	color: #d7c89b;
+}
+
+.dark-mode .phone-title {
+	color: #fff8e8;
+}
+
+.dark-mode .phone-subtitle {
+	color: #a99f89;
+}
+
+.form-section {
+	display: flex;
+	flex-direction: column;
+	gap: 26rpx;
+	margin-top: 54rpx;
+}
+
+.form-item {
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+}
+
+.form-label {
+	color: #4b4336;
+	font-size: 25rpx;
+	font-weight: 700;
+}
+
+.input-container {
+	position: relative;
+	display: flex;
+	align-items: center;
+	height: 96rpx;
+	border: 1rpx solid #e9dfcc;
+	border-radius: 24rpx;
+	background: rgba(255, 255, 255, 0.78);
+	box-shadow: 0 8rpx 18rpx rgba(85, 65, 26, 0.04);
+	box-sizing: border-box;
+
+	&.invalid {
+		border-color: rgba(220, 38, 38, 0.52);
+	}
+}
+
+.country-code {
+	padding: 0 22rpx;
+	border-right: 1rpx solid #ece3d2;
+	color: #443c31;
+	font-size: 27rpx;
+	font-weight: 700;
+}
+
+.form-input {
+	flex: 1;
+	height: 96rpx;
+	padding: 0 24rpx;
+	color: #2b261e;
+	font-size: 28rpx;
+	background: transparent;
+	box-sizing: border-box;
+
+	&.code-input {
+		padding-right: 220rpx;
+	}
+}
+
+.send-code-btn {
+	position: absolute;
+	right: 12rpx;
+	height: 64rpx;
+	line-height: 64rpx;
+	margin: 0;
+	padding: 0 20rpx;
+	border-radius: 18rpx;
+	background: #f3e4b6;
+	color: #86620d;
+	font-size: 23rpx;
+	font-weight: 700;
+	box-sizing: border-box;
+
+	&::after {
+		display: none;
+	}
+
+	&[disabled] {
+		opacity: 0.48;
+		color: #86620d !important;
+	}
+}
+
+.field-error {
+	padding-left: 6rpx;
+	color: #dc2626;
+	font-size: 22rpx;
+}
+
+.dark-mode .form-label {
+	color: #ede3ca;
+}
+
+.dark-mode .input-container {
+	border-color: rgba(224, 174, 18, 0.2);
+	background: rgba(255, 255, 255, 0.04);
+}
+
+.dark-mode .country-code {
+	border-right-color: rgba(224, 174, 18, 0.18);
+	color: #f1e6cb;
+}
+
+.dark-mode .form-input {
+	color: #fff8e8;
+}
+
+.phone-agreement {
+	margin-top: 28rpx;
 }
 
 .login-btn {
-	width: 100%;
-	height: 100rpx;
+	height: 96rpx;
+	line-height: 96rpx;
+	margin: 28rpx 0 0;
 	padding: 0;
-	border-radius: 999rpx;
-	background: linear-gradient(135deg, #f7d86a 0%, #e0ae12 48%, #c69200 100%);
+	background: linear-gradient(135deg, #e5b928 0%, #c99700 100%);
 	color: #ffffff;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 32rpx;
-	font-weight: 700;
-	line-height: 1;
-	text-align: center;
-	box-shadow: 0 18rpx 34rpx rgba(224, 174, 18, 0.24);
-
-	&::after {
-		display: none;
-	}
+	box-shadow: 0 14rpx 28rpx rgba(201, 151, 0, 0.18);
 
 	&[disabled] {
 		opacity: 0.45;
-		box-shadow: none;
 		color: #ffffff !important;
+		box-shadow: none;
 	}
 }
 
-.wechat-login-section {
-	display: flex;
-	flex-direction: column;
-	gap: 16rpx;
-}
-
-.wechat-login-btn {
-	width: 100%;
-	height: 100rpx;
-	margin: 0;
-	padding: 0;
-	border-radius: 999rpx;
-	background: #07c160;
-	color: #ffffff;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 32rpx;
+.mode-switch {
+	align-self: center;
+	padding: 24rpx;
+	color: #8b6915;
+	font-size: 23rpx;
 	font-weight: 700;
-	line-height: 100rpx;
-	text-align: center;
-	box-shadow: 0 18rpx 34rpx rgba(7, 193, 96, 0.24);
-
-	&::after {
-		display: none;
-	}
-
-	&[disabled] {
-		opacity: 0.45;
-		box-shadow: none;
-		color: #ffffff !important;
-	}
 }
 
-.wechat-login-hint {
-	font-size: 24rpx;
-	text-align: center;
-	color: #8c805f;
+.mode-back.disabled,
+.mode-switch.disabled {
+	opacity: 0.45;
+	pointer-events: none;
 }
 
-.dark-mode .wechat-login-hint {
-	color: #9f926e;
-}
-
-.cta-hint {
-	font-size: 24rpx;
-	text-align: center;
-	color: #8c805f;
-}
-
-.dark-mode .cta-hint {
-	color: #9f926e;
+.dark-mode .mode-switch {
+	color: #efd476;
 }
 
 .third-party-login {
-	margin-top: 36rpx;
+	margin-top: 22rpx;
 	display: flex;
 	flex-direction: column;
-	gap: 24rpx;
+	gap: 20rpx;
 }
 
 .divider {
@@ -1005,48 +1070,39 @@ onUnmounted(() => {
 
 .divider-line {
 	flex: 1;
-	height: 2rpx;
+	height: 1rpx;
 	background: rgba(154, 140, 103, 0.24);
 }
 
 .divider-text {
 	padding: 0 16rpx;
-	font-size: 24rpx;
 	color: #9a8c67;
+	font-size: 22rpx;
 }
 
 .third-party-btn {
-	width: 100%;
-	min-height: 92rpx;
-	padding: 0 24rpx;
-	border-radius: 18rpx;
-	background: rgba(255, 247, 225, 0.08);
-	border: 1rpx solid rgba(224, 174, 18, 0.12);
+	height: 88rpx;
+	line-height: 88rpx;
+	border: 1rpx solid #e5cf93;
+	border-radius: 24rpx;
+	background: rgba(255, 255, 255, 0.5);
+	color: #6e6242;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	gap: 12rpx;
-	color: #6e6242;
-	font-size: 28rpx;
+	font-size: 27rpx;
 	font-weight: 700;
 
-	&::after {
-		display: none;
-	}
-
-	&[disabled] {
-		opacity: 0.45;
-	}
-
 	image {
-		width: 34rpx;
-		height: 34rpx;
+		width: 32rpx;
+		height: 32rpx;
 	}
 }
 
 .dark-mode .third-party-btn {
-	color: #fff7e1;
-	background: rgba(255, 247, 225, 0.04);
-	border-color: rgba(247, 231, 168, 0.12);
+	border-color: rgba(224, 174, 18, 0.32);
+	background: rgba(255, 255, 255, 0.04);
+	color: #fff8e8;
 }
 </style>
