@@ -41,6 +41,19 @@ export const useUserStore = defineStore('user', {
       }
     },
 
+    // 刷新登录态，只更新令牌，不覆盖用户资料
+    refreshAuth(data) {
+      this.token = data.token || data.access_token
+      this.refreshToken = data.refreshToken || data.refresh_token || this.refreshToken
+      this.expiresIn = data.expiresIn || data.expires_in || this.expiresIn
+      this.isLoggedIn = true
+
+      uni.setStorageSync('token', this.token)
+      if (this.refreshToken) {
+        uni.setStorageSync('refreshToken', this.refreshToken)
+      }
+    },
+
     // 退出登录
     logout() {
       this.token = ''
@@ -95,6 +108,6 @@ export const useUserStore = defineStore('user', {
   // 持久化配置
   persist: {
     key: 'user-store',
-    paths: ['token', 'refreshToken', 'userInfo', 'isLoggedIn', 'needBindPhone']
+    paths: ['token', 'refreshToken', 'userInfo', 'isLoggedIn', 'needBindPhone', 'expiresIn']
   }
 })

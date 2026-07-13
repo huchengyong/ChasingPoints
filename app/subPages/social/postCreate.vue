@@ -1,5 +1,5 @@
 <template>
-	<view class="post-create-page">
+	<view class="post-create-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 文本输入 -->
 		<view class="input-section">
 			<textarea
@@ -75,13 +75,17 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { createPost } from '@/api/social.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+import { buildPostReviewSuccessCopy } from '@/utils/social-review.js'
 
 const content = ref('')
 const imageList = ref([])
 const postType = ref(3)
 const publishing = ref(false)
+const { isDarkMode } = usePageTheme()
+
 
 const canPublish = computed(() => {
 	return content.value.trim().length > 0
@@ -94,6 +98,9 @@ onLoad((options) => {
 	if (options.post_type) {
 		postType.value = Number(options.post_type) || 3
 	}
+})
+
+onShow(() => {
 })
 
 const chooseImage = () => {
@@ -125,10 +132,11 @@ const handlePublish = async () => {
 
 		const res = await createPost(data)
 		if (res.success) {
-			uni.showToast({ title: '发布成功', icon: 'success' })
+			const successCopy = buildPostReviewSuccessCopy()
+			uni.showToast({ title: successCopy.toast, icon: 'success' })
 			setTimeout(() => {
-				uni.navigateBack()
-			}, 1000)
+				uni.redirectTo({ url: `/subPages/social/myPosts?hint=${encodeURIComponent(successCopy.hint)}` })
+			}, 700)
 		} else {
 			uni.showToast({ title: res.message || '发布失败', icon: 'none' })
 		}
@@ -146,6 +154,34 @@ const handlePublish = async () => {
 	min-height: 100vh;
 	background: #f1f5f9;
 	padding: 20rpx 24rpx;
+
+	&.dark-mode {
+		background: #141109;
+
+		.input-section,
+		.image-section,
+		.type-section {
+			background: #1e180d;
+		}
+
+		.content-input,
+		.type-tag.active {
+			color: #fff7e1;
+		}
+
+		.char-count,
+		.section-label,
+		.add-text,
+		.type-tag {
+			color: #d7c89b;
+		}
+
+		.image-add,
+		.type-tag {
+			background: #2b2316;
+			border-color: #3a2e16;
+		}
+	}
 }
 
 .input-section {
@@ -250,8 +286,8 @@ const handlePublish = async () => {
 			color: #64748b;
 
 			&.active {
-				background: #18b05b;
-				color: #fff;
+				background: #E0AE12;
+				color: #ffffff;
 			}
 		}
 	}
@@ -260,8 +296,8 @@ const handlePublish = async () => {
 .publish-section {
 	.publish-btn {
 		width: 100%;
-		background: #18b05b;
-		color: #fff;
+		background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
+		color: #ffffff;
 		border-radius: 40rpx;
 		height: 88rpx;
 		line-height: 88rpx;
@@ -272,6 +308,10 @@ const handlePublish = async () => {
 		&[disabled] {
 			background: #cbd5e1;
 			color: #94a3b8;
+		}
+
+		&::after {
+			display: none;
 		}
 	}
 }

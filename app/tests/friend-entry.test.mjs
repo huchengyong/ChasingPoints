@@ -1,0 +1,84 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+
+import {
+  buildBlacklistFriendPayload,
+  buildDeleteFriendPayload,
+  buildFriendH2HUrl,
+  buildFriendHomepageUrl,
+  buildFriendOpponentRecordUrl,
+  buildFriendPkReportUrl,
+  normalizeFriendListItem,
+  resolveFriendUserId
+} from '../utils/friend-entry.js'
+
+test('resolveFriendUserId prefers backend friend list user_id', () => {
+  assert.equal(resolveFriendUserId({ user_id: 18, friend_id: 9, id: 1 }), 18)
+})
+
+test('normalizeFriendListItem exposes one canonical friend_user_id field', () => {
+  assert.deepEqual(normalizeFriendListItem({
+    id: 3,
+    user_id: 28,
+    nickname: '球友 A',
+    avatar: 'https://img.example/a.png'
+  }), {
+    id: 3,
+    user_id: 28,
+    nickname: '球友 A',
+    avatar: 'https://img.example/a.png',
+    friend_user_id: 28
+  })
+})
+
+test('buildFriendH2HUrl carries the canonical opponent id and display name', () => {
+  assert.equal(
+    buildFriendH2HUrl({
+      user_id: 52,
+      nickname: '球友 B'
+    }),
+    '/subPages/user/h2hRecord?opponent_id=52&opponent_name=%E7%90%83%E5%8F%8B%20B'
+  )
+})
+
+test('buildFriendOpponentRecordUrl carries target user context for friend battle history', () => {
+  assert.equal(
+    buildFriendOpponentRecordUrl({
+      user_id: 52,
+      nickname: '球友 B',
+      avatar: 'https://img.example/b.png'
+    }),
+    '/subPages/user/opponentRecord?target_user_id=52&target_name=%E7%90%83%E5%8F%8B%20B&target_avatar=https%3A%2F%2Fimg.example%2Fb.png'
+  )
+})
+
+test('buildFriendPkReportUrl keeps avatar, name, and canonical user id aligned', () => {
+  assert.equal(
+    buildFriendPkReportUrl({
+      user_id: 99,
+      nickname: '球友 C',
+      avatar: 'https://img.example/c c.png'
+    }),
+    '/subPages/social/pkReport?opponent_id=99&opponent_name=%E7%90%83%E5%8F%8B%20C&opponent_avatar=https%3A%2F%2Fimg.example%2Fc%20c.png'
+  )
+})
+
+test('buildFriendHomepageUrl carries identity fields needed by the lite homepage', () => {
+  assert.equal(
+    buildFriendHomepageUrl({
+      user_id: 66,
+      nickname: '球友 D',
+      avatar: 'https://img.example/d.png',
+      rank_name: '星耀'
+    }),
+    '/subPages/social/friendHomepage?opponent_id=66&opponent_name=%E7%90%83%E5%8F%8B%20D&opponent_avatar=https%3A%2F%2Fimg.example%2Fd.png&rank_name=%E6%98%9F%E8%80%80'
+  )
+})
+
+test('buildDeleteFriendPayload uses friend_user_id expected by backend contract', () => {
+  assert.deepEqual(buildDeleteFriendPayload({ user_id: 77 }), { friend_user_id: 77 })
+})
+
+test('buildBlacklistFriendPayload uses friend_user_id expected by backend contract', () => {
+  assert.deepEqual(buildBlacklistFriendPayload({ friend_id: 88 }), { friend_user_id: 88 })
+})

@@ -1,5 +1,5 @@
 <template>
-	<view class="notification-page">
+	<view class="notification-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 顶部操作栏 -->
 		<view class="top-bar">
 			<text class="page-subtitle">全部消息</text>
@@ -41,7 +41,7 @@
 
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="28" color="#18b05b"></uni-icons>
+				<uni-icons type="spinner-cycle" size="28" color="#E0AE12"></uni-icons>
 		</view>
 
 		<!-- 加载更多 -->
@@ -57,6 +57,9 @@ import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
 import { getNotificationList, markAsRead, markAllAsRead, deleteNotification } from '@/api/notification.js'
 import { useNotificationStore } from '@/store/notification.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const notificationStore = useNotificationStore()
 const friendRequestStore = useFriendRequestStore()
@@ -70,8 +73,10 @@ const getTypeIcon = (type) => {
 	const map = {
 		challenge: '🎯',
 		tournament: '🏆',
-		rank_change: '📊',
 		friend_request: '👥',
+		follow: '⭐',
+		match_result: '🏁',
+		rank_change: '📊',
 		system: '📢'
 	}
 	return map[type] || '🔔'
@@ -223,10 +228,10 @@ onPullDownRefresh(() => {
 		font-size: 28rpx;
 		color: #64748b;
 	}
-	.read-all-btn {
-		font-size: 26rpx;
-		color: #18b05b;
-	}
+		.read-all-btn {
+			font-size: 26rpx;
+			color: #c69200;
+		}
 }
 
 .notification-list {
@@ -241,10 +246,10 @@ onPullDownRefresh(() => {
 		margin-bottom: 12rpx;
 		gap: 16rpx;
 
-		&.unread {
-			background: #f8fafc;
-			border-left: 6rpx solid #18b05b;
-		}
+			&.unread {
+				background: #f8fafc;
+				border-left: 6rpx solid #e0ae12;
+			}
 
 		.item-icon {
 			width: 64rpx;
@@ -255,9 +260,11 @@ onPullDownRefresh(() => {
 			justify-content: center;
 			flex-shrink: 0;
 
-			&.type-challenge { background: #dcfce7; }
+			&.type-challenge { background: rgba(224, 174, 18, 0.14); }
 			&.type-tournament { background: #fef3c7; }
-			&.type-rank_change { background: #dcfce7; }
+			&.type-follow { background: rgba(251, 191, 36, 0.16); }
+			&.type-match_result { background: rgba(14, 165, 233, 0.12); }
+			&.type-rank_change { background: rgba(59, 130, 246, 0.12); }
 			&.type-friend_request { background: #f3e8ff; }
 			&.type-system { background: #f1f5f9; }
 
@@ -281,13 +288,13 @@ onPullDownRefresh(() => {
 					font-weight: 600;
 					color: #1e293b;
 				}
-				.unread-dot {
-					width: 12rpx;
-					height: 12rpx;
-					border-radius: 50%;
-					background: #18b05b;
-					flex-shrink: 0;
-				}
+					.unread-dot {
+						width: 12rpx;
+						height: 12rpx;
+						border-radius: 50%;
+						background: #e0ae12;
+						flex-shrink: 0;
+					}
 			}
 
 			.item-body {
@@ -340,10 +347,10 @@ onPullDownRefresh(() => {
 	padding: 40rpx 0;
 }
 
-.load-more {
-	text-align: center;
-	padding: 32rpx 0;
-	font-size: 26rpx;
-	color: #18b05b;
-}
+	.load-more {
+		text-align: center;
+		padding: 32rpx 0;
+		font-size: 26rpx;
+		color: #c69200;
+	}
 </style>

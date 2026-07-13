@@ -41,11 +41,20 @@ export const getFriendList = (params = {}) => {
 
 /**
  * 删除好友
- * @param {Object} data { friend_id }
+ * @param {Object} data { friend_user_id }
  * @returns {Promise}
  */
 export const deleteFriend = (data) => {
   return post('/api/friend/delete', data)
+}
+
+/**
+ * 加入黑名单
+ * @param {Object} data { friend_user_id }
+ * @returns {Promise}
+ */
+export const blacklistFriend = (data) => {
+  return post('/api/friend/blacklist', data)
 }
 
 /**

@@ -7,6 +7,12 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+const (
+	SocialPostStatusPublished = 1
+	SocialPostStatusPending   = 2
+	SocialPostStatusRejected  = 3
+)
+
 type SocialPost struct {
 	Id            int64     `gorm:"primarykey"`
 	UserId        int64     `gorm:"not null;index"`
@@ -16,6 +22,10 @@ type SocialPost struct {
 	MatchId       *int64    `gorm:"index"`
 	LikesCount    int       `gorm:"not null;default:0"`
 	CommentsCount int       `gorm:"not null;default:0"`
+	Status        int       `gorm:"not null;default:2;index"`
+	RejectReason  string    `gorm:"size:255;not null;default:''"`
+	ReviewedAt    *time.Time
+	ReviewedBy    *int64
 	CreatedAt     time.Time `gorm:"autoCreateTime"`
 }
 
@@ -70,7 +80,7 @@ func (m *SocialPostModel) FindPublicPosts(page, pageSize int) ([]SocialPost, int
 	}
 
 	offset := (page - 1) * pageSize
-	db := m.db.Model(&SocialPost{})
+	db := m.db.Model(&SocialPost{}).Where("status = ?", SocialPostStatusPublished)
 
 	var total int64
 	if err := db.Count(&total).Error; err != nil {
@@ -94,7 +104,52 @@ func (m *SocialPostModel) FindPostsByUserIds(userIds []int64, page, pageSize int
 	}
 
 	offset := (page - 1) * pageSize
-	db := m.db.Model(&SocialPost{}).Where("user_id IN ?", userIds)
+	db := m.db.Model(&SocialPost{}).Where("user_id IN ? AND status = ?", userIds, SocialPostStatusPublished)
+
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var list []SocialPost
+	err := db.Order("created_at DESC, id DESC").Offset(offset).Limit(pageSize).Find(&list).Error
+	return list, total, err
+}
+
+func (m *SocialPostModel) FindPostsByUser(userId int64, page, pageSize int) ([]SocialPost, int64, error) {
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+
+	offset := (page - 1) * pageSize
+	db := m.db.Model(&SocialPost{}).Where("user_id = ?", userId)
+
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var list []SocialPost
+	err := db.Order("created_at DESC, id DESC").Offset(offset).Limit(pageSize).Find(&list).Error
+	return list, total, err
+}
+
+func (m *SocialPostModel) FindListForAdmin(page, pageSize, status int) ([]SocialPost, int64, error) {
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+
+	offset := (page - 1) * pageSize
+	db := m.db.Model(&SocialPost{})
+	if status >= 0 {
+		db = db.Where("status = ?", status)
+	}
 
 	var total int64
 	if err := db.Count(&total).Error; err != nil {
@@ -140,6 +195,21 @@ func (m *SocialPostModel) AddLike(postId, userId int64) error {
 
 		return nil
 	})
+}
+
+func (m *SocialPostModel) UpdateReview(postId int64, status int, rejectReason string, reviewedBy int64, reviewedAt time.Time) error {
+	updates := map[string]any{
+		"status":        status,
+		"reject_reason": rejectReason,
+		"reviewed_at":   reviewedAt,
+		"reviewed_by":   reviewedBy,
+	}
+	if status == SocialPostStatusPublished {
+		updates["reject_reason"] = ""
+	}
+	return m.db.Model(&SocialPost{}).
+		Where("id = ? AND status = ?", postId, SocialPostStatusPending).
+		Updates(updates).Error
 }
 
 func (m *SocialPostModel) RemoveLike(postId, userId int64) error {

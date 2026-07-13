@@ -2,7 +2,7 @@
 	<view class="match-detail-container" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 加载状态 -->
 		<view v-if="loading" class="loading-container">
-			<uni-icons type="spinner-cycle" size="48" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="48" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
@@ -66,7 +66,7 @@
 					</view>
 					<view class="stat-item">
 						<text class="stat-label">状态</text>
-						<text class="stat-value status-ongoing">进行中</text>
+						<text class="stat-value" :class="matchData.status === 2 ? 'status-finished' : 'status-ongoing'">{{ matchStatusText }}</text>
 					</view>
 				</view>
 			</view>
@@ -91,8 +91,8 @@
 					<view class="round-result">
 						<text class="round-score">{{ round.player1_score }} - {{ round.player2_score }}</text>
 						<view class="result-badge">
-							<text :class="['result-text', round.winner === 1 ? 'win' : 'loss']">
-								{{ round.winner === 1 ? '玩家1胜' : '玩家2胜' }}
+							<text :class="['result-text', getRoundResultTone(round)]">
+								{{ getRoundResultText(round) }}
 							</text>
 						</view>
 						<uni-icons type="right" size="16" color="#64748b"></uni-icons>
@@ -105,19 +105,27 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { onLoad, onShow, onHide } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import { getMatchDetail, getPublicMatchDetail } from '@/api/match.js'
-import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+import {
+	normalizeMatchDetailPayload,
+	shouldShowSpectateBadge,
+	shouldUsePublicMatchDetail
+} from '@/utils/match-detail.js'
 
 // ========== 响应式数据 ==========
 const loading = ref(true)
 const matchId = ref(null)
 const isSpectateMode = ref(false)
+const detailSource = ref('')
+const perspectiveUserId = ref(0)
 const matchData = ref({
 	player1_score: 0,
 	player2_score: 0,
 	game_type: 3,
+	status: 0,
 	duration_seconds: 0,
 	current_round: 1,
 	total_rounds: 0
@@ -142,10 +150,9 @@ const pageLog = (message, payload) => {
 }
 
 // ========== 状态管理 ==========
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 
 // ========== 计算属性 ==========
-const isDarkMode = computed(() => themeStore.isDarkMode)
 
 // ========== 计算属性 ==========
 const gameTypeName = computed(() => {
@@ -158,13 +165,21 @@ const gameTypeName = computed(() => {
 	}
 })
 
+const matchStatusText = computed(() => {
+	if (matchData.value.status === 2) return '已结束'
+	if (matchData.value.status === 3) return '已取消'
+	return '进行中'
+})
+
 // ========== 生命周期 ==========
 onLoad((options) => {
 	if (options.match_id) {
 		matchId.value = parseInt(options.match_id)
 	}
-	if (options.mode === 'spectate') {
-		isSpectateMode.value = true
+	detailSource.value = options.source || ''
+	perspectiveUserId.value = Number(options.perspective_user_id || 0)
+	isSpectateMode.value = shouldShowSpectateBadge(options)
+	if (isSpectateMode.value) {
 		// 设置导航栏标题
 		uni.setNavigationBarTitle({
 			title: '观战'
@@ -185,25 +200,19 @@ onMounted(() => {
 	matchWS.on(WS_MESSAGE_TYPES.ROUND_END, handleRoundEnd)
 	matchWS.on(WS_MESSAGE_TYPES.MATCH_END, handleMatchEnd)
 	matchWS.on(WS_MESSAGE_TYPES.SYNC, handleSync)
-	connectWebSocket()
+	if (matchData.value.status === 1) {
+		connectWebSocket()
+	}
 })
 
 onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
-	// 监听主题变化事件
-	uni.$on(THEME_CHANGE_EVENT, handleThemeChange)
-	if (wsHandlersReady && matchId.value) {
+	if (wsHandlersReady && matchId.value && matchData.value.status === 1) {
 		if (matchWS.isConnected()) {
 			matchWS.requestSync()
 		} else {
 			connectWebSocket()
 		}
 	}
-})
-
-onHide(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
 })
 
 onUnmounted(() => {
@@ -214,17 +223,9 @@ onUnmounted(() => {
 	matchWS.off(WS_MESSAGE_TYPES.SYNC, handleSync)
 	// 断开WebSocket
 	matchWS.disconnect()
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
 })
 
 // ========== 方法 ==========
-
-/**
- * 处理主题变化事件
- */
-const handleThemeChange = () => {
-	themeStore.applyNavigationBarTheme()
-}
 
 /**
  * 加载对局数据
@@ -236,29 +237,21 @@ const loadMatchData = async () => {
 	}
 	
 	try {
-		// 观战模式使用公开接口（无需登录），否则使用私有接口
-		const apiCall = isSpectateMode.value ? getPublicMatchDetail : getMatchDetail
+		const apiCall = shouldUsePublicMatchDetail({
+			mode: isSpectateMode.value ? 'spectate' : '',
+			source: detailSource.value
+		}) ? getPublicMatchDetail : getMatchDetail
 		const res = await apiCall({ match_id: matchId.value })
 		if (res.success && res.match) {
-			matchData.value = {
-				player1_score: res.match.player1_score || 0,
-				player2_score: res.match.player2_score || 0,
-				game_type: res.match.game_type || 3,
-				duration_seconds: res.match.duration_seconds || 0,
-				current_round: res.match.current_round || 1,
-				total_rounds: res.match.total_rounds || 0
-			}
-			player1Info.value = {
-				name: res.match.player1_name || '玩家1',
-				avatar: res.match.player1_avatar || ''
-			}
-			player2Info.value = {
-				name: res.match.player2_name || '玩家2',
-				avatar: res.match.player2_avatar || ''
-			}
-			// 加载局记录
-			if (res.match.rounds) {
-				roundRecords.value = res.match.rounds
+			const normalized = normalizeMatchDetailPayload(res.match, {
+				perspectiveUserId: perspectiveUserId.value
+			})
+			matchData.value = normalized.matchData
+			player1Info.value = normalized.player1Info
+			player2Info.value = normalized.player2Info
+			roundRecords.value = normalized.roundRecords
+			if (wsHandlersReady && matchData.value.status === 1 && !matchWS.isConnected()) {
+				connectWebSocket()
 			}
 		}
 	} catch (error) {
@@ -274,6 +267,7 @@ const loadMatchData = async () => {
  */
 const connectWebSocket = async () => {
 	if (!matchId.value) return
+	if (matchData.value.status !== 1) return
 	
 	try {
 		await matchWS.connect(matchId.value, { allowAnonymous: isSpectateMode.value })
@@ -364,20 +358,51 @@ const handleSync = (data) => {
  * 格式化时长
  */
 const formatDuration = (durationSeconds) => {
-	if (!durationSeconds || durationSeconds < 0) return '00:00'
-	
-	const minutes = Math.floor(durationSeconds / 60)
-	const seconds = durationSeconds % 60
-	
-	return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+	if (!durationSeconds || durationSeconds < 0) return '0分'
+
+	const totalMinutes = Math.floor(durationSeconds / 60)
+
+	if (totalMinutes < 1) {
+		return `${durationSeconds}秒`
+	}
+
+	if (totalMinutes < 60) {
+		return `${totalMinutes}分`
+	}
+
+	const hours = Math.floor(totalMinutes / 60)
+	const remainMinutes = totalMinutes % 60
+
+	if (hours < 24) {
+		if (remainMinutes > 0) {
+			return `${hours}小时${remainMinutes}分`
+		}
+		return `${hours}小时`
+	}
+
+	const days = Math.floor(hours / 24)
+	const remainHours = hours % 24
+
+	if (remainHours > 0) {
+		return `${days}天${remainHours}小时`
+	}
+	return `${days}天`
 }
 
 /**
  * 获取局结果样式类
  */
 const getRoundResultClass = (round) => {
-	if (round.winner === 1) return 'win-round'
+	if (round.result === 'win' || round.winner === 1) return 'win-round'
 	return 'loss-round'
+}
+
+const getRoundResultTone = (round) => {
+	return round.result === 'win' || round.winner === 1 ? 'win' : 'loss'
+}
+
+const getRoundResultText = (round) => {
+	return round.resultText || (round.result === 'win' || round.winner === 1 ? '胜' : '负')
 }
 </script>
 

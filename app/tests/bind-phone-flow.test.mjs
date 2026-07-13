@@ -2,10 +2,16 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  canCloseBindPhone,
   canRequestBindPhoneSms,
   resolveBindPhoneSuccess,
   shouldResetBindPhoneVerification
 } from '../utils/bind-phone-flow.js'
+
+test('canCloseBindPhone blocks closing only while a binding request is active', () => {
+  assert.equal(canCloseBindPhone({ isBinding: false }), true)
+  assert.equal(canCloseBindPhone({ isBinding: true }), false)
+})
 
 test('resolveBindPhoneSuccess returns relogin outcome for merged account responses', () => {
   const result = resolveBindPhoneSuccess({

@@ -1,7 +1,7 @@
 <template>
-	<view class="challenges-page">
+	<view class="challenges-page" :class="{ 'dark-mode': isDarkMode }">
 		<view class="page-tip">
-			<uni-icons type="info" size="16" color="#18b05b"></uni-icons>
+			<uni-icons type="info" size="16" color="#E0AE12"></uni-icons>
 			<text>这里记录的是线上 PK 邀约，只用于社交互动，不会直接生成真实对局。</text>
 		</view>
 
@@ -38,7 +38,7 @@
 
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
@@ -130,9 +130,15 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { getPendingChallenges, acceptChallenge, rejectChallenge, sendChallenge } from '@/api/challenge.js'
 import { formatRelativeTime } from '@/utils/format.js'
 import { GAME_TYPE_OPTIONS, getGameTypeLabel } from '@/utils/game-types.js'
+import { useUserStore } from '@/store/user.js'
+import { buildChallengePayload, normalizeChallengeListItem } from '@/utils/challenge-entry.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const statusMap = { 0: '待回应', 1: '已回应', 2: '已拒绝', 3: '已过期' }
 const gameTypes = GAME_TYPE_OPTIONS
+const userStore = useUserStore()
 
 const tab = ref('received')
 const list = ref([])
@@ -153,15 +159,15 @@ const fetchList = async () => {
 		const res = await getPendingChallenges({ page: 1, page_size: 50 })
 		if (res.success) {
 			const all = (res.list || []).map(item => ({
-				...item,
+				...normalizeChallengeListItem(item, userStore.userId),
 				relativeTime: formatRelativeTime(item.created_at)
 			}))
-			receivedCount.value = all.filter(item => (item.direction === 'received' || !item.direction) && item.status === 0).length
+			receivedCount.value = all.filter(item => item.direction === 'received' && item.status === 0).length
 			sentCount.value = all.filter(item => item.direction === 'sent' && item.status === 0).length
 			respondedCount.value = all.filter(item => item.status !== 0).length
 
 			if (tab.value === 'received') {
-				list.value = all.filter(item => (item.direction === 'received' || !item.direction) && item.status === 0)
+				list.value = all.filter(item => item.direction === 'received' && item.status === 0)
 			} else if (tab.value === 'sent') {
 				list.value = all.filter(item => item.direction === 'sent' && item.status === 0)
 			} else {
@@ -187,11 +193,9 @@ const getDirectionText = (item) => {
 	return item.direction === 'sent' ? '等待对方回应' : '等待我来回应'
 }
 
-const getOpponentId = (item) => item.friend_id || item.user_id || item.target_id || item.sender_id || item.receiver_id || 0
-
 const openPkReport = (item) => {
 	const query = []
-	const opponentId = getOpponentId(item)
+	const opponentId = item.opponent_id || 0
 	const opponentName = item.opponent_name || item.nickname || ''
 
 	if (opponentId) {
@@ -258,11 +262,16 @@ const emptyText = computed(() => {
 
 const submitChallenge = async () => {
 	try {
-		const res = await sendChallenge({
-			friend_id: targetFriend.value.friend_id || targetFriend.value.id,
-			game_type: selectedGameType.value,
+		const payload = buildChallengePayload({
+			targetFriend: targetFriend.value,
+			gameType: selectedGameType.value,
 			message: challengeMessage.value
 		})
+		if (!payload.to_user_id) {
+			uni.showToast({ title: '好友信息异常', icon: 'none' })
+			return
+		}
+		const res = await sendChallenge(payload)
 		if (res.success) {
 			uni.showToast({ title: 'PK邀约已发送', icon: 'success' })
 			closeChallengeModal()
@@ -297,7 +306,7 @@ onUnmounted(() => {
 	margin: 20rpx 24rpx 0;
 	padding: 18rpx 20rpx;
 	border-radius: 20rpx;
-	background: rgba(24, 176, 91, 0.08);
+	background: rgba(224, 174, 18, 0.12);
 	display: flex;
 	align-items: flex-start;
 	gap: 12rpx;
@@ -306,7 +315,7 @@ onUnmounted(() => {
 	text {
 		font-size: 24rpx;
 		line-height: 1.6;
-		color: #166534;
+		color: #7c5b12;
 	}
 }
 .summary-grid {
@@ -325,7 +334,7 @@ onUnmounted(() => {
 		display: block;
 		font-size: 40rpx;
 		font-weight: 700;
-		color: #18b05b;
+		color: #C69200;
 	}
 
 	.summary-label {
@@ -348,7 +357,7 @@ onUnmounted(() => {
 		color: #64748b;
 		position: relative;
 		&.active {
-			color: #18b05b;
+			color: #C69200;
 			font-weight: 600;
 			&::after {
 				content: '';
@@ -357,7 +366,7 @@ onUnmounted(() => {
 				left: 30%;
 				right: 30%;
 				height: 4rpx;
-				background: #18b05b;
+				background: #E0AE12;
 				border-radius: 2rpx;
 			}
 		}
@@ -439,11 +448,11 @@ onUnmounted(() => {
 		display: inline-flex;
 		padding: 12rpx 18rpx;
 		border-radius: 999rpx;
-		background: rgba(24, 176, 91, 0.08);
+		background: rgba(224, 174, 18, 0.12);
 
 		text {
 			font-size: 22rpx;
-			color: #18b05b;
+			color: #C69200;
 		}
 	}
 	.card-actions {
@@ -458,8 +467,8 @@ onUnmounted(() => {
 			font-size: 28rpx;
 		}
 		.reject-btn { background: #f1f5f9; color: #64748b; }
-		.accept-btn { background: #18b05b; color: #fff; font-weight: 500; }
-		.ghost-btn { background: #f0fdf4; color: #18b05b; }
+		.accept-btn { background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%); color: #1f2937; font-weight: 600; }
+		.ghost-btn { background: rgba(224, 174, 18, 0.12); color: #C69200; }
 	}
 }
 .empty-state {
@@ -499,7 +508,7 @@ onUnmounted(() => {
 			background: #f1f5f9;
 			font-size: 26rpx;
 			color: #475569;
-			&.selected { background: #18b05b; color: #fff; }
+			&.selected { background: #E0AE12; color: #1f2937; }
 		}
 	}
 	.message-input {
@@ -521,7 +530,7 @@ onUnmounted(() => {
 			font-size: 28rpx;
 		}
 		.cancel-btn { background: #f1f5f9; color: #64748b; }
-		.confirm-btn { background: #18b05b; color: #fff; font-weight: 500; }
+		.confirm-btn { background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%); color: #1f2937; font-weight: 600; }
 	}
 }
 </style>

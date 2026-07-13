@@ -1,8 +1,8 @@
 package logic
 
 import (
-	"billiard_master/internal/model"
-	"billiard_master/internal/types"
+	"chasing_points/internal/model"
+	"chasing_points/internal/types"
 )
 
 func buildTrendPointsFromRankChanges(logs []model.RankChangeLog) []types.TrendPoint {
@@ -18,12 +18,20 @@ func buildTrendPointsFromRankChanges(logs []model.RankChangeLog) []types.TrendPo
 	return points
 }
 
+func BuildTrendPointsFromRankChanges(logs []model.RankChangeLog) []types.TrendPoint {
+	return buildTrendPointsFromRankChanges(logs)
+}
+
 func buildSeasonRankTrendFromLogs(logs []model.RankChangeLog) []int {
 	trend := make([]int, 0, len(logs))
 	for _, item := range logs {
 		trend = append(trend, item.AfterScore)
 	}
 	return trend
+}
+
+func BuildSeasonRankTrendFromLogs(logs []model.RankChangeLog) []int {
+	return buildSeasonRankTrendFromLogs(logs)
 }
 
 func buildSeasonSnapshotFromLogs(before *model.RankChangeLog, logs []model.RankChangeLog) (start, end, peak int) {
@@ -49,6 +57,10 @@ func buildSeasonSnapshotFromLogs(before *model.RankChangeLog, logs []model.RankC
 	return start, end, peak
 }
 
+func BuildSeasonSnapshotFromLogs(before *model.RankChangeLog, logs []model.RankChangeLog) (start, end, peak int) {
+	return buildSeasonSnapshotFromLogs(before, logs)
+}
+
 func rankResultToTrendResult(result string) int {
 	switch result {
 	case "win":
@@ -70,11 +82,10 @@ func rankLogToDetails(log *model.RankChangeLog) []types.RankDetail {
 		{Label: "基础分", Value: log.BaseScore},
 	}
 	if log.AchievementScore != 0 {
-		label := "成就奖励"
-		if log.Result == "lose" {
-			label = "特殊战绩减免"
-		}
-		details = append(details, types.RankDetail{Label: label, Value: log.AchievementScore})
+		details = append(details, types.RankDetail{Label: "会员特殊战绩分", Value: log.AchievementScore})
+	}
+	if remark.MemberAchievementCapAdjustment != 0 {
+		details = append(details, types.RankDetail{Label: "会员特殊战绩每日封顶", Value: remark.MemberAchievementCapAdjustment})
 	}
 	if remark.LossFloorAdjustment != 0 {
 		details = append(details, types.RankDetail{Label: "失败保底", Value: remark.LossFloorAdjustment})
@@ -92,6 +103,10 @@ func rankLogToDetails(log *model.RankChangeLog) []types.RankDetail {
 	return details
 }
 
+func RankLogToDetails(log *model.RankChangeLog) []types.RankDetail {
+	return rankLogToDetails(log)
+}
+
 func findOpponentRankLog(logs []model.RankChangeLog, userId int64) *model.RankChangeLog {
 	for i := range logs {
 		if logs[i].UserId != userId {
@@ -99,4 +114,8 @@ func findOpponentRankLog(logs []model.RankChangeLog, userId int64) *model.RankCh
 		}
 	}
 	return nil
+}
+
+func FindOpponentRankLog(logs []model.RankChangeLog, userId int64) *model.RankChangeLog {
+	return findOpponentRankLog(logs, userId)
 }

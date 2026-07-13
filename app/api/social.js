@@ -18,7 +18,7 @@ export const createPost = (data) => {
  * @returns {Promise}
  */
 export const getPostList = (params = {}) => {
-  return get('/api/social/posts', params)
+  return get('/api/social/feed', params)
 }
 
 /**
@@ -73,4 +73,13 @@ export const deletePost = (data) => {
  */
 export const getPostComments = (params = {}) => {
   return get('/api/social/comments', params)
+}
+
+/**
+ * 获取我的动态
+ * @param {Object} params { page, page_size }
+ * @returns {Promise}
+ */
+export const getMyPosts = (params = {}) => {
+  return get('/api/social/mine', params)
 }

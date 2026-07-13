@@ -1,33 +1,31 @@
-$primary-color: #18b05b;
-$primary-strong: #15803d;
-$bg-light: #f4f7f4;
+$primary-color: #e0ae12;
+$primary-strong: #c69200;
+$bg-light: #ffffff;
 $card-bg-light: #ffffff;
-$card-bg-soft-light: #f7fbf7;
+$card-bg-soft-light: #f8fafc;
 $text-primary-light: #0f172a;
 $text-secondary-light: #64748b;
 $text-muted-light: #94a3b8;
-$border-light: #dce7df;
-$bg-dark: #0f1712;
-$card-bg-dark: #16211a;
-$card-bg-soft-dark: #1c2a22;
-$text-primary-dark: #f3fff6;
-$text-secondary-dark: #a7c0af;
-$text-muted-dark: #6f8878;
-$border-dark: #24342a;
+$border-light: #e5e7eb;
+$bg-dark: #141109;
+$card-bg-dark: #1e180d;
+$card-bg-soft-dark: #241d10;
+$text-primary-dark: #fff7e1;
+$text-secondary-dark: #d7c89b;
+$text-muted-dark: #9f926e;
+$border-dark: #3a2e16;
 
 .user-container {
 	min-height: 100vh;
-	background:
-		radial-gradient(circle at top left, rgba(24, 176, 91, 0.12), transparent 30%),
-		linear-gradient(180deg, #eaf7ee 0%, $bg-light 26%, $bg-light 100%);
+	background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
 	color: $text-primary-light;
 	padding-bottom: 120rpx;
 	box-sizing: border-box;
 
 	&.dark-mode {
 		background:
-			radial-gradient(circle at top left, rgba(74, 222, 128, 0.18), transparent 28%),
-			linear-gradient(180deg, #0c140f 0%, $bg-dark 30%, $bg-dark 100%);
+			radial-gradient(circle at top left, rgba(240, 197, 66, 0.18), transparent 28%),
+			linear-gradient(180deg, #1a1408 0%, $bg-dark 30%, $bg-dark 100%);
 		color: $text-primary-dark;
 	}
 }
@@ -50,11 +48,11 @@ $border-dark: #24342a;
 .identity-hero {
 	padding: 30rpx;
 	background:
-		radial-gradient(circle at 15% 12%, rgba(110, 231, 183, 0.18), transparent 24%),
+		radial-gradient(circle at 15% 12%, rgba(255, 232, 170, 0.24), transparent 24%),
 		radial-gradient(circle at top right, rgba(255, 255, 255, 0.16), transparent 34%),
-		linear-gradient(135deg, #0f2519 0%, #12402a 42%, #15803d 100%);
+		linear-gradient(135deg, #3c2b08 0%, #8f6507 42%, #c69200 100%);
 	color: #ffffff;
-	box-shadow: 0 22rpx 48rpx rgba(8, 29, 17, 0.22);
+	box-shadow: 0 22rpx 48rpx rgba(60, 43, 8, 0.28);
 }
 
 .identity-mode-tabs {
@@ -99,10 +97,15 @@ $border-dark: #24342a;
 	min-width: 0;
 }
 
-.guest-eyebrow,
-.status-eyebrow {
+.guest-eyebrow {
 	font-size: 22rpx;
 	color: rgba(255, 255, 255, 0.74);
+}
+
+.status-eyebrow {
+	display: block;
+	font-size: 22rpx;
+	color: $text-muted-light;
 }
 
 .guest-title {
@@ -125,7 +128,13 @@ $border-dark: #24342a;
 .status-actions {
 	display: flex;
 	gap: 16rpx;
-	margin-top: 32rpx;
+	margin-top: 16rpx;
+}
+
+.pk-entry-actions {
+	display: flex;
+	gap: 16rpx;
+	margin-top: 16rpx;
 }
 
 .hero-btn,
@@ -155,13 +164,22 @@ $border-dark: #24342a;
 	}
 }
 
-.hero-btn-primary,
-.status-btn-primary {
-	background: linear-gradient(135deg, #fff4cf 0%, #f5c76b 100%);
-	box-shadow: 0 16rpx 28rpx rgba(245, 199, 107, 0.22);
+.hero-btn-primary {
+	background: #ffffff;
+	border: 1rpx solid rgba(224, 174, 18, 0.22);
+	box-shadow: 0 12rpx 24rpx rgba(224, 174, 18, 0.12);
 
 	text {
-		color: #3d2a06;
+		color: $primary-strong;
+	}
+}
+
+.status-btn-primary {
+	background: linear-gradient(135deg, #e0ae12 0%, #c69200 100%);
+	box-shadow: 0 16rpx 28rpx rgba(224, 174, 18, 0.22);
+
+	text {
+		color: #ffffff;
 	}
 }
 
@@ -172,6 +190,15 @@ $border-dark: #24342a;
 
 	text {
 		color: #ffffff;
+	}
+}
+
+.status-btn-outline {
+	background: rgba(224, 174, 18, 0.08);
+	border: 1rpx solid rgba(224, 174, 18, 0.22);
+
+	text {
+		color: #8a6510;
 	}
 }
 
@@ -241,7 +268,7 @@ $border-dark: #24342a;
 }
 
 .benefit-icon {
-	background: rgba(24, 176, 91, 0.1);
+	background: rgba(224, 174, 18, 0.12);
 }
 
 .benefit-title,
@@ -297,7 +324,7 @@ $border-dark: #24342a;
 .preview-badge {
 	padding: 8rpx 14rpx;
 	border-radius: 999rpx;
-	background: rgba(24, 176, 91, 0.12);
+	background: rgba(224, 174, 18, 0.14);
 
 	text {
 		font-size: 20rpx;
@@ -422,10 +449,19 @@ $border-dark: #24342a;
 	gap: 10rpx;
 }
 
+.identity-copy {
+	min-width: 0;
+	flex: 1;
+}
+
 .identity-name {
+	max-width: 260rpx;
 	font-size: 42rpx;
 	font-weight: 700;
 	line-height: 1.2;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .identity-rank-chip {
@@ -441,6 +477,21 @@ $border-dark: #24342a;
 		font-size: 20rpx;
 		color: #ffffff;
 	}
+}
+
+.identity-reputation-row {
+	display: inline-flex;
+	align-items: center;
+	gap: 8rpx;
+	margin-top: 12rpx;
+	padding-left: 4rpx;
+}
+
+.identity-reputation-text {
+	font-size: 24rpx;
+	font-weight: 600;
+	line-height: 1.3;
+	color: #ffffff;
 }
 
 .identity-id {
@@ -461,12 +512,36 @@ $border-dark: #24342a;
 }
 
 .icon-btn {
+	position: relative;
 	width: 72rpx;
 	height: 72rpx;
 	border-radius: 16rpx;
 	padding: 0;
 	background: rgba(255, 255, 255, 0.08);
 	border: 1rpx solid rgba(255, 255, 255, 0.14);
+}
+
+.icon-btn-badge {
+	position: absolute;
+	top: 4rpx;
+	right: 4rpx;
+	min-width: 32rpx;
+	height: 32rpx;
+	padding: 0 8rpx;
+	border-radius: 999rpx;
+	background: #ef4444;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	box-shadow: 0 8rpx 16rpx rgba(15, 23, 42, 0.18);
+
+	text {
+		font-size: 18rpx;
+		font-weight: 700;
+		line-height: 1;
+		color: #ffffff;
+	}
 }
 
 .identity-rank-row {
@@ -523,6 +598,190 @@ $border-dark: #24342a;
 	margin-top: 14rpx;
 	font-size: 24rpx;
 	line-height: 1.6;
+	color: $text-secondary-light;
+}
+
+// ======================
+// Match Card (ongoing match visual card)
+// 与对局大厅一致的视觉化对局卡片
+// ======================
+
+.match-card {
+	display: flex;
+	flex-direction: column;
+	gap: 24rpx;
+	padding: 32rpx;
+	margin-top: 24rpx;
+	background-color: $card-bg-light;
+	border-radius: 24rpx;
+	position: relative;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+	box-sizing: border-box;
+
+	&:active {
+		background-color: $card-bg-soft-light;
+	}
+
+	&.my-match {
+		border: 3rpx solid $primary-color;
+		box-shadow: 0 4rpx 24rpx rgba(224, 174, 18, 0.22);
+	}
+}
+
+.my-match-badge {
+	position: absolute;
+	top: 0;
+	left: 50%;
+	transform: translateX(-50%);
+	padding: 8rpx 20rpx;
+	background-color: $primary-color;
+	color: #ffffff;
+	font-size: 20rpx;
+	font-weight: 700;
+	border-radius: 0 0 12rpx 12rpx;
+	letter-spacing: 0.5px;
+}
+
+.match-info {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.player {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16rpx;
+
+	.avatar {
+		width: 112rpx;
+		height: 112rpx;
+		border-radius: 50%;
+		border: 4rpx solid transparent;
+		overflow: hidden;
+
+		image {
+			width: 100%;
+			height: 100%;
+		}
+
+		&.winner {
+			border-color: $primary-color;
+		}
+	}
+
+	.name {
+		font-size: 28rpx;
+		font-weight: 500;
+		color: $text-primary-light;
+		max-width: 150rpx;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+}
+
+.me-avatar {
+	position: relative;
+
+	.me-badge {
+		position: absolute;
+		bottom: -4rpx;
+		left: 50%;
+		transform: translateX(-50%);
+		padding: 4rpx 16rpx;
+		background-color: $primary-color;
+		color: #ffffff;
+		font-size: 18rpx;
+		font-weight: 700;
+		border-radius: 999rpx;
+	}
+}
+
+.score-area {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+
+	.score {
+		font-size: 64rpx;
+		font-weight: 900;
+		color: $primary-color;
+		letter-spacing: -0.02em;
+	}
+
+	.vs-text {
+		font-size: 24rpx;
+		font-weight: 700;
+		color: $text-muted-light;
+		margin-top: -8rpx;
+	}
+}
+
+.referee-match-info {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12rpx;
+	text-align: center;
+}
+
+.referee-match-info__title {
+	font-size: 30rpx;
+	font-weight: 700;
+	color: $text-primary-light;
+}
+
+.referee-match-info__score {
+	font-size: 64rpx;
+	font-weight: 900;
+	color: $primary-color;
+}
+
+.referee-match-info__hint {
+	font-size: 24rpx;
+	color: $text-secondary-light;
+}
+
+.match-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding-top: 24rpx;
+	border-top: 2rpx solid $border-light;
+	margin-top: 8rpx;
+}
+
+.game-type-tag {
+	display: inline-flex;
+	align-items: center;
+	padding: 8rpx 20rpx;
+	border-radius: 999rpx;
+	font-size: 24rpx;
+	font-weight: 600;
+
+	&.chinese-8ball {
+		background-color: rgba(224, 174, 18, 0.16);
+		color: $primary-color;
+	}
+
+	&.american-9ball {
+		background-color: rgba(34, 197, 94, 0.2);
+		color: #4ade80;
+	}
+
+	&.snooker {
+		background-color: rgba(239, 68, 68, 0.2);
+		color: #f87171;
+	}
+}
+
+.match-status {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+	font-size: 24rpx;
 	color: $text-secondary-light;
 }
 
@@ -695,13 +954,395 @@ $border-dark: #24342a;
 	margin-top: 24rpx;
 	width: 100%;
 	height: 92rpx;
-	border-radius: 22rpx;
+	line-height: 92rpx;
+	border-radius: 20rpx;
 	background: rgba(239, 68, 68, 0.08);
 
 	text {
 		font-size: 30rpx;
 		font-weight: 700;
 		color: #ef4444;
+	}
+}
+
+.reward-task-card {
+	margin-top: 24rpx;
+	padding: 24rpx;
+	border-radius: 24rpx;
+	background:
+		radial-gradient(circle at top right, rgba(255, 236, 179, 0.32), transparent 36%),
+		linear-gradient(135deg, rgba(255, 247, 225, 0.96) 0%, rgba(255, 251, 235, 0.96) 100%);
+	border: 1rpx solid rgba(224, 174, 18, 0.22);
+	box-shadow: 0 18rpx 40rpx rgba(224, 174, 18, 0.12);
+}
+
+.member-card {
+	margin-top: 24rpx;
+	padding: 24rpx;
+	border-radius: 24rpx;
+	background:
+		radial-gradient(circle at top right, rgba(86, 198, 217, 0.18), transparent 34%),
+		radial-gradient(circle at 8% 14%, rgba(224, 174, 18, 0.12), transparent 26%),
+		linear-gradient(135deg, rgba(248, 250, 252, 0.98) 0%, rgba(255, 255, 255, 0.98) 100%);
+	border: 1rpx solid rgba(86, 198, 217, 0.18);
+	box-shadow: 0 18rpx 40rpx rgba(15, 23, 42, 0.08);
+}
+
+.member-card-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 20rpx;
+}
+
+.member-card-copy {
+	display: flex;
+	flex-direction: column;
+	gap: 10rpx;
+	min-width: 0;
+}
+
+.member-card-eyebrow {
+	font-size: 22rpx;
+	font-weight: 700;
+	color: #0f766e;
+	letter-spacing: 1rpx;
+}
+
+.member-card-title {
+	font-size: 32rpx;
+	font-weight: 700;
+	color: $text-primary-light;
+}
+
+.member-card-desc {
+	font-size: 24rpx;
+	line-height: 1.6;
+	color: $text-secondary-light;
+}
+
+.member-card-status {
+	flex-shrink: 0;
+	padding: 10rpx 16rpx;
+	border-radius: 999rpx;
+	background: rgba(15, 118, 110, 0.12);
+	font-size: 22rpx;
+	font-weight: 700;
+	color: #0f766e;
+}
+
+.member-benefits {
+	display: flex;
+	flex-direction: column;
+	gap: 14rpx;
+	margin-top: 22rpx;
+}
+
+.member-benefit-item {
+	padding: 18rpx 20rpx;
+	border-radius: 20rpx;
+	background: rgba(255, 255, 255, 0.76);
+	border: 1rpx solid rgba(148, 163, 184, 0.14);
+}
+
+.member-benefit-title {
+	display: block;
+	font-size: 26rpx;
+	font-weight: 700;
+	color: $text-primary-light;
+}
+
+.member-benefit-desc {
+	display: block;
+	margin-top: 8rpx;
+	font-size: 22rpx;
+	line-height: 1.6;
+	color: $text-secondary-light;
+}
+
+.subscription-entry-card {
+	margin-top: 24rpx;
+	padding: 24rpx;
+	border-radius: 24rpx;
+	background:
+		radial-gradient(circle at top right, rgba(59, 130, 246, 0.16), transparent 34%),
+		radial-gradient(circle at 10% 16%, rgba(224, 174, 18, 0.12), transparent 24%),
+		linear-gradient(135deg, rgba(248, 250, 252, 0.98) 0%, rgba(255, 255, 255, 0.98) 100%);
+	border: 1rpx solid rgba(59, 130, 246, 0.14);
+	box-shadow: 0 18rpx 40rpx rgba(15, 23, 42, 0.08);
+}
+
+.subscription-entry-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 20rpx;
+}
+
+.subscription-entry-copy {
+	display: flex;
+	flex-direction: column;
+	gap: 10rpx;
+	min-width: 0;
+}
+
+.subscription-entry-eyebrow {
+	font-size: 22rpx;
+	font-weight: 700;
+	letter-spacing: 1rpx;
+	color: #2563eb;
+}
+
+.subscription-entry-title {
+	font-size: 32rpx;
+	font-weight: 700;
+	color: $text-primary-light;
+}
+
+.subscription-entry-desc {
+	font-size: 24rpx;
+	line-height: 1.6;
+	color: $text-secondary-light;
+}
+
+.subscription-entry-status {
+	flex-shrink: 0;
+	padding: 10rpx 16rpx;
+	border-radius: 999rpx;
+	background: rgba(37, 99, 235, 0.1);
+	font-size: 22rpx;
+	font-weight: 700;
+	color: #2563eb;
+}
+
+.subscription-entry-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20rpx;
+	margin-top: 22rpx;
+}
+
+.subscription-entry-price {
+	font-size: 28rpx;
+	font-weight: 700;
+	color: $text-primary-light;
+}
+
+.subscription-entry-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 220rpx;
+	height: 76rpx;
+	line-height: 76rpx;
+	margin: 0;
+	padding: 0 28rpx;
+	border-radius: 18rpx;
+	background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+	box-shadow: 0 14rpx 28rpx rgba(37, 99, 235, 0.2);
+	box-sizing: border-box;
+
+	&::after {
+		display: none;
+	}
+
+	text {
+		font-size: 26rpx;
+		font-weight: 700;
+		color: #ffffff;
+	}
+}
+
+.reward-task-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 20rpx;
+}
+
+.reward-task-copy {
+	display: flex;
+	flex-direction: column;
+	gap: 10rpx;
+	min-width: 0;
+}
+
+.reward-task-title {
+	font-size: 30rpx;
+	font-weight: 700;
+	color: $text-primary-light;
+}
+
+.reward-task-desc {
+	font-size: 24rpx;
+	line-height: 1.6;
+	color: $text-secondary-light;
+}
+
+.reward-task-status {
+	flex-shrink: 0;
+	padding: 10rpx 16rpx;
+	border-radius: 999rpx;
+	background: rgba(224, 174, 18, 0.14);
+	font-size: 22rpx;
+	font-weight: 700;
+	color: $primary-strong;
+}
+
+.reward-task-btn,
+.reward-modal-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+
+	&::after {
+		display: none;
+	}
+}
+
+.reward-task-btn {
+	margin-top: 22rpx;
+	width: 100%;
+	min-height: 84rpx;
+	border-radius: 20rpx;
+	background: linear-gradient(135deg, #e0ae12 0%, #c69200 100%);
+	box-shadow: 0 16rpx 30rpx rgba(224, 174, 18, 0.2);
+
+	text {
+		font-size: 28rpx;
+		font-weight: 700;
+		color: #ffffff;
+	}
+}
+
+.reward-modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 120;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24rpx;
+	background-color: rgba(15, 23, 42, 0.44);
+	backdrop-filter: blur(8px);
+	box-sizing: border-box;
+}
+
+.reward-modal-card {
+	width: 100%;
+	max-width: 660rpx;
+	border-radius: 32rpx;
+	padding: 30rpx;
+	background: $card-bg-light;
+	box-shadow: 0 28rpx 60rpx rgba(15, 23, 42, 0.22);
+	box-sizing: border-box;
+}
+
+.reward-modal-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 20rpx;
+}
+
+.reward-modal-copy {
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+}
+
+.reward-modal-title {
+	font-size: 38rpx;
+	font-weight: 700;
+	color: $text-primary-light;
+}
+
+.reward-modal-desc {
+	font-size: 26rpx;
+	line-height: 1.6;
+	color: $text-secondary-light;
+}
+
+.reward-modal-close {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 60rpx;
+	height: 60rpx;
+	border-radius: 50%;
+}
+
+.reward-modal-highlight {
+	margin-top: 24rpx;
+	padding: 28rpx;
+	border-radius: 24rpx;
+	background:
+		radial-gradient(circle at top left, rgba(255, 236, 179, 0.38), transparent 42%),
+		linear-gradient(135deg, #fff8e6 0%, #fffdf7 100%);
+	border: 1rpx solid rgba(224, 174, 18, 0.18);
+}
+
+.reward-modal-highlight-eyebrow {
+	display: block;
+	font-size: 22rpx;
+	font-weight: 700;
+	color: $primary-strong;
+	letter-spacing: 1rpx;
+}
+
+.reward-modal-highlight-title {
+	display: block;
+	margin-top: 14rpx;
+	font-size: 34rpx;
+	font-weight: 700;
+	color: $text-primary-light;
+}
+
+.reward-modal-highlight-desc {
+	display: block;
+	margin-top: 14rpx;
+	font-size: 24rpx;
+	line-height: 1.7;
+	color: $text-secondary-light;
+}
+
+.reward-modal-actions {
+	display: flex;
+	gap: 16rpx;
+	margin-top: 28rpx;
+}
+
+.reward-modal-btn {
+	flex: 1;
+	min-height: 88rpx;
+	border-radius: 20rpx;
+
+	text {
+		font-size: 28rpx;
+		font-weight: 700;
+	}
+}
+
+.reward-modal-btn-secondary {
+	background: rgba(148, 163, 184, 0.1);
+	border: 1rpx solid rgba(148, 163, 184, 0.14);
+
+	text {
+		color: $text-secondary-light;
+	}
+}
+
+.reward-modal-btn-primary {
+	background: linear-gradient(135deg, #e0ae12 0%, #c69200 100%);
+	box-shadow: 0 16rpx 30rpx rgba(224, 174, 18, 0.2);
+
+	text {
+		color: #ffffff;
 	}
 }
 
@@ -770,6 +1411,14 @@ $border-dark: #24342a;
 	color: $text-secondary-light;
 }
 
+.qrcode-helper {
+	display: block;
+	margin-top: 12rpx;
+	font-size: 24rpx;
+	line-height: 1.5;
+	color: $text-muted-light;
+}
+
 .qrcode-display {
 	display: flex;
 	align-items: center;
@@ -800,6 +1449,45 @@ $border-dark: #24342a;
 		border-color: rgba(148, 163, 184, 0.16);
 	}
 
+	// Match card dark mode overrides
+	.match-card {
+		background-color: $card-bg-dark;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.18);
+
+		&:active {
+			background-color: $card-bg-soft-dark;
+		}
+
+		&.my-match {
+			border-color: $primary-color;
+			box-shadow: 0 4rpx 24rpx rgba(224, 174, 18, 0.18);
+		}
+	}
+
+	.player .name {
+		color: $text-primary-dark;
+	}
+
+	.score-area .vs-text {
+		color: $text-muted-dark;
+	}
+
+	.match-footer {
+		border-top-color: $border-dark;
+	}
+
+	.match-status {
+		color: $text-secondary-dark;
+	}
+
+	.referee-match-info__title {
+		color: $text-primary-dark;
+	}
+
+	.referee-match-info__hint {
+		color: $text-secondary-dark;
+	}
+
 	.section-block-light,
 	.preview-card,
 	.metric-card,
@@ -813,6 +1501,9 @@ $border-dark: #24342a;
 	.preview-title,
 	.preview-module-title,
 	.quick-title,
+	.reward-task-title,
+	.reward-modal-title,
+	.reward-modal-highlight-title,
 	.settings-title,
 	.settings-label,
 	.explore-title,
@@ -825,13 +1516,17 @@ $border-dark: #24342a;
 
 	.section-hint,
 	.preview-status,
-	.metric-card-label {
+	.metric-card-label,
+	.status-eyebrow {
 		color: $text-muted-dark;
 	}
 
 	.benefit-desc,
 	.quick-desc,
 	.explore-desc,
+	.reward-task-desc,
+	.reward-modal-desc,
+	.reward-modal-highlight-desc,
 	.settings-desc,
 	.preview-desc,
 	.preview-module-desc,
@@ -840,6 +1535,110 @@ $border-dark: #24342a;
 	.qrcode-loading-text,
 	.qrcode-hint {
 		color: $text-secondary-dark;
+	}
+
+	.qrcode-helper {
+		color: $text-muted-dark;
+	}
+
+	.reward-task-card {
+		background:
+			radial-gradient(circle at top right, rgba(247, 216, 106, 0.18), transparent 36%),
+			linear-gradient(135deg, rgba(42, 31, 12, 0.96) 0%, rgba(35, 27, 13, 0.96) 100%);
+		border-color: rgba(247, 216, 106, 0.18);
+		box-shadow: 0 20rpx 40rpx rgba(0, 0, 0, 0.18);
+	}
+
+	.member-card {
+		background:
+			radial-gradient(circle at top right, rgba(56, 189, 248, 0.14), transparent 34%),
+			radial-gradient(circle at 8% 14%, rgba(247, 216, 106, 0.12), transparent 26%),
+			linear-gradient(135deg, rgba(27, 35, 40, 0.96) 0%, rgba(24, 30, 36, 0.96) 100%);
+		border-color: rgba(56, 189, 248, 0.16);
+		box-shadow: 0 20rpx 40rpx rgba(0, 0, 0, 0.18);
+	}
+
+	.subscription-entry-card {
+		background:
+			radial-gradient(circle at top right, rgba(59, 130, 246, 0.16), transparent 34%),
+			radial-gradient(circle at 10% 16%, rgba(247, 216, 106, 0.12), transparent 24%),
+			linear-gradient(135deg, rgba(21, 31, 48, 0.96) 0%, rgba(20, 28, 42, 0.96) 100%);
+		border-color: rgba(59, 130, 246, 0.16);
+		box-shadow: 0 20rpx 40rpx rgba(0, 0, 0, 0.18);
+	}
+
+	.member-card-title,
+	.member-benefit-title,
+	.subscription-entry-title,
+	.subscription-entry-price {
+		color: $text-primary-dark;
+	}
+
+	.member-card-desc,
+	.member-benefit-desc,
+	.subscription-entry-desc {
+		color: $text-secondary-dark;
+	}
+
+	.member-card-eyebrow,
+	.member-card-status {
+		color: #7dd3fc;
+	}
+
+	.subscription-entry-eyebrow,
+	.subscription-entry-status {
+		color: #93c5fd;
+	}
+
+	.member-card-status {
+		background: rgba(56, 189, 248, 0.14);
+	}
+
+	.subscription-entry-status {
+		background: rgba(59, 130, 246, 0.14);
+	}
+
+	.member-benefit-item {
+		background: rgba(15, 23, 42, 0.18);
+		border-color: rgba(148, 163, 184, 0.1);
+	}
+
+	.reward-task-status {
+		background: rgba(247, 216, 106, 0.14);
+		color: #f7e7a8;
+	}
+
+	.reward-modal-card {
+		background: $card-bg-dark;
+	}
+
+	.reward-modal-highlight {
+		background:
+			radial-gradient(circle at top left, rgba(247, 216, 106, 0.16), transparent 42%),
+			linear-gradient(135deg, rgba(42, 31, 12, 0.96) 0%, rgba(35, 27, 13, 0.96) 100%);
+		border-color: rgba(247, 216, 106, 0.14);
+	}
+
+	.reward-modal-highlight-eyebrow {
+		color: #f7e7a8;
+	}
+
+	.reward-modal-btn-secondary {
+		background: rgba(148, 163, 184, 0.08);
+		border-color: rgba(148, 163, 184, 0.12);
+
+		text {
+			color: $text-secondary-dark;
+		}
+	}
+
+	.status-btn-outline {
+		background: rgba(247, 216, 106, 0.08);
+		border-color: rgba(247, 216, 106, 0.16);
+
+		text {
+			color: #f7e7a8;
+		}
 	}
 
 	.preview-module {

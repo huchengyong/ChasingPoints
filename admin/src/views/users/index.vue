@@ -5,7 +5,7 @@
         <div class="card-header">
           <span>用户管理</span>
           <div class="header-filters">
-            <el-select v-model="filterStatus" placeholder="用户状态" clearable @change="handleFilterChange">
+            <el-select v-model="filterStatus" placeholder="用户状态" @change="handleFilterChange">
               <el-option label="全部" :value="-1" />
               <el-option label="正常" :value="1" />
               <el-option label="禁用" :value="0" />
@@ -15,7 +15,7 @@
       </template>
 
       <el-table :data="userList" stripe border v-loading="loading">
-        <el-table-column type="index" width="60" label="序号" :index="(index) => (page - 1) * pageSize + index + 1" />
+        <el-table-column type="index" width="60" label="序号" :index="(index: number) => (page - 1) * pageSize + index + 1" />
         <el-table-column prop="id" label="用户ID" width="100" />
         <el-table-column prop="nickname" label="昵称" min-width="120" />
         <el-table-column prop="phone" label="手机号" min-width="120" />
@@ -24,6 +24,24 @@
             <el-tag :type="row.status === 1 ? 'success' : 'danger'">
               {{ row.status === 1 ? '正常' : '禁用' }}
             </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="reputation_score" label="信誉分" width="90" />
+        <el-table-column prop="ban_until" label="禁赛至" width="170">
+          <template #default="{ row }">
+            {{ row.ban_until || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="member_status" label="会员状态" width="110">
+          <template #default="{ row }">
+            <el-tag :type="resolveMemberTagType(row.member_status)">
+              {{ row.member_status || '未开通' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="member_expires_at" label="会员到期时间" width="170">
+          <template #default="{ row }">
+            {{ row.member_expires_at || '-' }}
           </template>
         </el-table-column>
         <el-table-column prop="created_at" label="注册时间" width="160" />
@@ -79,7 +97,11 @@ const filterStatus = ref<number>(-1)
 const fetchUserList = async () => {
   loading.value = true
   try {
-    const params: any = {
+    const params: {
+      page: number
+      page_size: number
+      status?: number
+    } = {
       page: page.value,
       page_size: pageSize.value
     }
@@ -113,6 +135,12 @@ const handleSizeChange = (val: number) => {
 const handlePageChange = (val: number) => {
   page.value = val
   fetchUserList()
+}
+
+const resolveMemberTagType = (memberStatus: string) => {
+  if (memberStatus === '会员中') return 'warning'
+  if (memberStatus === '已到期') return 'info'
+  return undefined
 }
 
 const handleUpdateStatus = async (user: User, status: number) => {

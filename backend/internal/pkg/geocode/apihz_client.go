@@ -10,9 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"billiard_master/internal/model"
+	"chasing_points/internal/model"
 )
 
+// https://www.apihz.cn/user/index.php
 const defaultApihzEndpoint = "https://cn.apihz.cn/api/other/jwjuhe.php"
 
 type ApihzClient struct {

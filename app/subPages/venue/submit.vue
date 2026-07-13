@@ -1,43 +1,17 @@
 <template>
-	<view class="submit-page">
+	<view class="submit-page" :class="{ 'dark-mode': isDarkMode }">
 		<view class="page-intro">
 			<view class="intro-copy">
-				<text class="intro-eyebrow">球馆提交</text>
-				<text class="intro-title">完善球馆信息，方便大家了解和找到这里</text>
-				<text class="intro-desc">球馆名称和详细地址为必填，其他信息可按实际情况补充。</text>
-			</view>
-			<view class="completion-card">
-				<view class="completion-head">
-					<text class="completion-title">提交准备度</text>
-					<text class="completion-value">{{ completedRequiredCount }}/{{ requiredFieldOrder.length }}</text>
-				</view>
-				<view class="completion-track">
-					<view class="completion-fill" :style="{ width: `${progressPercent}%` }"></view>
-				</view>
-				<text class="completion-tip">
-					{{ missingRequiredKeys.length ? `还差 ${missingRequiredKeys.length} 项基础资料` : '基础资料已完成，可以提交并等待系统定位' }}
-				</text>
-			</view>
-			<view class="intro-stats">
-				<view class="stat-card">
-					<text class="stat-label">城市</text>
-					<text class="stat-value">{{ form.city || '待填写' }}</text>
-				</view>
-				<view class="stat-card">
-					<text class="stat-label">定位</text>
-					<text class="stat-value">系统解析</text>
-				</view>
-				<view class="stat-card">
-					<text class="stat-label">状态</text>
-					<text class="stat-value">异步整理</text>
-				</view>
+				<text class="intro-eyebrow">常玩球馆</text>
+				<text class="intro-title">提交常玩的球馆，领取 1 个月会员</text>
+				<text class="intro-desc">填写基础资料，要求真实信息，后台审核通过后会自动发放会员。虚假信息将不予通过。</text>
 			</view>
 		</view>
 
 		<view class="form-section">
 			<view class="section-head">
-				<text class="section-title">基础资料</text>
-				<text class="section-tip">先填写球馆名称和详细地址，方便大家准确找到这里。</text>
+				<text class="section-title">常玩球馆资料</text>
+				<text class="section-tip">请填写球馆名称、地区和详细地址，审核通过后会自动发放会员。</text>
 			</view>
 			<view class="form-group" :class="getFieldClass('name')">
 				<view class="label-row">
@@ -51,22 +25,26 @@
 				</view>
 			</view>
 
-			<view class="form-group" :class="getFieldClass('city')">
+			<view class="form-group" :class="getFieldClass('region')">
 				<view class="label-row">
-					<text class="form-label">城市</text>
-					<text :class="requiredFieldStatus.city ? 'label-complete' : 'label-required'">{{ requiredFieldStatus.city ? '已完成' : '必填' }}</text>
+					<text class="form-label">地区</text>
+					<text :class="requiredFieldStatus.region ? 'label-complete' : 'label-required'">{{ requiredFieldStatus.region ? '已完成' : '必填' }}</text>
 				</view>
-				<input class="form-input" :class="{ 'input-missing': showValidation && !requiredFieldStatus.city }" v-model="form.city" placeholder="如：深圳" maxlength="20" />
-				<text class="field-hint">填写后更方便大家按城市查找球馆。</text>
-			</view>
-
-			<view class="form-group">
-				<view class="label-row">
-					<text class="form-label">区域</text>
-					<text class="label-optional">选填</text>
-				</view>
-				<input class="form-input" v-model="form.district" placeholder="如：南山区" maxlength="20" />
-				<text class="field-hint">填写商圈或区县后，用户更容易判断距离。</text>
+				<picker
+					mode="multiSelector"
+					:range="areaColumns"
+					range-key="name"
+					:value="areaColumnIndexes"
+					:disabled="submitting || (areaLoading && !areaReady)"
+					@change="handleAreaConfirm"
+					@columnchange="handleAreaColumnChange"
+				>
+					<view class="form-input form-picker" :class="{ 'input-missing': showValidation && !requiredFieldStatus.region, 'is-placeholder': !form.regionText }">
+						<text class="picker-value">{{ form.regionText || (areaLoading && !areaReady ? '地区加载中...' : '请选择省 / 市 / 区') }}</text>
+						<text class="picker-arrow">›</text>
+					</view>
+				</picker>
+				<text class="field-hint">选择省、市、区后，审核和定位都会更准确。</text>
 			</view>
 
 			<view class="form-group" :class="getFieldClass('address')">
@@ -82,142 +60,73 @@
 			</view>
 		</view>
 
-		<view class="form-section">
-			<view class="section-head">
-				<text class="section-title">位置与联系</text>
-				<text class="section-tip">系统会根据你填写的详细地址自动解析球馆位置，无需手动地图选点。</text>
-			</view>
-			<view class="form-group">
-				<view class="label-row">
-					<text class="form-label">定位方式</text>
-					<text class="label-complete">自动处理</text>
-				</view>
-				<view class="location-picker">
-					<view class="location-copy">
-						<text class="location-title">系统将根据地址自动定位</text>
-						<text class="location-subtitle">提交后后台会异步解析经纬度，并在整理完成后进入附近球馆。</text>
-					</view>
-					<uni-icons type="location" size="18" color="#0f766e"></uni-icons>
-				</view>
-			</view>
-
-			<view class="form-group">
-				<view class="label-row">
-					<text class="form-label">联系电话</text>
-					<text class="label-optional">选填</text>
-				</view>
-				<input class="form-input" v-model="form.phone" placeholder="球馆联系电话" type="number" maxlength="15" />
-				<text class="field-hint">建议填写前台或店长电话，方便到店前联系。</text>
-			</view>
-		</view>
-
-		<view class="form-section">
-			<view class="section-head">
-				<text class="section-title">经营信息</text>
-				<text class="section-tip">营业时间、球桌数量和价格信息能帮助大家更快做决定。</text>
-			</view>
-			<view class="form-group">
-				<view class="label-row">
-					<text class="form-label">营业时间</text>
-					<text class="label-optional">选填</text>
-				</view>
-				<input class="form-input" v-model="form.business_hours" placeholder="如：10:00-23:00" maxlength="30" />
-				<text class="field-hint">尽量使用统一格式，查看起来更清楚。</text>
-			</view>
-
-			<view class="form-group">
-				<view class="label-row">
-					<text class="form-label">球桌数量</text>
-					<text class="label-optional">选填</text>
-				</view>
-				<input class="form-input" v-model="form.table_count" placeholder="球桌总数" type="number" />
-				<text class="field-hint">填写后，大家更容易判断高峰期是否需要等位。</text>
-			</view>
-
-			<view class="form-group">
-				<view class="label-row">
-					<text class="form-label">台费范围</text>
-					<text class="label-optional">选填</text>
-				</view>
-				<input class="form-input" v-model="form.price_range" placeholder="如：30-60元/小时" maxlength="30" />
-				<text class="field-hint">可填写时段价或会员价区间，方便提前了解。</text>
-			</view>
-		</view>
-
-		<view class="form-section">
-			<view class="section-head">
-				<text class="section-title">特色说明</text>
-				<text class="section-tip">补充环境、服务或活动特色，方便大家提前了解球馆。</text>
-			</view>
-			<view class="form-group">
-				<text class="form-label">球馆简介</text>
-				<textarea
-					class="form-textarea"
-					v-model="form.description"
-					placeholder="请简要介绍球馆特色..."
-					maxlength="500"
-					:auto-height="true"
-				></textarea>
-				<view class="field-meta">
-					<text class="field-hint">可以写设备、包厢、停车、教学、赛事活动等亮点。</text>
-					<text class="field-count">{{ form.description.length }}/500</text>
-				</view>
-			</view>
-		</view>
-
-		<view class="notice-card">
-			<view class="notice-head">
-				<uni-icons type="info" size="16" color="#0f766e"></uni-icons>
-				<text class="notice-title">提交说明</text>
-			</view>
-			<text class="notice-text">提交后系统会先根据地址自动定位球馆位置，再整理资料并展示到球馆列表。请尽量保证名称、城市和详细地址准确一致。</text>
-		</view>
-
-		<view class="submit-bar">
+			<view class="submit-bar">
 			<view class="submit-copy">
-				<text class="submit-title">{{ missingRequiredKeys.length ? `还有 ${missingRequiredKeys.length} 项未填写` : '确认信息后上传球馆' }}</text>
-				<text class="submit-tip">{{ missingRequiredKeys.length ? `请先填写：${missingRequiredLabels.join('、')}` : '基础信息已完整，其他内容可以继续补充。' }}</text>
+				<text class="submit-title">{{ submitBarCopy.title }}</text>
+				<text class="submit-tip">{{ submitBarCopy.tip }}</text>
 			</view>
 			<view class="submit-btn" :class="{ disabled: submitting, pending: missingRequiredKeys.length > 0 }" @tap="handleSubmit">
-				<text>{{ submitting ? '提交中...' : '上传球馆信息' }}</text>
+				<text>{{ submitting ? '提交中...' : '提交常玩球馆' }}</text>
 			</view>
 		</view>
 	</view>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { createVenue } from '@/api/venue.js'
+import { computed, onMounted, ref } from 'vue'
+import { createVenue, getVenueAreaOptions } from '@/api/venue.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+import {
+	buildVenueRegionSelection,
+	buildVenueSubmitPayload,
+	resolveVenueSubmitCopy
+} from '@/utils/venue-submit.js'
+
+const { isDarkMode } = usePageTheme()
+
+const createAreaPlaceholderOption = (name = '暂无数据') => ({
+	area_id: 0,
+	parent_id: 0,
+	name,
+	disabled: true
+})
+
+const areaOptionsCache = new Map()
+let areaHydrateToken = 0
 
 const form = ref({
 	name: '',
+	regionText: '',
+	areaIds: [],
 	city: '',
 	district: '',
-	address: '',
-	phone: '',
-	business_hours: '',
-	table_count: '',
-	price_range: '',
-	description: ''
+	address: ''
 })
 
 const submitting = ref(false)
 const showValidation = ref(false)
-const requiredFieldOrder = ['name', 'city', 'address']
+const areaLoading = ref(false)
+const areaReady = ref(false)
+const areaColumns = ref([
+	[createAreaPlaceholderOption('地区加载中...')],
+	[createAreaPlaceholderOption('请选择城市')],
+	[createAreaPlaceholderOption('请选择区域')]
+])
+const areaColumnIndexes = ref([0, 0, 0])
+const requiredFieldOrder = ['name', 'region', 'address']
 const requiredFieldLabelMap = {
 	name: '球馆名称',
-	city: '城市',
+	region: '地区',
 	address: '详细地址'
 }
 const requiredFieldStatus = computed(() => ({
 	name: !!form.value.name.trim(),
-	city: !!form.value.city.trim(),
+	region: !!form.value.regionText.trim(),
 	address: !!form.value.address.trim()
 }))
 const missingRequiredKeys = computed(() => requiredFieldOrder.filter(key => !requiredFieldStatus.value[key]))
 const missingRequiredLabels = computed(() => missingRequiredKeys.value.map(key => requiredFieldLabelMap[key]))
-const completedRequiredCount = computed(() => requiredFieldOrder.length - missingRequiredKeys.value.length)
-const progressPercent = computed(() => Math.round((completedRequiredCount.value / requiredFieldOrder.length) * 100))
+const submitBarCopy = computed(() => resolveVenueSubmitCopy(missingRequiredLabels.value))
 
 const getFieldClass = (key) => ({
 	'is-complete': requiredFieldStatus.value[key],
@@ -227,9 +136,124 @@ const getFieldClass = (key) => ({
 const validate = () => {
 	showValidation.value = true
 	if (!requiredFieldStatus.value.name) return '请输入球馆名称'
-	if (!requiredFieldStatus.value.city) return '请输入城市'
+	if (!requiredFieldStatus.value.region) return '请选择地区'
 	if (!requiredFieldStatus.value.address) return '请输入详细地址'
 	return ''
+}
+
+const normalizeAreaOptions = (list, emptyLabel) => {
+	if (Array.isArray(list) && list.length > 0) {
+		const normalizedList = list
+			.map(item => ({
+				area_id: Number(item.area_id || 0),
+				parent_id: Number(item.parent_id || 0),
+				name: typeof item.name === 'string' ? item.name.trim() : ''
+			}))
+			.filter(item => item.area_id > 0 && item.name)
+
+		if (normalizedList.length > 0) {
+			return normalizedList
+		}
+	}
+
+	return [createAreaPlaceholderOption(emptyLabel)]
+}
+
+const clampAreaIndex = (index, options) => {
+	if (!Array.isArray(options) || options.length === 0) return 0
+
+	const normalizedIndex = Number(index)
+	if (!Number.isInteger(normalizedIndex) || normalizedIndex < 0) {
+		return 0
+	}
+
+	return Math.min(normalizedIndex, options.length - 1)
+}
+
+const fetchAreaOptions = async (parentId = 0) => {
+	const cacheKey = String(parentId)
+	if (areaOptionsCache.has(cacheKey)) {
+		return areaOptionsCache.get(cacheKey)
+	}
+
+	const res = await getVenueAreaOptions({ parent_id: parentId })
+	const list = normalizeAreaOptions(res?.list, parentId === 0 ? '暂无地区数据' : '暂无下级地区')
+	areaOptionsCache.set(cacheKey, list)
+	return list
+}
+
+const getCurrentAreaPath = (indexes = areaColumnIndexes.value) => indexes
+	.map((index, column) => areaColumns.value[column]?.[index])
+	.filter(item => item && item.area_id > 0)
+
+const applyAreaSelection = (selection) => {
+	form.value.regionText = selection.regionText
+	form.value.areaIds = selection.areaIds
+	form.value.city = selection.city
+	form.value.district = selection.district
+}
+
+const hydrateAreaColumns = async (indexes = [0, 0, 0]) => {
+	const currentToken = ++areaHydrateToken
+	areaLoading.value = true
+
+	try {
+		const provinces = await fetchAreaOptions(0)
+		const provinceIndex = clampAreaIndex(indexes[0], provinces)
+		const province = provinces[provinceIndex]
+
+		const cities = province?.area_id > 0
+			? await fetchAreaOptions(province.area_id)
+			: [createAreaPlaceholderOption('请选择城市')]
+		const cityIndex = clampAreaIndex(indexes[1], cities)
+		const city = cities[cityIndex]
+
+		const districts = city?.area_id > 0
+			? await fetchAreaOptions(city.area_id)
+			: [createAreaPlaceholderOption('请选择区域')]
+		const districtIndex = clampAreaIndex(indexes[2], districts)
+
+		if (currentToken !== areaHydrateToken) return
+
+		areaColumns.value = [provinces, cities, districts]
+		areaColumnIndexes.value = [provinceIndex, cityIndex, districtIndex]
+		areaReady.value = provinces.some(item => item.area_id > 0)
+	} catch (error) {
+		if (currentToken !== areaHydrateToken) return
+
+		areaReady.value = false
+		uni.showToast({ title: '地区数据加载失败', icon: 'none' })
+	} finally {
+		if (currentToken === areaHydrateToken) {
+			areaLoading.value = false
+		}
+	}
+}
+
+const handleAreaColumnChange = async (event) => {
+	const nextIndexes = [...areaColumnIndexes.value]
+	nextIndexes[event.detail.column] = event.detail.value
+
+	if (event.detail.column === 0) {
+		nextIndexes[1] = 0
+		nextIndexes[2] = 0
+	}
+	if (event.detail.column === 1) {
+		nextIndexes[2] = 0
+	}
+
+	await hydrateAreaColumns(nextIndexes)
+}
+
+const handleAreaConfirm = async (event) => {
+	await hydrateAreaColumns(event.detail.value)
+	const selection = buildVenueRegionSelection(getCurrentAreaPath())
+
+	if (!selection.city) {
+		return uni.showToast({ title: '请选择完整地区', icon: 'none' })
+	}
+
+	applyAreaSelection(selection)
 }
 
 const handleSubmit = async () => {
@@ -239,20 +263,10 @@ const handleSubmit = async () => {
 
 	submitting.value = true
 	try {
-		const data = {
-			name: form.value.name.trim(),
-			city: form.value.city.trim(),
-			district: form.value.district.trim(),
-			address: form.value.address.trim(),
-			phone: form.value.phone.trim(),
-			business_hours: form.value.business_hours.trim(),
-			table_count: parseInt(form.value.table_count) || 0,
-			price_range: form.value.price_range.trim(),
-			description: form.value.description.trim()
-		}
+		const data = buildVenueSubmitPayload(form.value)
 		const res = await createVenue(data)
 		if (res.success) {
-			uni.showToast({ title: res.message || '已提交，系统正在定位', icon: 'success' })
+			uni.showToast({ title: res.message || '已提交，审核通过后会员将自动到账', icon: 'success' })
 			setTimeout(() => {
 				uni.navigateBack()
 			}, 1500)
@@ -265,6 +279,10 @@ const handleSubmit = async () => {
 		submitting.value = false
 	}
 }
+
+onMounted(() => {
+	hydrateAreaColumns().catch(() => {})
+})
 </script>
 
 <style lang="scss" scoped>

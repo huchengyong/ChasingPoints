@@ -5,18 +5,17 @@
         <div class="card-header">
           <span>对局管理</span>
           <div class="filter-bar">
-            <el-select v-model="filterStatus" placeholder="状态筛选" clearable style="width: 120px; margin-right: 10px;">
+            <el-select v-model="filterStatus" placeholder="状态筛选" style="width: 120px; margin-right: 10px;">
               <el-option label="全部" :value="-1" />
               <el-option label="进行中" :value="1" />
               <el-option label="已完成" :value="2" />
               <el-option label="已取消" :value="3" />
             </el-select>
-            <el-select v-model="filterGameType" placeholder="球种筛选" clearable style="width: 140px; margin-right: 10px;">
+            <el-select v-model="filterGameType" placeholder="球种筛选" style="width: 140px; margin-right: 10px;">
               <el-option label="全部" :value="-1" />
               <el-option label="斯诺克" :value="1" />
-              <el-option label="九球追分" :value="2" />
               <el-option label="中式八球" :value="3" />
-              <el-option label="美式九球" :value="4" />
+              <el-option label="中式九球" :value="2" />
             </el-select>
             <el-button type="primary" @click="handleFilter">查询</el-button>
           </div>
@@ -24,7 +23,7 @@
       </template>
 
       <el-table :data="matchList" stripe border>
-        <el-table-column type="index" width="60" label="序号" :index="(index) => (page - 1) * pageSize + index + 1" />
+        <el-table-column type="index" width="60" label="序号" :index="(index: number) => (page - 1) * pageSize + index + 1" />
         <el-table-column prop="game_type_name" label="对局类型" width="100" />
         <el-table-column label="选手">
           <template #default="{ row }">
@@ -83,8 +82,12 @@ const loadData = async () => {
     const params: MatchListParams = {
       page: page.value,
       page_size: pageSize.value,
-      status: filterStatus.value,
-      game_type: filterGameType.value
+    }
+    if (filterStatus.value !== -1) {
+      params.status = filterStatus.value
+    }
+    if (filterGameType.value !== -1) {
+      params.game_type = filterGameType.value
     }
     const res = await getMatchList(params)
     matchList.value = res.list

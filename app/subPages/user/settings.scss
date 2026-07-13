@@ -1,7 +1,7 @@
 /* 设置页面样式 */
 
 // 主色调
-$primary-color: #18b05b;
+$primary-color: #E0AE12;
 
 // 浅色模式变量
 $bg-light: #f6f7f8;
@@ -11,11 +11,11 @@ $text-secondary-light: #64748b;
 $border-color-light: #e2e8f0;
 
 // 深色模式变量
-$bg-dark: #101922;
-$card-bg-dark: #1e293b;
-$text-primary-dark: #ffffff;
-$text-secondary-dark: #94a3b8;
-$border-color-dark: #334155;
+$bg-dark: #141109;
+$card-bg-dark: #1e180d;
+$text-primary-dark: #fff7e1;
+$text-secondary-dark: #c6b78c;
+$border-color-dark: rgba(247, 231, 168, 0.12);
 
 // 页面容器
 .settings-container {
@@ -47,11 +47,14 @@ $border-color-dark: #334155;
     justify-content: space-between;
     padding: 24rpx 16rpx;
     min-height: 88rpx;
+    gap: 24rpx;
 
     .menu-left {
         display: flex;
         align-items: center;
         gap: 24rpx;
+        min-width: 0;
+        flex: 1;
 
         .icon-wrapper {
             width: 72rpx;
@@ -63,23 +66,27 @@ $border-color-dark: #334155;
             transition: background-color 0.3s ease;
 
             &.blue {
-                background-color: rgba(59, 130, 246, 0.1);
+                background-color: rgba(224, 174, 18, 0.12);
             }
 
-            &.indigo {
-                background-color: rgba(21, 128, 61, 0.1);
+            &.gold {
+                background-color: rgba(224, 174, 18, 0.14);
+            }
+
+            &.gold-soft {
+                background-color: rgba(198, 146, 0, 0.1);
             }
 
             &.green {
-                background-color: rgba(34, 197, 94, 0.1);
+                background-color: rgba(224, 174, 18, 0.12);
             }
 
             &.rose {
-                background-color: rgba(244, 63, 94, 0.1);
+                background-color: rgba(217, 119, 6, 0.12);
             }
 
-            &.slate {
-                background-color: rgba(100, 116, 139, 0.1);
+            &.amber {
+                background-color: rgba(180, 83, 9, 0.1);
             }
         }
 
@@ -87,6 +94,7 @@ $border-color-dark: #334155;
             font-size: 32rpx;
             color: $text-primary-light;
             transition: color 0.3s ease;
+            min-width: 0;
         }
     }
 
@@ -94,13 +102,35 @@ $border-color-dark: #334155;
         display: flex;
         align-items: center;
         gap: 12rpx;
+        flex-shrink: 0;
+        min-width: 0;
 
         .menu-value {
             font-size: 28rpx;
             color: $text-secondary-light;
             transition: color 0.3s ease;
+            max-width: 320rpx;
+            text-align: right;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
     }
+}
+
+.avatar-preview {
+    width: 72rpx;
+    height: 72rpx;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2rpx solid rgba(224, 174, 18, 0.16);
+    background: rgba(224, 174, 18, 0.08);
+    flex-shrink: 0;
+}
+
+.avatar-image {
+    width: 100%;
+    height: 100%;
 }
 
 // 深色模式开关
@@ -197,6 +227,7 @@ $border-color-dark: #334155;
     .modal-btn {
         flex: 1;
         height: 88rpx;
+        line-height: 88rpx;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -230,6 +261,34 @@ $border-color-dark: #334155;
     }
 }
 
+.page-actions {
+    margin-top: 24rpx;
+}
+
+.logout-btn {
+    width: 100%;
+    height: 92rpx;
+    line-height: 92rpx;
+    margin-top: 24rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: 20rpx;
+    background: rgba(239,68,68,0.08);
+    /* box-shadow removed */
+
+    text {
+                                color: #ef4444;
+        font-size: 30rpx;
+        font-weight: 700;
+    }
+
+    &::after {
+        display: none;
+    }
+}
+
 // ========== 深色模式适配 ==========
 .dark-mode {
     background-color: $bg-dark;
@@ -242,23 +301,27 @@ $border-color-dark: #334155;
         .menu-left {
             .icon-wrapper {
                 &.blue {
-                    background-color: rgba(59, 130, 246, 0.2);
+                    background-color: rgba(224, 174, 18, 0.16);
                 }
 
-                &.indigo {
-                    background-color: rgba(21, 128, 61, 0.2);
+                &.gold {
+                    background-color: rgba(224, 174, 18, 0.18);
+                }
+
+                &.gold-soft {
+                    background-color: rgba(198, 146, 0, 0.18);
                 }
 
                 &.green {
-                    background-color: rgba(34, 197, 94, 0.2);
+                    background-color: rgba(247, 216, 106, 0.14);
                 }
 
                 &.rose {
-                    background-color: rgba(244, 63, 94, 0.2);
+                    background-color: rgba(217, 119, 6, 0.18);
                 }
 
-                &.slate {
-                    background-color: rgba(100, 116, 139, 0.2);
+                &.amber {
+                    background-color: rgba(180, 83, 9, 0.18);
                 }
             }
 
@@ -292,11 +355,11 @@ $border-color-dark: #334155;
             color: $text-primary-dark;
         }
 
-        .modal-input {
-            background-color: rgba(100, 116, 139, 0.2);
-            border-color: $border-color-dark;
-            color: $text-primary-dark;
-        }
+            .modal-input {
+                background-color: rgba(255, 247, 225, 0.06);
+                border-color: $border-color-dark;
+                color: $text-primary-dark;
+            }
 
         .modal-btn {
             &.cancel {
@@ -306,6 +369,15 @@ $border-color-dark: #334155;
                     color: $text-secondary-dark;
                 }
             }
+        }
+
+        .logout-btn {
+            box-shadow: none;
+        }
+
+        .avatar-preview {
+            border-color: rgba(247, 231, 168, 0.18);
+            background: rgba(247, 216, 106, 0.12);
         }
     }
 }

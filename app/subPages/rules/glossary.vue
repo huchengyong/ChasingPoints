@@ -1,5 +1,5 @@
 <template>
-	<view class="glossary-page">
+	<view class="glossary-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 搜索栏 -->
 		<view class="search-bar">
 			<uni-icons type="search" size="18" color="#94a3b8"></uni-icons>
@@ -12,7 +12,7 @@
 
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 		</view>
 
 		<!-- 术语列表 -->
@@ -40,6 +40,9 @@ import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getGlossary } from '@/api/rules.js'
 import { getRuleCategoryLabel } from '@/utils/game-types.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const loading = ref(true)
 const glossaryList = ref([])
@@ -125,8 +128,8 @@ onLoad(() => {
 
 		.term-tag {
 			font-size: 22rpx;
-			background: #f0fdf4;
-			color: #18b05b;
+			background: rgba(224, 174, 18, 0.12);
+			color: #C69200;
 			padding: 4rpx 16rpx;
 			border-radius: 12rpx;
 		}

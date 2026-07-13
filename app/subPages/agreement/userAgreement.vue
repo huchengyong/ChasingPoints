@@ -3,20 +3,20 @@
 		<!-- 内容区域 -->
 		<scroll-view class="content" scroll-y>
 			<view class="article">
-				<text class="article-title">球艺堂用户服务协议</text>
+				<text class="article-title">追分用户服务协议</text>
 				<text class="update-time">更新日期：2024年12月1日</text>
 				
 				<view class="section">
 					<text class="section-title">一、总则</text>
 					<text class="section-content">
-						欢迎您使用球艺堂！本协议是您与球艺堂之间关于您使用球艺堂服务所订立的协议。请您仔细阅读本协议，您访问或使用球艺堂，即表示您已阅读并同意受本协议的约束。
+						欢迎您使用追分！本协议是您与追分之间关于您使用追分服务所订立的协议。请您仔细阅读本协议，您访问或使用追分，即表示您已阅读并同意受本协议的约束。
 					</text>
 				</view>
 				
 				<view class="section">
 					<text class="section-title">二、服务内容</text>
 					<text class="section-content">
-						1. 球艺堂为用户提供台球比赛记录、数据分析、智能匹配对手等服务。
+						1. 追分为用户提供台球比赛记录、数据分析、智能匹配对手等服务。
 						
 						2. 用户可以通过本应用记录个人比赛数据，查看排行榜，与其他用户进行互动。
 						
@@ -49,7 +49,7 @@
 				<view class="section">
 					<text class="section-title">五、知识产权</text>
 					<text class="section-content">
-						1. 球艺堂的所有内容，包括但不限于文字、图片、软件、音频、视频等，均受著作权法保护。
+						1. 追分的所有内容，包括但不限于文字、图片、软件、音频、视频等，均受著作权法保护。
 						
 						2. 未经我们书面许可，用户不得复制、修改、传播或以其他方式使用上述内容。
 					</text>
@@ -83,39 +83,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
-import { onShow, onHide } from '@dcloudio/uni-app'
-import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 
 // ========== 状态管理 ==========
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 
-// ========== 计算属性 ==========
-const isDarkMode = computed(() => themeStore.isDarkMode)
-
-// ========== 生命周期 ==========
-onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
-	// 监听主题变化事件
-	uni.$on(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-onHide(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-onUnmounted(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-// ========== 方法 ==========
-/**
- * 处理主题变化事件
- */
-const handleThemeChange = () => {
-	themeStore.applyNavigationBarTheme()
-}
 </script>
 
 <style lang="scss">

@@ -5,7 +5,7 @@
     <view class="nav-header">
       <view class="header-content">
         <view class="header-copy">
-          <text class="title">球艺堂</text>
+          <text class="title">追分</text>
           <text class="subtitle">{{ headerSubtitle }}</text>
         </view>
         <view class="header-right" @tap="goNotification">
@@ -81,28 +81,28 @@
 
         <view class="focus-section">
           <view class="section-header">
-            <text class="section-title">赛事焦点</text>
+            <text class="section-title">赛事情报</text>
             <view class="section-more" @tap="goTo('/subPages/tournament/index')">
-              <text>赛事大厅</text>
+              <text>全部情报</text>
               <uni-icons type="right" size="14" :color="isDarkMode ? '#94a3b8' : '#94a3b8'"></uni-icons>
             </view>
           </view>
 
-          <view v-if="featuredTournament" class="focus-card" @tap="goTo(`/subPages/tournament/detail?id=${featuredTournament.id}`)">
+          <view v-if="topEventNews" class="focus-card" @tap="goTo(`/subPages/tournament/detail?id=${topEventNews.id}`)">
             <view class="focus-card-top">
-              <text class="focus-pill">{{ featuredTournament.statusText }}</text>
-              <text class="focus-aside">{{ featuredTournament.timeText }}</text>
+              <text class="focus-pill">{{ topEventNews.statusText }}</text>
+              <text class="focus-aside">{{ topEventNews.showTime ? topEventNews.timeText : topEventNews.dateText }}</text>
             </view>
-            <text class="focus-title">{{ featuredTournament.name }}</text>
-            <text class="focus-desc">{{ featuredTournament.desc }}</text>
+            <text class="focus-title">{{ topEventNews.title }}</text>
+            <text class="focus-desc">{{ topEventNews.summary }}</text>
             <view class="focus-footer">
-              <text>{{ featuredTournament.typeText }}</text>
-              <text>{{ featuredTournament.playersText }}</text>
+              <text>{{ topEventNews.gameTypeText }}</text>
+              <text>{{ topEventNews.locationText || topEventNews.sourceText || '赛事情报' }}</text>
             </view>
           </view>
           <view v-else class="section-empty">
-            <text class="empty-title">还没有可推荐的赛事</text>
-            <text class="empty-desc">先去排行榜看看高手状态，晚点再来报名。</text>
+            <text class="empty-title">还没有可看的赛事情报</text>
+            <text class="empty-desc">先去看看最近的赛讯更新，稍后再来刷新。</text>
           </view>
         </view>
 
@@ -134,58 +134,48 @@
           </view>
         </view>
 
-        <view class="focus-section">
+        <view class="focus-section nearby-venue-section">
           <view class="section-header">
-            <text class="section-title">精选内容</text>
-            <view class="section-more" @tap="goCommunity">
-              <text>更多动态</text>
+            <text class="section-title">附近球房</text>
+            <view class="section-more" @tap="goTo('/subPages/venue/index')">
+              <text>查看球房</text>
               <uni-icons type="right" size="14" :color="isDarkMode ? '#94a3b8' : '#94a3b8'"></uni-icons>
             </view>
           </view>
 
-          <view v-if="featuredPost" class="featured-post-card" @tap="handleFeaturedPostAction">
-            <view class="featured-top">
-              <image class="featured-avatar" :src="featuredPost.avatar || '/static/images/default-avatar.png'" mode="aspectFill"></image>
-              <view class="featured-copy">
-                <view class="featured-name-row">
-                  <text class="featured-name">{{ featuredPost.nickname || '球友' }}</text>
-                  <text class="featured-tag">{{ featuredPost.tagText }}</text>
-                </view>
-                <text class="featured-time">{{ featuredPost.relativeTime }}</text>
-              </view>
-            </view>
-            <text class="featured-content">{{ featuredPost.content || '来社区看看大家今天的竞技状态。' }}</text>
-            <view class="featured-footer">
-              <text>❤️ {{ featuredPost.likes_count || 0 }}</text>
-              <text>💬 {{ featuredPost.comments_count || 0 }}</text>
-              <view class="featured-action" @tap.stop="handleFeaturedPostAction">
-                <text>{{ featuredPost.actionText }}</text>
-              </view>
-            </view>
+          <view v-if="nearbyVenueLoading && nearbyVenues.length === 0" class="section-empty">
+            <text class="empty-title">正在寻找附近球房</text>
+            <text class="empty-desc">定位成功后，会优先展示 5km 内最适合马上开局的球房。</text>
           </view>
-          <view v-else class="section-empty">
-            <text class="empty-title">社区今天有点安静</text>
-            <text class="empty-desc">去发一条动态，或者晚点回来看看新的战报。</text>
-          </view>
-        </view>
 
-        <view class="focus-section">
-          <view class="section-header">
-            <text class="section-title">常用工具</text>
-          </view>
-          <scroll-view scroll-x class="tool-scroll" show-scrollbar="false">
-            <view class="tool-chips">
-              <view v-for="item in toolEntries" :key="item.label" class="tool-chip" @tap="goTo(item.url, item.isTab)">
-                <view class="tool-icon">
-                  <uni-icons :type="item.icon" size="22" :color="item.iconColor"></uni-icons>
-                </view>
-                <view class="tool-copy">
-                  <text class="tool-label">{{ item.label }}</text>
-                  <text class="tool-desc">{{ item.desc }}</text>
+          <view v-else-if="nearbyVenues.length > 0" class="venue-preview-list">
+            <view
+              v-for="item in nearbyVenues"
+              :key="item.id"
+              class="venue-preview-card"
+              @tap="goToVenueDetail(item.id)"
+            >
+              <view class="venue-preview-main">
+                <text class="venue-preview-name">{{ item.name || '球房' }}</text>
+                <text class="venue-preview-address">{{ item.address || item.city || '地址待补充' }}</text>
+                <view class="venue-preview-tags">
+                  <text v-if="item.distance" class="venue-preview-tag accent">{{ formatVenueDistance(item.distance) }}</text>
+                  <text v-if="item.table_count" class="venue-preview-tag">{{ item.table_count }}台</text>
+                  <text v-if="item.price_range" class="venue-preview-tag">{{ item.price_range }}</text>
+                  <text v-if="item.checkin_count" class="venue-preview-tag">{{ item.checkin_count }}人签到</text>
                 </view>
               </view>
+              <uni-icons type="right" size="18" :color="isDarkMode ? '#8b7a50' : '#cbd5e1'"></uni-icons>
             </view>
-          </scroll-view>
+          </view>
+
+          <view v-else class="section-empty venue-empty-card">
+            <text class="empty-title">附近暂无球房</text>
+            <text class="empty-desc">{{ homeVenueEmptyAction.desc }}</text>
+            <view class="empty-action" @tap="goTo(homeVenueEmptyAction.url)">
+              <text>{{ homeVenueEmptyAction.text }}</text>
+            </view>
+          </view>
         </view>
 
         <view class="page-spacer"></view>
@@ -203,26 +193,28 @@
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
-import { useThemeStore } from '@/store/theme.js'
 import { useNotificationStore } from '@/store/notification.js'
-import { getTournamentList } from '@/api/tournament.js'
+import { getEventNewsList } from '@/api/event-news.js'
 import { getCurrentMatch, startMatch } from '@/api/match.js'
-import { getPublicPosts } from '@/api/social.js'
 import { getLeaderboard } from '@/api/rank.js'
+import { getFavoriteVenueRewardStatus } from '@/api/user.js'
+import { getNearbyVenues } from '@/api/venue.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
-import { formatRelativeTime } from '@/utils/format.js'
 import { getGameTypeLabel } from '@/utils/game-types.js'
-import { buildFeaturedPostTarget, pickFeaturedTournament } from '@/utils/home-index.js'
+import { normalizeSaiXunCard } from '@/utils/saixun.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+import {
+  buildHomeNearbyVenueParams,
+  formatHomeVenueDistance,
+  resolveHomeVenueEmptyAction
+} from '@/utils/home-index.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
 
 const userStore = useUserStore()
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 const notificationStore = useNotificationStore()
 
-const tournamentStatusMap = { 0: '报名中', 1: '进行中', 2: '已结束' }
-
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight)
-const isDarkMode = computed(() => themeStore.isDarkMode)
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const userId = computed(() => userStore.userId)
 const userName = computed(() => userStore.nickname || '球友')
@@ -234,12 +226,16 @@ const selectedGameType = ref(null)
 const currentMatch = ref(null)
 const leaderboardTopThree = ref([])
 const myRanking = ref(null)
-const featuredTournament = ref(null)
-const featuredPost = ref(null)
+const topEventNews = ref(null)
+const nearbyVenues = ref([])
+const nearbyVenueLoading = ref(false)
+const favoriteVenueRewardStatus = ref(null)
 
 const hasContent = computed(() => {
-  return Boolean(currentMatch.value || featuredTournament.value || featuredPost.value || leaderboardTopThree.value.length)
+  return Boolean(currentMatch.value || topEventNews.value || leaderboardTopThree.value.length || nearbyVenues.value.length)
 })
+
+const homeVenueEmptyAction = computed(() => resolveHomeVenueEmptyAction(favoriteVenueRewardStatus.value))
 
 const headerSubtitle = computed(() => {
   if (notificationStore.unreadCount > 0) {
@@ -288,13 +284,13 @@ const heroSubtitle = computed(() => {
 const heroPrimaryText = computed(() => {
   if (heroMode.value === 'ongoing') return '继续对局'
   if (heroMode.value === 'ready') return '发起 PK'
-  return '登录 / 注册'
+  return '发起 PK'
 })
 
 const heroSecondaryText = computed(() => {
   if (heroMode.value === 'ongoing') return '查看 PK 记录'
   if (heroMode.value === 'ready') return '查看排行榜'
-  return '先看排行榜'
+  return '出示 PK 码'
 })
 
 const heroMetaTags = computed(() => {
@@ -311,7 +307,7 @@ const heroMetaTags = computed(() => {
       tags.push(`当前第 ${myRanking.value.rank} 名`)
     }
     if (myRanking.value?.rank_score) {
-      tags.push(`积分 ${myRanking.value.rank_score}`)
+      tags.push(`排位分 ${myRanking.value.rank_score}`)
     }
     return tags.length ? tags : ['准备开始', '生成战报']
   }
@@ -325,14 +321,6 @@ const recentMatchSummary = computed(() => {
       value: getCurrentMatchScore(currentMatch.value),
       desc: `${getCurrentMatchOpponentName(currentMatch.value)} · ${formatDuration(currentMatch.value.duration_seconds)}`,
       cta: '继续这一局'
-    }
-  }
-
-  if (featuredPost.value?.post_type === 1) {
-    return {
-      value: '焦点战报',
-      desc: `${featuredPost.value.nickname || '球友'} 刚分享了一条真实战绩`,
-      cta: featuredPost.value.actionText
     }
   }
 
@@ -359,26 +347,21 @@ const rankingSummary = computed(() => {
   }
 })
 
-const toolEntries = computed(() => [
-  { label: 'PK记录', desc: '查看邀约与结果', icon: 'flag-filled', iconColor: '#18b05b', url: '/subPages/social/challenges' },
-  { label: '深度统计', desc: '看你的竞技画像', icon: 'bars', iconColor: '#16a34a', url: '/subPages/user/statsDetail' },
-  { label: '规则说明', desc: '快速查台球规则', icon: 'help', iconColor: '#7c3aed', url: '/subPages/rules/index' },
-  { label: '赛事大厅', desc: '发现平台比赛', icon: 'calendar', iconColor: '#ea580c', url: '/subPages/tournament/index' },
-  { label: '球房场馆', desc: '寻找附近球房', icon: 'location', iconColor: '#0f766e', url: '/subPages/venue/index' }
-])
-
 const loadData = async () => {
   homeLoading.value = true
 
   try {
+    const nearbyVenueRequest = loadNearbyVenues()
     const requests = [
       getLeaderboard({ page: 1, page_size: 3 }).catch(() => ({ success: false })),
-      getTournamentList({ page: 1, page_size: 5 }).catch(() => ({ success: false })),
-      getPublicPosts({ page: 1, page_size: 6 }).catch(() => ({ success: false }))
+      getEventNewsList({ page: 1, page_size: 1 }).catch(() => ({ success: false, list: [] }))
     ]
 
     if (isLoggedIn.value) {
       requests.unshift(getCurrentMatch({ silent: true }).catch(() => ({ success: false })))
+      requests.push(loadFavoriteVenueRewardStatus())
+    } else {
+      favoriteVenueRewardStatus.value = null
     }
 
     const results = await Promise.all(requests)
@@ -400,17 +383,56 @@ const loadData = async () => {
       myRanking.value = null
     }
 
-    const tournamentRes = results[resultIndex++]
-    featuredTournament.value = tournamentRes.success
-      ? normalizeTournament(pickFeaturedTournament(tournamentRes.list || []))
-      : null
-
-    const postRes = results[resultIndex]
-    featuredPost.value = postRes.success ? pickFeaturedPost(postRes.list || []) : null
+    const eventNewsRes = results[resultIndex++]
+    const topItem = eventNewsRes.success && Array.isArray(eventNewsRes.list) ? eventNewsRes.list[0] : null
+    topEventNews.value = topItem ? normalizeSaiXunCard(topItem) : null
+    await nearbyVenueRequest
   } catch (error) {
     console.error('加载首页数据失败', error)
   } finally {
     homeLoading.value = false
+  }
+}
+
+const loadFavoriteVenueRewardStatus = async () => {
+  try {
+    const res = await getFavoriteVenueRewardStatus({ silent: true })
+    favoriteVenueRewardStatus.value = res.success ? res : null
+  } catch (error) {
+    favoriteVenueRewardStatus.value = null
+  }
+}
+
+const getHomeLocation = () => new Promise((resolve) => {
+  uni.getLocation({
+    type: 'gcj02',
+    success: (res) => resolve({
+      latitude: res.latitude,
+      longitude: res.longitude
+    }),
+    fail: () => resolve(null)
+  })
+})
+
+const loadNearbyVenues = async () => {
+  if (nearbyVenueLoading.value) return
+
+  nearbyVenueLoading.value = true
+  try {
+    const location = await getHomeLocation()
+    const params = buildHomeNearbyVenueParams(location || {})
+    if (!params) {
+      nearbyVenues.value = []
+      return
+    }
+
+    const res = await getNearbyVenues(params)
+    nearbyVenues.value = res.success && Array.isArray(res.list) ? res.list.slice(0, params.limit) : []
+  } catch (error) {
+    console.error('加载首页附近球房失败', error)
+    nearbyVenues.value = []
+  } finally {
+    nearbyVenueLoading.value = false
   }
 }
 
@@ -420,65 +442,36 @@ const onRefresh = async () => {
   refreshing.value = false
 }
 
-const normalizeTournament = (item) => {
-  if (!item) return null
-
-  return {
-    ...item,
-    statusText: tournamentStatusMap[item.status] || '报名中',
-    typeText: getGameTypeLabel(item.game_type),
-    playersText: `${item.current_players || 0}/${item.max_players || 0} 人`,
-    timeText: formatEventTime(item.start_time),
-    desc: `${getGameTypeLabel(item.game_type)} · ${item.current_players || 0}/${item.max_players || 0} 人已报名`
-  }
-}
-
-const pickFeaturedPost = (list) => {
-  const target = list.find((item) => item.post_type === 1) || list[0]
-  if (!target) return null
-
-  const action = buildFeaturedPostTarget(target)
-
-  return {
-    ...target,
-    tagText: getPostTagText(target.post_type),
-    relativeTime: formatRelativeTime(target.created_at),
-    action,
-    actionText: action.ctaText
-  }
-}
-
-const getPostTagText = (postType) => {
-  if (postType === 1) return '战报'
-  if (postType === 2) return '打卡'
-  return '动态'
-}
-
-const formatEventTime = (dateTime) => {
-  if (!dateTime) return '时间待定'
-
-  const date = new Date(dateTime)
-  if (Number.isNaN(date.getTime())) return '时间待定'
-
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
-  const diffDays = Math.round((target - today) / (24 * 60 * 60 * 1000))
-  const hh = String(date.getHours()).padStart(2, '0')
-  const mm = String(date.getMinutes()).padStart(2, '0')
-
-  if (diffDays === 0) return `今天 ${hh}:${mm}`
-  if (diffDays === 1) return `明天 ${hh}:${mm}`
-  if (diffDays === 2) return `后天 ${hh}:${mm}`
-
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${hh}:${mm}`
-}
-
 const formatDuration = (durationSeconds) => {
-  if (!durationSeconds || durationSeconds < 0) return '00:00'
-  const minutes = Math.floor(durationSeconds / 60)
-  const seconds = durationSeconds % 60
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+	if (!durationSeconds || durationSeconds < 0) return '0分'
+
+	const totalMinutes = Math.floor(durationSeconds / 60)
+
+	if (totalMinutes < 1) {
+		return `${durationSeconds}秒`
+	}
+
+	if (totalMinutes < 60) {
+		return `${totalMinutes}分`
+	}
+
+	const hours = Math.floor(totalMinutes / 60)
+	const remainMinutes = totalMinutes % 60
+
+	if (hours < 24) {
+		if (remainMinutes > 0) {
+			return `${hours}小时${remainMinutes}分`
+		}
+		return `${hours}小时`
+	}
+
+	const days = Math.floor(hours / 24)
+	const remainHours = hours % 24
+
+	if (remainHours > 0) {
+		return `${days}天${remainHours}小时`
+	}
+	return `${days}天`
 }
 
 const getCurrentMatchScore = (match) => {
@@ -509,10 +502,6 @@ const goTo = (url, isTabPage = false) => {
   uni.navigateTo({ url })
 }
 
-const goCommunity = () => {
-  uni.switchTab({ url: '/pages/social/index' })
-}
-
 const goLogin = () => {
   uni.navigateTo({ url: '/pages/login/login' })
 }
@@ -520,6 +509,13 @@ const goLogin = () => {
 const goNotification = () => {
   uni.navigateTo({ url: '/subPages/notification/index' })
 }
+
+const goToVenueDetail = (id) => {
+  if (!id) return
+  goTo(`/subPages/venue/detail?id=${id}`)
+}
+
+const formatVenueDistance = (meters) => formatHomeVenueDistance(meters)
 
 const handlePrimaryAction = () => {
   if (heroMode.value === 'ongoing' && currentMatch.value) {
@@ -541,18 +537,18 @@ const handleSecondaryAction = () => {
     return
   }
 
-  goTo('/pages/ranking/index')
+  if (heroMode.value === 'ready') {
+    goTo('/pages/ranking/index')
+    return
+  }
+
+  goLogin()
 }
 
 const handleSummaryAction = (type) => {
   if (type === 'match') {
     if (currentMatch.value) {
       handleContinueMatch(currentMatch.value)
-      return
-    }
-
-    if (featuredPost.value?.post_type === 1) {
-      handleFeaturedPostAction()
       return
     }
 
@@ -566,20 +562,6 @@ const handleSummaryAction = (type) => {
   }
 
   goTo('/pages/ranking/index')
-}
-
-const handleFeaturedPostAction = () => {
-  if (!featuredPost.value) {
-    goCommunity()
-    return
-  }
-
-  if (featuredPost.value.action?.type === 'navigate' && featuredPost.value.action.url) {
-    uni.navigateTo({ url: featuredPost.value.action.url })
-    return
-  }
-
-  goCommunity()
 }
 
 const handleStartPK = () => {
@@ -691,8 +673,6 @@ const handleContinueMatch = (match) => {
 }
 
 onShow(() => {
-  themeStore.syncTheme()
-  themeStore.applyNavigationBarTheme()
   notificationStore.fetchUnreadCount()
   loadData()
 })

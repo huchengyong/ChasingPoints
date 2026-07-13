@@ -1,0 +1,35 @@
+{
+    "version" : "1",
+    "prompt" : "template",
+    "title" : "服务协议与隐私保护说明",
+    "message" : "欢迎使用追分。为保障手机号登录、对局记录、二维码扫码匹配、附近球房、动态图片上传、战报海报保存、消息推送与运行安全等功能正常运行，我们会在必要范围内申请或使用相机、相册/存储、位置信息、设备信息、网络状态与推送标识等相关权限或数据，用于提供基础服务、优化体验和保障账号安全。我们不会在未经你同意的情况下超出前述范围收集或使用个人信息。完整条款请在进入应用后查看《用户协议》和《隐私政策》。如你同意，请点击“同意并继续”开始使用我们的服务。",
+    "buttonAccept" : "同意并继续",
+    "buttonRefuse" : "暂不同意",
+    "hrefLoader" : "default",
+    "backToExit" : "true",
+    "second" : {
+        "title" : "请确认是否退出",
+        "message" : "你需要先同意《服务协议》与《隐私政策》，我们才能继续为你提供登录、对局、球房、发布动态和消息通知等服务。若暂不同意，本次将退出应用。",
+        "buttonAccept" : "返回查看",
+        "buttonRefuse" : "退出应用"
+    },
+    "disagreeMode" : {
+        "support" : false,
+        "loadNativePlugins" : false,
+        "visitorEntry" : false,
+        "showAlways" : true
+    },
+    "styles" : {
+        "backgroundColor" : "#FFFDF7",
+        "borderRadius" : "16px",
+        "title" : {
+            "color" : "#141109"
+        },
+        "buttonAccept" : {
+            "color" : "#E0AE12"
+        },
+        "buttonRefuse" : {
+            "color" : "#64748B"
+        }
+    }
+}

@@ -1,5 +1,5 @@
 <template>
-	<view class="create-page">
+	<view class="create-page" :class="{ 'dark-mode': isDarkMode }">
 		<view class="page-intro">
 			<view class="intro-copy">
 				<text class="intro-eyebrow">赛事创建</text>
@@ -177,6 +177,9 @@
 import { ref, computed } from 'vue'
 import { createTournament } from '@/api/tournament.js'
 import { GAME_TYPE_OPTIONS } from '@/utils/game-types.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const gameTypes = ref(GAME_TYPE_OPTIONS)
 const formats = ref([

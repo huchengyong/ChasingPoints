@@ -28,7 +28,6 @@ type ChallengeModel struct {
 }
 
 func NewChallengeModel(db *gorm.DB) *ChallengeModel {
-	_ = db.AutoMigrate(&Challenge{})
 	return &ChallengeModel{db: db}
 }
 

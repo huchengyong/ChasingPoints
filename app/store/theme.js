@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { applyRuntimeTheme } from '@/utils/theme-application.js'
 
 // 主题变化事件名称
 export const THEME_CHANGE_EVENT = 'themeChanged'
@@ -58,39 +59,11 @@ export const useThemeStore = defineStore('theme', {
      * 应用导航栏和 TabBar 主题样式
      */
     applyNavigationBarTheme() {
-      if (this.isDarkMode) {
-        // 暗色主题
-        uni.setNavigationBarColor({
-          frontColor: '#ffffff',
-          backgroundColor: '#0f1712',
-          animation: {
-            duration: 300,
-            timingFunc: 'easeIn'
-          }
-        })
-        uni.setTabBarStyle({
-          backgroundColor: '#0f1712',
-          borderStyle: 'white',
-          color: '#a7c0af',
-          selectedColor: '#22c55e'
-        })
-      } else {
-        // 亮色主题
-        uni.setNavigationBarColor({
-          frontColor: '#000000',
-          backgroundColor: '#f4f7f4',
-          animation: {
-            duration: 300,
-            timingFunc: 'easeIn'
-          }
-        })
-        uni.setTabBarStyle({
-          backgroundColor: '#f4f7f4',
-          borderStyle: 'black',
-          color: '#5d7465',
-          selectedColor: '#18b05b'
-        })
-      }
+      applyRuntimeTheme({
+        uniApi: uni,
+        isDarkMode: this.isDarkMode,
+        animationDuration: 300
+      })
     },
 
     /**

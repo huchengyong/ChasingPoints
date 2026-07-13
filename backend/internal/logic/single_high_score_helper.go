@@ -4,9 +4,9 @@ import (
 	"sort"
 	"time"
 
-	"billiard_master/internal/model"
-	"billiard_master/internal/svc"
-	"billiard_master/internal/types"
+	"chasing_points/internal/model"
+	"chasing_points/internal/svc"
+	"chasing_points/internal/types"
 )
 
 type singleHighScoreCandidate struct {
@@ -99,6 +99,10 @@ func loadUserSingleHighScoreRecords(svcCtx *svc.ServiceContext, userId int64, ga
 	return buildSingleHighScoreRecords(candidates, limit), nil
 }
 
+func LoadUserSingleHighScoreRecords(svcCtx *svc.ServiceContext, userId int64, gameType int, limit int) ([]types.SingleHighScoreRecord, error) {
+	return loadUserSingleHighScoreRecords(svcCtx, userId, gameType, limit)
+}
+
 func loadUserMaxSingleScore(svcCtx *svc.ServiceContext, userId int64, gameType int) (int, error) {
 	records, err := loadUserSingleHighScoreRecords(svcCtx, userId, gameType, 1)
 	if err != nil {
@@ -108,4 +112,8 @@ func loadUserMaxSingleScore(svcCtx *svc.ServiceContext, userId int64, gameType i
 		return 0, nil
 	}
 	return records[0].Score, nil
+}
+
+func LoadUserMaxSingleScore(svcCtx *svc.ServiceContext, userId int64, gameType int) (int, error) {
+	return loadUserMaxSingleScore(svcCtx, userId, gameType)
 }

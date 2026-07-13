@@ -2,6 +2,7 @@
  * 对局相关 API 接口
  */
 import { get, post } from '@/utils/request.js'
+import { validateStartMatchPayload } from '@/utils/start-match.js'
 
 /**
  * 获取对局记录列表
@@ -37,6 +38,18 @@ export const getOngoingMatches = (params = {}) => {
 }
 
 /**
+ * 获取公开观赛对局列表
+ * @param {Object} params 查询参数
+ * @param {string} params.scope hall/friends
+ * @param {number} params.status 大厅状态筛选：1=进行中 2=已结束
+ * @param {number} params.game_type 球种（可选）
+ * @returns {Promise}
+ */
+export const getPublicMatches = (params = {}) => {
+  return get('/api/public/matches', params)
+}
+
+/**
  * 获取对局详情
  * @param {Object} params { match_id }
  * @returns {Promise}
@@ -60,6 +73,13 @@ export const getPublicMatchDetail = (params) => {
  * @returns {Promise}
  */
 export const startMatch = (data) => {
+  const message = validateStartMatchPayload(data)
+  if (message) {
+    return Promise.resolve({
+      success: false,
+      message
+    })
+  }
   return post('/api/match/start', data)
 }
 
@@ -96,6 +116,24 @@ export const getH2HHistory = (params) => {
  */
 export const getMatchQRCode = () => {
   return get('/api/match/qrcode')
+}
+
+/**
+ * 获取本场裁判二维码
+ * @param {Object} params { match_id }
+ * @returns {Promise}
+ */
+export const getMatchRefereeQRCode = (params) => {
+  return get('/api/match/referee/qrcode', params)
+}
+
+/**
+ * 扫码加入并担任本场裁判
+ * @param {Object} data { match_id, join_token }
+ * @returns {Promise}
+ */
+export const joinMatchReferee = (data) => {
+  return post('/api/match/referee/join', data)
 }
 
 /**

@@ -1,5 +1,5 @@
 <template>
-	<view class="add-friend-page">
+	<view class="add-friend-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 搜索框 -->
 		<view class="search-bar">
 			<view class="search-input-wrap">
@@ -22,7 +22,7 @@
 
 		<!-- 加载中 -->
 		<view v-if="searching" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">搜索中...</text>
 		</view>
 
@@ -80,6 +80,9 @@
 <script setup>
 import { ref } from 'vue'
 import { searchUser, sendFriendRequest } from '@/api/friend.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const keyword = ref('')
 const searching = ref(false)
@@ -160,11 +163,11 @@ const handleAdd = async (item) => {
 
 	.search-btn {
 		padding: 14rpx 28rpx;
-		background: #18b05b;
+		background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
 		border-radius: 36rpx;
 		text {
 			font-size: 28rpx;
-			color: #fff;
+			color: #ffffff;
 		}
 	}
 }
@@ -210,19 +213,21 @@ const handleAdd = async (item) => {
 			flex-shrink: 0;
 		}
 
-		.user-info {
-			flex: 1;
-			.user-name {
-				font-size: 30rpx;
-				font-weight: 500;
-				color: #1e293b;
-			}
-			.user-id {
-				font-size: 24rpx;
-				color: #94a3b8;
-				margin-top: 4rpx;
-			}
+	.user-info {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		.user-name {
+			font-size: 30rpx;
+			font-weight: 500;
+			color: #1e293b;
 		}
+		.user-id {
+			font-size: 24rpx;
+			color: #94a3b8;
+			margin-top: 4rpx;
+		}
+	}
 
 		.status-btn {
 			padding: 0 28rpx;
@@ -234,8 +239,8 @@ const handleAdd = async (item) => {
 			margin: 0;
 
 			&.add {
-				background: #18b05b;
-				color: #fff;
+				background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
+				color: #ffffff;
 			}
 			&.pending {
 				background: #e2e8f0;

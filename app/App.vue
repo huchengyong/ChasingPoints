@@ -4,6 +4,7 @@
 	import { getCurrentMatch } from '@/api/match.js'
 	import { post } from '@/utils/request.js'
 	import { buildPlayingRoute, shouldPromptOngoingMatch } from '@/utils/ongoing-match-guard.js'
+	import { applyRuntimeTheme } from '@/utils/theme-application.js'
 
 	export default {
 		themeChangeCallback: null, // 保存主题变化回调函数引用
@@ -90,39 +91,11 @@
 
 				console.log('[App] applyTheme:', theme)
 
-				if (theme === 'dark') {
-					// 暗色主题
-					uni.setNavigationBarColor({
-						frontColor: '#ffffff',
-						backgroundColor: '#0f1712',
-						animation: {
-							duration: 400,
-							timingFunc: 'easeIn'
-						}
-					})
-					uni.setTabBarStyle({
-						backgroundColor: '#0f1712',
-						borderStyle: 'white',
-						color: '#a7c0af',
-						selectedColor: '#22c55e'
-					})
-				} else {
-					// 亮色主题
-					uni.setNavigationBarColor({
-						frontColor: '#000000',
-						backgroundColor: '#f4f7f4',
-						animation: {
-							duration: 400,
-							timingFunc: 'easeIn'
-						}
-					})
-					uni.setTabBarStyle({
-						backgroundColor: '#f4f7f4',
-						borderStyle: 'black',
-						color: '#5d7465',
-						selectedColor: '#18b05b'
-					})
-				}
+				applyRuntimeTheme({
+					uniApi: uni,
+					isDarkMode: theme === 'dark',
+					animationDuration: 400
+				})
 			},
 			getCurrentRoute() {
 				const pages = getCurrentPages()
@@ -178,7 +151,9 @@
 
 						uni.showModal({
 							title: '你有未结束的对局',
-							content: `你和 ${currentMatch.opponent_name || '对手'} 的${currentMatch.game_type_name || 'PK'}对局仍在进行中，是否立即进入？`,
+							content: currentMatch.viewer_role === 'referee'
+								? `你担任裁判的${currentMatch.game_type_name || 'PK'}对局仍在进行中，是否立即进入？`
+								: `你和 ${currentMatch.opponent_name || '对手'} 的${currentMatch.game_type_name || 'PK'}对局仍在进行中，是否立即进入？`,
 							confirmText: '进入对局',
 							cancelText: '暂不进入',
 							success: ({ confirm }) => {
@@ -210,59 +185,61 @@
 	}
 
 	/* 全局盒模型设置 - 避免 width: 100% + padding 导致元素超出容器 */
+	/* #ifndef MP-WEIXIN */
 	*,
 	*::before,
 	*::after {
 		box-sizing: border-box;
 	}
+	/* #endif */
 
 	/* 全局 CSS 变量定义 - 亮色主题（默认） */
 	page {
 		/* 主色调 */
-		--primary-color: #18b05b;
-		--primary-color-light: rgba(24, 176, 91, 0.12);
+		--primary-color: #e0ae12;
+		--primary-color-light: rgba(224, 174, 18, 0.14);
 
 		/* 背景色 */
-		--bg-color: #f4f7f4;
+		--bg-color: #ffffff;
 		--card-bg: #ffffff;
 		--input-bg: #ffffff;
 
 		/* 文字颜色 */
-		--text-primary: #102318;
-		--text-secondary: #5d7465;
-		--text-tertiary: #8aa08f;
+		--text-primary: #0f172a;
+		--text-secondary: #64748b;
+		--text-tertiary: #94a3b8;
 
 		/* 边框颜色 */
-		--border-color: #dce7df;
+		--border-color: #e5e7eb;
 
 		/* 其他 */
-		--divider-color: #dce7df;
+		--divider-color: #e5e7eb;
 		--danger-color: #ef4444;
 	}
 
 	/* 暗色主题 */
-	@media (prefers-color-scheme: dark) {
-		page {
-			/* 主色调 */
-			--primary-color: #22c55e;
-			--primary-color-light: rgba(34, 197, 94, 0.18);
+		@media (prefers-color-scheme: dark) {
+			page {
+				/* 主色调 */
+				--primary-color: #e0ae12;
+				--primary-color-light: rgba(224, 174, 18, 0.2);
 
-			/* 背景色 */
-			--bg-color: #0f1712;
-			--card-bg: #16211a;
-			--input-bg: #16211a;
+				/* 背景色 */
+				--bg-color: #141109;
+				--card-bg: #1e180d;
+				--input-bg: #1e180d;
 
-			/* 文字颜色 */
-			--text-primary: #f3fff6;
-			--text-secondary: #a7c0af;
-			--text-tertiary: #6f8878;
+				/* 文字颜色 */
+				--text-primary: #fff7e1;
+				--text-secondary: #d7c89b;
+				--text-tertiary: #9f926e;
 
-			/* 边框颜色 */
-			--border-color: #24342a;
+				/* 边框颜色 */
+				--border-color: #3a2e16;
 
-			/* 其他 */
-			--divider-color: #16211a;
-			--danger-color: #ef4444;
+				/* 其他 */
+				--divider-color: #241d0f;
+				--danger-color: #ef4444;
+			}
 		}
-	}
-</style>
+	</style>

@@ -22,7 +22,7 @@
 								</view>
 								<view class="player-info">
 									<view class="player-name-row">
-										<view class="identity-tag is-me">我方</view>
+										<view class="identity-tag is-me">{{ viewerUi.leftIdentity }}</view>
 										<text class="player-name">{{ myInfo.nickname || '我' }}</text>
 									</view>
 									<view class="player-meta">
@@ -41,7 +41,7 @@
 								<view class="player-info is-right">
 									<view class="player-name-row is-right">
 										<text class="player-name">{{ opponentInfo.nickname || '对手' }}</text>
-										<view class="identity-tag is-opponent">对手</view>
+										<view class="identity-tag is-opponent">{{ viewerUi.rightIdentity }}</view>
 									</view>
 									<view class="player-meta is-right">
 										<text class="player-meta__item">胜率 {{ opponentInfo.winRate || 0 }}%</text>
@@ -64,6 +64,17 @@
 						<text class="status-chip__text">{{ syncStatusText }}</text>
 					</view>
 				</view>
+				<view class="viewer-banner">
+					<text class="viewer-banner__role">{{ viewerUi.roleLabel }}</text>
+					<text v-if="viewerUi.readonlyHint" class="viewer-banner__hint">{{ viewerUi.readonlyHint }}</text>
+					<button
+						v-if="showInviteRefereeAction"
+						class="viewer-banner__action"
+						@click="openRefereeQrModal"
+					>
+						邀请裁判扫码
+					</button>
+				</view>
 				<view v-if="gameType === 1" class="snooker-frame-summary">
 					<view class="snooker-frame-summary__label">
 						<text>当前局比分</text>
@@ -73,11 +84,11 @@
 				</view>
 			</view>
 
-			<view class="action-panel">
-				<view class="panel-header">
-					<text class="panel-title">记分操作</text>
-					<text class="panel-desc">{{ actionPanelDescription }}</text>
-				</view>
+			<view v-if="viewerUi.showActionPanel" class="action-panel">
+					<view class="panel-header">
+						<text class="panel-title">记分操作</text>
+						<text class="panel-desc">{{ actionPanelDescription }}</text>
+					</view>
 
 				<view v-if="isRoundWinMode" class="action-grid is-three">
 					<button
@@ -225,33 +236,56 @@
 					</view>
 				</view>
 			</view>
+			<view v-else class="readonly-panel">
+				<text class="readonly-panel__title">当前为只读观赛</text>
+				<text class="readonly-panel__desc">{{ viewerUi.readonlyHint || '请等待裁判完成记分操作' }}</text>
+			</view>
 		</view>
 
 		<view class="footer">
 			<view class="footer-buttons">
 				<button
-					v-if="gameType === 1"
+					v-if="gameType === 1 && viewerUi.showActionPanel"
 					class="footer-btn btn-secondary full-width"
 					@click="handleNextRound"
 				>
 					开始下一局
 				</button>
-				<button class="footer-btn btn-primary full-width" @click="handleFinishMatch">结束本场对局</button>
+				<button v-if="viewerUi.showFinishButton" class="footer-btn btn-primary full-width" @click="handleFinishMatch">结束本场对局</button>
 			</view>
-			<button class="undo-btn" @click="handleUndo">撤销</button>
+			<button v-if="viewerUi.showUndoButton" class="undo-btn" @click="handleUndo">撤销</button>
+		</view>
+
+		<view v-if="showRefereeQrModal" class="referee-modal-overlay" @click="closeRefereeQrModal">
+			<view class="referee-modal-container" @click.stop>
+				<text class="referee-modal-title">邀请裁判扫码</text>
+				<text class="referee-modal-desc">让球童、助教或第三方扫码后接管本场记分</text>
+				<view v-if="refereeQrcodeLoading" class="referee-modal-loading">
+					<text>生成中...</text>
+				</view>
+				<image
+					v-else-if="refereeQrcodeUrl"
+					class="referee-qrcode-image"
+					:src="refereeQrcodeUrl"
+					mode="aspectFit"
+				/>
+				<text class="referee-modal-hint">裁判加入后，选手端会自动切换为只读比分视图。</text>
+				<button class="referee-modal-close" @click="closeRefereeQrModal">关闭</button>
+			</view>
 		</view>
 	</view>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { onLoad, onShow, onHide } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
-import { matchScore, endRound, startNextRound, matchFoul, matchUndo, finishMatch, getMatchDetail, getCurrentMatch } from '@/api/match.js'
-import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
+import { matchScore, endRound, startNextRound, matchFoul, matchUndo, finishMatch, getMatchDetail, getCurrentMatch, getMatchRefereeQRCode } from '@/api/match.js'
 import { consumeResultNavigationGuard, getMatchHistoryPageUrl, getMatchHistoryTabUrl, shouldLeavePlayingPage } from '@/utils/match-navigation.js'
 import { buildMatchActionPayload } from '@/utils/match-action.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+import { resolvePlayingViewerUi } from '@/utils/match-role-view.js'
 import { resolveSnookerFinishMatchAction, resolveSnookerNextFrameAction } from '@/utils/snooker-frame.js'
 
 // ========== 状态管理 ==========
@@ -275,6 +309,16 @@ const snookerClearanceCompleted = ref(false)
 const DEFAULT_AVATAR = '/static/default-avatar.png'
 const myInfo = ref({ avatar: DEFAULT_AVATAR })
 const opponentInfo = ref({ avatar: DEFAULT_AVATAR })
+const viewerRole = ref('player1')
+const refereeBound = ref(false)
+const refereeUserId = ref(0)
+const refereeName = ref('')
+const canScore = ref(true)
+const canUndo = ref(true)
+const canFinish = ref(true)
+const showRefereeQrModal = ref(false)
+const refereeQrcodeLoading = ref(false)
+const refereeQrcodeUrl = ref('')
 const statusBarHeight = ref(0)
 const isPlayer1 = ref(true) // 是否是对局创建者(用于视角判断)
 const isSyncing = ref(false) // 比分同步中状态
@@ -317,11 +361,8 @@ const shouldApplyIncomingRevision = (revision) => {
 
 const buildActionRequest = (payload = {}) => buildMatchActionPayload(payload, serverRevision.value)
 
-// ========== 状态管理 ==========
-const themeStore = useThemeStore()
-
 // ========== 计算属性 ==========
-const isDarkMode = computed(() => themeStore.isDarkMode)
+const { isDarkMode } = usePageTheme()
 
 // 获取状态栏高度
 const systemInfo = uni.getSystemInfoSync()
@@ -348,7 +389,17 @@ const gameSubtitle = computed(() => {
 	}
 })
 
-const scoreboardSubtitle = computed(() => `${gameSubtitle.value} · 左我右敌`)
+const viewerUi = computed(() => resolvePlayingViewerUi({
+	viewerRole: viewerRole.value,
+	canScore: canScore.value,
+	canUndo: canUndo.value,
+	canFinish: canFinish.value,
+	refereeName: refereeName.value
+}))
+
+const showInviteRefereeAction = computed(() => viewerRole.value !== 'referee' && !refereeBound.value)
+
+const scoreboardSubtitle = computed(() => `${gameSubtitle.value} · ${viewerUi.value.subtitleSuffix}`)
 
 const currentRoundText = computed(() => {
 	if (gameType.value === 1 && !currentFrameStarted.value) {
@@ -382,6 +433,20 @@ const snookerRedHintText = computed(() => {
 const syncStatusText = computed(() => isSyncing.value ? '比分同步中' : '实时同步中')
 
 const actionPanelDescription = computed(() => {
+	if (!canScore.value) return viewerUi.value.readonlyHint || '当前由裁判负责记分'
+	if (viewerRole.value === 'referee') {
+		switch (gameType.value) {
+			case 1:
+				return '为选手2记录进球，为选手1记录对手犯规得分'
+			case 2:
+				return '左列为选手1得分，右列为选手2得分'
+			case 3:
+			case 4:
+				return '以下按钮会判给对应选手本局胜'
+			default:
+				return '请按选手1 / 选手2 的实际结果记分'
+		}
+	}
 	switch (gameType.value) {
 		case 1:
 			return '对手每进一个球，都在下方点击对应的球进行记分'
@@ -474,6 +539,7 @@ onMounted(async () => {
 	matchWS.on(WS_MESSAGE_TYPES.ROUND_END, handleRoundEnd)
 	matchWS.on(WS_MESSAGE_TYPES.ROUND_START, handleRoundStart)
 	matchWS.on(WS_MESSAGE_TYPES.MATCH_END, handleMatchEnd)
+	matchWS.on(WS_MESSAGE_TYPES.MATCH_ROLE_CHANGED, handleRoleChanged)
 	matchWS.on(WS_MESSAGE_TYPES.SYNC, handleSync)
 
 	const canStayOnPlayingPage = await loadMatchInfo()
@@ -483,10 +549,6 @@ onMounted(async () => {
 })
 
 onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
-	// 监听主题变化事件
-	uni.$on(THEME_CHANGE_EVENT, handleThemeChange)
 	if (wsHandlersReady && matchId.value) {
 		resumeMatchIfStillActive()
 	}
@@ -507,30 +569,19 @@ const resumeMatchIfStillActive = async () => {
 	}
 }
 
-onHide(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
 onUnmounted(() => {
 	wsHandlersReady = false
 	matchWS.off(WS_MESSAGE_TYPES.SCORE_UPDATE, handleScoreUpdate)
 	matchWS.off(WS_MESSAGE_TYPES.ROUND_END, handleRoundEnd)
 	matchWS.off(WS_MESSAGE_TYPES.ROUND_START, handleRoundStart)
 	matchWS.off(WS_MESSAGE_TYPES.MATCH_END, handleMatchEnd)
+	matchWS.off(WS_MESSAGE_TYPES.MATCH_ROLE_CHANGED, handleRoleChanged)
 	matchWS.off(WS_MESSAGE_TYPES.SYNC, handleSync)
 	// 断开WebSocket
 	matchWS.disconnect()
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
 })
 
 // ========== 方法 ==========
-
-/**
- * 处理主题变化事件
- */
-const handleThemeChange = () => {
-	themeStore.applyNavigationBarTheme()
-}
 
 /**
  * 加载用户信息
@@ -546,6 +597,33 @@ const loadUserInfo = () => {
 	}
 }
 
+const applyViewerCapabilities = (payload = {}) => {
+	if (typeof payload.viewer_role === 'string' && payload.viewer_role) {
+		viewerRole.value = payload.viewer_role
+	}
+	if (typeof payload.referee_bound === 'boolean') {
+		refereeBound.value = payload.referee_bound
+		if (payload.referee_bound) {
+			showRefereeQrModal.value = false
+		}
+	}
+	if (payload.referee_user_id !== undefined) {
+		refereeUserId.value = Number(payload.referee_user_id || 0)
+	}
+	if (payload.referee_name !== undefined) {
+		refereeName.value = payload.referee_name || ''
+	}
+	if (typeof payload.can_score === 'boolean') {
+		canScore.value = payload.can_score
+	}
+	if (typeof payload.can_undo === 'boolean') {
+		canUndo.value = payload.can_undo
+	}
+	if (typeof payload.can_finish === 'boolean') {
+		canFinish.value = payload.can_finish
+	}
+}
+
 /**
  * 加载对局信息
  */
@@ -557,6 +635,7 @@ const loadMatchInfo = async () => {
 			if (res.match) {
 				// 设置视角标识
 				isPlayer1.value = res.match.is_player1
+				applyViewerCapabilities(res.match)
 				updateServerRevision(res.match.server_revision)
 				
 				// 设置分数（API已根据视角返回正确的分数）
@@ -666,6 +745,39 @@ const connectWebSocket = async () => {
 	}
 }
 
+const openRefereeQrModal = async () => {
+	if (!matchId.value || refereeBound.value || viewerRole.value === 'referee') return
+
+	showRefereeQrModal.value = true
+	refereeQrcodeLoading.value = true
+	try {
+		const res = await getMatchRefereeQRCode({ match_id: matchId.value })
+		if (res?.success && res.qrcode_data) {
+			refereeQrcodeUrl.value = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(res.qrcode_data)}`
+			return
+		}
+		uni.showToast({ title: res?.message || '生成裁判码失败', icon: 'none' })
+	} catch (error) {
+		console.error('[MatchPlaying] 生成裁判码失败', error)
+		uni.showToast({ title: '生成裁判码失败', icon: 'none' })
+	} finally {
+		refereeQrcodeLoading.value = false
+	}
+}
+
+const closeRefereeQrModal = () => {
+	showRefereeQrModal.value = false
+}
+
+const ensureViewerCapability = (allowed, message) => {
+	if (allowed) return true
+	uni.showToast({
+		title: message || viewerUi.value.readonlyHint || '当前由裁判负责记分',
+		icon: 'none'
+	})
+	return false
+}
+
 const applyServerScores = (player1Score, player2Score) => {
 	if (isPlayer1.value) {
 		myScore.value = player1Score
@@ -698,6 +810,7 @@ const applyMatchSnapshot = (snapshot = {}) => {
 	if (!snapshot || typeof snapshot !== 'object') {
 		return
 	}
+	applyViewerCapabilities(snapshot)
 	updateServerRevision(snapshot.server_revision)
 	if (typeof snapshot.my_score === 'number') {
 		myScore.value = snapshot.my_score
@@ -725,6 +838,7 @@ const applyWriteResponse = (payload = {}) => {
 		applyMatchSnapshot(payload.snapshot)
 		return
 	}
+	applyViewerCapabilities(payload)
 	updateServerRevision(payload?.server_revision)
 	if (typeof payload?.my_score === 'number') {
 		myScore.value = payload.my_score
@@ -877,7 +991,9 @@ const handleRoundEnd = (data) => {
 	}
 	
 	uni.showToast({
-		title: isMyWin ? '你赢得本局' : '对手赢得本局',
+		title: viewerRole.value === 'referee'
+			? `本局已判给${data.winner === 1 ? '选手1' : '选手2'}`
+			: (isMyWin ? '你赢得本局' : '对手赢得本局'),
 		icon: 'none'
 	})
 }
@@ -910,6 +1026,7 @@ const handleSync = (data) => {
 		hideSyncLoading()
 		return
 	}
+	applyViewerCapabilities(data)
 	updateServerRevision(data?.server_revision)
 	applyServerScores(data.player1_score, data.player2_score)
 	applyServerCurrentFrameScores(data.current_frame_player1_score, data.current_frame_player2_score)
@@ -926,6 +1043,20 @@ const handleSync = (data) => {
 	if (data.status === 2) {
 		navigateToResultOnce()
 	}
+}
+
+const handleRoleChanged = async () => {
+	const canStayOnPlayingPage = await loadMatchInfo()
+	if (!canStayOnPlayingPage || isLeavingPlayingPage.value) {
+		return
+	}
+	if (matchWS.isConnected()) {
+		matchWS.requestSync()
+	}
+	uni.showToast({
+		title: canScore.value ? '你已接管本场记分' : (viewerUi.value.readonlyHint || '本场已切换裁判记分'),
+		icon: 'none'
+	})
 }
 
 /**
@@ -967,6 +1098,7 @@ const convertActor = (uiActor) => {
  * 加分 (斯诺克模式 - 固定给对手加分)
  */
 const handleAddScore = async (score) => {
+	if (!ensureViewerCapability(canScore.value, '当前只有裁判可以记分')) return
 	if (!matchId.value || isSyncing.value) return
 	if (!currentFrameStarted.value) {
 		uni.showToast({ title: '请先开始下一局', icon: 'none' })
@@ -1011,6 +1143,7 @@ const handleAddScore = async (score) => {
  * @param actor - UI视角的actor，1=我方犯规，2=对手犯规
  */
 const handleFoul = async (actor) => {
+	if (!ensureViewerCapability(canScore.value, '当前只有裁判可以记分')) return
 	if (!matchId.value || isSyncing.value) return
 	
 		try {
@@ -1037,6 +1170,7 @@ const handleFoul = async (actor) => {
 }
 
 const handleFoulByScore = async (score) => {
+	if (!ensureViewerCapability(canScore.value, '当前只有裁判可以记分')) return
 	if (!matchId.value || isSyncing.value) return
 
 		try {
@@ -1069,6 +1203,7 @@ const handleFoulByScore = async (score) => {
  * 对手获胜
  */
 const handleOpponentWin = async (winType, score = 1, winnerActor = 2) => {
+	if (!ensureViewerCapability(canScore.value, '当前只有裁判可以记分')) return
 	if (!matchId.value || isSyncing.value) return
 	
 		try {
@@ -1102,6 +1237,7 @@ const handleOpponentWin = async (winType, score = 1, winnerActor = 2) => {
  * 开始下一局
  */
 const handleNextRound = async () => {
+	if (!ensureViewerCapability(canScore.value, '当前只有裁判可以开始下一局')) return
 	if (!matchId.value) return
 
 	const nextFrameAction = resolveSnookerNextFrameAction({
@@ -1166,6 +1302,7 @@ const handleNextRound = async () => {
  * 撤销
  */
 const handleUndo = async () => {
+	if (!ensureViewerCapability(canUndo.value, '当前只有裁判可以撤销操作')) return
 	if (!matchId.value) return
 	
 	try {
@@ -1191,6 +1328,7 @@ const handleUndo = async () => {
  * 结束对局
  */
 const handleFinishMatch = () => {
+	if (!ensureViewerCapability(canFinish.value, '当前只有裁判可以结束对局')) return
 	const finishAction = gameType.value === 1
 		? resolveSnookerFinishMatchAction({
 			currentFrameStarted: currentFrameStarted.value,

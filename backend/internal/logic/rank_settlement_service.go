@@ -3,16 +3,20 @@ package logic
 import (
 	"encoding/json"
 
-	"billiard_master/internal/model"
-	"billiard_master/internal/types"
+	"chasing_points/internal/model"
+	"chasing_points/internal/types"
 )
 
 const (
-	defaultDailyPositiveCap     = 300
+	defaultDailyPositiveCap     = 500
+	defaultMemberAchievementDailyCap = 200
+	minimumWinnerBaseScore      = 2
 	lossMinimumDeduction        = -2
 	sameOpponentThirdMatchRate  = 80
 	sameOpponentRepeatMatchRate = 30
 )
+
+const DefaultDailyPositiveCap = defaultDailyPositiveCap
 
 type RankSettlementResult struct {
 	BeforeScore            int
@@ -29,6 +33,7 @@ type RankSettlementResult struct {
 	LossFloorAdjustment    int
 	SameOpponentAdjustment int
 	DailyCapAdjustment     int
+	MemberAchievementCapAdjustment int
 	Details                []types.RankDetail
 }
 
@@ -36,12 +41,21 @@ type RankSettlementPolicy struct {
 	TodayPositiveGain        int
 	DailyPositiveCap         int
 	SameOpponentMatchesToday int
+	TodayMemberAchievementGain int
+	DailyMemberAchievementCap  int
+	MemberLevel                int
+	MemberActive               bool
+	MemberMultiplierPercent     int
+	OrdinaryUserAchievementEnabled bool
+	CompletedRounds             int
+	OpponentCurrentRankScore    int
 }
 
 type rankSettlementRemark struct {
 	LossFloorAdjustment    int `json:"loss_floor_adjustment,omitempty"`
 	SameOpponentAdjustment int `json:"same_opponent_adjustment,omitempty"`
 	DailyCapAdjustment     int `json:"daily_cap_adjustment,omitempty"`
+	MemberAchievementCapAdjustment int `json:"member_achievement_cap_adjustment,omitempty"`
 }
 
 type RankSettlementService struct {
@@ -53,7 +67,10 @@ func NewRankSettlementService(rankingModel *model.RankingModel) *RankSettlementS
 }
 
 func (s *RankSettlementService) Settle(ranking *model.UserRanking, isWin bool, achievementScore int) RankSettlementResult {
-	return s.SettleWithPolicy(ranking, isWin, achievementScore, RankSettlementPolicy{})
+	return s.SettleWithPolicy(ranking, isWin, achievementScore, RankSettlementPolicy{
+		CompletedRounds:          1,
+		OpponentCurrentRankScore: 1 << 30,
+	})
 }
 
 func (s *RankSettlementService) SettleWithPolicy(
@@ -73,9 +90,25 @@ func (s *RankSettlementService) SettleWithPolicy(
 	}
 
 	countInStats := shouldCountRankStats(policy)
+	completedRounds := normalizeCompletedRounds(policy.CompletedRounds)
+	theoreticalWinBase := winnerBaseScoreByCompletedRounds(completedRounds)
+	theoreticalLossDeduction := loserBaseDeductionFromWinnerBase(theoreticalWinBase)
 	baseScore := 0
 	if isWin {
-		baseScore = 20
+		baseScore = theoreticalWinBase
+		if theoreticalLossDeduction > 0 {
+			if policy.OpponentCurrentRankScore < 0 {
+				baseScore = theoreticalWinBase
+			} else if policy.OpponentCurrentRankScore == 0 {
+				baseScore = minimumWinnerBaseScore
+			} else {
+				opponentDeductible := minInt(policy.OpponentCurrentRankScore, theoreticalLossDeduction)
+				baseScore = theoreticalWinBase * opponentDeductible / theoreticalLossDeduction
+				if baseScore < minimumWinnerBaseScore {
+					baseScore = minimumWinnerBaseScore
+				}
+			}
+		}
 		if countInStats {
 			current.TotalWins++
 			if current.CurrentStreak >= 0 {
@@ -88,8 +121,8 @@ func (s *RankSettlementService) SettleWithPolicy(
 			}
 		}
 	} else {
-		if current.RankScore > 0 {
-			baseScore = -10
+		if current.RankScore > 0 && theoreticalLossDeduction > 0 {
+			baseScore = -minInt(current.RankScore, theoreticalLossDeduction)
 		}
 		if countInStats {
 			current.TotalLosses++
@@ -105,8 +138,16 @@ func (s *RankSettlementService) SettleWithPolicy(
 	lossFloorAdjustment := 0
 	sameOpponentAdjustment := 0
 	dailyCapAdjustment := 0
+	memberAchievementCapAdjustment := 0
 
 	if isWin {
+		memberAchievementRemaining := remainingDailyPositiveGain(policy.TodayMemberAchievementGain, policy.DailyMemberAchievementCap)
+		if achievementScore > memberAchievementRemaining {
+			memberAchievementCapAdjustment = memberAchievementRemaining - achievementScore
+			achievementScore = memberAchievementRemaining
+			finalChange = baseScore + achievementScore
+		}
+
 		sameOpponentRate := sameOpponentRankGainRate(policy.SameOpponentMatchesToday)
 		if finalChange > 0 && sameOpponentRate < 100 {
 			scaled := scalePositiveGain(finalChange, sameOpponentRate)
@@ -125,9 +166,15 @@ func (s *RankSettlementService) SettleWithPolicy(
 	} else if current.RankScore <= 0 && finalChange > 0 {
 		lossFloorAdjustment = -finalChange
 		finalChange = 0
-	} else if current.RankScore > 0 && finalChange > lossMinimumDeduction {
-		lossFloorAdjustment = lossMinimumDeduction - finalChange
-		finalChange = lossMinimumDeduction
+	} else if current.RankScore > 0 {
+		minimumFinalChange := baseScore
+		if minimumFinalChange < lossMinimumDeduction {
+			minimumFinalChange = lossMinimumDeduction
+		}
+		if finalChange > minimumFinalChange {
+			lossFloorAdjustment = minimumFinalChange - finalChange
+			finalChange = minimumFinalChange
+		}
 	}
 
 	current.RankScore += finalChange
@@ -140,11 +187,11 @@ func (s *RankSettlementService) SettleWithPolicy(
 		{Label: "基础分", Value: baseScore},
 	}
 	if achievementScore != 0 {
-		label := "成就奖励"
-		if !isWin {
-			label = "特殊战绩减免"
-		}
+		label := "会员特殊战绩分"
 		details = append(details, types.RankDetail{Label: label, Value: achievementScore})
+	}
+	if memberAchievementCapAdjustment != 0 {
+		details = append(details, types.RankDetail{Label: "会员特殊战绩每日封顶", Value: memberAchievementCapAdjustment})
 	}
 	if lossFloorAdjustment != 0 {
 		details = append(details, types.RankDetail{Label: "失败保底", Value: lossFloorAdjustment})
@@ -175,6 +222,7 @@ func (s *RankSettlementService) SettleWithPolicy(
 		LossFloorAdjustment:    lossFloorAdjustment,
 		SameOpponentAdjustment: sameOpponentAdjustment,
 		DailyCapAdjustment:     dailyCapAdjustment,
+		MemberAchievementCapAdjustment: memberAchievementCapAdjustment,
 		Details:                details,
 	}
 }
@@ -203,6 +251,45 @@ func rankingScoreOrZero(ranking *model.UserRanking) int {
 		return 0
 	}
 	return ranking.RankScore
+}
+
+func normalizeCompletedRounds(completedRounds int) int {
+	if completedRounds <= 0 {
+		return 1
+	}
+	return completedRounds
+}
+
+func winnerBaseScoreByCompletedRounds(completedRounds int) int {
+	completedRounds = normalizeCompletedRounds(completedRounds)
+	score := 8
+	if completedRounds > 1 {
+		score += (minInt(completedRounds, 5) - 1) * 3
+	}
+	if completedRounds > 5 {
+		score += (minInt(completedRounds, 10) - 5) * 2
+	}
+	if completedRounds > 10 {
+		score += minInt(completedRounds, 20) - 10
+	}
+	if score > 40 {
+		return 40
+	}
+	return score
+}
+
+func loserBaseDeductionFromWinnerBase(winnerBase int) int {
+	if winnerBase <= 0 {
+		return 0
+	}
+	return winnerBase / 2
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func sameOpponentRankGainRate(priorCompletedMatches int) int {
@@ -250,9 +337,10 @@ func buildRankSettlementRemark(settlement RankSettlementResult) string {
 		LossFloorAdjustment:    settlement.LossFloorAdjustment,
 		SameOpponentAdjustment: settlement.SameOpponentAdjustment,
 		DailyCapAdjustment:     settlement.DailyCapAdjustment,
+		MemberAchievementCapAdjustment: settlement.MemberAchievementCapAdjustment,
 	}
 	if remark == (rankSettlementRemark{}) {
-		return ""
+		return "{}"
 	}
 
 	data, err := json.Marshal(remark)
@@ -260,6 +348,10 @@ func buildRankSettlementRemark(settlement RankSettlementResult) string {
 		return ""
 	}
 	return string(data)
+}
+
+func BuildRankSettlementRemark(settlement RankSettlementResult) string {
+	return buildRankSettlementRemark(settlement)
 }
 
 func parseRankSettlementRemark(raw string) rankSettlementRemark {

@@ -18,7 +18,7 @@
 		</view>
 
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="28" :color="isDarkMode ? '#86efac' : '#18b05b'"></uni-icons>
+			<uni-icons type="spinner-cycle" size="28" :color="isDarkMode ? '#FCD34D' : '#E0AE12'"></uni-icons>
 			<text class="loading-text">正在生成本场战报...</text>
 		</view>
 
@@ -125,7 +125,14 @@
 					</view>
 					<view v-else class="empty-state">
 						<uni-icons type="info" size="18" :color="isDarkMode ? '#94a3b8' : '#64748b'"></uni-icons>
-						<text class="empty-state-text">暂无特殊成就，本场战绩已正常计入记录。</text>
+						<text class="empty-state-text">暂无特殊战绩，本场战绩已正常计入记录。</text>
+					</view>
+					<view :class="['ranking-rights-card', rankingRightsSummary.tone]">
+						<view class="ranking-rights-head">
+							<text class="ranking-rights-badge">{{ rankingRightsSummary.badgeText }}</text>
+							<text class="ranking-rights-title">{{ rankingRightsSummary.title }}</text>
+						</view>
+						<text class="ranking-rights-desc">{{ rankingRightsSummary.description }}</text>
 					</view>
 				</view>
 
@@ -170,11 +177,12 @@
 </template>
 
 <script setup>
-import { computed, ref, onUnmounted } from 'vue'
-import { onLoad, onShow, onHide } from '@dcloudio/uni-app'
+import { computed, ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { getMatchDetail } from '@/api/match.js'
-import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
 import { formatDateTime, formatRelativeTime } from '@/utils/format.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+import { resolveMatchRankingRightsSummary } from '@/utils/member-ranking-rights.js'
 
 const DEFAULT_AVATAR = '/static/default-avatar.png'
 const SHARE_LINK = 'https://appgallery.huawei.com/app/detail?id=hm.dianzaozao.ballmall&channelId=SHARE&source=appshare'
@@ -205,8 +213,7 @@ const matchData = ref({
 })
 
 const statusBarHeight = ref(0)
-const themeStore = useThemeStore()
-const isDarkMode = computed(() => themeStore.isDarkMode)
+const { isDarkMode } = usePageTheme()
 const headerIconColor = computed(() => (isDarkMode.value ? '#f8fafc' : '#1f2937'))
 
 const systemInfo = uni.getSystemInfoSync()
@@ -292,7 +299,7 @@ const myRankNote = computed(() => {
 
 const opponentRankNote = computed(() => {
 	const change = matchData.value.opponent_rank_change || 0
-	if (change > 0) return '对手本场状态更受益于当前积分规则。'
+	if (change > 0) return '对手本场状态更受益于排位分规则。'
 	if (change < 0) return '对手本场排位分出现回撤。'
 	return '对手本场排位分保持不变。'
 })
@@ -310,6 +317,8 @@ const highlightSectionCaption = computed(() => {
 	if (highlightItems.value.length) return `按${gameTypeName.value}模式提炼这场最值得记住的表现`
 	return `当前${gameTypeName.value}模式暂无可展示亮点，但战绩已完成记录`
 })
+
+const rankingRightsSummary = computed(() => resolveMatchRankingRightsSummary(matchData.value))
 
 const statsData = computed(() => {
 	const stats = Array.isArray(matchData.value.summary_stats) ? matchData.value.summary_stats : []
@@ -331,24 +340,6 @@ onLoad((options) => {
 	fromHistory.value = options.from === 'history'
 	loadMatchData()
 })
-
-onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
-	uni.$on(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-onHide(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-onUnmounted(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-const handleThemeChange = () => {
-	themeStore.applyNavigationBarTheme()
-}
 
 const loadMatchData = async () => {
 	if (!matchId.value) {
@@ -403,7 +394,7 @@ const getToneColor = (tone) => {
 		case 'gold':
 			return '#f59e0b'
 		case 'blue':
-			return '#18b05b'
+			return '#3b82f6'
 		case 'red':
 			return '#ef4444'
 		case 'green':

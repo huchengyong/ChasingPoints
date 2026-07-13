@@ -1,8 +1,8 @@
 <template>
-	<view class="detail-page">
+	<view class="detail-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
@@ -27,7 +27,7 @@
 				</view>
 				<view class="info-row">
 					<text class="info-label">分类</text>
-					<text class="info-value">{{ achievement.category }}</text>
+					<text class="info-value">{{ getAchievementCategoryLabel(achievement.category) }}</text>
 				</view>
 				<view class="info-row">
 					<text class="info-label">解锁条件</text>
@@ -53,7 +53,7 @@
 
 			<!-- 解锁时间 -->
 			<view v-if="achievement.unlocked && achievement.unlocked_at" class="unlock-card">
-				<uni-icons type="calendar" size="18" color="#18b05b"></uni-icons>
+				<uni-icons type="calendar" size="18" color="#E0AE12"></uni-icons>
 				<text class="unlock-time">解锁于 {{ achievement.unlocked_at }}</text>
 			</view>
 		</template>
@@ -69,6 +69,10 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getAchievementList } from '@/api/achievement.js'
+import { getAchievementCategoryEmoji, getAchievementCategoryLabel } from '@/utils/achievement-page.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const loading = ref(true)
 const achievement = ref(null)
@@ -81,10 +85,7 @@ const progressPercent = computed(() => {
 	return Math.min(Math.round(((achievement.value.progress || 0) / t) * 100), 100)
 })
 
-const getCategoryEmoji = (category) => {
-	const map = { '胜场': '🏅', '连胜': '🔥', '特殊': '⭐', '对局': '🎱', '社交': '👥', '赛事': '🏆' }
-	return map[category] || '🎯'
-}
+const getCategoryEmoji = getAchievementCategoryEmoji
 
 const loadDetail = async () => {
 	loading.value = true
@@ -132,7 +133,7 @@ onLoad((options) => {
 	background: linear-gradient(180deg, #e2e8f0, #f1f5f9);
 
 	&.unlocked {
-		background: linear-gradient(180deg, #dcfce7, #f1f5f9);
+		background: linear-gradient(180deg, rgba(224, 174, 18, 0.18), #f1f5f9);
 	}
 
 	.hero-icon {
@@ -162,7 +163,7 @@ onLoad((options) => {
 		display: flex;
 		align-items: center;
 		gap: 8rpx;
-		background: #22c55e;
+		background: #E0AE12;
 		color: #fff;
 		padding: 8rpx 24rpx;
 		border-radius: 24rpx;
@@ -229,7 +230,7 @@ onLoad((options) => {
 			transition: width 0.3s;
 
 			&.complete {
-				background: #18b05b;
+				background: #E0AE12;
 			}
 		}
 	}
@@ -249,13 +250,13 @@ onLoad((options) => {
 	align-items: center;
 	gap: 12rpx;
 	margin: 24rpx;
-	background: #f0fdf4;
+	background: rgba(224, 174, 18, 0.12);
 	border-radius: 16rpx;
 	padding: 24rpx 32rpx;
 
 	.unlock-time {
 		font-size: 26rpx;
-		color: #18b05b;
+		color: #C69200;
 	}
 }
 

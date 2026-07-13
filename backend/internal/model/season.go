@@ -45,7 +45,6 @@ type SeasonModel struct {
 }
 
 func NewSeasonModel(db *gorm.DB) *SeasonModel {
-	_ = db.AutoMigrate(&Season{})
 	return &SeasonModel{db: db}
 }
 

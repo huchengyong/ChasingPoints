@@ -44,52 +44,58 @@
 				<!-- 领奖台背景 -->
 				<view class="podium-base">
 					<view class="podium-block second">
-						<text class="podium-rank-name" v-if="topThree[1]">{{ topThree[1].rank_name }}</text>
-						<text class="podium-winrate" v-if="topThree[1]">胜率 {{ topThree[1].win_rate }}%</text>
+						<text class="podium-rank-name" v-if="podiumSlots[0].user">{{ podiumSlots[0].user.rank_name }}</text>
+						<text class="podium-winrate" v-if="podiumSlots[0].user">胜率 {{ podiumSlots[0].user.win_rate }}%</text>
 					</view>
 					<view class="podium-block first">
-						<text class="podium-rank-name" v-if="topThree[0]">{{ topThree[0].rank_name }}</text>
-						<text class="podium-winrate" v-if="topThree[0]">胜率 {{ topThree[0].win_rate }}%</text>
+						<text class="podium-rank-name" v-if="podiumSlots[1].user">{{ podiumSlots[1].user.rank_name }}</text>
+						<text class="podium-winrate" v-if="podiumSlots[1].user">胜率 {{ podiumSlots[1].user.win_rate }}%</text>
 					</view>
 					<view class="podium-block third">
-						<text class="podium-rank-name" v-if="topThree[2]">{{ topThree[2].rank_name }}</text>
-						<text class="podium-winrate" v-if="topThree[2]">胜率 {{ topThree[2].win_rate }}%</text>
+						<text class="podium-rank-name" v-if="podiumSlots[2].user">{{ podiumSlots[2].user.rank_name }}</text>
+						<text class="podium-winrate" v-if="podiumSlots[2].user">胜率 {{ podiumSlots[2].user.win_rate }}%</text>
 					</view>
 				</view>
 				
 				<!-- 前三名用户 -->
 				<view class="podium-users">
 					<!-- 第二名 -->
-					<view class="podium-user second" v-if="topThree[1]" @click="handleUserClick(topThree[1])">
-						<view class="avatar-wrapper">
-							<image class="avatar" :src="topThree[1].avatar || '/static/images/default-avatar.png'" mode="aspectFill"></image>
-							<view class="rank-badge silver">2</view>
-						</view>
-						<text class="nickname">{{ topThree[1].nickname || '球手' }}</text>
-						<text class="score">{{ topThree[1].rank_score }}分</text>
+					<view class="podium-user second" :class="{ 'is-empty': !podiumSlots[0].user }" @click="podiumSlots[0].user && handleUserClick(podiumSlots[0].user)">
+						<template v-if="podiumSlots[0].user">
+							<view class="avatar-wrapper">
+								<image class="avatar" :src="podiumSlots[0].user.avatar || '/static/images/default-avatar.png'" mode="aspectFill"></image>
+								<view class="rank-badge silver">2</view>
+							</view>
+							<text class="nickname">{{ podiumSlots[0].user.nickname || '球手' }}</text>
+							<text class="score">{{ podiumSlots[0].user.rank_score }}分</text>
+						</template>
 					</view>
 					
 					<!-- 第一名 -->
-					<view class="podium-user first" v-if="topThree[0]" @click="handleUserClick(topThree[0])">
-						<view class="crown-icon">
-							<uni-icons type="medal-filled" size="48" color="#fbbf24"></uni-icons>
-						</view>
-						<view class="avatar-wrapper">
-							<image class="avatar" :src="topThree[0].avatar || '/static/images/default-avatar.png'" mode="aspectFill"></image>
-							<view class="rank-badge gold">1</view>
-						</view>
-						<text class="nickname">{{ topThree[0].nickname || '球手' }}</text>
-						<text class="score">{{ topThree[0].rank_score }}分</text>
+					<view class="podium-user first" :class="{ 'is-empty': !podiumSlots[1].user }" @click="podiumSlots[1].user && handleUserClick(podiumSlots[1].user)">
+						<template v-if="podiumSlots[1].user">
+							<view class="crown-icon">
+								<uni-icons type="medal-filled" size="48" color="#fbbf24"></uni-icons>
+							</view>
+							<view class="avatar-wrapper">
+								<image class="avatar" :src="podiumSlots[1].user.avatar || '/static/images/default-avatar.png'" mode="aspectFill"></image>
+								<view class="rank-badge gold">1</view>
+							</view>
+							<text class="nickname">{{ podiumSlots[1].user.nickname || '球手' }}</text>
+							<text class="score">{{ podiumSlots[1].user.rank_score }}分</text>
+						</template>
 					</view>
 					
 					<!-- 第三名 -->
-					<view class="podium-user third" v-if="topThree[2]" @click="handleUserClick(topThree[2])">
-						<view class="avatar-wrapper">
-							<image class="avatar" :src="topThree[2].avatar || '/static/images/default-avatar.png'" mode="aspectFill"></image>
-							<view class="rank-badge bronze">3</view>
-						</view>
-						<text class="nickname">{{ topThree[2].nickname || '球手' }}</text>
-						<text class="score">{{ topThree[2].rank_score }}分</text>
+					<view class="podium-user third" :class="{ 'is-empty': !podiumSlots[2].user }" @click="podiumSlots[2].user && handleUserClick(podiumSlots[2].user)">
+						<template v-if="podiumSlots[2].user">
+							<view class="avatar-wrapper">
+								<image class="avatar" :src="podiumSlots[2].user.avatar || '/static/images/default-avatar.png'" mode="aspectFill"></image>
+								<view class="rank-badge bronze">3</view>
+							</view>
+							<text class="nickname">{{ podiumSlots[2].user.nickname || '球手' }}</text>
+							<text class="score">{{ podiumSlots[2].user.rank_score }}分</text>
+						</template>
 					</view>
 				</view>
 		</view>
@@ -138,20 +144,21 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { onLoad, onShow, onHide } from '@dcloudio/uni-app'
+import { ref, computed, onMounted } from 'vue'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
-import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 import { getLeaderboard } from '@/api/rank.js'
 import { startMatch } from '@/api/match.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
+import { buildLeaderboardPodiumSlots } from '@/utils/ranking-podium.js'
+
+const { isDarkMode } = usePageTheme()
 
 // ========== 响应式数据 ==========
 const userStore = useUserStore()
-const themeStore = useThemeStore()
-const isDarkMode = computed(() => themeStore.isDarkMode)
 const isEmpty = computed(() => !isLoading.value && topThree.value.length === 0 && rankList.value.length === 0)
 const isLoading = ref(false)
 const isRefreshing = ref(false)
@@ -168,6 +175,7 @@ const showGameTypeModal = ref(false)
 const selectedGameType = ref(null)
 const currentGameType = ref(3)
 const gameTypeTabs = GAME_TYPE_TABS
+const podiumSlots = computed(() => buildLeaderboardPodiumSlots(topThree.value))
 
 onLoad((options) => {
 	const gameType = Number(options?.game_type || 0)
@@ -184,29 +192,7 @@ onMounted(() => {
 onShow(() => {
 	// 页面显示时刷新数据
 	fetchLeaderboard(true, false)
-	// 同步主题状态并更新导航栏
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
-	// 注册主题变化监听
-	uni.$on(THEME_CHANGE_EVENT, handleThemeChange)
 })
-
-onHide(() => {
-	// 取消主题监听
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-// 组件卸载时确保取消监听
-onUnmounted(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-/**
- * 处理主题变化
- */
-const handleThemeChange = (data) => {
-	console.log('[RankingPage] 收到主题变化事件:', data)
-}
 
 // ========== 方法 ==========
 

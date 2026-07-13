@@ -1,5 +1,5 @@
 /**
- * 深度统计 API 接口
+ * 竞技分析 API 接口
  */
 import { get } from '@/utils/request.js'
 

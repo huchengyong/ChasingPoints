@@ -1,7 +1,7 @@
-/* 意见反馈页面样式 */
+/* 投诉举报与意见反馈页面样式 */
 
 // 主色调
-$primary-color: #18b05b;
+$primary-color: #E0AE12;
 
 // 浅色模式变量
 $bg-light: #f6f7f8;
@@ -34,6 +34,16 @@ $border-color-dark: #334155;
     border-radius: 24rpx;
     padding: 32rpx;
     transition: background-color 0.3s ease;
+}
+
+.form-tip {
+    margin-bottom: 32rpx;
+    padding: 24rpx;
+    border-radius: 16rpx;
+    background-color: rgba($primary-color, 0.12);
+    color: $text-secondary-light;
+    font-size: 26rpx;
+    line-height: 1.6;
 }
 
 // 表单项
@@ -75,6 +85,22 @@ $border-color-dark: #334155;
     }
 }
 
+.category-picker {
+    width: 100%;
+    height: 88rpx;
+    padding: 0 24rpx;
+    font-size: 28rpx;
+    color: $text-primary-light;
+    background-color: $bg-light;
+    border: 2rpx solid $border-color-light;
+    border-radius: 16rpx;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.3s ease;
+}
+
 // 字数统计
 .char-count {
     position: absolute;
@@ -85,8 +111,8 @@ $border-color-dark: #334155;
     transition: color 0.3s ease;
 }
 
-// 邮箱输入框
-.email-input {
+// 联系方式输入框
+.contact-input {
     width: 100%;
     height: 88rpx;
     padding: 0 24rpx;
@@ -109,7 +135,8 @@ $border-color-dark: #334155;
 .submit-btn {
     width: 100%;
     height: 96rpx;
-    background: linear-gradient(135deg, $primary-color 0%, #0066cc 100%);
+    line-height: 96rpx;
+    background: linear-gradient(135deg, $primary-color 0%, #F59E0B 100%);
     border: none;
     border-radius: 20rpx;
     font-size: 32rpx;
@@ -127,6 +154,10 @@ $border-color-dark: #334155;
     &:active {
         opacity: 0.9;
     }
+
+    &[disabled] {
+        opacity: 0.6;
+    }
 }
 
 // 深色模式适配
@@ -135,6 +166,11 @@ $border-color-dark: #334155;
 
     .form-section {
         background-color: $card-bg-dark;
+    }
+
+    .form-tip {
+        color: $text-secondary-dark;
+        background-color: rgba($primary-color, 0.16);
     }
 
     .form-label {
@@ -155,7 +191,8 @@ $border-color-dark: #334155;
         color: $text-muted-dark;
     }
 
-    .email-input {
+    .category-picker,
+    .contact-input {
         color: $text-primary-dark;
         background-color: $bg-dark;
         border-color: $border-color-dark;

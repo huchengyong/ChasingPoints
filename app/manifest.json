@@ -1,7 +1,7 @@
 {
-    "name" : "球艺堂",
-    "appid" : "__UNI__43A7928",
-    "description" : "台球运动相关的垂直类商城以及可实现对局功能的台球战绩助手应用",
+    "name" : "追分",
+    "appid" : "__UNI__77D0D4A",
+    "description" : "追分是一款面向台球爱好者的对局记录与成长型应用，帮助你把每一场比赛都变成可沉淀、可分享、可复盘的数据。",
     "versionName" : "1.0.0",
     "versionCode" : "100",
     "transformPx" : false,
@@ -17,7 +17,14 @@
             "delay" : 0
         },
         /* 模块配置 */
-        "modules" : {},
+        "modules" : {
+            "OAuth" : {},
+            "Geolocation" : {},
+            "Barcode" : {},
+            "Push" : {},
+            "Share" : {},
+            "Payment" : {}
+        },
         /* 应用发布信息 */
         "distribute" : {
             /* android打包配置 */
@@ -41,18 +48,101 @@
                 ]
             },
             /* ios打包配置 */
-            "ios" : {},
+            "ios" : {
+                "capabilities" : {
+                    "entitlements" : {
+                        "com.apple.developer.associated-domains" : [ "applinks:www.zhuifen.cn" ]
+                    }
+                }
+            },
             /* SDK配置 */
-            "sdkConfigs" : {}
+            "sdkConfigs" : {
+                "oauth" : {
+                    "univerify" : {},
+                    "apple" : {},
+                    "weixin" : {
+                        "appid" : "wx741bd0137318c753",
+                        "UniversalLinks" : "https://www.zhuifen.cn/uni-universallinks/__UNI__77D0D4A/"
+                    }
+                },
+                "geolocation" : {
+                    "system" : {
+                        "__platform__" : [ "ios", "android" ]
+                    }
+                },
+                "push" : {
+                    "unipush" : {
+                        "version" : "2",
+                        "offline" : false
+                    }
+                },
+                "payment" : {
+                    "alipay" : {
+                        "__platform__" : [ "ios", "android" ]
+                    },
+                    "weixin" : {
+                        "__platform__" : [ "ios", "android" ],
+                        "appid" : "wx741bd0137318c753",
+                        "UniversalLinks" : "https://www.zhuifen.cn/uni-universallinks/__UNI__77D0D4A/"
+                    }
+                },
+                "share" : {
+                    "weixin" : {
+                        "appid" : "wx741bd0137318c753",
+                        "UniversalLinks" : "https://www.zhuifen.cn/uni-universallinks/__UNI__77D0D4A/"
+                    }
+                }
+            },
+            "icons" : {
+                "android" : {
+                    "hdpi" : "unpackage/res/icons/72x72.png",
+                    "xhdpi" : "unpackage/res/icons/96x96.png",
+                    "xxhdpi" : "unpackage/res/icons/144x144.png",
+                    "xxxhdpi" : "unpackage/res/icons/192x192.png"
+                },
+                "ios" : {
+                    "appstore" : "unpackage/res/icons/1024x1024.png",
+                    "ipad" : {
+                        "app" : "unpackage/res/icons/76x76.png",
+                        "app@2x" : "unpackage/res/icons/152x152.png",
+                        "notification" : "unpackage/res/icons/20x20.png",
+                        "notification@2x" : "unpackage/res/icons/40x40.png",
+                        "proapp@2x" : "unpackage/res/icons/167x167.png",
+                        "settings" : "unpackage/res/icons/29x29.png",
+                        "settings@2x" : "unpackage/res/icons/58x58.png",
+                        "spotlight" : "unpackage/res/icons/40x40.png",
+                        "spotlight@2x" : "unpackage/res/icons/80x80.png"
+                    },
+                    "iphone" : {
+                        "app@2x" : "unpackage/res/icons/120x120.png",
+                        "app@3x" : "unpackage/res/icons/180x180.png",
+                        "notification@2x" : "unpackage/res/icons/40x40.png",
+                        "notification@3x" : "unpackage/res/icons/60x60.png",
+                        "settings@2x" : "unpackage/res/icons/58x58.png",
+                        "settings@3x" : "unpackage/res/icons/87x87.png",
+                        "spotlight@2x" : "unpackage/res/icons/80x80.png",
+                        "spotlight@3x" : "unpackage/res/icons/120x120.png"
+                    }
+                }
+            },
+            "splashscreen" : {
+                "useOriginalMsgbox" : true
+            }
         }
     },
     /* 快应用特有相关 */
     "quickapp" : {},
     /* 小程序特有相关 */
     "mp-weixin" : {
-        "appid" : "",
+        "appid" : "wx3196c9366b3b39ba",
         "setting" : {
             "urlCheck" : false
+        },
+        "requiredPrivateInfos" : [ "getLocation" ],
+        "permission" : {
+            "scope.userLocation" : {
+                "desc" : "用于获取当前位置并展示附近球房"
+            }
         },
         "usingComponents" : true
     },
@@ -82,11 +172,11 @@
             }
         },
         "distribute" : {
-            "bundleName" : "hm.dianzaozao.ballmall",
+            "bundleName" : "hm.dianzaozao.zhuifen",
             "modules" : {
                 "uni-oauth" : {
                     "huawei" : {
-                        "client_id" : "6917591791277824968"
+                        "client_id" : "6917600900395032152"
                     },
                     "weixin" : {
                         "appid" : ""
@@ -94,14 +184,15 @@
                 },
                 "uni-payment" : {
                     "alipay" : {}
-                }
+                },
+                "uni-verify" : {}
             },
             "signingConfigs" : {
                 "default" : {
                     "certpath" : "/Users/wisesearch/Documents/harmony_app_certs/harmony_debug.cer",
                     "keyAlias" : "harmony_debug",
                     "keyPassword" : "0000001E88C4C23D07094D9B3E471AD543B9501F3F072A5B9C05D53CDC9C1C18AAE51AE09CE15F0EF9C6F795C685",
-                    "profile" : "/Users/wisesearch/Documents/harmony_app_certs/billiard_masterDebug.p7b",
+                    "profile" : "/Users/wisesearch/Documents/harmony_app_certs/zhuifenDebug.p7b",
                     "signAlg" : "SHA256withECDSA",
                     "storeFile" : "/Users/wisesearch/Documents/harmony_app_certs/harmony_debug.p12",
                     "storePassword" : "0000001E07E69C039572310EE48F3D6CD933D8E8D1557E727A2638158652492EE07C5D4A90A271D71E6198CD5C42"
@@ -110,22 +201,23 @@
                     "certpath" : "/Users/jerichohu/Documents/Hormony证书/cloudcoupon/cloud-coupon-release.cer",
                     "keyAlias" : "cloud-coupon-release",
                     "keyPassword" : "0000001EA68BCF879F9C2B3C7FA2CC622A8E050CA2BAA18B96DFA759E366A13703CB5E97AA98BE7B4946021AD20F",
-                    "profile" : "/Users/jerichohu/Documents/Hormony证书/球艺堂/ballmall-releaseRelease.p7b",
+                    "profile" : "/Users/jerichohu/Documents/Hormony证书/追分/ballmall-releaseRelease.p7b",
                     "signAlg" : "SHA256withECDSA",
                     "storeFile" : "/Users/jerichohu/Documents/Hormony证书/cloudcoupon/cloud-coupon-release.p12",
                     "storePassword" : "0000001E3B3A3E14BB142C40240E6A4E3E24EDB874847B29EE6C5136E8F25D90DF3B1B4CEC407981F3C6A0792789"
                 }
             },
             "icons" : {
-                "foreground" : "/Users/wisesearch/Pictures/billiard_master_icons/frontend.png",
-                "background" : "/Users/wisesearch/Pictures/billiard_master_icons/backend.png"
+                "foreground" : "/Users/wisesearch/Pictures/chasing_points_icons/logo_new.png",
+                "background" : "/Users/wisesearch/Pictures/chasing_points_icons/logo_new.png"
             },
             "splashScreens" : {
-                "startWindowBackground" : "#F9F7F2",
-                "startWindowIcon" : "/Users/wisesearch/Pictures/billiard_master_icons/boot.png"
+                "startWindowBackground" : "#FFFFFF",
+                "startWindowIcon" : "/Users/wisesearch/Pictures/chasing_points_icons/启动页-画板-定稿-白色背景.png"
             },
             "targetSdkVersion" : "6.0.0(20)",
             "compatibleSdkVersion" : "5.0.0(12)"
         }
-    }
+    },
+    "_spaceID" : "mp-88060c6f-e151-43c0-b88d-5c230e971578"
 }

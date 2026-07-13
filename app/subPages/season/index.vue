@@ -1,8 +1,8 @@
 <template>
-	<view class="season-page">
+	<view class="season-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+				<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
@@ -120,6 +120,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { getCurrentSeason, getSeasonLeaderboard, getMySeasonRecord } from '@/api/season.js'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const statusMap = { 0: '未开始', 1: '进行中', 2: '已结束' }
 const gameTypeTabs = GAME_TYPE_TABS
@@ -271,15 +274,15 @@ onMounted(async () => {
 		color: #475569;
 	}
 	&.active {
-		background: linear-gradient(135deg, #18b05b 0%, #166534 100%);
-		border-color: transparent;
+		background: #fff7dc;
+		border: 1rpx solid rgba(224, 174, 18, 0.22);
 		text {
-			color: #fff;
+			color: #7c5b05;
 		}
 	}
-}
-.season-card {
-	background: linear-gradient(135deg, #18b05b 0%, #166534 100%);
+	}
+	.season-card {
+		background: linear-gradient(135deg, #5f4306 0%, #b68108 100%);
 	border-radius: 20rpx;
 	padding: 32rpx;
 	margin-bottom: 20rpx;
@@ -338,13 +341,13 @@ onMounted(async () => {
 			.stat-label { font-size: 22rpx; color: #94a3b8; }
 		}
 	}
-	.record-rank {
-		margin-top: 20rpx;
-		text-align: center;
-		font-size: 26rpx;
-		color: #18b05b;
-		font-weight: 500;
-	}
+		.record-rank {
+			margin-top: 20rpx;
+			text-align: center;
+			font-size: 26rpx;
+			color: #c69200;
+			font-weight: 500;
+		}
 }
 .leaderboard-card {
 	background: #fff;
@@ -355,14 +358,14 @@ onMounted(async () => {
 		justify-content: space-between;
 		align-items: center;
 		margin-bottom: 20rpx;
-		.report-btn {
-			padding: 8rpx 20rpx;
-			background: #18b05b;
-			border-radius: 8rpx;
-			font-size: 24rpx;
-			color: #fff;
+			.report-btn {
+				padding: 8rpx 20rpx;
+				background: #e0ae12;
+				border-radius: 8rpx;
+				font-size: 24rpx;
+				color: #231c0b;
+			}
 		}
-	}
 }
 .card-title {
 	font-size: 30rpx;
@@ -409,22 +412,22 @@ onMounted(async () => {
 		.rank-name { font-size: 28rpx; color: #1e293b; font-weight: 500; }
 		.rank-score { font-size: 22rpx; color: #94a3b8; margin-top: 4rpx; }
 	}
-	.rank-stats {
-		.rank-wins { font-size: 24rpx; color: #18b05b; font-weight: 500; }
+		.rank-stats {
+			.rank-wins { font-size: 24rpx; color: #c69200; font-weight: 500; }
+		}
 	}
-}
 .empty-list {
 	text-align: center;
 	padding: 40rpx;
 	font-size: 28rpx;
 	color: #94a3b8;
 }
-.load-more {
-	text-align: center;
-	padding: 24rpx;
-	font-size: 26rpx;
-	color: #18b05b;
-}
+	.load-more {
+		text-align: center;
+		padding: 24rpx;
+		font-size: 26rpx;
+		color: #c69200;
+	}
 .no-more {
 	text-align: center;
 	padding: 24rpx;

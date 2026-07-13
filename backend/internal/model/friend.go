@@ -34,6 +34,17 @@ func (FriendRequest) TableName() string {
 	return "friend_requests"
 }
 
+type FriendBlacklist struct {
+	Id            int64     `gorm:"primarykey"`
+	UserId        int64     `gorm:"not null;index:idx_user_blocked,unique"`
+	BlockedUserId int64     `gorm:"not null;index:idx_user_blocked,unique;index:idx_blocked_user"`
+	CreatedAt     time.Time `gorm:"autoCreateTime"`
+}
+
+func (FriendBlacklist) TableName() string {
+	return "friend_blacklists"
+}
+
 type FriendModel struct {
 	db *gorm.DB
 }
@@ -112,19 +123,65 @@ func (m *FriendModel) DeleteFriend(userId, friendId int64) error {
 	})
 }
 
-func (m *FriendModel) SendRequest(fromUserId, toUserId int64, message string) error {
+func (m *FriendModel) SendRequest(fromUserId, toUserId int64, message string) (*FriendRequest, error) {
 	request := &FriendRequest{
 		FromUserId: fromUserId,
 		ToUserId:   toUserId,
 		Status:     0,
 		Message:    message,
 	}
-	return m.db.Create(request).Error
+	if err := m.db.Create(request).Error; err != nil {
+		return nil, err
+	}
+	return request, nil
+}
+
+func (m *FriendModel) HasBlacklistRelation(userId1, userId2 int64) (bool, error) {
+	var count int64
+	err := m.db.Model(&FriendBlacklist{}).
+		Where("(user_id = ? AND blocked_user_id = ?) OR (user_id = ? AND blocked_user_id = ?)", userId1, userId2, userId2, userId1).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (m *FriendModel) BlacklistFriend(userId, blockedUserId int64) error {
+	if userId == blockedUserId {
+		return fmt.Errorf("cannot blacklist self")
+	}
+
+	return m.db.Transaction(func(tx *gorm.DB) error {
+		record := FriendBlacklist{
+			UserId:        userId,
+			BlockedUserId: blockedUserId,
+		}
+		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&record).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("(user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)", userId, blockedUserId, blockedUserId, userId).Delete(&Friend{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("status = 0").Where("(from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)", userId, blockedUserId, blockedUserId, userId).Delete(&FriendRequest{}).Error; err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (m *FriendModel) GetPendingRequests(userId int64) ([]FriendRequest, error) {
 	var list []FriendRequest
 	err := m.db.Where("to_user_id = ? AND status = 0", userId).
+		Order("created_at DESC, id DESC").
+		Find(&list).Error
+	return list, err
+}
+
+func (m *FriendModel) GetPendingRequestsBetweenUsers(userId1, userId2 int64) ([]FriendRequest, error) {
+	var list []FriendRequest
+	err := m.db.Where("status = 0").
+		Where("(from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)", userId1, userId2, userId2, userId1).
 		Order("created_at DESC, id DESC").
 		Find(&list).Error
 	return list, err
@@ -180,7 +237,7 @@ func (m *FriendModel) HasPendingRequest(userId1, userId2 int64) (bool, error) {
 	return count > 0, nil
 }
 
-func (m *FriendModel) SearchUsers(keyword string, limit int) ([]User, error) {
+func (m *FriendModel) SearchUsers(searcherId int64, keyword string, limit int) ([]User, error) {
 	if keyword == "" {
 		return []User{}, nil
 	}
@@ -191,7 +248,14 @@ func (m *FriendModel) SearchUsers(keyword string, limit int) ([]User, error) {
 	var list []User
 	err := m.db.Model(&User{}).
 		Where("status = 1").
+		Where("id <> ?", searcherId).
 		Where("nickname LIKE ? OR phone = ?", "%"+keyword+"%", keyword).
+		Where(`NOT EXISTS (
+			SELECT 1
+			FROM friend_blacklists
+			WHERE (user_id = ? AND blocked_user_id = users.id)
+				OR (user_id = users.id AND blocked_user_id = ?)
+		)`, searcherId, searcherId).
 		Order("id DESC").
 		Limit(limit).
 		Find(&list).Error

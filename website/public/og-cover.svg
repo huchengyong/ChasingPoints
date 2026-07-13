@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <rect width="1200" height="630" rx="40" fill="#151109"/>
+  <circle cx="982" cy="116" r="180" fill="url(#paint0_radial)" fill-opacity=".9"/>
+  <circle cx="215" cy="568" r="220" fill="url(#paint1_radial)" fill-opacity=".7"/>
+  <rect x="72" y="72" width="148" height="148" rx="34" fill="#D9A617"/>
+  <image href="/brand-logo.png" x="90" y="90" width="112" height="112"/>
+  <text x="72" y="314" fill="#FFF7E1" font-family="Arial, sans-serif" font-size="78" font-weight="700">
+    每一杆，都值得被记录
+  </text>
+  <text x="72" y="390" fill="#D7C89B" font-family="Arial, sans-serif" font-size="30">
+    追分是面向台球爱好者的竞技记录 App
+  </text>
+  <text x="72" y="438" fill="#D7C89B" font-family="Arial, sans-serif" font-size="30">
+    记录战绩、生成战报、找到旗鼓相当的对手
+  </text>
+  <defs>
+    <radialGradient id="paint0_radial" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(982 116) rotate(90) scale(180)">
+      <stop stop-color="#D9A617"/>
+      <stop offset="1" stop-color="#D9A617" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="paint1_radial" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(215 568) rotate(90) scale(220)">
+      <stop stop-color="#18B05B"/>
+      <stop offset="1" stop-color="#18B05B" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+</svg>

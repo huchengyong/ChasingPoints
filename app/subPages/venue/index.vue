@@ -1,15 +1,15 @@
 <template>
-	<view class="venue-page">
+	<view class="venue-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 定位与城市 -->
 		<view class="location-bar">
 			<view class="location-info" @tap="getLocation">
-				<uni-icons type="location" size="18" color="#18b05b"></uni-icons>
+					<uni-icons type="location" size="18" color="#E0AE12"></uni-icons>
 				<text class="location-text">{{ currentCity || '定位中...' }}</text>
 				<uni-icons type="refreshempty" size="14" color="#94a3b8"></uni-icons>
 			</view>
 			<view class="submit-btn" @tap="goSubmit">
 				<uni-icons type="plusempty" size="16" color="#fff"></uni-icons>
-				<text class="submit-text">上传球馆</text>
+				<text class="submit-text">添加常玩球馆</text>
 			</view>
 		</view>
 
@@ -25,7 +25,7 @@
 
 		<!-- 加载中 -->
 		<view v-if="loading && page === 1" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+				<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
@@ -79,7 +79,7 @@
 				<text class="empty-icon">🎱</text>
 				<text class="empty-text">{{ mode === 'nearby' ? '附近暂无球馆' : '暂无球馆数据' }}</text>
 				<view class="empty-btn" @tap="goSubmit">
-					<text>上传球馆信息</text>
+					<text>添加常玩球馆</text>
 				</view>
 			</view>
 
@@ -94,6 +94,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getVenueList, getNearbyVenues } from '@/api/venue.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const mode = ref('nearby')
 const list = ref([])
@@ -227,11 +230,11 @@ onMounted(() => {
 		align-items: center;
 		gap: 6rpx;
 		padding: 12rpx 24rpx;
-		background: #18b05b;
-		border-radius: 12rpx;
-		.submit-text { font-size: 26rpx; color: #fff; }
+			background: #e0ae12;
+			border-radius: 12rpx;
+			.submit-text { font-size: 26rpx; color: #ffffff; }
+		}
 	}
-}
 .mode-tabs {
 	display: flex;
 	background: #fff;
@@ -243,11 +246,12 @@ onMounted(() => {
 		background: #f1f5f9;
 		font-size: 26rpx;
 		color: #64748b;
-		&.active {
-			background: #f0fdf4;
-			color: #18b05b;
-			font-weight: 500;
-		}
+			&.active {
+				background: #fff7dc;
+				border: 1rpx solid rgba(224, 174, 18, 0.22);
+				color: #c69200;
+				font-weight: 500;
+			}
 	}
 }
 .loading-state {
@@ -311,10 +315,10 @@ onMounted(() => {
 		.venue-bottom {
 			display: flex;
 			gap: 20rpx;
-			.venue-distance { font-size: 24rpx; color: #18b05b; }
-			.venue-checkins { font-size: 24rpx; color: #94a3b8; }
+				.venue-distance { font-size: 24rpx; color: #c69200; }
+				.venue-checkins { font-size: 24rpx; color: #94a3b8; }
+			}
 		}
-	}
 }
 .empty-state {
 	display: flex;
@@ -324,14 +328,14 @@ onMounted(() => {
 	min-height: 50vh;
 	.empty-icon { font-size: 80rpx; margin-bottom: 16rpx; }
 	.empty-text { font-size: 28rpx; color: #94a3b8; margin-bottom: 24rpx; }
-	.empty-btn {
-		padding: 16rpx 40rpx;
-		background: #18b05b;
-		border-radius: 12rpx;
-		color: #fff;
-		font-size: 28rpx;
+		.empty-btn {
+			padding: 16rpx 40rpx;
+			background: #e0ae12;
+			border-radius: 12rpx;
+			color: #ffffff;
+			font-size: 28rpx;
+		}
 	}
-}
 .no-more {
 	text-align: center;
 	padding: 32rpx;

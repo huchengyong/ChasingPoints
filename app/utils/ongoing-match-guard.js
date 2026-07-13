@@ -13,6 +13,40 @@ const normalizeMatchPayload = (match = {}, fallback = {}) => {
 
 export const isPlayingMatchRoute = (route = '') => route.includes(PLAYING_ROUTE)
 
+export const resolveMatchScanAction = (scanResult = '') => {
+  let payload = null
+  try {
+    payload = JSON.parse(scanResult)
+  } catch {
+    return {
+      type: 'error',
+      message: '无效的二维码'
+    }
+  }
+
+  if (payload?.type === 'match_referee' && payload?.match_id && payload?.join_token) {
+    return {
+      type: 'join_referee',
+      refereeJoin: {
+        match_id: Number(payload.match_id),
+        join_token: payload.join_token
+      }
+    }
+  }
+
+  if (payload?.user_id) {
+    return {
+      type: 'start_match',
+      opponent: payload
+    }
+  }
+
+  return {
+    type: 'error',
+    message: '无效的二维码'
+  }
+}
+
 export const shouldPromptOngoingMatch = ({
   isLoggedIn = false,
   currentRoute = '',

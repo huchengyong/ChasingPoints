@@ -1,11 +1,13 @@
 package svc
 
 import (
-	"billiard_master/internal/config"
-	"billiard_master/internal/model"
-	"billiard_master/internal/pkg/geocode"
-	"billiard_master/internal/pkg/push"
-	"billiard_master/internal/sms"
+	"chasing_points/internal/config"
+	"chasing_points/internal/model"
+	"chasing_points/internal/pkg/geocode"
+	"chasing_points/internal/pkg/push"
+	qiniuupload "chasing_points/internal/pkg/qiniu"
+	"chasing_points/internal/pkg/wechatmini"
+	"chasing_points/internal/sms"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -19,42 +21,59 @@ const (
 	defaultQuotaPrefix    = "geo:quota"
 	defaultQuotaTTL       = 70 * time.Second
 	defaultGeocodeSource  = "apihz"
-	defaultGeocodeLocker  = "billiard-master-api"
+	defaultGeocodeLocker  = "chasing_points-api"
 )
 
 type ServiceContext struct {
-	Config                     config.Config
-	DB                         *gorm.DB
-	Redis                      *redis.Client
-	SmsClient                  *sms.AliSmsClient
-	CodeManager                *sms.CodeManager
-	UserModel                  *model.UserModel
-	OauthModel                 *model.UserOauthModel
-	MatchModel                 *model.MatchModel
-	RankingModel               *model.RankingModel
-	AchievementModel           *model.AchievementModel
-	UserAchievementModel       *model.UserAchievementModel
-	UserTitleModel             *model.UserTitleModel
-	FriendModel                *model.FriendModel
-	FollowModel                *model.FollowModel
-	SocialPostModel            *model.SocialPostModel
-	NotificationModel          *model.NotificationModel
-	ChallengeModel             *model.ChallengeModel
-	TournamentModel            *model.TournamentModel
-	TournamentParticipantModel *model.TournamentParticipantModel
-	RulesContentModel          *model.RulesContentModel
-	SeasonModel                *model.SeasonModel
-	SeasonRecordModel          *model.SeasonRecordModel
-	VenueModel                 *model.VenueModel
-	VenueCheckinModel          *model.VenueCheckinModel
-	VenueGeocodeTaskModel      *model.VenueGeocodeTaskModel
-	GeocodeAccountModel        *model.GeocodeAccountModel
-	TournamentMatchModel       *model.TournamentMatchModel
-	AdminModel                 *model.AdminModel
-	AdminLoginLogModel         *model.AdminLoginLogModel
-	PushService                *push.PushService
-	Geocoder                   geocode.Geocoder
-	GeocodeWorker              *geocode.Worker
+	Config                          config.Config
+	DB                              *gorm.DB
+	Redis                           *redis.Client
+	SmsClient                       *sms.AliSmsClient
+	CodeManager                     *sms.CodeManager
+	AreaModel                       *model.AreaModel
+	UserModel                       *model.UserModel
+	OauthModel                      *model.UserOauthModel
+	MatchModel                      *model.MatchModel
+	RankingModel                    *model.RankingModel
+	AchievementModel                *model.AchievementModel
+	UserAchievementModel            *model.UserAchievementModel
+	UserTitleModel                  *model.UserTitleModel
+	AchievementProgressEventModel   *model.AchievementProgressEventModel
+	FriendModel                     *model.FriendModel
+	FollowModel                     *model.FollowModel
+	SocialPostModel                 *model.SocialPostModel
+	NotificationModel               *model.NotificationModel
+	UserNotificationPreferenceModel *model.UserNotificationPreferenceModel
+	ChallengeModel                  *model.ChallengeModel
+	TournamentModel                 *model.TournamentModel
+	TournamentParticipantModel      *model.TournamentParticipantModel
+	EventNewsModel                  *model.EventNewsModel
+	PlayerModel                     *model.PlayerModel
+	RulesContentModel               *model.RulesContentModel
+	SeasonModel                     *model.SeasonModel
+	SeasonRecordModel               *model.SeasonRecordModel
+	VenueModel                      *model.VenueModel
+	VenueCheckinModel               *model.VenueCheckinModel
+	VenueGeocodeTaskModel           *model.VenueGeocodeTaskModel
+	GeocodeAccountModel             *model.GeocodeAccountModel
+	FavoriteVenueRewardConfigModel  *model.FavoriteVenueRewardConfigModel
+	FavoriteVenueRewardRecordModel  *model.FavoriteVenueRewardRecordModel
+	MemberSubscriptionOrderModel    *model.MemberSubscriptionOrderModel
+	MemberGrowthProfileModel        *model.MemberGrowthProfileModel
+	MemberGrowthLogModel            *model.MemberGrowthLogModel
+	MemberRightsConfigModel         *model.MemberRightsConfigModel
+	ReputationConfigModel           *model.ReputationConfigModel
+	UserReputationProfileModel      *model.UserReputationProfileModel
+	UserReputationLogModel          *model.UserReputationLogModel
+	FeedbackTicketModel             *model.FeedbackTicketModel
+	TournamentMatchModel            *model.TournamentMatchModel
+	AdminModel                      *model.AdminModel
+	AdminLoginLogModel              *model.AdminLoginLogModel
+	PushService                     *push.PushService
+	QiniuUploadService              *qiniuupload.UploadService
+	Geocoder                        geocode.Geocoder
+	GeocodeWorker                   *geocode.Worker
+	WechatMiniClient                wechatmini.Client
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -65,68 +84,109 @@ func NewServiceContext(c config.Config) *ServiceContext {
 
 	models := newServiceModels(db)
 	geocodeDeps := newGeocodeDependencies(c, rdb, models)
+	wechatMiniClient := newWechatMiniClient(c)
 
 	return &ServiceContext{
-		Config:                     c,
-		DB:                         db,
-		Redis:                      rdb,
-		SmsClient:                  smsClient,
-		CodeManager:                codeManager,
-		UserModel:                  models.UserModel,
-		OauthModel:                 models.OauthModel,
-		MatchModel:                 models.MatchModel,
-		RankingModel:               models.RankingModel,
-		AchievementModel:           models.AchievementModel,
-		UserAchievementModel:       models.UserAchievementModel,
-		UserTitleModel:             models.UserTitleModel,
-		FriendModel:                models.FriendModel,
-		FollowModel:                models.FollowModel,
-		SocialPostModel:            models.SocialPostModel,
-		NotificationModel:          models.NotificationModel,
-		ChallengeModel:             models.ChallengeModel,
-		TournamentModel:            models.TournamentModel,
-		TournamentParticipantModel: models.TournamentParticipantModel,
-		RulesContentModel:          models.RulesContentModel,
-		SeasonModel:                models.SeasonModel,
-		SeasonRecordModel:          models.SeasonRecordModel,
-		VenueModel:                 models.VenueModel,
-		VenueCheckinModel:          models.VenueCheckinModel,
-		VenueGeocodeTaskModel:      models.VenueGeocodeTaskModel,
-		GeocodeAccountModel:        models.GeocodeAccountModel,
-		TournamentMatchModel:       models.TournamentMatchModel,
-		AdminModel:                 models.AdminModel,
-		AdminLoginLogModel:         models.AdminLoginLogModel,
-		PushService:                newPushService(c),
-		Geocoder:                   geocodeDeps.Client,
-		GeocodeWorker:              geocodeDeps.Worker,
+		Config:                          c,
+		DB:                              db,
+		Redis:                           rdb,
+		SmsClient:                       smsClient,
+		CodeManager:                     codeManager,
+		AreaModel:                       models.AreaModel,
+		UserModel:                       models.UserModel,
+		OauthModel:                      models.OauthModel,
+		MatchModel:                      models.MatchModel,
+		RankingModel:                    models.RankingModel,
+		AchievementModel:                models.AchievementModel,
+		UserAchievementModel:            models.UserAchievementModel,
+		UserTitleModel:                  models.UserTitleModel,
+		AchievementProgressEventModel:   models.AchievementProgressEventModel,
+		FriendModel:                     models.FriendModel,
+		FollowModel:                     models.FollowModel,
+		SocialPostModel:                 models.SocialPostModel,
+		NotificationModel:               models.NotificationModel,
+		UserNotificationPreferenceModel: models.UserNotificationPreferenceModel,
+		ChallengeModel:                  models.ChallengeModel,
+		TournamentModel:                 models.TournamentModel,
+		TournamentParticipantModel:      models.TournamentParticipantModel,
+		EventNewsModel:                  models.EventNewsModel,
+		PlayerModel:                     models.PlayerModel,
+		RulesContentModel:               models.RulesContentModel,
+		SeasonModel:                     models.SeasonModel,
+		SeasonRecordModel:               models.SeasonRecordModel,
+		VenueModel:                      models.VenueModel,
+		VenueCheckinModel:               models.VenueCheckinModel,
+		VenueGeocodeTaskModel:           models.VenueGeocodeTaskModel,
+		GeocodeAccountModel:             models.GeocodeAccountModel,
+		FavoriteVenueRewardConfigModel:  models.FavoriteVenueRewardConfigModel,
+		FavoriteVenueRewardRecordModel:  models.FavoriteVenueRewardRecordModel,
+		MemberSubscriptionOrderModel:    models.MemberSubscriptionOrderModel,
+		MemberGrowthProfileModel:        models.MemberGrowthProfileModel,
+		MemberGrowthLogModel:            models.MemberGrowthLogModel,
+		MemberRightsConfigModel:         models.MemberRightsConfigModel,
+		ReputationConfigModel:           models.ReputationConfigModel,
+		UserReputationProfileModel:      models.UserReputationProfileModel,
+		UserReputationLogModel:          models.UserReputationLogModel,
+		FeedbackTicketModel:             models.FeedbackTicketModel,
+		TournamentMatchModel:            models.TournamentMatchModel,
+		AdminModel:                      models.AdminModel,
+		AdminLoginLogModel:              models.AdminLoginLogModel,
+		PushService:                     newPushService(c),
+		QiniuUploadService:              newQiniuUploadService(c),
+		Geocoder:                        geocodeDeps.Client,
+		GeocodeWorker:                   geocodeDeps.Worker,
+		WechatMiniClient:                wechatMiniClient,
 	}
 }
 
+func newWechatMiniClient(c config.Config) wechatmini.Client {
+	return wechatmini.NewHTTPClient(
+		c.WechatMiniProgram.AppId,
+		c.WechatMiniProgram.AppSecret,
+		time.Duration(c.WechatMiniProgram.RequestTimeoutMs)*time.Millisecond,
+	)
+}
+
 type serviceModels struct {
-	UserModel                  *model.UserModel
-	OauthModel                 *model.UserOauthModel
-	MatchModel                 *model.MatchModel
-	RankingModel               *model.RankingModel
-	AchievementModel           *model.AchievementModel
-	UserAchievementModel       *model.UserAchievementModel
-	UserTitleModel             *model.UserTitleModel
-	FriendModel                *model.FriendModel
-	FollowModel                *model.FollowModel
-	SocialPostModel            *model.SocialPostModel
-	NotificationModel          *model.NotificationModel
-	ChallengeModel             *model.ChallengeModel
-	TournamentModel            *model.TournamentModel
-	TournamentParticipantModel *model.TournamentParticipantModel
-	RulesContentModel          *model.RulesContentModel
-	SeasonModel                *model.SeasonModel
-	SeasonRecordModel          *model.SeasonRecordModel
-	VenueModel                 *model.VenueModel
-	VenueCheckinModel          *model.VenueCheckinModel
-	VenueGeocodeTaskModel      *model.VenueGeocodeTaskModel
-	GeocodeAccountModel        *model.GeocodeAccountModel
-	TournamentMatchModel       *model.TournamentMatchModel
-	AdminModel                 *model.AdminModel
-	AdminLoginLogModel         *model.AdminLoginLogModel
+	AreaModel                       *model.AreaModel
+	UserModel                       *model.UserModel
+	OauthModel                      *model.UserOauthModel
+	MatchModel                      *model.MatchModel
+	RankingModel                    *model.RankingModel
+	AchievementModel                *model.AchievementModel
+	UserAchievementModel            *model.UserAchievementModel
+	UserTitleModel                  *model.UserTitleModel
+	AchievementProgressEventModel   *model.AchievementProgressEventModel
+	FriendModel                     *model.FriendModel
+	FollowModel                     *model.FollowModel
+	SocialPostModel                 *model.SocialPostModel
+	NotificationModel               *model.NotificationModel
+	UserNotificationPreferenceModel *model.UserNotificationPreferenceModel
+	ChallengeModel                  *model.ChallengeModel
+	TournamentModel                 *model.TournamentModel
+	TournamentParticipantModel      *model.TournamentParticipantModel
+	EventNewsModel                  *model.EventNewsModel
+	PlayerModel                     *model.PlayerModel
+	RulesContentModel               *model.RulesContentModel
+	SeasonModel                     *model.SeasonModel
+	SeasonRecordModel               *model.SeasonRecordModel
+	VenueModel                      *model.VenueModel
+	VenueCheckinModel               *model.VenueCheckinModel
+	VenueGeocodeTaskModel           *model.VenueGeocodeTaskModel
+	GeocodeAccountModel             *model.GeocodeAccountModel
+	FavoriteVenueRewardConfigModel  *model.FavoriteVenueRewardConfigModel
+	FavoriteVenueRewardRecordModel  *model.FavoriteVenueRewardRecordModel
+	MemberSubscriptionOrderModel    *model.MemberSubscriptionOrderModel
+	MemberGrowthProfileModel        *model.MemberGrowthProfileModel
+	MemberGrowthLogModel            *model.MemberGrowthLogModel
+	MemberRightsConfigModel         *model.MemberRightsConfigModel
+	ReputationConfigModel           *model.ReputationConfigModel
+	UserReputationProfileModel      *model.UserReputationProfileModel
+	UserReputationLogModel          *model.UserReputationLogModel
+	FeedbackTicketModel             *model.FeedbackTicketModel
+	TournamentMatchModel            *model.TournamentMatchModel
+	AdminModel                      *model.AdminModel
+	AdminLoginLogModel              *model.AdminLoginLogModel
 }
 
 type geocodeDependencies struct {
@@ -176,36 +236,61 @@ func mustNewSmsClient(c config.Config) *sms.AliSmsClient {
 }
 
 func newServiceModels(db *gorm.DB) serviceModels {
+	areaModel := model.NewAreaModel(db)
 	venueModel := model.NewVenueModel(db)
 	venueCheckinModel := model.NewVenueCheckinModel(db)
 	venueGeocodeTaskModel := model.NewVenueGeocodeTaskModel(db)
 	geocodeAccountModel := model.NewGeocodeAccountModel(db)
+	favoriteVenueRewardConfigModel := model.NewFavoriteVenueRewardConfigModel(db)
+	favoriteVenueRewardRecordModel := model.NewFavoriteVenueRewardRecordModel(db)
+	memberSubscriptionOrderModel := model.NewMemberSubscriptionOrderModel(db)
+	memberGrowthProfileModel := model.NewMemberGrowthProfileModel(db)
+	memberGrowthLogModel := model.NewMemberGrowthLogModel(db)
+	memberRightsConfigModel := model.NewMemberRightsConfigModel(db)
+	reputationConfigModel := model.NewReputationConfigModel(db)
+	userReputationProfileModel := model.NewUserReputationProfileModel(db)
+	userReputationLogModel := model.NewUserReputationLogModel(db)
 
 	return serviceModels{
-		UserModel:                  model.NewUserModel(db),
-		OauthModel:                 model.NewUserOauthModel(db),
-		MatchModel:                 model.NewMatchModel(db),
-		RankingModel:               model.NewRankingModel(db),
-		AchievementModel:           model.NewAchievementModel(db),
-		UserAchievementModel:       model.NewUserAchievementModel(db),
-		UserTitleModel:             model.NewUserTitleModel(db),
-		FriendModel:                model.NewFriendModel(db),
-		FollowModel:                model.NewFollowModel(db),
-		SocialPostModel:            model.NewSocialPostModel(db),
-		NotificationModel:          model.NewNotificationModel(db),
-		ChallengeModel:             model.NewChallengeModel(db),
-		TournamentModel:            model.NewTournamentModel(db),
-		TournamentParticipantModel: model.NewTournamentParticipantModel(db),
-		RulesContentModel:          model.NewRulesContentModel(db),
-		SeasonModel:                model.NewSeasonModel(db),
-		SeasonRecordModel:          model.NewSeasonRecordModel(db),
-		VenueModel:                 venueModel,
-		VenueCheckinModel:          venueCheckinModel,
-		VenueGeocodeTaskModel:      venueGeocodeTaskModel,
-		GeocodeAccountModel:        geocodeAccountModel,
-		TournamentMatchModel:       model.NewTournamentMatchModel(db),
-		AdminModel:                 model.NewAdminModel(db),
-		AdminLoginLogModel:         model.NewAdminLoginLogModel(db),
+		AreaModel:                       areaModel,
+		UserModel:                       model.NewUserModel(db),
+		OauthModel:                      model.NewUserOauthModel(db),
+		MatchModel:                      model.NewMatchModel(db),
+		RankingModel:                    model.NewRankingModel(db),
+		AchievementModel:                model.NewAchievementModel(db),
+		UserAchievementModel:            model.NewUserAchievementModel(db),
+		UserTitleModel:                  model.NewUserTitleModel(db),
+		AchievementProgressEventModel:   model.NewAchievementProgressEventModel(db),
+		FriendModel:                     model.NewFriendModel(db),
+		FollowModel:                     model.NewFollowModel(db),
+		SocialPostModel:                 model.NewSocialPostModel(db),
+		NotificationModel:               model.NewNotificationModel(db),
+		UserNotificationPreferenceModel: model.NewUserNotificationPreferenceModel(db),
+		ChallengeModel:                  model.NewChallengeModel(db),
+		TournamentModel:                 model.NewTournamentModel(db),
+		TournamentParticipantModel:      model.NewTournamentParticipantModel(db),
+		EventNewsModel:                  model.NewEventNewsModel(db),
+		PlayerModel:                     model.NewPlayerModel(db),
+		RulesContentModel:               model.NewRulesContentModel(db),
+		SeasonModel:                     model.NewSeasonModel(db),
+		SeasonRecordModel:               model.NewSeasonRecordModel(db),
+		VenueModel:                      venueModel,
+		VenueCheckinModel:               venueCheckinModel,
+		VenueGeocodeTaskModel:           venueGeocodeTaskModel,
+		GeocodeAccountModel:             geocodeAccountModel,
+		FavoriteVenueRewardConfigModel:  favoriteVenueRewardConfigModel,
+		FavoriteVenueRewardRecordModel:  favoriteVenueRewardRecordModel,
+		MemberSubscriptionOrderModel:    memberSubscriptionOrderModel,
+		MemberGrowthProfileModel:        memberGrowthProfileModel,
+		MemberGrowthLogModel:            memberGrowthLogModel,
+		MemberRightsConfigModel:         memberRightsConfigModel,
+		ReputationConfigModel:           reputationConfigModel,
+		UserReputationProfileModel:      userReputationProfileModel,
+		UserReputationLogModel:          userReputationLogModel,
+		FeedbackTicketModel:             model.NewFeedbackTicketModel(db),
+		TournamentMatchModel:            model.NewTournamentMatchModel(db),
+		AdminModel:                      model.NewAdminModel(db),
+		AdminLoginLogModel:              model.NewAdminLoginLogModel(db),
 	}
 }
 
@@ -231,6 +316,20 @@ func newGeocodeDependencies(c config.Config, rdb *redis.Client, models serviceMo
 		Client: client,
 		Worker: worker,
 	}
+}
+
+func newQiniuUploadService(c config.Config) *qiniuupload.UploadService {
+	service := qiniuupload.NewUploadService(qiniuupload.Config{
+		AccessKey:    c.Qiniu.AccessKey,
+		SecretKey:    c.Qiniu.SecretKey,
+		Bucket:       c.Qiniu.Bucket,
+		UploadURL:    c.Qiniu.UploadUrl,
+		PublicDomain: c.Qiniu.PublicDomain,
+	})
+	if !service.Enabled() {
+		return nil
+	}
+	return service
 }
 
 func newPushService(c config.Config) *push.PushService {

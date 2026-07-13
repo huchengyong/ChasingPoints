@@ -1,0 +1,106 @@
+Name: ${APP_NAME}
+Host: ${APP_HOST}
+Port: ${APP_PORT}
+Env: ${APP_ENV}
+Timeout: 10000
+
+# JWT配置
+Auth:
+  AccessSecret: ${JWT_ACCESS_SECRET}
+  AccessExpire: 604800
+  RefreshExpire: 2592000
+
+# MySQL配置
+MySQL:
+  DataSource: ${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(${MYSQL_HOST}:${MYSQL_PORT})/${MYSQL_DATABASE}?charset=utf8mb4&parseTime=true&loc=Local
+
+# Redis配置
+Redis:
+  Host: ${REDIS_HOST}:${REDIS_PORT}
+  Password: ${REDIS_PASSWORD}
+  DB: 0
+
+# 阿里云短信配置
+AliSms:
+  AccessKeyId: ${ALI_SMS_ACCESS_KEY_ID}
+  AccessKeySecret: ${ALI_SMS_ACCESS_KEY_SECRET}
+  SignName: ${ALI_SMS_SIGN_NAME}
+  TemplateCode: ${ALI_SMS_TEMPLATE_CODE}
+  Endpoint: ${ALI_SMS_ENDPOINT}
+
+# 推送配置
+UniPush:
+  AppId: ${UNIPUSH_APP_ID}
+  AppKey: ${UNIPUSH_APP_KEY}
+  MasterSecret: ${UNIPUSH_MASTER_SECRET}
+  Enabled: false
+
+Qiniu:
+  AccessKey: ${QINIU_ACCESS_KEY}
+  SecretKey: ${QINIU_SECRET_KEY}
+  Bucket: ${QINIU_BUCKET}
+  UploadUrl: ${QINIU_UPLOAD_URL}
+  PublicDomain: ${QINIU_PUBLIC_DOMAIN}
+
+# 支付宝支付配置
+Alipay:
+  AppId: ${ALIPAY_APP_ID}
+  PrivateKey: ${ALIPAY_PRIVATE_KEY}
+  PublicKey: ${ALIPAY_PUBLIC_KEY}
+  PublicCert: ${ALIPAY_PUBLIC_CERT}
+  AppCert: ${ALIPAY_APP_CERT}
+  RootCert: ${ALIPAY_ROOT_CERT}
+  NotifyUrl: ${ALIPAY_NOTIFY_URL}
+  ReturnUrl: ${ALIPAY_RETURN_URL}
+  IsProd: ${ALIPAY_IS_PROD}
+  Charset: ${ALIPAY_CHARSET}
+  SignType: ${ALIPAY_SIGN_TYPE}
+  UseCert: ${ALIPAY_USE_CERT}
+
+# 微信支付配置
+WechatPay:
+  AppId: ${WECHAT_APP_ID}
+  MchId: ${WECHAT_MCH_ID}
+  ApiKey: ${WECHAT_API_KEY}
+  SerialNo: ${WECHAT_SERIAL_NO}
+  ApiV3Key: ${WECHAT_API_V3_KEY}
+  PrivateKey: ${WECHAT_PRIVATE_KEY}
+  NotifyUrl: ${WECHAT_NOTIFY_URL}
+  IsProd: ${WECHAT_IS_PROD}
+  UseCert: ${WECHAT_USE_CERT}
+
+# 微信小程序登录配置
+WechatMiniProgram:
+  AppId: ${WECHAT_MINI_PROGRAM_APP_ID}
+  AppSecret: ${WECHAT_MINI_PROGRAM_APP_SECRET}
+  RequestTimeoutMs: 5000
+  MessagePushToken: ${WECHAT_MINI_MESSAGE_PUSH_TOKEN}
+  MessagePushEncodingAESKey: ${WECHAT_MINI_MESSAGE_PUSH_ENCODING_AES_KEY}
+
+Geocode:
+  WorkerEnabled: true
+  PollIntervalMs: 3000
+  RequestTimeoutMs: 5000
+  MaxAttempts: 5
+  BatchSize: 5
+  AutoPublish: true
+  EncryptSecret: ${GEOCODE_ENCRYPT_SECRET}
+
+WSTSync:
+  Enabled: true
+  IntervalMinutes: 720
+  LookbackDays: 30
+  LookaheadDays: 7
+  Publish: true
+  HotEnabled: true
+  HotIntervalMinutes: 15
+  HotLookbackDays: 2
+  HotLookaheadDays: 7
+
+Log:
+  Encoding: plain
+  Mode: console
+  Level: debug
+  MaxSize: 20
+  Rotation: size
+  Stat: false

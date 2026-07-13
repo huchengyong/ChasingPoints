@@ -267,7 +267,7 @@ func (m *RankingModel) UpdateAfterMatch(userId int64, isWin bool, achievementSco
 		return err
 	}
 
-	// 基础积分变化
+	// 基础段位分变化
 	scoreChange := 0
 	if isWin {
 		scoreChange = 20 + achievementScores // 胜利 +20 + 特殊战绩奖励
@@ -496,11 +496,15 @@ func (m *RankingModel) ListRankChangesByUserBetween(userId int64, start, end tim
 
 // ListRankChangesByUserAndGameTypeBetween 获取用户某球种在时间范围内的段位变更记录
 func (m *RankingModel) ListRankChangesByUserAndGameTypeBetween(userId int64, gameType int, start, end time.Time) ([]RankChangeLog, error) {
-	db, err := m.resolveDB(nil)
+	return m.ListRankChangesByUserAndGameTypeBetweenWithTx(nil, userId, gameType, start, end)
+}
+
+func (m *RankingModel) ListRankChangesByUserAndGameTypeBetweenWithTx(tx *gorm.DB, userId int64, gameType int, start, end time.Time) ([]RankChangeLog, error) {
+	db, err := m.resolveDB(tx)
 	if err != nil {
 		return nil, err
 	}
-	supportsGameType, err := m.rankChangeLogSupportsGameType(nil)
+	supportsGameType, err := m.rankChangeLogSupportsGameType(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -546,6 +550,36 @@ func (m *RankingModel) SumPositiveRankChangesByUserAndGameTypeBetween(
 	return total, err
 }
 
+// SumPositiveAchievementRankChangesByUserAndGameTypeBetween 汇总时间范围内会员特殊战绩正向涨分
+func (m *RankingModel) SumPositiveAchievementRankChangesByUserAndGameTypeBetween(
+	tx *gorm.DB,
+	userId int64,
+	gameType int,
+	start, end time.Time,
+) (int, error) {
+	db, err := m.resolveDB(tx)
+	if err != nil {
+		return 0, err
+	}
+	supportsGameType, err := m.rankChangeLogSupportsGameType(tx)
+	if err != nil {
+		return 0, err
+	}
+
+	var total int
+	query := db.Model(&RankChangeLog{}).
+		Select("COALESCE(SUM(CASE WHEN achievement_score > 0 THEN achievement_score ELSE 0 END), 0)").
+		Where("user_id = ? AND change_type = ? AND effective_at >= ? AND effective_at < ?",
+			userId,
+			rankChangeTypeMatchResult,
+			start,
+			end,
+		)
+	query = applyRankChangeLogGameTypeFilter(query, supportsGameType, gameType)
+	err = query.Scan(&total).Error
+	return total, err
+}
+
 // FindLatestRankChangeBefore 获取某个时间点之前最近的一条段位变更记录
 func (m *RankingModel) FindLatestRankChangeBefore(userId int64, at time.Time) (*RankChangeLog, error) {
 	db, err := m.resolveDB(nil)
@@ -565,11 +599,15 @@ func (m *RankingModel) FindLatestRankChangeBefore(userId int64, at time.Time) (*
 
 // FindLatestRankChangeBeforeByGameType 获取某个时间点之前最近的一条指定球种段位变更记录
 func (m *RankingModel) FindLatestRankChangeBeforeByGameType(userId int64, gameType int, at time.Time) (*RankChangeLog, error) {
-	db, err := m.resolveDB(nil)
+	return m.FindLatestRankChangeBeforeByGameTypeWithTx(nil, userId, gameType, at)
+}
+
+func (m *RankingModel) FindLatestRankChangeBeforeByGameTypeWithTx(tx *gorm.DB, userId int64, gameType int, at time.Time) (*RankChangeLog, error) {
+	db, err := m.resolveDB(tx)
 	if err != nil {
 		return nil, err
 	}
-	supportsGameType, err := m.rankChangeLogSupportsGameType(nil)
+	supportsGameType, err := m.rankChangeLogSupportsGameType(tx)
 	if err != nil {
 		return nil, err
 	}

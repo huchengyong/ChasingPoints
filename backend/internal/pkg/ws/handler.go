@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"billiard_master/internal/svc"
+	"chasing_points/internal/svc"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/gorilla/websocket"

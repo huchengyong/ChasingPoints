@@ -87,6 +87,12 @@ export const formatMonthKey = (dateTime, timeZone = 'Asia/Shanghai') => {
   const date = typeof dateTime === 'string' ? new Date(dateTime) : dateTime
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ''
 
+  if (typeof Intl === 'undefined' || typeof Intl?.DateTimeFormat !== 'function') {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    return `${year}-${month}`
+  }
+
   const formatter = new Intl.DateTimeFormat('zh-CN', {
     timeZone,
     year: 'numeric',

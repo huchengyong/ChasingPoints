@@ -27,14 +27,14 @@
 			"path": "pages/index/index",
 			"style": {
 				"navigationStyle": "custom",
-				"navigationBarTitleText": "球艺堂",
+				"navigationBarTitleText": "追分",
 				"navigationBarBackgroundColor": "@background"
 			}
 		},
 		{
 			"path": "pages/match/index",
 			"style": {
-				"navigationBarTitleText": "正在进行中的对局",
+				"navigationBarTitleText": "观赛",
 				"enablePullDownRefresh": true
 			}
 		},
@@ -47,7 +47,7 @@
 		{
 			"path": "pages/social/index",
 			"style": {
-				"navigationBarTitleText": "动态"
+				"navigationBarTitleText": "赛讯"
 			}
 		},
 			{
@@ -71,13 +71,13 @@
 			},
 			{
 				"pagePath": "pages/match/index",
-				"text": "对局",
+				"text": "观赛",
 				"iconPath": "@matchIconPath",
 				"selectedIconPath": "@selectedMatchIconPath"
 			},
 			{
 				"pagePath": "pages/social/index",
-				"text": "动态",
+				"text": "赛讯",
 				"iconPath": "@socialIconPath",
 				"selectedIconPath": "@selectedSocialIconPath"
 			},
@@ -91,7 +91,7 @@
 	},
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "球艺堂",
+		"navigationBarTitleText": "追分",
 		"navigationBarBackgroundColor": "@background",
 		"backgroundColor": "@background"
 	},
@@ -137,7 +137,7 @@
 				{
 					"path": "opponentRecord",
 					"style": {
-						"navigationBarTitleText": "对手记录"
+						"navigationBarTitleText": "过往对手"
 					}
 				},
 				{
@@ -151,13 +151,23 @@
 					"style": {
 						"navigationBarTitleText": "设置"
 					}
+				},
+				{
+					"path": "memberCenter",
+					"style": {
+						"navigationBarTitleText": "会员中心"
+					}
+				},
+				{
+					"path": "reputation",
+					"style": {
+						"navigationBarTitleText": "信誉明细"
+					}
 				}
 				,{
 					"path": "statsDetail",
 					"style": {
-						"navigationBarTitleText": "深度统计",
-						"navigationBarBackgroundColor": "#f1f5f9",
-						"backgroundColor": "#f1f5f9"
+						"navigationBarTitleText": "竞技分析"
 					}
 				}
 			]
@@ -198,7 +208,7 @@
 					{
 						"path": "feedback",
 						"style": {
-							"navigationBarTitleText": "意见反馈"
+							"navigationBarTitleText": "投诉举报与反馈"
 						}
 					}
 				]
@@ -242,10 +252,23 @@
 					}
 				},
 				{
+					"path": "myPosts",
+					"style": {
+						"navigationBarTitleText": "我的动态",
+						"enablePullDownRefresh": true
+					}
+				},
+				{
 					"path": "friendList",
 					"style": {
 						"navigationBarTitleText": "好友列表",
 						"enablePullDownRefresh": true
+					}
+				},
+				{
+					"path": "friendHomepage",
+					"style": {
+						"navigationBarTitleText": "好友主页"
 					}
 				},
 				{
@@ -281,7 +304,7 @@
 				{
 					"path": "index",
 					"style": {
-						"navigationBarTitleText": "赛事大厅",
+						"navigationBarTitleText": "赛事情报",
 						"enablePullDownRefresh": true
 					}
 				},
@@ -294,7 +317,7 @@
 				{
 					"path": "detail",
 					"style": {
-						"navigationBarTitleText": "赛事详情"
+						"navigationBarTitleText": "赛事情报详情"
 					}
 				},
 				{

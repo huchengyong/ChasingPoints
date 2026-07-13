@@ -1,7 +1,7 @@
 /* 对局记录页面样式 */
 
 // 主色调
-$primary-color: #18b05b;
+$primary-color: #E0AE12;
 $loss-red: #E57373;
 
 // 浅色模式变量
@@ -154,10 +154,10 @@ $border-color-dark: #334155;
 
         // 中式八球 - 蓝色
         &.chinese-8ball {
-            background-color: rgba(24, 176, 91, 0.15);
+            background-color: rgba(224, 174, 18, 0.15);
 
             text {
-                color: #18b05b;
+                color: #C69200;
             }
         }
 

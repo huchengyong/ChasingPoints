@@ -84,6 +84,48 @@ function drawTextBlock(ctx, text, x, y, maxCharsPerLine, lineHeight, maxLines, c
   }
 }
 
+function splitPosterLines(text, maxCharsPerLine, maxLines) {
+  const content = text || ''
+  const lines = []
+
+  for (let index = 0; index < maxLines; index += 1) {
+    const start = index * maxCharsPerLine
+    if (start >= content.length) break
+    let line = content.slice(start, start + maxCharsPerLine)
+    if (index === maxLines - 1 && content.length > start + maxCharsPerLine) {
+      line = `${line.slice(0, Math.max(maxCharsPerLine - 1, 1))}…`
+    }
+    lines.push(line)
+  }
+
+  return lines
+}
+
+export function resolvePkSummaryLayout(summaryText) {
+  const cardY = 790
+  const titleY = cardY + 50
+  const firstLineY = cardY + 102
+  const lineHeight = 44
+  const bottomPadding = 34
+  const summaryLines = splitPosterLines(
+    summaryText || '真实对局数据越多，PK 报表越有说服力。',
+    20,
+    2
+  )
+  const lineCount = Math.max(summaryLines.length, 1)
+  const cardHeight = firstLineY - cardY + (lineCount - 1) * lineHeight + bottomPadding
+
+  return {
+    cardY,
+    cardHeight,
+    titleY,
+    summaryLines: summaryLines.map((line, index) => ({
+      text: line,
+      y: firstLineY + lineHeight * index
+    }))
+  }
+}
+
 function drawSummaryCard(ctx, item, x, y, w, h) {
   const { accent, soft } = getToneColors(item.tone)
   drawRoundRect(ctx, x, y, w, h, 24)
@@ -127,9 +169,16 @@ export function generateMatchPoster(canvasId, data) {
   return new Promise((resolve, reject) => {
     const ctx = uni.createCanvasContext(canvasId)
     const W = 750
-    const H = 1320
     const highlights = Array.isArray(data.summary_highlights) ? data.summary_highlights.slice(0, 4) : []
     const stats = Array.isArray(data.summary_stats) ? data.summary_stats.slice(0, 6) : []
+    
+    // 动态计算所需高度，防止超出固定高度被覆盖内容
+    const hRows = highlights.length > 0 ? Math.ceil(highlights.length / 2) : 1
+    const sRows = stats.length > 0 ? Math.ceil(stats.length / 2) : 0
+    const statsTop = 572 + 56 + hRows * 170 + 20
+    const statsEnd = statsTop + 56 + sRows * 170
+    const H = Math.max(1320, statsEnd + 150)
+
     const gameTypeName = data.game_type_name || getGameTypeLabel(data.game_type)
     const rankChange = Number(data.rank_change || 0)
     const rankChangeLabel = rankChange > 0 ? `排位 +${rankChange}` : rankChange < 0 ? `排位 ${rankChange}` : '排位 ±0'
@@ -150,7 +199,7 @@ export function generateMatchPoster(canvasId, data) {
     ctx.arc(80, 220, 140, 0, Math.PI * 2)
     ctx.fill()
 
-    drawCenterText(ctx, '球艺堂 · 对局战报', 84, 30, '#cbd5e1')
+    drawCenterText(ctx, '追分 · 对局战报', 84, 30, '#cbd5e1')
     drawCenterText(ctx, gameTypeName, 126, 24, '#94a3b8')
 
     drawRoundRect(ctx, 40, 170, 670, 300, 32)
@@ -217,7 +266,7 @@ export function generateMatchPoster(canvasId, data) {
       drawCenterText(ctx, '当前模式暂无可展示亮点，但战绩已完成记录', 710, 24, '#94a3b8')
     }
 
-    const statsTop = highlights.length > 2 ? 988 : 818
+    // statsTop 已在顶部动态计算
     drawSectionHeader(ctx, '本场数据', '海报展示项与对局总结页保持同一统计口径', statsTop)
     stats.forEach((item, index) => {
       const col = index % 2
@@ -225,7 +274,7 @@ export function generateMatchPoster(canvasId, data) {
       drawSummaryCard(ctx, item, 60 + col * 315, statsTop + 56 + row * 170, 275, 146)
     })
 
-    drawCenterText(ctx, '球艺堂', H - 92, 30, '#60a5fa')
+    drawCenterText(ctx, '追分', H - 92, 30, '#60a5fa')
     drawCenterText(ctx, '真实对局数据生成，仅供复盘与分享', H - 54, 20, '#64748b')
 
     // 绘制完成
@@ -233,6 +282,12 @@ export function generateMatchPoster(canvasId, data) {
       setTimeout(() => {
         uni.canvasToTempFilePath({
           canvasId: canvasId,
+          x: 0,
+          y: 0,
+          width: W,
+          height: H,
+          destWidth: W,
+          destHeight: H,
           quality: 1,
           success: (res) => resolve(res.tempFilePath),
           fail: (err) => reject(err)
@@ -260,7 +315,7 @@ export function generatePkReportPoster(canvasId, data) {
     ctx.setFillStyle(grd)
     ctx.fillRect(0, 0, W, H)
 
-    drawCenterText(ctx, '球艺堂 · PK 报表', 86, 28, '#94a3b8')
+    drawCenterText(ctx, '追分 · PK 报表', 86, 28, '#94a3b8')
     drawCenterText(ctx, data.gameTypeLabel || '真实交锋数据', 132, 22, '#64748b')
 
     ctx.setTextAlign('center')
@@ -308,19 +363,19 @@ export function generatePkReportPoster(canvasId, data) {
       ctx.fillText(value, x, y + 48)
     })
 
-    drawRoundRect(ctx, 60, 790, 630, 150, 24)
+    const summaryLayout = resolvePkSummaryLayout(data.summaryText)
+
+    drawRoundRect(ctx, 60, summaryLayout.cardY, 630, summaryLayout.cardHeight, 24)
     ctx.setFillStyle('rgba(59,130,246,0.12)')
     ctx.fill()
     ctx.setFontSize(24)
     ctx.setFillStyle('#bfdbfe')
-    ctx.fillText('系统结论', 100, 840)
+    ctx.fillText('系统结论', 100, summaryLayout.titleY)
     ctx.setFontSize(28)
     ctx.setFillStyle('#ffffff')
-    const summary = data.summaryText || '真实对局数据越多，PK 报表越有说服力。'
-    ctx.fillText(summary.slice(0, 20), 100, 892)
-    if (summary.length > 20) {
-      ctx.fillText(summary.slice(20, 40), 100, 934)
-    }
+    summaryLayout.summaryLines.forEach((line) => {
+      ctx.fillText(line.text, 100, line.y)
+    })
 
     drawCenterText(ctx, '仅统计真实线下对局，不代表线上比赛结果', 1000, 22, '#94a3b8')
 

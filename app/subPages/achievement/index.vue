@@ -1,5 +1,5 @@
 <template>
-	<view class="achievement-page">
+	<view class="achievement-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 当前称号 -->
 		<view class="title-bar" @tap="goToTitles">
 			<view class="title-info">
@@ -11,51 +11,56 @@
 			</view>
 		</view>
 
-		<!-- 分类 Tab -->
-		<scroll-view scroll-x class="category-tabs">
-			<view
-				v-for="tab in categoryTabs"
-				:key="tab.key"
-				class="tab-item"
-				:class="{ active: currentCategory === tab.key }"
-				@tap="switchCategory(tab.key)"
-			>
-				<text>{{ tab.label }}</text>
-			</view>
-		</scroll-view>
-
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
 		<!-- 成就列表 -->
-		<view v-else class="achievement-grid">
+		<view v-else class="achievement-sections">
 			<view
-				v-for="item in filteredList"
-				:key="item.id"
-				class="achievement-card"
-				:class="{ unlocked: item.unlocked }"
-				@tap="goToDetail(item.id)"
+				v-for="group in achievementGroups"
+				:key="group.key"
+				class="achievement-section"
 			>
-				<view class="card-icon" :class="{ locked: !item.unlocked }">
-					<text class="icon-emoji">{{ getCategoryEmoji(item.category) }}</text>
+				<view class="section-header">
+					<view class="section-title-wrap">
+						<text class="section-emoji">{{ getCategoryEmoji(group.key) }}</text>
+						<text class="section-title">{{ group.label }}成就</text>
+					</view>
+					<text class="section-count">{{ group.list.length }}项</text>
 				</view>
-				<text class="card-name">{{ item.name }}</text>
-				<view class="progress-bar">
+
+				<view
+					v-for="item in group.list"
+					:key="item.id"
+					class="achievement-row"
+					:class="{ unlocked: item.unlocked }"
+					@tap="goToDetail(item.id)"
+				>
+					<view class="row-icon" :class="{ locked: !item.unlocked }">
+						<text class="icon-emoji">{{ getCategoryEmoji(item.category) }}</text>
+					</view>
 					<view
-						class="progress-fill"
-						:style="{ width: getProgress(item) + '%' }"
-						:class="{ complete: item.unlocked }"
-					></view>
+						class="row-main"
+					>
+						<text class="row-name">{{ item.name }}</text>
+						<view class="progress-bar">
+							<view
+								class="progress-fill"
+								:style="{ width: getProgress(item) + '%' }"
+								:class="{ complete: item.unlocked }"
+							></view>
+						</view>
+					</view>
+					<text class="progress-text" :class="{ complete: item.unlocked }">{{ getProgressText(item) }}</text>
 				</view>
-				<text class="progress-text">{{ item.unlocked ? '已解锁' : item.progress + '/' + item.threshold }}</text>
 			</view>
 		</view>
 
 		<!-- 空状态 -->
-		<view v-if="!loading && filteredList.length === 0" class="empty-state">
+		<view v-if="!loading && achievementGroups.length === 0" class="empty-state">
 			<text class="empty-text">暂无成就数据</text>
 		</view>
 	</view>
@@ -63,33 +68,26 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { getAchievementList, getUserTitles } from '@/api/achievement.js'
+import {
+	getAchievementCategoryEmoji,
+	groupAchievementsByCategory
+} from '@/utils/achievement-page.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const loading = ref(true)
 const achievementList = ref([])
 const equippedTitle = ref('')
-const currentCategory = ref('all')
+const loaded = ref(false)
 
-const categoryTabs = [
-	{ key: 'all', label: '全部' },
-	{ key: '胜场', label: '胜场' },
-	{ key: '连胜', label: '连胜' },
-	{ key: '特殊', label: '特殊' },
-	{ key: '对局', label: '对局' },
-	{ key: '社交', label: '社交' },
-	{ key: '赛事', label: '赛事' }
-]
-
-const filteredList = computed(() => {
-	if (currentCategory.value === 'all') return achievementList.value
-	return achievementList.value.filter(item => item.category === currentCategory.value)
+const achievementGroups = computed(() => {
+	return groupAchievementsByCategory(achievementList.value)
 })
 
-const getCategoryEmoji = (category) => {
-	const map = { '胜场': '🏅', '连胜': '🔥', '特殊': '⭐', '对局': '🎱', '社交': '👥', '赛事': '🏆' }
-	return map[category] || '🎯'
-}
+const getCategoryEmoji = getAchievementCategoryEmoji
 
 const getProgress = (item) => {
 	if (item.unlocked) return 100
@@ -97,8 +95,9 @@ const getProgress = (item) => {
 	return Math.min(Math.round((item.progress / item.threshold) * 100), 100)
 }
 
-const switchCategory = (key) => {
-	currentCategory.value = key
+const getProgressText = (item) => {
+	if (item.unlocked) return '已解锁'
+	return (item.progress || 0) + '/' + (item.threshold || 0)
 }
 
 const goToDetail = (id) => {
@@ -112,16 +111,10 @@ const goToTitles = () => {
 const loadData = async () => {
 	loading.value = true
 	try {
-		const [achRes, titleRes] = await Promise.all([
-			getAchievementList(),
-			getUserTitles().catch(() => null)
-		])
+		const achRes = await getAchievementList()
 		achievementList.value = achRes.list || achRes || []
-		if (titleRes) {
-			const titles = titleRes.list || titleRes || []
-			const equipped = titles.find(t => t.equipped)
-			equippedTitle.value = equipped ? equipped.title_name : ''
-		}
+		await loadEquippedTitle()
+		loaded.value = true
 	} catch (e) {
 		console.error('加载成就数据失败:', e)
 	} finally {
@@ -129,8 +122,25 @@ const loadData = async () => {
 	}
 }
 
+const loadEquippedTitle = async () => {
+	try {
+		const titleRes = await getUserTitles()
+		const titles = titleRes.list || titleRes || []
+		const equipped = titles.find(t => t.equipped)
+		equippedTitle.value = equipped ? equipped.title_name : ''
+	} catch (e) {
+		console.error('加载当前称号失败:', e)
+	}
+}
+
 onLoad(() => {
 	loadData()
+})
+
+onShow(() => {
+	if (loaded.value) {
+		loadEquippedTitle()
+	}
 })
 </script>
 
@@ -147,7 +157,7 @@ onLoad(() => {
 	justify-content: space-between;
 	margin: 24rpx;
 	padding: 28rpx 32rpx;
-	background: linear-gradient(135deg, #18b05b, #8b5cf6);
+	background: linear-gradient(135deg, #E0AE12, #F59E0B);
 	border-radius: 20rpx;
 	color: #fff;
 
@@ -166,26 +176,6 @@ onLoad(() => {
 	}
 }
 
-.category-tabs {
-	white-space: nowrap;
-	padding: 0 24rpx 20rpx;
-
-	.tab-item {
-		display: inline-block;
-		padding: 12rpx 28rpx;
-		margin-right: 16rpx;
-		border-radius: 32rpx;
-		background: #fff;
-		font-size: 26rpx;
-		color: #64748b;
-
-		&.active {
-			background: #18b05b;
-			color: #fff;
-		}
-	}
-}
-
 .loading-state {
 	display: flex;
 	flex-direction: column;
@@ -198,34 +188,65 @@ onLoad(() => {
 	}
 }
 
-.achievement-grid {
-	display: flex;
-	flex-wrap: wrap;
-	padding: 0 16rpx;
+.achievement-sections {
+	padding: 0 24rpx;
 
-	.achievement-card {
-		width: calc(50% - 24rpx);
-		margin: 8rpx 12rpx;
-		background: #fff;
-		border-radius: 16rpx;
-		padding: 28rpx 20rpx;
+	.achievement-section {
+		margin-bottom: 28rpx;
+	}
+
+	.section-header {
 		display: flex;
-		flex-direction: column;
 		align-items: center;
+		justify-content: space-between;
+		margin: 8rpx 4rpx 16rpx;
 
-		&.unlocked {
-			border: 2rpx solid #18b05b;
+		.section-title-wrap {
+			display: flex;
+			align-items: center;
 		}
 
-		.card-icon {
-			width: 96rpx;
-			height: 96rpx;
-			border-radius: 50%;
-			background: #f0fdf4;
+		.section-emoji {
+			font-size: 32rpx;
+			margin-right: 12rpx;
+		}
+
+		.section-title {
+			font-size: 30rpx;
+			font-weight: 700;
+			color: #1e293b;
+		}
+
+		.section-count {
+			font-size: 24rpx;
+			color: #94a3b8;
+		}
+	}
+
+	.achievement-row {
+		display: flex;
+		align-items: center;
+		width: 100%;
+		box-sizing: border-box;
+		margin-bottom: 16rpx;
+		padding: 24rpx;
+		background: #fff;
+		border-radius: 18rpx;
+
+		&.unlocked {
+			border: 2rpx solid #E0AE12;
+		}
+
+		.row-icon {
+			width: 76rpx;
+			height: 76rpx;
+			border-radius: 22rpx;
+			background: rgba(224, 174, 18, 0.12);
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			margin-bottom: 16rpx;
+			margin-right: 20rpx;
+			flex-shrink: 0;
 
 			&.locked {
 				background: #f1f5f9;
@@ -233,16 +254,25 @@ onLoad(() => {
 			}
 
 			.icon-emoji {
-				font-size: 44rpx;
+				font-size: 38rpx;
 			}
 		}
 
-		.card-name {
-			font-size: 26rpx;
-			font-weight: 500;
+		.row-main {
+			flex: 1;
+			min-width: 0;
+			margin-right: 20rpx;
+		}
+
+		.row-name {
+			display: block;
+			font-size: 28rpx;
+			font-weight: 600;
 			color: #1e293b;
-			margin-bottom: 12rpx;
-			text-align: center;
+			margin-bottom: 14rpx;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
 		}
 
 		.progress-bar {
@@ -260,14 +290,22 @@ onLoad(() => {
 				transition: width 0.3s;
 
 				&.complete {
-					background: #18b05b;
+					background: #E0AE12;
 				}
 			}
 		}
 
 		.progress-text {
-			font-size: 22rpx;
+			min-width: 96rpx;
+			font-size: 24rpx;
+			text-align: right;
 			color: #94a3b8;
+			flex-shrink: 0;
+
+			&.complete {
+				color: #E0AE12;
+				font-weight: 600;
+			}
 		}
 	}
 }

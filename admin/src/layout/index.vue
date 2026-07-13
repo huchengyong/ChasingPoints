@@ -4,21 +4,35 @@
     <el-aside width="200px" class="sidebar">
       <div class="logo">
         <el-icon size="24"><Trophy /></el-icon>
-        <span>球艺堂</span>
+        <span>追分</span>
       </div>
       <el-menu
         :default-active="activeMenu"
+        :default-openeds="openMenuGroups"
         router
         background-color="#304156"
         text-color="#bfcbd9"
         active-text-color="#409EFF"
       >
-        <el-menu-item v-for="item in menuList" :key="item.path" :index="item.path">
-          <el-icon>
-            <component :is="item.icon" />
-          </el-icon>
-          <span>{{ item.title }}</span>
-        </el-menu-item>
+        <template v-for="item in menuList" :key="item.path">
+          <el-sub-menu v-if="item.children" :index="item.path">
+            <template #title>
+              <el-icon>
+                <component :is="item.icon" />
+              </el-icon>
+              <span>{{ item.title }}</span>
+            </template>
+            <el-menu-item v-for="child in item.children" :key="child.path" :index="child.path">
+              <span>{{ child.title }}</span>
+            </el-menu-item>
+          </el-sub-menu>
+          <el-menu-item v-else :index="item.path">
+            <el-icon>
+              <component :is="item.icon" />
+            </el-icon>
+            <span>{{ item.title }}</span>
+          </el-menu-item>
+        </template>
       </el-menu>
     </el-aside>
 
@@ -52,18 +66,45 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
+import { canShowSocialReviewMenu } from '@/utils/complianceMode'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
 const activeMenu = computed(() => route.path)
+const openMenuGroups = computed(() => {
+  if (route.path.startsWith('/venues/')) return ['/venues']
+  if (route.path.startsWith('/settings/')) return ['/settings']
+  return []
+})
 
 const menuList = [
   { path: '/dashboard', title: '首页', icon: 'HomeFilled' },
   { path: '/users', title: '用户管理', icon: 'UserFilled' },
   { path: '/matches', title: '对局管理', icon: 'Trophy' },
-  { path: '/venues', title: '球馆审核', icon: 'OfficeBuilding' }
+  { path: '/feedback', title: '投诉举报', icon: 'WarningFilled' },
+  { path: '/event-news', title: '赛事情报', icon: 'Calendar' },
+  {
+    path: '/venues',
+    title: '球馆管理',
+    icon: 'OfficeBuilding',
+    children: [
+      { path: '/venues/review', title: '球馆审核' },
+      { path: '/venues/reward-records', title: '奖励发放记录' }
+    ]
+  },
+  {
+    path: '/settings',
+    title: '配置管理',
+    icon: 'Setting',
+    children: [
+      { path: '/settings/member-rewards', title: '会员奖励配置' },
+      { path: '/settings/member-ranking-rights', title: '会员排位权益配置' }
+    ]
+  },
+  // 合规收口：动态审核菜单暂时隐藏，页面文件保留以便后续持证后快速恢复。
+  ...(canShowSocialReviewMenu() ? [{ path: '/social-posts', title: '动态审核', icon: 'ChatDotRound' }] : [])
 ]
 
 const handleCommand = (command: string) => {

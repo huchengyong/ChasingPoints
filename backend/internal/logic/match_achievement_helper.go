@@ -1,8 +1,8 @@
 package logic
 
 import (
-	"billiard_master/internal/model"
-	"billiard_master/internal/types"
+	"chasing_points/internal/model"
+	"chasing_points/internal/types"
 )
 
 func normalizeStoredAchievementType(winType string) string {
@@ -10,6 +10,10 @@ func normalizeStoredAchievementType(winType string) string {
 		return ""
 	}
 	return normalizeAchievementType(winType)
+}
+
+func NormalizeStoredAchievementType(winType string) string {
+	return normalizeStoredAchievementType(winType)
 }
 
 func buildMatchAchievementPayload(list []model.MatchAchievement) types.MatchAchievement {
@@ -33,4 +37,8 @@ func buildMatchAchievementPayload(list []model.MatchAchievement) types.MatchAchi
 		}
 	}
 	return payload
+}
+
+func BuildMatchAchievementPayload(list []model.MatchAchievement) types.MatchAchievement {
+	return buildMatchAchievementPayload(list)
 }

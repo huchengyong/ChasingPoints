@@ -3,7 +3,7 @@ package ws
 import (
 	"testing"
 
-	"billiard_master/internal/model"
+	"chasing_points/internal/model"
 )
 
 func TestBuildMatchSyncDataIncludesServerRevision(t *testing.T) {

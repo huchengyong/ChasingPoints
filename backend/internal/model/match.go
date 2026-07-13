@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 	"time"
 
@@ -19,6 +20,8 @@ type Match struct {
 	OpponentName              string         `gorm:"size:50;not null" json:"opponent_name"`
 	GameType                  int            `gorm:"not null" json:"game_type"` // 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
 	GameMode                  string         `gorm:"size:20" json:"game_mode"`  // 比赛模式
+	RefereeUserId             *int64         `gorm:"index" json:"referee_user_id"`
+	RefereeJoinedAt           *time.Time     `json:"referee_joined_at"`
 	MyScore                   int            `gorm:"not null;default:0" json:"my_score"`
 	OpponentScore             int            `gorm:"not null;default:0" json:"opponent_score"`
 	CurrentFrameMyScore       int            `gorm:"not null;default:0" json:"current_frame_my_score"`
@@ -78,8 +81,9 @@ func (MatchAction) TableName() string {
 // MatchAchievement 特殊成绩
 type MatchAchievement struct {
 	Id              int64     `gorm:"primarykey" json:"id"`
-	MatchId         int64     `gorm:"not null;index" json:"match_id"`
-	AchievementType string    `gorm:"size:20;not null" json:"achievement_type"`
+	MatchId         int64     `gorm:"not null;index;uniqueIndex:uk_match_actor_achievement,priority:1" json:"match_id"`
+	Actor           int       `gorm:"not null;default:1;uniqueIndex:uk_match_actor_achievement,priority:2" json:"actor"`
+	AchievementType string    `gorm:"size:20;not null;uniqueIndex:uk_match_actor_achievement,priority:3" json:"achievement_type"`
 	Count           int       `gorm:"not null;default:0" json:"count"`
 	CreatedAt       time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
@@ -162,7 +166,7 @@ func (m *MatchModel) FindCurrentByUserIdWithTx(tx *gorm.DB, userId int64) (*Matc
 	}
 
 	var match Match
-	err := db.Where("(user_id = ? OR opponent_id = ?) AND status = 1", userId, userId).
+	err := db.Where("(user_id = ? OR opponent_id = ? OR referee_user_id = ?) AND status = 1", userId, userId, userId).
 		Order("match_time DESC").
 		First(&match).Error
 	if err == gorm.ErrRecordNotFound {
@@ -441,6 +445,7 @@ func (m *MatchModel) ListByOpponentId(
 	opponentUserId int64,
 	result int,
 	offset, limit int,
+	startTime, endTime *time.Time,
 ) ([]H2HMatchRecord, int64, error) {
 	// 查询条件：
 	// 1. 用户作为发起方(user_id)，对手是 opponent_id
@@ -450,16 +455,22 @@ func (m *MatchModel) ListByOpponentId(
 		Match
 		CreatorNickname string
 	}
-	err := m.db.Table("matches").
+	query := m.db.Table("matches").
 		Select("matches.*, COALESCE(u.nickname, '') as creator_nickname").
 		Joins("LEFT JOIN users u ON matches.user_id = u.id").
 		Where(`(
 			(matches.user_id = ? AND matches.opponent_id = ?) OR
 			(matches.user_id = ? AND matches.opponent_id = ?)
 		) AND matches.status = 2 AND matches.deleted_at IS NULL`,
-			userId, opponentUserId, opponentUserId, userId).
-		Order("matches.match_time DESC").
-		Scan(&rawList).Error
+			userId, opponentUserId, opponentUserId, userId)
+	if startTime != nil {
+		query = query.Where("matches.match_time >= ?", *startTime)
+	}
+	if endTime != nil {
+		query = query.Where("matches.match_time < ?", *endTime)
+	}
+
+	err := query.Order("matches.match_time DESC").Scan(&rawList).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -526,25 +537,180 @@ func (m *MatchModel) ListByOpponentId(
 	return records[offset:end], total, nil
 }
 
-// GetH2HStats 获取交锋统计
-func (m *MatchModel) GetH2HStats(userId int64, opponentName string) (total, myWins, oppWins int, avgDiff float64, err error) {
-	type Stats struct {
-		Total   int
-		MyWins  int
-		OppWins int
-		AvgDiff float64
+// ListByOpponentName 获取与匿名对手的交锋列表。
+// 仅在没有稳定对手用户 ID 时作为兜底方案使用。
+func (m *MatchModel) ListByOpponentName(
+	userId int64,
+	opponentName string,
+	result int,
+	offset, limit int,
+	startTime, endTime *time.Time,
+) ([]H2HMatchRecord, int64, error) {
+	if opponentName == "" {
+		return []H2HMatchRecord{}, 0, nil
 	}
 
-	var stats Stats
-	err = m.db.Model(&Match{}).
-		Select("COUNT(*) as total, "+
-			"SUM(CASE WHEN result = 1 THEN 1 ELSE 0 END) as my_wins, "+
-			"SUM(CASE WHEN result = 2 THEN 1 ELSE 0 END) as opp_wins, "+
-			"AVG(my_score - opponent_score) as avg_diff").
-		Where("user_id = ? AND opponent_name = ? AND status = 2", userId, opponentName).
-		Scan(&stats).Error
+	var rawList []struct {
+		Id            int64
+		GameType      int
+		OpponentName  string
+		MyScore       int
+		OpponentScore int
+		Result        *int
+		MatchTime     time.Time
+	}
+	query := m.db.Model(&Match{}).
+		Select("id, game_type, opponent_name, my_score, opponent_score, result, match_time").
+		Where("user_id = ? AND opponent_name = ? AND status = 2 AND deleted_at IS NULL", userId, opponentName)
+	if startTime != nil {
+		query = query.Where("match_time >= ?", *startTime)
+	}
+	if endTime != nil {
+		query = query.Where("match_time < ?", *endTime)
+	}
 
-	return stats.Total, stats.MyWins, stats.OppWins, stats.AvgDiff, err
+	err := query.Order("match_time DESC").Find(&rawList).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	records := make([]H2HMatchRecord, 0, len(rawList))
+	for _, item := range rawList {
+		record := H2HMatchRecord{
+			Id:            item.Id,
+			GameType:      item.GameType,
+			OpponentName:  item.OpponentName,
+			MyScore:       item.MyScore,
+			OpponentScore: item.OpponentScore,
+			MatchTime:     item.MatchTime,
+		}
+		if item.Result != nil {
+			record.Result = *item.Result
+		}
+		if result > 0 && record.Result != result {
+			continue
+		}
+		records = append(records, record)
+	}
+
+	total := int64(len(records))
+	if offset >= len(records) {
+		return []H2HMatchRecord{}, total, nil
+	}
+
+	end := offset + limit
+	if end > len(records) {
+		end = len(records)
+	}
+
+	return records[offset:end], total, nil
+}
+
+// GetH2HStats 获取交锋统计（按对手名称兜底，仅适用于未绑定用户的历史记录）
+func (m *MatchModel) GetH2HStats(userId int64, opponentName string) (total, myWins, oppWins int, avgDiff float64, err error) {
+	total, myWins, oppWins, avgDiff, _, err = m.GetH2HStatsByOpponent(userId, 0, opponentName)
+	return total, myWins, oppWins, avgDiff, err
+}
+
+// GetH2HStatsByOpponent 获取交锋统计。
+// 当对手是注册用户时优先按用户 ID 双向统计，保证与交锋历史列表口径一致。
+// 当对手没有用户 ID 时，再退回到基于历史名称的统计。
+func (m *MatchModel) GetH2HStatsByOpponent(userId int64, opponentUserId int64, opponentName string) (total, myWins, oppWins int, avgDiff float64, maxWinStreak int, err error) {
+	type h2hStatRow struct {
+		UserId        int64
+		MyScore       int
+		OpponentScore int
+		Result        *int
+		MatchTime     time.Time
+	}
+
+	calculateStats := func(rows []h2hStatRow) (int, int, int, float64, int) {
+		if len(rows) == 0 {
+			return 0, 0, 0, 0, 0
+		}
+
+		sort.Slice(rows, func(i, j int) bool {
+			if rows[i].MatchTime.Equal(rows[j].MatchTime) {
+				return rows[i].UserId < rows[j].UserId
+			}
+			return rows[i].MatchTime.Before(rows[j].MatchTime)
+		})
+
+		scoreDiffTotal := 0
+		currentWinStreak := 0
+		totalMatches := 0
+		totalMyWins := 0
+		totalOppWins := 0
+		longestWinStreak := 0
+
+		for _, match := range rows {
+			totalMatches++
+
+			actualResult := 0
+			if match.Result != nil {
+				actualResult = *match.Result
+			}
+
+			if match.UserId == userId {
+				scoreDiffTotal += match.MyScore - match.OpponentScore
+			} else {
+				scoreDiffTotal += match.OpponentScore - match.MyScore
+				if actualResult == 1 {
+					actualResult = 2
+				} else if actualResult == 2 {
+					actualResult = 1
+				}
+			}
+
+			if actualResult == 1 {
+				totalMyWins++
+				currentWinStreak++
+				if currentWinStreak > longestWinStreak {
+					longestWinStreak = currentWinStreak
+				}
+			} else if actualResult == 2 {
+				totalOppWins++
+				currentWinStreak = 0
+			} else {
+				currentWinStreak = 0
+			}
+		}
+
+		return totalMatches, totalMyWins, totalOppWins, float64(scoreDiffTotal) / float64(totalMatches), longestWinStreak
+	}
+
+	if opponentUserId > 0 {
+		var matches []h2hStatRow
+		err = m.db.Model(&Match{}).
+			Select("user_id, my_score, opponent_score, result, match_time").
+			Where(`(
+				(user_id = ? AND opponent_id = ?) OR
+				(user_id = ? AND opponent_id = ?)
+			) AND status = 2 AND deleted_at IS NULL`, userId, opponentUserId, opponentUserId, userId).
+			Find(&matches).Error
+		if err != nil {
+			return 0, 0, 0, 0, 0, err
+		}
+
+		total, myWins, oppWins, avgDiff, maxWinStreak = calculateStats(matches)
+		return total, myWins, oppWins, avgDiff, maxWinStreak, nil
+	}
+
+	if opponentName == "" {
+		return 0, 0, 0, 0, 0, nil
+	}
+
+	var matches []h2hStatRow
+	err = m.db.Model(&Match{}).
+		Select("user_id, my_score, opponent_score, result, match_time").
+		Where("user_id = ? AND opponent_name = ? AND status = 2 AND deleted_at IS NULL", userId, opponentName).
+		Find(&matches).Error
+	if err != nil {
+		return 0, 0, 0, 0, 0, err
+	}
+
+	total, myWins, oppWins, avgDiff, maxWinStreak = calculateStats(matches)
+	return total, myWins, oppWins, avgDiff, maxWinStreak, nil
 }
 
 // ========== MatchRound 操作 ==========
@@ -759,17 +925,31 @@ func (m *MatchModel) SaveAchievement(matchId int64, achievementType string, coun
 	return m.SaveAchievementWithTx(nil, matchId, achievementType, count)
 }
 
-func (m *MatchModel) SaveAchievementWithTx(tx *gorm.DB, matchId int64, achievementType string, count int) error {
+func (m *MatchModel) SaveAchievementWithTx(tx *gorm.DB, matchId int64, achievementType string, count int, actor ...int) error {
 	db := m.db
 	if tx != nil {
 		db = tx
 	}
+	achievementActor := 1
+	if len(actor) > 0 {
+		achievementActor = actor[0]
+	}
 
-	return db.Exec(`
-		INSERT INTO match_achievements (match_id, achievement_type, count) 
-		VALUES (?, ?, ?)
-		ON DUPLICATE KEY UPDATE count = count + ?
-	`, matchId, achievementType, count, count).Error
+	return db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{
+			{Name: "match_id"},
+			{Name: "actor"},
+			{Name: "achievement_type"},
+		},
+		DoUpdates: clause.Assignments(map[string]any{
+			"count": gorm.Expr("count + ?", count),
+		}),
+	}).Create(&MatchAchievement{
+		MatchId:         matchId,
+		Actor:           achievementActor,
+		AchievementType: achievementType,
+		Count:           count,
+	}).Error
 }
 
 // GetAchievements 获取对局的特殊成绩
@@ -965,6 +1145,23 @@ type OngoingMatch struct {
 	Player2Avatar string `json:"player2_avatar"`
 }
 
+type PublicMatchListOptions struct {
+	Scope        string
+	ViewerUserId int64
+	Status       int
+	GameType     int
+	Offset       int
+	Limit        int
+}
+
+type PublicMatchListRow struct {
+	Match
+	Player1Name   string `json:"player1_name"`
+	Player1Avatar string `json:"player1_avatar"`
+	Player2Name   string `json:"player2_name"`
+	Player2Avatar string `json:"player2_avatar"`
+}
+
 // ListOngoingMatches 获取所有正在进行的对局列表
 func (m *MatchModel) ListOngoingMatches(offset, limit int) ([]OngoingMatch, int64, error) {
 	// 查询总数
@@ -991,6 +1188,61 @@ func (m *MatchModel) ListOngoingMatches(offset, limit int) ([]OngoingMatch, int6
 	return list, total, err
 }
 
+func (m *MatchModel) ListPublicMatches(options PublicMatchListOptions) ([]PublicMatchListRow, int64, error) {
+	limit := options.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+
+	base := m.db.Table("matches").
+		Where("matches.deleted_at IS NULL")
+
+	if options.Scope == "friends" {
+		base = base.
+			Where("matches.status IN ?", []int{1, 2}).
+			Where(`EXISTS (
+				SELECT 1 FROM friends
+				WHERE friends.status = 1
+				AND (
+					(friends.user_id = ? AND (friends.friend_id = matches.user_id OR friends.friend_id = matches.opponent_id))
+					OR
+					(friends.friend_id = ? AND (friends.user_id = matches.user_id OR friends.user_id = matches.opponent_id))
+				)
+			)`, options.ViewerUserId, options.ViewerUserId)
+	} else {
+		status := options.Status
+		if status != 2 {
+			status = 1
+		}
+		base = base.Where("matches.status = ?", status)
+	}
+
+	if options.GameType > 0 {
+		base = base.Where("matches.game_type = ?", options.GameType)
+	}
+
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var list []PublicMatchListRow
+	err := base.
+		Select(`matches.*,
+			COALESCE(u1.nickname, '玩家') as player1_name,
+			COALESCE(u1.avatar, '') as player1_avatar,
+			matches.opponent_name as player2_name,
+			COALESCE(u2.avatar, '') as player2_avatar`).
+		Joins("LEFT JOIN users u1 ON matches.user_id = u1.id").
+		Joins("LEFT JOIN users u2 ON matches.opponent_id = u2.id").
+		Order("matches.match_time DESC").
+		Offset(options.Offset).
+		Limit(limit).
+		Scan(&list).Error
+
+	return list, total, err
+}
+
 // OpponentStats 对手统计数据
 type OpponentStats struct {
 	OpponentId   int64     `json:"opponent_id"`
@@ -1000,6 +1252,19 @@ type OpponentStats struct {
 	Wins         int       `json:"wins"`
 	Losses       int       `json:"losses"`
 	LastMatchAt  time.Time `json:"last_match_at"`
+}
+
+type opponentProfile struct {
+	Id       int64
+	Nickname string
+	Avatar   string
+}
+
+func buildOpponentStatsKey(opponentId int64, opponentName string) string {
+	if opponentId > 0 {
+		return fmt.Sprintf("user:%d", opponentId)
+	}
+	return "name:" + opponentName
 }
 
 // ListOpponentsWithStats 获取对手列表及统计数据（支持双向查询）
@@ -1040,20 +1305,17 @@ func (m *MatchModel) ListOpponentsWithStats(
 		}
 	}
 
-	// 3. 批量查询所有对手的头像
-	userAvatarMap := make(map[int64]string)
+	// 3. 批量查询所有对手的资料
+	userProfileMap := make(map[int64]opponentProfile)
 	if len(opponentIdSet) > 0 {
 		var opponentIds []int64
 		for id := range opponentIdSet {
 			opponentIds = append(opponentIds, id)
 		}
-		var users []struct {
-			Id     int64
-			Avatar string
-		}
-		if err := m.db.Table("users").Select("id, avatar").Where("id IN ?", opponentIds).Scan(&users).Error; err == nil {
+		var users []opponentProfile
+		if err := m.db.Table("users").Select("id, nickname, avatar").Where("id IN ?", opponentIds).Scan(&users).Error; err == nil {
 			for _, u := range users {
-				userAvatarMap[u.Id] = u.Avatar
+				userProfileMap[u.Id] = u
 			}
 		}
 	}
@@ -1084,24 +1346,41 @@ func (m *MatchModel) ListOpponentsWithStats(
 			continue
 		}
 
+		profile := userProfileMap[oppId]
+		displayName := oppName
+		displayAvatar := profile.Avatar
+		if profile.Nickname != "" {
+			displayName = profile.Nickname
+		}
+
 		// 关键词筛选
-		if keyword != "" && !containsKeyword(oppName, keyword) {
+		if keyword != "" && !containsKeyword(displayName, keyword) {
 			continue
 		}
 
-		if _, ok := opponentMap[oppName]; !ok {
-			opponentMap[oppName] = &OpponentStats{
+		key := buildOpponentStatsKey(oppId, oppName)
+		if _, ok := opponentMap[key]; !ok {
+			opponentMap[key] = &OpponentStats{
 				OpponentId:   oppId,
-				OpponentName: oppName,
+				OpponentName: displayName,
 				LastMatchAt:  match.MatchTime,
-				Avatar:       userAvatarMap[oppId], // 从预查询的 map 中获取头像
+				Avatar:       displayAvatar,
 			}
 		}
 
-		stats := opponentMap[oppName]
+		stats := opponentMap[key]
 		stats.TotalMatches++
 		if match.MatchTime.After(stats.LastMatchAt) {
 			stats.LastMatchAt = match.MatchTime
+			stats.OpponentName = displayName
+			stats.Avatar = displayAvatar
+		} else {
+			if stats.OpponentName == "" {
+				stats.OpponentName = displayName
+			}
+			if stats.Avatar == "" {
+				stats.Avatar = displayAvatar
+			}
 		}
 
 		if match.Result != nil {
@@ -1187,16 +1466,21 @@ func (m *MatchModel) GetOverallOpponentStats(userId int64) (totalOpponents, tota
 	for _, match := range matches {
 		isAsCreator := match.UserId == userId
 		var oppName string
+		var oppId int64
 
 		if isAsCreator {
 			oppName = match.OpponentName
+			if match.OpponentId != nil {
+				oppId = *match.OpponentId
+			}
 		} else {
 			// 使用已经 JOIN 的发起方信息
+			oppId = match.UserId
 			oppName = match.CreatorNickname
 		}
 
-		if oppName != "" {
-			opponentSet[oppName] = struct{}{}
+		if oppName != "" || oppId > 0 {
+			opponentSet[buildOpponentStatsKey(oppId, oppName)] = struct{}{}
 		}
 
 		if match.Result != nil {

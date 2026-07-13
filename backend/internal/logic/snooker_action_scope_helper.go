@@ -1,6 +1,6 @@
 package logic
 
-import "billiard_master/internal/model"
+import "chasing_points/internal/model"
 
 func filterSnookerActionsToCompletedRounds(actions []model.MatchAction, rounds []model.MatchRound) []model.MatchAction {
 	if len(actions) == 0 || len(rounds) == 0 {
@@ -26,6 +26,10 @@ func filterSnookerActionsToCompletedRounds(actions []model.MatchAction, rounds [
 	}
 
 	return filtered
+}
+
+func FilterSnookerActionsToCompletedRounds(actions []model.MatchAction, rounds []model.MatchRound) []model.MatchAction {
+	return filterSnookerActionsToCompletedRounds(actions, rounds)
 }
 
 func filterSnookerActionsToRoundLimit(actions []model.MatchAction, maxRoundNo int) []model.MatchAction {

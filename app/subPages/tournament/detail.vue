@@ -1,34 +1,32 @@
 <template>
-	<view class="detail-page">
+	<view class="detail-page" :class="{ 'dark-mode': isDarkMode }">
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
-		<view v-else-if="tournament" class="detail-content">
-			<view class="hero-card">
-				<view class="hero-topline">
-					<view class="hero-chip">
-						<text>{{ getGameTypeLabel(tournament.game_type, '未知球种') }}</text>
-					</view>
-					<view class="status-tag" :class="'status-' + tournament.status">
-						<text>{{ statusMap[tournament.status] }}</text>
-					</view>
-				</view>
-				<text class="hero-title">{{ tournament.name }}</text>
-				<text class="hero-desc">{{ tournament.description || '赛事创建者暂未补充详细说明，可先查看规则和参赛情况。' }}</text>
-				<view class="hero-stats">
-					<view class="hero-stat">
-						<text class="hero-stat-label">赛制</text>
-						<text class="hero-stat-value">{{ formatMap[tournament.format] || '未知' }}</text>
-					</view>
-					<view class="hero-stat">
-						<text class="hero-stat-label">参赛人数</text>
-						<text class="hero-stat-value">{{ tournament.current_players }}/{{ tournament.max_players }}</text>
-					</view>
-					<view class="hero-stat">
-						<text class="hero-stat-label">开始时间</text>
-						<text class="hero-stat-value">{{ formatDisplayTime(tournament.start_time) || '待定' }}</text>
+			<view v-else-if="eventView" class="detail-content">
+				<view class="hero-card">
+					<image class="hero-cover" :src="eventView.coverImage" mode="aspectFill"></image>
+					<view class="hero-overlay"></view>
+					<view class="hero-body">
+						<view class="hero-content-block">
+							<text class="hero-title">{{ eventView.title }}</text>
+							<text class="hero-desc">{{ eventView.summary }}</text>
+						<view class="hero-meta">
+							<view class="hero-meta-item">
+								<text class="hero-meta-label">国家 / 地区</text>
+								<text class="hero-meta-value">{{ eventView.country || '待补充' }}</text>
+							</view>
+							<view v-if="eventView.showTime" class="hero-meta-item">
+								<text class="hero-meta-label">时间</text>
+								<text class="hero-meta-value">{{ eventView.timeText }}</text>
+							</view>
+							<view class="hero-meta-item">
+								<text class="hero-meta-label">地点</text>
+								<text class="hero-meta-value">{{ eventView.locationText || '待补充' }}</text>
+							</view>
+						</view>
 					</view>
 				</view>
 			</view>
@@ -36,78 +34,99 @@
 			<view class="info-card">
 				<view class="section-head">
 					<text class="section-title">赛事信息</text>
-					<text class="section-tip">{{ formatRelativeTime(tournament.start_time) || '待定时间' }}</text>
+					<text class="section-tip">{{ eventView.matchCountText }}</text>
 				</view>
 				<view class="info-grid">
 					<view class="grid-item">
-						<text class="grid-label">球种</text>
-						<text class="grid-value">{{ getGameTypeLabel(tournament.game_type, '未知') }}</text>
+						<text class="grid-label">日期</text>
+						<text class="grid-value">{{ eventView.dateText }}</text>
 					</view>
 					<view class="grid-item">
-						<text class="grid-label">赛制</text>
-						<text class="grid-value">{{ formatMap[tournament.format] || '未知' }}</text>
+						<text class="grid-label">当前轮次</text>
+						<text class="grid-value">{{ eventView.currentRoundText }}</text>
 					</view>
-					<view class="grid-item">
-						<text class="grid-label">人数上限</text>
-						<text class="grid-value">{{ tournament.max_players }}</text>
-					</view>
-					<view class="grid-item">
-						<text class="grid-label">当前报名</text>
-						<text class="grid-value">{{ tournament.current_players }}</text>
-					</view>
-					<view class="grid-item" v-if="tournament.city">
-						<text class="grid-label">举办城市</text>
-						<text class="grid-value">{{ tournament.city }}</text>
-					</view>
-					<view class="grid-item" v-if="tournament.venue_name">
-						<text class="grid-label">场馆</text>
-						<text class="grid-value">{{ tournament.venue_name }}</text>
-					</view>
-				</view>
-				<view class="progress-panel">
-					<view class="progress-head">
-						<text class="progress-label">报名进度</text>
-						<text class="progress-value">{{ tournament.current_players }}/{{ tournament.max_players }}</text>
-					</view>
-					<view class="progress-track">
-						<view class="progress-fill" :style="{ width: `${progressPercent}%` }"></view>
-					</view>
-				</view>
-				<view class="info-time" v-if="tournament.start_time">
-					<uni-icons type="calendar" size="16" color="#64748b"></uni-icons>
-					<text class="time-value">{{ tournament.start_time }}</text>
 				</view>
 			</view>
 
-			<view class="action-bar" v-if="tournament.status <= 1">
-				<view v-if="tournament.status === 1" class="action-btn bracket-btn" @tap="goBracket">
-					<text>查看对阵图</text>
-				</view>
-				<view v-if="tournament.status === 0 && !isJoined" class="action-btn join-btn" @tap="onJoin">
-					<text>报名参加</text>
-				</view>
-				<view v-if="tournament.status === 0 && isJoined" class="action-btn leave-btn" @tap="onLeave">
-					<text>取消报名</text>
-				</view>
-			</view>
-
-			<view class="section-card">
+			<view class="story-card">
 				<view class="section-head">
-					<text class="section-title">参赛者（{{ participants.length }}）</text>
-					<text class="section-tip">{{ participants.length > 0 ? '按当前报名顺序展示' : '还没有参赛者' }}</text>
+					<text class="section-title">比赛结果</text>
+					<text class="section-tip">{{ eventView.matchCountText }}</text>
+				</view>
+				<view v-if="eventView.rounds.length" class="story-list">
+					<view v-for="round in eventView.rounds" :key="round.key" class="round-group">
+						<view class="round-head">
+							<text class="round-title">{{ round.roundName }}</text>
+							<text class="round-tip">{{ round.matches.length }} 场</text>
+						</view>
+						<view v-for="match in round.matches" :key="match.id" class="story-item">
+							<view class="story-topline">
+								<text class="story-label">{{ match.startTimeText }}</text>
+								<text class="story-badge" :class="'badge-' + match.status">{{ match.statusText }}</text>
+							</view>
+							<view class="match-row">
+								<view class="player-side" :class="{ winner: match.winnerSide === 1 }">
+									<text
+										v-if="match.homeResultText"
+										class="player-result-tag"
+										:class="match.homeResultText === '胜' ? 'is-win' : 'is-lose'"
+									>{{ match.homeResultText }}</text>
+									<view class="player-portrait-frame" :class="{ winner: match.winnerSide === 1 }">
+										<image class="player-avatar" :src="match.homePlayerAvatar" mode="aspectFit"></image>
+									</view>
+									<view class="player-copy">
+										<view class="player-copy-top">
+											<text v-if="match.homePlayerFlagEmoji" class="player-flag">{{ match.homePlayerFlagEmoji }}</text>
+											<text v-if="match.homePlayerFirstName" class="player-first-name">{{ match.homePlayerFirstName }}</text>
+										</view>
+										<text class="player-last-name">{{ match.homePlayerLastName }}</text>
+									</view>
+								</view>
+								<view class="score-pill">
+									<text class="score-pill-text">{{ match.scoreText }}</text>
+								</view>
+								<view class="player-side player-side-right" :class="{ winner: match.winnerSide === 2 }">
+									<text
+										v-if="match.awayResultText"
+										class="player-result-tag"
+										:class="match.awayResultText === '胜' ? 'is-win' : 'is-lose'"
+									>{{ match.awayResultText }}</text>
+									<view class="player-portrait-frame" :class="{ winner: match.winnerSide === 2 }">
+										<image class="player-avatar" :src="match.awayPlayerAvatar" mode="aspectFit"></image>
+									</view>
+									<view class="player-copy">
+										<view class="player-copy-top">
+											<text v-if="match.awayPlayerFlagEmoji" class="player-flag">{{ match.awayPlayerFlagEmoji }}</text>
+											<text v-if="match.awayPlayerFirstName" class="player-first-name">{{ match.awayPlayerFirstName }}</text>
+										</view>
+										<text class="player-last-name">{{ match.awayPlayerLastName }}</text>
+									</view>
+								</view>
+							</view>
+							<text class="story-meta">{{ match.metaText }}</text>
+						</view>
+					</view>
+				</view>
+				<view v-else class="story-empty">
+					<text class="story-empty-title">比赛待更新</text>
+					<text class="story-empty-text">当前赛事还没有录入逐场比赛结果。</text>
 				</view>
 			</view>
-			<view class="participant-list">
-				<view v-for="p in participants" :key="p.user_id" class="participant-item">
-					<image class="p-avatar" :src="p.avatar || '/static/images/default-avatar.png'" mode="aspectFill" />
-					<view class="p-info">
-						<text class="p-name">{{ p.nickname || '球友' }}</text>
-						<text class="p-seed" v-if="p.seed > 0">种子 #{{ p.seed }}</text>
-					</view>
-					<text class="p-rank" v-if="p.final_rank > 0">第{{ p.final_rank }}名</text>
+
+		</view>
+
+		<view v-else class="empty-state">
+			<view class="empty-icon">
+				<uni-icons type="calendar" size="36" color="#E0AE12"></uni-icons>
+			</view>
+			<text class="empty-title">{{ errorMessage || '未找到该赛讯' }}</text>
+			<text class="empty-text">可以返回上一页，或重试加载这场赛事的比赛结果。</text>
+			<view class="empty-actions">
+				<view class="empty-btn primary" @tap="fetchDetail">
+					<text>重试</text>
 				</view>
-				<view v-if="participants.length === 0" class="empty-participants">
-					<text>暂无参赛者</text>
+				<view class="empty-btn secondary" @tap="goBack">
+					<text>返回上一页</text>
 				</view>
 			</view>
 		</view>
@@ -115,86 +134,186 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { getTournamentDetail, joinTournament, leaveTournament } from '@/api/tournament.js'
-import { formatRelativeTime } from '@/utils/format.js'
-import { getGameTypeLabel } from '@/utils/game-types.js'
+import { ref } from 'vue'
+import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
+import { getEventNewsView } from '@/api/event-news.js'
+import { pickEventNewsViewPayload } from '@/utils/event-news-response.js'
+import { cacheSaiXunMatchAvatars } from '@/utils/image-cache.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+import {
+	DEFAULT_EVENT_COVER,
+	buildEventLocationText,
+	buildSaiXunDetailRounds,
+	formatEventDateRange,
+	formatEventTimeRange,
+	normalizeSaiXunCard
+} from '@/utils/saixun.js'
 
-const formatMap = { 1: '单败淘汰', 2: '双败淘汰', 3: '循环赛' }
-const statusMap = { 0: '报名中', 1: '进行中', 2: '已结束', 3: '已取消' }
+const { isDarkMode } = usePageTheme()
 
-const tournament = ref(null)
-const participants = ref([])
 const loading = ref(true)
-const tournamentId = ref(0)
+const errorMessage = ref('')
+const eventNewsId = ref(0)
+const eventView = ref(null)
+const rawEventPayload = ref(null)
 
-const isJoined = computed(() => {
-	const userInfo = uni.getStorageSync('userInfo')
-	if (!userInfo) return false
-	return participants.value.some(p => p.user_id === userInfo.id)
-})
-const progressPercent = computed(() => {
-	if (!tournament.value || !tournament.value.max_players) return 0
-	return Math.min(100, Math.round(((tournament.value.current_players || 0) / tournament.value.max_players) * 100))
-})
+let eventViewRefreshTimer = null
+
+const mergeCachedRoundAvatars = (rounds = [], previousRounds = []) => {
+	const previousMatches = new Map()
+
+	previousRounds.forEach((round) => {
+		;(round?.matches || []).forEach((match) => {
+			previousMatches.set(match.id, match)
+		})
+	})
+
+	return rounds.map((round) => ({
+		...round,
+		matches: (round.matches || []).map((match) => {
+			const previousMatch = previousMatches.get(match.id)
+			if (!previousMatch) return match
+
+			return {
+				...match,
+				homePlayerAvatar: previousMatch.homePlayerAvatar || match.homePlayerAvatar,
+				awayPlayerAvatar: previousMatch.awayPlayerAvatar || match.awayPlayerAvatar
+			}
+		})
+	}))
+}
+
+const renderEventView = (now = Date.now()) => {
+	if (!rawEventPayload.value) return
+
+	const previousRounds = eventView.value?.rounds || []
+	const nextView = normalizeEventView(rawEventPayload.value, now)
+	eventView.value = {
+		...nextView,
+		rounds: mergeCachedRoundAvatars(nextView.rounds, previousRounds)
+	}
+}
+
+const warmCachedPlayerAvatars = async (view) => {
+	if (!view || !Array.isArray(view.rounds) || view.rounds.length === 0) return
+
+	const cachedRounds = await cacheSaiXunMatchAvatars(view.rounds)
+	if (!eventView.value || eventView.value.id !== view.id) return
+
+	eventView.value = {
+		...eventView.value,
+		rounds: cachedRounds
+	}
+}
+
+const normalizeEventView = ({ eventNews, tournament, matches }, now = Date.now()) => {
+	const mergedEvent = {
+		...eventNews,
+		tournament_name: eventNews.tournament_name || tournament?.name || eventNews.title || '',
+		cover_image: eventNews.cover_image || tournament?.cover_image || DEFAULT_EVENT_COVER,
+		country: eventNews.country || tournament?.country || '',
+		city: eventNews.city || tournament?.city || '',
+		venue: eventNews.venue || tournament?.venue_name || '',
+		start_date: eventNews.start_date || tournament?.start_date || '',
+		end_date: eventNews.end_date || tournament?.end_date || '',
+		start_time: eventNews.start_time || tournament?.start_time || '',
+		end_time: eventNews.end_time || tournament?.end_time || '',
+		match_count: Array.isArray(matches) ? matches.length : Number(eventNews.match_count || 0)
+	}
+	const eventCard = normalizeSaiXunCard(mergedEvent, now)
+	const rounds = buildSaiXunDetailRounds(matches, now)
+
+	return {
+		...eventCard,
+		dateText: formatEventDateRange(mergedEvent.start_date, mergedEvent.end_date),
+		timeText: formatEventTimeRange(mergedEvent.start_time, mergedEvent.end_time, now),
+		showTime: Boolean(mergedEvent.start_time || mergedEvent.end_time),
+		locationText: buildEventLocationText(mergedEvent),
+		coverImage: mergedEvent.cover_image || DEFAULT_EVENT_COVER,
+		country: mergedEvent.country,
+		rounds,
+		currentRoundText: eventCard.currentRoundText
+	}
+}
+
+const stopEventViewRefreshTimer = () => {
+	if (eventViewRefreshTimer) {
+		clearInterval(eventViewRefreshTimer)
+		eventViewRefreshTimer = null
+	}
+}
+
+const startEventViewRefreshTimer = () => {
+	stopEventViewRefreshTimer()
+	if (!rawEventPayload.value) return
+
+	eventViewRefreshTimer = setInterval(() => {
+		renderEventView(Date.now())
+	}, 30 * 1000)
+}
 
 const fetchDetail = async () => {
+	if (!eventNewsId.value) {
+		errorMessage.value = '未找到该赛讯'
+		rawEventPayload.value = null
+		eventView.value = null
+		loading.value = false
+		return
+	}
+
 	loading.value = true
+	errorMessage.value = ''
 	try {
-		const res = await getTournamentDetail({ tournament_id: tournamentId.value })
-		if (res.success) {
-			tournament.value = res.tournament
-			participants.value = res.participants || []
+		const res = await getEventNewsView({ event_id: eventNewsId.value })
+		if (!res.success) {
+			throw new Error(res.message || '获取赛事详情失败')
 		}
+		const payload = pickEventNewsViewPayload(res)
+		if (!payload) {
+			throw new Error('赛事数据不存在')
+		}
+		rawEventPayload.value = payload
+		renderEventView(Date.now())
+		startEventViewRefreshTimer()
+		void warmCachedPlayerAvatars(eventView.value)
 	} catch (e) {
 		console.error('获取赛事详情失败', e)
+		rawEventPayload.value = null
+		eventView.value = null
+		stopEventViewRefreshTimer()
+		errorMessage.value = e?.responseData?.message || e?.message || '加载失败，请稍后重试'
 	} finally {
 		loading.value = false
 	}
 }
 
-const onJoin = async () => {
-	try {
-		const res = await joinTournament({ tournament_id: tournamentId.value })
-		if (res.success) {
-			uni.showToast({ title: '报名成功', icon: 'success' })
-			fetchDetail()
-		} else {
-			uni.showToast({ title: res.message || '报名失败', icon: 'none' })
+const goBack = () => {
+	uni.navigateBack({
+		delta: 1,
+		fail: () => {
+			uni.switchTab({
+				url: '/pages/index/index'
+			})
 		}
-	} catch (e) {
-		uni.showToast({ title: '报名失败', icon: 'none' })
-	}
+	})
 }
 
-const onLeave = async () => {
-	try {
-		const res = await leaveTournament({ tournament_id: tournamentId.value })
-		if (res.success) {
-			uni.showToast({ title: '已取消报名', icon: 'success' })
-			fetchDetail()
-		} else {
-			uni.showToast({ title: res.message || '操作失败', icon: 'none' })
-		}
-	} catch (e) {
-		uni.showToast({ title: '操作失败', icon: 'none' })
-	}
-}
+onLoad((options) => {
+	eventNewsId.value = Number.parseInt(options?.id || '0', 10) || 0
+	fetchDetail()
+})
 
-const goBracket = () => {
-	uni.navigateTo({ url: '/subPages/tournament/bracket?id=' + tournamentId.value })
-}
-const formatDisplayTime = (value) => {
-	if (!value) return ''
-	const relative = formatRelativeTime(value)
-	return relative === '刚刚' ? '今天' : relative
-}
+onShow(() => {
+	renderEventView(Date.now())
+	startEventViewRefreshTimer()
+})
 
-onMounted(() => {
-	const pages = getCurrentPages()
-	const currentPage = pages[pages.length - 1]
-	tournamentId.value = parseInt(currentPage.options.id || 0)
-	if (tournamentId.value > 0) fetchDetail()
+onHide(() => {
+	stopEventViewRefreshTimer()
+})
+
+onUnload(() => {
+	stopEventViewRefreshTimer()
 })
 </script>
 

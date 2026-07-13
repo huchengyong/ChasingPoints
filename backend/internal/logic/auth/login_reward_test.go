@@ -1,0 +1,118 @@
+package auth
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"chasing_points/internal/config"
+	"chasing_points/internal/model"
+	"chasing_points/internal/sms"
+	"chasing_points/internal/svc"
+	"chasing_points/internal/types"
+
+	"github.com/alicebob/miniredis/v2"
+	"github.com/redis/go-redis/v9"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+)
+
+func newAuthRewardTestSvc(t *testing.T) (*svc.ServiceContext, *miniredis.Miniredis) {
+	t.Helper()
+
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite db: %v", err)
+	}
+	if err := db.AutoMigrate(&model.User{}, &model.UserOauth{}); err != nil {
+		t.Fatalf("prepare auth reward schema: %v", err)
+	}
+
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+
+	cfg := config.Config{}
+	cfg.Auth.AccessSecret = "test-secret"
+	cfg.Auth.AccessExpire = 3600
+
+	return &svc.ServiceContext{
+		DB:          db,
+		Config:      cfg,
+		UserModel:   model.NewUserModel(db),
+		OauthModel:  model.NewUserOauthModel(db),
+		CodeManager: sms.NewCodeManager(rdb),
+	}, mr
+}
+
+func assertWelcomeRewardDuration(t *testing.T, user *model.User) {
+	t.Helper()
+	if user == nil || user.MemberExpiresAt == nil {
+		t.Fatalf("expected member expiry on new user, got %#v", user)
+	}
+
+	duration := user.MemberExpiresAt.Sub(user.CreatedAt)
+	minExpected := 7*24*time.Hour - time.Minute
+	maxExpected := 7*24*time.Hour + time.Minute
+	if duration < minExpected || duration > maxExpected {
+		t.Fatalf("expected welcome reward around 7 days, got %s", duration)
+	}
+}
+
+func TestLoginCreatesNewUserWithSevenDayMemberReward(t *testing.T) {
+	svcCtx, _ := newAuthRewardTestSvc(t)
+	ctx := context.Background()
+
+	if err := svcCtx.CodeManager.SaveCode(ctx, "13800138000", "123456"); err != nil {
+		t.Fatalf("save sms code: %v", err)
+	}
+
+	logic := NewLoginLogic(ctx, svcCtx)
+	resp, err := logic.Login(&types.LoginReq{
+		Phone:   "13800138000",
+		SmsCode: "123456",
+	})
+	if err != nil {
+		t.Fatalf("login new user: %v", err)
+	}
+	if !resp.Success || resp.UserInfo == nil {
+		t.Fatalf("expected successful login response, got %#v", resp)
+	}
+
+	user, err := svcCtx.UserModel.FindByPhone("13800138000")
+	if err != nil {
+		t.Fatalf("find created user: %v", err)
+	}
+	assertWelcomeRewardDuration(t, user)
+}
+
+func TestLoginByOauthCreatesNewUserWithSevenDayMemberReward(t *testing.T) {
+	svcCtx, _ := newAuthRewardTestSvc(t)
+	ctx := context.Background()
+
+	logic := NewLoginByOauthLogic(ctx, svcCtx)
+	resp, err := logic.LoginByOauth(&types.LoginByOauthReq{
+		Provider: "huawei",
+		OpenId:   "openid-1001",
+		NickName: "华为新用户",
+	})
+	if err != nil {
+		t.Fatalf("oauth login new user: %v", err)
+	}
+	if !resp.Success || resp.UserInfo == nil || !resp.NeedBindPhone {
+		t.Fatalf("expected successful oauth login response, got %#v", resp)
+	}
+
+	user, err := svcCtx.UserModel.FindById(resp.UserInfo.Id)
+	if err != nil {
+		t.Fatalf("find oauth user: %v", err)
+	}
+	assertWelcomeRewardDuration(t, user)
+
+	oauth, err := svcCtx.OauthModel.FindByProviderAndOpenId("huawei", "openid-1001")
+	if err != nil {
+		t.Fatalf("find oauth record: %v", err)
+	}
+	if oauth == nil || oauth.UserId != resp.UserInfo.Id {
+		t.Fatalf("expected oauth record bound to new user, got %#v", oauth)
+	}
+}

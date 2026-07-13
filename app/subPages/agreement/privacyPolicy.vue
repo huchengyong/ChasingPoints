@@ -3,13 +3,13 @@
 		<!-- 内容区域 -->
 		<scroll-view class="content" scroll-y>
 			<view class="article">
-				<text class="article-title">球艺堂隐私政策</text>
+				<text class="article-title">追分隐私政策</text>
 				<text class="update-time">更新日期：2024年12月1日</text>
 				
 				<view class="section">
 					<text class="section-title">引言</text>
 					<text class="section-content">
-						球艺堂非常重视用户的隐私保护。本隐私政策旨在向您说明我们如何收集、使用、存储和保护您的个人信息。请您仔细阅读本政策，以便更好地了解我们的隐私保护措施。
+						追分非常重视用户的隐私保护。本隐私政策旨在向您说明我们如何收集、使用、存储和保护您的个人信息。请您仔细阅读本政策，以便更好地了解我们的隐私保护措施。
 					</text>
 				</view>
 				
@@ -104,39 +104,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
-import { onShow, onHide } from '@dcloudio/uni-app'
-import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
+import { usePageTheme } from '@/utils/page-theme.js'
 
 // ========== 状态管理 ==========
-const themeStore = useThemeStore()
+const { isDarkMode } = usePageTheme()
 
-// ========== 计算属性 ==========
-const isDarkMode = computed(() => themeStore.isDarkMode)
-
-// ========== 生命周期 ==========
-onShow(() => {
-	themeStore.syncTheme()
-	themeStore.applyNavigationBarTheme()
-	// 监听主题变化事件
-	uni.$on(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-onHide(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-onUnmounted(() => {
-	uni.$off(THEME_CHANGE_EVENT, handleThemeChange)
-})
-
-// ========== 方法 ==========
-/**
- * 处理主题变化事件
- */
-const handleThemeChange = () => {
-	themeStore.applyNavigationBarTheme()
-}
 </script>
 
 <style lang="scss">

@@ -3,8 +3,8 @@ package logic
 import (
 	"fmt"
 
-	"billiard_master/internal/model"
-	"billiard_master/internal/types"
+	"chasing_points/internal/model"
+	"chasing_points/internal/types"
 )
 
 func buildMatchSummary(gameType int, myActor int, myScore int, opponentScore int, myWinRate float64, opponentWinRate float64, myMaxScore int, opponentMaxScore int, redBallCount int, createdAt string, rounds []model.MatchRound, actions []model.MatchAction, achievements types.MatchAchievement) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
@@ -24,6 +24,10 @@ func buildMatchSummary(gameType int, myActor int, myScore int, opponentScore int
 	default:
 		return []types.MatchSummaryItem{}, []types.MatchSummaryItem{}
 	}
+}
+
+func BuildMatchSummary(gameType int, myActor int, myScore int, opponentScore int, myWinRate float64, opponentWinRate float64, myMaxScore int, opponentMaxScore int, redBallCount int, createdAt string, rounds []model.MatchRound, actions []model.MatchAction, achievements types.MatchAchievement) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
+	return buildMatchSummary(gameType, myActor, myScore, opponentScore, myWinRate, opponentWinRate, myMaxScore, opponentMaxScore, redBallCount, createdAt, rounds, actions, achievements)
 }
 
 func buildSnookerSummary(myActor int, myWinRate float64, opponentWinRate float64, myMaxScore int, opponentMaxScore int, _ int, createdAt string, actions []model.MatchAction) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
@@ -218,6 +222,10 @@ func calculateHighestScoringRun(actions []model.MatchAction, actor int) int {
 
 func calculateSnookerHighestBreaks(actions []model.MatchAction, myActor int) (int, int) {
 	return calculateSnookerHighestBreak(actions, myActor), calculateSnookerHighestBreak(actions, opponentActor(myActor))
+}
+
+func CalculateSnookerHighestBreaks(actions []model.MatchAction, myActor int) (int, int) {
+	return calculateSnookerHighestBreaks(actions, myActor)
 }
 
 type snookerBreakStats struct {

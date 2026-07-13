@@ -13,7 +13,7 @@
 
 .game-type-tabs {
     white-space: nowrap;
-    margin-bottom: 16px;
+    flex: 1;
 
     ::-webkit-scrollbar {
         display: none;
@@ -22,10 +22,15 @@
     }
 }
 
+.game-type-tabs-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
 .game-type-tab {
     display: inline-flex;
     flex-shrink: 0;
-    min-width: 164rpx;
     height: 72rpx;
     padding: 0 28rpx;
     margin-right: 16rpx;
@@ -43,13 +48,17 @@
     }
 
     &.active {
-        background: linear-gradient(135deg, #18b05b 0%, #15803d 100%);
+        background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
         border-color: transparent;
-        box-shadow: 0 10rpx 24rpx rgba(24, 176, 91, 0.24);
+        box-shadow: 0 10rpx 24rpx rgba(224, 174, 18, 0.24);
 
         text {
-            color: #ffffff;
+            color: #FFFFFF;
         }
+    }
+
+    &.pending {
+        opacity: 0.72;
     }
 }
 
@@ -94,6 +103,17 @@
         justify-content: center;
         gap: 6px;
         flex: 1;
+    }
+
+    .rank-main-refresh {
+        width: 48rpx;
+        height: 48rpx;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        border-radius: 999rpx;
+        background: rgba(148, 163, 184, 0.12);
     }
 
     .rank-label {
@@ -149,7 +169,7 @@
 
     .progress-fill {
         height: 100%;
-        background-color: #18b05b;
+        background-color: #E0AE12;
         border-radius: 4px;
         transition: width 0.3s ease;
     }
@@ -201,7 +221,7 @@
     transition: all 0.2s ease;
 
     &.is-current {
-        box-shadow: 0 0 0 2px rgba(24, 176, 91, 0.5);
+        box-shadow: 0 0 0 2px rgba(224, 174, 18, 0.36);
     }
 
     .rank-item-header {
@@ -333,6 +353,10 @@
 
     .current-rank-card {
         background-color: rgba(30, 41, 59, 0.5);
+
+        .rank-main-refresh {
+            background: rgba(148, 163, 184, 0.16);
+        }
 
         .rank-label {
             color: #94a3b8;

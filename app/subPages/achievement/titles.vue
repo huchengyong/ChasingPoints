@@ -1,8 +1,8 @@
 <template>
-	<view class="titles-page">
+	<view class="titles-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 加载中 -->
 		<view v-if="loading" class="loading-state">
-			<uni-icons type="spinner-cycle" size="36" color="#18b05b"></uni-icons>
+			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
@@ -17,7 +17,7 @@
 				<view class="title-left">
 					<text class="title-name">{{ item.title_name }}</text>
 					<view class="title-source">
-						<text class="source-badge" :class="getSourceClass(item.source)">{{ item.source }}</text>
+						<text class="source-badge" :class="getTitleSourceClass(item.source)">{{ getTitleSourceLabel(item.source) }}</text>
 					</view>
 				</view>
 				<button
@@ -44,15 +44,14 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getUserTitles, equipTitle } from '@/api/achievement.js'
+import { getTitleSourceClass, getTitleSourceLabel } from '@/utils/achievement-page.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const loading = ref(true)
 const equipLoading = ref(false)
 const titleList = ref([])
-
-const getSourceClass = (source) => {
-	const map = { '成就': 'achievement', '赛季': 'season', '赛事': 'tournament' }
-	return map[source] || 'default'
-}
 
 const handleEquip = async (item) => {
 	equipLoading.value = true
@@ -118,8 +117,8 @@ onLoad(() => {
 		margin-bottom: 16rpx;
 
 		&.equipped {
-			border: 2rpx solid #18b05b;
-			background: #f0fdf4;
+			border: 2rpx solid #E0AE12;
+			background: rgba(224, 174, 18, 0.12);
 		}
 
 		.title-left {
@@ -142,12 +141,12 @@ onLoad(() => {
 						color: #d97706;
 					}
 					&.season {
-						background: #dcfce7;
-						color: #15803d;
+						background: rgba(224, 174, 18, 0.14);
+						color: #C69200;
 					}
 					&.tournament {
-						background: #dcfce7;
-						color: #16a34a;
+						background: rgba(59, 130, 246, 0.12);
+						color: #2563eb;
 					}
 					&.default {
 						background: #f1f5f9;
@@ -164,8 +163,8 @@ onLoad(() => {
 			text-align: center;
 			border-radius: 30rpx;
 			font-size: 26rpx;
-			background: #18b05b;
-			color: #fff;
+			background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
+			color: #1f2937;
 			border: none;
 			padding: 0 24rpx;
 			margin: 0;

@@ -28,8 +28,16 @@ export const getNearbyVenues = (params) => {
 }
 
 /**
+ * 获取地区选项
+ * @param {Object} params { parent_id }
+ */
+export const getVenueAreaOptions = (params) => {
+  return get('/api/venue/areas', params)
+}
+
+/**
  * 创建/上传球馆
- * @param {Object} data { name, address, city, district, phone, images, business_hours, table_count, price_range, description }
+ * @param {Object} data { name, address, city, district }
  */
 export const createVenue = (data) => {
   return post('/api/venue/create', data)

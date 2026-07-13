@@ -1,5 +1,5 @@
 <template>
-	<view class="rules-page">
+	<view class="rules-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 搜索栏 -->
 		<view class="search-bar">
 			<uni-icons type="search" size="18" color="#94a3b8"></uni-icons>
@@ -19,7 +19,7 @@
 				<text class="clear-btn" @tap="clearSearch">清除</text>
 			</view>
 			<view v-if="searchLoading" class="loading-state">
-				<uni-icons type="spinner-cycle" size="28" color="#18b05b"></uni-icons>
+				<uni-icons type="spinner-cycle" size="28" color="#E0AE12"></uni-icons>
 			</view>
 			<view v-else-if="searchResults.length > 0">
 				<view
@@ -95,6 +95,9 @@
 import { ref } from 'vue'
 import { searchRules } from '@/api/rules.js'
 import { getRuleCategoryLabel } from '@/utils/game-types.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+
+const { isDarkMode } = usePageTheme()
 
 const searchKeyword = ref('')
 const searchResults = ref([])
@@ -169,7 +172,7 @@ const goToGlossary = () => {
 
 	.clear-btn {
 		font-size: 24rpx;
-		color: #18b05b;
+		color: #C69200;
 		font-weight: 400;
 	}
 }

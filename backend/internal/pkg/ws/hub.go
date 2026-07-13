@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"billiard_master/internal/model"
-	"billiard_master/internal/svc"
+	"chasing_points/internal/model"
+	"chasing_points/internal/svc"
 
 	"github.com/gorilla/websocket"
 	"github.com/zeromicro/go-zero/core/logx"

@@ -7,13 +7,17 @@ CREATE TABLE IF NOT EXISTS `tournaments` (
   `creator_id` BIGINT UNSIGNED NOT NULL COMMENT '创建者ID',
   `name` VARCHAR(128) NOT NULL COMMENT '赛事名称',
   `description` TEXT DEFAULT NULL COMMENT '赛事描述',
+  `cover_image` VARCHAR(512) NOT NULL DEFAULT '' COMMENT '赛事封面图',
   `game_type` TINYINT NOT NULL COMMENT '球种 1=斯诺克 2=九球追分 3=中式八球',
   `format` TINYINT NOT NULL DEFAULT 1 COMMENT '赛制 1=单败淘汰 2=双败淘汰 3=循环赛 4=瑞士轮',
   `max_players` INT NOT NULL DEFAULT 16 COMMENT '最大参赛人数(最多64)',
   `current_players` INT NOT NULL DEFAULT 0 COMMENT '当前报名人数',
   `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态 0=报名中 1=进行中 2=已结束 3=已取消',
+  `country` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '国家/地区',
   `city` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '城市',
   `venue_name` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '场馆名称',
+  `start_date` DATE DEFAULT NULL COMMENT '开始日期',
+  `end_date` DATE DEFAULT NULL COMMENT '结束日期',
   `start_time` DATETIME DEFAULT NULL COMMENT '开始时间',
   `end_time` DATETIME DEFAULT NULL COMMENT '结束时间',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -22,8 +26,29 @@ CREATE TABLE IF NOT EXISTS `tournaments` (
   KEY `idx_status` (`status`),
   KEY `idx_game_type` (`game_type`),
   KEY `idx_city` (`city`),
+  KEY `idx_start_date` (`start_date`),
   KEY `idx_start_time` (`start_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='赛事表';
+
+-- 球员表
+CREATE TABLE IF NOT EXISTS `players` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `source_type` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '来源类型 manual/official/imported',
+  `source_player_id` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '来源侧球员ID',
+  `first_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '名',
+  `last_name` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '姓',
+  `display_name` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '展示名称',
+  `avatar` VARCHAR(512) NOT NULL DEFAULT '' COMMENT '头像',
+  `country_code` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '国家或地区代码',
+  `flag_emoji` VARCHAR(16) NOT NULL DEFAULT '' COMMENT '国旗emoji',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` DATETIME DEFAULT NULL COMMENT '删除时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_source_player_id` (`source_player_id`),
+  KEY `idx_display_name` (`display_name`),
+  KEY `idx_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='球员表';
 
 -- 赛事参赛者表
 CREATE TABLE IF NOT EXISTS `tournament_participants` (
@@ -44,18 +69,37 @@ CREATE TABLE IF NOT EXISTS `tournament_participants` (
 CREATE TABLE IF NOT EXISTS `tournament_matches` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `tournament_id` BIGINT UNSIGNED NOT NULL COMMENT '赛事ID',
-  `round_number` INT NOT NULL DEFAULT 1 COMMENT '轮次',
+  `source_type` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '来源类型 manual/official/imported',
+  `source_match_id` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '来源侧比赛ID',
+  `round_name` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '轮次名称',
+  `round_number` INT NOT NULL DEFAULT 0 COMMENT '轮次编号',
+  `round_order` INT NOT NULL DEFAULT 0 COMMENT '轮次排序',
   `match_order` INT NOT NULL DEFAULT 0 COMMENT '本轮内顺序',
-  `player1_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '选手1 ID',
-  `player2_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '选手2 ID',
-  `winner_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '胜者ID',
-  `match_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '关联 matches 表的对局ID',
+  `start_time` DATETIME DEFAULT NULL COMMENT '比赛开始时间',
+  `best_of` INT NOT NULL DEFAULT 0 COMMENT '局数/盘数',
+  `home_player_id` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '主侧选手ID',
+  `home_player_name` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '主侧选手名',
+  `away_player_id` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '客侧选手ID',
+  `away_player_name` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '客侧选手名',
+  `home_score` INT NOT NULL DEFAULT 0 COMMENT '主侧比分',
+  `away_score` INT NOT NULL DEFAULT 0 COMMENT '客侧比分',
+  `winner_side` TINYINT NOT NULL DEFAULT 0 COMMENT '胜方 0=未知 1=主侧 2=客侧',
+  `is_placeholder` TINYINT NOT NULL DEFAULT 0 COMMENT '是否占位赛程',
+  `player1_id` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '淘汰赛玩家1 ID',
+  `player2_id` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '淘汰赛玩家2 ID',
+  `winner_id` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '淘汰赛胜者ID',
+  `match_id` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '关联 matches 表的对局ID',
   `bracket_position` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '对阵位置标识',
-  `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态 0=待开始 1=进行中 2=已完成',
+  `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态 0=待开始 1=进行中 2=已完成 3=已取消',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` DATETIME DEFAULT NULL COMMENT '删除时间',
   PRIMARY KEY (`id`),
   KEY `idx_tournament_id` (`tournament_id`),
+  KEY `idx_source_match_id` (`source_match_id`),
   KEY `idx_round_number` (`tournament_id`, `round_number`),
+  KEY `idx_round_order` (`tournament_id`, `round_order`, `match_order`),
+  KEY `idx_start_time` (`start_time`),
   KEY `idx_match_id` (`match_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='赛事对阵表';
 
@@ -77,6 +121,7 @@ CREATE TABLE IF NOT EXISTS `season_records` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `season_id` BIGINT UNSIGNED NOT NULL COMMENT '赛季ID',
   `user_id` BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+  `game_type` TINYINT NOT NULL DEFAULT 3 COMMENT '球种 1=斯诺克 2=九球追分 3=中式八球 4=美式九球',
   `start_rank_score` INT NOT NULL DEFAULT 0 COMMENT '赛季初始排位分',
   `end_rank_score` INT NOT NULL DEFAULT 0 COMMENT '赛季结束排位分',
   `peak_rank_score` INT NOT NULL DEFAULT 0 COMMENT '赛季峰值排位分',
@@ -86,9 +131,10 @@ CREATE TABLE IF NOT EXISTS `season_records` (
   `rewards` JSON DEFAULT NULL COMMENT '赛季奖励JSON',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_season_user` (`season_id`, `user_id`),
+  UNIQUE KEY `uk_season_user_game` (`season_id`, `user_id`, `game_type`),
   KEY `idx_season_id` (`season_id`),
-  KEY `idx_user_id` (`user_id`)
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_season_game_rank` (`season_id`, `game_type`, `end_rank_score`, `wins`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='赛季记录表';
 
 -- 球馆表
@@ -98,8 +144,9 @@ CREATE TABLE IF NOT EXISTS `venues` (
   `address` VARCHAR(512) NOT NULL DEFAULT '' COMMENT '详细地址',
   `city` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '城市',
   `district` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '区县',
-  `latitude` DECIMAL(10,7) DEFAULT NULL COMMENT '纬度',
-  `longitude` DECIMAL(10,7) DEFAULT NULL COMMENT '经度',
+  `full_address` VARCHAR(512) NOT NULL DEFAULT '' COMMENT '完整地址',
+  `latitude` DECIMAL(10,7) NOT NULL DEFAULT 0 COMMENT '纬度',
+  `longitude` DECIMAL(10,7) NOT NULL DEFAULT 0 COMMENT '经度',
   `phone` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '联系电话',
   `images` JSON DEFAULT NULL COMMENT '球馆照片URL数组',
   `business_hours` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '营业时间',
@@ -107,13 +154,24 @@ CREATE TABLE IF NOT EXISTS `venues` (
   `price_range` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '台费范围',
   `description` TEXT DEFAULT NULL COMMENT '球馆描述',
   `owner_user_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '认证球馆店主用户ID',
-  `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态 0=待审核 1=已通过',
+  `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态 0=隐藏/草稿 1=已发布 2=待审核 3=审核拒绝',
+  `geo_status` TINYINT NOT NULL DEFAULT 0 COMMENT '地理解析状态 0=待解析 1=成功 2=重试中 3=失败',
+  `geo_source` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '地理解析来源',
+  `geo_score` INT NOT NULL DEFAULT 0 COMMENT '地理解析匹配分',
+  `geo_level` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '地理解析级别',
+  `geo_attempts` INT NOT NULL DEFAULT 0 COMMENT '地理解析尝试次数',
+  `geo_error` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '最近一次地理解析错误',
+  `geo_updated_at` DATETIME DEFAULT NULL COMMENT '最近一次地理解析时间',
+  `duplicate_of_venue_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '重复球馆归并目标ID',
+  `reject_reason` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '审核拒绝原因',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_city` (`city`),
   KEY `idx_district` (`city`, `district`),
   KEY `idx_status` (`status`),
-  KEY `idx_owner` (`owner_user_id`)
+  KEY `idx_owner` (`owner_user_id`),
+  KEY `idx_status_geo_status` (`status`, `geo_status`),
+  UNIQUE KEY `uniq_full_address` (`full_address`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='球馆表';
 
 -- 球馆签到表
@@ -166,6 +224,7 @@ DROP TABLE IF EXISTS `venue_checkins`;
 DROP TABLE IF EXISTS `venues`;
 DROP TABLE IF EXISTS `season_records`;
 DROP TABLE IF EXISTS `seasons`;
+DROP TABLE IF EXISTS `players`;
 DROP TABLE IF EXISTS `tournament_matches`;
 DROP TABLE IF EXISTS `tournament_participants`;
 DROP TABLE IF EXISTS `tournaments`;

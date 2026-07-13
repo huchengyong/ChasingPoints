@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"billiard_master/internal/model"
+	"chasing_points/internal/model"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -71,7 +71,7 @@ func NewWorker(
 		provider = "apihz"
 	}
 	if lockerID == "" {
-		lockerID = "billiard-master-api"
+		lockerID = "chasing_points-api"
 	}
 	if batchSize <= 0 {
 		batchSize = 5

@@ -1,7 +1,7 @@
 .tournament-page {
 	min-height: 100vh;
 	box-sizing: border-box;
-	background: linear-gradient(180deg, #dcfce7 0%, #f0fdf4 18%, #f8fafc 36%, #f8fafc 100%);
+	background: linear-gradient(180deg, #ffffff 0%, #f8fafc 40%, #f8fafc 100%);
 }
 
 .page-hero,
@@ -15,7 +15,7 @@
 	margin: 0 24rpx 20rpx;
 	padding: 32rpx 28rpx;
 	border-radius: 28rpx;
-	background: linear-gradient(135deg, #0f172a 0%, #166534 62%, #38bdf8 100%);
+	background: linear-gradient(135deg, #0f172a 0%, #7c5b12 62%, #0ea5e9 100%);
 	box-shadow: 0 18rpx 40rpx rgba(37, 99, 235, 0.16);
 }
 
@@ -76,7 +76,7 @@
 .toolbar {
 	display: flex;
 	flex-direction: column;
-	gap: 16rpx;
+	gap: 14rpx;
 	margin: 0 24rpx 20rpx;
 	padding: 24rpx;
 	border-radius: 24rpx;
@@ -119,21 +119,11 @@
 	color: #0f172a;
 }
 
-.create-btn {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 10rpx;
-	padding: 22rpx;
-	border-radius: 20rpx;
-	background: linear-gradient(135deg, #15803d 0%, #0284c7 100%);
-	box-shadow: 0 12rpx 24rpx rgba(37, 99, 235, 0.18);
-}
-
-.create-text {
-	font-size: 28rpx;
-	font-weight: 700;
-	color: #ffffff;
+.toolbar-tip {
+	padding: 0 4rpx;
+	font-size: 22rpx;
+	line-height: 1.5;
+	color: #64748b;
 }
 
 .tournament-scroll {
@@ -146,21 +136,42 @@
 
 .tournament-card {
 	margin-bottom: 20rpx;
-	padding: 28rpx;
 	border-radius: 26rpx;
 	background: rgba(255, 255, 255, 0.94);
 	box-shadow: 0 12rpx 32rpx rgba(15, 23, 42, 0.06);
+	overflow: hidden;
+}
+
+.card-cover {
+	display: block;
+	width: calc(100% - 56rpx);
+	height: 260rpx;
+	margin: 28rpx 28rpx 0;
+	border-radius: 22rpx;
+	background: #e2e8f0;
 }
 
 .card-topline,
-.card-footer,
-.progress-head {
+.card-footer {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 }
 
 .card-topline {
+	margin: 20rpx 28rpx 0;
+}
+
+.card-title,
+.card-summary,
+.card-meta,
+.card-footer {
+	margin-left: 28rpx;
+	margin-right: 28rpx;
+}
+
+.card-title {
+	margin-top: 18rpx;
 	margin-bottom: 18rpx;
 }
 
@@ -172,22 +183,33 @@
 }
 
 .game-chip {
-	color: #166534;
-	background: #dcfce7;
+	color: #7c5b12;
+	background: rgba(224, 174, 18, 0.16);
 }
 
 .status-tag {
-	&.status-0 { background: #dcfce7; color: #15803d; }
-	&.status-1 { background: #dcfce7; color: #16a34a; }
-	&.status-2 { background: #f1f5f9; color: #64748b; }
-	&.status-3 { background: #fee2e2; color: #dc2626; }
+	&.status-0 {
+		background: #e0f2fe;
+		color: #0369a1;
+	}
+
+	&.status-1 {
+		background: rgba(224, 174, 18, 0.16);
+		color: #C69200;
+	}
+
+	&.status-2 {
+		background: #f1f5f9;
+		color: #64748b;
+	}
+
+	&.status-3 {
+		background: #fee2e2;
+		color: #dc2626;
+	}
 }
 
-.card-header {
-	margin-bottom: 20rpx;
-}
-
-.card-name {
+.card-title {
 	display: block;
 	font-size: 34rpx;
 	line-height: 1.35;
@@ -195,81 +217,53 @@
 	color: #0f172a;
 }
 
-.card-subtitle {
+.card-summary {
 	display: block;
 	margin-top: 10rpx;
 	font-size: 24rpx;
-	color: #64748b;
-}
-
-.card-progress {
-	margin-bottom: 20rpx;
-	padding: 20rpx;
-	border-radius: 20rpx;
-	background: #f8fafc;
-}
-
-.progress-label,
-.progress-value {
-	font-size: 22rpx;
+	line-height: 1.55;
 	color: #475569;
 }
 
-.progress-value {
-	font-weight: 600;
-}
-
-.progress-track {
-	height: 12rpx;
-	margin-top: 14rpx;
-	border-radius: 999rpx;
-	background: #dcfce7;
-	overflow: hidden;
-}
-
-.progress-fill {
-	height: 100%;
-	border-radius: inherit;
-	background: linear-gradient(90deg, #15803d 0%, #38bdf8 100%);
-}
-
-.card-info {
+.card-meta {
 	display: flex;
-	flex-direction: column;
-	gap: 18rpx;
-}
-
-.info-row {
-	display: flex;
-	align-items: center;
+	flex-wrap: wrap;
 	gap: 14rpx;
+	margin-top: 20rpx;
 }
 
-.info-copy {
-	flex: 1;
-	min-width: 0;
+.meta-item {
+	width: calc(50% - 7rpx);
+	padding: 18rpx;
+	border-radius: 20rpx;
+	background: #f8fafc;
+	box-sizing: border-box;
 }
 
-.info-label {
+.meta-label {
 	display: block;
 	font-size: 20rpx;
 	color: #94a3b8;
 }
 
-.info-value {
+.meta-value {
 	display: block;
-	margin-top: 6rpx;
-	font-size: 26rpx;
+	margin-top: 8rpx;
+	font-size: 24rpx;
+	line-height: 1.45;
+	font-weight: 600;
 	color: #0f172a;
+	word-break: break-all;
 }
 
 .card-footer {
 	margin-top: 20rpx;
+	margin-bottom: 28rpx;
 	padding-top: 20rpx;
 	border-top: 1rpx solid #e2e8f0;
 }
 
-.footer-time {
+.footer-source {
 	font-size: 22rpx;
 	color: #64748b;
 }
@@ -277,7 +271,7 @@
 .footer-link {
 	font-size: 24rpx;
 	font-weight: 600;
-	color: #15803d;
+	color: #C69200;
 }
 
 .loading-state,
@@ -312,7 +306,7 @@
 	height: 88rpx;
 	margin-bottom: 18rpx;
 	border-radius: 50%;
-	background: #dcfce7;
+	background: rgba(224, 174, 18, 0.16);
 }
 
 .empty-title {
@@ -326,19 +320,6 @@
 	font-size: 24rpx;
 	line-height: 1.6;
 	color: #64748b;
-}
-
-.empty-btn {
-	margin-top: 24rpx;
-	padding: 18rpx 42rpx;
-	border-radius: 18rpx;
-	background: linear-gradient(135deg, #15803d 0%, #0284c7 100%);
-
-	text {
-		font-size: 28rpx;
-		font-weight: 700;
-		color: #ffffff;
-	}
 }
 
 .no-more {

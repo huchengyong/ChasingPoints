@@ -1,206 +1,281 @@
 .welcome-container {
-    position: relative;
-    width: 100vw;
-    min-height: 100vh;
-    background-color: #121212;
-    overflow: hidden;
+	min-height: 100vh;
+	box-sizing: border-box;
+	background:
+		radial-gradient(circle at 88% 5%, rgba(224, 174, 18, 0.18), transparent 28%),
+		linear-gradient(180deg, #fffdf8 0%, #f8f3e9 100%);
+	overflow-y: auto;
 
-    &.dark-mode {
-        background-color: #000000;
-    }
-}
-
-.bg-image {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0.3;
-}
-
-/* 跳过按钮 */
-.skip-btn {
-    position: absolute;
-    top: 70rpx;
-    right: 32rpx;
-    z-index: 10;
-    padding: 16rpx 32rpx;
-    background-color: rgba(255, 255, 255, 0.15);
-    border-radius: 40rpx;
-    backdrop-filter: blur(10px);
-}
-
-.skip-text {
-    color: #ffffff;
-    font-size: 28rpx;
-    font-weight: 500;
+	&.dark-mode {
+		background:
+			radial-gradient(circle at 88% 6%, rgba(224, 174, 18, 0.15), transparent 28%),
+			linear-gradient(180deg, #1b170f 0%, #12100b 100%);
+	}
 }
 
 .content {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    padding: 0 32rpx;
-    padding-bottom: 40rpx;
+	min-height: 100vh;
+	box-sizing: border-box;
+	padding: calc(44rpx + env(safe-area-inset-top)) 40rpx calc(32rpx + env(safe-area-inset-bottom));
+	display: flex;
+	flex-direction: column;
 }
 
-.spacer {
-    flex-grow: 1;
+.brand-row {
+	display: flex;
+	align-items: center;
+	gap: 18rpx;
 }
 
-/* 标题区域 */
-.title-section {
-    text-align: center;
-    padding: 48rpx 0;
+.brand-logo {
+	width: 76rpx;
+	height: 76rpx;
+	border-radius: 22rpx;
+	box-shadow: 0 14rpx 30rpx rgba(198, 146, 0, 0.18);
+}
+
+.brand-copy {
+	display: flex;
+	flex-direction: column;
+	gap: 4rpx;
+}
+
+.brand-name {
+	color: #2a2419;
+	font-size: 26rpx;
+	font-weight: 800;
+	letter-spacing: 1rpx;
+}
+
+.brand-en {
+	color: #a08c5d;
+	font-size: 16rpx;
+	letter-spacing: 3rpx;
+}
+
+.hero-section {
+	margin-top: 116rpx;
+	display: flex;
+	flex-direction: column;
+}
+
+.eyebrow {
+	margin-bottom: 18rpx;
+	color: #a47a14;
+	font-size: 20rpx;
+	font-weight: 800;
+	letter-spacing: 4rpx;
 }
 
 .main-title {
-    display: block;
-    color: #ffffff;
-    font-size: 64rpx;
-    font-weight: bold;
-    line-height: 1.3;
-    letter-spacing: 2rpx;
+	color: #211e18;
+	font-size: 54rpx;
+	font-weight: 800;
+	line-height: 1.18;
+	letter-spacing: -1rpx;
 }
 
 .sub-title {
-    display: block;
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 32rpx;
-    margin-top: 24rpx;
-    line-height: 1.5;
+	max-width: 590rpx;
+	margin-top: 22rpx;
+	color: #746b5a;
+	font-size: 27rpx;
+	line-height: 1.6;
 }
 
-/* 按钮区域 */
+.benefit-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12rpx;
+	margin-top: 30rpx;
+
+	text {
+		padding: 9rpx 16rpx;
+		border: 1rpx solid #eadfbf;
+		border-radius: 999rpx;
+		background: rgba(255, 255, 255, 0.56);
+		color: #856a2b;
+		font-size: 20rpx;
+	}
+}
+
 .button-section {
-    display: flex;
-    flex-direction: column;
-    gap: 24rpx;
-    padding: 0 16rpx;
-    margin-top: 32rpx;
+	display: flex;
+	flex-direction: column;
+	gap: 18rpx;
+	margin-top: auto;
+	padding-top: 72rpx;
 }
 
-.btn-register {
-    width: 100%;
-    height: 96rpx;
-    background-color: #FFD700;
-    color: #000000;
-    font-size: 32rpx;
-    font-weight: bold;
-    border-radius: 16rpx;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
+.btn-primary,
+.phone-login-btn,
+.btn-secondary,
+.btn-tertiary {
+	width: 100%;
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+	text-align: center;
 
-    &::after {
-        display: none;
-    }
+	&::after {
+		display: none;
+	}
 }
 
-.btn-login {
-    width: 100%;
-    height: 96rpx;
-    background-color: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
-    font-size: 32rpx;
-    font-weight: bold;
-    border-radius: 16rpx;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-
-    &::after {
-        display: none;
-    }
+.btn-primary,
+.phone-login-btn,
+.btn-secondary {
+	height: 96rpx;
+	line-height: 96rpx;
+	border-radius: 28rpx;
+	font-size: 30rpx;
+	font-weight: 800;
 }
 
-/* 第三方登录区域 */
-.third-party-section {
-    margin-top: 48rpx;
-    text-align: center;
+.btn-primary {
+	background: linear-gradient(135deg, #e5b928 0%, #c99700 100%);
+	color: #ffffff;
+	box-shadow: 0 14rpx 28rpx rgba(201, 151, 0, 0.18);
+
+	&.wechat-primary {
+		background: #07c160;
+		box-shadow: 0 16rpx 30rpx rgba(7, 193, 96, 0.17);
+	}
+
+	&[disabled] {
+		opacity: 0.5;
+		color: #ffffff !important;
+		box-shadow: none;
+	}
 }
 
-.third-party-text {
-    color: #9dabb9;
-    font-size: 28rpx;
+.phone-login-btn,
+.btn-secondary {
+	border: 1rpx solid #e5cf93;
+	background: rgba(255, 255, 255, 0.66);
+	color: #7d5d11;
 }
 
-.third-party-buttons {
-    display: flex;
-    justify-content: center;
-    gap: 48rpx;
-    margin-top: 32rpx;
+.btn-secondary {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12rpx;
 }
 
-.third-party-btn {
-    width: 96rpx;
-    height: 96rpx;
-    background-color: #ffffff;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.button-icon {
+	width: 32rpx;
+	height: 32rpx;
 }
 
-.third-party-icon {
-    width: 48rpx;
-    height: 48rpx;
+.btn-tertiary {
+	height: 68rpx;
+	line-height: 68rpx;
+	background: transparent;
+	color: #8a8274;
+	font-size: 24rpx;
+	font-weight: 600;
 }
 
-/* 协议和隐私 */
+.phone-login-btn[disabled],
+.btn-tertiary[disabled] {
+	opacity: 0.45;
+}
+
 .agreement {
-    margin-top: 40rpx;
-    padding-bottom: 32rpx;
-    text-align: center;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8rpx;
+	margin-top: 16rpx;
+}
 
-    .agreement-row {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 12rpx;
-    }
+.agreement-row,
+.agreement-links {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
 
-    .checkbox {
-        width: 36rpx;
-        height: 36rpx;
-        border: 2rpx solid rgba(255, 255, 255, 0.3);
-        border-radius: 8rpx;
-        margin-right: 12rpx;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
+.checkbox {
+	width: 32rpx;
+	height: 32rpx;
+	margin-right: 10rpx;
+	border: 2rpx solid rgba(224, 174, 18, 0.42);
+	border-radius: 8rpx;
+	background: rgba(255, 255, 255, 0.72);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
 
-        &.checked {
-            background-color: #FFD700;
-            border-color: #FFD700;
-        }
-    }
+	&.checked {
+		background: #f7d86a;
+		border-color: #f7d86a;
+	}
+}
 
-    .agreement-text {
-        font-size: 24rpx;
-        color: #9dabb9;
-    }
+.agreement-text,
+.agreement-links {
+	color: #918978;
+	font-size: 22rpx;
+}
 
-    .agreement-links {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24rpx;
+.link {
+	margin: 0 4rpx;
+	color: #846414;
+}
 
-        .link {
-            color: rgba(255, 255, 255, 0.9);
-            margin: 0 8rpx;
-            text-decoration: underline;
-        }
+.separator {
+	color: #918978;
+}
 
-        .separator {
-            color: #717d8a;
-        }
-    }
+.dark-mode {
+	.brand-name,
+	.main-title {
+		color: #fff8e8;
+	}
+
+	.brand-en {
+		color: #a99a77;
+	}
+
+	.eyebrow {
+		color: #e1b63a;
+	}
+
+	.sub-title {
+		color: #c9bea2;
+	}
+
+	.benefit-list text {
+		border-color: rgba(224, 174, 18, 0.28);
+		background: rgba(255, 255, 255, 0.04);
+		color: #d7c89b;
+	}
+
+	.phone-login-btn,
+	.btn-secondary {
+		border-color: rgba(224, 174, 18, 0.42);
+		background: rgba(255, 255, 255, 0.04);
+		color: #efd476;
+	}
+
+	.btn-tertiary {
+		color: #aaa087;
+	}
+
+	.checkbox {
+		background: rgba(255, 255, 255, 0.04);
+	}
+
+	.agreement-text,
+	.agreement-links,
+	.separator {
+		color: #8d836c;
+	}
+
+	.link {
+		color: #efd476;
+	}
 }
