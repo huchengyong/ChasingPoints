@@ -638,6 +638,7 @@ onUnmounted(() => {
 	display: flex;
 	align-items: center;
 	gap: 18rpx;
+	margin-top: 112rpx;
 }
 
 .brand-logo {
