@@ -137,7 +137,8 @@
 			:show="showBindPhoneModal"
 			:closable="true"
 			:is-dark-mode="isDarkMode"
-			:require-agreement="!isWechatMiniProgram"
+			:use-sms-binding="true"
+			:require-agreement="false"
 			@close="handleBindPhoneClose"
 			@success="handleBindPhoneSuccess"
 		/>
@@ -524,6 +525,7 @@ const handleBindPhoneSuccess = (payload) => {
 
 	if (payload?.action === 'relogin') {
 		userStore.logout()
+		authMode.value = 'phone'
 		formData.phone = payload?.phone || ''
 		formData.code = ''
 		uni.showToast({
@@ -568,6 +570,9 @@ onLoad((options) => {
 		isWechatMini: isWechatMiniProgram,
 		requestedMethod: options?.method
 	})
+	formData.phone = options?.phone
+		? decodeURIComponent(options.phone)
+		: ''
 })
 
 onShow(() => {

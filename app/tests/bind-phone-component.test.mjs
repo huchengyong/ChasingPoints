@@ -18,8 +18,18 @@ test('bind phone requires agreement by default but can reuse prior login consent
   assert.match(source, /:disabled="!canAuthorizeWechatPhone \|\| loading"/)
 })
 
+test('bind phone uses native authorization by default and enables an explicit SMS mode', () => {
+  assert.match(source, /useSmsBinding:\s*\{\s*type:\s*Boolean,\s*default:\s*false/)
+  assert.match(source, /v-if="!useSmsBinding"[\s\S]*?open-type="getPhoneNumber"/)
+  assert.match(source, /v-if="showSmsBinding"[^>]*class="sms-binding-form"/)
+  assert.match(source, /showSmsBinding\(\)\s*\{[\s\S]*?this\.useSmsBinding/)
+  assert.match(source, /class="phone-input"[\s\S]*?class="code-input"[\s\S]*?获取验证码[\s\S]*?立即绑定/)
+})
+
 test('settings keeps the default agreement requirement for proactive binding', () => {
   assert.doesNotMatch(settingsSource, /require-agreement/)
+  assert.doesNotMatch(settingsSource, /use-sms-binding/)
+  assert.match(source, /#ifdef MP-WEIXIN[\s\S]*?v-if="!useSmsBinding"[\s\S]*?open-type="getPhoneNumber"/)
 })
 
 test('denied WeChat phone authorization keeps the sheet usable and explains the later option', () => {
@@ -103,6 +113,12 @@ test('login page allows bind phone modal to close later and passes current theme
   assert.match(loginSource, /:closable="true"/)
   assert.match(loginSource, /:is-dark-mode="isDarkMode"/)
   assert.match(loginSource, /@close="handleBindPhoneClose"/)
+})
+
+test('login page opens the post-login bind sheet in SMS mode without repeated agreement', () => {
+  assert.match(loginSource, /:use-sms-binding="true"/)
+  assert.match(loginSource, /:require-agreement="false"/)
+  assert.doesNotMatch(loginSource, /:require-agreement="!isWechatMiniProgram"/)
 })
 
 test('login submit button explicitly centers its text vertically', () => {

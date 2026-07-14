@@ -85,9 +85,22 @@ test('welcome page delays navigation until an unbound user handles the phone pro
 	assert.match(welcomeSource, /if \(!authGate\.value\.shouldHandleResult\) return/)
 	assert.match(welcomeSource, /postLoginState\.action === 'bind-phone'[\s\S]*?showBindPhoneModal\.value = true[\s\S]*?return[\s\S]*?navigateToHome\(\)/)
 	assert.match(welcomeSource, /if \(hasViewed && !showBindPhoneModal\.value\)/)
+	assert.match(welcomeSource, /:use-sms-binding="true"/)
 	assert.match(welcomeSource, /:require-agreement="false"/)
 	assert.match(welcomeSource, /bindingSkipped:\s*true/)
 	assert.match(welcomeSource, /handleBindPhoneSuccess/)
+})
+
+test('welcome page enters home after binding or choosing to bind later', () => {
+	assert.match(welcomeSource, /handleBindPhoneSuccess[\s\S]*?payload\?\.action === 'relogin'[\s\S]*?navigateToHome\(\)/)
+	assert.match(welcomeSource, /handleBindPhoneClose[\s\S]*?bindingSkipped:\s*true[\s\S]*?navigateToHome\(\)/)
+})
+
+test('welcome page sends merged accounts to phone login with the bound phone prefilled', () => {
+	assert.match(welcomeSource, /payload\?\.action === 'relogin'[\s\S]*?userStore\.logout\(\)/)
+	assert.match(welcomeSource, /encodeURIComponent\(payload\?\.phone \|\| ''\)/)
+	assert.match(welcomeSource, /url:\s*`\/pages\/login\/login\?method=phone&phone=\$\{encodedPhone\}`/)
+	assert.match(loginSource, /onLoad\(\(options\) => \{[\s\S]*?formData\.phone = options\?\.phone[\s\S]*?decodeURIComponent\(options\.phone\)/)
 })
 
 test('welcome page matches the ivory light and warm dark login visual', () => {
@@ -112,8 +125,17 @@ test('login page defers navigation for unbound WeChat users and reuses prior con
   assert.match(loginSource, /isLogging:\s*authGate\.value\.isAuthenticating/)
   assert.match(loginSource, /if \(!authGate\.value\.shouldHandleResult\) return/)
   assert.match(loginSource, /postLoginState\.action === 'bind-phone'[\s\S]*?showBindPhoneModal\.value = true[\s\S]*?return[\s\S]*?navigateAfterLogin\(\)/)
-  assert.match(loginSource, /:require-agreement="!isWechatMiniProgram"/)
-  assert.match(loginSource, /bindingSkipped:\s*true/)
+	assert.match(loginSource, /:use-sms-binding="true"/)
+	assert.match(loginSource, /:require-agreement="false"/)
+	assert.match(loginSource, /bindingSkipped:\s*true/)
+})
+
+test('login page keeps merged accounts on a prefilled phone login state', () => {
+	assert.match(loginSource, /payload\?\.action === 'relogin'[\s\S]*?userStore\.logout\(\)/)
+	assert.match(loginSource, /payload\?\.action === 'relogin'[\s\S]*?authMode\.value = 'phone'/)
+	assert.match(loginSource, /formData\.phone = payload\?\.phone \|\| ''/)
+	assert.match(loginSource, /formData\.code = ''/)
+	assert.match(loginSource, /payload\?\.action === 'relogin'[\s\S]*?return[\s\S]*?navigateAfterLogin\(\)/)
 })
 
 test('login page uses ivory light styling and a matching warm dark theme', () => {

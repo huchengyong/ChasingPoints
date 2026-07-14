@@ -74,6 +74,7 @@
 			:show="showBindPhoneModal"
 			:closable="true"
 			:is-dark-mode="isDarkMode"
+			:use-sms-binding="true"
 			:require-agreement="false"
 			@close="handleBindPhoneClose"
 			@success="handleBindPhoneSuccess"
@@ -284,6 +285,19 @@ const handleHuaweiLogin = () => {
 
 const handleBindPhoneSuccess = (payload) => {
 	showBindPhoneModal.value = false
+	if (payload?.action === 'relogin') {
+		userStore.logout()
+		const encodedPhone = encodeURIComponent(payload?.phone || '')
+		uni.navigateTo({
+			url: `/pages/login/login?method=phone&phone=${encodedPhone}`
+		})
+		uni.showToast({
+			title: payload.message || '账号已合并，请使用手机号登录',
+			icon: 'none'
+		})
+		return
+	}
+
 	navigateToHome()
 	uni.showToast({
 		title: payload?.message || '绑定成功',

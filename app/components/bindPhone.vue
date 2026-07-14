@@ -15,85 +15,87 @@
 			<text class="sheet-subtitle">用于账号找回、重要赛事通知和已有账号安全合并</text>
 			
 			<!-- #ifdef MP-WEIXIN -->
-			<view class="wechat-phone-copy">
-				<text>授权微信手机号后即可完成绑定，可随时稍后处理。</text>
-			</view>
-			<view class="binding-benefits">
-				<text>账号找回</text>
-				<text>赛事通知</text>
-				<text>账号合并</text>
-			</view>
-
-			<view class="bind-btn-container">
-				<button
-					class="bind-btn"
-					:class="{ active: canAuthorizeWechatPhone }"
-					:disabled="!canAuthorizeWechatPhone || loading"
-					open-type="getPhoneNumber"
-					@getphonenumber="handleWechatPhoneNumber"
-				>
-					{{ loading ? '绑定中...' : '授权微信手机号' }}
-				</button>
-				<button v-if="closable" class="close-text-btn" :disabled="!canClose" @click="handleClose">
-					稍后绑定
-				</button>
-			</view>
-			<!-- #endif -->
-
-			<!-- #ifndef MP-WEIXIN -->
-			<!-- 手机号输入 -->
-			<view class="input-group">
-				<text class="input-label">手机号</text>
-				<view class="input-wrapper">
-					<text class="country-code">+86</text>
-					<input
-						class="phone-input"
-						type="number"
-						v-model="phone"
-						placeholder="请输入手机号码"
-						maxlength="11"
-						@input="handlePhoneInput"
-					/>
+			<template v-if="!useSmsBinding">
+				<view class="wechat-phone-copy">
+					<text>授权微信手机号后即可完成绑定，可随时稍后处理。</text>
 				</view>
-				<text class="error-text" v-if="phoneError">{{ phoneError }}</text>
-			</view>
-			
-			<!-- 验证码输入 -->
-			<view class="input-group">
-				<text class="input-label">验证码</text>
-				<view class="input-wrapper code-wrapper">
-					<input
-						class="code-input"
-						type="number"
-						v-model="code"
-						placeholder="请输入6位验证码"
-						maxlength="6"
-					/>
-					<text
-						class="send-code-btn"
-						:class="{ disabled: !canSendCode }"
-						@click="handleSendCode"
+				<view class="binding-benefits">
+					<text>账号找回</text>
+					<text>赛事通知</text>
+					<text>账号合并</text>
+				</view>
+
+				<view class="bind-btn-container">
+					<button
+						class="bind-btn"
+						:class="{ active: canAuthorizeWechatPhone }"
+						:disabled="!canAuthorizeWechatPhone || loading"
+						open-type="getPhoneNumber"
+						@getphonenumber="handleWechatPhoneNumber"
 					>
-						{{ isSendingCode ? '发送中...' : (countdown > 0 ? `${countdown}s后重发` : '获取验证码') }}
-					</text>
+						{{ loading ? '绑定中...' : '授权微信手机号' }}
+					</button>
+					<button v-if="closable" class="close-text-btn" :disabled="!canClose" @click="handleClose">
+						稍后绑定
+					</button>
+				</view>
+			</template>
+			<!-- #endif -->
+
+			<view v-if="showSmsBinding" class="sms-binding-form">
+				<!-- 手机号输入 -->
+				<view class="input-group">
+					<text class="input-label">手机号</text>
+					<view class="input-wrapper">
+						<text class="country-code">+86</text>
+						<input
+							class="phone-input"
+							type="number"
+							v-model="phone"
+							placeholder="请输入手机号码"
+							maxlength="11"
+							@input="handlePhoneInput"
+						/>
+					</view>
+					<text class="error-text" v-if="phoneError">{{ phoneError }}</text>
+				</view>
+
+				<!-- 验证码输入 -->
+				<view class="input-group">
+					<text class="input-label">验证码</text>
+					<view class="input-wrapper code-wrapper">
+						<input
+							class="code-input"
+							type="number"
+							v-model="code"
+							placeholder="请输入6位验证码"
+							maxlength="6"
+						/>
+						<text
+							class="send-code-btn"
+							:class="{ disabled: !canSendCode }"
+							@click="handleSendCode"
+						>
+							{{ isSendingCode ? '发送中...' : (countdown > 0 ? `${countdown}s后重发` : '获取验证码') }}
+						</text>
+					</view>
+				</view>
+
+				<!-- 绑定按钮 -->
+				<view class="bind-btn-container">
+					<button
+						class="bind-btn"
+						:class="{ active: canBind }"
+						:disabled="!canBind || loading"
+						@click="handleBind"
+					>
+						{{ loading ? '绑定中...' : '立即绑定' }}
+					</button>
+					<button v-if="closable" class="close-text-btn" :disabled="!canClose" @click="handleClose">
+						稍后绑定
+					</button>
 				</view>
 			</view>
-			
-			<!-- 绑定按钮 -->
-			<view class="bind-btn-container">
-				<button
-					class="bind-btn"
-					:class="{ active: canBind }"
-					:disabled="!canBind || loading"
-					@click="handleBind"
-				>
-					{{ loading ? '绑定中...' : '立即绑定' }}
-				</button>
-				<button v-if="closable" class="close-text-btn" :disabled="!canClose" @click="handleClose">
-					稍后绑定
-				</button>
-			</view>
-			<!-- #endif -->
 			
 			<!-- 协议文本 -->
 			<view v-if="requireAgreement" class="agreement-section">
@@ -147,6 +149,10 @@ export default {
 		requireAgreement: {
 			type: Boolean,
 			default: true
+		},
+		useSmsBinding: {
+			type: Boolean,
+			default: false
 		}
 	},
 	emits: ['close', 'success'],
@@ -168,6 +174,13 @@ export default {
 	computed: {
 		displayDarkMode() {
 			return this.isDarkMode
+		},
+		showSmsBinding() {
+			let isWechatMiniProgram = false
+			// #ifdef MP-WEIXIN
+			isWechatMiniProgram = true
+			// #endif
+			return !isWechatMiniProgram || this.useSmsBinding
 		},
 		canSendCode() {
 			return canRequestBindPhoneSms({
