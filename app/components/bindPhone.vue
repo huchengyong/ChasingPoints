@@ -71,13 +71,14 @@
 							placeholder="请输入6位验证码"
 							maxlength="6"
 						/>
-						<text
+						<button
 							class="send-code-btn"
 							:class="{ disabled: !canSendCode }"
+							:disabled="isSendingCode || countdown > 0"
 							@click="handleSendCode"
 						>
 							{{ isSendingCode ? '发送中...' : (countdown > 0 ? `${countdown}s后重发` : '获取验证码') }}
-						</text>
+						</button>
 					</view>
 				</view>
 
@@ -268,11 +269,14 @@ export default {
 		},
 		
 		async handleSendCode() {
-			if (!this.canSendCode) return
+			if (this.isSendingCode || this.countdown > 0) return
 			
-			// 验证手机号
 			if (!isValidBindPhone(this.phone)) {
-				this.phoneError = '请输入正确的手机号'
+				this.phoneError = this.phone ? '请输入正确的手机号' : '请输入手机号'
+				uni.showToast({
+					title: this.phoneError,
+					icon: 'none'
+				})
 				return
 			}
 			
@@ -526,7 +530,8 @@ $dark-input-bg: transparent;
 	}
 
 	.code-input {
-		padding: 0 32rpx;
+		min-width: 0;
+		padding: 0 16rpx 0 32rpx;
 	}
 
 	.code-wrapper {
@@ -534,16 +539,32 @@ $dark-input-bg: transparent;
 	}
 
 	.send-code-btn {
-		position: absolute;
-		right: 16rpx;
-		padding: 16rpx 24rpx;
+		position: static;
+		flex-shrink: 0;
+		height: 64rpx;
+		line-height: 64rpx;
+		margin: 0 16rpx 0 0;
+		padding: 0 24rpx;
 		font-size: 28rpx;
 		font-weight: 500;
 		color: #c69200;
+		background: transparent;
+		border: none;
 		border-radius: 12rpx;
+		box-sizing: border-box;
+		white-space: nowrap;
+
+		&::after {
+			display: none;
+		}
 
 		&.disabled {
 			color: #9ca3af;
+		}
+
+		&[disabled] {
+			color: #9ca3af !important;
+			background: transparent;
 		}
 	}
 

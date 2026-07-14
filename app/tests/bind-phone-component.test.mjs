@@ -10,6 +10,14 @@ const settingsSource = readFileSync(
   new URL('../subPages/user/settings.vue', import.meta.url),
   'utf8'
 )
+const sendCodeMethodSource = source.slice(
+  source.indexOf('async handleSendCode()'),
+  source.indexOf('async handleBind()')
+)
+const sendCodeStyleSource = source.slice(
+  source.indexOf('\t.send-code-btn {'),
+  source.indexOf('\t.error-text {')
+)
 
 test('bind phone requires agreement by default but can reuse prior login consent', () => {
   assert.match(source, /requireAgreement:\s*\{\s*type:\s*Boolean,\s*default:\s*true/)
@@ -24,6 +32,28 @@ test('bind phone uses native authorization by default and enables an explicit SM
   assert.match(source, /v-if="showSmsBinding"[^>]*class="sms-binding-form"/)
   assert.match(source, /showSmsBinding\(\)\s*\{[\s\S]*?this\.useSmsBinding/)
   assert.match(source, /class="phone-input"[\s\S]*?class="code-input"[\s\S]*?获取验证码[\s\S]*?立即绑定/)
+})
+
+test('bind phone SMS action reports an invalid phone instead of ignoring the tap', () => {
+  assert.match(
+    source,
+    /<button\s+class="send-code-btn"[\s\S]*?:disabled="isSendingCode \|\| countdown > 0"[\s\S]*?@click="handleSendCode"/
+  )
+  assert.match(sendCodeMethodSource, /if \(!isValidBindPhone\(this\.phone\)\)[\s\S]*?this\.phoneError = this\.phone \? '请输入正确的手机号' : '请输入手机号'/)
+  assert.match(sendCodeMethodSource, /uni\.showToast\(\{[\s\S]*?title: this\.phoneError[\s\S]*?icon: 'none'/)
+  assert.doesNotMatch(sendCodeMethodSource, /if \(!this\.canSendCode\) return/)
+  assert.ok(
+    sendCodeMethodSource.indexOf('if (!isValidBindPhone(this.phone))') <
+      sendCodeMethodSource.indexOf('this.isSendingCode = true')
+  )
+})
+
+test('bind phone SMS action does not overlap the native code input hit area', () => {
+  assert.match(source, /\.code-input\s*\{[\s\S]*?min-width:\s*0;/)
+  assert.match(sendCodeStyleSource, /position:\s*static;/)
+  assert.match(sendCodeStyleSource, /flex-shrink:\s*0;/)
+  assert.doesNotMatch(sendCodeStyleSource, /position:\s*absolute;/)
+  assert.doesNotMatch(sendCodeStyleSource, /transform:\s*translateY/)
 })
 
 test('settings keeps the default agreement requirement for proactive binding', () => {
