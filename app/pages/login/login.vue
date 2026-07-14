@@ -615,7 +615,7 @@ onUnmounted(() => {
 .login-container {
 	min-height: 100vh;
 	box-sizing: border-box;
-	padding: calc(44rpx + env(safe-area-inset-top)) 40rpx calc(32rpx + env(safe-area-inset-bottom));
+	padding: calc(76rpx + env(safe-area-inset-top)) 40rpx calc(32rpx + env(safe-area-inset-bottom));
 	background:
 		radial-gradient(circle at 88% 5%, rgba(224, 174, 18, 0.18), transparent 28%),
 		linear-gradient(180deg, #fffdf8 0%, #f8f3e9 100%);
@@ -629,7 +629,7 @@ onUnmounted(() => {
 }
 
 .login-content {
-	min-height: calc(100vh - 76rpx - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+	min-height: calc(100vh - 108rpx - env(safe-area-inset-top) - env(safe-area-inset-bottom));
 	display: flex;
 	flex-direction: column;
 }
@@ -681,7 +681,7 @@ onUnmounted(() => {
 }
 
 .hero-section {
-	margin-top: 116rpx;
+	margin-top: 156rpx;
 	display: flex;
 	flex-direction: column;
 }
