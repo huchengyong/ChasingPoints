@@ -39,7 +39,7 @@
 					<view class="post-header">
 						<image
 							class="post-avatar"
-							:src="item.avatar || '/static/images/default-avatar.png'"
+							:src="resolveAvatarUrl(item.avatar, item.user_id)"
 							mode="aspectFill"
 						/>
 						<view class="post-user-info">
@@ -170,6 +170,7 @@ import { usePageTheme } from '@/utils/page-theme.js'
 import { useUserStore } from '@/store/user.js'
 import { formatRelativeTime } from '@/utils/format.js'
 import { filterReportPosts, resolveFeedTab, resolveSocialEmptyState, SOCIAL_TABS } from '@/utils/social-entry.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const tabs = SOCIAL_TABS
 const { isDarkMode } = usePageTheme()

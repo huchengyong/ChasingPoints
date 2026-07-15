@@ -80,6 +80,7 @@
 							{{ isSendingCode ? '发送中...' : (countdown > 0 ? `${countdown}s后重发` : '获取验证码') }}
 						</button>
 					</view>
+					<text v-if="slowAction === 'send'" class="slow-action-hint">网络稍慢，正在继续尝试</text>
 				</view>
 
 				<!-- 绑定按钮 -->
@@ -96,6 +97,7 @@
 						稍后绑定
 					</button>
 				</view>
+				<text v-if="slowAction === 'bind'" class="slow-action-hint">网络稍慢，正在继续尝试</text>
 			</view>
 			
 			<!-- 协议文本 -->
@@ -127,7 +129,7 @@ import {
 	resolveBindPhoneSuccess,
 	shouldResetBindPhoneVerification
 } from '@/utils/bind-phone-flow.js'
-import { resolveEntryFunnelAgreementState } from '@/utils/entry-funnel.js'
+import { AUTH_SLOW_FEEDBACK_DELAY, resolveEntryFunnelAgreementState } from '@/utils/entry-funnel.js'
 
 const ENTRY_FUNNEL_AGREEMENT_KEY = 'entry_funnel_agreement_accepted'
 const ENTRY_FUNNEL_SESSION_KEY = 'entry_funnel_session_active'
@@ -166,6 +168,8 @@ export default {
 			timer: null,
 			isSendingCode: false,
 			loading: false,
+			slowAction: '',
+			slowTimer: null,
 			isAgreed: false
 		}
 	},
@@ -265,7 +269,23 @@ export default {
 			this.phone = ''
 			this.phoneError = ''
 			this.loading = false
+			this.clearSlowAction()
 			this.isAgreed = false
+		},
+
+		startSlowAction(action) {
+			this.clearSlowAction()
+			this.slowTimer = setTimeout(() => {
+				if (this.isSendingCode || this.loading) this.slowAction = action
+			}, AUTH_SLOW_FEEDBACK_DELAY)
+		},
+
+		clearSlowAction() {
+			if (this.slowTimer) {
+				clearTimeout(this.slowTimer)
+				this.slowTimer = null
+			}
+			this.slowAction = ''
 		},
 		
 		async handleSendCode() {
@@ -281,6 +301,7 @@ export default {
 			}
 			
 			this.isSendingCode = true
+			this.startSlowAction('send')
 
 			try {
 				const res = await sendSms(this.phone, 'bind')
@@ -314,6 +335,7 @@ export default {
 				})
 			} finally {
 				this.isSendingCode = false
+				this.clearSlowAction()
 			}
 		},
 		
@@ -321,6 +343,7 @@ export default {
 			if (!this.canBind || this.loading) return
 			
 			this.loading = true
+			this.startSlowAction('bind')
 			
 			try {
 				const res = await bindPhone(this.phone, this.code)
@@ -334,6 +357,7 @@ export default {
 				})
 			} finally {
 				this.loading = false
+				this.clearSlowAction()
 			}
 		},
 
@@ -349,6 +373,7 @@ export default {
 			if (!this.canAuthorizeWechatPhone || this.loading) return
 
 			this.loading = true
+			this.startSlowAction('bind')
 			try {
 				const res = await wechatMiniBindPhone(code)
 				this.handleBindResponse(res, '')
@@ -359,6 +384,7 @@ export default {
 				})
 			} finally {
 				this.loading = false
+				this.clearSlowAction()
 			}
 		},
 
@@ -397,6 +423,7 @@ export default {
 	
 	beforeUnmount() {
 		this.resetVerificationState()
+		this.clearSlowAction()
 	}
 }
 </script>
@@ -573,6 +600,15 @@ $dark-input-bg: transparent;
 		font-size: 24rpx;
 		color: #ef4444;
 		margin-top: 8rpx;
+	}
+
+	.slow-action-hint {
+		display: block;
+		margin-top: 10rpx;
+		color: #9a7b2a;
+		font-size: 22rpx;
+		line-height: 1.4;
+		text-align: center;
 	}
 
 	.bind-btn-container {
@@ -803,6 +839,10 @@ $dark-input-bg: transparent;
 			.link {
 				color: #f7e7a8;
 			}
+		}
+
+		.slow-action-hint {
+			color: #d7b95c;
 		}
 	}
 }

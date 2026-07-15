@@ -88,7 +88,7 @@
 						</view>
 						<image
 							class="rank-avatar"
-							:src="item.avatar || '/static/default-avatar.png'"
+							:src="resolveAvatarUrl(item.avatar, item.user_id)"
 							mode="aspectFill"
 						></image>
 						<view class="rank-info">
@@ -121,6 +121,7 @@ import { ref, computed, onMounted } from 'vue'
 import { getCurrentSeason, getSeasonLeaderboard, getMySeasonRecord } from '@/api/season.js'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const { isDarkMode } = usePageTheme()
 

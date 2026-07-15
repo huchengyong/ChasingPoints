@@ -136,6 +136,11 @@
 	background: linear-gradient(135deg, #e5b928 0%, #c99700 100%);
 	color: #ffffff;
 	box-shadow: 0 14rpx 28rpx rgba(201, 151, 0, 0.18);
+	transition: opacity 0.2s ease;
+
+	&.authenticating {
+		animation: auth-pulse 1.4s ease-in-out infinite;
+	}
 
 	&.wechat-primary {
 		background: #07c160;
@@ -182,6 +187,14 @@
 	opacity: 0.45;
 }
 
+.auth-slow-hint {
+	align-self: center;
+	margin-top: -4rpx;
+	color: #9a7b2a;
+	font-size: 22rpx;
+	line-height: 1.4;
+}
+
 .agreement {
 	display: flex;
 	flex-direction: column;
@@ -195,6 +208,12 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
+}
+
+.agreement-row.disabled,
+.agreement-links.disabled {
+	opacity: 0.45;
+	pointer-events: none;
 }
 
 .checkbox {
@@ -277,5 +296,15 @@
 
 	.link {
 		color: #efd476;
+	}
+}
+
+@keyframes auth-pulse {
+	0%,
+	100% {
+		opacity: 0.62;
+	}
+	50% {
+		opacity: 0.9;
 	}
 }

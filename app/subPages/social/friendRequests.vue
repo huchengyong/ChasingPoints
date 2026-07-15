@@ -16,7 +16,7 @@
 				<view class="request-card-main">
 					<image
 						class="request-avatar"
-						:src="item.avatar || '/static/images/default-avatar.png'"
+						:src="resolveAvatarUrl(item.avatar, item.from_user_id || item.user_id || item.friend_user_id)"
 						mode="aspectFill"
 					/>
 					<view class="request-info">
@@ -67,6 +67,7 @@ import { getFriendRequests, acceptFriendRequest, rejectFriendRequest } from '@/a
 import { useFriendRequestStore } from '@/store/friendRequest.js'
 import { formatRelativeTime } from '@/utils/format.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const { isDarkMode } = usePageTheme()
 

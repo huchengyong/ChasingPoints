@@ -89,8 +89,8 @@
 				<view class="identity-hero">
 					<view class="identity-top">
 						<view class="identity-main">
-							<view class="identity-avatar">
-								<image :src="userInfo.avatar || '/static/images/default-avatar.png'" mode="aspectFill" />
+							<view class="identity-avatar" @click="handleEditProfile">
+								<image :src="userInfo.avatar" mode="aspectFill" />
 							</view>
 								<view class="identity-copy">
 									<view class="identity-name-row">
@@ -154,7 +154,7 @@
 						<view v-else class="match-info">
 							<view class="player">
 								<view class="avatar me-avatar" :class="{ winner: currentMatch.my_score > currentMatch.opponent_score }">
-									<image :src="userInfo.avatar || '/static/images/default-avatar.png'" mode="aspectFill" />
+									<image :src="userInfo.avatar" mode="aspectFill" />
 									<view class="me-badge">我</view>
 								</view>
 								<text class="name">{{ userInfo.nickname }}</text>
@@ -167,7 +167,7 @@
 
 							<view class="player">
 								<view class="avatar" :class="{ winner: currentMatch.opponent_score > currentMatch.my_score }">
-									<image :src="currentMatch.opponent_avatar || '/static/images/default-avatar.png'" mode="aspectFill" />
+									<image :src="getCurrentMatchOpponentAvatar(currentMatch)" mode="aspectFill" />
 								</view>
 								<text class="name">{{ currentMatch.opponent_name }}</text>
 							</view>
@@ -458,6 +458,7 @@ import { useNotificationStore } from '@/store/notification.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
 import { GAME_TYPE_TABS, ORDERED_GAME_TYPES } from '@/utils/game-types.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import {
 	POST_LOGIN_ACTIONS,
 	consumePostLoginIntent,
@@ -533,8 +534,16 @@ const userInfo = computed(() => ({
 	id: userStore.userInfo?.id || 0,
 	phone: userStore.userInfo?.phone || '',
 	nickname: userStore.userInfo?.nickname || '用户',
-	avatar: userStore.userInfo?.avatar || ''
+	avatar: resolveAvatarUrl(userStore.userInfo?.avatar, userStore.userInfo?.id)
 }))
+
+const getCurrentMatchOpponentAvatar = (match) => {
+	if (!match) return resolveAvatarUrl('', 0)
+	if (match.opponent_avatar) return resolveAvatarUrl(match.opponent_avatar, match.opponent_id)
+	if (match.player1_id === userInfo.value.id) return resolveAvatarUrl(match.player2_avatar, match.player2_id)
+	if (match.player2_id === userInfo.value.id) return resolveAvatarUrl(match.player1_avatar, match.player1_id)
+	return resolveAvatarUrl(match.player2_avatar || match.player1_avatar, match.player2_id || match.player1_id)
+}
 const favoriteVenueMemberCard = computed(() => resolveFavoriteVenueMemberCard(favoriteVenueRewardStatus.value || {}))
 const favoriteVenueRewardCard = computed(() => resolveFavoriteVenueRewardTaskCard(favoriteVenueRewardStatus.value || {}))
 const favoriteVenueRewardPopupCopy = computed(() => resolveFavoriteVenueRewardPopupCopy(favoriteVenueRewardStatus.value || {}))
@@ -1159,6 +1168,10 @@ const handleHelp = () => {
 
 const handleSettings = () => {
 	uni.navigateTo({ url: '/subPages/user/settings' })
+}
+
+const handleEditProfile = () => {
+	uni.navigateTo({ url: '/subPages/user/editProfile' })
 }
 
 const handleOpenMemberCenter = () => {

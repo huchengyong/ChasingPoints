@@ -56,6 +56,13 @@ test('bind phone SMS action does not overlap the native code input hit area', ()
   assert.doesNotMatch(sendCodeStyleSource, /transform:\s*translateY/)
 })
 
+test('bind phone exposes a slow-request hint without a global loading overlay', () => {
+  assert.match(source, /网络稍慢，正在继续尝试/)
+  assert.match(source, /AUTH_SLOW_FEEDBACK_DELAY/)
+  assert.match(source, /startSlowAction\(/)
+  assert.match(source, /clearSlowAction\(/)
+})
+
 test('settings keeps the default agreement requirement for proactive binding', () => {
   assert.doesNotMatch(settingsSource, /require-agreement/)
   assert.doesNotMatch(settingsSource, /use-sms-binding/)
@@ -158,4 +165,12 @@ test('login submit button explicitly centers its text vertically', () => {
 	assert.match(loginSource, /\.login-btn\s*\{[\s\S]*?padding:\s*0;/)
 	assert.match(loginSource, /\.login-btn\s*\{[\s\S]*?margin:\s*0;/)
 	assert.match(loginSource, /\.login-btn\s*\{[\s\S]*?height:\s*96rpx;[\s\S]*?line-height:\s*96rpx;/)
+})
+
+test('login funnel gives immediate visible feedback and avoids a global loading overlay', () => {
+	assert.match(loginSource, /正在安全登录/)
+	assert.match(loginSource, /auth-slow-hint/)
+	assert.match(loginSource, /AUTH_SLOW_FEEDBACK_DELAY/)
+	assert.match(loginSource, /auth-pulse/)
+	assert.doesNotMatch(loginSource, /uni\.showLoading/)
 })

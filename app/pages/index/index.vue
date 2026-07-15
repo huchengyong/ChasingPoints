@@ -119,7 +119,7 @@
             <view v-for="item in leaderboardTopThree" :key="item.user_id || item.rank" class="ranking-row">
               <view class="ranking-left">
                 <text class="ranking-rank">#{{ item.rank }}</text>
-                <image class="ranking-avatar" :src="item.avatar || '/static/images/default-avatar.png'" mode="aspectFill"></image>
+                <image class="ranking-avatar" :src="resolveAvatarUrl(item.avatar, item.user_id)" mode="aspectFill"></image>
                 <view class="ranking-copy">
                   <text class="ranking-name">{{ item.nickname || '球手' }}</text>
                   <text class="ranking-meta">{{ item.rank_name || '冲榜中' }}</text>
@@ -209,6 +209,7 @@ import {
   resolveHomeVenueEmptyAction
 } from '@/utils/home-index.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const userStore = useUserStore()
 const { isDarkMode } = usePageTheme()

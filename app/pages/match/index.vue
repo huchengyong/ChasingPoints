@@ -55,7 +55,7 @@
 						<!-- 我方玩家 -->
 						<view class="player">
 							<view class="avatar me-avatar" :class="{ winner: visibleCurrentMatch.my_score > visibleCurrentMatch.opponent_score }">
-								<image :src="userAvatar || '/static/images/default-avatar.png'" mode="aspectFill" />
+								<image :src="userAvatar" mode="aspectFill" />
 								<view class="me-badge">我</view>
 							</view>
 							<text class="name">{{ userName }}</text>
@@ -70,7 +70,7 @@
 						<!-- 对手玩家 -->
 						<view class="player">
 							<view class="avatar" :class="{ winner: visibleCurrentMatch.opponent_score > visibleCurrentMatch.my_score }">
-								<image :src="visibleCurrentMatch.opponent_avatar || '/static/images/default-avatar.png'" mode="aspectFill" />
+								<image :src="getMatchAvatar(visibleCurrentMatch, 'opponent')" mode="aspectFill" />
 							</view>
 							<text class="name">{{ visibleCurrentMatch.opponent_name }}</text>
 						</view>
@@ -103,7 +103,7 @@
 							<view
 								:class="['avatar', { winner: match.player1_score > match.player2_score, 'me-avatar': isPlayer1Me(match) }]"
 							>
-								<image :src="match.player1_avatar || '/static/images/default-avatar.png'" mode="aspectFill" />
+								<image :src="getMatchAvatar(match, 'player1')" mode="aspectFill" />
 								<view v-if="isPlayer1Me(match)" class="me-badge">我</view>
 							</view>
 							<text class="name">{{ match.player1_name }}</text>
@@ -120,7 +120,7 @@
 							<view
 								:class="['avatar', { winner: match.player2_score > match.player1_score, 'me-avatar': isPlayer2Me(match) }]"
 							>
-								<image :src="match.player2_avatar || '/static/images/default-avatar.png'" mode="aspectFill" />
+								<image :src="getMatchAvatar(match, 'player2')" mode="aspectFill" />
 								<view v-if="isPlayer2Me(match)" class="me-badge">我</view>
 							</view>
 							<text class="name">{{ match.player2_name }}</text>
@@ -215,6 +215,7 @@ import { getCurrentMatch, getPublicMatches, joinMatchReferee, startMatch } from 
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { shouldShowMatchPageLoading } from '@/utils/match-page.js'
 import { buildPlayingRoute, resolveMatchScanAction, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import { GAME_TYPE_FILTER_OPTIONS_WITH_ALL } from '@/utils/game-types.js'
 import {
 	SPECTATOR_SCOPES,
@@ -254,8 +255,8 @@ const isSpectatorFilterActive = computed(() => {
 
 // 用户信息
 const userName = computed(() => userStore.userInfo?.nickname || '我')
-const userAvatar = computed(() => userStore.userInfo?.avatar || '')
 const userId = computed(() => userStore.userInfo?.id || 0)
+const userAvatar = computed(() => resolveAvatarUrl(userStore.userInfo?.avatar, userId.value))
 const visibleCurrentMatch = computed(() => {
 	if (currentScope.value !== 'hall' || currentStatus.value !== 1 || !currentMatch.value) return null
 	if (currentGameType.value > 0 && Number(currentMatch.value.game_type) !== Number(currentGameType.value)) return null
@@ -293,6 +294,18 @@ const isPlayer1Me = (match) => {
 const isPlayer2Me = (match) => {
 	if (!userStore.isLoggedIn || !userId.value) return false
 	return match.player2_id === userId.value
+}
+
+const getMatchAvatar = (match = {}, side) => {
+	if (side === 'opponent') {
+		if (match.opponent_id && match.opponent_avatar) return resolveAvatarUrl(match.opponent_avatar, match.opponent_id)
+		if (match.player1_id === userId.value) return resolveAvatarUrl(match.player2_avatar, match.player2_id)
+		if (match.player2_id === userId.value) return resolveAvatarUrl(match.player1_avatar, match.player1_id)
+		return resolveAvatarUrl(match.opponent_avatar, match.opponent_id)
+	}
+	const idKey = side === 'player1' ? 'player1_id' : 'player2_id'
+	const avatarKey = side === 'player1' ? 'player1_avatar' : 'player2_avatar'
+	return resolveAvatarUrl(match[avatarKey], match[idKey])
 }
 
 const filteredSpectatorList = (list = []) => {

@@ -153,6 +153,12 @@
 					}
 				},
 				{
+					"path": "editProfile",
+					"style": {
+						"navigationBarTitleText": "编辑资料"
+					}
+				},
+				{
 					"path": "memberCenter",
 					"style": {
 						"navigationBarTitleText": "会员中心"

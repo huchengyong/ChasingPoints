@@ -168,99 +168,6 @@ $border-color-dark: rgba(247, 231, 168, 0.12);
     }
 }
 
-// ========== 编辑昵称弹框样式 ==========
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 50;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-}
-
-.modal-container {
-    width: 85%;
-    max-width: 640rpx;
-    margin: 0 32rpx;
-    padding: 48rpx;
-    background-color: $card-bg-light;
-    border-radius: 24rpx;
-    box-shadow: 0 20rpx 50rpx rgba(0, 0, 0, 0.15);
-    transition: background-color 0.3s ease;
-
-    .modal-title {
-        text-align: center;
-        font-size: 36rpx;
-        font-weight: 700;
-        color: $text-primary-light;
-        transition: color 0.3s ease;
-    }
-
-    .modal-input-wrapper {
-        margin-top: 48rpx;
-    }
-
-    .modal-input {
-        width: 100%;
-        height: 96rpx;
-        padding: 0 24rpx;
-        box-sizing: border-box;
-        background-color: rgba(100, 116, 139, 0.1);
-        border: 2rpx solid $border-color-light;
-        border-radius: 16rpx;
-        font-size: 32rpx;
-        color: $text-primary-light;
-        transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
-    }
-
-    .modal-buttons {
-        display: flex;
-        gap: 24rpx;
-        margin-top: 48rpx;
-    }
-
-    .modal-btn {
-        flex: 1;
-        height: 88rpx;
-        line-height: 88rpx;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 16rpx;
-        font-size: 32rpx;
-        font-weight: 600;
-
-        &::after {
-            display: none;
-        }
-
-        &.cancel {
-            background-color: $border-color-light;
-
-            text {
-                color: $text-secondary-light;
-            }
-        }
-
-        &.confirm {
-            background-color: $primary-color;
-
-            text {
-                color: #ffffff;
-            }
-        }
-
-        &:disabled {
-            opacity: 0.6;
-        }
-    }
-}
-
 .page-actions {
     margin-top: 24rpx;
 }
@@ -347,37 +254,12 @@ $border-color-dark: rgba(247, 231, 168, 0.12);
         }
     }
 
-    // 弹框深色模式
-    .modal-container {
-        background-color: $card-bg-dark;
+    .logout-btn {
+        box-shadow: none;
+    }
 
-        .modal-title {
-            color: $text-primary-dark;
-        }
-
-            .modal-input {
-                background-color: rgba(255, 247, 225, 0.06);
-                border-color: $border-color-dark;
-                color: $text-primary-dark;
-            }
-
-        .modal-btn {
-            &.cancel {
-                background-color: $border-color-dark;
-
-                text {
-                    color: $text-secondary-dark;
-                }
-            }
-        }
-
-        .logout-btn {
-            box-shadow: none;
-        }
-
-        .avatar-preview {
-            border-color: rgba(247, 231, 168, 0.18);
-            background: rgba(247, 216, 106, 0.12);
-        }
+    .avatar-preview {
+        border-color: rgba(247, 231, 168, 0.18);
+        background: rgba(247, 216, 106, 0.12);
     }
 }

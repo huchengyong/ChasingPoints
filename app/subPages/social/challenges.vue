@@ -48,7 +48,7 @@
 				<view class="card-top">
 					<image
 						class="challenge-avatar"
-						:src="item.avatar || '/static/images/default-avatar.png'"
+						:src="resolveAvatarUrl(item.avatar, item.opponent_id)"
 						mode="aspectFill"
 					></image>
 					<view class="challenge-info">
@@ -133,6 +133,7 @@ import { GAME_TYPE_OPTIONS, getGameTypeLabel } from '@/utils/game-types.js'
 import { useUserStore } from '@/store/user.js'
 import { buildChallengePayload, normalizeChallengeListItem } from '@/utils/challenge-entry.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const { isDarkMode } = usePageTheme()
 

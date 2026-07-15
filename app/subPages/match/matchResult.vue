@@ -183,8 +183,8 @@ import { getMatchDetail } from '@/api/match.js'
 import { formatDateTime, formatRelativeTime } from '@/utils/format.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveMatchRankingRightsSummary } from '@/utils/member-ranking-rights.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
-const DEFAULT_AVATAR = '/static/default-avatar.png'
 const SHARE_LINK = 'https://appgallery.huawei.com/app/detail?id=hm.dianzaozao.ballmall&channelId=SHARE&source=appshare'
 
 const matchId = ref(null)
@@ -328,8 +328,14 @@ const statsData = computed(() => {
 	}))
 })
 
-const myAvatar = computed(() => matchData.value.my_avatar || DEFAULT_AVATAR)
-const opponentAvatar = computed(() => matchData.value.opponent_avatar || DEFAULT_AVATAR)
+const myAvatar = computed(() => resolveAvatarUrl(
+	matchData.value.my_avatar,
+	matchData.value.my_user_id || matchData.value.user_id
+))
+const opponentAvatar = computed(() => resolveAvatarUrl(
+	matchData.value.opponent_avatar,
+	matchData.value.opponent_id
+))
 const primaryActionText = computed(() => '保存并完成')
 const secondaryActionText = computed(() => (fromHistory.value ? '生成战绩海报' : '分享战绩'))
 

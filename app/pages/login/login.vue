@@ -25,22 +25,24 @@
 				<view class="wechat-actions">
 					<button
 						class="wechat-login-btn"
+						:class="{ authenticating: authGate.isAuthenticating }"
 						:disabled="authGate.isAuthenticating"
 						@click="handleWechatMiniLogin"
 					>
-						{{ isWechatLogging ? '正在进入...' : '微信一键进入' }}
+						{{ isWechatLogging ? (isSlowLogging ? '网络稍慢，正在继续…' : '正在安全登录…') : '微信一键进入' }}
 					</button>
 					<button class="phone-login-btn" :disabled="authGate.isAuthenticating" @click="switchLoginMode">手机号登录</button>
+					<text v-if="isSlowLogging" class="auth-slow-hint">网络稍慢，正在继续尝试</text>
 				</view>
 
 				<view class="agreement-block">
-					<view class="agreement-row" @click="toggleAgreement">
+					<view class="agreement-row" :class="{ disabled: authGate.isAuthenticating }" @click="toggleAgreement">
 						<view class="checkbox" :class="{ checked: isAgreed }">
 							<uni-icons v-if="isAgreed" type="checkmarkempty" size="14" color="#231c0b"></uni-icons>
 						</view>
 						<text class="agreement-text">我已阅读并同意</text>
 					</view>
-					<view class="agreement-links">
+					<view class="agreement-links" :class="{ disabled: authGate.isAuthenticating }">
 						<text class="link" @click.stop="showAgreement('user')">《用户协议》</text>
 						<text class="separator">和</text>
 						<text class="link" @click.stop="showAgreement('privacy')">《隐私政策》</text>
@@ -72,6 +74,7 @@
 								placeholder="请输入手机号"
 								class="form-input"
 								maxlength="11"
+								:disabled="authGate.isAuthenticating"
 							/>
 						</view>
 						<text v-if="phoneError" class="field-error">{{ phoneError }}</text>
@@ -86,6 +89,7 @@
 								placeholder="请输入6位验证码"
 								class="form-input code-input"
 								maxlength="6"
+								:disabled="authGate.isAuthenticating"
 							/>
 							<button class="send-code-btn" :disabled="!canSendCode" @click="handleSendCode">
 								{{ sendCodeText }}
@@ -109,9 +113,10 @@
 					</view>
 				</view>
 
-				<button class="login-btn" :disabled="!canSubmit" @click="handleLogin">
-					{{ isLogging ? '正在进入...' : '登录 / 注册' }}
+				<button class="login-btn" :class="{ authenticating: authGate.isAuthenticating }" :disabled="!canSubmit" @click="handleLogin">
+					{{ isLogging ? (isSlowLogging ? '网络稍慢，正在继续…' : '正在安全登录…') : '登录 / 注册' }}
 				</button>
+				<text v-if="isSlowLogging" class="auth-slow-hint">网络稍慢，正在继续尝试</text>
 				<text
 					v-if="isWechatMiniProgram"
 					class="mode-switch"
@@ -125,10 +130,11 @@
 						<text class="divider-text">其他可用方式</text>
 						<view class="divider-line"></view>
 					</view>
-					<button class="third-party-btn" @click="handleHuaweiLogin">
+					<button class="third-party-btn" :class="{ authenticating: authGate.isAuthenticating }" :disabled="authGate.isAuthenticating" @click="handleHuaweiLogin">
 						<image src="/static/images/huawei.svg" mode="aspectFit" />
-						<text>华为账号登录</text>
+						<text>{{ isHuaweiLogging ? (isSlowLogging ? '网络稍慢，正在继续…' : '正在安全登录…') : '华为账号登录' }}</text>
 					</button>
+					<text v-if="isSlowLogging && isHuaweiLogging" class="auth-slow-hint">网络稍慢，正在继续尝试</text>
 				</view>
 			</view>
 		</view>
@@ -166,6 +172,7 @@ import {
 	canAttemptLogin,
 	canAttemptWechatMiniLogin,
 	canRequestSms,
+	AUTH_SLOW_FEEDBACK_DELAY,
 	getCodeError,
 	getPhoneError,
 	isCodeValid,
@@ -212,6 +219,8 @@ const countdown = ref(0)
 const isSending = ref(false)
 const isLogging = ref(false)
 const isWechatLogging = ref(false)
+const isHuaweiLogging = ref(false)
+const isSlowLogging = ref(false)
 const isPageActive = ref(true)
 const showBindPhoneModal = ref(false)
 const isAgreed = ref(false)
@@ -220,6 +229,7 @@ const pendingAgreementAction = ref('')
 const authGate = computed(() => resolveAuthenticationGate({
 	isWechatLogging: isWechatLogging.value,
 	isPhoneLogging: isLogging.value,
+	isHuaweiLogging: isHuaweiLogging.value,
 	isPageActive: isPageActive.value
 }))
 const showHuaweiLogin = computed(() => isHarmonyPlatform)
@@ -248,7 +258,24 @@ const sendCodeText = computed(() => {
 })
 
 let countdownTimer = null
+let authSlowFeedbackTimer = null
 let completedLoginFlow = false
+
+const startAuthFeedback = () => {
+	isSlowLogging.value = false
+	if (authSlowFeedbackTimer) clearTimeout(authSlowFeedbackTimer)
+	authSlowFeedbackTimer = setTimeout(() => {
+		if (authGate.value.isAuthenticating) isSlowLogging.value = true
+	}, AUTH_SLOW_FEEDBACK_DELAY)
+}
+
+const clearAuthFeedback = () => {
+	if (authSlowFeedbackTimer) {
+		clearTimeout(authSlowFeedbackTimer)
+		authSlowFeedbackTimer = null
+	}
+	isSlowLogging.value = false
+}
 
 const switchLoginMode = () => {
 	if (!isWechatMiniProgram) return
@@ -261,6 +288,7 @@ const persistAgreementState = (value) => {
 }
 
 const toggleAgreement = () => {
+	if (authGate.value.isAuthenticating) return
 	isAgreed.value = !isAgreed.value
 	persistAgreementState(isAgreed.value)
 }
@@ -363,6 +391,7 @@ const handleLogin = async () => {
 	}
 
 	isLogging.value = true
+	startAuthFeedback()
 
 	try {
 		const res = await login({
@@ -387,6 +416,7 @@ const handleLogin = async () => {
 		})
 	} finally {
 		isLogging.value = false
+		clearAuthFeedback()
 	}
 }
 
@@ -400,6 +430,7 @@ const handleWechatMiniLogin = async () => {
 
 	// #ifdef MP-WEIXIN
 	isWechatLogging.value = true
+	startAuthFeedback()
 	try {
 		const loginResult = await new Promise((resolve, reject) => {
 			uni.login({
@@ -433,20 +464,21 @@ const handleWechatMiniLogin = async () => {
 		})
 	} finally {
 		isWechatLogging.value = false
+		clearAuthFeedback()
 	}
 	// #endif
 }
 
 const handleHuaweiLogin = async () => {
+	if (!authGate.value.canStart) return
 	if (!isAgreed.value) {
 		requestAgreementFor('huawei')
 		return
 	}
 
 	// #ifdef APP-HARMONY
-	uni.showLoading({
-		title: '正在登录...'
-	})
+	isHuaweiLogging.value = true
+	startAuthFeedback()
 
 	try {
 		const userInfo = await new Promise((resolve, reject) => {
@@ -479,7 +511,6 @@ const handleHuaweiLogin = async () => {
 
 		userStore.login(loginResult)
 		uni.setStorageSync(WELCOME_PAGE_VIEWED_KEY, true)
-		uni.hideLoading()
 
 		if (loginResult.need_bind_phone) {
 			showBindPhoneModal.value = true
@@ -493,11 +524,13 @@ const handleHuaweiLogin = async () => {
 			icon: 'success'
 		})
 	} catch (error) {
-		uni.hideLoading()
 		uni.showToast({
 			title: error.message || '华为登录失败',
 			icon: 'none'
 		})
+	} finally {
+		isHuaweiLogging.value = false
+		clearAuthFeedback()
 	}
 	// #endif
 }
@@ -559,6 +592,7 @@ const handleBindPhoneClose = () => {
 }
 
 const showAgreement = (type) => {
+	if (authGate.value.isAuthenticating) return
 	const url = type === 'user'
 		? '/subPages/agreement/userAgreement'
 		: '/subPages/agreement/privacyPolicy'
@@ -591,6 +625,7 @@ onShow(() => {
 
 onUnload(() => {
 	isPageActive.value = false
+	clearAuthFeedback()
 	const visibleRoutes = getCurrentPages().map((page) => page.route)
 	if (shouldClearEntryFunnelAgreementSession({
 		currentRoute: 'pages/login/login',
@@ -609,6 +644,7 @@ onUnload(() => {
 })
 
 onUnmounted(() => {
+	clearAuthFeedback()
 	if (countdownTimer) {
 		clearInterval(countdownTimer)
 		countdownTimer = null
@@ -786,6 +822,11 @@ onUnmounted(() => {
 	background: #07c160;
 	color: #ffffff;
 	box-shadow: 0 16rpx 30rpx rgba(7, 193, 96, 0.17);
+	transition: opacity 0.2s ease, transform 0.2s ease;
+
+	&.authenticating {
+		animation: auth-pulse 1.4s ease-in-out infinite;
+	}
 
 	&[disabled] {
 		opacity: 0.5;
@@ -802,6 +843,22 @@ onUnmounted(() => {
 
 .phone-login-btn[disabled] {
 	opacity: 0.45;
+}
+
+.authenticating {
+	animation: auth-pulse 1.4s ease-in-out infinite;
+}
+
+.auth-slow-hint {
+	align-self: center;
+	margin-top: 12rpx;
+	color: #9a7b2a;
+	font-size: 22rpx;
+	line-height: 1.4;
+}
+
+.dark-mode .auth-slow-hint {
+	color: #d7b95c;
 }
 
 .dark-mode .phone-login-btn {
@@ -823,6 +880,12 @@ onUnmounted(() => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+}
+
+.agreement-row.disabled,
+.agreement-links.disabled {
+	opacity: 0.45;
+	pointer-events: none;
 }
 
 .checkbox {
@@ -871,6 +934,16 @@ onUnmounted(() => {
 
 .dark-mode .link {
 	color: #efd476;
+}
+
+@keyframes auth-pulse {
+	0%,
+	100% {
+		opacity: 0.62;
+	}
+	50% {
+		opacity: 0.9;
+	}
 }
 
 .phone-mode {

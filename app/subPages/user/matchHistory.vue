@@ -42,7 +42,7 @@
 					<view class="avatar-wrapper">
 						<image 
 							class="avatar" 
-							:src="match.opponent_avatar || '/static/images/default-avatar.png'" 
+							:src="resolveAvatarUrl(match.opponent_avatar, match.opponent_id)"
 							mode="aspectFill"
 						/>
 					</view>
@@ -88,6 +88,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { getMatchList } from '@/api/match.js'
 import { formatRelativeTime } from '@/utils/format.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 // ========== 状态管理 ==========
 const { isDarkMode } = usePageTheme()

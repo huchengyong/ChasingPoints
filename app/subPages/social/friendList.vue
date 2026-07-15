@@ -53,7 +53,7 @@
 				>
 					<image
 						class="friend-avatar"
-						:src="item.avatar || '/static/images/default-avatar.png'"
+						:src="resolveAvatarUrl(item.avatar, item.friend_user_id || item.user_id || item.id)"
 						mode="aspectFill"
 					/>
 					<view class="friend-info">
@@ -100,6 +100,7 @@ import {
 } from '@/utils/friend-entry.js'
 import { clampFriendSwipeOffset, resolveFriendSwipeEndOffset } from '@/utils/friend-swipe.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const { isDarkMode } = usePageTheme()
 

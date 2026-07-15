@@ -21,7 +21,7 @@
 						<view class="avatar-wrapper">
 							<image 
 								class="avatar" 
-								:src="player1Info.avatar || '/static/images/default-avatar.png'" 
+								:src="resolveAvatarUrl(player1Info.avatar, player1UserId)"
 								mode="aspectFill" 
 							/>
 						</view>
@@ -36,7 +36,7 @@
 						<view class="avatar-wrapper">
 							<image 
 								class="avatar" 
-								:src="player2Info.avatar || '/static/images/default-avatar.png'" 
+								:src="resolveAvatarUrl(player2Info.avatar, player2UserId)"
 								mode="aspectFill" 
 							/>
 						</view>
@@ -114,6 +114,7 @@ import {
 	shouldShowSpectateBadge,
 	shouldUsePublicMatchDetail
 } from '@/utils/match-detail.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 // ========== 响应式数据 ==========
 const loading = ref(true)
@@ -138,6 +139,8 @@ const player2Info = ref({
 	name: '',
 	avatar: ''
 })
+const player1UserId = ref(0)
+const player2UserId = ref(0)
 const roundRecords = ref([])
 let wsHandlersReady = false
 
@@ -249,6 +252,11 @@ const loadMatchData = async () => {
 			matchData.value = normalized.matchData
 			player1Info.value = normalized.player1Info
 			player2Info.value = normalized.player2Info
+			const player1Id = Number(res.match.player1_id || res.match.my_user_id || res.match.my_id || 0)
+			const player2Id = Number(res.match.player2_id || res.match.opponent_id || 0)
+			const shouldSwap = perspectiveUserId.value > 0 && player2Id === perspectiveUserId.value && player1Id !== perspectiveUserId.value
+			player1UserId.value = shouldSwap ? player2Id : player1Id
+			player2UserId.value = shouldSwap ? player1Id : player2Id
 			roundRecords.value = normalized.roundRecords
 			if (wsHandlersReady && matchData.value.status === 1 && !matchWS.isConnected()) {
 				connectWebSocket()

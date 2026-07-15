@@ -18,7 +18,7 @@
 						<view class="player-compact__main">
 							<view class="player-compact__profile">
 								<view class="avatar-wrapper">
-									<image class="avatar" :src="myInfo.avatar || DEFAULT_AVATAR" mode="aspectFill"></image>
+								<image class="avatar" :src="resolveAvatarUrl(myInfo.avatar, myInfo.userId)" mode="aspectFill"></image>
 								</view>
 								<view class="player-info">
 									<view class="player-name-row">
@@ -49,7 +49,7 @@
 									</view>
 								</view>
 								<view class="avatar-wrapper">
-									<image class="avatar" :src="opponentInfo.avatar || DEFAULT_AVATAR" mode="aspectFill"></image>
+								<image class="avatar" :src="resolveAvatarUrl(opponentInfo.avatar, opponentInfo.userId)" mode="aspectFill"></image>
 								</view>
 							</view>
 							<text class="player-score is-opponent">{{ opponentScore }}</text>
@@ -287,6 +287,7 @@ import { buildMatchActionPayload } from '@/utils/match-action.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolvePlayingViewerUi } from '@/utils/match-role-view.js'
 import { resolveSnookerFinishMatchAction, resolveSnookerNextFrameAction } from '@/utils/snooker-frame.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 // ========== 状态管理 ==========
 const userStore = useUserStore()
@@ -306,9 +307,8 @@ const snookerClearanceStarted = ref(false)
 const snookerClearedColors = ref([])
 const snookerExpectedClearanceScore = ref(0)
 const snookerClearanceCompleted = ref(false)
-const DEFAULT_AVATAR = '/static/default-avatar.png'
-const myInfo = ref({ avatar: DEFAULT_AVATAR })
-const opponentInfo = ref({ avatar: DEFAULT_AVATAR })
+const myInfo = ref({ userId: 0, avatar: '' })
+const opponentInfo = ref({ userId: 0, avatar: '' })
 const viewerRole = ref('player1')
 const refereeBound = ref(false)
 const refereeUserId = ref(0)
@@ -524,6 +524,9 @@ onLoad((options) => {
 	if (options.opponent_name) {
 		opponentInfo.value.nickname = decodeURIComponent(options.opponent_name)
 	}
+	if (options.opponent_id) {
+		opponentInfo.value.userId = Number(options.opponent_id) || 0
+	}
 	if (options.opponent_avatar) {
 		opponentInfo.value.avatar = decodeURIComponent(options.opponent_avatar)
 	}
@@ -589,6 +592,7 @@ onUnmounted(() => {
 const loadUserInfo = () => {
 	if (userStore.userInfo) {
 		myInfo.value = {
+			userId: userStore.userInfo.id || 0,
 			nickname: userStore.userInfo.nickname || '我',
 			avatar: userStore.userInfo.avatar,
 			winRate: 0, // 将由 loadMatchInfo 从API获取
@@ -655,16 +659,18 @@ const loadMatchInfo = async () => {
 			
 			// 设置我的信息（使用API返回的胜率和单杆最高分）
 			myInfo.value = {
+				userId: Number(res.match.my_user_id || res.match.my_id || userStore.userInfo?.id || 0),
 				nickname: res.match.my_name || '我',
-				avatar: res.match.my_avatar || DEFAULT_AVATAR,
+				avatar: res.match.my_avatar || '',
 				winRate: Math.round(res.match.my_win_rate || 0),
 				maxScore: res.match.my_max_score || 0
 			}
 			
 			// 设置对手信息（使用API返回的胜率和单杆最高分）
 			opponentInfo.value = {
+				userId: Number(res.match.opponent_id || opponentInfo.value.userId || 0),
 				nickname: res.match.opponent_name || '对手',
-				avatar: res.match.opponent_avatar || DEFAULT_AVATAR,
+				avatar: res.match.opponent_avatar || '',
 				winRate: Math.round(res.match.opponent_win_rate || 0),
 				maxScore: res.match.opponent_max_score || 0
 			}

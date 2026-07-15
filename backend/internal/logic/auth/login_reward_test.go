@@ -85,6 +85,49 @@ func TestLoginCreatesNewUserWithSevenDayMemberReward(t *testing.T) {
 	assertWelcomeRewardDuration(t, user)
 }
 
+func TestLoginAvatarSemantics(t *testing.T) {
+	svcCtx, _ := newAuthRewardTestSvc(t)
+	ctx := context.Background()
+
+	if err := svcCtx.CodeManager.SaveCode(ctx, "13800138000", "123456"); err != nil {
+		t.Fatalf("save new user sms code: %v", err)
+	}
+	resp, err := NewLoginLogic(ctx, svcCtx).Login(&types.LoginReq{
+		Phone:   "13800138000",
+		SmsCode: "123456",
+	})
+	if err != nil {
+		t.Fatalf("login new user: %v", err)
+	}
+	if resp.UserInfo == nil || resp.UserInfo.Avatar != "" {
+		t.Fatalf("new user should keep avatar empty, got %#v", resp.UserInfo)
+	}
+
+	realAvatar := "https://img.example.com/real-avatar.png"
+	phone := "13900139000"
+	if err := svcCtx.UserModel.Create(&model.User{
+		Phone:    &phone,
+		Nickname: "已有头像用户",
+		Avatar:   realAvatar,
+		Status:   1,
+	}); err != nil {
+		t.Fatalf("create existing avatar user: %v", err)
+	}
+	if err := svcCtx.CodeManager.SaveCode(ctx, phone, "654321"); err != nil {
+		t.Fatalf("save existing user sms code: %v", err)
+	}
+	resp, err = NewLoginLogic(ctx, svcCtx).Login(&types.LoginReq{
+		Phone:   phone,
+		SmsCode: "654321",
+	})
+	if err != nil {
+		t.Fatalf("login existing user: %v", err)
+	}
+	if resp.UserInfo == nil || resp.UserInfo.Avatar != realAvatar {
+		t.Fatalf("existing avatar should remain unchanged, got %#v", resp.UserInfo)
+	}
+}
+
 func TestLoginByOauthCreatesNewUserWithSevenDayMemberReward(t *testing.T) {
 	svcCtx, _ := newAuthRewardTestSvc(t)
 	ctx := context.Background()

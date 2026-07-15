@@ -38,7 +38,7 @@
 			>
 				<image
 					class="user-avatar"
-					:src="item.avatar || '/static/images/default-avatar.png'"
+					:src="resolveAvatarUrl(item.avatar, item.user_id)"
 					mode="aspectFill"
 				/>
 				<view class="user-info">
@@ -81,6 +81,7 @@
 import { ref } from 'vue'
 import { searchUser, sendFriendRequest } from '@/api/friend.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const { isDarkMode } = usePageTheme()
 
