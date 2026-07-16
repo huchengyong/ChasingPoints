@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import * as entryFunnel from '../utils/entry-funnel.js'
 
 import {
   canAttemptLogin,
@@ -77,6 +78,31 @@ test('resolveAuthenticationPhase escalates only active requests after the slow t
   assert.equal(resolveAuthenticationPhase({ isAuthenticating: true, elapsedMs: 0 }), 'pending')
   assert.equal(resolveAuthenticationPhase({ isAuthenticating: true, elapsedMs: 1199 }), 'pending')
   assert.equal(resolveAuthenticationPhase({ isAuthenticating: true, elapsedMs: 1200 }), 'slow')
+})
+
+test('resolveAuthenticationFeedback keeps pending feedback visible and upgrades slow requests', () => {
+  assert.equal(typeof entryFunnel.resolveAuthenticationFeedback, 'function')
+  assert.deepEqual(entryFunnel.resolveAuthenticationFeedback(), {
+    visible: false,
+    phase: 'idle',
+    message: ''
+  })
+  assert.deepEqual(entryFunnel.resolveAuthenticationFeedback({
+    isAuthenticating: true,
+    isSlow: false
+  }), {
+    visible: true,
+    phase: 'pending',
+    message: '追分正在为您完成登录'
+  })
+  assert.deepEqual(entryFunnel.resolveAuthenticationFeedback({
+    isAuthenticating: true,
+    isSlow: true
+  }), {
+    visible: true,
+    phase: 'slow',
+    message: '网络有些慢，追分竭尽全力为您继续尝试中'
+  })
 })
 
 test('resolveWechatPostLoginState prompts only unbound users before navigation', () => {

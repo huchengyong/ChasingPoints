@@ -31,8 +31,16 @@
 					>
 						{{ isWechatLogging ? (isSlowLogging ? '网络稍慢，正在继续…' : '正在安全登录…') : '微信一键进入' }}
 					</button>
+					<view
+						v-if="authFeedback.visible"
+						class="auth-feedback-card"
+						:class="`is-${authFeedback.phase}`"
+					>
+						<view class="auth-feedback-progress"></view>
+						<view class="auth-feedback-dot"></view>
+						<text class="auth-feedback-message">{{ authFeedback.message }}</text>
+					</view>
 					<button class="phone-login-btn" :disabled="authGate.isAuthenticating" @click="switchLoginMode">手机号登录</button>
-					<text v-if="isSlowLogging" class="auth-slow-hint">网络稍慢，正在继续尝试</text>
 				</view>
 
 				<view class="agreement-block">
@@ -116,7 +124,15 @@
 				<button class="login-btn" :class="{ authenticating: authGate.isAuthenticating }" :disabled="!canSubmit" @click="handleLogin">
 					{{ isLogging ? (isSlowLogging ? '网络稍慢，正在继续…' : '正在安全登录…') : '登录 / 注册' }}
 				</button>
-				<text v-if="isSlowLogging" class="auth-slow-hint">网络稍慢，正在继续尝试</text>
+					<view
+						v-if="authFeedback.visible && !isHuaweiLogging"
+						class="auth-feedback-card"
+						:class="`is-${authFeedback.phase}`"
+					>
+						<view class="auth-feedback-progress"></view>
+						<view class="auth-feedback-dot"></view>
+						<text class="auth-feedback-message">{{ authFeedback.message }}</text>
+					</view>
 				<text
 					v-if="isWechatMiniProgram"
 					class="mode-switch"
@@ -134,7 +150,15 @@
 						<image src="/static/images/huawei.svg" mode="aspectFit" />
 						<text>{{ isHuaweiLogging ? (isSlowLogging ? '网络稍慢，正在继续…' : '正在安全登录…') : '华为账号登录' }}</text>
 					</button>
-					<text v-if="isSlowLogging && isHuaweiLogging" class="auth-slow-hint">网络稍慢，正在继续尝试</text>
+					<view
+						v-if="authFeedback.visible && isHuaweiLogging"
+						class="auth-feedback-card"
+						:class="`is-${authFeedback.phase}`"
+					>
+						<view class="auth-feedback-progress"></view>
+						<view class="auth-feedback-dot"></view>
+						<text class="auth-feedback-message">{{ authFeedback.message }}</text>
+					</view>
 				</view>
 			</view>
 		</view>
@@ -178,6 +202,7 @@ import {
 	isCodeValid,
 	isPhoneValid,
 	resolveAlternateLoginMode,
+	resolveAuthenticationFeedback,
 	resolveAuthenticationGate,
 	resolveEntryFunnelAgreementState,
 	resolveLoginMode,
@@ -231,6 +256,10 @@ const authGate = computed(() => resolveAuthenticationGate({
 	isPhoneLogging: isLogging.value,
 	isHuaweiLogging: isHuaweiLogging.value,
 	isPageActive: isPageActive.value
+}))
+const authFeedback = computed(() => resolveAuthenticationFeedback({
+	isAuthenticating: authGate.value.isAuthenticating,
+	isSlow: isSlowLogging.value
 }))
 const showHuaweiLogin = computed(() => isHarmonyPlatform)
 const phoneError = computed(() => getPhoneError(formData.phone))
@@ -849,16 +878,65 @@ onUnmounted(() => {
 	animation: auth-pulse 1.4s ease-in-out infinite;
 }
 
-.auth-slow-hint {
-	align-self: center;
-	margin-top: 12rpx;
-	color: #9a7b2a;
-	font-size: 22rpx;
+.auth-feedback-card {
+	position: relative;
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	width: 100%;
+	padding: 18rpx 20rpx;
+	border: 1rpx solid rgba(201, 151, 0, 0.24);
+	border-radius: 20rpx;
+	background: rgba(255, 250, 232, 0.88);
+	box-sizing: border-box;
+
+	&.is-slow {
+		border-color: rgba(201, 151, 0, 0.5);
+		background: #fff4c9;
+	}
+}
+
+.auth-feedback-progress {
+	position: absolute;
+	top: 0;
+	left: -36%;
+	width: 36%;
+	height: 4rpx;
+	border-radius: 999rpx;
+	background: linear-gradient(90deg, transparent, #e0ae12, transparent);
+	animation: auth-progress 1.2s ease-in-out infinite;
+}
+
+.auth-feedback-dot {
+	width: 16rpx;
+	height: 16rpx;
+	border-radius: 50%;
+	background: #d29d00;
+	box-shadow: 0 0 0 8rpx rgba(210, 157, 0, 0.12);
+	animation: auth-dot 1.2s ease-in-out infinite;
+	flex-shrink: 0;
+}
+
+.auth-feedback-message {
+	color: #604700;
+	font-size: 24rpx;
+	font-weight: 800;
 	line-height: 1.4;
 }
 
-.dark-mode .auth-slow-hint {
-	color: #d7b95c;
+.dark-mode .auth-feedback-card {
+	border-color: rgba(224, 174, 18, 0.3);
+	background: rgba(224, 174, 18, 0.08);
+
+	&.is-slow {
+		border-color: rgba(224, 174, 18, 0.56);
+		background: rgba(224, 174, 18, 0.14);
+	}
+}
+
+.dark-mode .auth-feedback-message {
+	color: #f4d66f;
 }
 
 .dark-mode .phone-login-btn {
@@ -943,6 +1021,24 @@ onUnmounted(() => {
 	}
 	50% {
 		opacity: 0.9;
+	}
+}
+
+@keyframes auth-progress {
+	to {
+		left: 100%;
+	}
+}
+
+@keyframes auth-dot {
+	0%,
+	100% {
+		transform: scale(0.86);
+		opacity: 0.68;
+	}
+	50% {
+		transform: scale(1);
+		opacity: 1;
 	}
 }
 

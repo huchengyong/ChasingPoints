@@ -145,6 +145,10 @@ const loginSource = readFileSync(
   new URL('../pages/login/login.vue', import.meta.url),
   'utf8'
 )
+const welcomeSource = readFileSync(
+  new URL('../pages/welcome/index.vue', import.meta.url),
+  'utf8'
+)
 
 test('login page allows bind phone modal to close later and passes current theme through', () => {
   assert.match(loginSource, /:closable="true"/)
@@ -169,8 +173,18 @@ test('login submit button explicitly centers its text vertically', () => {
 
 test('login funnel gives immediate visible feedback and avoids a global loading overlay', () => {
 	assert.match(loginSource, /正在安全登录/)
-	assert.match(loginSource, /auth-slow-hint/)
+	assert.match(loginSource, /auth-feedback-card/)
 	assert.match(loginSource, /AUTH_SLOW_FEEDBACK_DELAY/)
 	assert.match(loginSource, /auth-pulse/)
 	assert.doesNotMatch(loginSource, /uni\.showLoading/)
+})
+
+test('login pages keep a visible inline status card for the whole authentication request', () => {
+	for (const pageSource of [loginSource, welcomeSource]) {
+		assert.match(pageSource, /v-if="authFeedback\.visible"[^>]*class="auth-feedback-card"/)
+		assert.match(pageSource, /auth-feedback-progress/)
+		assert.match(pageSource, /authFeedback\.message/)
+		assert.doesNotMatch(pageSource, /authFeedback\.title/)
+		assert.doesNotMatch(pageSource, /authFeedback\.detail/)
+	}
 })

@@ -46,6 +46,33 @@ export function resolveAuthenticationPhase({
   return Number(elapsedMs) >= AUTH_SLOW_FEEDBACK_DELAY ? 'slow' : 'pending'
 }
 
+export function resolveAuthenticationFeedback({
+  isAuthenticating = false,
+  isSlow = false
+} = {}) {
+  if (!isAuthenticating) {
+    return {
+      visible: false,
+      phase: 'idle',
+      message: ''
+    }
+  }
+
+  if (isSlow) {
+    return {
+      visible: true,
+      phase: 'slow',
+      message: '网络有些慢，追分竭尽全力为您继续尝试中'
+    }
+  }
+
+  return {
+    visible: true,
+    phase: 'pending',
+    message: '追分正在为您完成登录'
+  }
+}
+
 export function resolveWechatPostLoginState({
   needBindPhone,
   bindingSkipped = false,

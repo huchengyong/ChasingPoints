@@ -30,6 +30,15 @@
 				>
 					{{ welcomeActions.primaryText }}
 				</button>
+				<view
+					v-if="authFeedback.visible"
+					class="auth-feedback-card"
+					:class="`is-${authFeedback.phase}`"
+				>
+					<view class="auth-feedback-progress"></view>
+					<view class="auth-feedback-dot"></view>
+					<text class="auth-feedback-message">{{ authFeedback.message }}</text>
+				</view>
 
 				<button
 					v-if="welcomeActions.showPhoneLogin"
@@ -53,7 +62,6 @@
 				<button class="btn-tertiary" :disabled="authGate.isAuthenticating" @click="handleBrowse">
 					{{ welcomeActions.tertiaryText }}
 				</button>
-				<text v-if="isSlowLogging" class="auth-slow-hint">网络稍慢，正在继续尝试</text>
 			</view>
 
 			<view class="agreement">
@@ -102,6 +110,7 @@ import { useUserStore } from '@/store/user.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import {
 	AUTH_SLOW_FEEDBACK_DELAY,
+	resolveAuthenticationFeedback,
 	resolveAuthenticationGate,
 	resolveEntryFunnelAgreementState,
 	resolveWechatPostLoginState,
@@ -136,6 +145,10 @@ const pendingAgreementAction = ref('')
 const authGate = computed(() => resolveAuthenticationGate({
 	isWechatLogging: isWechatLogging.value,
 	isPageActive: isPageActive.value
+}))
+const authFeedback = computed(() => resolveAuthenticationFeedback({
+	isAuthenticating: authGate.value.isAuthenticating,
+	isSlow: isSlowLogging.value
 }))
 let authSlowFeedbackTimer = null
 
