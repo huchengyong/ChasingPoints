@@ -2,7 +2,7 @@
 
 ## 目标
 
-在根目录 Makefile 增加 `make admin`，一次启动管理后台所需的 Go API 与 Vite 开发服务，并在按下 `Ctrl+C` 或终端退出时停止后端进程。
+在根目录 Makefile 增加 `make admin`，一次启动管理后台所需的 Go API 与 Vite 开发服务，并在按下 `Ctrl+C`、终端关闭或前台服务退出时停止整个后端进程组。
 
 ## 已确认行为
 
@@ -14,9 +14,9 @@
 
 ## 实现边界
 
-Makefile 增加 `.PHONY` 声明和 `admin` 目标。目标先校验后端环境文件存在，再以后台子进程启动 `backend/` 下的 Go 服务并保存其 PID，随后在前台执行 `admin/` 下的 `npm run dev`。
+Makefile 增加 `.PHONY` 声明和 `admin` 目标。目标先校验后端环境文件存在，使用 Bash 作业控制为 `backend/` 下的 Go 服务创建独立进程组并保存其组长 PID，随后在前台执行 `admin/` 下的 `npm run dev`。
 
-配方通过 `trap` 在接收到 `INT`、`TERM` 或前台 Vite 进程结束时终止后端 PID，确保 `Ctrl+C` 一次停止两个服务。前端保持前台进程，因此无需额外结束它自身。
+配方通过 `trap` 在接收到 `INT`、`TERM`、`HUP` 或前台 Vite 进程结束时，按进程组终止后端。这样 `go run` 启动的实际 API 子进程不会遗留。前端保持前台进程，因此无需额外结束它自身。
 
 现有 `server` 与 `build` 目标保持不变。
 
