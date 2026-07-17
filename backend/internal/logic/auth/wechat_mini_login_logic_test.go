@@ -4,6 +4,7 @@ import (
 	"context"
 	"regexp"
 	"testing"
+	"time"
 
 	"chasing_points/internal/config"
 	"chasing_points/internal/model"
@@ -90,6 +91,9 @@ func newWechatMiniAuthTestSvc(t *testing.T, client wechatmini.Client) *svc.Servi
 	`).Error; err != nil {
 		t.Fatalf("prepare auth schema: %v", err)
 	}
+	if err := db.AutoMigrate(&model.FavoriteVenueRewardConfig{}); err != nil {
+		t.Fatalf("prepare welcome reward schema: %v", err)
+	}
 
 	cfg := config.Config{}
 	cfg.Auth.AccessSecret = "wechat-mini-test-secret"
@@ -97,11 +101,12 @@ func newWechatMiniAuthTestSvc(t *testing.T, client wechatmini.Client) *svc.Servi
 	cfg.Auth.RefreshExpire = 7200
 
 	return &svc.ServiceContext{
-		DB:               db,
-		Config:           cfg,
-		UserModel:        model.NewUserModel(db),
-		OauthModel:       model.NewUserOauthModel(db),
-		WechatMiniClient: client,
+		DB:                             db,
+		Config:                         cfg,
+		UserModel:                      model.NewUserModel(db),
+		OauthModel:                     model.NewUserOauthModel(db),
+		FavoriteVenueRewardConfigModel: model.NewFavoriteVenueRewardConfigModel(db),
+		WechatMiniClient:               client,
 	}
 }
 
@@ -131,6 +136,58 @@ func TestWechatMiniLoginCreatesPhoneFreeUserAndOAuthAssociation(t *testing.T) {
 	}
 	if oauth == nil || oauth.UserId != resp.UserInfo.Id {
 		t.Fatalf("unexpected oauth association: %#v", oauth)
+	}
+
+	user, err := svcCtx.UserModel.FindById(resp.UserInfo.Id)
+	if err != nil {
+		t.Fatalf("find created user: %v", err)
+	}
+	if user == nil || user.MemberExpiresAt != nil {
+		t.Fatalf("expected no member expiry by default, got %#v", user)
+	}
+}
+
+func TestWechatMiniLoginCreatesNewUserWithConfiguredWelcomeReward(t *testing.T) {
+	client := &fakeWechatMiniClient{identity: &wechatmini.Identity{OpenID: "wechat-openid-configured", UnionID: "wechat-unionid-configured"}}
+	svcCtx := newWechatMiniAuthTestSvc(t, client)
+
+	if err := svcCtx.FavoriteVenueRewardConfigModel.Upsert(&model.FavoriteVenueRewardConfig{
+		ActivityKey:       model.WelcomeMemberRewardActivityKey,
+		Enabled:           true,
+		RewardDays:        14,
+		NewUserWindowDays: 7,
+		PopupEnabled:      false,
+	}); err != nil {
+		t.Fatalf("seed explicit welcome reward config: %v", err)
+	}
+
+	resp, err := NewWechatMiniLoginLogic(context.Background(), svcCtx).WechatMiniLogin(&types.WechatMiniLoginReq{
+		Code: "login-code",
+	})
+	if err != nil {
+		t.Fatalf("wechat mini login with explicit welcome reward: %v", err)
+	}
+	if !resp.Success || !resp.NeedBindPhone || resp.UserInfo == nil || !wechatMiniDefaultNicknamePattern.MatchString(resp.UserInfo.Nickname) {
+		t.Fatalf("unexpected login response: %#v", resp)
+	}
+	if resp.AccessToken == "" || resp.RefreshToken == "" {
+		t.Fatalf("expected token pair, got %#v", resp)
+	}
+
+	user, err := svcCtx.UserModel.FindById(resp.UserInfo.Id)
+	if err != nil {
+		t.Fatalf("find created user: %v", err)
+	}
+	if user == nil || user.MemberExpiresAt == nil {
+		t.Fatalf("expected welcome reward applied with config, got %#v", user)
+	}
+
+	duration := user.MemberExpiresAt.Sub(user.CreatedAt)
+	const expectedDays = 14
+	minExpected := expectedDays*24*time.Hour - time.Minute
+	maxExpected := expectedDays*24*time.Hour + time.Minute
+	if duration < minExpected || duration > maxExpected {
+		t.Fatalf("expected welcome reward around %d days, got %s", expectedDays, duration)
 	}
 }
 

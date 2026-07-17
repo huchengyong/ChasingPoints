@@ -11,6 +11,7 @@ import (
 	"chasing_points/internal/config"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
+	"chasing_points/internal/testsupport"
 	"chasing_points/internal/utils"
 
 	"github.com/alicebob/miniredis/v2"
@@ -54,6 +55,9 @@ func newAdminHandlerTestSvc(t *testing.T) *svc.ServiceContext {
 			t.Fatalf("create test schema: %v", err)
 		}
 	}
+	if err := testsupport.PrepareFavoriteVenueRewardSchema(db); err != nil {
+		t.Fatalf("prepare favorite venue reward schema: %v", err)
+	}
 
 	var cfg config.Config
 	cfg.Auth.AccessSecret = "test-secret"
@@ -66,6 +70,7 @@ func newAdminHandlerTestSvc(t *testing.T) *svc.ServiceContext {
 		Redis:              redis.NewClient(&redis.Options{Addr: miniRedis.Addr()}),
 		AdminModel:         model.NewAdminModel(db),
 		AdminLoginLogModel: model.NewAdminLoginLogModel(db),
+		FavoriteVenueRewardConfigModel: model.NewFavoriteVenueRewardConfigModel(db),
 	}
 }
 
@@ -133,6 +138,29 @@ func TestAdminInitHandlerReturnsJSONOnInvalidJSON(t *testing.T) {
 	}
 	if resp["success"] != false {
 		t.Fatalf("expected failure response, got %v", resp)
+	}
+}
+
+func TestAdminUpdateVenueRewardConfigHandlerAllowsMissingNewUserWindowDays(t *testing.T) {
+	svcCtx := newAdminHandlerTestSvc(t)
+
+	body := `{"enabled":false,"popup_enabled":false,"reward_days":30,"welcome_reward_enabled":false,"welcome_reward_days":7,"start_at":"","end_at":""}`
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/venue/reward-config", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	AdminUpdateVenueRewardConfigHandler(svcCtx).ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d, body=%s", rr.Code, rr.Body.String())
+	}
+
+	var resp map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if resp["success"] != true {
+		t.Fatalf("expected success response, got %v", resp)
 	}
 }
 

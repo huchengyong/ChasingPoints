@@ -1,6 +1,6 @@
 const PHONE_REGEXP = /^1[3-9]\d{9}$/
 const CODE_REGEXP = /^\d{6}$/
-export const AUTH_SLOW_FEEDBACK_DELAY = 1200
+export const AUTH_SLOW_FEEDBACK_DELAY = 3000
 const ENTRY_FUNNEL_ROUTES = new Set([
   'pages/welcome/index',
   'pages/login/login'

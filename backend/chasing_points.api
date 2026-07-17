@@ -2867,7 +2867,7 @@ type AdminVenueRewardConfigUpdateReq {
 	Enabled              bool   `json:"enabled"`
 	PopupEnabled         bool   `json:"popup_enabled"`
 	RewardDays           int    `json:"reward_days"`
-	NewUserWindowDays    int    `json:"new_user_window_days"`
+	NewUserWindowDays    int    `json:"new_user_window_days,optional"`
 	WelcomeRewardEnabled bool   `json:"welcome_reward_enabled"`
 	WelcomeRewardDays    int    `json:"welcome_reward_days"`
 	StartAt              string `json:"start_at,optional"`

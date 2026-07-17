@@ -168,12 +168,12 @@ const resolveComplianceMemberEntryCard = (expiresAtText, isActive) => {
   }
 
   return {
-    visible: true,
-    eyebrow: '会员权益',
-    statusText: '待发放',
-    title: '会员权益待发放',
-    description: '新用户注册奖励或活动奖励到账后，会直接展示在这里。',
-    actionText: '查看权益',
+    visible: false,
+    eyebrow: '',
+    statusText: '',
+    title: '',
+    description: '',
+    actionText: '',
     priceText: ''
   }
 }

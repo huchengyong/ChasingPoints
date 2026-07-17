@@ -76,8 +76,8 @@ test('resolveAuthenticationPhase escalates only active requests after the slow t
   assert.equal(resolveAuthenticationPhase(), 'idle')
   assert.equal(resolveAuthenticationPhase({ isAuthenticating: false, elapsedMs: 3000 }), 'idle')
   assert.equal(resolveAuthenticationPhase({ isAuthenticating: true, elapsedMs: 0 }), 'pending')
-  assert.equal(resolveAuthenticationPhase({ isAuthenticating: true, elapsedMs: 1199 }), 'pending')
-  assert.equal(resolveAuthenticationPhase({ isAuthenticating: true, elapsedMs: 1200 }), 'slow')
+  assert.equal(resolveAuthenticationPhase({ isAuthenticating: true, elapsedMs: 2999 }), 'pending')
+  assert.equal(resolveAuthenticationPhase({ isAuthenticating: true, elapsedMs: 3000 }), 'slow')
 })
 
 test('resolveAuthenticationFeedback keeps pending feedback visible and upgrades slow requests', () => {
