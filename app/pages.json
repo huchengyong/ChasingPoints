@@ -39,12 +39,6 @@
 			}
 		},
 		{
-			"path": "pages/ranking/index",
-			"style": {
-				"navigationBarTitleText": "排行榜"
-			}
-		},
-		{
 			"path": "pages/social/index",
 			"style": {
 				"navigationBarTitleText": "赛讯"
@@ -96,6 +90,17 @@
 		"backgroundColor": "@background"
 	},
 	"subPackages": [
+		{
+			"root": "pages/ranking",
+			"pages": [
+				{
+					"path": "index",
+					"style": {
+						"navigationBarTitleText": "排行榜"
+					}
+				}
+			]
+		},
 		{
 			"root": "subPages/agreement",
 			"pages": [
