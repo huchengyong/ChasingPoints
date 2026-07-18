@@ -148,13 +148,16 @@
 
 						this.ongoingMatchReminderShown = true
 						this.ongoingMatchPromptVisible = true
+						const finishPending = currentMatch.finish_state === 'pending_confirmation'
 
 						uni.showModal({
-							title: '你有未结束的对局',
-							content: currentMatch.viewer_role === 'referee'
-								? `你担任裁判的${currentMatch.game_type_name || 'PK'}对局仍在进行中，是否立即进入？`
-								: `你和 ${currentMatch.opponent_name || '对手'} 的${currentMatch.game_type_name || 'PK'}对局仍在进行中，是否立即进入？`,
-							confirmText: '进入对局',
+							title: finishPending ? '有一场对局等待确认' : '你有未结束的对局',
+							content: finishPending
+								? `你和 ${currentMatch.opponent_name || '对手'} 的排位赛正在等待结束确认，是否立即处理？`
+								: currentMatch.viewer_role === 'referee'
+									? `你担任裁判的${currentMatch.game_type_name || 'PK'}对局仍在进行中，是否立即进入？`
+									: `你和 ${currentMatch.opponent_name || '对手'} 的${currentMatch.game_type_name || 'PK'}对局仍在进行中，是否立即进入？`,
+							confirmText: finishPending ? '处理确认' : '进入对局',
 							cancelText: '暂不进入',
 							success: ({ confirm }) => {
 								if (confirm) {

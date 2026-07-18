@@ -250,3 +250,32 @@ func TestOpponentStrengthFiltersGameTypeAndUsesActualOpponent(t *testing.T) {
 		t.Fatalf("game type 4 opponent leaked into game type 2 strength stats: %#v", resp.List)
 	}
 }
+
+func TestCompetitiveStatsExcludePracticeMatches(t *testing.T) {
+	svcCtx := newStatsLogicTestSvc(t)
+	viewerID := int64(101)
+	opponentID := int64(202)
+	win := 1
+	for _, match := range []*model.Match{
+		{
+			Id: 21, UserId: viewerID, OpponentId: &opponentID, OpponentName: "对手", GameType: 3,
+			MatchMode: model.MatchModeRanked, Visibility: model.MatchVisibilityPublic, MyScore: 7, OpponentScore: 5,
+			Status: 2, Result: &win, MatchTime: time.Now(),
+		},
+		{
+			Id: 22, UserId: viewerID, OpponentId: &opponentID, OpponentName: "对手", GameType: 3,
+			MatchMode: model.MatchModePractice, Visibility: model.MatchVisibilityPrivate, MyScore: 9, OpponentScore: 1,
+			Status: 2, Result: &win, MatchTime: time.Now().Add(time.Minute),
+		},
+	} {
+		seedStatsMatch(t, svcCtx, match)
+	}
+
+	resp, err := NewGetStatsByGameTypeLogic(statsLogicCtx(viewerID), svcCtx).GetStatsByGameType()
+	if err != nil {
+		t.Fatalf("get competitive stats: %v", err)
+	}
+	if len(resp.List) != 1 || resp.List[0].TotalMatches != 1 || resp.List[0].Wins != 1 || resp.List[0].HighestScore != 7 {
+		t.Fatalf("practice match leaked into game type stats: %#v", resp.List)
+	}
+}

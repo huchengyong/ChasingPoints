@@ -12,30 +12,73 @@ import (
 
 var ErrMatchRevisionConflict = errors.New("match revision conflict")
 
+const (
+	MatchModePractice = "practice"
+	MatchModeRanked   = "ranked"
+
+	MatchVisibilityPrivate = "private"
+	MatchVisibilityPublic  = "public"
+
+	FinishStateNone                = "none"
+	FinishStatePendingConfirmation = "pending_confirmation"
+	FinishRequestTTL               = 24 * time.Hour
+)
+
+func NormalizeMatchMode(mode string) string {
+	if mode == MatchModePractice {
+		return MatchModePractice
+	}
+	return MatchModeRanked
+}
+
+func NormalizeMatchVisibility(visibility, mode string) string {
+	if visibility == MatchVisibilityPublic {
+		return MatchVisibilityPublic
+	}
+	if visibility == MatchVisibilityPrivate && NormalizeMatchMode(mode) == MatchModePractice {
+		return MatchVisibilityPrivate
+	}
+	return MatchVisibilityPublic
+}
+
+func NormalizeFinishState(state string) string {
+	if state == FinishStatePendingConfirmation {
+		return FinishStatePendingConfirmation
+	}
+	return FinishStateNone
+}
+
 // Match 对局记录
 type Match struct {
-	Id                        int64          `gorm:"primarykey" json:"id"`
-	UserId                    int64          `gorm:"not null;index" json:"user_id"`
-	OpponentId                *int64         `gorm:"index" json:"opponent_id"`
-	OpponentName              string         `gorm:"size:50;not null" json:"opponent_name"`
-	GameType                  int            `gorm:"not null" json:"game_type"` // 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
-	GameMode                  string         `gorm:"size:20" json:"game_mode"`  // 比赛模式
-	RefereeUserId             *int64         `gorm:"index" json:"referee_user_id"`
-	RefereeJoinedAt           *time.Time     `json:"referee_joined_at"`
-	MyScore                   int            `gorm:"not null;default:0" json:"my_score"`
-	OpponentScore             int            `gorm:"not null;default:0" json:"opponent_score"`
-	CurrentFrameMyScore       int            `gorm:"not null;default:0" json:"current_frame_my_score"`
-	CurrentFrameOpponentScore int            `gorm:"not null;default:0" json:"current_frame_opponent_score"`
-	CurrentFrameStarted       bool           `gorm:"not null;default:true" json:"current_frame_started"`
-	SyncRevision              int64          `gorm:"not null;default:0" json:"sync_revision"`
-	Status                    int            `gorm:"not null;default:1" json:"status"` // 1=进行中 2=已完成 3=已取消
-	Result                    *int           `json:"result"`                           // 1=胜利 2=失败 3=平局
-	MatchTime                 time.Time      `gorm:"not null" json:"match_time"`
-	EndTime                   *time.Time     `json:"end_time"`
-	Remark                    string         `gorm:"size:500" json:"remark"`
-	CreatedAt                 time.Time      `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt                 time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
-	DeletedAt                 gorm.DeletedAt `gorm:"index" json:"deleted_at"`
+	Id                         int64          `gorm:"primarykey" json:"id"`
+	UserId                     int64          `gorm:"not null;index" json:"user_id"`
+	OpponentId                 *int64         `gorm:"index" json:"opponent_id"`
+	OpponentName               string         `gorm:"size:50;not null" json:"opponent_name"`
+	GameType                   int            `gorm:"not null" json:"game_type"` // 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
+	GameMode                   string         `gorm:"size:20" json:"game_mode"`  // 比赛模式
+	MatchMode                  string         `gorm:"size:20;not null;index" json:"match_mode"`
+	Visibility                 string         `gorm:"size:20;not null;index" json:"visibility"`
+	FinishConfirmationRequired bool           `gorm:"not null;default:false" json:"finish_confirmation_required"`
+	FinishState                string         `gorm:"size:32;not null;index" json:"finish_state"`
+	FinishRequestedBy          *int64         `gorm:"index" json:"finish_requested_by"`
+	FinishRequestedAt          *time.Time     `json:"finish_requested_at"`
+	FinishRequestRevision      int64          `gorm:"not null;default:0" json:"finish_request_revision"`
+	RefereeUserId              *int64         `gorm:"index" json:"referee_user_id"`
+	RefereeJoinedAt            *time.Time     `json:"referee_joined_at"`
+	MyScore                    int            `gorm:"not null;default:0" json:"my_score"`
+	OpponentScore              int            `gorm:"not null;default:0" json:"opponent_score"`
+	CurrentFrameMyScore        int            `gorm:"not null;default:0" json:"current_frame_my_score"`
+	CurrentFrameOpponentScore  int            `gorm:"not null;default:0" json:"current_frame_opponent_score"`
+	CurrentFrameStarted        bool           `gorm:"not null;default:true" json:"current_frame_started"`
+	SyncRevision               int64          `gorm:"not null;default:0" json:"sync_revision"`
+	Status                     int            `gorm:"not null;default:1" json:"status"` // 1=进行中 2=已完成 3=已取消
+	Result                     *int           `json:"result"`                           // 1=胜利 2=失败 3=平局
+	MatchTime                  time.Time      `gorm:"not null" json:"match_time"`
+	EndTime                    *time.Time     `json:"end_time"`
+	Remark                     string         `gorm:"size:500" json:"remark"`
+	CreatedAt                  time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt                  time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
+	DeletedAt                  gorm.DeletedAt `gorm:"index" json:"deleted_at"`
 }
 
 func (Match) TableName() string {
@@ -154,6 +197,47 @@ func (m *MatchModel) FindByIdForUpdateWithTx(tx *gorm.DB, id int64) (*Match, err
 	return &match, err
 }
 
+func (m *MatchModel) ExpireStaleFinishRequest(matchId int64) (*Match, bool, int64, error) {
+	var refreshed *Match
+	var expiredRevision int64
+	err := m.db.Transaction(func(tx *gorm.DB) error {
+		locked, err := m.FindByIdForUpdateWithTx(tx, matchId)
+		if err != nil {
+			return err
+		}
+		if locked == nil {
+			return gorm.ErrRecordNotFound
+		}
+		if locked.FinishState != FinishStatePendingConfirmation || locked.FinishRequestedAt == nil || time.Since(*locked.FinishRequestedAt) < FinishRequestTTL {
+			refreshed = locked
+			return nil
+		}
+
+		requestRevision := locked.FinishRequestRevision
+		locked.FinishState = FinishStateNone
+		locked.FinishRequestedBy = nil
+		locked.FinishRequestedAt = nil
+		locked.FinishRequestRevision = 0
+		revision, err := m.BumpMatchRevisionWithTx(tx, locked)
+		if err != nil {
+			return err
+		}
+		expiredRevision = revision
+		if err := m.CreateActionWithRevisionWithTx(tx, &MatchAction{
+			MatchId:      locked.Id,
+			RoundNo:      0,
+			ActionType:   "finish_expired",
+			Actor:        0,
+			BaseRevision: requestRevision,
+		}, revision); err != nil {
+			return err
+		}
+		refreshed = locked
+		return nil
+	})
+	return refreshed, expiredRevision > 0, expiredRevision, err
+}
+
 // FindCurrentByUserId 查找用户进行中的对局
 func (m *MatchModel) FindCurrentByUserId(userId int64) (*Match, error) {
 	return m.FindCurrentByUserIdWithTx(nil, userId)
@@ -166,7 +250,8 @@ func (m *MatchModel) FindCurrentByUserIdWithTx(tx *gorm.DB, userId int64) (*Matc
 	}
 
 	var match Match
-	err := db.Where("(user_id = ? OR opponent_id = ? OR referee_user_id = ?) AND status = 1", userId, userId, userId).
+	query := db.Where("(user_id = ? OR opponent_id = ? OR referee_user_id = ?) AND status = 1", userId, userId, userId)
+	err := query.
 		Order("match_time DESC").
 		First(&match).Error
 	if err == gorm.ErrRecordNotFound {
@@ -180,6 +265,7 @@ func (m *MatchModel) ListCompletedForRankingReplay() ([]Match, error) {
 	var matches []Match
 	err := m.db.
 		Where("status = ? AND deleted_at IS NULL", 2).
+		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", MatchModeRanked).
 		Order("CASE WHEN end_time IS NULL THEN 1 ELSE 0 END ASC").
 		Order("end_time ASC").
 		Order("match_time ASC").
@@ -202,6 +288,7 @@ func (m *MatchModel) CountCompletedMatchesBetweenUsersByGameTypeBetween(
 
 	query := db.Model(&Match{}).
 		Where("status = ? AND game_type = ?", 2, gameType).
+		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", MatchModeRanked).
 		Where("((user_id = ? AND opponent_id = ?) OR (user_id = ? AND opponent_id = ?))", userA, userB, userB, userA).
 		Where("((end_time IS NOT NULL AND end_time >= ? AND end_time < ?) OR (end_time IS NULL AND match_time >= ? AND match_time < ?))",
 			start, end, start, end)
@@ -1050,6 +1137,7 @@ func (m *MatchModel) GetUserStats(userId int64) (*UserStats, error) {
 	err := m.db.Model(&Match{}).
 		Select("user_id, result").
 		Where("(user_id = ? OR opponent_id = ?) AND status = 2", userId, userId).
+		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", MatchModeRanked).
 		Scan(&matches).Error
 	if err != nil {
 		return nil, err
@@ -1102,6 +1190,7 @@ func (m *MatchModel) calculateMaxWinStreak(userId int64) int {
 	err := m.db.Model(&Match{}).
 		Select("user_id, result, match_time").
 		Where("(user_id = ? OR opponent_id = ?) AND status = 2", userId, userId).
+		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", MatchModeRanked).
 		Order("match_time ASC").
 		Scan(&matches).Error
 	if err != nil {
@@ -1166,7 +1255,10 @@ type PublicMatchListRow struct {
 func (m *MatchModel) ListOngoingMatches(offset, limit int) ([]OngoingMatch, int64, error) {
 	// 查询总数
 	var total int64
-	if err := m.db.Model(&Match{}).Where("status = 1").Count(&total).Error; err != nil {
+	if err := m.db.Model(&Match{}).
+		Where("status = 1 AND deleted_at IS NULL").
+		Where("visibility = ? OR visibility = '' OR visibility IS NULL", MatchVisibilityPublic).
+		Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -1180,6 +1272,7 @@ func (m *MatchModel) ListOngoingMatches(offset, limit int) ([]OngoingMatch, int6
 		Joins("LEFT JOIN users u1 ON matches.user_id = u1.id").
 		Joins("LEFT JOIN users u2 ON matches.opponent_id = u2.id").
 		Where("matches.status = 1 AND matches.deleted_at IS NULL").
+		Where("matches.visibility = ? OR matches.visibility = '' OR matches.visibility IS NULL", MatchVisibilityPublic).
 		Order("matches.match_time DESC").
 		Offset(offset).
 		Limit(limit).
@@ -1208,13 +1301,18 @@ func (m *MatchModel) ListPublicMatches(options PublicMatchListOptions) ([]Public
 					OR
 					(friends.friend_id = ? AND (friends.user_id = matches.user_id OR friends.user_id = matches.opponent_id))
 				)
-			)`, options.ViewerUserId, options.ViewerUserId)
+			) OR matches.user_id = ? OR matches.opponent_id = ? OR matches.referee_user_id = ?`,
+				options.ViewerUserId, options.ViewerUserId,
+				options.ViewerUserId, options.ViewerUserId, options.ViewerUserId)
+		base = base.Where("matches.visibility = ? OR matches.visibility = '' OR matches.visibility IS NULL OR matches.user_id = ? OR matches.opponent_id = ? OR matches.referee_user_id = ?",
+			MatchVisibilityPublic, options.ViewerUserId, options.ViewerUserId, options.ViewerUserId)
 	} else {
 		status := options.Status
 		if status != 2 {
 			status = 1
 		}
-		base = base.Where("matches.status = ?", status)
+		base = base.Where("matches.status = ?", status).
+			Where("matches.visibility = ? OR matches.visibility = '' OR matches.visibility IS NULL", MatchVisibilityPublic)
 	}
 
 	if options.GameType > 0 {
@@ -1287,6 +1385,7 @@ func (m *MatchModel) ListOpponentsWithStats(
 		Select("matches.user_id, matches.opponent_id, matches.opponent_name, matches.result, matches.match_time, COALESCE(u.nickname, '') as creator_nickname").
 		Joins("LEFT JOIN users u ON matches.user_id = u.id").
 		Where("(matches.user_id = ? OR matches.opponent_id = ?) AND matches.status = 2 AND matches.deleted_at IS NULL", userId, userId).
+		Where("matches.match_mode = ? OR matches.match_mode = '' OR matches.match_mode IS NULL", MatchModeRanked).
 		Scan(&matches).Error
 	if err != nil {
 		return nil, 0, err
@@ -1456,6 +1555,7 @@ func (m *MatchModel) GetOverallOpponentStats(userId int64) (totalOpponents, tota
 		Select("matches.user_id, matches.opponent_id, matches.opponent_name, matches.result, COALESCE(u.nickname, '') as creator_nickname").
 		Joins("LEFT JOIN users u ON matches.user_id = u.id").
 		Where("(matches.user_id = ? OR matches.opponent_id = ?) AND matches.status = 2 AND matches.deleted_at IS NULL", userId, userId).
+		Where("matches.match_mode = ? OR matches.match_mode = '' OR matches.match_mode IS NULL", MatchModeRanked).
 		Scan(&matches).Error
 	if err != nil {
 		return 0, 0, err
@@ -1512,6 +1612,7 @@ func (m *MatchModel) GetMaxSingleScore(userId int64) (int, error) {
 	err := m.db.Table("match_rounds mr").
 		Joins("INNER JOIN matches m ON mr.match_id = m.id").
 		Where("m.user_id = ? AND m.status = 2 AND m.deleted_at IS NULL", userId).
+		Where("m.match_mode = ? OR m.match_mode = '' OR m.match_mode IS NULL", MatchModeRanked).
 		Select("COALESCE(MAX(mr.my_score), 0)").
 		Scan(&player1MaxScore).Error
 	if err != nil {
@@ -1523,6 +1624,7 @@ func (m *MatchModel) GetMaxSingleScore(userId int64) (int, error) {
 	err = m.db.Table("match_rounds mr").
 		Joins("INNER JOIN matches m ON mr.match_id = m.id").
 		Where("m.opponent_id = ? AND m.status = 2 AND m.deleted_at IS NULL", userId).
+		Where("m.match_mode = ? OR m.match_mode = '' OR m.match_mode IS NULL", MatchModeRanked).
 		Select("COALESCE(MAX(mr.opponent_score), 0)").
 		Scan(&player2MaxScore).Error
 	if err != nil {

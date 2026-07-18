@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -30,6 +31,9 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 	match, err := l.svcCtx.MatchModel.FindById(req.MatchId)
 	if err != nil || match == nil {
 		l.Logger.Errorf("对局不存在: %v", err)
+		return &types.GetPublicMatchDetailResp{Success: false}, nil
+	}
+	if model.NormalizeMatchVisibility(match.Visibility, match.MatchMode) != model.MatchVisibilityPublic {
 		return &types.GetPublicMatchDetailResp{Success: false}, nil
 	}
 
@@ -93,6 +97,9 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 		Match: &types.PublicMatchDetailData{
 			Id:                       match.Id,
 			GameType:                 match.GameType,
+			MatchMode:                model.NormalizeMatchMode(match.MatchMode),
+			Visibility:               model.NormalizeMatchVisibility(match.Visibility, match.MatchMode),
+			FinishState:              model.NormalizeFinishState(match.FinishState),
 			Status:                   match.Status,
 			ServerRevision:           match.SyncRevision,
 			Player1Id:                match.UserId,

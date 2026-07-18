@@ -3,5 +3,79 @@ export const validateStartMatchPayload = (payload = {}) => {
   if (!Number.isFinite(opponentId) || opponentId <= 0) {
     return '请选择有效的平台对手'
   }
+  const mode = payload.match_mode || payload.matchMode || ''
+  const visibility = payload.visibility || ''
+  if (mode && !['practice', 'ranked'].includes(mode)) return '请选择有效的对局模式'
+  if (visibility && !['private', 'public'].includes(visibility)) return '请选择有效的公开范围'
+  if (mode === 'ranked' && visibility === 'private') return '排位赛必须公开展示'
   return ''
+}
+
+export const normalizeStartMatchOptions = ({ match_mode, matchMode, visibility } = {}) => {
+  const mode = match_mode || matchMode || 'ranked'
+  const normalizedMode = mode === 'practice' || mode === 'ranked' ? mode : 'ranked'
+  const normalizedVisibility = visibility || (normalizedMode === 'practice' ? 'private' : 'public')
+  return {
+    match_mode: normalizedMode,
+    visibility: normalizedMode === 'ranked' ? 'public' : normalizedVisibility === 'public' ? 'public' : 'private'
+  }
+}
+
+export const normalizePendingMatchContext = (storageKey = '', raw = '') => {
+  const type = storageKey === 'pending_match_challenge'
+    ? 'challenge'
+    : storageKey === 'pending_match_rematch'
+      ? 'rematch'
+      : ''
+  if (!type || !raw) return { valid: false, context: null, message: '开局信息已失效' }
+
+  let parsed
+  try {
+    parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+  } catch {
+    return { valid: false, context: null, message: type === 'challenge' ? '邀约开局信息已失效' : '重赛信息已失效' }
+  }
+
+  const context = {
+    ...parsed,
+    context_type: type,
+    challenge_id: Number(parsed?.challenge_id || 0),
+    opponent_id: Number(parsed?.opponent_id || 0),
+    game_type: Number(parsed?.game_type || 0),
+    match_mode: parsed?.match_mode === 'ranked' ? 'ranked' : 'practice',
+    visibility: parsed?.visibility === 'public' ? 'public' : 'private'
+  }
+  const valid = context.opponent_id > 0 && context.game_type > 0 && (type !== 'challenge' || context.challenge_id > 0)
+  return {
+    valid,
+    context: valid ? context : null,
+    message: valid ? '' : type === 'challenge' ? '邀约开局信息不完整' : '重赛信息不完整'
+  }
+}
+
+export const validateScannedOpponentForContext = (context = {}, scannedOpponent = {}) => {
+  if (context.context_type !== 'challenge') return ''
+  const expectedId = Number(context.opponent_id || 0)
+  const scannedId = Number(scannedOpponent.id || scannedOpponent.user_id || scannedOpponent.opponent_id || 0)
+  if (expectedId > 0 && scannedId !== expectedId) return '请扫描邀约中的指定对手'
+  return ''
+}
+
+export const buildStartMatchPayload = ({
+  gameType,
+  opponent = {},
+  matchMode = 'ranked',
+  visibility,
+  challengeId = 0
+} = {}) => {
+  const options = normalizeStartMatchOptions({ matchMode, visibility })
+  const payload = {
+    game_type: Number(gameType) || 0,
+    opponent_id: Number(opponent.id || opponent.user_id || opponent.opponent_id || 0),
+    opponent_name: opponent.nickname || opponent.name || opponent.opponent_name || '对手',
+    opponent_avatar: opponent.avatar || opponent.opponent_avatar || '',
+    ...options
+  }
+  if (Number(challengeId) > 0) payload.challenge_id = Number(challengeId)
+  return payload
 }

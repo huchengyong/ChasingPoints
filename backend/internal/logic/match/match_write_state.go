@@ -44,6 +44,7 @@ func loadMatchWriteState(svcCtx *svc.ServiceContext, userId int64, match *model.
 	state.CompletedRoundCount = roundCount
 	state.SnookerState = snookerState
 	state.Snapshot = buildMatchSyncSnapshotForUser(userId, match, roundCount, snookerState)
+	state.Snapshot.LastAction = buildMatchLastAction(svcCtx, userId, match)
 	return state, nil
 }
 

@@ -2,6 +2,14 @@
 	<view class="match-container" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 主内容区 -->
 		<view class="main-content">
+			<view class="match-primary-action">
+				<view class="match-primary-action__copy">
+					<text class="match-primary-action__eyebrow">双人对局</text>
+					<text class="match-primary-action__title">{{ homePrimaryAction.label }}</text>
+					<text class="match-primary-action__desc">{{ homePrimaryAction.type === 'start' ? '扫描、出示二维码或从邀约继续' : '你的待处理对局始终显示在这里' }}</text>
+				</view>
+				<button class="match-primary-action__button" @click="handlePrimaryAction">{{ homePrimaryAction.label }}</button>
+			</view>
 			<view class="lobby-toolbar">
 				<view class="lobby-toolbar-row">
 					<view class="scope-tabs">
@@ -202,16 +210,51 @@
 				</view>
 			</view>
 		</view>
+
+		<view v-if="showMatchQrModal" class="match-qr-mask" @click="closeMatchQrModal">
+			<view class="match-qr-panel" @click.stop>
+				<view class="match-qr-header">
+					<view>
+						<text class="match-qr-title">出示我的匹配二维码</text>
+						<text class="match-qr-subtitle">请让对手使用发起对局扫码入口识别</text>
+					</view>
+					<button class="match-qr-close" @click="closeMatchQrModal">
+						<uni-icons type="closeempty" size="22" color="#64748b"></uni-icons>
+					</button>
+				</view>
+				<view class="match-qr-body">
+					<view v-if="matchQrLoading" class="match-qr-state">
+						<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
+						<text>二维码生成中...</text>
+					</view>
+					<view v-if="!matchQrLoading && matchQrFailed" class="match-qr-state">
+						<text class="match-qr-error">二维码加载失败</text>
+						<button class="match-qr-retry" @click="loadMyMatchQRCode">重试</button>
+					</view>
+					<image
+						v-if="matchQrUrl && !matchQrFailed"
+						class="match-qr-image"
+						:class="{ 'is-loading': matchQrLoading }"
+						:src="matchQrUrl"
+						mode="aspectFit"
+						@load="handleMatchQrLoad"
+						@error="handleMatchQrError"
+					/>
+				</view>
+				<button class="match-qr-done" @click="closeMatchQrModal">关闭</button>
+			</view>
+		</view>
 	</view>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 
-import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
+import { onLoad, onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { getCurrentMatch, getPublicMatches, joinMatchReferee, startMatch } from '@/api/match.js'
+import { getMatchQRCode } from '@/api/match.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { shouldShowMatchPageLoading } from '@/utils/match-page.js'
 import { buildPlayingRoute, resolveMatchScanAction, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
@@ -226,6 +269,12 @@ import {
 	getSpectatorMatchStatusText,
 	shouldOpenPlayingForSpectatorMatch
 } from '@/utils/spectator-lobby.js'
+import { buildFinishedMatchDetailRoute, resolveMatchHomePrimaryAction } from '@/utils/match-core-flow.js'
+import {
+	buildStartMatchPayload,
+	normalizePendingMatchContext,
+	validateScannedOpponentForContext
+} from '@/utils/start-match.js'
 
 // ========== 状态管理 ==========
 const userStore = useUserStore()
@@ -238,9 +287,16 @@ const currentMatch = ref(null)
 const spectatorMatches = ref([])
 const showGameTypeModal = ref(false)
 const selectedGameType = ref(null)
+const startMatchMode = ref('practice')
+const startMatchVisibility = ref('private')
+const pendingStartContext = ref(null)
 const scanIntent = ref('start')
+const showMatchQrModal = ref(false)
+const matchQrLoading = ref(false)
+const matchQrFailed = ref(false)
+const matchQrUrl = ref('')
 const showFilterPanel = ref(false)
-const currentScope = ref('hall')
+const currentScope = ref(userStore.isLoggedIn ? 'friends' : 'hall')
 const currentStatus = ref(1)
 const currentGameType = ref(0)
 const draftStatus = ref(1)
@@ -258,10 +314,13 @@ const userName = computed(() => userStore.userInfo?.nickname || '我')
 const userId = computed(() => userStore.userInfo?.id || 0)
 const userAvatar = computed(() => resolveAvatarUrl(userStore.userInfo?.avatar, userId.value))
 const visibleCurrentMatch = computed(() => {
-	if (currentScope.value !== 'hall' || currentStatus.value !== 1 || !currentMatch.value) return null
+	if (!currentMatch.value) return null
+	if (Number(currentMatch.value.status) === 1 || currentMatch.value.finish_state === 'pending_confirmation') return currentMatch.value
+	if (currentScope.value !== 'hall' || currentStatus.value !== 1) return null
 	if (currentGameType.value > 0 && Number(currentMatch.value.game_type) !== Number(currentGameType.value)) return null
 	return currentMatch.value
 })
+const homePrimaryAction = computed(() => resolveMatchHomePrimaryAction({ currentMatch: currentMatch.value }))
 const emptyState = computed(() => getSpectatorEmptyState({
 	scope: currentScope.value,
 	status: currentStatus.value,
@@ -318,6 +377,10 @@ onMounted(() => {
 	loadData()
 })
 
+onLoad(() => {
+	consumePendingChallengeContext()
+})
+
 // 下拉刷新
 onPullDownRefresh(async () => {
 	refreshing.value = true
@@ -330,8 +393,29 @@ onPullDownRefresh(async () => {
 })
 
 onShow(() => {
+	consumePendingChallengeContext()
 	loadData()
 })
+
+const consumePendingChallengeContext = () => {
+	for (const storageKey of ['pending_match_challenge', 'pending_match_rematch']) {
+		const raw = uni.getStorageSync(storageKey)
+		if (!raw) continue
+		const result = normalizePendingMatchContext(storageKey, raw)
+		uni.removeStorageSync(storageKey)
+		if (!result.valid) {
+			uni.showToast({ title: result.message, icon: 'none' })
+			continue
+		}
+		pendingStartContext.value = result.context
+		selectedGameType.value = result.context.game_type
+		startMatchMode.value = result.context.match_mode
+		startMatchVisibility.value = result.context.visibility
+		scanIntent.value = 'start'
+		setTimeout(handleScanCode, 80)
+		return
+	}
+}
 
 // ========== 方法 ==========
 
@@ -428,7 +512,7 @@ const confirmSpectatorFilters = () => {
 }
 
 onUnmounted(() => {
-	if (showFilterPanel.value) {
+	if (showFilterPanel.value || showMatchQrModal.value) {
 		uni.showTabBar({ animation: false })
 	}
 })
@@ -474,8 +558,70 @@ const handleStartMatch = () => {
 		}, 1500)
 		return
 	}
-	scanIntent.value = 'start'
-	showGameTypeModal.value = true
+	uni.showActionSheet({
+		itemList: ['扫描对手二维码', '出示我的二维码', '选择好友或最近对手'],
+		success: ({ tapIndex }) => {
+			if (tapIndex === 0) {
+				scanIntent.value = 'start'
+				showGameTypeModal.value = true
+				return
+			}
+			if (tapIndex === 1) {
+				showMyMatchQRCode()
+				return
+			}
+			uni.navigateTo({ url: '/subPages/match/opponentSelector' })
+		}
+	})
+}
+
+const handlePrimaryAction = () => {
+	if (homePrimaryAction.value.type === 'start') {
+		handleStartMatch()
+		return
+	}
+	if (visibleCurrentMatch.value) handleContinueMatch(visibleCurrentMatch.value)
+}
+
+const showMyMatchQRCode = async () => {
+	showMatchQrModal.value = true
+	uni.hideTabBar({ animation: true })
+	await loadMyMatchQRCode()
+}
+
+const loadMyMatchQRCode = async () => {
+	matchQrLoading.value = true
+	matchQrFailed.value = false
+	matchQrUrl.value = ''
+	try {
+		const res = await getMatchQRCode()
+		if (!res?.success || !res.qrcode_data) {
+			matchQrLoading.value = false
+			matchQrFailed.value = true
+			return
+		}
+		matchQrUrl.value = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(res.qrcode_data)}`
+	} catch (error) {
+		matchQrLoading.value = false
+		matchQrFailed.value = true
+	}
+}
+
+const handleMatchQrLoad = () => {
+	matchQrLoading.value = false
+}
+
+const handleMatchQrError = () => {
+	matchQrLoading.value = false
+	matchQrFailed.value = true
+}
+
+const closeMatchQrModal = () => {
+	showMatchQrModal.value = false
+	matchQrLoading.value = false
+	matchQrFailed.value = false
+	matchQrUrl.value = ''
+	uni.showTabBar({ animation: true })
 }
 
 const handleScanAsReferee = () => {
@@ -497,8 +643,14 @@ const handleScanAsReferee = () => {
 const handleGameTypeConfirm = (gameType) => {
 	scanIntent.value = 'start'
 	selectedGameType.value = gameType
-	// 开始扫码
-	handleScanCode()
+	uni.showActionSheet({
+		itemList: ['练习赛（默认私密，不影响竞技权益）', '练习赛（公开展示，不影响竞技权益）', '排位赛（公开展示，需结束确认）'],
+		success: ({ tapIndex }) => {
+			startMatchMode.value = tapIndex === 2 ? 'ranked' : 'practice'
+			startMatchVisibility.value = tapIndex === 1 || tapIndex === 2 ? 'public' : 'private'
+			handleScanCode()
+		}
+	})
 }
 
 /**
@@ -553,16 +705,23 @@ const handleMatchResult = async (scanResult) => {
 		}
 
 		const opponentData = scanAction.opponent
+		const scanMessage = validateScannedOpponentForContext(pendingStartContext.value || {}, opponentData)
+		if (scanMessage) {
+			uni.showToast({ title: scanMessage, icon: 'none' })
+			return
+		}
 
 		// 显示加载中
 		uni.showLoading({ title: '匹配中...', mask: true })
 
 		// 创建对局
-		const res = await startMatch({
-			game_type: selectedGameType.value,
-			opponent_id: opponentData.user_id,
-			opponent_name: opponentData.nickname || '对手'
-		})
+		const res = await startMatch(buildStartMatchPayload({
+			gameType: pendingStartContext.value?.game_type || selectedGameType.value,
+			opponent: opponentData,
+			matchMode: startMatchMode.value,
+			visibility: startMatchVisibility.value,
+			challengeId: pendingStartContext.value?.challenge_id || 0
+		}))
 
 		// 隐藏加载
 		uni.hideLoading()
@@ -572,6 +731,7 @@ const handleMatchResult = async (scanResult) => {
 			selectedGameType: selectedGameType.value,
 			scannedOpponent: opponentData
 		}))
+		if (res?.success) pendingStartContext.value = null
 	} catch (error) {
 		uni.hideLoading()
 		console.error('处理匹配结果失败:', error)
@@ -658,10 +818,7 @@ const getOpponentAvatar = (match) => {
  * 点击对局卡片
  */
 const handleMatchClick = (match) => {
-	const finishedDetailUrl = buildSpectatorFinishedMatchDetailUrl({
-		match,
-		userId: userId.value
-	})
+	const finishedDetailUrl = buildFinishedMatchDetailRoute(match, userId.value)
 	if (finishedDetailUrl) {
 		uni.navigateTo({ url: finishedDetailUrl })
 		return

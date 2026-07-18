@@ -40,6 +40,9 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 		l.Logger.Errorf("对局不存在: %v", err)
 		return &types.GetMatchDetailResp{Success: false}, nil
 	}
+	if refreshed, expireErr := expireStaleFinishRequest(l.svcCtx, match); expireErr == nil && refreshed != nil {
+		match = refreshed
+	}
 
 	// 验证用户权限（对局双方和裁判都可以查看）
 	capabilities := resolveMatchViewerCapabilities(match, userId)
@@ -101,6 +104,16 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 		myAvatar = player2Avatar
 		opponentName = player1Name
 		opponentAvatar = player1Avatar
+	}
+	player2Id := int64(0)
+	if match.OpponentId != nil {
+		player2Id = *match.OpponentId
+	}
+	opponentId := int64(0)
+	if capabilities.ViewerRole == matchViewerRolePlayer1 {
+		opponentId = player2Id
+	} else if capabilities.ViewerRole == matchViewerRolePlayer2 {
+		opponentId = match.UserId
 	}
 
 	// 查询成绩数据
@@ -227,7 +240,14 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 		Success: true,
 		Match: types.MatchDetailData{
 			Id:                            match.Id,
+			Player1Id:                     match.UserId,
+			Player2Id:                     player2Id,
+			OpponentId:                    opponentId,
 			GameType:                      match.GameType,
+			MatchMode:                     model.NormalizeMatchMode(match.MatchMode),
+			Visibility:                    model.NormalizeMatchVisibility(match.Visibility, match.MatchMode),
+			FinishState:                   model.NormalizeFinishState(match.FinishState),
+			FinishRequestedBy:             resolveFinishRequestedBy(match),
 			Status:                        match.Status,
 			ServerRevision:                match.SyncRevision,
 			IsPlayer1:                     isPlayer1,
@@ -238,6 +258,11 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			CanScore:                      capabilities.CanScore,
 			CanUndo:                       capabilities.CanUndo,
 			CanFinish:                     capabilities.CanFinish,
+			CanRequestFinish:              capabilities.CanRequestFinish,
+			CanConfirmFinish:              capabilities.CanConfirmFinish,
+			CanDisputeFinish:              capabilities.CanDisputeFinish,
+			CanWithdrawFinish:             capabilities.CanWithdrawFinish,
+			LastAction:                    buildMatchLastAction(l.svcCtx, userId, match),
 			MyScore:                       myScore,
 			OpponentScore:                 opponentScore,
 			MyName:                        myName,

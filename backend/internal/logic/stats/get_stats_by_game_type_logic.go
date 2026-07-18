@@ -3,6 +3,7 @@ package stats
 import (
 	"context"
 
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -50,6 +51,7 @@ func (l *GetStatsByGameTypeLogic) GetStatsByGameType() (resp *types.GetStatsByGa
 			COALESCE(MAX(CASE WHEN user_id = ? THEN my_score WHEN opponent_id = ? THEN opponent_score ELSE 0 END), 0) AS highest_score`,
 			userIdInt, userIdInt, userIdInt, userIdInt, userIdInt, userIdInt).
 		Where("(user_id = ? OR opponent_id = ?) AND status = 2", userIdInt, userIdInt).
+		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", model.MatchModeRanked).
 		Group("game_type").
 		Scan(&rows).Error
 	if err != nil {

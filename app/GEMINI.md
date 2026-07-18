@@ -64,6 +64,7 @@ app/
 ## THEME AND UI CONSTRAINTS
 - 主题变量必须同时兼容 `theme.json`、`App.vue` 中的 CSS 变量和 `store/theme.js` 的运行时切换。
 - 主题色背景按钮文字统一使用白色 `#ffffff`。
+- 微信小程序 WXSS 不支持 `*` 通配选择器。任何会编译到 MP-WEIXIN 的 `.vue` / `.scss` 都禁止使用 `*`、`*::before`、`*::after`，包括 scoped 样式中的 `.container *`（会生成 `.container *.data-v-*` 并导致真机编译失败）；改用明确的类选择器或 `view`、`text`、`button`、`image`、`scroll-view` 等组件选择器。仅供其他端使用的规则必须通过 `#ifndef MP-WEIXIN` 排除。
 - 针对 button 等内置组件的 disabled 状态样式覆盖，必须使用属性选择器 `&[disabled]` 或者 `button[disabled]`，绝不能使用伪类 `&:disabled`（在 UniApp 编译到小程序/App 端时，伪类无法正确匹配组件，并会导致框架默认的灰色字体强行覆盖被激活）。
 - 自定义按钮必须隐藏 `button::after`。
 - 为确保按钮文字垂直居中，所有自定义 `button` 组件的 `line-height` 应设为与 `height` 相同的值（例如 `height: 88rpx; line-height: 88rpx;`）。

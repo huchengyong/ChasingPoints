@@ -92,6 +92,22 @@ export const finishMatch = (data) => {
   return post('/api/match/finish', data)
 }
 
+export const requestFinishMatch = (data) => {
+  return post('/api/match/finish/request', data)
+}
+
+export const confirmFinishMatch = (data) => {
+  return post('/api/match/finish/confirm', data)
+}
+
+export const disputeFinishMatch = (data) => {
+  return post('/api/match/finish/dispute', data)
+}
+
+export const withdrawFinishMatch = (data) => {
+  return post('/api/match/finish/withdraw', data)
+}
+
 /**
  * 获取交锋统计
  * @param {Object} params 查询参数

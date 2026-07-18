@@ -129,6 +129,18 @@ $loss-color: #E57373;
     }
 }
 
+.h2h-entry-button {
+	margin: 24rpx 32rpx 0;
+	width: calc(100% - 64rpx);
+	height: 78rpx;
+	line-height: 78rpx;
+	border-radius: 18rpx;
+	background: rgba(224, 174, 18, 0.12);
+	color: #a16207;
+	font-size: 26rpx;
+	&::after { display: none; }
+}
+
 // ========== 加载状态 ==========
 .loading-container {
     display: flex;

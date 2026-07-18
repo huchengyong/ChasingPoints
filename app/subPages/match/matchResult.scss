@@ -25,10 +25,13 @@ $shadow-dark: 0 24rpx 80rpx rgba(2, 6, 23, 0.5);
 		linear-gradient(180deg, #ffffff 0%, $bg-light 46%, #f8fafc 100%);
 	position: relative;
 	transition: background 0.3s ease;
+	box-sizing: border-box;
 
-	*,
-	*::before,
-	*::after {
+	view,
+	scroll-view,
+	text,
+	image,
+	button {
 		box-sizing: border-box;
 	}
 }
@@ -704,6 +707,14 @@ $shadow-dark: 0 24rpx 80rpx rgba(2, 6, 23, 0.5);
 	&.btn-secondary {
 		color: $primary;
 		background: rgba(224, 174, 18, 0.12);
+	}
+
+	&.btn-link {
+		height: 64rpx;
+		line-height: 64rpx;
+		color: $primary;
+		background: transparent;
+		font-size: 26rpx;
 	}
 }
 

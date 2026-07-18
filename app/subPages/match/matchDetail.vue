@@ -71,6 +71,8 @@
 				</view>
 			</view>
 
+			<button v-if="matchData.status === 2" class="h2h-entry-button" @tap="handleOpenH2H">查看双方交锋记录</button>
+
 			<!-- 局记录列表 -->
 			<view class="round-history">
 				<text class="section-title">局记录</text>
@@ -411,6 +413,16 @@ const getRoundResultTone = (round) => {
 
 const getRoundResultText = (round) => {
 	return round.resultText || (round.result === 'win' || round.winner === 1 ? '胜' : '负')
+}
+
+const handleOpenH2H = () => {
+	const player1Id = Number(player1UserId.value || 0)
+	const player2Id = Number(player2UserId.value || 0)
+	if (!player1Id || !player2Id) {
+		uni.showToast({ title: '暂无可用的交锋记录', icon: 'none' })
+		return
+	}
+	uni.navigateTo({ url: `/subPages/user/h2hRecord?target_user_id=${player1Id}&opponent_id=${player2Id}` })
 }
 </script>
 

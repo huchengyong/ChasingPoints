@@ -148,3 +148,9 @@ export const buildSpectatorFinishedMatchDetailUrl = ({
   appendPlayerQuery(query, 'opponent', player2)
   return `/subPages/user/h2hRecord?${query.join('&')}`
 }
+
+export const buildSpectatorFinishedMatchDetailRoute = ({ match = {} } = {}) => {
+  const matchId = Number(match.match_id || match.id || 0)
+  if (Number(match.status) !== 2 || matchId <= 0) return ''
+  return `/subPages/match/matchDetail?match_id=${matchId}&mode=spectate`
+}

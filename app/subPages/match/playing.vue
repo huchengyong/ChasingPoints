@@ -75,6 +75,19 @@
 						邀请裁判扫码
 					</button>
 				</view>
+				<view v-if="lastAction?.description" class="last-action-banner">
+					<text class="last-action-banner__label">最近操作</text>
+					<text class="last-action-banner__text">{{ lastAction.description }}</text>
+				</view>
+				<view v-if="finishState === 'pending_confirmation'" class="finish-confirmation-panel">
+					<text class="finish-confirmation-panel__title">排位赛等待确认</text>
+					<text class="finish-confirmation-panel__desc">比分已冻结，请核对后确认或提出异议。</text>
+					<view class="finish-confirmation-panel__actions">
+						<button v-if="canConfirmFinish" class="finish-action finish-action--primary" @click="handleConfirmFinish">确认结束</button>
+						<button v-if="canDisputeFinish" class="finish-action" @click="handleDisputeFinish">提出异议</button>
+						<button v-if="canWithdrawFinish" class="finish-action" @click="handleWithdrawFinish">撤回请求</button>
+					</view>
+				</view>
 				<view v-if="gameType === 1" class="snooker-frame-summary">
 					<view class="snooker-frame-summary__label">
 						<text>当前局比分</text>
@@ -252,6 +265,7 @@
 					开始下一局
 				</button>
 				<button v-if="viewerUi.showFinishButton" class="footer-btn btn-primary full-width" @click="handleFinishMatch">结束本场对局</button>
+				<button v-if="viewerUi.showFinishRequestButton" class="footer-btn btn-primary full-width" @click="handleRequestFinish">发起结束确认</button>
 			</view>
 			<button v-if="viewerUi.showUndoButton" class="undo-btn" @click="handleUndo">撤销</button>
 		</view>
@@ -281,7 +295,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
-import { matchScore, endRound, startNextRound, matchFoul, matchUndo, finishMatch, getMatchDetail, getCurrentMatch, getMatchRefereeQRCode } from '@/api/match.js'
+import { matchScore, endRound, startNextRound, matchFoul, matchUndo, finishMatch, requestFinishMatch, confirmFinishMatch, disputeFinishMatch, withdrawFinishMatch, getMatchDetail, getCurrentMatch, getMatchRefereeQRCode } from '@/api/match.js'
 import { consumeResultNavigationGuard, getMatchHistoryPageUrl, getMatchHistoryTabUrl, shouldLeavePlayingPage } from '@/utils/match-navigation.js'
 import { buildMatchActionPayload } from '@/utils/match-action.js'
 import { usePageTheme } from '@/utils/page-theme.js'
@@ -316,6 +330,13 @@ const refereeName = ref('')
 const canScore = ref(true)
 const canUndo = ref(true)
 const canFinish = ref(true)
+const canRequestFinish = ref(false)
+const canConfirmFinish = ref(false)
+const canDisputeFinish = ref(false)
+const canWithdrawFinish = ref(false)
+const finishState = ref('none')
+const finishRequestedBy = ref(0)
+const lastAction = ref(null)
 const showRefereeQrModal = ref(false)
 const refereeQrcodeLoading = ref(false)
 const refereeQrcodeUrl = ref('')
@@ -394,6 +415,12 @@ const viewerUi = computed(() => resolvePlayingViewerUi({
 	canScore: canScore.value,
 	canUndo: canUndo.value,
 	canFinish: canFinish.value,
+	canRequestFinish: canRequestFinish.value,
+	canConfirmFinish: canConfirmFinish.value,
+	canDisputeFinish: canDisputeFinish.value,
+	canWithdrawFinish: canWithdrawFinish.value,
+	finishState: finishState.value,
+	lastAction: lastAction.value,
 	refereeName: refereeName.value
 }))
 
@@ -543,6 +570,11 @@ onMounted(async () => {
 	matchWS.on(WS_MESSAGE_TYPES.ROUND_START, handleRoundStart)
 	matchWS.on(WS_MESSAGE_TYPES.MATCH_END, handleMatchEnd)
 	matchWS.on(WS_MESSAGE_TYPES.MATCH_ROLE_CHANGED, handleRoleChanged)
+	matchWS.on(WS_MESSAGE_TYPES.MATCH_FINISH_REQUEST, handleFinishStateUpdate)
+	matchWS.on(WS_MESSAGE_TYPES.MATCH_FINISH_CONFIRM, handleFinishStateUpdate)
+	matchWS.on(WS_MESSAGE_TYPES.MATCH_FINISH_DISPUTE, handleFinishStateUpdate)
+	matchWS.on(WS_MESSAGE_TYPES.MATCH_FINISH_WITHDRAW, handleFinishStateUpdate)
+	matchWS.on(WS_MESSAGE_TYPES.MATCH_FINISH_EXPIRED, handleFinishStateUpdate)
 	matchWS.on(WS_MESSAGE_TYPES.SYNC, handleSync)
 
 	const canStayOnPlayingPage = await loadMatchInfo()
@@ -579,6 +611,11 @@ onUnmounted(() => {
 	matchWS.off(WS_MESSAGE_TYPES.ROUND_START, handleRoundStart)
 	matchWS.off(WS_MESSAGE_TYPES.MATCH_END, handleMatchEnd)
 	matchWS.off(WS_MESSAGE_TYPES.MATCH_ROLE_CHANGED, handleRoleChanged)
+	matchWS.off(WS_MESSAGE_TYPES.MATCH_FINISH_REQUEST, handleFinishStateUpdate)
+	matchWS.off(WS_MESSAGE_TYPES.MATCH_FINISH_CONFIRM, handleFinishStateUpdate)
+	matchWS.off(WS_MESSAGE_TYPES.MATCH_FINISH_DISPUTE, handleFinishStateUpdate)
+	matchWS.off(WS_MESSAGE_TYPES.MATCH_FINISH_WITHDRAW, handleFinishStateUpdate)
+	matchWS.off(WS_MESSAGE_TYPES.MATCH_FINISH_EXPIRED, handleFinishStateUpdate)
 	matchWS.off(WS_MESSAGE_TYPES.SYNC, handleSync)
 	// 断开WebSocket
 	matchWS.disconnect()
@@ -625,6 +662,27 @@ const applyViewerCapabilities = (payload = {}) => {
 	}
 	if (typeof payload.can_finish === 'boolean') {
 		canFinish.value = payload.can_finish
+	}
+	if (typeof payload.can_request_finish === 'boolean') {
+		canRequestFinish.value = payload.can_request_finish
+	}
+	if (typeof payload.can_confirm_finish === 'boolean') {
+		canConfirmFinish.value = payload.can_confirm_finish
+	}
+	if (typeof payload.can_dispute_finish === 'boolean') {
+		canDisputeFinish.value = payload.can_dispute_finish
+	}
+	if (typeof payload.can_withdraw_finish === 'boolean') {
+		canWithdrawFinish.value = payload.can_withdraw_finish
+	}
+	if (typeof payload.finish_state === 'string') {
+		finishState.value = payload.finish_state || 'none'
+	}
+	if (payload.finish_requested_by !== undefined) {
+		finishRequestedBy.value = Number(payload.finish_requested_by || 0)
+	}
+	if (payload.last_action !== undefined) {
+		lastAction.value = payload.last_action || null
 	}
 }
 
@@ -1051,6 +1109,20 @@ const handleSync = (data) => {
 	}
 }
 
+const handleFinishStateUpdate = (data = {}) => {
+	if (!shouldApplyIncomingRevision(data?.server_revision)) return
+	if (data.snapshot) {
+		applyMatchSnapshot(data.snapshot)
+	} else {
+		applyViewerCapabilities(data)
+		updateServerRevision(data.server_revision)
+	}
+	uni.showToast({
+		title: finishState.value === 'pending_confirmation' ? '对局等待结束确认' : '对局结束状态已更新',
+		icon: 'none'
+	})
+}
+
 const handleRoleChanged = async () => {
 	const canStayOnPlayingPage = await loadMatchInfo()
 	if (!canStayOnPlayingPage || isLeavingPlayingPage.value) {
@@ -1327,6 +1399,91 @@ const handleUndo = async () => {
 		} catch (error) {
 		console.error('[MatchPlaying] 撤销失败', { matchId: matchId.value, error })
 		uni.showToast({ title: '撤销失败', icon: 'none' })
+	}
+}
+
+const handleFinishActionResponse = (res, successMessage) => {
+	if (!res?.success) {
+		applyWriteResponse(res)
+		uni.showToast({ title: res?.message || '操作失败', icon: 'none' })
+		return false
+	}
+	applyWriteResponse(res)
+	uni.showToast({ title: successMessage || res.message || '操作成功', icon: 'none' })
+	if (res.snapshot?.status === 2) {
+		navigateToResultOnce()
+	}
+	return true
+}
+
+const handleRequestFinish = () => {
+	if (!ensureViewerCapability(canRequestFinish.value, '当前无法发起结束确认')) return
+	uni.showModal({
+		title: '发起结束确认',
+		content: '比分将暂时冻结，等待对手确认后才会完成排位结算。',
+		confirmText: '发起请求',
+		success: async ({ confirm }) => {
+			if (!confirm || !matchId.value) return
+			showSyncLoading()
+			try {
+				const res = await requestFinishMatch(buildActionRequest({ match_id: matchId.value }))
+				hideSyncLoading()
+				handleFinishActionResponse(res, '已发起结束确认')
+			} catch (error) {
+				hideSyncLoading()
+				uni.showToast({ title: '发起结束确认失败', icon: 'none' })
+			}
+		}
+	})
+}
+
+const handleConfirmFinish = async () => {
+	if (!ensureViewerCapability(canConfirmFinish.value, '当前没有可确认的结束请求')) return
+	if (!matchId.value) return
+	showSyncLoading()
+	try {
+		const res = await confirmFinishMatch(buildActionRequest({ match_id: matchId.value }))
+		hideSyncLoading()
+		handleFinishActionResponse(res, '已确认结束并完成结算')
+	} catch (error) {
+		hideSyncLoading()
+		uni.showToast({ title: '确认结束失败', icon: 'none' })
+	}
+}
+
+const handleDisputeFinish = async () => {
+	if (!ensureViewerCapability(canDisputeFinish.value, '当前没有可异议的结束请求')) return
+	if (!matchId.value) return
+	uni.showModal({
+		title: '提出异议',
+		content: '提出异议后会恢复记分，请确认比分仍需继续调整。',
+		confirmText: '提出异议',
+		success: async ({ confirm }) => {
+			if (!confirm) return
+			showSyncLoading()
+			try {
+				const res = await disputeFinishMatch(buildActionRequest({ match_id: matchId.value }))
+				hideSyncLoading()
+				handleFinishActionResponse(res, '已提出异议，对局恢复进行中')
+			} catch (error) {
+				hideSyncLoading()
+				uni.showToast({ title: '提出异议失败', icon: 'none' })
+			}
+		}
+	})
+}
+
+const handleWithdrawFinish = async () => {
+	if (!ensureViewerCapability(canWithdrawFinish.value, '当前没有可撤回的结束请求')) return
+	if (!matchId.value) return
+	showSyncLoading()
+	try {
+		const res = await withdrawFinishMatch(buildActionRequest({ match_id: matchId.value }))
+		hideSyncLoading()
+		handleFinishActionResponse(res, '已撤回结束请求')
+	} catch (error) {
+		hideSyncLoading()
+		uni.showToast({ title: '撤回失败', icon: 'none' })
 	}
 }
 

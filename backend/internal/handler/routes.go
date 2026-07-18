@@ -575,6 +575,30 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: match.FinishMatchHandler(serverCtx),
 			},
 			{
+				// 确认排位结束请求
+				Method:  http.MethodPost,
+				Path:    "/finish/confirm",
+				Handler: match.ConfirmFinishMatchHandler(serverCtx),
+			},
+			{
+				// 对排位结束请求提出异议
+				Method:  http.MethodPost,
+				Path:    "/finish/dispute",
+				Handler: match.DisputeFinishMatchHandler(serverCtx),
+			},
+			{
+				// 发起排位结束确认
+				Method:  http.MethodPost,
+				Path:    "/finish/request",
+				Handler: match.RequestFinishMatchHandler(serverCtx),
+			},
+			{
+				// 撤回排位结束请求
+				Method:  http.MethodPost,
+				Path:    "/finish/withdraw",
+				Handler: match.WithdrawFinishMatchHandler(serverCtx),
+			},
+			{
 				// 犯规
 				Method:  http.MethodPost,
 				Path:    "/foul",

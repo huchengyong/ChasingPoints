@@ -44,7 +44,7 @@
 
 		<!-- PK 列表 -->
 		<view v-else-if="list.length > 0" class="challenge-list">
-			<view v-for="item in list" :key="item.id" class="challenge-card" @tap="openPkReport(item)">
+			<view v-for="item in list" :key="item.id" class="challenge-card" @tap="handleChallengeCardTap(item)">
 				<view class="card-top">
 					<image
 						class="challenge-avatar"
@@ -57,7 +57,7 @@
 						<text class="challenge-direction">{{ getDirectionText(item) }}</text>
 					</view>
 					<view class="challenge-status" :class="'status-' + item.status">
-						<text>{{ statusMap[item.status] || '待处理' }}</text>
+						<text>{{ getChallengeStatusText(item) }}</text>
 					</view>
 				</view>
 				<view v-if="item.message" class="challenge-message">
@@ -76,6 +76,16 @@
 					</view>
 					<view class="action-btn accept-btn" @tap.stop="handleAccept(item)">
 						<text>回应PK</text>
+					</view>
+					</view>
+				<view v-else-if="item.status === 1 && !item.match_id" class="card-actions">
+					<view class="action-btn accept-btn" @tap.stop="openOfflineStart(item)">
+						<text>线下扫码开局</text>
+					</view>
+				</view>
+				<view v-else-if="item.status === 1 && item.match_id" class="card-actions">
+					<view class="action-btn linked-btn" @tap.stop="openLinkedMatch(item)">
+						<text>查看对局</text>
 					</view>
 				</view>
 				<view v-else class="card-link" @tap.stop="openPkReport(item)">
@@ -131,7 +141,7 @@ import { getPendingChallenges, acceptChallenge, rejectChallenge, sendChallenge }
 import { formatRelativeTime } from '@/utils/format.js'
 import { GAME_TYPE_OPTIONS, getGameTypeLabel } from '@/utils/game-types.js'
 import { useUserStore } from '@/store/user.js'
-import { buildChallengePayload, normalizeChallengeListItem } from '@/utils/challenge-entry.js'
+import { buildChallengePayload, buildChallengeStartContext, normalizeChallengeListItem } from '@/utils/challenge-entry.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
@@ -194,6 +204,19 @@ const getDirectionText = (item) => {
 	return item.direction === 'sent' ? '等待对方回应' : '等待我来回应'
 }
 
+const getChallengeStatusText = (item) => {
+	if (item.status === 1 && item.match_id) return '已关联对局'
+	return statusMap[item.status] || '待处理'
+}
+
+const handleChallengeCardTap = (item) => {
+	if (item.status === 1 && item.match_id) {
+		openLinkedMatch(item)
+		return
+	}
+	openPkReport(item)
+}
+
 const openPkReport = (item) => {
 	const query = []
 	const opponentId = item.opponent_id || 0
@@ -218,9 +241,13 @@ const handleAccept = async (item) => {
 		if (res.success) {
 			uni.showToast({ title: '已回应PK邀约', icon: 'success' })
 			uni.showModal({
-				title: '提示',
-				content: '线上 PK 仅用于社交互动。若要记录真实比赛，请双方在线下见面后从“对局”页正式开始计分。',
-				showCancel: false
+				title: '邀约已接受',
+				content: '请双方线下见面后扫码确认在场，正式对局才会创建真实战绩。',
+				confirmText: '去线下开局',
+				cancelText: '稍后处理',
+				success: ({ confirm }) => {
+					if (confirm) openOfflineStart({ ...item, status: 1 })
+				}
 			})
 			fetchList()
 		} else {
@@ -229,6 +256,22 @@ const handleAccept = async (item) => {
 	} catch (e) {
 		uni.showToast({ title: '操作失败', icon: 'none' })
 	}
+}
+
+const openOfflineStart = (item) => {
+	const context = buildChallengeStartContext(item)
+	if (!context?.challenge_id || !context?.opponent_id) {
+		uni.showToast({ title: item.match_id ? '该邀约已关联对局' : '邀约上下文不完整', icon: 'none' })
+		return
+	}
+	uni.setStorageSync('pending_match_challenge', JSON.stringify(context))
+	uni.switchTab({ url: '/pages/match/index' })
+}
+
+const openLinkedMatch = (item) => {
+	const matchId = Number(item.match_id || 0)
+	if (!matchId) return
+	uni.navigateTo({ url: `/subPages/match/matchDetail?match_id=${matchId}` })
 }
 
 const handleReject = async (item) => {
@@ -470,6 +513,7 @@ onUnmounted(() => {
 		.reject-btn { background: #f1f5f9; color: #64748b; }
 		.accept-btn { background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%); color: #1f2937; font-weight: 600; }
 		.ghost-btn { background: rgba(224, 174, 18, 0.12); color: #C69200; }
+		.linked-btn { background: #1f2937; color: #ffffff; font-weight: 600; }
 	}
 }
 .empty-state {

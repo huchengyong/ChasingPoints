@@ -165,13 +165,14 @@
 			<button
 				v-if="!fromHistory"
 				class="footer-btn btn-primary"
-				@click="handleSave"
+				@click="handleRematch"
 			>
 				{{ primaryActionText }}
 			</button>
 			<button class="footer-btn btn-secondary" @click="handleShare">
 				{{ secondaryActionText }}
 			</button>
+			<button class="footer-btn btn-link" @click="handleH2H">查看交锋记录</button>
 		</view>
 	</view>
 </template>
@@ -184,6 +185,7 @@ import { formatDateTime, formatRelativeTime } from '@/utils/format.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveMatchRankingRightsSummary } from '@/utils/member-ranking-rights.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import { buildRematchContext } from '@/utils/match-core-flow.js'
 
 const SHARE_LINK = 'https://appgallery.huawei.com/app/detail?id=hm.dianzaozao.ballmall&channelId=SHARE&source=appshare'
 
@@ -336,7 +338,7 @@ const opponentAvatar = computed(() => resolveAvatarUrl(
 	matchData.value.opponent_avatar,
 	matchData.value.opponent_id
 ))
-const primaryActionText = computed(() => '保存并完成')
+const primaryActionText = computed(() => '再来一局')
 const secondaryActionText = computed(() => (fromHistory.value ? '生成战绩海报' : '分享战绩'))
 
 onLoad((options) => {
@@ -456,15 +458,25 @@ const redirectToMatchHistory = () => {
 	})
 }
 
-const handleSave = () => {
-	uni.showToast({
-		title: '记录已保存',
-		icon: 'success'
-	})
+const handleRematch = () => {
+	const context = buildRematchContext(matchData.value)
+	if (!context.opponent_id) {
+		uni.showToast({ title: '缺少对手信息，请从对局页重新扫码', icon: 'none' })
+		return
+	}
+	uni.setStorageSync('pending_match_rematch', JSON.stringify(context))
+	uni.switchTab({ url: '/pages/match/index' })
+}
 
-	setTimeout(() => {
-		handleClose()
-	}, 300)
+const handleH2H = () => {
+	const opponentId = Number(matchData.value.opponent_id || 0)
+	if (!opponentId) {
+		uni.showToast({ title: '暂无可用的交锋记录', icon: 'none' })
+		return
+	}
+	uni.navigateTo({
+		url: `/subPages/user/h2hRecord?opponent_id=${opponentId}&opponent_name=${encodeURIComponent(matchData.value.opponent_name || '对手')}`
+	})
 }
 
 const handleShare = () => {

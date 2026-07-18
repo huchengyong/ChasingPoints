@@ -188,6 +188,12 @@
 					}
 				},
 				{
+					"path": "opponentSelector",
+					"style": {
+						"navigationBarTitleText": "选择PK对手"
+					}
+				},
+				{
 					"path": "matchResult",
 					"style": {
 						"navigationStyle": "custom"

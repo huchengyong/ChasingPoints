@@ -35,9 +35,9 @@ func newRefereeFlowTestSvc(t *testing.T) (*svc.ServiceContext, *miniredis.Minire
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 
 	return &svc.ServiceContext{
-		DB:        db,
-		Redis:     rdb,
-		UserModel: model.NewUserModel(db),
+		DB:         db,
+		Redis:      rdb,
+		UserModel:  model.NewUserModel(db),
 		MatchModel: model.NewMatchModel(db),
 	}, mr
 }
@@ -160,5 +160,36 @@ func TestJoinMatchRefereeBindsUserAndReturnsRefereeView(t *testing.T) {
 	}
 	if mr.Exists(buildMatchRefereeJoinTokenKey(92)) {
 		t.Fatalf("expected join token to be consumed after referee binding")
+	}
+}
+
+func TestJoinMatchRefereeRejectsPendingFinishConfirmation(t *testing.T) {
+	svcCtx, mr := newRefereeFlowTestSvc(t)
+	defer mr.Close()
+
+	opponentID := int64(2002)
+	requesterID := int64(1001)
+	refereeID := int64(3003)
+	requestedAt := time.Now()
+	seedRefereeFlowUser(t, svcCtx, requesterID, "选手甲")
+	seedRefereeFlowUser(t, svcCtx, opponentID, "选手乙")
+	seedRefereeFlowUser(t, svcCtx, refereeID, "裁判")
+	seedRefereeFlowMatch(t, svcCtx, &model.Match{
+		Id: 93, UserId: requesterID, OpponentId: &opponentID, OpponentName: "选手乙", GameType: 3,
+		MatchMode: model.MatchModeRanked, FinishConfirmationRequired: true,
+		FinishState: model.FinishStatePendingConfirmation, FinishRequestedBy: &requesterID, FinishRequestedAt: &requestedAt,
+		Status: 1, MatchTime: time.Now(),
+	})
+	if err := svcCtx.Redis.Set(context.Background(), buildMatchRefereeJoinTokenKey(93), "token-93", 5*time.Minute).Err(); err != nil {
+		t.Fatalf("seed join token: %v", err)
+	}
+
+	resp, err := NewJoinMatchRefereeLogic(refereeTestCtx(refereeID), svcCtx).JoinMatchReferee(&types.JoinMatchRefereeReq{MatchId: 93, JoinToken: "token-93"})
+	if err != nil || resp.Success || resp.Message != "请先处理当前结束请求，再加入裁判" {
+		t.Fatalf("expected pending finish rejection: resp=%#v err=%v", resp, err)
+	}
+	stored, _ := svcCtx.MatchModel.FindById(93)
+	if stored == nil || stored.RefereeUserId != nil || !mr.Exists(buildMatchRefereeJoinTokenKey(93)) {
+		t.Fatalf("pending finish rejection mutated referee state: stored=%+v", stored)
 	}
 }
