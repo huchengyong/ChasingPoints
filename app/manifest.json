@@ -135,18 +135,6 @@
     /* 小程序特有相关 */
     "mp-weixin" : {
         "appid" : "wx3196c9366b3b39ba",
-        "packOptions" : {
-            "ignore" : [
-                {
-                    "type" : "file",
-                    "value" : "static/images/welcome-bg.jpg"
-                },
-                {
-                    "type" : "file",
-                    "value" : "static/images/default-avatar.png"
-                }
-            ]
-        },
         "setting" : {
             "urlCheck" : false
         },
