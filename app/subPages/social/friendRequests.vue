@@ -348,4 +348,42 @@ onPullDownRefresh(() => {
 		color: #94a3b8;
 	}
 }
+
+.requests-page.dark-mode {
+	background: #141109;
+
+	.request-list .request-item {
+		background: #1e180d;
+		border-color: #3a2e16;
+		box-shadow: none;
+
+		.request-avatar,
+		.request-actions .action-reject,
+		.request-status .status-text.rejected {
+			background: #2a2110;
+			border-color: #3a2e16;
+		}
+
+		.request-name {
+			color: #fff7e1;
+		}
+
+		.request-message,
+		.request-actions .action-reject {
+			color: #d7c89b;
+		}
+
+		.request-time,
+		.request-message.is-muted,
+		.request-status .status-text.rejected {
+			color: #9f926e;
+		}
+	}
+
+	.loading-text,
+	.load-more-text,
+	.empty-text {
+		color: #9f926e;
+	}
+}
 </style>

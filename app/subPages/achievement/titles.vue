@@ -202,4 +202,37 @@ onLoad(() => {
 		color: #94a3b8;
 	}
 }
+
+.titles-page.dark-mode {
+	background: #141109;
+
+	.loading-text,
+	.empty-text,
+	.empty-hint {
+		color: #9f926e;
+	}
+
+	.title-list .title-item {
+		background: #1e180d;
+
+		&.equipped {
+			background: rgba(224, 174, 18, 0.16);
+		}
+
+		.title-left .title-name {
+			color: #fff7e1;
+		}
+
+		.title-left .title-source .source-badge.default {
+			background: #3a2e16;
+			color: #d7c89b;
+		}
+
+		.equip-btn.equipped-btn {
+			background: #241d0f;
+			color: #d7c89b;
+			border-color: #3a2e16;
+		}
+	}
+}
 </style>

@@ -144,4 +144,28 @@ onLoad(() => {
 		color: #94a3b8;
 	}
 }
+
+.glossary-page.dark-mode {
+	background: #141109;
+
+	.search-bar,
+	.term-list .term-item {
+		background: #1e180d;
+	}
+
+	.search-input,
+	.term-list .term-item .term-title {
+		color: #fff7e1;
+	}
+
+	.term-list .term-item .term-content,
+	.empty-text {
+		color: #9f926e;
+	}
+
+	.term-list .term-item .term-tag {
+		background: rgba(224, 174, 18, 0.18);
+		color: #f7e7a8;
+	}
+}
 </style>

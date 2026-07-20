@@ -510,73 +510,6 @@
     }
 }
 
-// 深色模式
-@media (prefers-color-scheme: dark) {
-    .ranking-container {
-        background-color: #101922;
-    }
-
-    .loading-wrapper .loading-text {
-        color: #64748b;
-    }
-
-    .podium-base {
-        .podium-block.second {
-            background-color: #475569;
-        }
-
-        .podium-block.first {
-            background-color: #d97706;
-        }
-
-        .podium-block.third {
-            background-color: #78350f;
-        }
-    }
-
-    .nickname {
-        color: #f8fafc;
-    }
-
-    .score {
-        color: #94a3b8;
-    }
-
-    .my-ranking-card {
-        background: linear-gradient(135deg, #1e3a5f 0%, #2a4a6c 100%);
-        border-color: #3b5a80;
-
-        .my-rank,
-        .my-label,
-        .my-score {
-            color: #f8fafc;
-        }
-
-        .my-rank-name {
-            color: #94a3b8;
-        }
-    }
-
-    .ranking-item {
-        background-color: rgba(30, 41, 59, 0.5);
-
-        .item-rank {
-            color: #94a3b8;
-        }
-
-        .item-nickname {
-            color: #f1f5f9;
-        }
-
-        .item-rank-name {
-            color: #94a3b8;
-        }
-
-        .item-winrate {
-            color: #cbd5e1;
-        }
-    }
-}
 .empty-state {
     .empty-title {
         color: #cbd5e1;
@@ -586,7 +519,6 @@
     }
 }
 
-// 支持 dark-mode class 方式
 .dark-mode {
     background-color: #101922;
 

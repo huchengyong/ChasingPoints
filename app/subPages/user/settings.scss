@@ -133,39 +133,44 @@ $border-color-dark: rgba(247, 231, 168, 0.12);
     height: 100%;
 }
 
-// 深色模式开关
-.switch-wrapper {
-    position: relative;
-    width: 102rpx;
-    height: 62rpx;
+.theme-menu-item {
+	align-items: flex-start;
+	flex-direction: column;
+}
 
-    .switch-track {
-        width: 100%;
-        height: 100%;
-        border-radius: 999rpx;
-        background-color: $border-color-light;
-        display: flex;
-        align-items: center;
-        padding: 4rpx;
-        transition: background-color 0.3s ease;
+.theme-options {
+	display: flex;
+	width: 100%;
+	gap: 12rpx;
+	padding-left: 96rpx;
+	box-sizing: border-box;
+}
 
-        &.active {
-            background-color: $primary-color;
-        }
-    }
+.theme-option {
+	flex: 1;
+	height: 64rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 999rpx;
+	background: #f8fafc;
+	border: 1rpx solid $border-color-light;
+	box-sizing: border-box;
 
-    .switch-thumb {
-        width: 54rpx;
-        height: 54rpx;
-        border-radius: 50%;
-        background-color: #ffffff;
-        box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
-        transition: transform 0.3s ease;
+	text {
+		font-size: 24rpx;
+		color: $text-secondary-light;
+	}
 
-        &.active {
-            transform: translateX(40rpx);
-        }
-    }
+	&.active {
+		background: rgba(224, 174, 18, 0.14);
+		border-color: rgba(224, 174, 18, 0.42);
+
+		text {
+			color: #8a6510;
+			font-weight: 600;
+		}
+	}
 }
 
 .page-actions {
@@ -244,15 +249,23 @@ $border-color-dark: rgba(247, 231, 168, 0.12);
         }
     }
 
-    .switch-wrapper {
-        .switch-track {
-            background-color: $border-color-dark;
+	.theme-option {
+		background: rgba(255, 247, 225, 0.05);
+		border-color: $border-color-dark;
 
-            &.active {
-                background-color: $primary-color;
-            }
-        }
-    }
+		text {
+			color: $text-secondary-dark;
+		}
+
+		&.active {
+			background: rgba(224, 174, 18, 0.18);
+			border-color: rgba(224, 174, 18, 0.5);
+
+			text {
+				color: #f7e7a8;
+			}
+		}
+	}
 
     .logout-btn {
         box-shadow: none;

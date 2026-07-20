@@ -328,3 +328,51 @@
 	font-size: 24rpx;
 	color: #94a3b8;
 }
+
+.tournament-page.dark-mode {
+	background: linear-gradient(180deg, #141109 0%, #171309 40%, #141109 100%);
+
+	.toolbar,
+	.tournament-card,
+	.empty-state {
+		background: rgba(30, 24, 13, 0.96);
+		box-shadow: none;
+	}
+
+	.filter-item,
+	.meta-item {
+		background: #2a2110;
+		border-color: #3a2e16;
+	}
+
+	.card-cover {
+		background: #3a2e16;
+	}
+
+	.filter-value,
+	.card-title,
+	.meta-value,
+	.empty-title {
+		color: #fff7e1;
+	}
+
+	.filter-label,
+	.toolbar-tip,
+	.card-summary,
+	.meta-label,
+	.footer-source,
+	.loading-text,
+	.empty-text,
+	.no-more {
+		color: #9f926e;
+	}
+
+	.card-footer {
+		border-top-color: #3a2e16;
+	}
+
+	.status-tag.status-2 {
+		background: #3a2e16;
+		color: #d7c89b;
+	}
+}

@@ -499,3 +499,61 @@
 		border: 1rpx solid #e2e8f0;
 	}
 }
+
+.detail-page.dark-mode {
+	background: linear-gradient(180deg, #141109 0%, #171309 40%, #141109 100%);
+
+	.hero-card,
+	.info-card,
+	.story-card,
+	.empty-state {
+		border-color: #3a2e16;
+		box-shadow: none;
+	}
+
+	.info-card,
+	.story-card,
+	.empty-state {
+		background: rgba(30, 24, 13, 0.98);
+	}
+
+	.grid-item,
+	.story-item,
+	.story-empty {
+		background: linear-gradient(180deg, #2a2110 0%, #241d0f 100%);
+		border-color: #3a2e16;
+	}
+
+	.section-title,
+	.grid-value,
+	.player-last-name,
+	.story-empty-title,
+	.empty-title {
+		color: #fff7e1;
+	}
+
+	.section-tip,
+	.grid-label,
+	.round-tip,
+	.story-meta,
+	.story-empty-text,
+	.player-first-name,
+	.loading-text,
+	.empty-text {
+		color: #9f926e;
+	}
+
+	.round-title,
+	.story-label,
+	.player-side.winner .player-first-name,
+	.player-side.winner .player-last-name {
+		color: #f7e7a8;
+	}
+
+	.story-badge.badge-2,
+	.empty-btn.secondary {
+		background: #3a2e16;
+		color: #d7c89b;
+		border-color: #4a3a1c;
+	}
+}

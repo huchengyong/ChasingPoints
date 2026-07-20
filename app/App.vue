@@ -5,6 +5,7 @@
 	import { post } from '@/utils/request.js'
 	import { buildPlayingRoute, shouldPromptOngoingMatch } from '@/utils/ongoing-match-guard.js'
 	import { applyRuntimeTheme } from '@/utils/theme-application.js'
+	import { resolveSystemDarkMode } from '@/utils/theme-preference.js'
 
 	export default {
 		themeChangeCallback: null, // 保存主题变化回调函数引用
@@ -16,6 +17,8 @@
 		maxOngoingMatchReminderRetries: 5,
 		onLaunch: function() {
 			console.log('App Launch')
+			const themeStore = useThemeStore()
+			themeStore.initializeTheme(this.getSystemThemeInfo())
 			// 推送注册
 			// #ifdef APP-PLUS
 			try {
@@ -51,25 +54,34 @@
 		onShow: function() {
 			console.log('App Show')
 			const themeStore = useThemeStore()
-			const sysInfo = uni.getSystemInfoSync()
-			themeStore.setThemeFromSystem(sysInfo.osTheme === 'dark')
+			themeStore.setThemeFromSystem(resolveSystemDarkMode(
+				this.getSystemThemeInfo(),
+				themeStore.systemIsDark
+			))
 			// 应用当前主题样式
 			this.applyTheme()
-			
+
+			if (this.themeChangeCallback && typeof uni.offThemeChange === 'function') {
+				uni.offThemeChange(this.themeChangeCallback)
+			}
+
 			// 保存回调函数引用，以便后续取消监听
 			const self = this
 			this.themeChangeCallback = function (res) {
-				themeStore.setThemeFromSystem(res?.theme === 'dark')
+				themeStore.setThemeFromSystem(resolveSystemDarkMode(res, themeStore.systemIsDark))
 				self.applyTheme()
 			}
-			uni.onThemeChange(this.themeChangeCallback)
+			if (typeof uni.onThemeChange === 'function') {
+				uni.onThemeChange(this.themeChangeCallback)
+			}
 			this.checkOngoingMatchReminder()
 		},
 		onHide: function() {
 			// 取消监听时需要传入与注册时相同的回调函数引用
-			if (this.themeChangeCallback) {
+			if (this.themeChangeCallback && typeof uni.offThemeChange === 'function') {
 				uni.offThemeChange(this.themeChangeCallback)
 			}
+			this.themeChangeCallback = null
 			if (this.ongoingMatchReminderRetryTimer) {
 				clearTimeout(this.ongoingMatchReminderRetryTimer)
 				this.ongoingMatchReminderRetryTimer = null
@@ -80,6 +92,14 @@
 			this.ongoingMatchReminderRetryCount = 0
 		},
 		methods: {
+			getSystemThemeInfo() {
+				try {
+					return uni.getSystemInfoSync()
+				} catch (error) {
+					console.warn('[App] 获取系统主题失败:', error)
+					return {}
+				}
+			},
 			applyTheme(theme) {
 				const themeStore = useThemeStore()
 				
@@ -220,29 +240,18 @@
 		--danger-color: #ef4444;
 	}
 
-	/* 暗色主题 */
-		@media (prefers-color-scheme: dark) {
-			page {
-				/* 主色调 */
-				--primary-color: #e0ae12;
-				--primary-color-light: rgba(224, 174, 18, 0.2);
-
-				/* 背景色 */
-				--bg-color: #141109;
-				--card-bg: #1e180d;
-				--input-bg: #1e180d;
-
-				/* 文字颜色 */
-				--text-primary: #fff7e1;
-				--text-secondary: #d7c89b;
-				--text-tertiary: #9f926e;
-
-				/* 边框颜色 */
-				--border-color: #3a2e16;
-
-				/* 其他 */
-				--divider-color: #241d0f;
-				--danger-color: #ef4444;
-			}
-		}
+	/* 暗色变量由应用最终计算出的主题控制，避免手动浅色与系统暗色互相覆盖。 */
+	.dark-mode {
+		--primary-color: #e0ae12;
+		--primary-color-light: rgba(224, 174, 18, 0.2);
+		--bg-color: #141109;
+		--card-bg: #1e180d;
+		--input-bg: #1e180d;
+		--text-primary: #fff7e1;
+		--text-secondary: #d7c89b;
+		--text-tertiary: #9f926e;
+		--border-color: #3a2e16;
+		--divider-color: #241d0f;
+		--danger-color: #ef4444;
+	}
 	</style>

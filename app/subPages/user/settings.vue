@@ -39,18 +39,22 @@
 						<uni-icons v-if="canBindPhone" type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
 					</view>
 				</view>
-				<view class="menu-item" @click="toggleDarkMode">
+				<view class="menu-item theme-menu-item">
 					<view class="menu-left">
 						<view class="icon-wrapper gold">
 							<uni-icons type="starhalf" size="24" color="#E0AE12"></uni-icons>
 						</view>
-						<text class="menu-text">深色模式</text>
+						<text class="menu-text">主题模式</text>
 					</view>
-					<view class="menu-right">
-						<view class="switch-wrapper">
-							<view class="switch-track" :class="{ active: isDarkMode }">
-								<view class="switch-thumb" :class="{ active: isDarkMode }"></view>
-							</view>
+					<view class="theme-options">
+						<view
+							v-for="option in themeOptions"
+							:key="option.value"
+							class="theme-option"
+							:class="{ active: themeMode === option.value }"
+							@click="setThemeMode(option.value)"
+						>
+							<text>{{ option.label }}</text>
 						</view>
 					</view>
 				</view>
@@ -117,8 +121,13 @@ import { formatSettingsPhone } from '@/utils/settings-profile.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 // ========== 状态管理 ==========
-const { isDarkMode, toggleTheme } = usePageTheme()
+const { isDarkMode, themeMode, setThemeMode } = usePageTheme()
 const userStore = useUserStore()
+const themeOptions = [
+	{ value: 'system', label: '跟随系统' },
+	{ value: 'light', label: '浅色' },
+	{ value: 'dark', label: '深色' }
+]
 
 // ========== 响应式数据 ==========
 const userNickname = computed(() => userStore.userInfo?.nickname || '用户')
@@ -148,10 +157,6 @@ const fetchLatestUserInfo = async () => {
 
 const openEditProfile = () => {
 	uni.navigateTo({ url: '/subPages/user/editProfile' })
-}
-
-const toggleDarkMode = () => {
-	toggleTheme()
 }
 
 const handlePhoneRow = () => {

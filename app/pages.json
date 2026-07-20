@@ -55,7 +55,7 @@
 		"color": "@tabInactive",
 		"selectedColor": "@tabActive",
 		"backgroundColor": "@background",
-		"borderStyle": "black",
+		"borderStyle": "@tabBarBorderStyle",
 		"list": [
 			{
 				"pagePath": "pages/index/index",
@@ -84,10 +84,11 @@
 		]
 	},
 	"globalStyle": {
-		"navigationBarTextStyle": "black",
+		"navigationBarTextStyle": "@navigationBarTextStyle",
 		"navigationBarTitleText": "追分",
 		"navigationBarBackgroundColor": "@background",
-		"backgroundColor": "@background"
+		"backgroundColor": "@background",
+		"backgroundTextStyle": "@backgroundTextStyle"
 	},
 	"subPackages": [
 		{

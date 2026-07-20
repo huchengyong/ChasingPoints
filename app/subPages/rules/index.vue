@@ -272,4 +272,30 @@ const goToGlossary = () => {
 	font-size: 28rpx;
 	color: #94a3b8;
 }
+
+.rules-page.dark-mode {
+	background: #141109;
+
+	.search-bar,
+	.game-cards .game-card,
+	.glossary-entry,
+	.search-results .result-item {
+		background: #1e180d;
+	}
+
+	.search-input,
+	.game-cards .game-card .card-info .card-name,
+	.glossary-entry .glossary-info .glossary-name,
+	.search-results .result-title {
+		color: #fff7e1;
+	}
+
+	.section-title,
+	.game-cards .game-card .card-info .card-desc,
+	.glossary-entry .glossary-info .glossary-desc,
+	.search-results .result-category,
+	.empty-hint {
+		color: #9f926e;
+	}
+}
 </style>

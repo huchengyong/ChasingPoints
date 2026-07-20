@@ -607,4 +607,48 @@ onPullDownRefresh(() => {
 		}
 	}
 }
+
+.friend-list-page.dark-mode {
+	background: #141109;
+
+	.page-banner {
+		background: rgba(224, 174, 18, 0.18);
+
+		text {
+			color: #f7e7a8;
+		}
+	}
+
+	.header-bar,
+	.friend-list .friend-item {
+		background: #1e180d;
+	}
+
+	.header-bar .search-box {
+		background: #2a2110;
+	}
+
+	.friend-list .friend-item .friend-info .friend-primary {
+		.friend-name {
+			color: #fff7e1;
+		}
+
+		.friend-rank {
+			background: rgba(224, 174, 18, 0.16);
+			color: #f7e7a8;
+		}
+	}
+
+	.loading-text,
+	.search-placeholder,
+	.friend-sub,
+	.load-more-text,
+	.empty-sub {
+		color: #9f926e;
+	}
+
+	.empty-title {
+		color: #fff7e1;
+	}
+}
 </style>

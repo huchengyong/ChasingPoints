@@ -12,6 +12,21 @@ const registeredRoutes = [
 ]
 
 const getRouteSource = (route) => readFileSync(new URL(`../${route}.vue`, import.meta.url), 'utf8')
+const themeAwareComponents = [
+  'components/agreementConsentSheet.vue',
+  'components/bindPhone.vue',
+  'components/gameTypeModal.vue'
+]
+
+const getRouteStyleSource = (route) => {
+  const source = getRouteSource(route)
+  const importedScss = source.match(/@import\s+['"]([^'"]+\.scss)['"]/i)?.[1]
+  if (!importedScss) return source
+
+  const routeDirectory = route.slice(0, route.lastIndexOf('/') + 1)
+  const scssPath = `${routeDirectory}${importedScss.replace(/^\.\//, '')}`
+  return `${source}\n${readFileSync(new URL(`../${scssPath}`, import.meta.url), 'utf8')}`
+}
 
 test('all registered pages have a matching Vue file', () => {
   for (const route of registeredRoutes) {
@@ -32,6 +47,27 @@ test('registered pages do not bypass the shared page theme hook', () => {
   for (const route of registeredRoutes) {
     const source = getRouteSource(route)
     assert.doesNotMatch(source, /useThemeStore|THEME_CHANGE_EVENT|applyNavigationBarTheme/, route)
+  }
+})
+
+test('every registered page has an explicit dark surface override', () => {
+  for (const route of registeredRoutes) {
+    const source = getRouteStyleSource(route)
+    assert.match(source, /(?:&\.dark-mode|\.dark-mode)[\s\S]*background(?:-color)?\s*:/, route)
+  }
+})
+
+test('registered pages do not let system media queries override a manual light choice', () => {
+  for (const route of registeredRoutes) {
+    assert.doesNotMatch(getRouteStyleSource(route), /prefers-color-scheme/, route)
+  }
+})
+
+test('shared overlays expose an explicit dark-mode surface', () => {
+  for (const component of themeAwareComponents) {
+    const source = readFileSync(new URL(`../${component}`, import.meta.url), 'utf8')
+    assert.match(source, /dark-mode/, component)
+    assert.match(source, /dark-mode[\s\S]*background(?:-color)?\s*:/, component)
   }
 })
 

@@ -303,3 +303,61 @@
 .checkin-btn.disabled {
 	opacity: 0.65;
 }
+
+.venue-detail-page.dark-mode {
+	background: linear-gradient(180deg, #141109 0%, #171309 46%, #141109 100%);
+
+	.image-section,
+	.image-placeholder,
+	.info-card,
+	.checkin-card {
+		box-shadow: none;
+	}
+
+	.image-placeholder,
+	.info-card,
+	.checkin-card {
+		background: rgba(30, 24, 13, 0.96);
+	}
+
+	.placeholder-badge,
+	.tag {
+		background: rgba(15, 118, 110, 0.2);
+	}
+
+	.placeholder-title,
+	.section-title,
+	.info-text {
+		color: #fff7e1;
+	}
+
+	.placeholder-text,
+	.section-tip,
+	.info-label,
+	.empty-checkin,
+	.loading-text,
+	.empty-state {
+		color: #9f926e;
+	}
+
+	.info-row {
+		border-bottom-color: #3a2e16;
+	}
+
+	.checkin-avatar {
+		background: #3a2e16;
+	}
+
+	.action-bar {
+		background: rgba(20, 17, 9, 0.96);
+		border-top-color: #3a2e16;
+	}
+
+	.nav-btn {
+		background: rgba(224, 174, 18, 0.18);
+	}
+
+	.call-btn {
+		background: rgba(15, 118, 110, 0.2);
+	}
+}

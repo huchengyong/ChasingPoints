@@ -34,3 +34,12 @@ test('settings page dark theme uses the current project gold palette', () => {
   assert.match(settingsScssSource, /\$text-primary-dark:\s*#fff7e1;/)
   assert.match(settingsScssSource, /\$primary-color:\s*#E0AE12;/)
 })
+
+test('settings page exposes system, light and dark theme modes', () => {
+  assert.match(settingsSource, /主题模式/)
+  assert.match(settingsSource, /跟随系统/)
+  assert.match(settingsSource, /浅色/)
+  assert.match(settingsSource, /深色/)
+  assert.match(settingsSource, /themeMode/)
+  assert.match(settingsSource, /setThemeMode/)
+})

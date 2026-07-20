@@ -226,4 +226,32 @@ onLoad((options) => {
 		color: #94a3b8;
 	}
 }
+
+.detail-page.dark-mode {
+	background: #141109;
+
+	.category-name,
+	.content-list .content-item .item-header .item-title {
+		color: #fff7e1;
+	}
+
+	.content-tabs .tab-item,
+	.content-list .content-item {
+		background: #1e180d;
+	}
+
+	.content-tabs .tab-item {
+		color: #d7c89b;
+
+		&.active {
+			background: #E0AE12;
+			color: #231c0b;
+		}
+	}
+
+	.content-list .content-item .item-content,
+	.empty-text {
+		color: #9f926e;
+	}
+}
 </style>

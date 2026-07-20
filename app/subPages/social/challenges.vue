@@ -578,4 +578,71 @@ onUnmounted(() => {
 		.confirm-btn { background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%); color: #1f2937; font-weight: 600; }
 	}
 }
+
+.challenges-page.dark-mode {
+	background: #141109;
+
+	.page-tip {
+		background: rgba(224, 174, 18, 0.18);
+
+		text {
+			color: #f7e7a8;
+		}
+	}
+
+	.summary-card,
+	.tab-bar,
+	.challenge-card,
+	.modal-container {
+		background: #1e180d;
+	}
+
+	.summary-label,
+	.tab-item,
+	.challenge-game,
+	.loading-text,
+	.empty-text,
+	.modal-subtitle {
+		color: #9f926e;
+	}
+
+	.challenge-card {
+		.challenge-avatar,
+		.challenge-status.status-3,
+		.reject-btn {
+			background: #3a2e16;
+		}
+
+		.challenge-name {
+			color: #fff7e1;
+		}
+
+		.challenge-message {
+			background: #2a2110;
+			color: #d7c89b;
+		}
+	}
+
+	.modal-container {
+		.modal-title {
+			color: #fff7e1;
+		}
+
+		.game-type-option {
+			background: #3a2e16;
+			color: #d7c89b;
+		}
+
+		.message-input {
+			background: #2a2110;
+			border-color: #3a2e16;
+			color: #fff7e1;
+		}
+
+		.cancel-btn {
+			background: #3a2e16;
+			color: #d7c89b;
+		}
+	}
+}
 </style>

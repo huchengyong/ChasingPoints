@@ -319,4 +319,29 @@ onShow(() => {
 		color: #94a3b8;
 	}
 }
+
+.achievement-page.dark-mode {
+	background: #141109;
+
+	.loading-text,
+	.empty-text,
+	.section-count,
+	.progress-text {
+		color: #9f926e;
+	}
+
+	.section-title,
+	.achievement-row .row-name {
+		color: #fff7e1;
+	}
+
+	.achievement-row {
+		background: #1e180d;
+
+		.row-icon.locked,
+		.progress-bar {
+			background: #3a2e16;
+		}
+	}
+}
 </style>

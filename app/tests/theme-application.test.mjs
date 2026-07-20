@@ -18,8 +18,17 @@ const createUniRecorder = () => {
       setNavigationBarColor(options) {
         calls.push({ method: 'setNavigationBarColor', options })
       },
+      setBackgroundColor(options) {
+        calls.push({ method: 'setBackgroundColor', options })
+      },
+      setBackgroundTextStyle(options) {
+        calls.push({ method: 'setBackgroundTextStyle', options })
+      },
       setTabBarStyle(options) {
         calls.push({ method: 'setTabBarStyle', options })
+      },
+      setTabBarItem(options) {
+        calls.push({ method: 'setTabBarItem', options })
       }
     }
   }
@@ -62,19 +71,25 @@ test('applyRuntimeTheme applies navigation colors but skips tabBar on non-tabBar
     isDarkMode: false
   })
 
-  assert.deepEqual(recorder.calls, [
-    {
-      method: 'setNavigationBarColor',
-      options: {
-        frontColor: '#000000',
-        backgroundColor: '#ffffff',
-        animation: {
-          duration: 300,
-          timingFunc: 'easeIn'
-        }
-      }
-    }
+  assert.deepEqual(recorder.calls.map((call) => call.method), [
+    'setNavigationBarColor',
+    'setBackgroundColor',
+    'setBackgroundTextStyle'
   ])
+  assert.deepEqual(recorder.calls[0].options, {
+    frontColor: '#000000',
+    backgroundColor: '#ffffff',
+    animation: {
+      duration: 300,
+      timingFunc: 'easeIn'
+    }
+  })
+  assert.deepEqual(recorder.calls[1].options, {
+    backgroundColor: '#ffffff',
+    backgroundColorTop: '#ffffff',
+    backgroundColorBottom: '#ffffff'
+  })
+  assert.deepEqual(recorder.calls[2].options, { textStyle: 'dark' })
 })
 
 test('applyRuntimeTheme applies existing light tabBar colors on tabBar pages', () => {
@@ -86,7 +101,7 @@ test('applyRuntimeTheme applies existing light tabBar colors on tabBar pages', (
     isDarkMode: false
   })
 
-  assert.deepEqual(recorder.calls[1], {
+  assert.deepEqual(recorder.calls.find((call) => call.method === 'setTabBarStyle'), {
     method: 'setTabBarStyle',
     options: {
       backgroundColor: '#ffffff',
@@ -106,7 +121,7 @@ test('applyRuntimeTheme applies existing dark tabBar colors on tabBar pages', ()
     isDarkMode: true
   })
 
-  assert.deepEqual(recorder.calls[1], {
+  assert.deepEqual(recorder.calls.find((call) => call.method === 'setTabBarStyle'), {
     method: 'setTabBarStyle',
     options: {
       backgroundColor: '#141109',
@@ -115,4 +130,30 @@ test('applyRuntimeTheme applies existing dark tabBar colors on tabBar pages', ()
       selectedColor: '#E0AE12'
     }
   })
+
+  assert.deepEqual(
+    recorder.calls.filter((call) => call.method === 'setTabBarItem').map((call) => call.options),
+    [
+      {
+        index: 0,
+        iconPath: '/static/tabbar/index_dark.png',
+        selectedIconPath: '/static/tabbar/index-selected_dark.png'
+      },
+      {
+        index: 1,
+        iconPath: '/static/tabbar/match_dark.png',
+        selectedIconPath: '/static/tabbar/match-selected_dark.png'
+      },
+      {
+        index: 2,
+        iconPath: '/static/tabbar/social_dark.png',
+        selectedIconPath: '/static/tabbar/social-selected_dark.png'
+      },
+      {
+        index: 3,
+        iconPath: '/static/tabbar/user_dark.png',
+        selectedIconPath: '/static/tabbar/user-selected_dark.png'
+      }
+    ]
+  )
 })

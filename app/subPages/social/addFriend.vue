@@ -270,4 +270,43 @@ const handleAdd = async (item) => {
 		color: #94a3b8;
 	}
 }
+
+.add-friend-page.dark-mode {
+	background: #141109;
+
+	.search-bar,
+	.result-list .user-item {
+		background: #1e180d;
+	}
+
+	.search-bar .search-input-wrap {
+		background: #2a2110;
+
+		.search-input {
+			color: #fff7e1;
+		}
+	}
+
+	.result-list .user-item {
+		.user-name {
+			color: #fff7e1;
+		}
+
+		.status-btn.pending {
+			background: #3a2e16;
+			color: #9f926e;
+		}
+
+		.status-btn.friend {
+			background: rgba(34, 197, 94, 0.16);
+		}
+	}
+
+	.loading-text,
+	.empty-text,
+	.user-id,
+	.guide-text {
+		color: #9f926e;
+	}
+}
 </style>

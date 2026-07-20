@@ -1,44 +1,63 @@
 import { defineStore } from 'pinia'
 import { applyRuntimeTheme } from '@/utils/theme-application.js'
+import {
+  THEME_MODE_STORAGE_KEY,
+  normalizeThemeMode,
+  readStoredThemeMode,
+  resolveDarkMode,
+  resolveSystemDarkMode
+} from '@/utils/theme-preference.js'
 
 // 主题变化事件名称
 export const THEME_CHANGE_EVENT = 'themeChanged'
 
 export const useThemeStore = defineStore('theme', {
   state: () => ({
-    isDarkMode: false
+    themeMode: readStoredThemeMode(uni),
+    systemIsDark: false
   }),
+
+  getters: {
+    isDarkMode: (state) => resolveDarkMode(state.themeMode, state.systemIsDark)
+  },
 
   actions: {
     /**
-     * 设置主题（由 App.vue 的 onThemeChange 调用）
-     * @param {boolean} isDark 是否为深色模式
-     * @param {boolean} broadcast 是否广播主题变化事件
+     * 初始化当前系统主题，同时保留用户已保存的模式。
      */
-    setTheme(isDark, broadcast = true) {
-      const oldValue = this.isDarkMode
-      this.isDarkMode = isDark
+    initializeTheme(themeInfo = {}) {
+      this.themeMode = readStoredThemeMode(uni)
+      this.systemIsDark = resolveSystemDarkMode(themeInfo, this.systemIsDark)
+    },
 
-      // 如果主题发生变化，广播通知所有页面
-      if (oldValue !== isDark && broadcast) {
+    /**
+     * 记录系统主题变化。只有“跟随系统”模式会改变页面主题。
+     * @param {boolean} isDark 是否为深色模式
+     */
+    setThemeFromSystem(isDark) {
+      const oldValue = this.isDarkMode
+      this.systemIsDark = Boolean(isDark)
+
+      if (oldValue !== this.isDarkMode) {
         this.broadcastThemeChange()
       }
     },
 
     /**
-     * 由系统主题变化触发的设置主题
-     * 只有在用户没有保存偏好时才跟随系统主题
-     * @param {boolean} isDark 是否为深色模式
+     * 设置应用主题模式：跟随系统、浅色或深色。
      */
-    setThemeFromSystem(isDark) {
-      // 如果用户已保存偏好，则不覆盖
-      // if (this.hasUserPreference()) {
-      //   console.log('[ThemeStore] 用户已有偏好，不跟随系统主题')
-      //   return
-      // }
-      // console.log('[ThemeStore] 跟随系统主题:', isDark)
-      // 设置主题并广播
-      this.setTheme(isDark, true)
+    setThemeMode(mode) {
+      const normalizedMode = normalizeThemeMode(mode)
+      const oldValue = this.isDarkMode
+
+      this.themeMode = normalizedMode
+      uni.setStorageSync(THEME_MODE_STORAGE_KEY, normalizedMode)
+
+      if (oldValue !== this.isDarkMode) {
+        this.broadcastThemeChange()
+      } else {
+        this.applyNavigationBarTheme()
+      }
     },
 
     /**
@@ -64,18 +83,6 @@ export const useThemeStore = defineStore('theme', {
         isDarkMode: this.isDarkMode,
         animationDuration: 300
       })
-    },
-
-    /**
-     * 切换主题（用户手动切换时调用）
-     * 会保存用户偏好并广播事件
-     */
-    toggleTheme() {
-      this.isDarkMode = !this.isDarkMode
-      // 保存用户偏好
-      uni.setStorageSync('user_theme_dark', this.isDarkMode)
-      // 广播主题变化
-      this.broadcastThemeChange()
     },
 
     /**
