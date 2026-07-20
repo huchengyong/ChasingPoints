@@ -869,6 +869,12 @@ type CurrentMatchInfo {
 	CanDisputeFinish          bool             `json:"can_dispute_finish,optional"`
 	CanWithdrawFinish         bool             `json:"can_withdraw_finish,optional"`
 	LastAction                *MatchLastAction `json:"last_action,optional"`
+	Player1Id                 int64            `json:"player1_id"`
+	Player1Name               string           `json:"player1_name"`
+	Player1Avatar             string           `json:"player1_avatar"`
+	Player2Id                 int64            `json:"player2_id"`
+	Player2Name               string           `json:"player2_name"`
+	Player2Avatar             string           `json:"player2_avatar"`
 	OpponentId                int64            `json:"opponent_id,optional"`
 	OpponentName              string           `json:"opponent_name"`
 	OpponentAvatar            string           `json:"opponent_avatar,optional"`

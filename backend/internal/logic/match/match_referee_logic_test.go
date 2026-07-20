@@ -21,12 +21,13 @@ func newMatchRefereeTestSvc(t *testing.T) *svc.ServiceContext {
 	if err != nil {
 		t.Fatalf("open sqlite db: %v", err)
 	}
-	if err := db.AutoMigrate(&model.Match{}, &model.MatchRound{}, &model.MatchAction{}); err != nil {
+	if err := db.AutoMigrate(&model.User{}, &model.Match{}, &model.MatchRound{}, &model.MatchAction{}); err != nil {
 		t.Fatalf("prepare match referee schema: %v", err)
 	}
 
 	return &svc.ServiceContext{
 		DB:         db,
+		UserModel:  model.NewUserModel(db),
 		MatchModel: model.NewMatchModel(db),
 	}
 }
@@ -40,6 +41,9 @@ func TestGetCurrentMatchAllowsRefereeToResumeBoundMatch(t *testing.T) {
 	opponentID := int64(2002)
 	refereeID := int64(3003)
 	now := time.Date(2026, 4, 8, 21, 0, 0, 0, time.UTC)
+	seedCurrentMatchInfoUser(t, svcCtx, 1001, "选手甲", "player1.png")
+	seedCurrentMatchInfoUser(t, svcCtx, opponentID, "选手乙", "player2.png")
+	seedCurrentMatchInfoUser(t, svcCtx, refereeID, "裁判丙", "referee.png")
 
 	if err := svcCtx.MatchModel.Create(&model.Match{
 		Id:             81,
@@ -67,6 +71,7 @@ func TestGetCurrentMatchAllowsRefereeToResumeBoundMatch(t *testing.T) {
 	}
 	assertStructFieldEqual(t, resp.Match, "ViewerRole", "referee")
 	assertStructFieldEqual(t, resp.Match, "CanScore", true)
+	assertFixedParticipants(t, resp.Match, 1001, "选手甲", "player1.png", opponentID, "选手乙", "player2.png")
 }
 
 func TestMatchScoreRejectsPlayerWritesAfterRefereeBinding(t *testing.T) {

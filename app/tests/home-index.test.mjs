@@ -18,12 +18,16 @@ import { shouldFetchAuthState } from '../utils/auth-guards.js'
 import { shouldShowMatchPageLoading } from '../utils/match-page.js'
 import { shouldFetchUnreadCount } from '../utils/notification.js'
 import {
+  resolveCompactRewardEntry,
+  resolveCoreMetrics,
   resolveHighestRankDisplay,
   resolveGuestHeroCopy,
+  resolveMemberHeroStrip,
   resolvePrimaryAction,
   resolveStatusActionVisibility,
   resolveSectionTitles,
   resolveStatusCardContent,
+  resolveUserHomepageModel,
   resolveUserHomepageMode
 } from '../utils/user-homepage.js'
 
@@ -101,53 +105,95 @@ test('shouldShowMatchPageLoading shows full-page loading for normal initial load
   assert.equal(shouldShowMatchPageLoading(true, false), true)
 })
 
-test('resolveUserHomepageMode returns guest for anonymous users', () => {
-  assert.equal(resolveUserHomepageMode({
-    isLoggedIn: false,
-    hasCurrentMatch: false,
-    hasRecentMatch: false
-  }), 'guest')
+test('resolveUserHomepageMode covers all stable homepage modes', () => {
+  const cases = [
+    [{ isLoggedIn: false }, 'guest'],
+    [{ isLoggedIn: true, isLoading: true }, 'loading'],
+    [{ isLoggedIn: true, totalMatches: 0 }, 'newcomer'],
+    [{ isLoggedIn: true, totalMatches: 8 }, 'idle'],
+    [{ isLoggedIn: true, currentMatch: { viewer_role: 'player1' } }, 'ongoing-player'],
+    [{ isLoggedIn: true, currentMatch: { viewer_role: 'referee' } }, 'ongoing-referee']
+  ]
+
+  for (const [input, expected] of cases) {
+    assert.equal(resolveUserHomepageMode(input), expected)
+  }
 })
 
-test('resolveUserHomepageMode returns ongoing when current match exists', () => {
-  assert.equal(resolveUserHomepageMode({
-    isLoggedIn: true,
-    hasCurrentMatch: true,
-    hasRecentMatch: true
-  }), 'ongoing')
-})
-
-test('resolvePrimaryAction prefers continue match for ongoing state', () => {
-  assert.equal(resolvePrimaryAction('ongoing'), 'continue')
-})
-
-test('resolvePrimaryAction routes guest users to the login entry flow', () => {
+test('resolvePrimaryAction maps stable modes to their main task', () => {
+  assert.equal(resolvePrimaryAction('ongoing-player'), 'continue')
+  assert.equal(resolvePrimaryAction('ongoing-referee'), 'continue')
   assert.equal(resolvePrimaryAction('guest'), 'login')
+  assert.equal(resolvePrimaryAction('loading'), '')
+  assert.equal(resolvePrimaryAction('idle'), 'start')
 })
 
-test('resolveStatusCardContent returns continue action for current match', () => {
+test('resolveStatusCardContent keeps fixed participants and scores for player2 view', () => {
   const result = resolveStatusCardContent({
-    mode: 'ongoing',
+    mode: 'ongoing-player',
+    currentUser: { id: 22, nickname: '选手乙' },
     currentMatch: {
-      opponent_name: '张三',
+      viewer_role: 'player2',
+      player1_id: 11,
+      player1_name: '选手甲',
+      player1_avatar: 'player1.png',
+      player2_id: 22,
+      player2_name: '选手乙',
+      player2_avatar: 'player2.png',
       my_score: 3,
-      opponent_score: 2,
+      opponent_score: 5,
+      game_type_name: '中式八球',
       duration_seconds: 768
     }
   })
 
   assert.equal(result.action, 'continue')
-  assert.match(result.title, /继续/)
-  assert.match(result.description, /3 : 2/)
+  assert.equal(result.scoreText, '5 : 3')
+  assert.deepEqual(result.players.map(item => [item.id, item.name, item.score]), [
+    [11, '选手甲', 5],
+    [22, '选手乙', 3]
+  ])
 })
 
-test('resolveStatusCardContent uses encouraging copy for idle users', () => {
+test('resolveStatusCardContent gives referee the shared ongoing card structure', () => {
   const result = resolveStatusCardContent({
-    mode: 'idle',
-    currentMatch: null
+    mode: 'ongoing-referee',
+    currentMatch: {
+      viewer_role: 'referee',
+      player1_name: '选手甲',
+      player2_name: '选手乙',
+      my_score: 4,
+      opponent_score: 2
+    }
   })
 
-  assert.match(result.description, /找回节奏|找回手感/)
+  assert.equal(result.type, 'ongoing')
+  assert.equal(result.players.length, 2)
+  assert.equal(result.scoreText, '4 : 2')
+  assert.equal(result.actionText, '进入裁判记分')
+})
+
+test('loading status and metrics stay neutral before core requests finish', () => {
+  const statusCard = resolveStatusCardContent({ mode: 'loading' })
+  const metrics = resolveCoreMetrics({
+    stats: { wins: 99, win_rate: 80 },
+    rankInfo: { rank_score: 3000 },
+    isLoading: true
+  })
+
+  assert.equal(statusCard.loading, true)
+  assert.doesNotMatch(statusCard.description, /未定级|零战绩|还没开杆/)
+  assert.deepEqual(metrics.map(item => item.value), ['—', '—', '—', '—'])
+})
+
+test('newcomer and idle cards share actions but use different copy', () => {
+  const newcomer = resolveStatusCardContent({ mode: 'newcomer' })
+  const idle = resolveStatusCardContent({ mode: 'idle' })
+
+  assert.match(newcomer.title, /第一场/)
+  assert.match(idle.title, /还没开杆/)
+  assert.equal(newcomer.action, 'start')
+  assert.equal(idle.secondaryAction, 'show_pk_code')
 })
 
 test('resolveGuestHeroCopy avoids login-wall phrasing', () => {
@@ -156,7 +202,7 @@ test('resolveGuestHeroCopy avoids login-wall phrasing', () => {
   assert.equal(result.title, '登录后，解锁你的个人竞技主页')
   assert.doesNotMatch(result.description, /请先完成登录/)
   assert.equal(result.primaryActionText, '登录/注册')
-  assert.equal(result.secondaryActionText, '发起PK')
+  assert.equal(result.secondaryActionText, '登录后发起 PK')
 })
 
 test('resolveStatusCardContent aligns guest actions with PK entry intents', () => {
@@ -167,40 +213,69 @@ test('resolveStatusCardContent aligns guest actions with PK entry intents', () =
   assert.equal(result.action, 'login')
   assert.equal(result.actionText, '登录/注册')
   assert.equal(result.secondaryAction, 'start_pk')
-  assert.equal(result.secondaryActionText, '发起PK')
+  assert.equal(result.secondaryActionText, '登录后发起 PK')
 })
 
-test('resolveStatusCardContent removes recent-history CTA from active homepage card', () => {
-  const result = resolveStatusCardContent({
-    mode: 'active',
-    recentMatch: {
-      title: '最近手感不错，继续保持',
-      description: '累计 12 场对局 · 胜率 67% · 最高连胜 4'
-    }
-  })
-
-  assert.equal(result.action, 'recent')
-  assert.equal(result.actionText, '')
-  assert.equal(result.secondaryAction, 'start')
-  assert.equal(result.secondaryActionText, '再来一场')
-})
-
-test('resolveStatusActionVisibility hides status action row for logged-in active homepage card', () => {
+test('resolveStatusActionVisibility follows the normalized status card actions', () => {
   const result = resolveStatusActionVisibility({
-    isLoggedIn: true,
-    mode: 'active',
     statusCard: {
-      action: 'recent',
-      actionText: '',
-      secondaryAction: 'start',
-      secondaryActionText: '再来一场'
+      actionText: '发起 PK',
+      secondaryActionText: '出示二维码'
     }
   })
 
   assert.deepEqual(result, {
-    showPrimary: false,
-    showSecondary: false
+    showPrimary: true,
+    showSecondary: true
   })
+})
+
+test('resolveMemberHeroStrip only exposes active or historical membership', () => {
+  const now = new Date('2026-07-20T12:00:00+08:00')
+  const active = resolveMemberHeroStrip({
+    is_active: true,
+    member_expires_at: '2026-08-20 12:00:00',
+    growth_level: 3
+  }, now)
+  const expired = resolveMemberHeroStrip({
+    is_active: true,
+    member_expires_at: '2026-06-20 12:00:00'
+  }, now)
+  const none = resolveMemberHeroStrip({}, now)
+
+  assert.equal(active.state, 'active')
+  assert.equal(active.levelText, 'Lv3')
+  assert.equal(expired.state, 'expired')
+  assert.equal(none.visible, false)
+})
+
+test('resolveCompactRewardEntry keeps only actionable or pending reward states', () => {
+  assert.equal(resolveCompactRewardEntry({}).visible, false)
+
+  const notStarted = resolveCompactRewardEntry({ enabled: true, status: 'not_started', reward_days: 30 })
+  const pending = resolveCompactRewardEntry({ enabled: true, status: 'pending_review' })
+  const rejected = resolveCompactRewardEntry({ enabled: true, status: 'rejected', reject_reason: '资料不完整' })
+
+  assert.equal(notStarted.action, 'favorite-venue')
+  assert.equal(pending.visible, true)
+  assert.equal(pending.action, '')
+  assert.equal(rejected.actionText, '重新提交')
+})
+
+test('resolveUserHomepageModel safely normalizes missing API payloads', () => {
+  const model = resolveUserHomepageModel({
+    isLoggedIn: true,
+    currentUser: null,
+    stats: null,
+    rankInfo: null,
+    memberStatus: null,
+    rewardStatus: null
+  })
+
+  assert.equal(model.mode, 'newcomer')
+  assert.deepEqual(model.metrics.map(item => item.value), ['0%', 0, 0, 0])
+  assert.equal(model.memberHeroStrip.visible, false)
+  assert.equal(model.rewardEntry.visible, false)
 })
 
 test('resolveHighestRankDisplay picks the highest rank by level then score', () => {
@@ -237,8 +312,8 @@ test('resolveHighestRankDisplay falls back to current rank when no cross-mode ra
 test('resolveSectionTitles returns competitive naming', () => {
   const result = resolveSectionTitles()
 
-  assert.equal(result.stats, '竞技概览')
-  assert.equal(result.quickActions, '竞技社交')
+  assert.equal(result.stats, '核心指标')
+  assert.equal(result.quickActions, '常用入口')
   assert.equal(result.settings, '设置与支持')
 })
 

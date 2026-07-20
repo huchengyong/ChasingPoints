@@ -69,6 +69,20 @@
 						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
 					</view>
 				</view>
+				<view class="menu-item" @click="toggleHideMatch">
+					<view class="menu-left">
+						<view class="icon-wrapper amber">
+							<uni-icons type="locked-filled" size="24" color="#c69200"></uni-icons>
+						</view>
+						<view class="menu-copy">
+							<text class="menu-text">隐藏战绩</text>
+							<text class="menu-description">控制是否在公开场景展示你的战绩</text>
+						</view>
+					</view>
+					<view class="privacy-switch" :class="{ active: isHideMatch }">
+						<view class="privacy-switch-thumb" :class="{ active: isHideMatch }"></view>
+					</view>
+				</view>
 				<view class="menu-item" @click="handlePrivacy">
 					<view class="menu-left">
 						<view class="icon-wrapper rose">
@@ -86,6 +100,20 @@
 							<uni-icons type="flag-filled" size="24" color="#c69200"></uni-icons>
 						</view>
 						<text class="menu-text">用户协议</text>
+					</view>
+					<view class="menu-right">
+						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
+					</view>
+				</view>
+				<view class="menu-item" @click="handleHelp">
+					<view class="menu-left">
+						<view class="icon-wrapper blue">
+							<uni-icons type="chat" size="24" color="#E0AE12"></uni-icons>
+						</view>
+						<view class="menu-copy">
+							<text class="menu-text">帮助、投诉与举报</text>
+							<text class="menu-description">提交问题建议、投诉举报或获取帮助</text>
+						</view>
 					</view>
 					<view class="menu-right">
 						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
@@ -115,7 +143,7 @@ import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { useUserStore } from '@/store/user.js'
-import { getUserInfo } from '@/api/user.js'
+import { getUserInfo, getUserPrivacy, updateUserPrivacy } from '@/api/user.js'
 import bindPhone from '@/components/bindPhone.vue'
 import { formatSettingsPhone } from '@/utils/settings-profile.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
@@ -136,10 +164,13 @@ const userAvatar = computed(() => resolveAvatarUrl(userStore.userInfo?.avatar, u
 const canBindPhone = computed(() => Boolean(userStore.needBindPhone || !userPhone.value))
 const displayPhoneText = computed(() => formatSettingsPhone(userPhone.value) || '未绑定')
 const showBindPhoneModal = ref(false)
+const isHideMatch = ref(false)
+const hideMatchLoading = ref(false)
 
 // ========== 生命周期 ==========
 onShow(() => {
 	fetchLatestUserInfo()
+	loadUserPrivacy()
 })
 
 const fetchLatestUserInfo = async () => {
@@ -150,6 +181,16 @@ const fetchLatestUserInfo = async () => {
 		}
 	} catch (error) {
 		console.error('获取用户信息失败:', error)
+	}
+}
+
+const loadUserPrivacy = async () => {
+	try {
+		const res = await getUserPrivacy()
+		isHideMatch.value = Boolean(res?.success && res.hide_match_record)
+	} catch (error) {
+		console.error('获取用户隐私设置失败:', error)
+		isHideMatch.value = false
 	}
 }
 
@@ -203,6 +244,37 @@ const handleNotifications = () => {
 	})
 }
 
+const toggleHideMatch = async () => {
+	if (hideMatchLoading.value) return
+
+	const previousValue = isHideMatch.value
+	const nextValue = !previousValue
+	isHideMatch.value = nextValue
+	hideMatchLoading.value = true
+
+	try {
+		const res = await updateUserPrivacy({ hide_match_record: nextValue })
+		if (!res.success) {
+			throw new Error(res.message || '更新隐私设置失败')
+		}
+
+		isHideMatch.value = Boolean(res.hide_match_record)
+		uni.showToast({
+			title: res.hide_match_record ? '已隐藏战绩' : '已公开战绩',
+			icon: 'none'
+		})
+	} catch (error) {
+		console.error('更新隐藏战绩失败:', error)
+		isHideMatch.value = previousValue
+		uni.showToast({
+			title: error.message || '更新失败',
+			icon: 'none'
+		})
+	} finally {
+		hideMatchLoading.value = false
+	}
+}
+
 /**
  * 隐私政策
  */
@@ -219,6 +291,10 @@ const handleAgreement = () => {
 	uni.navigateTo({
 		url: '/subPages/agreement/userAgreement'
 	})
+}
+
+const handleHelp = () => {
+	uni.navigateTo({ url: '/subPages/help/feedback' })
 }
 
 const handleLogout = () => {

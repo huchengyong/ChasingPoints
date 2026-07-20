@@ -28,6 +28,20 @@ test('settings page adds a bottom logout action', () => {
   assert.match(settingsSource, /退出登录/)
 })
 
+test('settings page owns hidden match history with optimistic rollback', () => {
+  assert.match(settingsSource, /隐藏战绩/)
+  assert.match(settingsSource, /getUserPrivacy/)
+  assert.match(settingsSource, /updateUserPrivacy/)
+  assert.match(settingsSource, /const previousValue = isHideMatch\.value/)
+  assert.match(settingsSource, /isHideMatch\.value = previousValue/)
+})
+
+test('settings page owns help, complaint, and report navigation', () => {
+  assert.match(settingsSource, /帮助、投诉与举报/)
+  assert.match(settingsSource, /handleHelp/)
+  assert.match(settingsSource, /\/subPages\/help\/feedback/)
+})
+
 test('settings page dark theme uses the current project gold palette', () => {
   assert.match(settingsScssSource, /\$bg-dark:\s*#141109;/)
   assert.match(settingsScssSource, /\$card-bg-dark:\s*#1e180d;/)
