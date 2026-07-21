@@ -81,8 +81,7 @@ $border-dark: rgba(247, 231, 168, 0.12);
 }
 
 .guest-actions,
-.status-actions,
-.reward-modal-actions {
+.status-actions {
 	display: flex;
 	gap: 16rpx;
 }
@@ -93,8 +92,7 @@ $border-dark: rgba(247, 231, 168, 0.12);
 
 .hero-btn,
 .icon-btn,
-.status-action-btn,
-.reward-modal-btn {
+.status-action-btn {
 	margin: 0;
 	padding: 0;
 	box-sizing: border-box;
@@ -105,8 +103,7 @@ $border-dark: rgba(247, 231, 168, 0.12);
 }
 
 .hero-btn,
-.status-action-btn,
-.reward-modal-btn {
+.status-action-btn {
 	height: 88rpx;
 	line-height: 88rpx;
 	border-radius: 18rpx;
@@ -836,6 +833,89 @@ $border-dark: rgba(247, 231, 168, 0.12);
 	}
 }
 
+.float-reward-entry {
+	position: fixed;
+	right: 24rpx;
+	bottom: 24rpx;
+	left: 24rpx;
+	z-index: 90;
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+	padding: 18rpx 20rpx 18rpx 24rpx;
+	border: 1rpx solid rgba(224, 174, 18, 0.28);
+	border-radius: 24rpx;
+	background:
+		radial-gradient(circle at 96% 0%, rgba(224, 174, 18, 0.14), transparent 42%),
+		#fffdf7;
+	box-shadow: 0 -6rpx 28rpx rgba(15, 23, 42, 0.1), 0 12rpx 36rpx rgba(224, 174, 18, 0.08);
+	box-sizing: border-box;
+
+	// #ifdef MP-WEIXIN
+	bottom: calc(24rpx + env(safe-area-inset-bottom));
+	// #endif
+}
+
+.float-reward-body {
+	min-width: 0;
+	flex: 1;
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+}
+
+.float-reward-copy {
+	min-width: 0;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 6rpx;
+}
+
+.float-reward-title {
+	min-width: 0;
+	overflow: hidden;
+	font-size: 25rpx;
+	font-weight: 800;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: $text-primary-light;
+}
+
+.float-reward-description {
+	display: -webkit-box;
+	overflow: hidden;
+	font-size: 21rpx;
+	line-height: 1.45;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	color: $text-secondary-light;
+}
+
+.float-reward-action {
+	flex-shrink: 0;
+
+	text {
+		font-size: 21rpx;
+		font-weight: 600;
+		color: $primary-color;
+	}
+}
+
+.float-reward-close {
+	width: 52rpx;
+	height: 52rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	border-radius: 50%;
+}
+
+.main-content.has-float-reward {
+	padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
+}
+
 .section-hint {
 	font-size: 21rpx;
 	color: $text-muted-light;
@@ -940,7 +1020,6 @@ $border-dark: rgba(247, 231, 168, 0.12);
 	100% { background-position: -200% 0; }
 }
 
-.reward-modal-overlay,
 .qrcode-modal-overlay {
 	position: fixed;
 	top: 0;
@@ -954,108 +1033,6 @@ $border-dark: rgba(247, 231, 168, 0.12);
 	padding: 24rpx;
 	background: rgba(15, 23, 42, 0.5);
 	box-sizing: border-box;
-}
-
-.reward-modal-card {
-	width: 100%;
-	max-width: 660rpx;
-	padding: 30rpx;
-	border-radius: 32rpx;
-	background: $card-bg-light;
-	box-shadow: 0 28rpx 60rpx rgba(15, 23, 42, 0.22);
-	box-sizing: border-box;
-}
-
-.reward-modal-header {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: 20rpx;
-}
-
-.reward-modal-copy {
-	min-width: 0;
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	gap: 12rpx;
-}
-
-.reward-modal-title {
-	font-size: 36rpx;
-	font-weight: 800;
-	color: $text-primary-light;
-}
-
-.reward-modal-desc,
-.reward-modal-highlight-desc {
-	font-size: 25rpx;
-	line-height: 1.6;
-	color: $text-secondary-light;
-}
-
-.reward-modal-close,
-.qrcode-modal-close {
-	width: 60rpx;
-	height: 60rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-	border-radius: 50%;
-}
-
-.reward-modal-highlight {
-	margin-top: 24rpx;
-	padding: 28rpx;
-	border: 1rpx solid rgba(224, 174, 18, 0.18);
-	border-radius: 24rpx;
-	background:
-		radial-gradient(circle at top left, rgba(255, 236, 179, 0.38), transparent 42%),
-		linear-gradient(135deg, #fff8e6 0%, #fffdf7 100%);
-}
-
-.reward-modal-highlight-eyebrow {
-	display: block;
-	font-size: 22rpx;
-	font-weight: 800;
-	letter-spacing: 1rpx;
-	color: $primary-strong;
-}
-
-.reward-modal-highlight-title {
-	display: block;
-	margin-top: 14rpx;
-	font-size: 32rpx;
-	font-weight: 800;
-	color: $text-primary-light;
-}
-
-.reward-modal-highlight-desc {
-	display: block;
-	margin-top: 14rpx;
-}
-
-.reward-modal-actions {
-	margin-top: 28rpx;
-}
-
-.reward-modal-btn {
-	flex: 1;
-}
-
-.reward-modal-btn-secondary {
-	border: 1rpx solid rgba(148, 163, 184, 0.14);
-	background: rgba(148, 163, 184, 0.1);
-
-	text { color: $text-secondary-light; }
-}
-
-.reward-modal-btn-primary {
-	background: linear-gradient(135deg, $primary-color, $primary-strong);
-	box-shadow: 0 14rpx 28rpx rgba(224, 174, 18, 0.2);
-
-	text { color: #ffffff; }
 }
 
 .qrcode-modal-container {
@@ -1077,6 +1054,16 @@ $border-dark: rgba(247, 231, 168, 0.12);
 	font-size: 34rpx;
 	font-weight: 800;
 	color: $text-primary-light;
+}
+
+.qrcode-modal-close {
+	width: 60rpx;
+	height: 60rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	border-radius: 50%;
 }
 
 .qrcode-modal-body {
@@ -1159,8 +1146,6 @@ $border-dark: rgba(247, 231, 168, 0.12);
 	.metric-value,
 	.shortcut-label,
 	.reward-entry-title,
-	.reward-modal-title,
-	.reward-modal-highlight-title,
 	.qrcode-modal-title {
 		color: $text-primary-dark;
 	}
@@ -1184,7 +1169,6 @@ $border-dark: rgba(247, 231, 168, 0.12);
 	.metrics-card,
 	.shortcuts-card,
 	.services-card,
-	.reward-modal-card,
 	.qrcode-modal-container {
 		border-color: $border-dark;
 		background: $card-bg-dark;
@@ -1205,8 +1189,6 @@ $border-dark: rgba(247, 231, 168, 0.12);
 	.status-description,
 	.metric-label,
 	.reward-entry-description,
-	.reward-modal-desc,
-	.reward-modal-highlight-desc,
 	.qrcode-loading-text,
 	.qrcode-hint {
 		color: $text-secondary-dark;
@@ -1265,6 +1247,22 @@ $border-dark: rgba(247, 231, 168, 0.12);
 			$card-bg-dark;
 	}
 
+	.float-reward-entry {
+		border-color: rgba(247, 216, 106, 0.22);
+		background:
+			radial-gradient(circle at 96% 0%, rgba(247, 216, 106, 0.14), transparent 42%),
+			$card-bg-dark;
+		box-shadow: 0 -6rpx 28rpx rgba(0, 0, 0, 0.18), 0 12rpx 36rpx rgba(224, 174, 18, 0.1);
+	}
+
+	.float-reward-title {
+		color: $text-primary-dark;
+	}
+
+	.float-reward-description {
+		color: $text-secondary-dark;
+	}
+
 
 	.status-card .skeleton-line,
 	.status-card .skeleton-pill,
@@ -1275,21 +1273,4 @@ $border-dark: rgba(247, 231, 168, 0.12);
 		background-size: 200% 100%;
 	}
 
-	.reward-modal-highlight {
-		border-color: rgba(247, 216, 106, 0.14);
-		background:
-			radial-gradient(circle at top left, rgba(247, 216, 106, 0.16), transparent 42%),
-			linear-gradient(135deg, rgba(42, 31, 12, 0.96), rgba(35, 27, 13, 0.96));
-	}
-
-	.reward-modal-highlight-eyebrow {
-		color: #f7e7a8;
-	}
-
-	.reward-modal-btn-secondary {
-		border-color: $border-dark;
-		background: rgba(255, 247, 225, 0.05);
-
-		text { color: $text-secondary-dark; }
-	}
 }

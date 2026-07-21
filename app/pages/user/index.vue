@@ -1,6 +1,6 @@
 <template>
 	<view class="user-container" :class="{ 'dark-mode': isDarkMode }">
-		<view class="main-content">
+		<view class="main-content" :class="{ 'has-float-reward': floatRewardVisible }">
 			<template v-if="!isLoggedIn">
 				<view class="guest-hero">
 					<text class="guest-eyebrow">{{ guestHeroCopy.eyebrow }}</text>
@@ -219,15 +219,15 @@
 					</view>
 				</view>
 
-				<view v-if="compactRewardEntry.visible" class="reward-entry" @click="handleFavoriteVenueRewardEntry">
+				<view v-if="compactRewardEntry.inline" class="reward-entry">
 					<view class="reward-entry-copy">
 						<view class="reward-entry-heading">
 							<text class="reward-entry-title">{{ compactRewardEntry.title }}</text>
+							<view class="status-pill">
+								<text>{{ compactRewardEntry.statusText }}</text>
+							</view>
 						</view>
 						<text class="reward-entry-description">{{ compactRewardEntry.description }}</text>
-					</view>
-					<view v-if="compactRewardEntry.actionText" class="reward-entry-action">
-						<text>{{ compactRewardEntry.actionText }}</text>
 					</view>
 				</view>
 
@@ -247,30 +247,18 @@
 			</template>
 		</view>
 
-		<view v-if="showFavoriteVenueRewardModal" class="reward-modal-overlay" @click="handleFavoriteVenueRewardModalDismiss">
-			<view class="reward-modal-card" @click.stop>
-				<view class="reward-modal-header">
-					<view class="reward-modal-copy">
-						<text class="reward-modal-title">{{ favoriteVenueRewardPopupCopy.title }}</text>
-						<text class="reward-modal-desc">{{ favoriteVenueRewardPopupCopy.description }}</text>
-					</view>
-					<view class="reward-modal-close" @click="handleFavoriteVenueRewardModalDismiss">
-						<uni-icons type="closeempty" size="24" :color="isDarkMode ? '#9f926e' : '#64748b'"></uni-icons>
-					</view>
+		<view v-if="floatRewardVisible" class="float-reward-entry">
+			<view class="float-reward-body" @click="handleFavoriteVenueRewardEntry">
+				<view class="float-reward-copy">
+					<text class="float-reward-title">{{ compactRewardEntry.title }}</text>
+					<text class="float-reward-description">{{ compactRewardEntry.description }}</text>
 				</view>
-				<view class="reward-modal-highlight">
-					<text class="reward-modal-highlight-eyebrow">添加常玩球馆</text>
-					<text class="reward-modal-highlight-title">审核通过后自动发放会员</text>
-					<text class="reward-modal-highlight-desc">以后约球、签到、发赛事时，也能更快选到你常去的球馆。</text>
+				<view class="float-reward-action">
+					<text>{{ compactRewardEntry.actionText }}</text>
 				</view>
-				<view class="reward-modal-actions">
-					<button class="reward-modal-btn reward-modal-btn-secondary" @click="handleFavoriteVenueRewardModalDismiss">
-						<text>{{ favoriteVenueRewardPopupCopy.secondaryText }}</text>
-					</button>
-					<button class="reward-modal-btn reward-modal-btn-primary" @click="handleFavoriteVenueRewardModalConfirm">
-						<text>{{ favoriteVenueRewardPopupCopy.primaryText }}</text>
-					</button>
-				</view>
+			</view>
+			<view class="float-reward-close" @click.stop="handleFloatRewardClose">
+				<uni-icons type="closeempty" size="20" :color="isDarkMode ? '#9f926e' : '#94a3b8'"></uni-icons>
 			</view>
 		</view>
 
@@ -348,8 +336,10 @@ import {
 } from '@/utils/post-login-intent.js'
 import {
 	getFavoriteVenueRewardPopupStorageKey,
-	shouldShowFavoriteVenueRewardPopup,
-	resolveFavoriteVenueRewardPopupCopy
+	getFavoriteVenueRewardFloatSnoozeKey,
+	calcFavoriteVenueRewardFloatSnoozeUntil,
+	isFavoriteVenueRewardFloatSnoozed,
+	resolveFavoriteVenueRewardFloatSnoozeMigration
 } from '@/utils/favorite-venue-reward.js'
 import { resolveMemberGrowthCard } from '@/utils/member-center.js'
 
@@ -379,7 +369,7 @@ const currentMatch = ref(null)
 const rankInfo = ref(null)
 const favoriteVenueRewardStatus = ref(null)
 const memberStatus = ref(null)
-const showFavoriteVenueRewardModal = ref(false)
+const floatRewardVisible = ref(false)
 const reputationStatus = ref(null)
 const coreDataLoading = ref(false)
 const homepageLoading = ref(false)
@@ -446,7 +436,6 @@ const rankAvatarFrame = computed(() => resolveMemberRankAvatarFrame({
 	rankLoading: rankLoading.value,
 	now: new Date()
 }))
-const favoriteVenueRewardPopupCopy = computed(() => resolveFavoriteVenueRewardPopupCopy(favoriteVenueRewardStatus.value || {}))
 const statusPlayers = computed(() => statusCard.value.players.map(player => ({
 	...player,
 	avatar: resolveAvatarUrl(player.avatar, player.id)
@@ -512,7 +501,8 @@ const loadHomepageData = async () => {
 	}
 
 	await secondaryRequests
-	syncFavoriteVenueRewardModal()
+	migrateFavoriteVenueRewardFloatSnooze()
+	syncFloatRewardVisibility()
 	homepageLoading.value = false
 }
 
@@ -594,7 +584,7 @@ const resetHomepageState = () => {
 	favoriteVenueRewardStatus.value = null
 	memberStatus.value = null
 	reputationStatus.value = null
-	showFavoriteVenueRewardModal.value = false
+	floatRewardVisible.value = false
 	coreDataLoading.value = false
 	homepageLoading.value = false
 	rankLoading.value = false
@@ -604,22 +594,57 @@ const resetHomepageState = () => {
 	userStats.maxStreak = 0
 }
 
-const hasFavoriteVenueRewardPopupDismissed = () => {
-	if (!userInfo.value.id) return true
-	return !!uni.getStorageSync(getFavoriteVenueRewardPopupStorageKey(userInfo.value.id))
+const getFloatSnoozeStorageValue = (userId, status) => {
+	const key = getFavoriteVenueRewardFloatSnoozeKey(userId, status)
+	const raw = uni.getStorageSync(key)
+	if (!raw) return null
+	const parsed = new Date(raw)
+	return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
-const markFavoriteVenueRewardPopupDismissed = () => {
-	if (!userInfo.value.id) return
-	uni.setStorageSync(getFavoriteVenueRewardPopupStorageKey(userInfo.value.id), 1)
+const writeFloatSnooze = (userId, status) => {
+	const snoozeUntil = calcFavoriteVenueRewardFloatSnoozeUntil()
+	uni.setStorageSync(getFavoriteVenueRewardFloatSnoozeKey(userId, status), snoozeUntil.toISOString())
 }
 
-const syncFavoriteVenueRewardModal = () => {
-	showFavoriteVenueRewardModal.value = shouldShowFavoriteVenueRewardPopup({
-		userId: userInfo.value.id,
+const migrateFavoriteVenueRewardFloatSnooze = () => {
+	const userId = userInfo.value.id
+	if (!userId) return
+	const oldDismissed = !!uni.getStorageSync(getFavoriteVenueRewardPopupStorageKey(userId))
+	const migration = resolveFavoriteVenueRewardFloatSnoozeMigration({
+		userId,
 		rewardStatus: favoriteVenueRewardStatus.value,
-		popupDismissed: hasFavoriteVenueRewardPopupDismissed()
+		oldPopupDismissed: oldDismissed,
+		getFloatSnoozeValue: (uid, status) => getFloatSnoozeStorageValue(uid, status)
 	})
+	if (migration) {
+		uni.setStorageSync(migration.key, migration.snoozeUntil.toISOString())
+		uni.removeStorageSync(getFavoriteVenueRewardPopupStorageKey(userId))
+	} else if (oldDismissed) {
+		uni.removeStorageSync(getFavoriteVenueRewardPopupStorageKey(userId))
+	}
+}
+
+const syncFloatRewardVisibility = () => {
+	const status = favoriteVenueRewardStatus.value
+	if (!status || !status.enabled || !userInfo.value.id) {
+		floatRewardVisible.value = false
+		return
+	}
+	const state = status.status
+	if (state !== 'not_started' && state !== 'rejected') {
+		floatRewardVisible.value = false
+		return
+	}
+	const snoozeUntil = getFloatSnoozeStorageValue(userInfo.value.id, state)
+	if (isFavoriteVenueRewardFloatSnoozed(snoozeUntil)) {
+		floatRewardVisible.value = false
+		return
+	}
+	if (snoozeUntil) {
+		uni.removeStorageSync(getFavoriteVenueRewardFloatSnoozeKey(userInfo.value.id, state))
+	}
+	floatRewardVisible.value = true
 }
 
 const handleFavoriteVenueRewardAction = () => {
@@ -631,15 +656,11 @@ const handleFavoriteVenueRewardEntry = () => {
 	handleFavoriteVenueRewardAction()
 }
 
-const handleFavoriteVenueRewardModalDismiss = () => {
-	markFavoriteVenueRewardPopupDismissed()
-	showFavoriteVenueRewardModal.value = false
-}
-
-const handleFavoriteVenueRewardModalConfirm = () => {
-	markFavoriteVenueRewardPopupDismissed()
-	showFavoriteVenueRewardModal.value = false
-	handleFavoriteVenueRewardAction()
+const handleFloatRewardClose = () => {
+	const status = favoriteVenueRewardStatus.value
+	if (!status || !userInfo.value.id) return
+	writeFloatSnooze(userInfo.value.id, status.status)
+	floatRewardVisible.value = false
 }
 
 const connectUserWS = async () => {

@@ -125,11 +125,28 @@ test('diamond keeps king promotion progress and only level six is the max rank',
   assert.doesNotMatch(source, /rankInfo\.value\?\.level >= 5/)
 })
 
+test('floatable reward states render a single floating entry and the old full-screen modal is removed', () => {
+  assert.match(source, /class="float-reward-entry"/)
+  assert.match(source, /class="float-reward-body"/)
+  assert.match(source, /class="float-reward-close"/)
+  assert.match(source, /handleFloatRewardClose/)
+  assert.doesNotMatch(source, /class="reward-modal-overlay"/)
+  assert.doesNotMatch(source, /handleFavoriteVenueRewardModalDismiss/)
+  assert.doesNotMatch(source, /handleFavoriteVenueRewardModalConfirm/)
+  assert.doesNotMatch(source, /syncFavoriteVenueRewardModal/)
+})
+
+test('pending_review stays as an in-page read-only card without floating entry or action navigation', () => {
+  assert.match(source, /compactRewardEntry\.inline/)
+  assert.match(source, /<view v-if="compactRewardEntry\.inline" class="reward-entry">/)
+  assert.doesNotMatch(source, /compactRewardEntry\.visible/)
+})
+
 test('user page keeps dark theme contrast and UniApp-safe custom button rules', () => {
   assert.match(styleSource, /\.dark-mode\s*\{/)
   assert.match(styleSource, /\$card-bg-dark:\s*#1e180d;/)
-  assert.match(styleSource, /\.hero-btn,[\s\S]*\.status-action-btn,[\s\S]*\.reward-modal-btn\s*\{[\s\S]*margin:\s*0;/)
-  assert.match(styleSource, /\.hero-btn,[\s\S]*\.status-action-btn,[\s\S]*\.reward-modal-btn\s*\{[\s\S]*height:\s*88rpx;[\s\S]*line-height:\s*88rpx;/)
+  assert.match(styleSource, /\.hero-btn,[\s\S]*\.status-action-btn\s*\{[\s\S]*margin:\s*0;/)
+  assert.match(styleSource, /\.hero-btn,[\s\S]*\.status-action-btn\s*\{[\s\S]*height:\s*88rpx;[\s\S]*line-height:\s*88rpx;/)
   assert.doesNotMatch(styleSource, /(^|[\s,{>])\*(?=\s|\{|:)/m)
   assert.doesNotMatch(styleSource, /:disabled/)
 })

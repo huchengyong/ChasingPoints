@@ -286,14 +286,19 @@ export const resolveMemberHeroStrip = (memberStatus = {}, now = new Date(), memb
 
 export const resolveCompactRewardEntry = (rewardStatus = {}) => {
   const card = resolveFavoriteVenueRewardTaskCard(rewardStatus || {})
+  const status = toSafeText(rewardStatus?.status, 'not_started')
+  const floatable = card.visible && (status === 'not_started' || status === 'rejected')
+  const inline = card.visible && status === 'pending_review'
   return {
     visible: card.visible,
-    state: toSafeText(rewardStatus?.status, 'not_started'),
+    floatable,
+    inline,
+    state: status,
     title: card.title,
     description: card.description,
     statusText: card.statusText,
-    action: card.actionText ? 'favorite-venue' : '',
-    actionText: card.actionText
+    action: floatable ? 'favorite-venue' : '',
+    actionText: floatable ? card.actionText : ''
   }
 }
 
