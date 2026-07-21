@@ -281,14 +281,15 @@ test('resolveUserHomepageModel safely normalizes missing API payloads', () => {
 test('resolveHighestRankDisplay picks the highest rank by level then score', () => {
   const result = resolveHighestRankDisplay([
     { gameType: 3, name: '白银球手', level: 2, rank_score: 1280 },
-    { gameType: 2, name: '钻石王者', level: 5, rank_score: 3680 },
+    { gameType: 4, name: '钻石', level: 5, rank_score: 2400 },
+    { gameType: 2, name: '王者', level: 6, rank_score: 3680 },
     { gameType: 1, name: '黄金高手', level: 3, rank_score: 2100 }
   ])
 
   assert.deepEqual(result, {
     gameType: 2,
-    name: '钻石王者',
-    level: 5,
+    name: '王者',
+    level: 6,
     rankScore: 3680
   })
 })

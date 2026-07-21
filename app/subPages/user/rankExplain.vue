@@ -37,7 +37,7 @@
 					</view>
 					
 					<!-- 晋级进度 -->
-					<view class="progress-section" v-if="rankInfo.level < 5">
+					<view class="progress-section" v-if="rankInfo.level < 6">
 						<view class="progress-header">
 							<text class="progress-title">晋级{{ rankInfo.next_name }}</text>
 							<text class="progress-value">{{ rankInfo.rank_score }} / {{ rankInfo.next_score }}</text>

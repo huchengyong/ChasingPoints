@@ -236,6 +236,34 @@ const parseMemberExpiresAt = (value) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
+const RANK_AVATAR_FRAME_PATHS = {
+  1: '/static/images/avatar-frames/frame_bronze.png',
+  2: '/static/images/avatar-frames/frame_silver.png',
+  3: '/static/images/avatar-frames/frame_gold.png',
+  4: '/static/images/avatar-frames/frame_platinum.png',
+  5: '/static/images/avatar-frames/frame_diamond.png',
+  6: '/static/images/avatar-frames/frame_king.png'
+}
+
+export const resolveRankAvatarFramePath = (level) => {
+  return RANK_AVATAR_FRAME_PATHS[toSafeNumber(level)] || ''
+}
+
+export const resolveMemberRankAvatarFrame = ({
+  isLoggedIn = false,
+  memberStatus = null,
+  rankInfo = null,
+  rankLoading = false,
+  now = new Date()
+} = {}) => {
+  if (!isLoggedIn || rankLoading || !rankInfo) return ''
+
+  const expiresAt = parseMemberExpiresAt(memberStatus?.member_expires_at)
+  if (!memberStatus?.is_active || !expiresAt || expiresAt.getTime() <= now.getTime()) return ''
+
+  return resolveRankAvatarFramePath(rankInfo.level)
+}
+
 export const resolveMemberHeroStrip = (memberStatus = {}, now = new Date(), memberLevelText = '') => {
   const expiresAtText = toSafeText(memberStatus?.member_expires_at)
   if (!expiresAtText) {

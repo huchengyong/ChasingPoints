@@ -1,10 +1,16 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 
 import {
   resolveRankExplainLoadingMode,
   shouldApplyRankExplainResponse
 } from '../utils/rank-explain.js'
+
+const pageSource = readFileSync(
+  new URL('../subPages/user/rankExplain.vue', import.meta.url),
+  'utf8'
+)
 
 test('resolveRankExplainLoadingMode only uses full-page loading before first successful render', () => {
   assert.equal(resolveRankExplainLoadingMode({
@@ -33,4 +39,9 @@ test('shouldApplyRankExplainResponse ignores stale tab-switch responses', () => 
     requestId: 3,
     latestRequestId: 3
   }), true)
+})
+
+test('rank explain treats level six as the only max rank', () => {
+  assert.match(pageSource, /rankInfo\.level < 6/)
+  assert.doesNotMatch(pageSource, /rankInfo\.level < 5/)
 })

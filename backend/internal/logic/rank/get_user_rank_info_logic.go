@@ -64,7 +64,7 @@ func (l *GetUserRankInfoLogic) GetUserRankInfo(req *types.GetUserRankInfoReq) (r
 	var nextScore int
 	var progress int
 
-	if ranking.RankLevel < 5 {
+	if ranking.RankLevel < 6 {
 		nextConfig, err := l.svcCtx.RankingModel.GetRankConfigByLevel(ranking.RankLevel + 1)
 		if err == nil && nextConfig != nil {
 			nextLevel = nextConfig.Level
@@ -87,9 +87,9 @@ func (l *GetUserRankInfoLogic) GetUserRankInfo(req *types.GetUserRankInfoReq) (r
 		}
 	} else {
 		// 已经是最高段位
-		nextLevel = 5
-		nextName = "钻石王者"
-		nextScore = 2000
+		nextLevel = currentConfig.Level
+		nextName = currentConfig.Name
+		nextScore = currentConfig.MinScore
 		progress = 100
 	}
 

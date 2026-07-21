@@ -131,7 +131,7 @@ func seedStatsViewerPerspectiveFixtures(t *testing.T, svcCtx *svc.ServiceContext
 
 	seedStatsRanking(t, svcCtx, &model.UserRanking{UserId: strongOpponentID, GameType: 2, RankScore: 1800, RankLevel: 3})
 	seedStatsRanking(t, svcCtx, &model.UserRanking{UserId: weakOpponentID, GameType: 2, RankScore: 800, RankLevel: 1})
-	seedStatsRanking(t, svcCtx, &model.UserRanking{UserId: ignoredOpponentID, GameType: 4, RankScore: 2600, RankLevel: 5})
+	seedStatsRanking(t, svcCtx, &model.UserRanking{UserId: ignoredOpponentID, GameType: 4, RankScore: 2600, RankLevel: 6})
 }
 
 func TestStatsByGameTypeUsesViewerPerspectiveForOpponentMatches(t *testing.T) {

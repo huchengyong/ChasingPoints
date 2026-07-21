@@ -237,7 +237,9 @@ $border-dark: rgba(247, 231, 168, 0.12);
 	display: flex;
 	align-items: center;
 	gap: 20rpx;
+	width: 100%;
 	padding: 6rpx 4rpx 22rpx;
+	box-sizing: border-box;
 }
 
 .profile-avatar {
@@ -258,30 +260,43 @@ $border-dark: rgba(247, 231, 168, 0.12);
 	border-radius: 50%;
 }
 
-.member-avatar-badge {
+.profile-avatar.has-rank-frame {
+	width: 124rpx;
+	height: 124rpx;
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+}
+
+.profile-avatar.has-rank-frame .profile-avatar-image {
 	position: absolute;
-	right: -6rpx;
-	bottom: -4rpx;
-	width: 42rpx;
-	height: 42rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
+	top: 50%;
+	left: 50%;
+	width: 96rpx;
+	height: 96rpx;
 	border: 4rpx solid #ffffff;
 	border-radius: 50%;
-	background: linear-gradient(135deg, #ffe596, #d99d0b);
+	box-shadow: 0 10rpx 28rpx rgba(15, 23, 42, 0.12);
+	transform: translate(-50%, -50%);
+	z-index: 1;
 	box-sizing: border-box;
+}
 
-	text {
-		font-size: 22rpx;
-		font-weight: 900;
-		color: #4b3506;
-	}
+.profile-avatar-frame {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 156rpx;
+	height: 156rpx;
+	transform: translate(-50%, -50%);
+	z-index: 2;
+	pointer-events: none;
 }
 
 .profile-copy {
 	min-width: 0;
 	flex: 1;
+	overflow: hidden;
 }
 
 .profile-name {
@@ -1137,8 +1152,9 @@ $border-dark: rgba(247, 231, 168, 0.12);
 		box-shadow: 0 10rpx 28rpx rgba(0, 0, 0, 0.28);
 	}
 
-	.member-avatar-badge {
+	.profile-avatar.has-rank-frame .profile-avatar-image {
 		border-color: #2a210f;
+		box-shadow: 0 10rpx 28rpx rgba(0, 0, 0, 0.28);
 	}
 
 	.profile-name,

@@ -316,8 +316,10 @@ func (m *RankingModel) DeleteAllRankings(tx *gorm.DB) error {
 // CalculateLevel 根据排位分计算段位等级
 func (m *RankingModel) CalculateLevel(score int) int {
 	switch {
+	case score >= 2500:
+		return 6 // 王者
 	case score >= 2000:
-		return 5 // 钻石王者
+		return 5 // 钻石
 	case score >= 1500:
 		return 4 // 铂金大师
 	case score >= 1000:

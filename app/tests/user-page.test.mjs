@@ -22,12 +22,22 @@ test('user page keeps the guest login funnel, public entries, and direct feedbac
 
 test('logged-in user profile is a standalone header with profile, message, and settings navigation', () => {
   assert.match(source, /<view class="profile-header">/)
-  assert.match(source, /class="profile-avatar" @click="handleEditProfile"/)
+  assert.match(source, /class="profile-avatar" :class="\{ 'has-rank-frame': rankAvatarFrame \}" @click="handleEditProfile"/)
   assert.match(source, /class="icon-btn" @click="handleNotificationCenter"/)
   assert.match(source, /class="icon-btn" @click="handleSettings"/)
   assert.match(source, /profileLevelText/)
   assert.match(source, /reputationEntryStatusText/)
   assert.doesNotMatch(source, /class="identity-hero"/)
+})
+
+test('active members use the current rank avatar frame without replacing profile navigation', () => {
+  assert.match(source, /v-if="rankAvatarFrame" class="profile-avatar-frame" :src="rankAvatarFrame"/)
+  assert.match(source, /resolveMemberRankAvatarFrame\(\{/)
+  assert.match(source, /rankLoading: rankLoading\.value/)
+  assert.doesNotMatch(source, /member-avatar-badge/)
+  assert.doesNotMatch(source, /♛/)
+  assert.match(styleSource, /\.profile-avatar-frame\s*\{[\s\S]*pointer-events:\s*none;/)
+  assert.match(styleSource, /\.profile-avatar\.has-rank-frame\s*\{[\s\S]*width:\s*124rpx;[\s\S]*height:\s*124rpx;/)
 })
 
 test('user page aggregates core loading and renders neutral rank and status skeletons', () => {
@@ -104,10 +114,15 @@ test('privacy and logout controls are absent from the main user stream', () => {
 })
 
 test('long profile and participant names truncate without moving the action buttons', () => {
-  assert.match(styleSource, /\.profile-copy\s*\{[\s\S]*min-width:\s*0;/)
+  assert.match(styleSource, /\.profile-copy\s*\{[\s\S]*min-width:\s*0;[\s\S]*overflow:\s*hidden;/)
   assert.match(styleSource, /\.profile-name\s*\{[\s\S]*overflow:\s*hidden;[\s\S]*text-overflow:\s*ellipsis;[\s\S]*white-space:\s*nowrap;/)
   assert.match(styleSource, /\.profile-actions\s*\{[\s\S]*flex-shrink:\s*0;/)
   assert.match(styleSource, /\.match-player-name\s*\{[\s\S]*overflow:\s*hidden;[\s\S]*text-overflow:\s*ellipsis;/)
+})
+
+test('diamond keeps king promotion progress and only level six is the max rank', () => {
+  assert.match(source, /rankInfo\.value\?\.level >= 6/)
+  assert.doesNotMatch(source, /rankInfo\.value\?\.level >= 5/)
 })
 
 test('user page keeps dark theme contrast and UniApp-safe custom button rules', () => {

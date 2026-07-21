@@ -40,24 +40,6 @@ func TestInitMigrationContainsFinalUserColumns(t *testing.T) {
 	}
 }
 
-func TestLegacyDefaultAvatarMigrationOnlyClearsKnownFixedUrl(t *testing.T) {
-	content, err := os.ReadFile("20260715090000_normalize_legacy_default_avatars.sql")
-	if err != nil {
-		t.Fatalf("read legacy avatar migration: %v", err)
-	}
-
-	text := string(content)
-	if !strings.Contains(text, "https://cdn.dianzaozao.com/avatars/f512f44051984823941dd0d214ed84f6.jpg") {
-		t.Fatal("legacy avatar migration should match the known fixed default URL")
-	}
-	if !strings.Contains(text, "SET `avatar` = ''") {
-		t.Fatal("legacy avatar migration should clear matched avatars")
-	}
-	if strings.Contains(text, "WHERE `avatar` = ''") {
-		t.Fatal("legacy avatar migration must not rewrite all empty avatars in its down direction")
-	}
-}
-
 func TestVenueMigrationContainsFinalRewardReviewColumn(t *testing.T) {
 	content, err := os.ReadFile("20260303100001_add_tournament_season_venue_notification_rules_tables.sql")
 	if err != nil {

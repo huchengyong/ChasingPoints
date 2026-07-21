@@ -64,11 +64,9 @@
 
 			<template v-else>
 				<view class="profile-header">
-					<view class="profile-avatar" @click="handleEditProfile">
+					<view class="profile-avatar" :class="{ 'has-rank-frame': rankAvatarFrame }" @click="handleEditProfile">
 						<image class="profile-avatar-image" :src="userInfo.avatar" mode="aspectFill"></image>
-						<view v-if="isActiveMember" class="member-avatar-badge">
-							<text>♛</text>
-						</view>
+						<image v-if="rankAvatarFrame" class="profile-avatar-frame" :src="rankAvatarFrame" mode="aspectFit"></image>
 					</view>
 					<view class="profile-copy">
 						<text class="profile-name">{{ userInfo.nickname }}</text>
@@ -332,6 +330,7 @@ import { getUserRankInfo } from '@/api/rank.js'
 import { userWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import {
 	resolveGuestHeroCopy,
+	resolveMemberRankAvatarFrame,
 	resolveSectionTitles,
 	resolveStatusActionVisibility,
 	resolveUserHomepageModel
@@ -441,6 +440,13 @@ const metricCards = computed(() => homepageModel.value.metrics)
 const memberHeroStrip = computed(() => homepageModel.value.memberHeroStrip)
 const compactRewardEntry = computed(() => homepageModel.value.rewardEntry)
 const isActiveMember = computed(() => memberHeroStrip.value.state === 'active')
+const rankAvatarFrame = computed(() => resolveMemberRankAvatarFrame({
+	isLoggedIn: isLoggedIn.value,
+	memberStatus: memberStatus.value,
+	rankInfo: rankInfo.value,
+	rankLoading: rankLoading.value,
+	now: new Date()
+}))
 const favoriteVenueRewardPopupCopy = computed(() => resolveFavoriteVenueRewardPopupCopy(favoriteVenueRewardStatus.value || {}))
 const statusPlayers = computed(() => statusCard.value.players.map(player => ({
 	...player,
@@ -451,7 +457,7 @@ const showPrimaryStatusAction = computed(() => statusActionVisibility.value.show
 const showSecondaryStatusAction = computed(() => statusActionVisibility.value.showSecondary)
 
 const rankProgressText = computed(() => {
-	if (rankInfo.value?.level >= 5) return '已达到最高段位'
+	if (rankInfo.value?.level >= 6) return '已达到最高段位'
 	if (!rankInfo.value) return '完成首场比赛后开始定级'
 	return `进度 ${displayRank.value.progress}% · 下一段位 ${displayRank.value.nextName}`
 })

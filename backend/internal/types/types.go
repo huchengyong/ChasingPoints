@@ -1994,7 +1994,7 @@ type RankDetail struct {
 }
 
 type RankInfo struct {
-	Level       int    `json:"level"`        // 段位等级 1-5
+	Level       int    `json:"level"`        // 段位等级 1-6
 	Name        string `json:"name"`         // 段位名称
 	Icon        string `json:"icon"`         // 段位图标URL
 	RankScore   int    `json:"rank_score"`   // 当前排位分
