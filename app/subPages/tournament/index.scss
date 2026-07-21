@@ -177,34 +177,28 @@
 
 .card-chip,
 .status-tag {
-	padding: 8rpx 16rpx;
-	border-radius: 999rpx;
 	font-size: 22rpx;
+	font-weight: 500;
 }
 
 .game-chip {
 	color: #7c5b12;
-	background: rgba(224, 174, 18, 0.16);
 }
 
 .status-tag {
 	&.status-0 {
-		background: #e0f2fe;
 		color: #0369a1;
 	}
 
 	&.status-1 {
-		background: rgba(224, 174, 18, 0.16);
 		color: #C69200;
 	}
 
 	&.status-2 {
-		background: #f1f5f9;
 		color: #64748b;
 	}
 
 	&.status-3 {
-		background: #fee2e2;
 		color: #dc2626;
 	}
 }

@@ -223,7 +223,6 @@
 					<view class="reward-entry-copy">
 						<view class="reward-entry-heading">
 							<text class="reward-entry-title">{{ compactRewardEntry.title }}</text>
-							<text class="reward-entry-status">{{ compactRewardEntry.statusText }}</text>
 						</view>
 						<text class="reward-entry-description">{{ compactRewardEntry.description }}</text>
 					</view>

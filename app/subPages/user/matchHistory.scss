@@ -144,36 +144,28 @@ $border-color-dark: #334155;
 
     .game-type-tag {
         flex-shrink: 0;
-        padding: 4rpx 16rpx;
-        border-radius: 999rpx;
 
         text {
             font-size: 22rpx;
-            font-weight: 600;
+            font-weight: 500;
         }
 
-        // 中式八球 - 蓝色
+        // 中式八球
         &.chinese-8ball {
-            background-color: rgba(224, 174, 18, 0.15);
-
             text {
                 color: #C69200;
             }
         }
 
-        // 九球 - 绿色
+        // 九球
         &.american-9ball {
-            background-color: rgba(34, 197, 94, 0.15);
-
             text {
                 color: #22c55e;
             }
         }
 
-        // 斯诺克 - 红色
+        // 斯诺克
         &.snooker {
-            background-color: rgba(239, 68, 68, 0.15);
-
             text {
                 color: #ef4444;
             }

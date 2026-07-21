@@ -97,9 +97,6 @@ $success: #1bb56b;
 
 .status-chip {
 	min-width: 0;
-	padding: 10rpx 16rpx;
-	border-radius: 999rpx;
-	background: $surface-light;
 	display: inline-flex;
 	align-items: center;
 	gap: 10rpx;
@@ -114,13 +111,11 @@ $success: #1bb56b;
 
 	&__text {
 		font-size: 20rpx;
-		font-weight: 600;
+		font-weight: 500;
 		color: $text-primary-light;
 	}
 
 	&.syncing {
-		background: rgba(247, 201, 72, 0.15);
-
 		.status-chip__dot {
 			background: $gold;
 			box-shadow: 0 0 0 8rpx rgba(247, 201, 72, 0.16);
@@ -170,10 +165,6 @@ $success: #1bb56b;
 }
 
 .viewer-banner__action {
-	height: 60rpx;
-	line-height: 60rpx;
-	padding: 0 18rpx;
-	border-radius: 999rpx;
 	background: transparent;
 
 	&::after {
@@ -182,7 +173,7 @@ $success: #1bb56b;
 
 	color: $text-secondary-light;
 	font-size: 22rpx;
-	font-weight: 600;
+	font-weight: 500;
 }
 
 .readonly-panel {
@@ -514,22 +505,17 @@ $success: #1bb56b;
 }
 
 .snooker-red-counter {
-	padding: 10rpx 18rpx;
-	border-radius: 999rpx;
 	font-size: 22rpx;
-	font-weight: 700;
+	font-weight: 500;
 	line-height: 1;
 	color: #b45309;
-	background: rgba(245, 158, 11, 0.12);
 
 	&.is-warning {
 		color: #c2410c;
-		background: rgba(249, 115, 22, 0.14);
 	}
 
 	&.is-finished {
 		color: #b91c1c;
-		background: rgba(239, 68, 68, 0.14);
 	}
 }
 
@@ -725,23 +711,18 @@ $success: #1bb56b;
 .action-column__title {
 	display: inline-flex;
 	align-items: center;
-	justify-content: center;
 	align-self: flex-start;
-	padding: 8rpx 16rpx;
-	border-radius: 999rpx;
 	font-size: 20rpx;
-	font-weight: 700;
+	font-weight: 500;
 	line-height: 1;
 	letter-spacing: 1rpx;
 
 	&.is-me {
 		color: $me-primary;
-		background: rgba(11, 122, 255, 0.08);
 	}
 
 	&.is-opponent {
 		color: $opponent-primary;
-		background: rgba(255, 123, 84, 0.08);
 	}
 }
 

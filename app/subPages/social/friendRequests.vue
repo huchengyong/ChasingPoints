@@ -302,21 +302,15 @@ onPullDownRefresh(() => {
 			.status-text {
 				display: inline-flex;
 				align-items: center;
-				justify-content: center;
-				padding: 0 20rpx;
-				height: 52rpx;
-				border-radius: 999rpx;
 				font-size: 22rpx;
-				font-weight: 600;
+				font-weight: 500;
 
 				&.accepted {
 					color: #0f766e;
-					background: rgba(15, 118, 110, 0.1);
 				}
 
 				&.rejected {
 					color: #94a3b8;
-					background: #f8fafc;
 				}
 			}
 		}

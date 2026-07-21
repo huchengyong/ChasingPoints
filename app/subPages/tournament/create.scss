@@ -174,25 +174,21 @@
 .label-required,
 .label-optional,
 .label-complete {
-	padding: 6rpx 14rpx;
-	border-radius: 999rpx;
 	font-size: 20rpx;
 	line-height: 1;
+	font-weight: 500;
 }
 
 .label-required {
 	color: #7c5b12;
-	background: rgba(224, 174, 18, 0.16);
 }
 
 .label-optional {
 	color: #64748b;
-	background: #e2e8f0;
 }
 
 .label-complete {
 	color: #047857;
-	background: rgba(224, 174, 18, 0.16);
 }
 
 .form-input,

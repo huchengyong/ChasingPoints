@@ -614,12 +614,10 @@ onShow(() => {
 		.report-link {
 			display: inline-flex;
 			align-items: center;
-			padding: 10rpx 18rpx;
-			border-radius: 999rpx;
-			background: rgba(224, 174, 18, 0.12);
 
 			text {
 				font-size: 22rpx;
+				font-weight: 500;
 				color: #C69200;
 			}
 		}

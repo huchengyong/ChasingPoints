@@ -82,7 +82,12 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
 			&__desc, &__eyebrow { color: $text-secondary-dark; }
 		}
 
-        .quick-link,
+        .quick-link {
+            text {
+                color: $text-secondary-dark;
+            }
+        }
+
         .secondary-link {
             text {
                 color: $text-secondary-dark;
@@ -138,7 +143,7 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
 	align-items: center;
 	justify-content: space-between;
 	gap: 24rpx;
-	margin: 24rpx 32rpx;
+	margin: 0 0 24rpx 0;
 	padding: 28rpx;
 	border-radius: 24rpx;
 	background: linear-gradient(135deg, #fff9e8, #ffffff);
@@ -455,19 +460,10 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
 
 .quick-link {
     flex: 0 0 auto;
-    height: 68rpx;
-    line-height: 68rpx;
-    padding: 0 20rpx;
-    border-radius: 999rpx;
-    background-color: transparent;
-
-    &::after {
-        display: none;
-    }
 
     text {
         font-size: 24rpx;
-        font-weight: 600;
+        font-weight: 500;
         color: $text-secondary-light;
     }
 }
@@ -630,23 +626,18 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
 .game-type-tag {
     display: inline-flex;
     align-items: center;
-    padding: 8rpx 20rpx;
-    border-radius: 999rpx;
     font-size: 24rpx;
-    font-weight: 600;
+    font-weight: 500;
 
     &.chinese-8ball {
-        background-color: rgba(224, 174, 18, 0.16);
         color: $primary-color;
     }
 
     &.american-9ball {
-        background-color: rgba(34, 197, 94, 0.2);
         color: #4ade80;
     }
 
     &.snooker {
-        background-color: rgba(239, 68, 68, 0.2);
         color: #f87171;
     }
 }

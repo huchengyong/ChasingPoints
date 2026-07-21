@@ -353,6 +353,12 @@ test('home page hides the common tools section after moving tools to user servic
   assert.doesNotMatch(homeIndexVueSource, /label: '规则说明'/)
 })
 
+test('home mini program leaves the capsule area clear without a duplicate notification button', () => {
+  assert.match(homeIndexVueSource, /<!-- #ifndef MP-WEIXIN -->\s*<view class="header-right"/)
+  assert.doesNotMatch(homeIndexVueSource, /navHeaderStyle/)
+  assert.doesNotMatch(homeIndexVueSource, /getMenuButtonBoundingClientRect/)
+})
+
 test('shouldShowHomeToolEdgeMask stays visible until the carousel reaches the right edge', () => {
   assert.equal(shouldShowHomeToolEdgeMask({ maxScrollLeft: 180, scrollLeft: 0 }), true)
   assert.equal(shouldShowHomeToolEdgeMask({ maxScrollLeft: 180, scrollLeft: 96 }), true)

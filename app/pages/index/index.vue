@@ -8,12 +8,14 @@
           <text class="title">追分</text>
           <text class="subtitle">{{ headerSubtitle }}</text>
         </view>
+        <!-- #ifndef MP-WEIXIN -->
         <view class="header-right" @tap="goNotification">
           <uni-icons type="chat" size="22" :color="isDarkMode ? '#e2e8f0' : '#1e293b'"></uni-icons>
           <view v-if="notificationStore.unreadCount > 0" class="header-badge">
             <text>{{ notificationStore.unreadCount > 99 ? '99+' : notificationStore.unreadCount }}</text>
           </view>
         </view>
+        <!-- #endif -->
       </view>
     </view>
 
@@ -215,7 +217,7 @@ const userStore = useUserStore()
 const { isDarkMode } = usePageTheme()
 const notificationStore = useNotificationStore()
 
-const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight)
+const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const userId = computed(() => userStore.userId)
 const userName = computed(() => userStore.nickname || '球友')
