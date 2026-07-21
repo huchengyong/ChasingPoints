@@ -55,11 +55,18 @@ func buildCurrentMatchInfo(svcCtx *svc.ServiceContext, userId int64, match *mode
 	opponentName := player2Name
 	opponentAvatar := player2Avatar
 	refereeName := ""
+	refereeAvatar := ""
+	refereeJoinedAt := ""
 
 	if capabilities.RefereeBound && svcCtx != nil && svcCtx.UserModel != nil {
 		if referee, err := svcCtx.UserModel.FindById(capabilities.RefereeUserId); err == nil && referee != nil {
 			refereeName = referee.Nickname
+			refereeAvatar = referee.Avatar
 		}
+	}
+
+	if match.RefereeJoinedAt != nil {
+		refereeJoinedAt = match.RefereeJoinedAt.Format("2006-01-02T15:04:05+08:00")
 	}
 
 	if capabilities.ViewerRole != matchViewerRoleReferee && !isPlayer1 {
@@ -77,6 +84,23 @@ func buildCurrentMatchInfo(svcCtx *svc.ServiceContext, userId int64, match *mode
 		durationSeconds = 0
 	}
 
+	refereeDurationSeconds := int64(0)
+	if match.RefereeJoinedAt != nil {
+		if match.EndTime != nil {
+			refereeDurationSeconds = int64(match.EndTime.Sub(*match.RefereeJoinedAt).Seconds())
+		} else {
+			refereeDurationSeconds = int64(time.Since(*match.RefereeJoinedAt).Seconds())
+		}
+		if refereeDurationSeconds < 0 {
+			refereeDurationSeconds = 0
+		}
+	}
+
+	completedByUserId := int64(0)
+	if match.CompletedByUserId != nil {
+		completedByUserId = *match.CompletedByUserId
+	}
+
 	return &types.CurrentMatchInfo{
 		Id:                        match.Id,
 		GameType:                  match.GameType,
@@ -90,6 +114,11 @@ func buildCurrentMatchInfo(svcCtx *svc.ServiceContext, userId int64, match *mode
 		RefereeBound:              capabilities.RefereeBound,
 		RefereeUserId:             capabilities.RefereeUserId,
 		RefereeName:               refereeName,
+		RefereeAvatar:             refereeAvatar,
+		RefereeJoinedAt:           refereeJoinedAt,
+		RefereeDurationSeconds:    refereeDurationSeconds,
+		CompletedByUserId:         completedByUserId,
+		CompletionSource:          match.CompletionSource,
 		CanScore:                  capabilities.CanScore,
 		CanUndo:                   capabilities.CanUndo,
 		CanFinish:                 capabilities.CanFinish,

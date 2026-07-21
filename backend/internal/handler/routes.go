@@ -629,10 +629,22 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: match.GetMatchQRCodeHandler(serverCtx),
 			},
 			{
+				// 获取裁判历史
+				Method:  http.MethodGet,
+				Path:    "/referee/history",
+				Handler: match.GetRefereeHistoryHandler(serverCtx),
+			},
+			{
 				// 扫码加入并担任本场裁判
 				Method:  http.MethodPost,
 				Path:    "/referee/join",
 				Handler: match.JoinMatchRefereeHandler(serverCtx),
+			},
+			{
+				// 裁判码预览
+				Method:  http.MethodPost,
+				Path:    "/referee/preview",
+				Handler: match.RefereePreviewHandler(serverCtx),
 			},
 			{
 				// 获取本场裁判二维码

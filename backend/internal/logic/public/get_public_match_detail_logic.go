@@ -57,6 +57,39 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 		}
 	}
 
+	// 裁判信息（仅公开对局可见）
+	refereeBound := match.RefereeUserId != nil && *match.RefereeUserId > 0
+	refereeUserId := int64(0)
+	refereeName := ""
+	refereeAvatar := ""
+	refereeJoinedAt := ""
+	if refereeBound {
+		refereeUserId = *match.RefereeUserId
+		if referee, _ := l.svcCtx.UserModel.FindById(*match.RefereeUserId); referee != nil {
+			refereeName = referee.Nickname
+			refereeAvatar = referee.Avatar
+		}
+		if match.RefereeJoinedAt != nil {
+			refereeJoinedAt = match.RefereeJoinedAt.Format("2006-01-02T15:04:05+08:00")
+		}
+	}
+	completedByUserId := int64(0)
+	if match.CompletedByUserId != nil {
+		completedByUserId = *match.CompletedByUserId
+	}
+
+	refereeDurationSeconds := int64(0)
+	if refereeBound && match.RefereeJoinedAt != nil {
+		if match.EndTime != nil {
+			refereeDurationSeconds = int64(match.EndTime.Sub(*match.RefereeJoinedAt).Seconds())
+		} else {
+			refereeDurationSeconds = int64(time.Since(*match.RefereeJoinedAt).Seconds())
+		}
+		if refereeDurationSeconds < 0 {
+			refereeDurationSeconds = 0
+		}
+	}
+
 	// 计算对局持续时间（秒）
 	var durationSeconds int64 = 0
 	if match.Status == 1 { // 进行中
@@ -108,6 +141,15 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 			Player2Id:                player2Id,
 			Player2Name:              player2Name,
 			Player2Avatar:            player2Avatar,
+			RefereeBound:             refereeBound,
+			RefereeUserId:            refereeUserId,
+			RefereeName:              refereeName,
+			RefereeAvatar:            refereeAvatar,
+			RefereeJoinedAt:          refereeJoinedAt,
+			RefereeDurationSeconds:   refereeDurationSeconds,
+			CompletedByUserId:        completedByUserId,
+			CompletionSource:         match.CompletionSource,
+			ViewerRole:               "spectator",
 			Player1Score:             match.MyScore,
 			Player2Score:             match.OpponentScore,
 			CurrentFramePlayer1Score: match.CurrentFrameMyScore,

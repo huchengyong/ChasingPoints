@@ -758,6 +758,10 @@ type CurrentMatchInfo struct {
 	RefereeBound              bool             `json:"referee_bound,optional"`
 	RefereeUserId             int64            `json:"referee_user_id,optional"`
 	RefereeName               string           `json:"referee_name,optional"`
+	RefereeAvatar             string           `json:"referee_avatar,optional"`
+	RefereeJoinedAt           string           `json:"referee_joined_at,optional"`
+	CompletedByUserId         int64            `json:"completed_by_user_id,optional"`
+	CompletionSource          string           `json:"completion_source,optional"`
 	CanScore                  bool             `json:"can_score,optional"`
 	CanUndo                   bool             `json:"can_undo,optional"`
 	CanFinish                 bool             `json:"can_finish,optional"`
@@ -783,7 +787,8 @@ type CurrentMatchInfo struct {
 	CurrentRound              int              `json:"current_round"`
 	ServerRevision            int64            `json:"server_revision"`
 	MatchTime                 string           `json:"match_time"`
-	DurationSeconds           int64            `json:"duration_seconds"` // 对局已持续秒数
+	DurationSeconds           int64            `json:"duration_seconds"`                  // 对局已持续秒数
+	RefereeDurationSeconds    int64            `json:"referee_duration_seconds,optional"` // 裁判执裁时长
 }
 
 type DeleteFriendReq struct {
@@ -912,6 +917,8 @@ type FinishMatchActionResp struct {
 	Success           bool              `json:"success"`
 	Action            string            `json:"action,optional"`
 	Message           string            `json:"message,optional"`
+	CompletedByUserId int64             `json:"completed_by_user_id,optional"`
+	CompletionSource  string            `json:"completion_source,optional"`
 	ClientActionId    string            `json:"client_action_id,optional"`
 	ServerRevision    int64             `json:"server_revision"`
 	FinishState       string            `json:"finish_state,optional"`
@@ -927,15 +934,18 @@ type FinishMatchReq struct {
 }
 
 type FinishMatchResp struct {
-	Accepted       bool              `json:"accepted"`
-	Success        bool              `json:"success"`
-	Message        string            `json:"message,optional"`
-	Result         int               `json:"result"` // 1=胜利 2=失败 3=平局
-	ClientActionId string            `json:"client_action_id,optional"`
-	ServerRevision int64             `json:"server_revision"`
-	Snapshot       MatchSyncSnapshot `json:"snapshot"`
-	MyScore        int               `json:"my_score"`
-	OpponentScore  int               `json:"opponent_score"`
+	Accepted          bool              `json:"accepted"`
+	Success           bool              `json:"success"`
+	Message           string            `json:"message,optional"`
+	ViewerRole        string            `json:"viewer_role,optional"`
+	CompletedByUserId int64             `json:"completed_by_user_id,optional"`
+	CompletionSource  string            `json:"completion_source,optional"`
+	Result            int               `json:"result"` // 1=胜利 2=失败 3=平局
+	ClientActionId    string            `json:"client_action_id,optional"`
+	ServerRevision    int64             `json:"server_revision"`
+	Snapshot          MatchSyncSnapshot `json:"snapshot"`
+	MyScore           int               `json:"my_score"`
+	OpponentScore     int               `json:"opponent_score"`
 }
 
 type FollowReq struct {
@@ -1645,6 +1655,11 @@ type MatchDetailData struct {
 	RefereeBound                  bool               `json:"referee_bound,optional"`
 	RefereeUserId                 int64              `json:"referee_user_id,optional"`
 	RefereeName                   string             `json:"referee_name,optional"`
+	RefereeAvatar                 string             `json:"referee_avatar,optional"`
+	RefereeJoinedAt               string             `json:"referee_joined_at,optional"`
+	RefereeDurationSeconds        int64              `json:"referee_duration_seconds,optional"`
+	CompletedByUserId             int64              `json:"completed_by_user_id,optional"`
+	CompletionSource              string             `json:"completion_source,optional"`
 	CanScore                      bool               `json:"can_score,optional"`
 	CanUndo                       bool               `json:"can_undo,optional"`
 	CanFinish                     bool               `json:"can_finish,optional"`
@@ -1789,6 +1804,11 @@ type MatchSyncSnapshot struct {
 	RefereeBound                  bool             `json:"referee_bound,optional"`
 	RefereeUserId                 int64            `json:"referee_user_id,optional"`
 	RefereeName                   string           `json:"referee_name,optional"`
+	RefereeAvatar                 string           `json:"referee_avatar,optional"`
+	RefereeJoinedAt               string           `json:"referee_joined_at,optional"`
+	CompletedByUserId             int64            `json:"completed_by_user_id,optional"`
+	CompletionSource              string           `json:"completion_source,optional"`
+	RefereeDurationSeconds        int64            `json:"referee_duration_seconds,optional"`
 	CanScore                      bool             `json:"can_score,optional"`
 	CanUndo                       bool             `json:"can_undo,optional"`
 	CanFinish                     bool             `json:"can_finish,optional"`
@@ -1937,6 +1957,14 @@ type PublicMatchDetailData struct {
 	Player2Id                int64         `json:"player2_id"`
 	Player2Name              string        `json:"player2_name"`
 	Player2Avatar            string        `json:"player2_avatar"`
+	RefereeBound             bool          `json:"referee_bound,optional"`
+	RefereeUserId            int64         `json:"referee_user_id,optional"`
+	RefereeName              string        `json:"referee_name,optional"`
+	RefereeAvatar            string        `json:"referee_avatar,optional"`
+	RefereeJoinedAt          string        `json:"referee_joined_at,optional"`
+	CompletedByUserId        int64         `json:"completed_by_user_id,optional"`
+	CompletionSource         string        `json:"completion_source,optional"`
+	ViewerRole               string        `json:"viewer_role,optional"`
 	Player1Score             int           `json:"player1_score"`
 	Player2Score             int           `json:"player2_score"`
 	CurrentFramePlayer1Score int           `json:"current_frame_player1_score,optional"`
@@ -2013,6 +2041,68 @@ type RankItem struct {
 	Icon      string `json:"icon"`
 	MinScore  int    `json:"min_score"`  // 晋升最低分
 	IsCurrent bool   `json:"is_current"` // 是否当前段位
+}
+
+type RefereeHistoryItem struct {
+	Id                     int64  `json:"id"`
+	Player1Id              int64  `json:"player1_id"`
+	Player1Name            string `json:"player1_name"`
+	Player1Avatar          string `json:"player1_avatar"`
+	Player2Id              int64  `json:"player2_id"`
+	Player2Name            string `json:"player2_name"`
+	Player2Avatar          string `json:"player2_avatar"`
+	Player1Score           int    `json:"player1_score"`
+	Player2Score           int    `json:"player2_score"`
+	GameType               int    `json:"game_type"`
+	GameTypeName           string `json:"game_type_name"`
+	MatchMode              string `json:"match_mode,optional"`
+	Visibility             string `json:"visibility,optional"`
+	Status                 int    `json:"status"`
+	StatusText             string `json:"status_text"`
+	RefereeJoinedAt        string `json:"referee_joined_at,optional"`
+	EndTime                string `json:"end_time,optional"`
+	RefereeDurationSeconds int64  `json:"referee_duration_seconds"`
+	CompletedByUserId      int64  `json:"completed_by_user_id,optional"`
+	CompletionSource       string `json:"completion_source,optional"`
+}
+
+type RefereeHistoryReq struct {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+}
+
+type RefereeHistoryResp struct {
+	Success bool                 `json:"success"`
+	Total   int64                `json:"total"`
+	List    []RefereeHistoryItem `json:"list"`
+}
+
+type RefereePreviewInfo struct {
+	Player1Id     int64  `json:"player1_id"`
+	Player1Name   string `json:"player1_name"`
+	Player1Avatar string `json:"player1_avatar"`
+	Player2Id     int64  `json:"player2_id"`
+	Player2Name   string `json:"player2_name"`
+	Player2Avatar string `json:"player2_avatar"`
+	Player1Score  int    `json:"player1_score"`
+	Player2Score  int    `json:"player2_score"`
+	GameType      int    `json:"game_type"`
+	GameTypeName  string `json:"game_type_name"`
+	MatchMode     string `json:"match_mode,optional"`
+	Visibility    string `json:"visibility,optional"`
+	Status        int    `json:"status"`
+	StatusText    string `json:"status_text"`
+}
+
+type RefereePreviewReq struct {
+	MatchId   int64  `json:"match_id"`
+	JoinToken string `json:"join_token"`
+}
+
+type RefereePreviewResp struct {
+	Success bool                `json:"success"`
+	Message string              `json:"message,optional"`
+	Preview *RefereePreviewInfo `json:"preview,optional"`
 }
 
 type RefreshTokenReq struct {

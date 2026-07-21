@@ -1,6 +1,8 @@
 package match
 
 import (
+	"time"
+
 	"chasing_points/internal/model"
 	"chasing_points/internal/types"
 )
@@ -28,6 +30,18 @@ func buildMatchSyncSnapshotForUser(userId int64, match *model.Match, completedRo
 		currentRound = int(completedRoundCount)
 	}
 
+	refereeDurationSeconds := int64(0)
+	if match.RefereeJoinedAt != nil {
+		if match.EndTime != nil {
+			refereeDurationSeconds = int64(match.EndTime.Sub(*match.RefereeJoinedAt).Seconds())
+		} else {
+			refereeDurationSeconds = int64(time.Since(*match.RefereeJoinedAt).Seconds())
+		}
+		if refereeDurationSeconds < 0 {
+			refereeDurationSeconds = 0
+		}
+	}
+
 	return types.MatchSyncSnapshot{
 		MatchId:                       match.Id,
 		Status:                        match.Status,
@@ -39,6 +53,9 @@ func buildMatchSyncSnapshotForUser(userId int64, match *model.Match, completedRo
 		ViewerRole:                    capabilities.ViewerRole,
 		RefereeBound:                  capabilities.RefereeBound,
 		RefereeUserId:                 capabilities.RefereeUserId,
+		CompletedByUserId:             resolveCompletedByUserId(match),
+		CompletionSource:              match.CompletionSource,
+		RefereeDurationSeconds:        refereeDurationSeconds,
 		CanScore:                      capabilities.CanScore,
 		CanUndo:                       capabilities.CanUndo,
 		CanFinish:                     capabilities.CanFinish,

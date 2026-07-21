@@ -347,6 +347,7 @@ const isLeavingPlayingPage = ref(false)
 let syncTimeoutId = null // 同步超时定时器
 let wsHandlersReady = false
 const resultNavigationState = { hasNavigatedToResult: false }
+const pendingFinishAction = ref(null) // 裁判结束确认的回退 action
 
 const pageLog = (message, payload) => {
 	if (payload === undefined) {
@@ -1490,68 +1491,100 @@ const handleWithdrawFinish = async () => {
 /**
  * 结束对局
  */
-const handleFinishMatch = () => {
-	if (!ensureViewerCapability(canFinish.value, '当前只有裁判可以结束对局')) return
-	const finishAction = gameType.value === 1
-		? resolveSnookerFinishMatchAction({
-			currentFrameStarted: currentFrameStarted.value,
-			myFrameScore: currentFrameMyScore.value,
-			opponentFrameScore: currentFrameOpponentScore.value
-		})
-		: { action: 'finish_match' }
-	if (finishAction.action === 'blocked') {
-		uni.showToast({ title: finishAction.message, icon: 'none' })
-		return
+	const executeFinishMatch = async (finishAction) => {
+		try {
+			showSyncLoading()
+			if (finishAction.action === 'settle_and_finish_match') {
+				const settleRes = await endRound(buildActionRequest({
+					match_id: matchId.value,
+					winner: convertActor(finishAction.winner),
+					win_type: 'normal',
+					score: 1
+				}))
+				if (!settleRes?.success) {
+					applyWriteResponse(settleRes)
+					hideSyncLoading()
+					uni.showToast({ title: settleRes?.message || '本局结算失败', icon: 'none' })
+					return
+				}
+				applyWriteResponse(settleRes)
+			}
+
+			const res = await finishMatch(buildActionRequest({
+				match_id: matchId.value
+			}))
+			if (!res?.success) {
+				applyWriteResponse(res)
+				hideSyncLoading()
+				if (res?.message && res.message.indexOf('revision') !== -1) {
+					uni.showToast({ title: '比分已变化，请重新核对后完成', icon: 'none' })
+				} else {
+					uni.showToast({ title: res?.message || '操作失败', icon: 'none' })
+				}
+				pendingFinishAction.value = null
+				return
+			}
+			applyWriteResponse(res)
+			hideSyncLoading()
+			pendingFinishAction.value = null
+			pageLog('结束对局HTTP成功', { matchId: matchId.value })
+			navigateToResultOnce()
+		} catch (error) {
+			hideSyncLoading()
+			pendingFinishAction.value = null
+			console.error('[MatchPlaying] 结束对局失败', { matchId: matchId.value, error })
+			uni.showToast({ title: '操作失败', icon: 'none' })
+		}
 	}
 
-	const finishContent = finishAction.action === 'settle_and_finish_match'
-		? `确定要结束本次对局吗？将按当前局比分 ${currentFrameMyScore.value}:${currentFrameOpponentScore.value} 自动判定${finishAction.winner === 1 ? '我方' : '对手'}赢下本局后，再结束整场对局。`
-		: '确定要结束本次对局吗？'
-	uni.showModal({
-		title: '确认结束',
-		content: finishContent,
-		success: async (res) => {
-			if (res.confirm) {
-				try {
-					showSyncLoading()
-					if (finishAction.action === 'settle_and_finish_match') {
-						const settleRes = await endRound(buildActionRequest({
-							match_id: matchId.value,
-							winner: convertActor(finishAction.winner),
-							win_type: 'normal',
-							score: 1
-						}))
-						if (!settleRes?.success) {
-							applyWriteResponse(settleRes)
-							hideSyncLoading()
-							uni.showToast({ title: settleRes?.message || '本局结算失败', icon: 'none' })
-							return
-						}
-						applyWriteResponse(settleRes)
-					}
+const handleFinishMatch = () => {
+		if (!ensureViewerCapability(canFinish.value, '当前只有裁判可以结束对局')) return
+		const finishAction = gameType.value === 1
+			? resolveSnookerFinishMatchAction({
+				currentFrameStarted: currentFrameStarted.value,
+				myFrameScore: currentFrameMyScore.value,
+				opponentFrameScore: currentFrameOpponentScore.value
+			})
+			: { action: 'finish_match' }
+		if (finishAction.action === 'blocked') {
+			uni.showToast({ title: finishAction.message, icon: 'none' })
+			return
+		}
 
-					const res = await finishMatch(buildActionRequest({
-						match_id: matchId.value
-					}))
-					if (!res?.success) {
-						applyWriteResponse(res)
-						hideSyncLoading()
-						uni.showToast({ title: res?.message || '操作失败', icon: 'none' })
+		pendingFinishAction.value = finishAction
+
+		// 裁判视角：显示最终比分确认面板
+		if (viewerRole.value === 'referee') {
+			const confirmContent = '双方最终比分：' + myScore.value + ' : ' + opponentScore.value + '\n\n完成后立即结算且无需选手确认'
+			uni.showModal({
+				title: '确认最终比分并完成结算',
+				content: confirmContent,
+				cancelText: '继续记分',
+				confirmText: '确认完成',
+				success: async ({ confirm }) => {
+					if (!confirm) {
+						pendingFinishAction.value = null
 						return
 					}
-					applyWriteResponse(res)
-					hideSyncLoading()
-					pageLog('结束对局HTTP成功', { matchId: matchId.value })
-					navigateToResultOnce()
-				} catch (error) {
-					hideSyncLoading()
-					console.error('[MatchPlaying] 结束对局失败', { matchId: matchId.value, error })
-					uni.showToast({ title: '操作失败', icon: 'none' })
+					await executeFinishMatch(finishAction)
 				}
-			}
+			})
+			return
 		}
-	})
-}
+
+		// 选手视角：普通确认
+		const finishContent = finishAction.action === 'settle_and_finish_match'
+			? '确定要结束本次对局吗？\n\n按当前局比分自动判定后结束'
+			: '确定要结束本次对局吗？'
+		uni.showModal({
+			title: '确认结束',
+			content: finishContent,
+			success: async ({ confirm }) => {
+				if (!confirm) return
+				await executeFinishMatch(finishAction)
+			}
+		})
+	}
 
 /**
  * 返回

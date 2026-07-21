@@ -125,7 +125,7 @@
 				{
 					"path": "matchHistory",
 					"style": {
-						"navigationBarTitleText": "比赛记录"
+						"navigationBarTitleText": "对局记录"
 					}
 				},
 				{

@@ -303,12 +303,23 @@ func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, user
 	}, nil
 }
 
+func resolveCompletedByUserId(match *model.Match) int64 {
+	if match == nil || match.CompletedByUserId == nil {
+		return 0
+	}
+	return *match.CompletedByUserId
+}
+
 type finishMatchSettlement struct {
 	Result         int
 	ServerRevision int64
 }
 
 func (l *FinishMatchLogic) settleMatchWithTx(tx *gorm.DB, match *model.Match, userId int64, req *types.FinishMatchReq) (finishMatchSettlement, error) {
+	return l.settleMatchWithCompletionSourceTx(tx, match, userId, req, "")
+}
+
+func (l *FinishMatchLogic) settleMatchWithCompletionSourceTx(tx *gorm.DB, match *model.Match, userId int64, req *types.FinishMatchReq, completionSource string) (finishMatchSettlement, error) {
 	if match == nil || match.Status != 1 || req == nil {
 		return finishMatchSettlement{}, errFinishActionInvalid
 	}
@@ -324,6 +335,21 @@ func (l *FinishMatchLogic) settleMatchWithTx(tx *gorm.DB, match *model.Match, us
 	match.Result = &result
 	match.EndTime = &now
 	clearFinishRequest(match)
+
+	// 写入完成归因
+	if match.CompletedByUserId == nil {
+		completedBy := &userId
+		source := completionSource
+		if match.RefereeUserId != nil && *match.RefereeUserId > 0 {
+			completedBy = match.RefereeUserId
+			source = model.CompletionSourceReferee
+		}
+		if source == "" {
+			source = model.CompletionSourcePlayerDirect
+		}
+		match.CompletedByUserId = completedBy
+		match.CompletionSource = source
+	}
 	if match.GameType == 1 {
 		match.CurrentFrameStarted = false
 		match.CurrentFrameMyScore = 0

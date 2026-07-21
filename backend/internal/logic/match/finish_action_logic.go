@@ -134,11 +134,11 @@ func handleConfirmedFinishAction(ctx context.Context, svcCtx *svc.ServiceContext
 		}, confirmRevision); err != nil {
 			return err
 		}
-		settlement, err = NewFinishMatchLogic(ctx, svcCtx).settleMatchWithTx(tx, locked, userId, &types.FinishMatchReq{
+		settlement, err = NewFinishMatchLogic(ctx, svcCtx).settleMatchWithCompletionSourceTx(tx, locked, userId, &types.FinishMatchReq{
 			MatchId:        req.MatchId,
 			ClientActionId: req.ClientActionId + ":settle",
 			BaseRevision:   confirmRevision,
-		})
+		}, model.CompletionSourcePlayerConfirmed)
 		return err
 	})
 	if err != nil {

@@ -1,6 +1,7 @@
 package match
 
 import (
+	"time"
 	"context"
 
 	"chasing_points/internal/model"
@@ -78,10 +79,34 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 		}
 	}
 	refereeName := ""
+	refereeAvatar := ""
+	refereeJoinedAt := ""
 	if capabilities.RefereeBound && capabilities.RefereeUserId > 0 {
 		if referee, err := l.svcCtx.UserModel.FindById(capabilities.RefereeUserId); err == nil && referee != nil {
 			refereeName = referee.Nickname
+			refereeAvatar = referee.Avatar
 		}
+	}
+
+	if match.RefereeJoinedAt != nil {
+		refereeJoinedAt = match.RefereeJoinedAt.Format("2006-01-02T15:04:05+08:00")
+	}
+
+	refereeDurationSeconds := int64(0)
+	if match.RefereeJoinedAt != nil {
+		if match.EndTime != nil {
+			refereeDurationSeconds = int64(match.EndTime.Sub(*match.RefereeJoinedAt).Seconds())
+		} else {
+			refereeDurationSeconds = int64(time.Since(*match.RefereeJoinedAt).Seconds())
+		}
+		if refereeDurationSeconds < 0 {
+			refereeDurationSeconds = 0
+		}
+	}
+
+	completedByUserId := int64(0)
+	if match.CompletedByUserId != nil {
+		completedByUserId = *match.CompletedByUserId
 	}
 
 	if capabilities.ViewerRole == matchViewerRoleReferee || isPlayer1 {
@@ -255,6 +280,11 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			RefereeBound:                  capabilities.RefereeBound,
 			RefereeUserId:                 capabilities.RefereeUserId,
 			RefereeName:                   refereeName,
+			RefereeAvatar:                 refereeAvatar,
+			RefereeJoinedAt:               refereeJoinedAt,
+			RefereeDurationSeconds:        refereeDurationSeconds,
+			CompletedByUserId:             completedByUserId,
+			CompletionSource:              match.CompletionSource,
 			CanScore:                      capabilities.CanScore,
 			CanUndo:                       capabilities.CanUndo,
 			CanFinish:                     capabilities.CanFinish,
