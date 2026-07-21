@@ -451,7 +451,7 @@ const rankProgressText = computed(() => {
 })
 
 const quickActions = computed(() => ([
-	{ label: '比赛记录', icon: 'list', iconColor: '#b77908', iconClass: 'gold', handler: handleMatchHistory },
+	{ label: '对局记录', icon: 'list', iconColor: '#b77908', iconClass: 'gold', handler: handleMatchHistory },
 	{ label: '过往对手', icon: 'contact', iconColor: '#2563eb', iconClass: 'blue', handler: handleOpponentRecord },
 	{ label: '荣誉墙', icon: 'medal', iconColor: '#7c3aed', iconClass: 'purple', handler: handleAchievement },
 	{ label: '好友', icon: 'person-filled', iconColor: '#0f766e', iconClass: 'teal', handler: handleFriendList }

@@ -289,8 +289,237 @@ $border-color-dark: #334155;
 }
 
 // ========== 深色模式适配 ==========
+// ========== Tab Bar ==========
+.tab-bar {
+    display: flex;
+    padding: 16rpx 32rpx;
+    gap: 16rpx;
+    background-color: $bg-light;
+    transition: background-color 0.3s ease;
+}
+
+.tab-item {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20rpx 0;
+    border-radius: 16rpx;
+    font-size: 30rpx;
+    font-weight: 500;
+    color: $text-secondary-light;
+    background-color: transparent;
+    transition: all 0.2s ease;
+
+    &.active {
+        color: #0f172a;
+        background-color: $primary-color;
+        font-weight: 600;
+    }
+}
+
+// ========== Continue Referee Card ==========
+.continue-referee-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28rpx 32rpx;
+    margin-bottom: 24rpx;
+    background: linear-gradient(135deg, rgba(224, 174, 18, 0.12) 0%, rgba(224, 174, 18, 0.06) 100%);
+    border: 2rpx solid rgba(224, 174, 18, 0.3);
+    border-radius: 20rpx;
+
+    .continue-left {
+        display: flex;
+        align-items: center;
+        gap: 12rpx;
+    }
+
+    .continue-text {
+        font-size: 30rpx;
+        font-weight: 600;
+        color: $primary-color;
+    }
+
+    .continue-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4rpx;
+    }
+
+    .continue-players {
+        font-size: 24rpx;
+        color: $text-secondary-light;
+    }
+
+    .continue-score {
+        font-size: 28rpx;
+        font-weight: 600;
+        color: $text-primary-light;
+    }
+}
+
+// ========== Referee History Cards ==========
+.referee-item {
+    display: flex;
+    flex-direction: column;
+    gap: 16rpx;
+    padding: 28rpx 32rpx;
+    box-sizing: border-box;
+    background-color: $card-bg-light;
+    border-radius: 24rpx;
+    margin-bottom: 24rpx;
+    transition: background-color 0.3s ease;
+}
+
+.referee-players {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.referee-player {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8rpx;
+}
+
+.referee-avatar {
+    width: 88rpx;
+    height: 88rpx;
+    border-radius: 50%;
+    background-color: $border-color-light;
+}
+
+.referee-name {
+    font-size: 26rpx;
+    font-weight: 500;
+    color: $text-primary-light;
+    max-width: 140rpx;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.referee-vs {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4rpx;
+
+    .vs-label {
+        font-size: 22rpx;
+        color: $text-tertiary-light;
+    }
+
+    .vs-score {
+        font-size: 36rpx;
+        font-weight: 700;
+        color: $text-primary-light;
+    }
+}
+
+.referee-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    .referee-tags {
+        display: flex;
+        gap: 12rpx;
+    }
+
+    .status-tag {
+        padding: 4rpx 14rpx;
+        border-radius: 999rpx;
+        font-size: 22rpx;
+        font-weight: 600;
+
+        &.completed {
+            background-color: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+        }
+
+        &.cancelled {
+            background-color: rgba(148, 163, 184, 0.15);
+            color: #94a3b8;
+        }
+    }
+
+    .referee-duration {
+        font-size: 24rpx;
+        color: $text-tertiary-light;
+    }
+}
+
+.go-match-btn {
+    margin-top: 32rpx;
+    width: 280rpx;
+    height: 88rpx;
+    line-height: 88rpx;
+    background: linear-gradient(135deg, $primary-color 0%, darken($primary-color, 10%) 100%);
+    color: #ffffff;
+    font-size: 30rpx;
+    font-weight: 600;
+    border-radius: 44rpx;
+    border: none;
+    transition: transform 0.2s ease;
+
+    &::after { display: none; }
+    &:active { transform: scale(0.96); }
+}
+
 .dark-mode {
     background-color: $bg-dark;
+
+    .tab-bar {
+        background-color: $bg-dark;
+    }
+
+    .tab-item {
+        color: $text-secondary-dark;
+
+        &.active {
+            color: #0f172a;
+        }
+    }
+
+    .continue-referee-card {
+        .continue-players {
+            color: $text-secondary-dark;
+        }
+        .continue-score {
+            color: $text-primary-dark;
+        }
+    }
+
+    .referee-item {
+        background-color: $card-bg-dark;
+    }
+
+    .referee-avatar {
+        background-color: $border-color-dark;
+    }
+
+    .referee-name {
+        color: $text-primary-dark;
+    }
+
+    .referee-vs {
+        .vs-label { color: $text-tertiary-dark; }
+        .vs-score { color: $text-primary-dark; }
+    }
+
+    .referee-meta {
+        .status-tag.cancelled {
+            background-color: rgba(148, 163, 184, 0.2);
+        }
+        .referee-duration {
+            color: $text-tertiary-dark;
+        }
+    }
 
     .loading-wrapper {
         .loading-text {

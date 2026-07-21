@@ -22,6 +22,12 @@ const (
 	FinishStateNone                = "none"
 	FinishStatePendingConfirmation = "pending_confirmation"
 	FinishRequestTTL               = 24 * time.Hour
+
+	CompletionSourceReferee           = "referee"
+	CompletionSourcePlayerDirect      = "player_direct"
+	CompletionSourcePlayerConfirmed   = "player_confirmed"
+	CompletionSourcePlayerCancelled   = "player_cancelled"
+	CompletionSourceUnknown           = "unknown"
 )
 
 func NormalizeMatchMode(mode string) string {
@@ -65,6 +71,8 @@ type Match struct {
 	FinishRequestRevision      int64          `gorm:"not null;default:0" json:"finish_request_revision"`
 	RefereeUserId              *int64         `gorm:"index" json:"referee_user_id"`
 	RefereeJoinedAt            *time.Time     `json:"referee_joined_at"`
+	CompletedByUserId          *int64         `gorm:"index" json:"completed_by_user_id"`
+	CompletionSource           string         `gorm:"size:20;not null;default:unknown" json:"completion_source"` // referee/player_direct/player_confirmed/unknown
 	MyScore                    int            `gorm:"not null;default:0" json:"my_score"`
 	OpponentScore              int            `gorm:"not null;default:0" json:"opponent_score"`
 	CurrentFrameMyScore        int            `gorm:"not null;default:0" json:"current_frame_my_score"`
@@ -693,10 +701,34 @@ func (m *MatchModel) ListByOpponentName(
 	return records[offset:end], total, nil
 }
 
-// GetH2HStats 获取交锋统计（按对手名称兜底，仅适用于未绑定用户的历史记录）
+
 func (m *MatchModel) GetH2HStats(userId int64, opponentName string) (total, myWins, oppWins int, avgDiff float64, err error) {
 	total, myWins, oppWins, avgDiff, _, err = m.GetH2HStatsByOpponent(userId, 0, opponentName)
 	return total, myWins, oppWins, avgDiff, err
+}
+
+
+// ListByRefereeUserId 获取裁判执裁历史（已完成和已取消）
+func (m *MatchModel) ListByRefereeUserId(refereeUserId int64, offset, limit int) ([]Match, int64, error) {
+	var total int64
+	err := m.db.Model(&Match{}).
+		Where("referee_user_id = ? AND status IN (2, 3) AND deleted_at IS NULL", refereeUserId).
+		Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var matches []Match
+	err = m.db.Where("referee_user_id = ? AND status IN (2, 3) AND deleted_at IS NULL", refereeUserId).
+		Order("COALESCE(end_time, updated_at) DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&matches).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return matches, total, nil
 }
 
 // GetH2HStatsByOpponent 获取交锋统计。

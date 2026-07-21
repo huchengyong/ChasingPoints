@@ -7,7 +7,7 @@
 				</button>
 			</view>
 			<view class="header-center">
-				<text class="header-title">对局总结</text>
+				<text class="header-title">{{ refereeViewConfig.pageTitle }}</text>
 				<text class="header-subtitle">{{ gameTypeName }}</text>
 			</view>
 			<view class="header-side header-side-right">
@@ -25,10 +25,10 @@
 		<scroll-view v-else class="content-scroll" scroll-y>
 			<view class="main-content">
 				<view class="hero-card">
-					<view :class="['hero-banner', isWin ? 'is-win' : 'is-lose']">
+					<view :class="['hero-banner', isReferee ? 'is-neutral' : (isWin ? 'is-win' : 'is-lose')]">
 						<view class="hero-topbar">
 							<view class="hero-tag">
-								<uni-icons :type="isWin ? 'medal' : 'flag'" size="14" color="#ffffff"></uni-icons>
+								<uni-icons :type="isReferee ? 'person-filled' : (isWin ? 'medal' : 'flag')" size="14" color="#ffffff"></uni-icons>
 								<text>{{ resultTagText }}</text>
 							</view>
 							<text class="hero-time">{{ createdAtRelativeText }}</text>
@@ -41,11 +41,11 @@
 
 						<view class="versus-board">
 							<view class="player-panel">
-								<view :class="['avatar-shell', isWin ? 'is-winner' : 'is-neutral']">
+								<view :class="['avatar-shell', isReferee ? 'is-neutral' : (isWin ? 'is-winner' : 'is-neutral')]">
 									<image class="avatar" :src="myAvatar" mode="aspectFill"></image>
 								</view>
 								<text class="player-name">{{ matchData.my_name || '我' }}</text>
-								<text class="player-extra">{{ formatWinRate(matchData.my_win_rate) }} 胜率</text>
+								<text class="player-extra">{{ isReferee ? '选手' : (formatWinRate(matchData.my_win_rate) + ' 胜率') }}</text>
 							</view>
 
 							<view class="score-panel">
@@ -58,11 +58,11 @@
 							</view>
 
 							<view class="player-panel">
-								<view :class="['avatar-shell', !isWin ? 'is-winner' : 'is-neutral']">
+								<view :class="['avatar-shell', isReferee ? 'is-neutral' : (!isWin ? 'is-winner' : 'is-neutral')]">
 									<image class="avatar" :src="opponentAvatar" mode="aspectFill"></image>
 								</view>
 								<text class="player-name">{{ matchData.opponent_name || '对手' }}</text>
-								<text class="player-extra">{{ formatWinRate(matchData.opponent_win_rate) }} 胜率</text>
+								<text class="player-extra">{{ isReferee ? '选手' : (formatWinRate(matchData.opponent_win_rate) + ' 胜率') }}</text>
 							</view>
 						</view>
 
@@ -74,7 +74,7 @@
 						</view>
 					</view>
 
-					<view class="rank-section">
+					<view class="rank-section" v-if="refereeViewConfig.showRankChange">
 						<view class="section-head compact">
 							<view>
 								<text class="section-title">排位变化</text>
@@ -100,6 +100,23 @@
 								<text class="rank-note">{{ opponentRankNote }}</text>
 							</view>
 						</view>
+					</view>
+				</view>
+
+				<view class="referee-card" v-if="refereeCard.hasReferee">
+					<view class="referee-card-head">
+						<uni-icons type="person-filled" size="18" color="#E0AE12"></uni-icons>
+						<text class="referee-card-title">{{ refereeCard.neutralLabel }}</text>
+					</view>
+					<view class="referee-card-body">
+						<image class="referee-card-avatar" :src="resolveAvatarUrl(refereeCard.refereeAvatar, refereeCard.refereeUserId)" mode="aspectFill"/>
+						<view class="referee-card-info">
+							<text class="referee-card-name">{{ refereeCard.refereeName }}</text>
+							<text class="referee-card-duration" v-if="refereeCard.refereeDurationText">执裁时长 {{ refereeCard.refereeDurationText }}</text>
+						</view>
+					</view>
+					<view class="referee-card-footer" v-if="refereeCard.hasReliableAttribution">
+						<text class="referee-attribution-label">完成方式：{{ refereeCard.completionLabel }}</text>
 					</view>
 				</view>
 
@@ -161,7 +178,7 @@
 			</view>
 		</scroll-view>
 
-		<view class="footer">
+		<view class="footer" v-if="refereeViewConfig.showH2HActions">
 			<button
 				v-if="!fromHistory"
 				class="footer-btn btn-primary"
@@ -186,6 +203,7 @@ import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveMatchRankingRightsSummary } from '@/utils/member-ranking-rights.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import { buildRematchContext } from '@/utils/match-core-flow.js'
+import { resolveRefereeIdentityCard, resolveRefereeResultViewConfig, resolveCompletionSourceLabel } from '@/utils/match-referee-view.js'
 
 const SHARE_LINK = 'https://appgallery.huawei.com/app/detail?id=hm.dianzaozao.ballmall&channelId=SHARE&source=appshare'
 
@@ -218,10 +236,29 @@ const statusBarHeight = ref(0)
 const { isDarkMode } = usePageTheme()
 const headerIconColor = computed(() => (isDarkMode.value ? '#f8fafc' : '#1f2937'))
 
+const refereeCard = computed(() => resolveRefereeIdentityCard({
+	refereeBound: matchData.value.referee_bound,
+	refereeUserId: matchData.value.referee_user_id,
+	refereeName: matchData.value.referee_name,
+	refereeAvatar: matchData.value.referee_avatar,
+	refereeJoinedAt: matchData.value.referee_joined_at,
+	refereeDurationSeconds: matchData.value.referee_duration_seconds,
+	completedByUserId: matchData.value.completed_by_user_id,
+	completionSource: matchData.value.completion_source
+}))
+
+const refereeViewConfig = computed(() => resolveRefereeResultViewConfig({
+	viewerRole: matchData.value.viewer_role,
+	status: 2
+}))
+
+const completionLabel = computed(() => resolveCompletionSourceLabel(matchData.value.completion_source))
+
 const systemInfo = uni.getSystemInfoSync()
 statusBarHeight.value = systemInfo.statusBarHeight || 20
 
-const isWin = computed(() => matchData.value.my_score > matchData.value.opponent_score)
+const isReferee = computed(() => matchData.value.viewer_role === 'referee')
+const isWin = computed(() => !isReferee.value && matchData.value.my_score > matchData.value.opponent_score)
 const scoreGap = computed(() => Math.abs((matchData.value.my_score || 0) - (matchData.value.opponent_score || 0)))
 
 const gameTypeName = computed(() => {
@@ -239,11 +276,18 @@ const gameTypeName = computed(() => {
 	}
 })
 
-const resultTitle = computed(() => (isWin.value ? '拿下这一场' : '这场先记下'))
+const resultTitle = computed(() => {
+	if (isReferee.value) return '执裁记录'
+	return isWin.value ? '拿下这一场' : '这场先记下'
+})
 
-const resultTagText = computed(() => (isWin.value ? '胜利战报' : '复盘战报'))
+const resultTagText = computed(() => {
+	if (isReferee.value) return '裁判视角'
+	return isWin.value ? '胜利战报' : '复盘战报'
+})
 
 const resultSubtitle = computed(() => {
+	if (isReferee.value) return '你已完成本场执裁，对局结果已录入系统。'
 	if (isWin.value) {
 		if (scoreGap.value >= 3) {
 			return '整场节奏控制稳定，关键分兑现得更彻底。'
@@ -272,6 +316,7 @@ const scoreGapUnit = computed(() => (matchData.value.game_type === 2 ? '分' : '
 const scoreGapLabel = computed(() => (matchData.value.game_type === 2 ? '分差' : '局差'))
 
 const scoreSummaryText = computed(() => {
+	if (isReferee.value) return matchData.value.game_type === 2 ? '本场最终比分' : '本场最终局数'
 	if (scoreGap.value === 0) return matchData.value.game_type === 2 ? '双方比分持平' : '双方局数持平'
 	return isWin.value
 		? `领先 ${scoreGap.value} ${scoreGapUnit.value}收下对局`

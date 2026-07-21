@@ -153,6 +153,26 @@ export const joinMatchReferee = (data) => {
 }
 
 /**
+ * 裁判码预览
+ * @param {Object} data { match_id, join_token }
+ * @returns {Promise}
+ */
+export const previewMatchReferee = (data) => {
+  return post('/api/match/referee/preview', data)
+}
+
+/**
+ * 获取裁判历史
+ * @param {Object} params 查询参数
+ * @param {number} params.page 页码
+ * @param {number} params.page_size 每页条数
+ * @returns {Promise}
+ */
+export const getRefereeHistory = (params = {}) => {
+  return get('/api/match/referee/history', params)
+}
+
+/**
  * 加分
  * @param {Object} data { match_id, actor, score }
  * @returns {Promise}

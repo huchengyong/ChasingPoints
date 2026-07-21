@@ -2,7 +2,9 @@ package match
 
 import (
 	"context"
+	"time"
 
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -49,8 +51,22 @@ func (l *CancelMatchLogic) CancelMatch(req *types.CancelMatchReq) (resp *types.C
 		return &types.CommonResp{Success: false, Message: "对局已结束"}, nil
 	}
 
-	// 更新状态为已取消
+	// 更新状态为已取消，记录结束时间
+	now := time.Now()
 	match.Status = 3
+	match.EndTime = &now
+
+	// 写入完成归因
+	if match.CompletedByUserId == nil {
+		completedBy := &userId
+		source := model.CompletionSourcePlayerCancelled
+		if match.RefereeUserId != nil && *match.RefereeUserId > 0 {
+			completedBy = match.RefereeUserId
+			source = model.CompletionSourceReferee
+		}
+		match.CompletedByUserId = completedBy
+		match.CompletionSource = source
+	}
 
 	if err := l.svcCtx.MatchModel.Update(match); err != nil {
 		l.Logger.Errorf("取消对局失败: %v", err)
