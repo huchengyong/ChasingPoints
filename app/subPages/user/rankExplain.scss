@@ -1,59 +1,53 @@
-// 段位说明页面样式
 .rank-explain-container {
     min-height: 100vh;
-    background-color: #f6f7f8;
+    background: #f6f7f8;
     box-sizing: border-box;
 }
 
 .content-scroll {
+    width: 100%;
     height: 100vh;
-    padding: 16px;
+    padding: 0 24rpx calc(48rpx + env(safe-area-inset-bottom));
     box-sizing: border-box;
 }
 
-.game-type-tabs {
-    white-space: nowrap;
-    flex: 1;
-
-    ::-webkit-scrollbar {
-        display: none;
-        width: 0;
-        height: 0;
-    }
+.game-tabs-wrap {
+    position: sticky;
+    z-index: 10;
+    top: 0;
+    margin: 0 -24rpx 20rpx;
+    padding: 24rpx 24rpx 18rpx;
+    background: linear-gradient(180deg, #f6f7f8 82%, rgba(246, 247, 248, 0));
 }
 
-.game-type-tabs-row {
+.game-tabs {
     display: flex;
-    align-items: center;
-    margin-bottom: 16px;
+    padding: 8rpx;
+    border: 1rpx solid rgba(148, 163, 184, 0.16);
+    border-radius: 28rpx;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 12rpx 32rpx rgba(15, 23, 42, 0.06);
+    box-sizing: border-box;
 }
 
-.game-type-tab {
-    display: inline-flex;
-    flex-shrink: 0;
-    height: 72rpx;
-    padding: 0 28rpx;
-    margin-right: 16rpx;
-    border-radius: 999rpx;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1rpx solid rgba(148, 163, 184, 0.2);
+.game-tab {
+    min-width: 0;
+    height: 68rpx;
+    display: flex;
+    flex: 1;
     align-items: center;
     justify-content: center;
+    padding: 0 4rpx;
+    border-radius: 20rpx;
     box-sizing: border-box;
-
-    text {
-        font-size: 26rpx;
-        font-weight: 600;
-        color: #475569;
-    }
+    transition: opacity 0.2s ease, background-color 0.2s ease;
 
     &.active {
-        background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
-        border-color: transparent;
-        box-shadow: 0 10rpx 24rpx rgba(224, 174, 18, 0.24);
+        background: linear-gradient(135deg, #e0ae12 0%, #c69200 100%);
+        box-shadow: 0 10rpx 22rpx rgba(224, 174, 18, 0.22);
 
-        text {
-            color: #FFFFFF;
+        .game-tab-text {
+            color: #ffffff;
         }
     }
 
@@ -62,284 +56,657 @@
     }
 }
 
-// 加载状态
-.loading-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 300px;
-    gap: 12px;
-
-    .loading-text {
-        font-size: 14px;
-        color: #94a3b8;
-    }
-}
-
-// 当前段位卡片
-.current-rank-card {
-    background-color: #ffffff;
-    border-radius: 12px;
-    padding: 16px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-
-    .rank-main {
-        display: flex;
-        align-items: flex-start;
-        gap: 16px;
-    }
-
-    .rank-icon {
-        width: 80px;
-        height: 80px;
-        border-radius: 8px;
-        flex-shrink: 0;
-    }
-
-    .rank-details {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        gap: 6px;
-        flex: 1;
-    }
-
-    .rank-main-refresh {
-        width: 48rpx;
-        height: 48rpx;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        border-radius: 999rpx;
-        background: rgba(148, 163, 184, 0.12);
-    }
-
-    .rank-label {
-        font-size: 14px;
-        color: #64748b;
-    }
-
-    .rank-name {
-        font-size: 18px;
-        font-weight: 700;
-        color: #0f172a;
-        letter-spacing: -0.015em;
-    }
-
-    .rank-score {
-        font-size: 14px;
-        color: #64748b;
-    }
-}
-
-// 晋级进度
-.progress-section {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding-top: 16px;
-    margin-top: 16px;
-    border-top: 1px solid #e2e8f0;
-
-    .progress-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .progress-title {
-        font-size: 14px;
-        font-weight: 500;
-        color: #334155;
-    }
-
-    .progress-value {
-        font-size: 14px;
-        color: #64748b;
-    }
-
-    .progress-bar {
-        height: 8px;
-        background-color: #e2e8f0;
-        border-radius: 4px;
-        overflow: hidden;
-    }
-
-    .progress-fill {
-        height: 100%;
-        background-color: #E0AE12;
-        border-radius: 4px;
-        transition: width 0.3s ease;
-    }
-
-    .progress-hint {
-        font-size: 12px;
-        color: #64748b;
-    }
-}
-
-// 最高段位徽章
-.max-rank-badge {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 12px;
-    margin-top: 16px;
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border-radius: 8px;
-
-    .max-rank-text {
-        font-size: 14px;
-        font-weight: 500;
-        color: #92400e;
-    }
-}
-
-// 提示语
-.tip-text {
-    display: block;
-    text-align: center;
-    font-size: 14px;
+.game-tab-text {
+    overflow: hidden;
     color: #64748b;
-    padding: 20px 0 12px;
+    font-size: 20rpx;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-// 段位列表
-.rank-list {
+.loading-wrapper,
+.error-state {
+    min-height: 720rpx;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
 }
 
-.rank-item {
-    background-color: #ffffff;
-    border-radius: 8px;
-    padding: 12px 16px;
-    transition: all 0.2s ease;
+.loading-wrapper {
+    gap: 20rpx;
+}
+
+.loading-text {
+    color: #94a3b8;
+    font-size: 26rpx;
+}
+
+.error-icon {
+    width: 112rpx;
+    height: 112rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #fff7df;
+}
+
+.error-title {
+    margin-top: 28rpx;
+    color: #0f172a;
+    font-size: 32rpx;
+    font-weight: 700;
+}
+
+.error-desc {
+    margin-top: 12rpx;
+    color: #64748b;
+    font-size: 24rpx;
+}
+
+.retry-button {
+    width: 252rpx;
+    height: 80rpx;
+    margin: 30rpx 0 0;
+    padding: 0;
+    border: 0;
+    border-radius: 22rpx;
+    background: linear-gradient(135deg, #e0ae12 0%, #c69200 100%);
+    box-shadow: 0 14rpx 30rpx rgba(224, 174, 18, 0.2);
+    color: #ffffff;
+    font-size: 24rpx;
+    font-weight: 700;
+    line-height: 80rpx;
+    box-sizing: border-box;
+}
+
+.retry-button::after,
+.rule-toggle::after {
+    display: none;
+}
+
+.rank-hero {
+    position: relative;
+    overflow: hidden;
+    min-height: 420rpx;
+    padding: 34rpx;
+    border: 1rpx solid rgba(255, 255, 255, 0.08);
+    border-radius: 38rpx;
+    background:
+        radial-gradient(circle at 90% 12%, rgba(255, 215, 91, 0.28), transparent 34%),
+        linear-gradient(140deg, #17140d 0%, #4c3608 56%, #8f6507 100%);
+    box-shadow: 0 28rpx 56rpx rgba(60, 43, 8, 0.22);
+    color: #ffffff;
+    box-sizing: border-box;
+
+    &.level-1 {
+        background:
+            radial-gradient(circle at 90% 12%, rgba(222, 143, 91, 0.3), transparent 34%),
+            linear-gradient(140deg, #17140d 0%, #4a291a 56%, #8a4d2a 100%);
+    }
+
+    &.level-2 {
+        background:
+            radial-gradient(circle at 90% 12%, rgba(207, 230, 255, 0.28), transparent 34%),
+            linear-gradient(140deg, #111827 0%, #243a55 56%, #3d6485 100%);
+    }
+
+    &.level-3 {
+        background:
+            radial-gradient(circle at 90% 12%, rgba(255, 215, 91, 0.3), transparent 34%),
+            linear-gradient(140deg, #17140d 0%, #4c3608 56%, #8f6507 100%);
+    }
+
+    &.level-4 {
+        background:
+            radial-gradient(circle at 90% 12%, rgba(158, 220, 255, 0.28), transparent 34%),
+            linear-gradient(140deg, #101827 0%, #153963 56%, #236998 100%);
+    }
+
+    &.level-5 {
+        background:
+            radial-gradient(circle at 90% 12%, rgba(174, 185, 255, 0.28), transparent 34%),
+            linear-gradient(140deg, #141327 0%, #24234f 56%, #433b82 100%);
+    }
+
+    &.level-6 {
+        background:
+            radial-gradient(circle at 90% 12%, rgba(255, 204, 102, 0.32), transparent 34%),
+            linear-gradient(140deg, #1b120b 0%, #4c230c 56%, #8f5207 100%);
+    }
+}
+
+.hero-orbit {
+    position: absolute;
+    top: -90rpx;
+    right: -126rpx;
+    width: 390rpx;
+    height: 390rpx;
+    border: 1rpx solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    box-shadow:
+        0 0 0 46rpx rgba(255, 255, 255, 0.025),
+        0 0 0 100rpx rgba(255, 255, 255, 0.016);
+}
+
+.hero-main {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12rpx;
+}
+
+.hero-copy {
+    min-width: 0;
+    flex: 1;
+}
+
+.hero-kicker,
+.hero-name,
+.hero-score-unit,
+.progress-title,
+.progress-value,
+.progress-hint,
+.next-pill {
+    color: #ffffff;
+}
+
+.hero-kicker {
+    display: block;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 20rpx;
+    font-weight: 600;
+    letter-spacing: 2rpx;
+}
+
+.hero-name {
+    display: block;
+    margin-top: 12rpx;
+    font-size: 48rpx;
+    font-weight: 700;
+}
+
+.hero-score {
+    margin-top: 8rpx;
+    display: flex;
+    align-items: baseline;
+    gap: 8rpx;
+}
+
+.hero-score-value {
+    color: #ffffff;
+    font-size: 36rpx;
+    font-weight: 700;
+}
+
+.hero-score-unit {
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 24rpx;
+}
+
+.hero-badge {
+    position: relative;
+    z-index: 1;
+    width: 208rpx;
+    height: 208rpx;
+    flex-shrink: 0;
+}
+
+.hero-progress {
+    position: relative;
+    margin-top: 26rpx;
+    padding-top: 24rpx;
+    border-top: 1rpx solid rgba(255, 255, 255, 0.14);
+}
+
+.progress-copy,
+.progress-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16rpx;
+}
+
+.progress-title {
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 22rpx;
+}
+
+.progress-value {
+    font-size: 22rpx;
+    font-weight: 700;
+}
+
+.progress-track {
+    height: 14rpx;
+    margin-top: 16rpx;
+    overflow: hidden;
+    border-radius: 999rpx;
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 999rpx;
+    background: linear-gradient(90deg, #ffe28a 0%, #ffffff 100%);
+    box-shadow: 0 0 26rpx rgba(255, 226, 138, 0.55);
+    transition: width 0.3s ease;
+}
+
+.progress-footer {
+    margin-top: 16rpx;
+}
+
+.progress-hint {
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 20rpx;
+}
+
+.next-pill {
+    padding: 8rpx 14rpx;
+    border: 1rpx solid rgba(255, 255, 255, 0.16);
+    border-radius: 999rpx;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff1bd;
+    font-size: 20rpx;
+    font-weight: 600;
+}
+
+.section {
+    margin-top: 24rpx;
+    padding: 30rpx;
+    border: 1rpx solid rgba(148, 163, 184, 0.16);
+    border-radius: 34rpx;
+    background: #ffffff;
+    box-sizing: border-box;
+}
+
+.section-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20rpx;
+}
+
+.section-heading-copy {
+    min-width: 0;
+    flex: 1;
+}
+
+.section-title,
+.section-subtitle {
+    display: block;
+}
+
+.section-title {
+    color: #0f172a;
+    font-size: 30rpx;
+    font-weight: 700;
+}
+
+.section-subtitle {
+    margin-top: 6rpx;
+    color: #94a3b8;
+    font-size: 20rpx;
+}
+
+.current-legend {
+    display: flex;
+    align-items: center;
+    gap: 10rpx;
+    flex-shrink: 0;
+}
+
+.current-legend-dot {
+    width: 14rpx;
+    height: 14rpx;
+    border-radius: 50%;
+    background: #e0ae12;
+    box-shadow: 0 0 0 6rpx rgba(224, 174, 18, 0.14);
+}
+
+.current-legend-text {
+    color: #9a7414;
+    font-size: 20rpx;
+    font-weight: 600;
+}
+
+.rank-path {
+    position: relative;
+    margin-top: 22rpx;
+}
+
+.rank-path::before {
+    content: "";
+    position: absolute;
+    top: 50rpx;
+    bottom: 50rpx;
+    left: 28rpx;
+    width: 4rpx;
+    border-radius: 999rpx;
+    background: #e2e8f0;
+}
+
+.rank-step {
+    position: relative;
+    min-height: 104rpx;
+    display: flex;
+    align-items: center;
+    gap: 18rpx;
+    padding: 12rpx 14rpx 12rpx 70rpx;
+    border: 1rpx solid transparent;
+    border-radius: 26rpx;
+    box-sizing: border-box;
 
     &.is-current {
-        box-shadow: 0 0 0 2px rgba(224, 174, 18, 0.36);
+        border-color: rgba(224, 174, 18, 0.32);
+        background:
+            radial-gradient(circle at 100% 0%, rgba(224, 174, 18, 0.13), transparent 38%),
+            #fffaf0;
+
+        .rank-node {
+            left: 19rpx;
+            width: 22rpx;
+            height: 22rpx;
+            border-color: #e0ae12;
+            background: #e0ae12;
+            box-shadow: 0 0 0 8rpx rgba(224, 174, 18, 0.14);
+        }
+
+        .step-icon {
+            opacity: 1;
+        }
+
+        .step-state {
+            color: #9a7414;
+        }
     }
 
-    .rank-item-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        cursor: pointer;
-    }
+    &.is-reached {
+        .rank-node {
+            border-color: #e0ae12;
+            background: #e0ae12;
+        }
 
-    .rank-item-left {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .rank-item-icon {
-        width: 40px;
-        height: 40px;
-        flex-shrink: 0;
-    }
-
-    .rank-item-name {
-        font-size: 16px;
-        font-weight: 500;
-        color: #1e293b;
+        .step-icon {
+            opacity: 1;
+        }
     }
 }
 
-// 展开内容
-.rank-item-content {
-    padding-top: 12px;
-    margin-top: 12px;
-    border-top: 1px solid #e2e8f0;
+.rank-node {
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    left: 22rpx;
+    width: 16rpx;
+    height: 16rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 4rpx solid #cbd5e1;
+    border-radius: 50%;
+    background: #ffffff;
+    box-sizing: border-box;
+    transform: translateY(-50%);
+}
 
-    .promotion-label {
-        display: block;
-        font-size: 14px;
-        font-weight: 500;
-        color: #334155;
-        margin-bottom: 4px;
-    }
+.step-icon {
+    width: 84rpx;
+    height: 84rpx;
+    flex-shrink: 0;
+    opacity: 0.58;
+}
 
-    .promotion-condition {
-        display: block;
-        font-size: 14px;
-        color: #475569;
-        line-height: 1.6;
-    }
+.step-copy {
+    min-width: 0;
+    flex: 1;
+}
+
+.step-name,
+.step-range {
+    display: block;
+}
+
+.step-name {
+    color: #334155;
+    font-size: 24rpx;
+    font-weight: 700;
+}
+
+.step-range {
+    margin-top: 6rpx;
+    color: #94a3b8;
+    font-size: 20rpx;
+}
+
+.step-state {
+    min-width: 80rpx;
+    color: #94a3b8;
+    font-size: 19rpx;
+    font-weight: 600;
+    text-align: right;
+}
+
+.rule-stats {
+    margin-top: 24rpx;
+    display: flex;
+    gap: 14rpx;
+}
+
+.rule-stat {
+    min-width: 0;
+    padding: 20rpx 8rpx;
+    flex: 1;
+    border-radius: 22rpx;
+    background: #f8fafc;
+    text-align: center;
+}
+
+.rule-stat-value,
+.rule-stat-label {
+    display: block;
+}
+
+.rule-stat-value {
+    color: #9a7414;
+    font-size: 28rpx;
+    font-weight: 700;
+}
+
+.rule-stat-label {
+    margin-top: 6rpx;
+    color: #64748b;
+    font-size: 18rpx;
+}
+
+.rule-note {
+    margin-top: 20rpx;
+    padding: 18rpx 20rpx;
+    border-left: 6rpx solid #e0ae12;
+    border-radius: 0 18rpx 18rpx 0;
+    background: #fffaf0;
+}
+
+.rule-note-text {
+    color: #6b5a2e;
+    font-size: 20rpx;
+    line-height: 1.6;
+}
+
+.rule-toggle {
+    width: 100%;
+    height: 76rpx;
+    margin: 20rpx 0 0;
+    padding: 0 24rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10rpx;
+    border: 1rpx solid rgba(224, 174, 18, 0.28);
+    border-radius: 22rpx;
+    background: #ffffff;
+    color: #8a6309;
+    line-height: 76rpx;
+    box-sizing: border-box;
+}
+
+.rule-toggle-text {
+    color: #8a6309;
+    font-size: 22rpx;
+    font-weight: 700;
+}
+
+.rule-details {
+    margin-top: 24rpx;
+    padding-top: 12rpx;
+    border-top: 1rpx solid #eef2f7;
+}
+
+.rule-row {
+    display: flex;
+    gap: 20rpx;
+    padding: 18rpx 0;
+    border-bottom: 1rpx dashed #e2e8f0;
+}
+
+.rule-row-title {
+    width: 142rpx;
+    flex-shrink: 0;
+    color: #334155;
+    font-size: 21rpx;
+    font-weight: 700;
+}
+
+.rule-row-desc {
+    min-width: 0;
+    flex: 1;
+    color: #64748b;
+    font-size: 21rpx;
+    line-height: 1.6;
+}
+
+.example-card {
+    margin-top: 20rpx;
+    padding: 22rpx;
+    border-radius: 22rpx;
+    background: linear-gradient(135deg, #2b230f 0%, #664909 100%);
+}
+
+.example-title,
+.example-formula {
+    display: block;
+}
+
+.example-title {
+    color: #ffe49a;
+    font-size: 21rpx;
+    font-weight: 700;
+}
+
+.example-formula {
+    margin-top: 10rpx;
+    color: #ffffff;
+    font-size: 22rpx;
+    line-height: 1.6;
 }
 
 .dark-mode {
-    background-color: #101922;
+    background: #101922;
 
-    .loading-wrapper .loading-text {
-        color: #64748b;
+    .game-tabs-wrap {
+        background: linear-gradient(180deg, #101922 82%, rgba(16, 25, 34, 0));
     }
 
-    .current-rank-card {
-        background-color: rgba(30, 41, 59, 0.5);
-
-        .rank-main-refresh {
-            background: rgba(148, 163, 184, 0.16);
-        }
-
-        .rank-label {
-            color: #94a3b8;
-        }
-
-        .rank-name {
-            color: #f8fafc;
-        }
-
-        .rank-score {
-            color: #94a3b8;
-        }
+    .game-tabs {
+        border-color: rgba(159, 146, 110, 0.2);
+        background: rgba(30, 41, 59, 0.92);
+        box-shadow: 0 12rpx 32rpx rgba(0, 0, 0, 0.16);
     }
 
-    .progress-section {
-        border-top-color: #334155;
-
-        .progress-title {
-            color: #e2e8f0;
-        }
-
-        .progress-value {
-            color: #94a3b8;
-        }
-
-        .progress-bar {
-            background-color: #334155;
-        }
-
-        .progress-hint {
-            color: #94a3b8;
-        }
+    .game-tab-text {
+        color: #b8b0a0;
     }
 
-    .tip-text {
+    .game-tab.active .game-tab-text {
+        color: #ffffff;
+    }
+
+    .loading-text,
+    .error-desc,
+    .section-subtitle,
+    .step-range,
+    .step-state,
+    .rule-stat-label,
+    .rule-row-desc {
         color: #94a3b8;
     }
 
-    .rank-item {
-        background-color: rgba(30, 41, 59, 0.5);
-
-        .rank-item-name {
-            color: #f1f5f9;
-        }
+    .error-icon {
+        background: rgba(224, 174, 18, 0.12);
     }
 
-    .rank-item-content {
+    .error-title,
+    .section-title,
+    .step-name,
+    .rule-row-title {
+        color: #f8fafc;
+    }
+
+    .section {
+        border-color: rgba(159, 146, 110, 0.18);
+        background: rgba(30, 41, 59, 0.72);
+    }
+
+    .current-legend-text,
+    .rank-step.is-current .step-state,
+    .rule-stat-value,
+    .rule-toggle-text {
+        color: #e8c469;
+    }
+
+    .rank-path::before {
+        background: #334155;
+    }
+
+    .rank-node {
+        border-color: #64748b;
+        background: #1e293b;
+    }
+
+    .rank-step.is-current {
+        border-color: rgba(224, 174, 18, 0.34);
+        background:
+            radial-gradient(circle at 100% 0%, rgba(224, 174, 18, 0.16), transparent 38%),
+            rgba(84, 61, 10, 0.34);
+    }
+
+    .rule-stat {
+        background: rgba(15, 23, 42, 0.5);
+    }
+
+    .rule-note {
+        background: rgba(224, 174, 18, 0.1);
+    }
+
+    .rule-note-text {
+        color: #d7c58f;
+    }
+
+    .rule-toggle {
+        border-color: rgba(224, 174, 18, 0.3);
+        background: rgba(15, 23, 42, 0.22);
+        color: #e8c469;
+    }
+
+    .rule-details {
         border-top-color: #334155;
+    }
 
-        .promotion-label {
-            color: #e2e8f0;
-        }
-
-        .promotion-condition {
-            color: #94a3b8;
-        }
+    .rule-row {
+        border-bottom-color: #334155;
     }
 }
