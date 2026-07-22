@@ -366,7 +366,8 @@ const qrcodeUrl = ref('')
 const selectedGameType = ref(null)
 const currentRankGameType = ref(3)
 const currentMatch = ref(null)
-const rankInfo = ref(null)
+const rankInfoMap = ref({})
+const rankInfo = computed(() => rankInfoMap.value[currentRankGameType.value] || null)
 const favoriteVenueRewardStatus = ref(null)
 const memberStatus = ref(null)
 const floatRewardVisible = ref(false)
@@ -536,17 +537,25 @@ const loadReputationStatus = async () => {
 }
 
 const loadRankInfo = async () => {
-	rankLoading.value = true
-	try {
-		const res = await getUserRankInfo({ game_type: currentRankGameType.value })
-		rankInfo.value = res.success ? res.rank_info || null : null
-	} catch (error) {
-		console.error('获取段位信息失败:', error)
-		rankInfo.value = null
-	} finally {
-		rankLoading.value = false
+		rankLoading.value = true
+		try {
+			const gameTypes = [1, 2, 3, 4]
+			const results = await Promise.allSettled(
+				gameTypes.map(gt => getUserRankInfo({ game_type: gt }))
+			)
+			const newMap = {}
+			results.forEach((result, index) => {
+				if (result.status === 'fulfilled' && result.value?.success) {
+					newMap[gameTypes[index]] = result.value.rank_info || null
+				}
+			})
+			rankInfoMap.value = newMap
+		} catch (error) {
+			console.error('获取段位信息失败:', error)
+		} finally {
+			rankLoading.value = false
+		}
 	}
-}
 
 const loadCurrentMatch = async () => {
 	try {
@@ -859,9 +868,8 @@ const handleStatsDetail = () => {
 }
 
 const handleRankGameTypeChange = (gameType) => {
-	if (currentRankGameType.value === gameType || rankLoading.value) return
+	if (currentRankGameType.value === gameType) return
 	currentRankGameType.value = gameType
-	loadRankInfo()
 }
 
 const handleNotificationCenter = () => {
