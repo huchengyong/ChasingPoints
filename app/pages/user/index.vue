@@ -106,7 +106,7 @@
 						<text class="member-hero-description">{{ memberHeroStrip.description }}</text>
 					</view>
 
-					<view v-if="coreDataLoading || rankLoading" class="rank-skeleton">
+					<view v-if="!hasRankCache && (coreDataLoading || rankLoading)" class="rank-skeleton">
 						<view class="skeleton-circle"></view>
 						<view class="rank-skeleton-copy">
 							<view class="skeleton-line skeleton-line-wide"></view>
@@ -307,13 +307,13 @@
 
 <script setup>
 import { ref, reactive, computed, onUnmounted } from 'vue'
-import { onShow, onHide } from '@dcloudio/uni-app'
+import { onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { getFavoriteVenueRewardStatus, getUserReputation, getUserStats } from '@/api/user.js'
 import { getMemberStatus } from '@/api/member.js'
 import { getCurrentMatch, getMatchQRCode, startMatch } from '@/api/match.js'
-import { getUserRankInfo } from '@/api/rank.js'
+import { useRankStore } from '@/store/rank.js'
 import { userWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import {
 	resolveGuestHeroCopy,
@@ -344,6 +344,7 @@ import {
 import { resolveMemberGrowthCard } from '@/utils/member-center.js'
 
 const userStore = useUserStore()
+const rankStore = useRankStore()
 const { isDarkMode } = usePageTheme()
 const notificationStore = useNotificationStore()
 const friendRequestStore = useFriendRequestStore()
@@ -366,18 +367,20 @@ const qrcodeUrl = ref('')
 const selectedGameType = ref(null)
 const currentRankGameType = ref(3)
 const currentMatch = ref(null)
-const rankInfoMap = ref({})
-const rankInfo = computed(() => rankInfoMap.value[currentRankGameType.value] || null)
+const rankInfo = computed(() => rankStore.rankInfoMap[currentRankGameType.value] || null)
 const favoriteVenueRewardStatus = ref(null)
 const memberStatus = ref(null)
 const floatRewardVisible = ref(false)
 const reputationStatus = ref(null)
 const coreDataLoading = ref(false)
 const homepageLoading = ref(false)
-const rankLoading = ref(false)
+const rankLoading = computed(() => rankStore.loading)
 const rankGameTabs = GAME_TYPE_TABS
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
+const hasRankCache = computed(() => (
+	rankStore.loaded && rankStore.ownerUserId === (Number(userStore.userId) || 0)
+))
 const pendingTotal = computed(() => notificationStore.unreadCount + friendRequestStore.pendingCount)
 const pendingBadgeText = computed(() => (pendingTotal.value > 99 ? '99+' : String(pendingTotal.value || '')))
 
@@ -434,7 +437,7 @@ const rankAvatarFrame = computed(() => resolveMemberRankAvatarFrame({
 	isLoggedIn: isLoggedIn.value,
 	memberStatus: memberStatus.value,
 	rankInfo: rankInfo.value,
-	rankLoading: rankLoading.value,
+	rankLoading: rankLoading.value && !hasRankCache.value,
 	now: new Date()
 }))
 const statusPlayers = computed(() => statusCard.value.players.map(player => ({
@@ -452,7 +455,7 @@ const rankProgressText = computed(() => {
 })
 
 const quickActions = computed(() => ([
-	{ label: '对局记录', icon: 'list', iconColor: '#b77908', iconClass: 'gold', handler: handleMatchHistory },
+	{ label: '比赛记录', icon: 'list', iconColor: '#b77908', iconClass: 'gold', handler: handleMatchHistory },
 	{ label: '过往对手', icon: 'contact', iconColor: '#2563eb', iconClass: 'blue', handler: handleOpponentRecord },
 	{ label: '荣誉墙', icon: 'medal', iconColor: '#7c3aed', iconClass: 'purple', handler: handleAchievement },
 	{ label: '好友', icon: 'person-filled', iconColor: '#0f766e', iconClass: 'teal', handler: handleFriendList }
@@ -471,11 +474,11 @@ onShow(() => {
 })
 
 onHide(() => {
-	disconnectUserWS()
+	unsubscribeUserWS()
 })
 
 onUnmounted(() => {
-	disconnectUserWS()
+	unsubscribeUserWS()
 })
 
 const loadHomepageData = async () => {
@@ -537,25 +540,12 @@ const loadReputationStatus = async () => {
 }
 
 const loadRankInfo = async () => {
-		rankLoading.value = true
-		try {
-			const gameTypes = [1, 2, 3, 4]
-			const results = await Promise.allSettled(
-				gameTypes.map(gt => getUserRankInfo({ game_type: gt }))
-			)
-			const newMap = {}
-			results.forEach((result, index) => {
-				if (result.status === 'fulfilled' && result.value?.success) {
-					newMap[gameTypes[index]] = result.value.rank_info || null
-				}
-			})
-			rankInfoMap.value = newMap
-		} catch (error) {
-			console.error('获取段位信息失败:', error)
-		} finally {
-			rankLoading.value = false
-		}
+	try {
+		await rankStore.ensureFresh(userStore.userId)
+	} catch (error) {
+		console.error('获取段位信息失败:', error)
 	}
+}
 
 const loadCurrentMatch = async () => {
 	try {
@@ -589,14 +579,13 @@ const loadMemberStatus = async () => {
 
 const resetHomepageState = () => {
 	currentMatch.value = null
-	rankInfo.value = null
+	rankStore.clear()
 	favoriteVenueRewardStatus.value = null
 	memberStatus.value = null
 	reputationStatus.value = null
 	floatRewardVisible.value = false
 	coreDataLoading.value = false
 	homepageLoading.value = false
-	rankLoading.value = false
 	userStats.totalMatches = 0
 	userStats.wins = 0
 	userStats.winRate = 0
@@ -684,13 +673,15 @@ const connectUserWS = async () => {
 	}
 }
 
-const disconnectUserWS = () => {
+const unsubscribeUserWS = () => {
 	userWS.off(WS_MESSAGE_TYPES.MATCH_START, handleMatchStart)
 	userWS.off(WS_MESSAGE_TYPES.NOTIFICATION_UPDATE, handleNotificationUpdate)
-	userWS.disconnect()
 }
 
-const handleNotificationUpdate = () => {
+const handleNotificationUpdate = (data = {}) => {
+	if (data?.category === 'match_result') {
+		rankStore.invalidate(userStore.userId)
+	}
 	notificationStore.fetchUnreadCount()
 	friendRequestStore.fetchPendingCount()
 }
@@ -871,6 +862,20 @@ const handleRankGameTypeChange = (gameType) => {
 	if (currentRankGameType.value === gameType) return
 	currentRankGameType.value = gameType
 }
+
+onPullDownRefresh(async () => {
+	if (!isLoggedIn.value) {
+		uni.stopPullDownRefresh()
+		return
+	}
+	try {
+		await rankStore.forceRefresh(userStore.userId)
+	} catch (error) {
+		console.error('刷新段位信息失败:', error)
+	} finally {
+		uni.stopPullDownRefresh()
+	}
+})
 
 const handleNotificationCenter = () => {
 	uni.navigateTo({ url: '/subPages/notification/index' })

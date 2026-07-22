@@ -1,6 +1,8 @@
 <script>
 	import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
 	import { useUserStore } from '@/store/user.js'
+	import { useRankStore } from '@/store/rank.js'
+	import { userWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 	import { getCurrentMatch } from '@/api/match.js'
 	import { post } from '@/utils/request.js'
 	import { buildPlayingRoute, shouldPromptOngoingMatch } from '@/utils/ongoing-match-guard.js'
@@ -19,6 +21,8 @@
 			console.log('App Launch')
 			const themeStore = useThemeStore()
 			themeStore.initializeTheme(this.getSystemThemeInfo())
+			userWS.off(WS_MESSAGE_TYPES.RANK_INFO_UPDATED, this.handleRankInfoUpdated)
+			userWS.on(WS_MESSAGE_TYPES.RANK_INFO_UPDATED, this.handleRankInfoUpdated)
 			// 推送注册
 			// #ifdef APP-PLUS
 			try {
@@ -60,6 +64,15 @@
 			))
 			// 应用当前主题样式
 			this.applyTheme()
+			const userStore = useUserStore()
+			const rankStore = useRankStore()
+			if (userStore.isLoggedIn) {
+				rankStore.invalidate(userStore.userId)
+				this.connectUserWS()
+			} else {
+				rankStore.clear()
+				userWS.disconnect()
+			}
 
 			if (this.themeChangeCallback && typeof uni.offThemeChange === 'function') {
 				uni.offThemeChange(this.themeChangeCallback)
@@ -77,6 +90,7 @@
 			this.checkOngoingMatchReminder()
 		},
 		onHide: function() {
+			userWS.disconnect()
 			// 取消监听时需要传入与注册时相同的回调函数引用
 			if (this.themeChangeCallback && typeof uni.offThemeChange === 'function') {
 				uni.offThemeChange(this.themeChangeCallback)
@@ -92,6 +106,17 @@
 			this.ongoingMatchReminderRetryCount = 0
 		},
 		methods: {
+			connectUserWS() {
+				userWS.connect().catch((error) => {
+					console.error('[App] 用户WS连接失败:', error)
+				})
+			},
+			handleRankInfoUpdated() {
+				const userStore = useUserStore()
+				if (userStore.isLoggedIn) {
+					useRankStore().invalidate(userStore.userId)
+				}
+			},
 			getSystemThemeInfo() {
 				try {
 					return uni.getSystemInfoSync()

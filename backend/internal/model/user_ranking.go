@@ -2,17 +2,20 @@ package model
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // UserRanking 用户段位记录
 type UserRanking struct {
 	Id            int64     `gorm:"primarykey" json:"id"`
-	UserId        int64     `gorm:"uniqueIndex;not null" json:"user_id"`
-	GameType      int       `gorm:"uniqueIndex;not null;default:3" json:"game_type"`
+	UserId        int64     `gorm:"uniqueIndex:uniq_user_game_type;not null" json:"user_id"`
+	GameType      int       `gorm:"uniqueIndex:uniq_user_game_type;not null;default:3" json:"game_type"`
 	RankScore     int       `gorm:"not null;default:0" json:"rank_score"`
 	RankLevel     int       `gorm:"not null;default:1" json:"rank_level"`
 	TotalWins     int       `gorm:"not null;default:0" json:"total_wins"`
@@ -79,6 +82,14 @@ func (RankChangeLog) TableName() string {
 }
 
 const rankChangeTypeMatchResult = "match_result"
+
+var supportedRankingGameTypes = []int{1, 2, 3, 4}
+
+const rankingInitializationMaxAttempts = 3
+
+func SupportedRankingGameTypes() []int {
+	return append([]int(nil), supportedRankingGameTypes...)
+}
 
 // RankingModel 段位相关数据库操作
 type RankingModel struct {
@@ -202,6 +213,78 @@ func (m *RankingModel) FindByUserIdAndGameType(userId int64, gameType int) (*Use
 		return nil, nil
 	}
 	return &ranking, err
+}
+
+// FindOrCreateByGameTypes 获取或初始化用户支持的全部球种段位记录。
+func (m *RankingModel) FindOrCreateByGameTypes(userId int64) ([]UserRanking, error) {
+	var lastErr error
+	for attempt := 1; attempt <= rankingInitializationMaxAttempts; attempt++ {
+		rankings, err := m.findOrCreateByGameTypes(userId)
+		if err == nil {
+			return rankings, nil
+		}
+		lastErr = err
+		if attempt == rankingInitializationMaxAttempts || !isRetryableRankingInitializationError(err) {
+			return nil, err
+		}
+		time.Sleep(time.Duration(attempt) * 5 * time.Millisecond)
+	}
+	return nil, lastErr
+}
+
+func (m *RankingModel) findOrCreateByGameTypes(userId int64) ([]UserRanking, error) {
+	db, err := m.resolveDB(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var rankings []UserRanking
+	if err = db.Where("user_id = ? AND game_type IN ?", userId, supportedRankingGameTypes).
+		Order("game_type ASC").Find(&rankings).Error; err != nil {
+		return nil, err
+	}
+
+	found := make(map[int]bool, len(rankings))
+	for i := range rankings {
+		found[rankings[i].GameType] = true
+	}
+	missing := make([]UserRanking, 0, len(supportedRankingGameTypes)-len(rankings))
+	for _, gameType := range supportedRankingGameTypes {
+		if found[gameType] {
+			continue
+		}
+		missing = append(missing, UserRanking{
+			UserId:    userId,
+			GameType:  gameType,
+			RankScore: 0,
+			RankLevel: 1,
+		})
+	}
+	if len(missing) > 0 {
+		if err = db.Clauses(clause.OnConflict{DoNothing: true}).Create(&missing).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	if err = db.Where("user_id = ? AND game_type IN ?", userId, supportedRankingGameTypes).
+		Order("game_type ASC").Find(&rankings).Error; err != nil {
+		return nil, err
+	}
+	if len(rankings) != len(supportedRankingGameTypes) {
+		return nil, fmt.Errorf("expected %d rankings for user %d, got %d", len(supportedRankingGameTypes), userId, len(rankings))
+	}
+	return rankings, nil
+}
+
+func isRetryableRankingInitializationError(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "database is locked") ||
+		strings.Contains(message, "database table is locked") ||
+		strings.Contains(message, "deadlock found") ||
+		strings.Contains(message, "lock wait timeout")
 }
 
 // Create 创建用户段位记录

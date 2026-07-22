@@ -256,6 +256,7 @@ type PublicMatchDetailData {
 	CurrentRound             int           `json:"current_round"`
 	TotalRounds              int           `json:"total_rounds"`
 	DurationSeconds          int64         `json:"duration_seconds"`
+	RefereeDurationSeconds   int64         `json:"referee_duration_seconds,optional"`
 	Rounds                   []RoundRecord `json:"rounds"` // 局记录
 	CreatedAt                string        `json:"created_at"`
 }
@@ -1364,6 +1365,17 @@ type GetUserRankInfoResp {
 	RankInfo *RankInfo `json:"rank_info"`
 }
 
+// 获取用户全部球种段位信息
+type UserRankInfoItem {
+	GameType int       `json:"game_type"`
+	RankInfo *RankInfo `json:"rank_info"`
+}
+
+type GetUserRankInfosResp {
+	Success   bool               `json:"success"`
+	RankInfos []UserRankInfoItem `json:"rank_infos"`
+}
+
 // 段位列表项
 type RankItem {
 	Level     int    `json:"level"`
@@ -1423,6 +1435,13 @@ service chasing_points-api {
 	)
 	@handler GetUserRankInfo
 	get /info (GetUserRankInfoReq) returns (GetUserRankInfoResp)
+
+	@doc (
+		summary:     "获取用户全部球种段位信息"
+		description: "获取当前登录用户四种支持球种的段位信息"
+	)
+	@handler GetUserRankInfos
+	get /infos returns (GetUserRankInfosResp)
 
 	@doc (
 		summary:     "获取段位列表"

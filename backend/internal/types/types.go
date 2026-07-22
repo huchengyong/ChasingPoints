@@ -1467,6 +1467,11 @@ type GetUserRankInfoResp struct {
 	RankInfo *RankInfo `json:"rank_info"`
 }
 
+type GetUserRankInfosResp struct {
+	Success   bool               `json:"success"`
+	RankInfos []UserRankInfoItem `json:"rank_infos"`
+}
+
 type GetUserReputationResp struct {
 	Success    bool   `json:"success"`
 	Score      int    `json:"score"`
@@ -1973,6 +1978,7 @@ type PublicMatchDetailData struct {
 	CurrentRound             int           `json:"current_round"`
 	TotalRounds              int           `json:"total_rounds"`
 	DurationSeconds          int64         `json:"duration_seconds"`
+	RefereeDurationSeconds   int64         `json:"referee_duration_seconds,optional"`
 	Rounds                   []RoundRecord `json:"rounds"` // 局记录
 	CreatedAt                string        `json:"created_at"`
 }
@@ -2437,6 +2443,11 @@ type UserInfo struct {
 	Avatar    string `json:"avatar"`
 	Status    int    `json:"status"`
 	CreatedAt string `json:"created_at"`
+}
+
+type UserRankInfoItem struct {
+	GameType int       `json:"game_type"`
+	RankInfo *RankInfo `json:"rank_info"`
 }
 
 type UserReputationLogItem struct {

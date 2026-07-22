@@ -843,6 +843,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: rank.GetUserRankInfoHandler(serverCtx),
 			},
 			{
+				// 获取用户全部球种段位信息
+				Method:  http.MethodGet,
+				Path:    "/infos",
+				Handler: rank.GetUserRankInfosHandler(serverCtx),
+			},
+			{
 				// 获取段位列表
 				Method:  http.MethodGet,
 				Path:    "/list",

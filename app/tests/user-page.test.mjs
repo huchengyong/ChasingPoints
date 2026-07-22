@@ -44,7 +44,7 @@ test('user page aggregates core loading and renders neutral rank and status skel
   assert.match(source, /const coreDataLoading = ref\(false\)/)
   assert.match(source, /resolveUserHomepageModel\(\{/)
   assert.match(source, /Promise\.allSettled\(\[\s*loadUserStats\(\),\s*loadRankInfo\(\),\s*loadCurrentMatch\(\)/)
-  assert.match(source, /v-if="coreDataLoading \|\| rankLoading" class="rank-skeleton"/)
+  assert.match(source, /v-if="!hasRankCache && \(coreDataLoading \|\| rankLoading\)" class="rank-skeleton"/)
   assert.match(source, /<template v-if="statusCard\.loading">/)
   assert.match(styleSource, /@keyframes skeleton-shimmer/)
 })

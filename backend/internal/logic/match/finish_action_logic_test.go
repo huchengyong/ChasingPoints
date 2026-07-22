@@ -372,6 +372,75 @@ func TestRankedFinishBroadcastCarriesMonotonicRevisionSnapshot(t *testing.T) {
 	}
 }
 
+func TestRankedSettlementBroadcastsRankInfoUpdatedWhenMatchNotificationsAreDisabled(t *testing.T) {
+	svcCtx := newFinishMatchReputationTestSvc(t)
+	opponentID := int64(2002)
+	seedFinishReputationUsers(t, svcCtx,
+		model.User{Id: 1001, Nickname: "选手甲"},
+		model.User{Id: opponentID, Nickname: "选手乙"},
+	)
+	if err := svcCtx.DB.AutoMigrate(&model.UserNotificationPreference{}); err != nil {
+		t.Fatalf("prepare notification preferences: %v", err)
+	}
+	svcCtx.UserNotificationPreferenceModel = model.NewUserNotificationPreferenceModel(svcCtx.DB)
+	for _, userID := range []int64{1001, opponentID} {
+		if err := svcCtx.UserNotificationPreferenceModel.Upsert(&model.UserNotificationPreference{
+			UserId:               userID,
+			MatchResultEnabled:   false,
+			FriendRequestEnabled: true,
+			ChallengeEnabled:     true,
+			TournamentEnabled:    true,
+			FollowEnabled:        true,
+		}); err != nil {
+			t.Fatalf("disable match notification for user %d: %v", userID, err)
+		}
+	}
+	if err := svcCtx.MatchModel.Create(&model.Match{
+		Id: 9016, UserId: 1001, OpponentId: &opponentID, OpponentName: "对手", GameType: 3,
+		MatchMode: model.MatchModeRanked, Visibility: model.MatchVisibilityPublic,
+		Status: 1, MyScore: 3, OpponentScore: 1, CurrentFrameStarted: true, MatchTime: time.Now(),
+	}); err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+
+	previousHub := ws.GlobalHub
+	hub := ws.NewHub()
+	ws.GlobalHub = hub
+	t.Cleanup(func() { ws.GlobalHub = previousHub })
+
+	resp, err := NewFinishMatchLogic(finishReputationCtx(1001), svcCtx).FinishMatch(&types.FinishMatchReq{
+		MatchId: 9016, ClientActionId: "finish-rank-info-updated-9016", BaseRevision: 0,
+	})
+	if err != nil || !resp.Success {
+		t.Fatalf("finish match: resp=%#v err=%v", resp, err)
+	}
+
+	received := make(map[int64]bool)
+	deadline := time.After(time.Second)
+	for len(received) < 2 {
+		select {
+		case userMessage := <-hub.SendUser:
+			var message ws.Message
+			if err := json.Unmarshal(userMessage.Message, &message); err != nil {
+				t.Fatalf("decode user message: %v", err)
+			}
+			if message.Type != "rank_info_updated" {
+				continue
+			}
+			data, ok := message.Data.(map[string]interface{})
+			if !ok || data["match_id"] != float64(9016) || data["game_type"] != float64(3) {
+				t.Fatalf("unexpected rank update payload: %#v", message.Data)
+			}
+			received[userMessage.UserId] = true
+		case <-deadline:
+			t.Fatalf("expected rank updates for both players, received=%#v", received)
+		}
+	}
+	if !received[1001] || !received[opponentID] {
+		t.Fatalf("rank updates should reach both players, received=%#v", received)
+	}
+}
+
 func TestRankedFinishBroadcastUsesViewerSpecificSnapshots(t *testing.T) {
 	svcCtx := newFinishMatchReputationTestSvc(t)
 	opponentID := int64(2002)

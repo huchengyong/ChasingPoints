@@ -294,6 +294,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
+import { useRankStore } from '@/store/rank.js'
 import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import { matchScore, endRound, startNextRound, matchFoul, matchUndo, finishMatch, requestFinishMatch, confirmFinishMatch, disputeFinishMatch, withdrawFinishMatch, getMatchDetail, getCurrentMatch, getMatchRefereeQRCode } from '@/api/match.js'
 import { consumeResultNavigationGuard, getMatchHistoryPageUrl, getMatchHistoryTabUrl, shouldLeavePlayingPage } from '@/utils/match-navigation.js'
@@ -302,13 +303,16 @@ import { usePageTheme } from '@/utils/page-theme.js'
 import { resolvePlayingViewerUi } from '@/utils/match-role-view.js'
 import { resolveSnookerFinishMatchAction, resolveSnookerNextFrameAction } from '@/utils/snooker-frame.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import { shouldInvalidateRankAfterSettlement } from '@/utils/rank-cache.js'
 
 // ========== 状态管理 ==========
 const userStore = useUserStore()
+const rankStore = useRankStore()
 
 // ========== 响应式数据 ==========
 const matchId = ref(null)
 const gameType = ref(3) // 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
+const matchMode = ref('ranked')
 const myScore = ref(0)
 const opponentScore = ref(0)
 const currentFrameMyScore = ref(0)
@@ -738,6 +742,9 @@ const loadMatchInfo = async () => {
 			if (res.match.game_type) {
 				gameType.value = res.match.game_type
 			}
+			if (res.match.match_mode) {
+				matchMode.value = res.match.match_mode
+			}
 			currentFrameStarted.value = !!res.match.current_frame_started
 			currentFrameMyScore.value = res.match.current_frame_my_score || 0
 			currentFrameOpponentScore.value = res.match.current_frame_opponent_score || 0
@@ -876,6 +883,7 @@ const applyMatchSnapshot = (snapshot = {}) => {
 		return
 	}
 	applyViewerCapabilities(snapshot)
+	if (snapshot.match_mode) matchMode.value = snapshot.match_mode
 	updateServerRevision(snapshot.server_revision)
 	if (typeof snapshot.my_score === 'number') {
 		myScore.value = snapshot.my_score
@@ -921,6 +929,23 @@ const applyWriteResponse = (payload = {}) => {
 		currentFrameOpponentScore.value = payload.current_frame_opponent_score
 	}
 	applySnookerRoundState(payload)
+}
+
+const invalidateRankAfterSettlement = (payload = {}) => {
+	const snapshot = payload?.snapshot || payload
+	if (snapshot?.match_mode) matchMode.value = snapshot.match_mode
+	if (shouldInvalidateRankAfterSettlement({
+		isParticipant: viewerRole.value === 'player1' || viewerRole.value === 'player2',
+		matchMode: matchMode.value,
+		status: snapshot?.status ?? payload?.status,
+		result: snapshot?.result ?? payload?.result,
+		player1Score: payload?.player1_score,
+		player2Score: payload?.player2_score,
+		myScore: snapshot?.my_score ?? payload?.my_score ?? myScore.value,
+		opponentScore: snapshot?.opponent_score ?? payload?.opponent_score ?? opponentScore.value
+	})) {
+		rankStore.invalidate(userStore.userId)
+	}
 }
 
 const getSnookerColorName = (score) => {
@@ -1092,6 +1117,7 @@ const handleSync = (data) => {
 		return
 	}
 	applyViewerCapabilities(data)
+	if (data.match_mode) matchMode.value = data.match_mode
 	updateServerRevision(data?.server_revision)
 	applyServerScores(data.player1_score, data.player2_score)
 	applyServerCurrentFrameScores(data.current_frame_player1_score, data.current_frame_player2_score)
@@ -1106,6 +1132,7 @@ const handleSync = (data) => {
 		status: data.status
 	})
 	if (data.status === 2) {
+		invalidateRankAfterSettlement(data)
 		navigateToResultOnce()
 	}
 }
@@ -1118,6 +1145,7 @@ const handleFinishStateUpdate = (data = {}) => {
 		applyViewerCapabilities(data)
 		updateServerRevision(data.server_revision)
 	}
+	invalidateRankAfterSettlement(data)
 	uni.showToast({
 		title: finishState.value === 'pending_confirmation' ? '对局等待结束确认' : '对局结束状态已更新',
 		icon: 'none'
@@ -1145,6 +1173,11 @@ const handleMatchEnd = (data) => {
 	if (!shouldApplyIncomingRevision(data?.server_revision)) {
 		return
 	}
+	if (data.match_mode) matchMode.value = data.match_mode
+	if (typeof data.player1_score === 'number' && typeof data.player2_score === 'number') {
+		applyServerScores(data.player1_score, data.player2_score)
+	}
+	invalidateRankAfterSettlement(data)
 	updateServerRevision(data?.server_revision)
 	pageLog('收到对局结束消息', {
 		matchId: data.match_id,
@@ -1410,6 +1443,7 @@ const handleFinishActionResponse = (res, successMessage) => {
 		return false
 	}
 	applyWriteResponse(res)
+	invalidateRankAfterSettlement(res)
 	uni.showToast({ title: successMessage || res.message || '操作成功', icon: 'none' })
 	if (res.snapshot?.status === 2) {
 		navigateToResultOnce()
@@ -1525,6 +1559,7 @@ const handleWithdrawFinish = async () => {
 				return
 			}
 			applyWriteResponse(res)
+			invalidateRankAfterSettlement(res)
 			hideSyncLoading()
 			pendingFinishAction.value = null
 			pageLog('结束对局HTTP成功', { matchId: matchId.value })

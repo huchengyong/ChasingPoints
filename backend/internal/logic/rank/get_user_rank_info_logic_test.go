@@ -122,3 +122,66 @@ func TestGetRankListReturnsSixConfigsInAscendingOrder(t *testing.T) {
 		t.Fatalf("unexpected diamond and king configs: %#v", resp.List[4:])
 	}
 }
+
+func TestGetUserRankInfosReturnsFourOrderedGameTypesAndInitializesMissingRows(t *testing.T) {
+	svcCtx := newRankLogicTestSvc(t)
+	seedRankLogicRanking(t, svcCtx, &model.UserRanking{UserId: 1004, GameType: 2, RankScore: 2500, RankLevel: 6})
+
+	resp, err := NewGetUserRankInfosLogic(rankLogicCtx(1004), svcCtx).GetUserRankInfos()
+	if err != nil || !resp.Success {
+		t.Fatalf("get aggregate rank info: resp=%#v err=%v", resp, err)
+	}
+	if len(resp.RankInfos) != 4 {
+		t.Fatalf("expected four rank infos, got %#v", resp.RankInfos)
+	}
+	for index, item := range resp.RankInfos {
+		if item.GameType != index+1 || item.RankInfo == nil {
+			t.Fatalf("unexpected aggregate item %d: %#v", index, item)
+		}
+	}
+	if resp.RankInfos[1].RankInfo.Progress != 100 || resp.RankInfos[1].RankInfo.NextName != "王者" {
+		t.Fatalf("expected king max-rank semantics: %#v", resp.RankInfos[1])
+	}
+	var count int64
+	if err := svcCtx.DB.Model(&model.UserRanking{}).Where("user_id = ?", 1004).Count(&count).Error; err != nil {
+		t.Fatalf("count initialized rankings: %v", err)
+	}
+	if count != 4 {
+		t.Fatalf("expected four initialized rankings, got %d", count)
+	}
+}
+
+func TestGetUserRankInfosRejectsMissingAuthentication(t *testing.T) {
+	resp, err := NewGetUserRankInfosLogic(context.Background(), newRankLogicTestSvc(t)).GetUserRankInfos()
+	if err != nil || resp.Success {
+		t.Fatalf("expected authentication failure, resp=%#v err=%v", resp, err)
+	}
+}
+
+func TestGetUserRankInfoKeepsLegacyZeroPromotionWhenNextConfigIsMissing(t *testing.T) {
+	svcCtx := newRankLogicTestSvc(t)
+	seedRankLogicRanking(t, svcCtx, &model.UserRanking{UserId: 1005, GameType: 3, RankScore: 100, RankLevel: 1})
+	if err := svcCtx.DB.Where("level = ?", 2).Delete(&model.RankConfig{}).Error; err != nil {
+		t.Fatalf("remove next rank config: %v", err)
+	}
+
+	resp, err := NewGetUserRankInfoLogic(rankLogicCtx(1005), svcCtx).GetUserRankInfo(&types.GetUserRankInfoReq{GameType: 3})
+	if err != nil || !resp.Success || resp.RankInfo == nil {
+		t.Fatalf("get rank info with missing next config: resp=%#v err=%v", resp, err)
+	}
+	if resp.RankInfo.NextLevel != 0 || resp.RankInfo.NextName != "" || resp.RankInfo.NextScore != 0 || resp.RankInfo.Progress != 0 {
+		t.Fatalf("expected legacy empty promotion values, got %#v", resp.RankInfo)
+	}
+}
+
+func TestGetUserRankInfosFailsWhenRankConfigIsIncomplete(t *testing.T) {
+	svcCtx := newRankLogicTestSvc(t)
+	if err := svcCtx.DB.Where("level = ?", 1).Delete(&model.RankConfig{}).Error; err != nil {
+		t.Fatalf("remove current rank config: %v", err)
+	}
+
+	resp, err := NewGetUserRankInfosLogic(rankLogicCtx(1006), svcCtx).GetUserRankInfos()
+	if err != nil || resp.Success {
+		t.Fatalf("expected incomplete config failure, resp=%#v err=%v", resp, err)
+	}
+}

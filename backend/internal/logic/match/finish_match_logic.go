@@ -227,6 +227,7 @@ func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, user
 
 	l.Logger.Infof("用户 %d 结束对局 %d，比分: %d:%d，结果: %d",
 		userId, match.Id, match.MyScore, match.OpponentScore, result)
+	broadcastRankInfoUpdated(match, result)
 	if result != 3 {
 		resultText := "胜利"
 		if result == 2 {
@@ -286,6 +287,7 @@ func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, user
 				"player2_score":   match.OpponentScore,
 				"status":          match.Status,
 				"result":          result,
+				"match_mode":      model.NormalizeMatchMode(match.MatchMode),
 			},
 		})
 	}
@@ -301,6 +303,29 @@ func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, user
 		MyScore:        scoreView.MyScore,
 		OpponentScore:  scoreView.OpponentScore,
 	}, nil
+}
+
+func broadcastRankInfoUpdated(match *model.Match, result int) {
+	if ws.GlobalHub == nil || match == nil || result == 3 || model.NormalizeMatchMode(match.MatchMode) != model.MatchModeRanked {
+		return
+	}
+
+	userIds := map[int64]struct{}{match.UserId: struct{}{}}
+	if match.OpponentId != nil && *match.OpponentId > 0 {
+		userIds[*match.OpponentId] = struct{}{}
+	}
+	for userId := range userIds {
+		if userId <= 0 {
+			continue
+		}
+		ws.GlobalHub.SendToUser(userId, &ws.Message{
+			Type: "rank_info_updated",
+			Data: map[string]interface{}{
+				"match_id":  match.Id,
+				"game_type": match.GameType,
+			},
+		})
+	}
 }
 
 func resolveCompletedByUserId(match *model.Match) int64 {
