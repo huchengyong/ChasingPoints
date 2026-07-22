@@ -93,6 +93,24 @@ $loss-color: #E57373;
             }
         }
 
+        .referee-card {
+            background: rgba(224, 174, 18, 0.12);
+            border-color: rgba(224, 174, 18, 0.28);
+        }
+
+        .referee-card__avatar {
+            background: $border-color-dark;
+        }
+
+        .referee-card__name {
+            color: $text-primary-dark;
+        }
+
+        .referee-card__label,
+        .referee-card__meta {
+            color: $text-secondary-dark;
+        }
+
         .section-title {
             color: $text-muted-dark;
         }
@@ -139,6 +157,49 @@ $loss-color: #E57373;
 	color: #a16207;
 	font-size: 26rpx;
 	&::after { display: none; }
+}
+
+.referee-card {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+	margin: 0 0 24rpx;
+	padding: 24rpx;
+	border-radius: 20rpx;
+	background: rgba(224, 174, 18, 0.1);
+	border: 2rpx solid rgba(224, 174, 18, 0.22);
+	box-sizing: border-box;
+}
+
+.referee-card__avatar {
+	width: 76rpx;
+	height: 76rpx;
+	border-radius: 50%;
+	background: #e5e7eb;
+	flex: 0 0 auto;
+}
+
+.referee-card__content {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 4rpx;
+	min-width: 0;
+}
+
+.referee-card__label,
+.referee-card__meta {
+	font-size: 22rpx;
+	color: $text-secondary-light;
+}
+
+.referee-card__name {
+	font-size: 28rpx;
+	font-weight: 700;
+	color: $text-primary-light;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 // ========== 加载状态 ==========

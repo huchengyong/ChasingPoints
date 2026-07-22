@@ -158,6 +158,21 @@ $success: #1bb56b;
 	color: $gold;
 }
 
+.viewer-banner__referee {
+	display: flex;
+	align-items: center;
+	gap: 10rpx;
+	font-size: 22rpx;
+	color: $text-primary-light;
+
+	image {
+		width: 34rpx;
+		height: 34rpx;
+		border-radius: 50%;
+		background: $line-light;
+	}
+}
+
 .viewer-banner__hint {
 	font-size: 22rpx;
 	color: $text-secondary-light;
@@ -877,6 +892,10 @@ $success: #1bb56b;
 	.viewer-banner__hint,
 	.viewer-banner__action {
 		color: $text-secondary-dark;
+	}
+
+	.viewer-banner__referee {
+		color: $text-primary-dark;
 	}
 
 	.status-chip__text,

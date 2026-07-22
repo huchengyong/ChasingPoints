@@ -54,6 +54,9 @@ func TestRankedFinishRequestConfirmCompletesOnlyAfterOpponentAction(t *testing.T
 	if err != nil || stored == nil || stored.Status != 2 || stored.FinishState != model.FinishStateNone {
 		t.Fatalf("expected completed match after confirm, stored=%+v err=%v", stored, err)
 	}
+	if stored.CompletedByUserId == nil || *stored.CompletedByUserId != opponentID || stored.CompletionSource != model.CompletionSourcePlayerConfirmed {
+		t.Fatalf("expected confirmed completion attribution, stored=%+v", stored)
+	}
 }
 
 func TestFinishConfirmationFlagControlsRankedFinishFlow(t *testing.T) {
@@ -105,6 +108,10 @@ func TestRankedFinishActionsAreIdempotent(t *testing.T) {
 	})
 	if err != nil || !secondConfirm.Success || secondConfirm.ServerRevision != firstConfirm.ServerRevision {
 		t.Fatalf("duplicate confirm should replay completed result: first=%#v second=%#v err=%v", firstConfirm, secondConfirm, err)
+	}
+	stored, findErr := svcCtx.MatchModel.FindById(9004)
+	if findErr != nil || stored == nil || stored.CompletedByUserId == nil || *stored.CompletedByUserId != opponentID || stored.CompletionSource != model.CompletionSourcePlayerConfirmed {
+		t.Fatalf("duplicate confirm overwrote completion attribution: match=%+v err=%v", stored, findErr)
 	}
 
 	var endActionCount int64
@@ -234,6 +241,9 @@ func TestPracticeFinishCompletesWithoutCompetitiveSettlement(t *testing.T) {
 	if err != nil || stored == nil || stored.Status != 2 {
 		t.Fatalf("expected practice match to finish, stored=%+v err=%v", stored, err)
 	}
+	if stored.CompletedByUserId == nil || *stored.CompletedByUserId != 1001 || stored.CompletionSource != model.CompletionSourcePlayerDirect {
+		t.Fatalf("expected direct completion attribution, stored=%+v", stored)
+	}
 	var rankLogCount int64
 	if err := svcCtx.DB.Model(&model.RankChangeLog{}).Where("match_id = ?", 9003).Count(&rankLogCount).Error; err != nil {
 		t.Fatalf("count rank logs: %v", err)
@@ -322,6 +332,9 @@ func TestRefereeCanFinishRankedMatchWhilePlayersCannotUseFinishActions(t *testin
 	stored, err := svcCtx.MatchModel.FindById(9005)
 	if err != nil || stored == nil || stored.Status != 2 {
 		t.Fatalf("expected referee finish to complete match: stored=%+v err=%v", stored, err)
+	}
+	if stored.CompletedByUserId == nil || *stored.CompletedByUserId != refereeID || stored.CompletionSource != model.CompletionSourceReferee {
+		t.Fatalf("expected referee completion attribution, stored=%+v", stored)
 	}
 }
 

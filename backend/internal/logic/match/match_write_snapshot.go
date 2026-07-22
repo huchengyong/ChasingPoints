@@ -54,7 +54,7 @@ func buildMatchSyncSnapshotForUser(userId int64, match *model.Match, completedRo
 		RefereeBound:                  capabilities.RefereeBound,
 		RefereeUserId:                 capabilities.RefereeUserId,
 		CompletedByUserId:             resolveCompletedByUserId(match),
-		CompletionSource:              match.CompletionSource,
+		CompletionSource:              resolveCompletionSource(match),
 		RefereeDurationSeconds:        refereeDurationSeconds,
 		CanScore:                      capabilities.CanScore,
 		CanUndo:                       capabilities.CanUndo,

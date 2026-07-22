@@ -96,10 +96,7 @@ func buildCurrentMatchInfo(svcCtx *svc.ServiceContext, userId int64, match *mode
 		}
 	}
 
-	completedByUserId := int64(0)
-	if match.CompletedByUserId != nil {
-		completedByUserId = *match.CompletedByUserId
-	}
+	completedByUserId := resolveCompletedByUserId(match)
 
 	return &types.CurrentMatchInfo{
 		Id:                        match.Id,
@@ -118,7 +115,7 @@ func buildCurrentMatchInfo(svcCtx *svc.ServiceContext, userId int64, match *mode
 		RefereeJoinedAt:           refereeJoinedAt,
 		RefereeDurationSeconds:    refereeDurationSeconds,
 		CompletedByUserId:         completedByUserId,
-		CompletionSource:          match.CompletionSource,
+		CompletionSource:          resolveCompletionSource(match),
 		CanScore:                  capabilities.CanScore,
 		CanUndo:                   capabilities.CanUndo,
 		CanFinish:                 capabilities.CanFinish,

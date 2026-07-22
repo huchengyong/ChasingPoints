@@ -66,6 +66,10 @@
 				</view>
 				<view class="viewer-banner">
 					<text class="viewer-banner__role">{{ viewerUi.roleLabel }}</text>
+					<view v-if="refereeBound" class="viewer-banner__referee">
+						<image :src="resolveAvatarUrl(refereeAvatar, refereeUserId)" mode="aspectFill"></image>
+						<text>本场裁判：{{ refereeName || '裁判' }}</text>
+					</view>
 					<text v-if="viewerUi.readonlyHint" class="viewer-banner__hint">{{ viewerUi.readonlyHint }}</text>
 					<button
 						v-if="showInviteRefereeAction"
@@ -331,6 +335,7 @@ const viewerRole = ref('player1')
 const refereeBound = ref(false)
 const refereeUserId = ref(0)
 const refereeName = ref('')
+const refereeAvatar = ref('')
 const canScore = ref(true)
 const canUndo = ref(true)
 const canFinish = ref(true)
@@ -658,6 +663,9 @@ const applyViewerCapabilities = (payload = {}) => {
 	}
 	if (payload.referee_name !== undefined) {
 		refereeName.value = payload.referee_name || ''
+	}
+	if (payload.referee_avatar !== undefined) {
+		refereeAvatar.value = payload.referee_avatar || ''
 	}
 	if (typeof payload.can_score === 'boolean') {
 		canScore.value = payload.can_score

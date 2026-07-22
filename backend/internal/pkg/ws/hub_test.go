@@ -164,3 +164,52 @@ func TestBuildMatchSyncDataIncludesServerRevision(t *testing.T) {
 		t.Fatalf("expected sync data server revision 9, got %d", data.ServerRevision)
 	}
 }
+
+func TestSendMatchSyncIncludesRefereeIdentityAndCompletionAttribution(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite db: %v", err)
+	}
+	if err := db.AutoMigrate(&model.User{}, &model.Match{}, &model.MatchRound{}, &model.MatchAction{}); err != nil {
+		t.Fatalf("prepare ws schema: %v", err)
+	}
+	refereeID := int64(3003)
+	opponentID := int64(2002)
+	joinedAt := time.Now().Add(-10 * time.Minute)
+	endTime := time.Now()
+	if err := db.Create(&model.User{Id: refereeID, Nickname: "裁判丙", Avatar: "referee.png", Status: 1}).Error; err != nil {
+		t.Fatalf("create referee: %v", err)
+	}
+	if err := db.Create(&model.Match{
+		Id: 201, UserId: 1001, OpponentId: &opponentID, OpponentName: "选手乙", GameType: 3,
+		Status: 2, RefereeUserId: &refereeID, RefereeJoinedAt: &joinedAt, EndTime: &endTime,
+		CompletedByUserId: &refereeID, CompletionSource: model.CompletionSourceReferee,
+		CurrentFrameStarted: false, MatchTime: joinedAt.Add(-20 * time.Minute),
+	}).Error; err != nil {
+		t.Fatalf("create match: %v", err)
+	}
+	svcCtx := &svc.ServiceContext{
+		DB:         db,
+		UserModel:  model.NewUserModel(db),
+		MatchModel: model.NewMatchModel(db),
+	}
+	client := &Client{Hub: NewHub(), SvcCtx: svcCtx, MatchId: 201, UserId: 1001, Send: make(chan []byte, 1)}
+	client.sendMatchSync()
+
+	var message Message
+	select {
+	case payload := <-client.Send:
+		if err := json.Unmarshal(payload, &message); err != nil {
+			t.Fatalf("decode sync: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for sync payload")
+	}
+	data := message.Data.(map[string]interface{})
+	if data["referee_name"] != "裁判丙" || data["referee_avatar"] != "referee.png" || data["referee_joined_at"] == "" {
+		t.Fatalf("missing referee identity in sync: %#v", data)
+	}
+	if data["completed_by_user_id"].(float64) != float64(refereeID) || data["completion_source"] != model.CompletionSourceReferee {
+		t.Fatalf("missing completion attribution in sync: %#v", data)
+	}
+}

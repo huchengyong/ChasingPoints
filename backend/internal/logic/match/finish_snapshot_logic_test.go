@@ -132,6 +132,7 @@ func TestMatchDetailReturnsStableParticipantIDsForPlayersAndReferee(t *testing.T
 	}
 	opponentID := int64(2002)
 	refereeID := int64(3003)
+	joinedAt := time.Now().Add(-10 * time.Minute)
 	seedFinishReputationUsers(t, svcCtx,
 		model.User{Id: 1001, Nickname: "选手甲"},
 		model.User{Id: opponentID, Nickname: "选手乙"},
@@ -139,7 +140,7 @@ func TestMatchDetailReturnsStableParticipantIDsForPlayersAndReferee(t *testing.T
 	)
 	if err := svcCtx.MatchModel.Create(&model.Match{
 		Id: 9016, UserId: 1001, OpponentId: &opponentID, OpponentName: "选手乙", GameType: 3,
-		MatchMode: model.MatchModePractice, Visibility: model.MatchVisibilityPrivate, RefereeUserId: &refereeID,
+		MatchMode: model.MatchModePractice, Visibility: model.MatchVisibilityPrivate, RefereeUserId: &refereeID, RefereeJoinedAt: &joinedAt,
 		Status: 1, CurrentFrameStarted: true, MatchTime: time.Now(),
 	}); err != nil {
 		t.Fatalf("create match: %v", err)
@@ -161,6 +162,9 @@ func TestMatchDetailReturnsStableParticipantIDsForPlayersAndReferee(t *testing.T
 			}
 			if resp.Match.Player1Id != 1001 || resp.Match.Player2Id != 2002 || resp.Match.OpponentId != tt.opponentID {
 				t.Fatalf("unexpected participant ids: %+v", resp.Match)
+			}
+			if resp.Match.RefereeName != "裁判" || resp.Match.RefereeJoinedAt == "" {
+				t.Fatalf("missing referee detail: %+v", resp.Match)
 			}
 		})
 	}

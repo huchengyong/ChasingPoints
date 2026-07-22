@@ -1,8 +1,8 @@
 package match
 
 import (
-	"time"
 	"context"
+	"time"
 
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
@@ -104,10 +104,7 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 		}
 	}
 
-	completedByUserId := int64(0)
-	if match.CompletedByUserId != nil {
-		completedByUserId = *match.CompletedByUserId
-	}
+	completedByUserId := resolveCompletedByUserId(match)
 
 	if capabilities.ViewerRole == matchViewerRoleReferee || isPlayer1 {
 		// 当前用户是创建者，使用原始视角
@@ -284,7 +281,7 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			RefereeJoinedAt:               refereeJoinedAt,
 			RefereeDurationSeconds:        refereeDurationSeconds,
 			CompletedByUserId:             completedByUserId,
-			CompletionSource:              match.CompletionSource,
+			CompletionSource:              resolveCompletionSource(match),
 			CanScore:                      capabilities.CanScore,
 			CanUndo:                       capabilities.CanUndo,
 			CanFinish:                     capabilities.CanFinish,

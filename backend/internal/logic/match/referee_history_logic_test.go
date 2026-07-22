@@ -60,38 +60,41 @@ func TestGetRefereeHistoryReturnsCompletedAndCancelledMatches(t *testing.T) {
 	// Completed match
 	endTime2 := now.Add(-5 * time.Minute)
 	seedRefereeHistoryMatch(t, svcCtx, &model.Match{
-		Id:              201,
-		UserId:          10,
-		OpponentId:      &opponentID,
-		OpponentName:    "选手乙",
-		GameType:        3,
-		Status:          2,
-		Result:          &win,
-		RefereeUserId:   &refereeID,
-		RefereeJoinedAt: &joinedAt,
-		EndTime:         &endTime2,
-		MyScore:         5,
-		OpponentScore:   3,
-		MatchTime:       now.Add(-1 * time.Hour),
+		Id:               201,
+		UserId:           10,
+		OpponentId:       &opponentID,
+		OpponentName:     "选手乙",
+		GameType:         3,
+		Visibility:       model.MatchVisibilityPrivate,
+		Status:           2,
+		Result:           &win,
+		RefereeUserId:    &refereeID,
+		RefereeJoinedAt:  &joinedAt,
+		EndTime:          &endTime2,
+		MyScore:          5,
+		OpponentScore:    3,
+		MatchTime:        now.Add(-1 * time.Hour),
 		CompletionSource: model.CompletionSourceReferee,
 	})
 
 	// Cancelled match (more recent end_time → should come first)
 	endTime3 := now
+	legacyCompletedBy := refereeID
 	seedRefereeHistoryMatch(t, svcCtx, &model.Match{
-		Id:              202,
-		UserId:          10,
-		OpponentId:      &opponentID,
-		OpponentName:    "选手乙",
-		GameType:        1,
-		Status:          3,
-		RefereeUserId:   &refereeID,
-		RefereeJoinedAt: &joinedAt,
-		EndTime:         &endTime3,
-		MyScore:         2,
-		OpponentScore:   1,
-		MatchTime:       now.Add(-2 * time.Hour),
-		CompletionSource: model.CompletionSourcePlayerCancelled,
+		Id:                202,
+		UserId:            10,
+		OpponentId:        &opponentID,
+		OpponentName:      "选手乙",
+		GameType:          1,
+		Status:            3,
+		RefereeUserId:     &refereeID,
+		RefereeJoinedAt:   &joinedAt,
+		EndTime:           &endTime3,
+		MyScore:           2,
+		OpponentScore:     1,
+		MatchTime:         now.Add(-2 * time.Hour),
+		CompletedByUserId: &legacyCompletedBy,
+		CompletionSource:  "player_cancelled",
 	})
 
 	resp, err := NewGetRefereeHistoryLogic(refereeTestCtx(refereeID), svcCtx).GetRefereeHistory(&types.RefereeHistoryReq{
@@ -118,8 +121,8 @@ func TestGetRefereeHistoryReturnsCompletedAndCancelledMatches(t *testing.T) {
 	if resp.List[0].Status != 3 || resp.List[0].StatusText != "已取消" {
 		t.Fatalf("match 202 expected status 3/已取消, got %d/%s", resp.List[0].Status, resp.List[0].StatusText)
 	}
-	if resp.List[0].CompletionSource != "player_cancelled" {
-		t.Fatalf("match 202 expected completion_source 'player_cancelled', got '%s'", resp.List[0].CompletionSource)
+	if resp.List[0].CompletionSource != model.CompletionSourceUnknown || resp.List[0].CompletedByUserId != 0 {
+		t.Fatalf("cancelled match must hide legacy completion attribution, got %+v", resp.List[0])
 	}
 	if resp.List[1].Id != 201 {
 		t.Fatalf("expected completed match second, got match %d", resp.List[1].Id)
@@ -129,6 +132,30 @@ func TestGetRefereeHistoryReturnsCompletedAndCancelledMatches(t *testing.T) {
 	}
 	if resp.List[1].CompletionSource != "referee" {
 		t.Fatalf("match 201 expected completion_source 'referee', got '%s'", resp.List[1].CompletionSource)
+	}
+}
+
+func TestGetRefereeHistoryKeepsUnknownCompletionForCompletedLegacyMatch(t *testing.T) {
+	svcCtx := newRefereeHistoryTestSvc(t)
+	refereeID := int64(500)
+	opponentID := int64(600)
+	now := time.Now()
+	endTime := now
+	seedRefereeHistoryUser(t, svcCtx, 400, "选手甲", "")
+	seedRefereeHistoryUser(t, svcCtx, opponentID, "选手乙", "")
+	seedRefereeHistoryUser(t, svcCtx, refereeID, "裁判", "")
+	seedRefereeHistoryMatch(t, svcCtx, &model.Match{
+		Id: 401, UserId: 400, OpponentId: &opponentID, OpponentName: "选手乙", GameType: 3,
+		Status: 2, RefereeUserId: &refereeID, RefereeJoinedAt: &now, EndTime: &endTime,
+		MatchTime: now.Add(-time.Hour), CompletionSource: model.CompletionSourceUnknown,
+	})
+
+	resp, err := NewGetRefereeHistoryLogic(refereeTestCtx(refereeID), svcCtx).GetRefereeHistory(&types.RefereeHistoryReq{Page: 1, PageSize: 20})
+	if err != nil || !resp.Success || len(resp.List) != 1 {
+		t.Fatalf("load legacy history: resp=%#v err=%v", resp, err)
+	}
+	if resp.List[0].CompletedByUserId != 0 || resp.List[0].CompletionSource != model.CompletionSourceUnknown {
+		t.Fatalf("legacy completion attribution must remain unknown: %+v", resp.List[0])
 	}
 }
 
@@ -168,19 +195,19 @@ func TestGetRefereeHistoryPaginationDefaults(t *testing.T) {
 	win := 1
 	for i := int64(1); i <= 3; i++ {
 		seedRefereeHistoryMatch(t, svcCtx, &model.Match{
-			Id:              300 + i,
-			UserId:          20,
-			OpponentId:      &opponentID,
-			OpponentName:    "选手2",
-			GameType:        3,
-			Status:          2,
-			Result:          &win,
-			RefereeUserId:   &refereeID,
-			RefereeJoinedAt: &now,
-			EndTime:         &endTime,
-			MyScore:         3,
-			OpponentScore:   1,
-			MatchTime:       now.Add(-time.Duration(i) * time.Hour),
+			Id:               300 + i,
+			UserId:           20,
+			OpponentId:       &opponentID,
+			OpponentName:     "选手2",
+			GameType:         3,
+			Status:           2,
+			Result:           &win,
+			RefereeUserId:    &refereeID,
+			RefereeJoinedAt:  &now,
+			EndTime:          &endTime,
+			MyScore:          3,
+			OpponentScore:    1,
+			MatchTime:        now.Add(-time.Duration(i) * time.Hour),
 			CompletionSource: model.CompletionSourceReferee,
 		})
 	}
@@ -235,19 +262,19 @@ func TestGetRefereeHistoryCalculatesRefereeDuration(t *testing.T) {
 	win := 1
 
 	seedRefereeHistoryMatch(t, svcCtx, &model.Match{
-		Id:              501,
-		UserId:          30,
-		OpponentId:      &opponentID,
-		OpponentName:    "选手B",
-		GameType:        3,
-		Status:          2,
-		Result:          &win,
-		RefereeUserId:   &refereeID,
-		RefereeJoinedAt: &joinedAt,
-		EndTime:         &endTime,
-		MyScore:         5,
-		OpponentScore:   2,
-		MatchTime:       now.Add(-1 * time.Hour),
+		Id:               501,
+		UserId:           30,
+		OpponentId:       &opponentID,
+		OpponentName:     "选手B",
+		GameType:         3,
+		Status:           2,
+		Result:           &win,
+		RefereeUserId:    &refereeID,
+		RefereeJoinedAt:  &joinedAt,
+		EndTime:          &endTime,
+		MyScore:          5,
+		OpponentScore:    2,
+		MatchTime:        now.Add(-1 * time.Hour),
 		CompletionSource: model.CompletionSourceReferee,
 	})
 
@@ -293,21 +320,21 @@ func TestGetRefereeHistoryCompletedByUserIdFromModel(t *testing.T) {
 	endTime := now
 
 	seedRefereeHistoryMatch(t, svcCtx, &model.Match{
-		Id:               601,
-		UserId:           40,
-		OpponentId:       &opponentID,
-		OpponentName:     "对手",
-		GameType:         3,
-		Status:           2,
-		Result:           &win,
-		RefereeUserId:    &refereeID,
-		RefereeJoinedAt:  &now,
-		EndTime:          &endTime,
+		Id:                601,
+		UserId:            40,
+		OpponentId:        &opponentID,
+		OpponentName:      "对手",
+		GameType:          3,
+		Status:            2,
+		Result:            &win,
+		RefereeUserId:     &refereeID,
+		RefereeJoinedAt:   &now,
+		EndTime:           &endTime,
 		CompletedByUserId: &completedByUserID,
-		CompletionSource: model.CompletionSourceReferee,
-		MyScore:          5,
-		OpponentScore:    3,
-		MatchTime:        now.Add(-30 * time.Minute),
+		CompletionSource:  model.CompletionSourceReferee,
+		MyScore:           5,
+		OpponentScore:     3,
+		MatchTime:         now.Add(-30 * time.Minute),
 	})
 
 	resp, err := NewGetRefereeHistoryLogic(refereeTestCtx(refereeID), svcCtx).GetRefereeHistory(&types.RefereeHistoryReq{

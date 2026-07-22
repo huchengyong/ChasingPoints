@@ -33,17 +33,17 @@ func TestListByRefereeUserIdReturnsOnlyCompletedAndCancelled(t *testing.T) {
 
 	// Status 1 (ongoing) — should NOT be returned
 	if err := matchModel.Create(&Match{
-		Id:             1,
-		UserId:         10,
-		OpponentId:     &opponentID,
-		OpponentName:   "对手A",
-		GameType:       3,
-		Status:         1,
-		RefereeUserId:  &refereeID,
+		Id:              1,
+		UserId:          10,
+		OpponentId:      &opponentID,
+		OpponentName:    "对手A",
+		GameType:        3,
+		Status:          1,
+		RefereeUserId:   &refereeID,
 		RefereeJoinedAt: &now,
-		MyScore:        1,
-		OpponentScore:  0,
-		MatchTime:      now.Add(-1 * time.Hour),
+		MyScore:         1,
+		OpponentScore:   0,
+		MatchTime:       now.Add(-1 * time.Hour),
 	}); err != nil {
 		t.Fatalf("create match 1: %v", err)
 	}
@@ -52,19 +52,19 @@ func TestListByRefereeUserIdReturnsOnlyCompletedAndCancelled(t *testing.T) {
 	endTime2 := now.Add(30 * time.Minute)
 	win := 1
 	if err := matchModel.Create(&Match{
-		Id:              2,
-		UserId:          10,
-		OpponentId:      &opponentID,
-		OpponentName:    "对手B",
-		GameType:        3,
-		Status:          2,
-		Result:          &win,
-		RefereeUserId:   &refereeID,
-		RefereeJoinedAt: &now,
-		EndTime:         &endTime2,
-		MyScore:         10,
-		OpponentScore:   5,
-		MatchTime:       now.Add(-2 * time.Hour),
+		Id:               2,
+		UserId:           10,
+		OpponentId:       &opponentID,
+		OpponentName:     "对手B",
+		GameType:         3,
+		Status:           2,
+		Result:           &win,
+		RefereeUserId:    &refereeID,
+		RefereeJoinedAt:  &now,
+		EndTime:          &endTime2,
+		MyScore:          10,
+		OpponentScore:    5,
+		MatchTime:        now.Add(-2 * time.Hour),
 		CompletionSource: CompletionSourceReferee,
 	}); err != nil {
 		t.Fatalf("create match 2: %v", err)
@@ -73,19 +73,19 @@ func TestListByRefereeUserIdReturnsOnlyCompletedAndCancelled(t *testing.T) {
 	// Status 3 (cancelled) — SHOULD be returned
 	endTime3 := now.Add(15 * time.Minute)
 	if err := matchModel.Create(&Match{
-		Id:              3,
-		UserId:          10,
-		OpponentId:      &opponentID,
-		OpponentName:    "对手C",
-		GameType:        1,
-		Status:          3,
-		RefereeUserId:   &refereeID,
-		RefereeJoinedAt: &now,
-		EndTime:         &endTime3,
-		MyScore:         3,
-		OpponentScore:   0,
-		MatchTime:       now.Add(-3 * time.Hour),
-		CompletionSource: CompletionSourcePlayerCancelled,
+		Id:               3,
+		UserId:           10,
+		OpponentId:       &opponentID,
+		OpponentName:     "对手C",
+		GameType:         1,
+		Status:           3,
+		RefereeUserId:    &refereeID,
+		RefereeJoinedAt:  &now,
+		EndTime:          &endTime3,
+		MyScore:          3,
+		OpponentScore:    0,
+		MatchTime:        now.Add(-3 * time.Hour),
+		CompletionSource: CompletionSourceUnknown,
 	}); err != nil {
 		t.Fatalf("create match 3: %v", err)
 	}
@@ -94,19 +94,19 @@ func TestListByRefereeUserIdReturnsOnlyCompletedAndCancelled(t *testing.T) {
 	otherReferee := int64(999)
 	endTime4 := now.Add(45 * time.Minute)
 	if err := matchModel.Create(&Match{
-		Id:              4,
-		UserId:          10,
-		OpponentId:      &opponentID,
-		OpponentName:    "对手D",
-		GameType:        2,
-		Status:          2,
-		Result:          &win,
-		RefereeUserId:   &otherReferee,
-		RefereeJoinedAt: &now,
-		EndTime:         &endTime4,
-		MyScore:         7,
-		OpponentScore:   3,
-		MatchTime:       now.Add(-4 * time.Hour),
+		Id:               4,
+		UserId:           10,
+		OpponentId:       &opponentID,
+		OpponentName:     "对手D",
+		GameType:         2,
+		Status:           2,
+		Result:           &win,
+		RefereeUserId:    &otherReferee,
+		RefereeJoinedAt:  &now,
+		EndTime:          &endTime4,
+		MyScore:          7,
+		OpponentScore:    3,
+		MatchTime:        now.Add(-4 * time.Hour),
 		CompletionSource: CompletionSourceReferee,
 	}); err != nil {
 		t.Fatalf("create match 4: %v", err)
@@ -144,18 +144,18 @@ func TestListByRefereeUserIdPagination(t *testing.T) {
 	for i := int64(1); i <= 5; i++ {
 		opponentID := int64(2000 + i)
 		if err := matchModel.Create(&Match{
-			Id:             i,
-			UserId:         10,
-			OpponentId:     &opponentID,
-			OpponentName:   "对手",
-			GameType:       3,
-			Status:         2,
-			RefereeUserId:  &refereeID,
-			RefereeJoinedAt: &now,
-			EndTime:         &endTime,
-			MyScore:        5,
-			OpponentScore:  3,
-			MatchTime:      now.Add(-time.Duration(i) * time.Hour),
+			Id:               i,
+			UserId:           10,
+			OpponentId:       &opponentID,
+			OpponentName:     "对手",
+			GameType:         3,
+			Status:           2,
+			RefereeUserId:    &refereeID,
+			RefereeJoinedAt:  &now,
+			EndTime:          &endTime,
+			MyScore:          5,
+			OpponentScore:    3,
+			MatchTime:        now.Add(-time.Duration(i) * time.Hour),
 			CompletionSource: CompletionSourceReferee,
 		}); err != nil {
 			t.Fatalf("create match %d: %v", i, err)

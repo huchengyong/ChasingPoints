@@ -73,10 +73,7 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 			refereeJoinedAt = match.RefereeJoinedAt.Format("2006-01-02T15:04:05+08:00")
 		}
 	}
-	completedByUserId := int64(0)
-	if match.CompletedByUserId != nil {
-		completedByUserId = *match.CompletedByUserId
-	}
+	completedByUserId, completionSource := resolvePublicCompletionAttribution(match)
 
 	refereeDurationSeconds := int64(0)
 	if refereeBound && match.RefereeJoinedAt != nil {
@@ -148,7 +145,7 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 			RefereeJoinedAt:          refereeJoinedAt,
 			RefereeDurationSeconds:   refereeDurationSeconds,
 			CompletedByUserId:        completedByUserId,
-			CompletionSource:         match.CompletionSource,
+			CompletionSource:         completionSource,
 			ViewerRole:               "spectator",
 			Player1Score:             match.MyScore,
 			Player2Score:             match.OpponentScore,
@@ -162,4 +159,18 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 			CreatedAt:                match.CreatedAt.Format("2006-01-02 15:04:05"),
 		},
 	}, nil
+}
+
+func resolvePublicCompletionAttribution(match *model.Match) (int64, string) {
+	if match == nil || match.Status != 2 {
+		return 0, model.CompletionSourceUnknown
+	}
+	completedByUserId := int64(0)
+	if match.CompletedByUserId != nil {
+		completedByUserId = *match.CompletedByUserId
+	}
+	if match.CompletionSource == "" {
+		return completedByUserId, model.CompletionSourceUnknown
+	}
+	return completedByUserId, match.CompletionSource
 }

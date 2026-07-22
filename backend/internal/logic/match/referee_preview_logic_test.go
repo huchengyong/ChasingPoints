@@ -92,6 +92,13 @@ func TestRefereePreviewReturnsMatchInfoWithValidToken(t *testing.T) {
 	if resp.Preview.Player1Score != 3 || resp.Preview.Player2Score != 2 {
 		t.Fatalf("expected scores 3:2, got %d:%d", resp.Preview.Player1Score, resp.Preview.Player2Score)
 	}
+	if !mr.Exists(tokenKey) {
+		t.Fatal("preview must not consume the join token")
+	}
+	stored, err := svcCtx.MatchModel.FindById(101)
+	if err != nil || stored == nil || stored.RefereeUserId != nil {
+		t.Fatalf("preview must not bind a referee: match=%+v err=%v", stored, err)
+	}
 }
 
 func TestRefereePreviewRejectsInvalidToken(t *testing.T) {
@@ -191,17 +198,17 @@ func TestRefereePreviewRejectsMatchAlreadyHasReferee(t *testing.T) {
 	seedRefereeFlowUser(t, svcCtx, refereeID, "裁判丙")
 	seedRefereeFlowUser(t, svcCtx, existingRefereeID, "已有裁判")
 	seedRefereeFlowMatch(t, svcCtx, &model.Match{
-		Id:             104,
-		UserId:         1001,
-		OpponentId:     &opponentID,
-		OpponentName:   "选手乙",
-		GameType:       3,
-		Status:         1,
-		RefereeUserId:  &existingRefereeID,
+		Id:              104,
+		UserId:          1001,
+		OpponentId:      &opponentID,
+		OpponentName:    "选手乙",
+		GameType:        3,
+		Status:          1,
+		RefereeUserId:   &existingRefereeID,
 		RefereeJoinedAt: &now,
-		MyScore:        1,
-		OpponentScore:  1,
-		MatchTime:      now,
+		MyScore:         1,
+		OpponentScore:   1,
+		MatchTime:       now,
 	})
 
 	tokenKey := buildMatchRefereeJoinTokenKey(104)

@@ -23,11 +23,10 @@ const (
 	FinishStatePendingConfirmation = "pending_confirmation"
 	FinishRequestTTL               = 24 * time.Hour
 
-	CompletionSourceReferee           = "referee"
-	CompletionSourcePlayerDirect      = "player_direct"
-	CompletionSourcePlayerConfirmed   = "player_confirmed"
-	CompletionSourcePlayerCancelled   = "player_cancelled"
-	CompletionSourceUnknown           = "unknown"
+	CompletionSourceReferee         = "referee"
+	CompletionSourcePlayerDirect    = "player_direct"
+	CompletionSourcePlayerConfirmed = "player_confirmed"
+	CompletionSourceUnknown         = "unknown"
 )
 
 func NormalizeMatchMode(mode string) string {
@@ -701,12 +700,10 @@ func (m *MatchModel) ListByOpponentName(
 	return records[offset:end], total, nil
 }
 
-
 func (m *MatchModel) GetH2HStats(userId int64, opponentName string) (total, myWins, oppWins int, avgDiff float64, err error) {
 	total, myWins, oppWins, avgDiff, _, err = m.GetH2HStatsByOpponent(userId, 0, opponentName)
 	return total, myWins, oppWins, avgDiff, err
 }
-
 
 // ListByRefereeUserId 获取裁判执裁历史（已完成和已取消）
 func (m *MatchModel) ListByRefereeUserId(refereeUserId int64, offset, limit int) ([]Match, int64, error) {

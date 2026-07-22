@@ -329,10 +329,17 @@ func broadcastRankInfoUpdated(match *model.Match, result int) {
 }
 
 func resolveCompletedByUserId(match *model.Match) int64 {
-	if match == nil || match.CompletedByUserId == nil {
+	if match == nil || match.Status != 2 || match.CompletedByUserId == nil {
 		return 0
 	}
 	return *match.CompletedByUserId
+}
+
+func resolveCompletionSource(match *model.Match) string {
+	if match == nil || match.Status != 2 || match.CompletionSource == "" {
+		return model.CompletionSourceUnknown
+	}
+	return match.CompletionSource
 }
 
 type finishMatchSettlement struct {

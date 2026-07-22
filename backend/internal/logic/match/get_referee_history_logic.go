@@ -90,10 +90,7 @@ func (l *GetRefereeHistoryLogic) GetRefereeHistory(req *types.RefereeHistoryReq)
 			statusText = "已取消"
 		}
 
-		completedByUserId := int64(0)
-		if m.CompletedByUserId != nil {
-			completedByUserId = *m.CompletedByUserId
-		}
+		completedByUserId := resolveCompletedByUserId(&m)
 
 		list = append(list, types.RefereeHistoryItem{
 			Id:                     m.Id,
@@ -115,7 +112,7 @@ func (l *GetRefereeHistoryLogic) GetRefereeHistory(req *types.RefereeHistoryReq)
 			EndTime:                endTime,
 			RefereeDurationSeconds: refereeDuration,
 			CompletedByUserId:      completedByUserId,
-			CompletionSource:       m.CompletionSource,
+			CompletionSource:       resolveCompletionSource(&m),
 		})
 	}
 

@@ -88,6 +88,12 @@ type MatchSyncData struct {
 	ViewerRole                    string                 `json:"viewer_role,optional"`
 	RefereeBound                  bool                   `json:"referee_bound,optional"`
 	RefereeUserId                 int64                  `json:"referee_user_id,optional"`
+	RefereeName                   string                 `json:"referee_name,optional"`
+	RefereeAvatar                 string                 `json:"referee_avatar,optional"`
+	RefereeJoinedAt               string                 `json:"referee_joined_at,optional"`
+	RefereeDurationSeconds        int64                  `json:"referee_duration_seconds,optional"`
+	CompletedByUserId             int64                  `json:"completed_by_user_id,optional"`
+	CompletionSource              string                 `json:"completion_source,optional"`
 	CanScore                      bool                   `json:"can_score,optional"`
 	CanUndo                       bool                   `json:"can_undo,optional"`
 	CanFinish                     bool                   `json:"can_finish,optional"`
@@ -439,6 +445,29 @@ func buildMatchSyncDataForViewer(match *model.Match, userId int64, completedRoun
 		myScore, opponentScore = opponentScore, myScore
 		currentFrameMyScore, currentFrameOpponentScore = currentFrameOpponentScore, currentFrameMyScore
 	}
+	refereeJoinedAt := ""
+	refereeDurationSeconds := int64(0)
+	if match.RefereeJoinedAt != nil {
+		refereeJoinedAt = match.RefereeJoinedAt.Format("2006-01-02T15:04:05+08:00")
+		end := time.Now()
+		if match.EndTime != nil {
+			end = *match.EndTime
+		}
+		refereeDurationSeconds = int64(end.Sub(*match.RefereeJoinedAt).Seconds())
+		if refereeDurationSeconds < 0 {
+			refereeDurationSeconds = 0
+		}
+	}
+	completedByUserId := int64(0)
+	completionSource := model.CompletionSourceUnknown
+	if match.Status == 2 {
+		if match.CompletedByUserId != nil {
+			completedByUserId = *match.CompletedByUserId
+		}
+		if match.CompletionSource != "" {
+			completionSource = match.CompletionSource
+		}
+	}
 	return MatchSyncData{
 		MatchId:                       match.Id,
 		Status:                        match.Status,
@@ -463,6 +492,10 @@ func buildMatchSyncDataForViewer(match *model.Match, userId int64, completedRoun
 		ViewerRole:                    viewerRole,
 		RefereeBound:                  refereeBound,
 		RefereeUserId:                 refereeUserId,
+		RefereeJoinedAt:               refereeJoinedAt,
+		RefereeDurationSeconds:        refereeDurationSeconds,
+		CompletedByUserId:             completedByUserId,
+		CompletionSource:              completionSource,
 		CanScore:                      canScore,
 		CanUndo:                       canUndo,
 		CanFinish:                     canFinish,
@@ -474,6 +507,16 @@ func buildMatchSyncDataForViewer(match *model.Match, userId int64, completedRoun
 		OpponentScore:                 opponentScore,
 		CurrentFrameMyScore:           currentFrameMyScore,
 		CurrentFrameOpponentScore:     currentFrameOpponentScore,
+	}
+}
+
+func hydrateMatchSyncRefereeProfile(svcCtx *svc.ServiceContext, data *MatchSyncData) {
+	if svcCtx == nil || svcCtx.UserModel == nil || data == nil || !data.RefereeBound || data.RefereeUserId <= 0 {
+		return
+	}
+	if referee, err := svcCtx.UserModel.FindById(data.RefereeUserId); err == nil && referee != nil {
+		data.RefereeName = referee.Nickname
+		data.RefereeAvatar = referee.Avatar
 	}
 }
 
@@ -629,6 +672,7 @@ func (c *Client) sendMatchSync() {
 		Type: "sync",
 		Data: func() MatchSyncData {
 			data := buildMatchSyncDataForViewer(match, c.UserId, roundCount, snookerState, rounds)
+			hydrateMatchSyncRefereeProfile(c.SvcCtx, &data)
 			data.LastAction = buildMatchSyncLastAction(c.SvcCtx, match, c.UserId)
 			return data
 		}(),
@@ -667,6 +711,7 @@ func broadcastExpiredMatchSync(hub *Hub, svcCtx *svc.ServiceContext, match *mode
 			continue
 		}
 		snapshot := buildMatchSyncDataForViewer(match, userId, roundCount, snookerState, rounds)
+		hydrateMatchSyncRefereeProfile(svcCtx, &snapshot)
 		snapshot.LastAction = buildMatchSyncLastAction(svcCtx, match, userId)
 		messages[userId] = &Message{Type: "match_finish_expired", Data: map[string]interface{}{
 			"match_id":            match.Id,

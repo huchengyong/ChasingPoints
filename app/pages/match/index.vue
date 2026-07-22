@@ -244,6 +244,44 @@
 				<button class="match-qr-done" @click="closeMatchQrModal">关闭</button>
 			</view>
 		</view>
+
+		<view v-if="showRefereePreview" class="referee-preview-mask" @click="closeRefereePreview">
+			<view class="referee-preview-panel" @click.stop>
+				<text class="referee-preview-title">确认担任本场裁判</text>
+				<text class="referee-preview-desc">确认后，你将负责本场记分和结算，双方选手会切换为只读。</text>
+
+				<view v-if="refereePreviewLoading" class="referee-preview-state">
+					<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
+					<text>正在核验裁判码...</text>
+				</view>
+
+				<view v-else-if="refereePreviewError" class="referee-preview-state">
+					<text class="referee-preview-error">{{ refereePreviewError }}</text>
+					<button class="referee-preview-retry" @click="retryRefereeScan">重新扫码</button>
+				</view>
+
+				<view v-else-if="refereePreview" class="referee-preview-content">
+					<view class="referee-preview-players">
+						<view class="referee-preview-player">
+							<image :src="resolveAvatarUrl(refereePreview.player1_avatar, refereePreview.player1_id)" mode="aspectFill"></image>
+							<text>{{ refereePreview.player1_name || '选手1' }}</text>
+						</view>
+						<text class="referee-preview-vs">VS</text>
+						<view class="referee-preview-player">
+							<image :src="resolveAvatarUrl(refereePreview.player2_avatar, refereePreview.player2_id)" mode="aspectFill"></image>
+							<text>{{ refereePreview.player2_name || '选手2' }}</text>
+						</view>
+					</view>
+					<text class="referee-preview-score">{{ refereePreview.player1_score }} : {{ refereePreview.player2_score }}</text>
+					<text class="referee-preview-meta">{{ refereePreview.game_type_name || '对局' }} · {{ getRefereePreviewMode(refereePreview.match_mode) }}</text>
+				</view>
+
+				<view v-if="refereePreview && !refereePreviewLoading && !refereePreviewError" class="referee-preview-actions">
+					<button class="referee-preview-cancel" :disabled="refereeJoining" @click="closeRefereePreview">暂不担任</button>
+					<button class="referee-preview-confirm" :disabled="refereeJoining" @click="confirmRefereeJoin">{{ refereeJoining ? '确认中...' : '确认担任裁判' }}</button>
+				</view>
+			</view>
+		</view>
 	</view>
 </template>
 
@@ -253,7 +291,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { onLoad, onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { usePageTheme } from '@/utils/page-theme.js'
-import { getCurrentMatch, getPublicMatches, joinMatchReferee, startMatch } from '@/api/match.js'
+import { getCurrentMatch, getPublicMatches, joinMatchReferee, previewMatchReferee, startMatch } from '@/api/match.js'
 import { getMatchQRCode } from '@/api/match.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { shouldShowMatchPageLoading } from '@/utils/match-page.js'
@@ -295,6 +333,12 @@ const showMatchQrModal = ref(false)
 const matchQrLoading = ref(false)
 const matchQrFailed = ref(false)
 const matchQrUrl = ref('')
+const showRefereePreview = ref(false)
+const refereePreviewLoading = ref(false)
+const refereeJoining = ref(false)
+const refereePreview = ref(null)
+const refereePreviewError = ref('')
+const pendingRefereeJoin = ref(null)
 const showFilterPanel = ref(false)
 const currentScope = ref(userStore.isLoggedIn ? 'friends' : 'hall')
 const currentStatus = ref(1)
@@ -512,7 +556,7 @@ const confirmSpectatorFilters = () => {
 }
 
 onUnmounted(() => {
-	if (showFilterPanel.value || showMatchQrModal.value) {
+	if (showFilterPanel.value || showMatchQrModal.value || showRefereePreview.value) {
 		uni.showTabBar({ animation: false })
 	}
 })
@@ -624,6 +668,73 @@ const closeMatchQrModal = () => {
 	uni.showTabBar({ animation: true })
 }
 
+const getRefereePreviewMode = (mode) => mode === 'ranked' ? '排位赛' : '练习赛'
+
+const openRefereePreview = async (refereeJoin) => {
+	pendingRefereeJoin.value = refereeJoin
+	refereePreview.value = null
+	refereePreviewError.value = ''
+	refereePreviewLoading.value = true
+	showRefereePreview.value = true
+	uni.hideTabBar({ animation: true })
+	try {
+		const res = await previewMatchReferee(refereeJoin)
+		if (!res?.success || !res.preview) {
+			refereePreviewError.value = res?.message || '裁判码已失效，请重新扫码'
+			return
+		}
+		refereePreview.value = res.preview
+	} catch (error) {
+		console.error('预览裁判对局失败:', error)
+		refereePreviewError.value = '裁判码已失效，请重新扫码'
+	} finally {
+		refereePreviewLoading.value = false
+	}
+}
+
+const closeRefereePreview = (force = false) => {
+	if (refereeJoining.value && !force) return
+	showRefereePreview.value = false
+	refereePreviewLoading.value = false
+	refereePreview.value = null
+	refereePreviewError.value = ''
+	pendingRefereeJoin.value = null
+	uni.showTabBar({ animation: true })
+}
+
+const retryRefereeScan = () => {
+	closeRefereePreview()
+	scanIntent.value = 'referee'
+	setTimeout(handleScanCode, 50)
+}
+
+const confirmRefereeJoin = async () => {
+	if (!pendingRefereeJoin.value || refereeJoining.value) return
+	refereeJoining.value = true
+	try {
+		const res = await joinMatchReferee(pendingRefereeJoin.value)
+		if (!res?.success) {
+			refereePreviewError.value = res?.message || '裁判码已失效，请重新扫码'
+			refereePreview.value = null
+			return
+		}
+		const joinedMatchId = res.match_id || pendingRefereeJoin.value.match_id
+		closeRefereePreview(true)
+		navigateToPlayingMatch({
+			match_id: joinedMatchId,
+			game_type: res.match?.game_type || 3,
+			opponent_name: res.match?.opponent_name || '选手2',
+			opponent_avatar: res.match?.opponent_avatar || ''
+		})
+	} catch (error) {
+		console.error('确认担任裁判失败:', error)
+		refereePreviewError.value = '加入裁判失败，请重新扫码'
+		refereePreview.value = null
+	} finally {
+		refereeJoining.value = false
+	}
+}
+
 const handleScanAsReferee = () => {
 	if (!userStore.isLoggedIn) {
 		uni.showToast({
@@ -683,19 +794,7 @@ const handleMatchResult = async (scanResult) => {
 		}
 
 		if (scanAction.type === 'join_referee') {
-			uni.showLoading({ title: '加入裁判中...', mask: true })
-			const res = await joinMatchReferee(scanAction.refereeJoin)
-			uni.hideLoading()
-			if (!res?.success) {
-				uni.showToast({ title: res?.message || '加入裁判失败', icon: 'none' })
-				return
-			}
-			navigateToPlayingMatch({
-				match_id: res.match_id || scanAction.refereeJoin.match_id,
-				game_type: res.match?.game_type || 3,
-				opponent_name: res.match?.opponent_name || '对手',
-				opponent_avatar: res.match?.opponent_avatar || ''
-			})
+			await openRefereePreview(scanAction.refereeJoin)
 			return
 		}
 

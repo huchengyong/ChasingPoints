@@ -16,8 +16,6 @@ export const resolveCompletionSourceLabel = (source) => {
       return '选手直接完成'
     case 'player_confirmed':
       return '双方确认完成'
-    case 'player_cancelled':
-      return '选手取消对局'
     case 'unknown':
     default:
       return '未知'
@@ -52,11 +50,15 @@ export const resolveRefereeIdentityCard = ({
   refereeJoinedAt = '',
   refereeDurationSeconds = 0,
   completedByUserId = 0,
-  completionSource = ''
+  completionSource = '',
+  status = 0
 } = {}) => {
   if (!refereeBound || !refereeUserId) {
     return { hasReferee: false }
   }
+
+  const isCompleted = status === 2
+  const hasReliableAttribution = isCompleted && hasReliableCompletionAttribution(completionSource)
 
   return {
     hasReferee: true,
@@ -68,8 +70,8 @@ export const resolveRefereeIdentityCard = ({
     refereeDurationText: formatDuration(refereeDurationSeconds),
     completedByUserId,
     completionSource,
-    completionLabel: resolveCompletionSourceLabel(completionSource),
-    hasReliableAttribution: hasReliableCompletionAttribution(completionSource),
+    completionLabel: hasReliableAttribution ? resolveCompletionSourceLabel(completionSource) : '',
+    hasReliableAttribution,
     // 中立称谓 — 不使用"官方裁判"或"认证裁判"
     neutralLabel: '本场裁判'
   }
@@ -167,7 +169,7 @@ export const resolveRefereeHistoryCard = (item) => {
     refereeDurationText: formatDuration(item.referee_duration_seconds),
     completedByUserId: item.completed_by_user_id || 0,
     completionSource: item.completion_source || '',
-    completionLabel: resolveCompletionSourceLabel(item.completion_source),
+    completionLabel: isCancelled ? '' : resolveCompletionSourceLabel(item.completion_source),
     statusText: isCancelled ? '已取消' : '已完成',
     isCancelled,
     // 不使用胜负颜色
