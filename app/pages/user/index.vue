@@ -1,6 +1,6 @@
 <template>
 	<view class="user-container" :class="{ 'dark-mode': isDarkMode }">
-		<view class="main-content" :class="{ 'has-float-reward': floatRewardVisible }">
+		<view class="main-content">
 			<template v-if="!isLoggedIn">
 				<view class="guest-hero">
 					<text class="guest-eyebrow">{{ guestHeroCopy.eyebrow }}</text>

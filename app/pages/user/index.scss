@@ -851,9 +851,6 @@ $border-dark: rgba(247, 231, 168, 0.12);
 	box-shadow: 0 -6rpx 28rpx rgba(15, 23, 42, 0.1), 0 12rpx 36rpx rgba(224, 174, 18, 0.08);
 	box-sizing: border-box;
 
-	// #ifdef MP-WEIXIN
-	bottom: calc(24rpx + env(safe-area-inset-bottom));
-	// #endif
 }
 
 .float-reward-body {
@@ -914,10 +911,6 @@ $border-dark: rgba(247, 231, 168, 0.12);
 	justify-content: center;
 	flex-shrink: 0;
 	border-radius: 50%;
-}
-
-.main-content.has-float-reward {
-	padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
 }
 
 .section-hint {
