@@ -289,13 +289,20 @@ export const resolveCompactRewardEntry = (rewardStatus = {}) => {
   const status = toSafeText(rewardStatus?.status, 'not_started')
   const floatable = card.visible && (status === 'not_started' || status === 'rejected')
   const inline = card.visible && status === 'pending_review'
+
+  let { title, description } = card
+  if (status === 'not_started') {
+    title = '免费Pro会员限时赠送'
+    description = '绑定你常去的球馆，可免费领取1个月Pro会员'
+  }
+
   return {
     visible: card.visible,
     floatable,
     inline,
     state: status,
-    title: card.title,
-    description: card.description,
+    title,
+    description,
     statusText: card.statusText,
     action: floatable ? 'favorite-venue' : '',
     actionText: floatable ? card.actionText : ''
