@@ -255,10 +255,10 @@
 				</view>
 				<view class="float-reward-action">
 					<text>{{ compactRewardEntry.actionText }}</text>
+					<view class="float-reward-close" @click.stop="handleFloatRewardClose">
+						<uni-icons type="closeempty" size="14" :color="isDarkMode ? '#9f926e' : '#94a3b8'"></uni-icons>
+					</view>
 				</view>
-			</view>
-			<view class="float-reward-close" @click.stop="handleFloatRewardClose">
-				<uni-icons type="closeempty" size="20" :color="isDarkMode ? '#9f926e' : '#94a3b8'"></uni-icons>
 			</view>
 		</view>
 

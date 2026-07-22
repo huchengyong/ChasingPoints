@@ -894,17 +894,21 @@ $border-dark: rgba(247, 231, 168, 0.12);
 
 .float-reward-action {
 	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
 
 	text {
 		font-size: 21rpx;
 		font-weight: 600;
+		line-height: 32rpx;
 		color: $primary-color;
 	}
 }
 
 .float-reward-close {
-	width: 52rpx;
-	height: 52rpx;
+	width: 32rpx;
+	height: 32rpx;
 	display: flex;
 	align-items: center;
 	justify-content: center;
