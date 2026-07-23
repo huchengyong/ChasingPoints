@@ -52,6 +52,8 @@ type ServiceContext struct {
 	RulesContentModel               *model.RulesContentModel
 	SeasonModel                     *model.SeasonModel
 	SeasonRecordModel               *model.SeasonRecordModel
+	SeasonChallengeSnapshotModel    *model.SeasonChallengeSnapshotModel
+	SeasonSettlementModel           *model.SeasonSettlementModel
 	VenueModel                      *model.VenueModel
 	VenueCheckinModel               *model.VenueCheckinModel
 	VenueGeocodeTaskModel           *model.VenueGeocodeTaskModel
@@ -114,6 +116,8 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		RulesContentModel:               models.RulesContentModel,
 		SeasonModel:                     models.SeasonModel,
 		SeasonRecordModel:               models.SeasonRecordModel,
+		SeasonChallengeSnapshotModel:    models.SeasonChallengeSnapshotModel,
+		SeasonSettlementModel:           models.SeasonSettlementModel,
 		VenueModel:                      models.VenueModel,
 		VenueCheckinModel:               models.VenueCheckinModel,
 		VenueGeocodeTaskModel:           models.VenueGeocodeTaskModel,
@@ -170,6 +174,8 @@ type serviceModels struct {
 	RulesContentModel               *model.RulesContentModel
 	SeasonModel                     *model.SeasonModel
 	SeasonRecordModel               *model.SeasonRecordModel
+	SeasonChallengeSnapshotModel    *model.SeasonChallengeSnapshotModel
+	SeasonSettlementModel           *model.SeasonSettlementModel
 	VenueModel                      *model.VenueModel
 	VenueCheckinModel               *model.VenueCheckinModel
 	VenueGeocodeTaskModel           *model.VenueGeocodeTaskModel
@@ -274,6 +280,8 @@ func newServiceModels(db *gorm.DB) serviceModels {
 		RulesContentModel:               model.NewRulesContentModel(db),
 		SeasonModel:                     model.NewSeasonModel(db),
 		SeasonRecordModel:               model.NewSeasonRecordModel(db),
+		SeasonChallengeSnapshotModel:    model.NewSeasonChallengeSnapshotModel(db),
+		SeasonSettlementModel:           model.NewSeasonSettlementModel(db),
 		VenueModel:                      venueModel,
 		VenueCheckinModel:               venueCheckinModel,
 		VenueGeocodeTaskModel:           venueGeocodeTaskModel,

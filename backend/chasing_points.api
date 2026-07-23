@@ -1195,6 +1195,28 @@ type MatchDetailData {
 	CreatedAt                     string             `json:"created_at"`
 }
 
+type GetMatchRewardSummaryReq {
+	MatchId int64 `form:"match_id"`
+}
+
+type MatchRewardItem {
+	AchievementId   int64  `json:"achievement_id"`
+	AchievementKey  string `json:"achievement_key"`
+	AchievementName string `json:"achievement_name"`
+	Description     string `json:"description"`
+	Icon            string `json:"icon"`
+	RewardTitleId   int64  `json:"reward_title_id,optional"`
+	RewardTitleName string `json:"reward_title_name,optional"`
+	UnlockedAt      string `json:"unlocked_at"`
+}
+
+type GetMatchRewardSummaryResp {
+	Success bool              `json:"success"`
+	Status  string            `json:"status"`
+	Message string            `json:"message,optional"`
+	List    []MatchRewardItem `json:"list"`
+}
+
 @server (
 	prefix: /api/match
 	group:  match
@@ -1228,6 +1250,10 @@ service chasing_points-api {
 	@doc "结束对局"
 	@handler FinishMatch
 	post /finish (FinishMatchReq) returns (FinishMatchResp)
+
+	@doc "获取本场新解锁荣誉"
+	@handler GetMatchRewardSummary
+	get /reward-summary (GetMatchRewardSummaryReq) returns (GetMatchRewardSummaryResp)
 
 	@doc "发起排位结束确认"
 	@handler RequestFinishMatch
@@ -1483,11 +1509,15 @@ type GetUserAchievementsResp {
 
 // 称号
 type TitleInfo {
-	Id        int64  `json:"id"`
-	TitleName string `json:"title_name"`
-	Source    string `json:"source"`
-	Equipped  bool   `json:"equipped"`
-	CreatedAt string `json:"created_at"`
+	Id            int64  `json:"id"`
+	TitleName     string `json:"title_name"`
+	Source        string `json:"source"`
+	SourceType    string `json:"source_type,optional"`
+	SourceRefId   int64  `json:"source_ref_id,optional"`
+	SourceRefName string `json:"source_ref_name,optional"`
+	Equipped      bool   `json:"equipped"`
+	GrantedAt     string `json:"granted_at,optional"`
+	CreatedAt     string `json:"created_at"`
 }
 
 type EquipTitleReq {
@@ -1498,6 +1528,78 @@ type EquipTitleReq {
 type GetUserTitlesResp {
 	Success bool        `json:"success"`
 	List    []TitleInfo `json:"list"`
+}
+
+type GetHonorWallReq {
+	UserId          int64 `form:"user_id,optional"`
+	GameType        int   `form:"game_type,optional,default=3"`
+	HistorySeasonId int64 `form:"history_season_id,optional"`
+	HistoryPage     int   `form:"history_page,optional,default=1"`
+	HistoryPageSize int   `form:"history_page_size,optional,default=20"`
+}
+
+type HonorWallProfile {
+	UserId   int64  `json:"user_id"`
+	Nickname string `json:"nickname"`
+	Avatar   string `json:"avatar"`
+}
+
+type HonorWallSummary {
+	CareerUnlocked   int `json:"career_unlocked"`
+	CareerTotal      int `json:"career_total"`
+	SeasonHonors     int `json:"season_honors"`
+	TournamentHonors int `json:"tournament_honors"`
+}
+
+type HonorItem {
+	Id              int64  `json:"id"`
+	Type            string `json:"type"`
+	Name            string `json:"name"`
+	Description     string `json:"description,optional"`
+	Icon            string `json:"icon,optional"`
+	SourceType      string `json:"source_type"`
+	SourceRefId     int64  `json:"source_ref_id,optional"`
+	SourceRefName   string `json:"source_ref_name,optional"`
+	RewardTitleName string `json:"reward_title_name,optional"`
+	EarnedAt        string `json:"earned_at"`
+}
+
+type SeasonChallengeInfo {
+	Key         string `json:"key"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Threshold   int    `json:"threshold"`
+	Progress    int    `json:"progress"`
+	Completed   bool   `json:"completed"`
+}
+
+type HonorWallSeasonInfo {
+	SeasonId   int64                 `json:"season_id"`
+	SeasonName string                `json:"season_name"`
+	StartDate  string                `json:"start_date"`
+	EndDate    string                `json:"end_date"`
+	Status     int                   `json:"status"`
+	GameType   int                   `json:"game_type"`
+	Challenges []SeasonChallengeInfo `json:"challenges"`
+}
+
+type HonorWallHistory {
+	Total            int64                 `json:"total"`
+	Honors           []HonorItem           `json:"honors"`
+	ChallengeSeason  *HonorWallSeasonInfo  `json:"challenge_season,optional"`
+	ChallengeRecords []SeasonChallengeInfo `json:"challenge_records"`
+}
+
+type GetHonorWallResp {
+	Success            bool                 `json:"success"`
+	ViewerScope        string               `json:"viewer_scope"`
+	Profile            HonorWallProfile     `json:"profile"`
+	EquippedTitle      *TitleInfo           `json:"equipped_title,optional"`
+	Summary            HonorWallSummary     `json:"summary"`
+	RecentHonors       []HonorItem          `json:"recent_honors"`
+	CareerAchievements []AchievementDef     `json:"career_achievements"`
+	CurrentSeason      *HonorWallSeasonInfo `json:"current_season,optional"`
+	History            HonorWallHistory     `json:"history"`
 }
 
 @server (
@@ -1521,6 +1623,10 @@ service chasing_points-api {
 	@doc "获取用户称号列表"
 	@handler GetUserTitles
 	get /titles returns (GetUserTitlesResp)
+
+	@doc "获取本人或好友荣誉墙"
+	@handler GetHonorWall
+	get /honor-wall (GetHonorWallReq) returns (GetHonorWallResp)
 }
 
 // ==================== 好友模块 ====================

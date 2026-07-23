@@ -111,8 +111,8 @@ func (l *FinishMatchLogic) finishMatchImmediately(req *types.FinishMatchReq, for
 		}
 		if model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked {
 			l.awardMemberGrowthForMatch(match.Id, match.UserId, match.OpponentId)
-			l.syncAchievementProgressForCompletedMatch(match)
 		}
+		l.syncAchievementProgressForCompletedMatch(match)
 		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
 		if stateErr != nil {
 			l.Logger.Errorf("加载重放快照失败: matchId=%d, clientActionId=%s, err=%v", match.Id, req.ClientActionId, stateErr)
@@ -179,8 +179,11 @@ func (l *FinishMatchLogic) finishMatchImmediately(req *types.FinishMatchReq, for
 				result = *replayState.Match.Result
 			}
 			if replayState.ExistingAction != nil {
-				if replayState.Match != nil && model.NormalizeMatchMode(replayState.Match.MatchMode) == model.MatchModeRanked {
-					l.awardMemberGrowthForMatch(replayState.Match.Id, replayState.Match.UserId, replayState.Match.OpponentId)
+				if replayState.Match != nil {
+					if model.NormalizeMatchMode(replayState.Match.MatchMode) == model.MatchModeRanked {
+						l.awardMemberGrowthForMatch(replayState.Match.Id, replayState.Match.UserId, replayState.Match.OpponentId)
+					}
+					l.syncAchievementProgressForCompletedMatch(replayState.Match)
 				}
 				return &types.FinishMatchResp{
 					Accepted:       true,
@@ -222,8 +225,8 @@ func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, user
 	}
 	if model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked {
 		l.awardMemberGrowthForMatch(match.Id, match.UserId, match.OpponentId)
-		l.syncAchievementProgressForCompletedMatch(match)
 	}
+	l.syncAchievementProgressForCompletedMatch(match)
 
 	l.Logger.Infof("用户 %d 结束对局 %d，比分: %d:%d，结果: %d",
 		userId, match.Id, match.MyScore, match.OpponentScore, result)
@@ -563,15 +566,24 @@ func (l *FinishMatchLogic) syncAchievementProgressForCompletedMatch(match *model
 }
 
 func (l *FinishMatchLogic) syncAchievementProgressForCompletedMatchWithError(match *model.Match) error {
-	if match == nil || l.svcCtx == nil || l.svcCtx.DB == nil || l.svcCtx.MatchModel == nil ||
-		l.svcCtx.RankingModel == nil || l.svcCtx.AchievementProgressEventModel == nil {
+	if match == nil || match.Status != 2 {
 		return nil
 	}
-	if match.Status != 2 || match.Result == nil || *match.Result == 3 {
+	if match.AchievementSyncedAt != nil {
 		return nil
 	}
-	if match.OpponentId == nil || *match.OpponentId <= 0 || *match.OpponentId == match.UserId {
-		return nil
+	if l.svcCtx == nil || l.svcCtx.DB == nil || l.svcCtx.MatchModel == nil {
+		return fmt.Errorf("achievement sync infrastructure is unavailable")
+	}
+	if match.Result == nil {
+		return fmt.Errorf("completed match %d has no result", match.Id)
+	}
+	if model.NormalizeMatchMode(match.MatchMode) == model.MatchModePractice || *match.Result == 3 ||
+		match.OpponentId == nil || *match.OpponentId <= 0 || *match.OpponentId == match.UserId {
+		return l.markAchievementSyncComplete(match)
+	}
+	if l.svcCtx.RankingModel == nil || l.svcCtx.AchievementProgressEventModel == nil {
+		return fmt.Errorf("achievement sync infrastructure is unavailable")
 	}
 
 	roundCount, err := l.svcCtx.MatchModel.GetRoundCount(match.Id)
@@ -579,7 +591,7 @@ func (l *FinishMatchLogic) syncAchievementProgressForCompletedMatchWithError(mat
 		return err
 	}
 	if roundCount == 0 {
-		return nil
+		return l.markAchievementSyncComplete(match)
 	}
 
 	player1ID := match.UserId
@@ -628,10 +640,19 @@ func (l *FinishMatchLogic) syncAchievementProgressForCompletedMatchWithError(mat
 	}
 
 	for _, playerID := range playerIDs {
-		if err := progressService.RefreshUserAchievements(playerID); err != nil {
+		if _, err := progressService.RefreshUserAchievementsWithSource(playerID, achievementx.SourceTypeMatch, match.Id); err != nil {
 			return err
 		}
 	}
+	return l.markAchievementSyncComplete(match)
+}
+
+func (l *FinishMatchLogic) markAchievementSyncComplete(match *model.Match) error {
+	now := time.Now()
+	if err := l.svcCtx.MatchModel.MarkAchievementSynced(match.Id, now); err != nil {
+		return err
+	}
+	match.AchievementSyncedAt = &now
 	return nil
 }
 
@@ -643,6 +664,7 @@ func appendMatchAchievementProgressEvent(service *achievementx.AchievementProgre
 		GameType:    match.GameType,
 		MetricKey:   metricKey,
 		MetricValue: metricValue,
+		OccurredAt:  resolveRankChangeEffectiveAt(match),
 	})
 	return err
 }

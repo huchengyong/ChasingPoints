@@ -327,6 +327,8 @@ import gameTypeModal from '@/components/gameTypeModal.vue'
 import { useNotificationStore } from '@/store/notification.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
+import { getNotificationList, markAsRead } from '@/api/notification.js'
+import { buildHonorWallUrl, presentLatestSeasonRollover } from '@/utils/honor-wall.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import {
@@ -463,7 +465,7 @@ const quickActions = computed(() => ([
 
 onShow(() => {
 	if (isLoggedIn.value) {
-		loadHomepageData()
+		Promise.resolve(loadHomepageData()).finally(showLatestSeasonRollover)
 		connectUserWS()
 		handlePendingPostLoginIntent()
 	} else {
@@ -847,7 +849,16 @@ const handleRankExplain = () => {
 }
 
 const handleAchievement = () => {
-	uni.navigateTo({ url: '/subPages/achievement/index' })
+	uni.navigateTo({ url: buildHonorWallUrl({ gameType: currentRankGameType.value }) })
+}
+
+const showLatestSeasonRollover = () => {
+	presentLatestSeasonRollover({
+		getNotificationList,
+		markAsRead,
+		showModal: options => uni.showModal(options),
+		onRead: () => notificationStore.fetchUnreadCount()
+	}).catch(error => console.error('展示换季结果失败:', error))
 }
 
 const handleFriendList = () => {

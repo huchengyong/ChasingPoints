@@ -103,6 +103,65 @@
 					</view>
 				</view>
 
+				<view
+					v-if="rewardSummary.visible"
+					:class="['reward-section', 'info-card', { 'is-pending': rewardSummary.state === 'pending' }]"
+				>
+					<view v-if="rewardSummary.state === 'pending'" class="reward-pending">
+						<view class="reward-pending-icon">
+							<uni-icons type="spinner-cycle" size="24" :color="isDarkMode ? '#D6C5A3' : '#7C6846'"></uni-icons>
+						</view>
+						<view class="reward-pending-copy">
+							<text class="reward-pending-title">正在同步本场荣誉</text>
+							<text class="reward-pending-message">{{ rewardSummary.message }}</text>
+							<text class="reward-pending-hint">
+								{{ rewardSummary.shouldRetry ? '即将自动重试，请稍候…' : '稍后再次进入本页即可继续查看' }}
+							</text>
+						</view>
+					</view>
+
+					<view v-else class="reward-ready-content">
+						<view class="reward-section-head">
+							<view class="reward-heading-copy">
+								<view class="reward-kicker">
+									<uni-icons type="medal" size="16" color="#B7791F"></uni-icons>
+									<text>本场新解锁</text>
+								</view>
+								<text class="reward-section-title">荣誉已永久记录</text>
+								<text class="reward-section-caption">{{ rewardSummary.message }}</text>
+							</view>
+							<text class="reward-count">+{{ rewardSummary.rewards.length }}</text>
+						</view>
+
+						<view class="reward-list">
+							<view
+								v-for="(reward, index) in rewardSummary.rewards"
+								:key="reward.id || reward.key || index"
+								class="reward-item"
+							>
+								<view class="reward-icon-shell">
+									<image v-if="reward.icon" class="reward-icon-image" :src="reward.icon" mode="aspectFit"></image>
+									<uni-icons v-else type="trophy" size="26" color="#B7791F"></uni-icons>
+								</view>
+								<view class="reward-item-copy">
+									<text class="reward-item-label">新成就</text>
+									<text class="reward-item-name">{{ reward.achievementName }}</text>
+									<text class="reward-item-description">{{ reward.description }}</text>
+									<view v-if="reward.rewardTitleName" class="reward-title-pill">
+										<uni-icons type="medal-filled" size="14" color="#B7791F"></uni-icons>
+										<text>奖励称号 · {{ reward.rewardTitleName }}</text>
+									</view>
+								</view>
+							</view>
+						</view>
+
+						<button class="reward-wall-button" @tap="handleHonorWall">
+							<text>查看荣誉墙</text>
+							<uni-icons type="right" size="16" color="#B7791F"></uni-icons>
+						</button>
+					</view>
+				</view>
+
 				<view class="referee-card" v-if="refereeCard.hasReferee">
 					<view class="referee-card-head">
 						<uni-icons type="person-filled" size="18" color="#E0AE12"></uni-icons>
@@ -196,14 +255,20 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
-import { getMatchDetail } from '@/api/match.js'
+import { onLoad, onUnload } from '@dcloudio/uni-app'
+import { getMatchDetail, getMatchRewardSummary } from '@/api/match.js'
 import { formatDateTime, formatRelativeTime } from '@/utils/format.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveMatchRankingRightsSummary } from '@/utils/member-ranking-rights.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import { buildRematchContext } from '@/utils/match-core-flow.js'
 import { resolveRefereeIdentityCard, resolveRefereeResultViewConfig, resolveCompletionSourceLabel } from '@/utils/match-referee-view.js'
+import {
+	buildMatchRewardHonorWallUrl,
+	MATCH_REWARD_MAX_ATTEMPTS,
+	MATCH_REWARD_RETRY_DELAY_MS,
+	resolveMatchRewardSummary
+} from '@/utils/match-result-page.js'
 
 const SHARE_LINK = 'https://appgallery.huawei.com/app/detail?id=hm.dianzaozao.ballmall&channelId=SHARE&source=appshare'
 
@@ -211,6 +276,9 @@ const matchId = ref(null)
 const fromHistory = ref(false)
 const loading = ref(true)
 const isRedirecting = ref(false)
+const rewardSummary = ref(resolveMatchRewardSummary({ success: true, status: 'ready', list: [] }))
+let rewardRetryTimer = null
+let rewardSummaryDisposed = false
 const matchData = ref({
 	my_score: 0,
 	opponent_score: 0,
@@ -392,6 +460,12 @@ onLoad((options) => {
 	}
 	fromHistory.value = options.from === 'history'
 	loadMatchData()
+	loadRewardSummary()
+})
+
+onUnload(() => {
+	rewardSummaryDisposed = true
+	if (rewardRetryTimer) clearTimeout(rewardRetryTimer)
 })
 
 const loadMatchData = async () => {
@@ -423,6 +497,29 @@ const loadMatchData = async () => {
 		})
 	} finally {
 		loading.value = false
+	}
+}
+
+const loadRewardSummary = async (attempt = 1) => {
+	if (!matchId.value) return
+
+	try {
+		const res = await getMatchRewardSummary({ match_id: matchId.value })
+		if (rewardSummaryDisposed) return
+		rewardSummary.value = resolveMatchRewardSummary(res, {
+			attempt,
+			maxAttempts: MATCH_REWARD_MAX_ATTEMPTS
+		})
+		if (rewardSummary.value.shouldRetry) {
+			rewardRetryTimer = setTimeout(() => {
+				rewardRetryTimer = null
+				loadRewardSummary(attempt + 1)
+			}, MATCH_REWARD_RETRY_DELAY_MS)
+		}
+	} catch (error) {
+		if (rewardSummaryDisposed) return
+		console.error('加载本场荣誉奖励失败:', error)
+		rewardSummary.value = resolveMatchRewardSummary()
 	}
 }
 
@@ -535,6 +632,12 @@ const handleShare = () => {
 		fail: () => {
 			copyShareLink()
 		}
+	})
+}
+
+const handleHonorWall = () => {
+	uni.navigateTo({
+		url: buildMatchRewardHonorWallUrl(matchData.value.game_type)
 	})
 }
 

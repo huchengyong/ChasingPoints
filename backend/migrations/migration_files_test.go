@@ -334,3 +334,40 @@ func TestSeedMinimumAchievementsMigrationContainsClosedLoopDefinitions(t *testin
 		}
 	}
 }
+
+func TestHonorWallSeasonAchievementsMigrationContainsRequiredSchema(t *testing.T) {
+	content, err := os.ReadFile("20260723100000_add_honor_wall_season_achievements.sql")
+	if err != nil {
+		t.Fatalf("read honor wall season achievements migration: %v", err)
+	}
+
+	text := string(content)
+	requiredSnippets := []string{
+		"achievement_progress_events",
+		"`occurred_at`",
+		"idx_achievement_progress_events_season_scope",
+		"user_achievements",
+		"`unlocked_source_type`",
+		"`unlocked_source_id`",
+		"matches",
+		"`achievement_synced_at`",
+		"notifications",
+		"`dedupe_key`",
+		"uk_notifications_user_type_dedupe",
+		"CREATE TABLE IF NOT EXISTS `season_challenge_snapshots`",
+		"uk_season_challenge_snapshot",
+		"idx_season_challenge_snapshots_user_season",
+		"CREATE TABLE IF NOT EXISTS `season_settlements`",
+		"uk_season_settlements_season",
+		"idx_season_settlements_status",
+		"information_schema.COLUMNS",
+		"UPDATE `achievement_progress_events`",
+		"`occurred_at` = `created_at`",
+	}
+
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(text, snippet) {
+			t.Fatalf("expected honor wall season achievements migration to contain %q", snippet)
+		}
+	}
+}

@@ -1,0 +1,859 @@
+.honor-wall-page {
+	min-height: 100vh;
+	padding: 24rpx 24rpx 48rpx;
+	box-sizing: border-box;
+	background: #f6f7f8;
+}
+
+.honor-wall-content {
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.refresh-indicator {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8rpx;
+	margin-bottom: 14rpx;
+	font-size: 22rpx;
+	color: #8a6a18;
+}
+
+.honor-hero-card,
+.content-card,
+.honor-tabs,
+.season-banner {
+	width: 100%;
+	box-sizing: border-box;
+	border: 1rpx solid #e2e8f0;
+	border-radius: 28rpx;
+	background: #ffffff;
+}
+
+.honor-hero-card {
+	padding: 28rpx 24rpx;
+	background: linear-gradient(180deg, rgba(224, 174, 18, 0.18) 0%, #ffffff 42%, #fffaf0 100%);
+}
+
+.profile-row {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+}
+
+.profile-avatar {
+	width: 100rpx;
+	height: 100rpx;
+	border-radius: 50%;
+	background: #fff7e1;
+	border: 4rpx solid rgba(255, 255, 255, 0.88);
+	box-shadow: 0 10rpx 24rpx rgba(92, 65, 5, 0.12);
+	flex-shrink: 0;
+}
+
+.profile-copy,
+.title-copy,
+.recent-copy,
+.achievement-copy,
+.challenge-copy,
+.history-copy,
+.archive-challenge-copy,
+.heading-copy {
+	min-width: 0;
+	flex: 1;
+}
+
+.profile-kicker,
+.title-label,
+.season-kicker {
+	display: block;
+	font-size: 22rpx;
+	font-weight: 600;
+	letter-spacing: 1rpx;
+	color: #9a7414;
+}
+
+.profile-name {
+	display: block;
+	margin-top: 6rpx;
+	font-size: 36rpx;
+	font-weight: 750;
+	line-height: 1.3;
+	color: #0f172a;
+	word-break: break-word;
+}
+
+.profile-note {
+	display: block;
+	margin-top: 8rpx;
+	font-size: 23rpx;
+	line-height: 1.55;
+	color: #64748b;
+	word-break: break-word;
+}
+
+.equipped-title-card {
+	display: flex;
+	align-items: center;
+	gap: 18rpx;
+	margin-top: 24rpx;
+	padding: 24rpx;
+	border-radius: 24rpx;
+	background: linear-gradient(135deg, #d5a30e 0%, #e0ae12 52%, #f1c83d 100%);
+	box-shadow: 0 16rpx 32rpx rgba(166, 119, 0, 0.18);
+	color: #ffffff;
+}
+
+.equipped-title-card.interactive {
+	transform: translateZ(0);
+}
+
+.title-medal {
+	width: 72rpx;
+	height: 72rpx;
+	border-radius: 22rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(255, 255, 255, 0.18);
+	flex-shrink: 0;
+}
+
+.title-label {
+	color: rgba(255, 255, 255, 0.8);
+}
+
+.title-name {
+	display: block;
+	margin-top: 5rpx;
+	font-size: 34rpx;
+	font-weight: 750;
+	line-height: 1.3;
+	color: #ffffff;
+	word-break: break-word;
+}
+
+.title-source {
+	display: block;
+	margin-top: 6rpx;
+	font-size: 22rpx;
+	line-height: 1.5;
+	color: rgba(255, 255, 255, 0.82);
+	word-break: break-word;
+}
+
+.summary-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	margin-top: 22rpx;
+	padding: 18rpx 0;
+	border-top: 1rpx solid rgba(148, 163, 184, 0.18);
+	border-bottom: 1rpx solid rgba(148, 163, 184, 0.18);
+}
+
+.summary-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	min-width: 0;
+	padding: 0 8rpx;
+}
+
+.summary-item + .summary-item {
+	border-left: 1rpx solid rgba(148, 163, 184, 0.18);
+}
+
+.summary-value {
+	font-size: 34rpx;
+	font-weight: 800;
+	color: #0f172a;
+}
+
+.summary-label {
+	margin-top: 6rpx;
+	font-size: 21rpx;
+	line-height: 1.4;
+	text-align: center;
+	color: #64748b;
+}
+
+.recent-section {
+	margin-top: 22rpx;
+}
+
+.section-heading {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 18rpx;
+}
+
+.compact-heading {
+	align-items: baseline;
+}
+
+.page-section-heading {
+	margin: 0 4rpx 18rpx;
+}
+
+.section-title {
+	font-size: 30rpx;
+	font-weight: 750;
+	line-height: 1.4;
+	color: #0f172a;
+}
+
+.section-description {
+	display: block;
+	margin-top: 5rpx;
+	font-size: 23rpx;
+	line-height: 1.5;
+	color: #64748b;
+	word-break: break-word;
+}
+
+.section-hint,
+.section-count,
+.group-count {
+	font-size: 22rpx;
+	line-height: 1.5;
+	color: #64748b;
+	flex-shrink: 0;
+}
+
+.section-count {
+	padding: 7rpx 14rpx;
+	border-radius: 999rpx;
+	background: #fff7e1;
+	color: #8a6506;
+}
+
+.recent-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+	margin-top: 16rpx;
+}
+
+.recent-item,
+.achievement-row,
+.challenge-row,
+.history-row,
+.archive-challenge-row {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.recent-item {
+	gap: 16rpx;
+	padding: 18rpx;
+	border-radius: 20rpx;
+	background: rgba(255, 255, 255, 0.72);
+	border: 1rpx solid rgba(224, 174, 18, 0.16);
+}
+
+.recent-icon,
+.history-icon,
+.challenge-icon,
+.achievement-icon,
+.intermission-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.recent-icon {
+	width: 64rpx;
+	height: 64rpx;
+	border-radius: 20rpx;
+	background: #fff4c7;
+}
+
+.recent-icon text {
+	font-size: 32rpx;
+}
+
+.recent-title-row,
+.achievement-name-row,
+.challenge-title-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12rpx;
+	min-width: 0;
+}
+
+.recent-title,
+.achievement-name,
+.challenge-name,
+.history-name,
+.archive-title,
+.archive-challenge-name {
+	font-size: 27rpx;
+	font-weight: 700;
+	line-height: 1.45;
+	color: #1e293b;
+	word-break: break-word;
+}
+
+.recent-type,
+.unlocked-tag,
+.history-type,
+.season-status {
+	padding: 5rpx 10rpx;
+	border-radius: 999rpx;
+	font-size: 19rpx;
+	line-height: 1.3;
+	font-weight: 600;
+	color: #8a6506;
+	background: #fff7e1;
+	flex-shrink: 0;
+}
+
+.recent-detail,
+.achievement-description,
+.challenge-description,
+.history-description,
+.archive-challenge-description {
+	display: block;
+	margin-top: 5rpx;
+	font-size: 22rpx;
+	line-height: 1.55;
+	color: #64748b;
+	word-break: break-word;
+}
+
+.recent-time,
+.history-time,
+.progress-note {
+	display: block;
+	margin-top: 5rpx;
+	font-size: 20rpx;
+	line-height: 1.4;
+	color: #94a3b8;
+}
+
+.inline-empty {
+	margin-top: 16rpx;
+	padding: 20rpx;
+	border-radius: 18rpx;
+	background: rgba(255, 255, 255, 0.62);
+}
+
+.inline-empty text,
+.archive-empty-text {
+	font-size: 23rpx;
+	line-height: 1.6;
+	color: #64748b;
+	word-break: break-word;
+}
+
+.honor-tabs {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 8rpx;
+	margin-top: 20rpx;
+	padding: 8rpx;
+}
+
+.honor-tab {
+	min-width: 0;
+	padding: 18rpx 8rpx;
+	border-radius: 20rpx;
+	text-align: center;
+}
+
+.honor-tab text {
+	font-size: 24rpx;
+	font-weight: 650;
+	color: #64748b;
+}
+
+.honor-tab.active {
+	background: linear-gradient(135deg, #fff3bd, #fffaf0);
+	box-shadow: 0 8rpx 18rpx rgba(148, 104, 0, 0.1);
+}
+
+.honor-tab.active text {
+	color: #805b08;
+}
+
+.honor-tabs.friend-tabs {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tab-panel {
+	margin-top: 24rpx;
+}
+
+.achievement-groups {
+	display: flex;
+	flex-direction: column;
+	gap: 20rpx;
+}
+
+.content-card {
+	padding: 24rpx;
+}
+
+.group-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16rpx;
+	padding-bottom: 16rpx;
+	border-bottom: 1rpx solid #edf0f3;
+}
+
+.group-title-wrap {
+	display: flex;
+	align-items: center;
+	gap: 10rpx;
+	min-width: 0;
+}
+
+.group-emoji {
+	font-size: 30rpx;
+}
+
+.group-title {
+	font-size: 28rpx;
+	font-weight: 700;
+	color: #1e293b;
+}
+
+.achievement-row {
+	gap: 16rpx;
+	padding: 20rpx 0;
+}
+
+.achievement-row + .achievement-row {
+	border-top: 1rpx solid #edf0f3;
+}
+
+.achievement-icon {
+	width: 76rpx;
+	height: 76rpx;
+	border-radius: 22rpx;
+	background: #fff4c7;
+}
+
+.achievement-icon.locked {
+	background: #f1f5f9;
+	filter: grayscale(1);
+	opacity: 0.68;
+}
+
+.achievement-icon image {
+	width: 48rpx;
+	height: 48rpx;
+}
+
+.achievement-icon text {
+	font-size: 34rpx;
+}
+
+.progress-track {
+	width: 100%;
+	height: 10rpx;
+	margin-top: 14rpx;
+	border-radius: 999rpx;
+	background: #e9edf2;
+	overflow: hidden;
+}
+
+.progress-fill {
+	height: 100%;
+	border-radius: inherit;
+	background: linear-gradient(90deg, #d5a30e, #f1c83d);
+}
+
+.game-type-grid,
+.archive-season-grid {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12rpx;
+	margin-bottom: 18rpx;
+}
+
+.game-type-chip,
+.archive-season-chip {
+	padding: 14rpx 20rpx;
+	border-radius: 999rpx;
+	border: 1rpx solid #d9e0e8;
+	background: #ffffff;
+}
+
+.game-type-chip text,
+.archive-season-chip text {
+	font-size: 23rpx;
+	color: #475569;
+}
+
+.game-type-chip.active,
+.archive-season-chip.active {
+	border-color: rgba(224, 174, 18, 0.52);
+	background: #fff7e1;
+}
+
+.game-type-chip.active text,
+.archive-season-chip.active text {
+	font-weight: 650;
+	color: #805b08;
+}
+
+.season-banner {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 18rpx;
+	padding: 28rpx 24rpx;
+	background: linear-gradient(135deg, #241c0b 0%, #513b08 100%);
+	border-color: rgba(224, 174, 18, 0.28);
+}
+
+.season-name {
+	display: block;
+	margin-top: 8rpx;
+	font-size: 34rpx;
+	font-weight: 750;
+	line-height: 1.35;
+	color: #ffffff;
+	word-break: break-word;
+}
+
+.season-dates {
+	display: block;
+	margin-top: 8rpx;
+	font-size: 22rpx;
+	color: #d7c997;
+}
+
+.season-status {
+	color: #fff4c7;
+	background: rgba(255, 255, 255, 0.1);
+}
+
+.challenge-card,
+.history-card,
+.archive-selector-card {
+	margin-top: 18rpx;
+}
+
+.challenge-list,
+.history-list,
+.archive-challenge-list {
+	display: flex;
+	flex-direction: column;
+	margin-top: 16rpx;
+}
+
+.challenge-row {
+	align-items: flex-start;
+	gap: 16rpx;
+	padding: 20rpx 0;
+}
+
+.challenge-row + .challenge-row,
+.history-row + .history-row,
+.archive-challenge-row + .archive-challenge-row {
+	border-top: 1rpx solid #edf0f3;
+}
+
+.challenge-icon {
+	width: 68rpx;
+	height: 68rpx;
+	border-radius: 20rpx;
+	background: #fff4c7;
+}
+
+.challenge-icon text {
+	font-size: 30rpx;
+}
+
+.challenge-progress {
+	font-size: 22rpx;
+	font-weight: 650;
+	color: #64748b;
+	flex-shrink: 0;
+}
+
+.challenge-progress.complete,
+.archive-challenge-progress.complete {
+	color: #b17d00;
+}
+
+.season-progress-track {
+	margin-top: 12rpx;
+}
+
+.intermission-card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 54rpx 32rpx;
+	text-align: center;
+	background: linear-gradient(180deg, #fffaf0, #ffffff);
+}
+
+.intermission-icon {
+	width: 88rpx;
+	height: 88rpx;
+	border-radius: 28rpx;
+	background: #fff3bd;
+}
+
+.intermission-title {
+	margin-top: 20rpx;
+	font-size: 32rpx;
+	font-weight: 750;
+	color: #1e293b;
+}
+
+.intermission-description {
+	margin-top: 12rpx;
+	font-size: 24rpx;
+	line-height: 1.7;
+	color: #64748b;
+	word-break: break-word;
+}
+
+.archive-summary {
+	margin-top: 18rpx;
+	padding: 20rpx;
+	border-radius: 20rpx;
+	background: #f8fafc;
+}
+
+.archive-challenge-row {
+	align-items: flex-start;
+	gap: 16rpx;
+	padding: 16rpx 0;
+}
+
+.archive-challenge-progress {
+	font-size: 22rpx;
+	font-weight: 700;
+	color: #64748b;
+	flex-shrink: 0;
+}
+
+.history-row {
+	align-items: flex-start;
+	gap: 16rpx;
+	padding: 20rpx 0;
+}
+
+.history-icon {
+	width: 68rpx;
+	height: 68rpx;
+	border-radius: 20rpx;
+	background: #fff4c7;
+}
+
+.history-icon text {
+	font-size: 31rpx;
+}
+
+.load-more {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8rpx;
+	min-height: 76rpx;
+	margin-top: 10rpx;
+	border-top: 1rpx solid #edf0f3;
+}
+
+.load-more text {
+	font-size: 23rpx;
+	font-weight: 650;
+	color: #8a6506;
+}
+
+.state-panel {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+}
+
+.full-state {
+	min-height: calc(100vh - 48rpx);
+	padding: 48rpx;
+	box-sizing: border-box;
+}
+
+.compact-state {
+	padding: 54rpx 30rpx;
+}
+
+.state-title {
+	margin-top: 18rpx;
+	font-size: 31rpx;
+	font-weight: 750;
+	color: #1e293b;
+}
+
+.state-description {
+	margin-top: 10rpx;
+	font-size: 24rpx;
+	line-height: 1.65;
+	color: #64748b;
+	word-break: break-word;
+}
+
+.retry-button {
+	min-width: 240rpx;
+	height: 84rpx;
+	line-height: 84rpx;
+	margin: 26rpx 0 0;
+	padding: 0 34rpx;
+	box-sizing: border-box;
+	border-radius: 22rpx;
+	background: linear-gradient(135deg, #e0ae12, #c69200);
+	color: #ffffff;
+}
+
+.retry-button text {
+	font-size: 27rpx;
+	font-weight: 650;
+	color: #ffffff;
+}
+
+.retry-button::after {
+	display: none;
+}
+
+.honor-wall-page.dark-mode {
+	background: #141109;
+
+	.honor-hero-card,
+	.content-card,
+	.honor-tabs,
+	.game-type-chip,
+	.archive-season-chip {
+		background: #1e180d;
+		border-color: #3a2e16;
+	}
+
+	.honor-hero-card {
+		background: linear-gradient(180deg, rgba(224, 174, 18, 0.18) 0%, #1e180d 42%, #19140b 100%);
+	}
+
+	.profile-name,
+	.summary-value,
+	.section-title,
+	.group-title,
+	.recent-title,
+	.achievement-name,
+	.challenge-name,
+	.history-name,
+	.archive-title,
+	.archive-challenge-name,
+	.intermission-title,
+	.state-title {
+		color: #fff7e1;
+	}
+
+	.profile-note,
+	.summary-label,
+	.section-description,
+	.section-hint,
+	.group-count,
+	.recent-detail,
+	.achievement-description,
+	.challenge-description,
+	.history-description,
+	.archive-challenge-description,
+	.intermission-description,
+	.state-description,
+	.inline-empty text,
+	.archive-empty-text {
+		color: #9f926e;
+	}
+
+	.recent-item,
+	.archive-summary,
+	.intermission-card {
+		background: #19140b;
+		border-color: #3a2e16;
+	}
+
+	.group-header,
+	.achievement-row + .achievement-row,
+	.challenge-row + .challenge-row,
+	.history-row + .history-row,
+	.archive-challenge-row + .archive-challenge-row,
+	.load-more {
+		border-color: #3a2e16;
+	}
+
+	.progress-track,
+	.achievement-icon.locked {
+		background: #3a2e16;
+	}
+
+	.honor-tab text,
+	.game-type-chip text,
+	.archive-season-chip text,
+	.challenge-progress,
+	.archive-challenge-progress {
+		color: #b6a778;
+	}
+
+	.honor-tab.active,
+	.game-type-chip.active,
+	.archive-season-chip.active {
+		background: #3a2e16;
+		border-color: #705817;
+	}
+
+	.honor-tab.active text,
+	.game-type-chip.active text,
+	.archive-season-chip.active text,
+	.load-more text {
+		color: #f2cf63;
+	}
+}
+
+@media screen and (max-width: 360px) {
+	.honor-wall-page {
+		padding-left: 18rpx;
+		padding-right: 18rpx;
+	}
+
+	.honor-hero-card,
+	.content-card {
+		padding-left: 20rpx;
+		padding-right: 20rpx;
+	}
+
+	.profile-avatar {
+		width: 88rpx;
+		height: 88rpx;
+	}
+
+	.profile-name,
+	.title-name,
+	.season-name {
+		font-size: 31rpx;
+	}
+
+	.honor-tab text,
+	.summary-label {
+		font-size: 20rpx;
+	}
+
+	.recent-title-row,
+	.achievement-name-row,
+	.challenge-title-row {
+		align-items: flex-start;
+		flex-wrap: wrap;
+	}
+}

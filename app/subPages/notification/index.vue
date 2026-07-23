@@ -76,8 +76,9 @@ const getTypeIcon = (type) => {
 		friend_request: '👥',
 		follow: '⭐',
 		match_result: '🏁',
-		rank_change: '📊',
-		system: '📢'
+			rank_change: '📊',
+			season_rollover: '🔄',
+			system: '📢'
 	}
 	return map[type] || '🔔'
 }
@@ -99,7 +100,7 @@ const parseNotificationData = (data) => {
 
 const navigateByNotification = (item) => {
 	const data = parseNotificationData(item.data)
-	const target = data.target || ''
+	const target = data.target || data.url || ''
 
 	if (target === '/subPages/match/matchResult' && data.match_id) {
 		uni.navigateTo({ url: `${target}?match_id=${data.match_id}&from=history` })

@@ -38,6 +38,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
+				// 获取本人或好友荣誉墙
+				Method:  http.MethodGet,
+				Path:    "/honor-wall",
+				Handler: achievement.GetHonorWallHandler(serverCtx),
+			},
+			{
 				// 获取成就列表
 				Method:  http.MethodGet,
 				Path:    "/list",
@@ -651,6 +657,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodGet,
 				Path:    "/referee/qrcode",
 				Handler: match.GetMatchRefereeQRCodeHandler(serverCtx),
+			},
+			{
+				// 获取本场新解锁荣誉
+				Method:  http.MethodGet,
+				Path:    "/reward-summary",
+				Handler: match.GetMatchRewardSummaryHandler(serverCtx),
 			},
 			{
 				// 结束一局

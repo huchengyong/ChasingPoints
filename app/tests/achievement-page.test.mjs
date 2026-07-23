@@ -69,16 +69,20 @@ test('title sources display Chinese labels while keeping stable style classes', 
   assert.equal(getTitleSourceClass('赛季'), 'season')
 })
 
-test('achievement index uses grouped full-row cards instead of category tabs', () => {
+test('achievement index is upgraded to the three-track honor wall', () => {
   assert.match(achievementIndexSource, /achievementGroups/)
-  assert.match(achievementIndexSource, /achievement-section/)
+  assert.match(achievementIndexSource, /honor-hero-card/)
+  assert.match(achievementIndexSource, /honor-tabs/)
   assert.match(achievementIndexSource, /achievement-row/)
-  assert.doesNotMatch(achievementIndexSource, /category-tabs/)
-  assert.doesNotMatch(achievementIndexSource, /switchCategory/)
+  assert.match(achievementIndexSource, /生涯成就/)
+  assert.match(achievementIndexSource, /当前赛季/)
+  assert.match(achievementIndexSource, /历届荣誉/)
+  assert.doesNotMatch(achievementIndexSource, /精选展示|分享荣誉墙/)
 })
 
-test('achievement pages use shared mapping and refresh equipped title on show', () => {
+test('achievement pages use shared mapping and refresh the honor wall on show', () => {
   assert.match(achievementIndexSource, /groupAchievementsByCategory/)
+  assert.match(achievementIndexSource, /getHonorWall/)
   assert.match(achievementIndexSource, /onShow/)
   assert.match(achievementDetailSource, /getAchievementCategoryLabel/)
 })

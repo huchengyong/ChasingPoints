@@ -82,6 +82,7 @@ type Match struct {
 	Result                     *int           `json:"result"`                           // 1=胜利 2=失败 3=平局
 	MatchTime                  time.Time      `gorm:"not null" json:"match_time"`
 	EndTime                    *time.Time     `json:"end_time"`
+	AchievementSyncedAt        *time.Time     `json:"achievement_synced_at"`
 	Remark                     string         `gorm:"size:500" json:"remark"`
 	CreatedAt                  time.Time      `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt                  time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
@@ -281,6 +282,24 @@ func (m *MatchModel) ListCompletedForRankingReplay() ([]Match, error) {
 	return matches, err
 }
 
+func (m *MatchModel) ListCompletedRankedBetweenWithTx(tx *gorm.DB, start, end time.Time) ([]Match, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	var matches []Match
+	err := db.
+		Where("status = ? AND deleted_at IS NULL", 2).
+		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", MatchModeRanked).
+		Where("result IN ?", []int{1, 2}).
+		Where("opponent_id IS NOT NULL AND opponent_id > 0 AND opponent_id <> user_id").
+		Where("COALESCE(end_time, match_time) >= ? AND COALESCE(end_time, match_time) < ?", start, end).
+		Where("EXISTS (SELECT 1 FROM match_rounds WHERE match_rounds.match_id = matches.id AND winner IS NOT NULL AND win_type <> ?)", "start").
+		Order("COALESCE(end_time, match_time) ASC, id ASC").
+		Find(&matches).Error
+	return matches, err
+}
+
 func (m *MatchModel) CountCompletedMatchesBetweenUsersByGameTypeBetween(
 	tx *gorm.DB,
 	userA, userB int64,
@@ -318,6 +337,12 @@ func (m *MatchModel) UpdateWithTx(tx *gorm.DB, match *Match) error {
 		return tx.Save(match).Error
 	}
 	return m.Update(match)
+}
+
+func (m *MatchModel) MarkAchievementSynced(matchId int64, syncedAt time.Time) error {
+	return m.db.Model(&Match{}).
+		Where("id = ? AND achievement_synced_at IS NULL", matchId).
+		Update("achievement_synced_at", syncedAt).Error
 }
 
 // MatchWithOpponentAvatar 带对手头像的对局记录

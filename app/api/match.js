@@ -59,6 +59,15 @@ export const getMatchDetail = (params) => {
 }
 
 /**
+ * 获取当前用户的本场新解锁荣誉
+ * @param {Object} params { match_id }
+ * @returns {Promise}
+ */
+export const getMatchRewardSummary = (params) => {
+  return get('/api/match/reward-summary', params)
+}
+
+/**
  * 获取公开对局详情（观战模式，无需登录）
  * @param {Object} params { match_id }
  * @returns {Promise}

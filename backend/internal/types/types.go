@@ -1080,6 +1080,26 @@ type GetGlossaryResp struct {
 	List    []GlossaryItemInfo `json:"list"`
 }
 
+type GetHonorWallReq struct {
+	UserId          int64 `form:"user_id,optional"`
+	GameType        int   `form:"game_type,optional,default=3"`
+	HistorySeasonId int64 `form:"history_season_id,optional"`
+	HistoryPage     int   `form:"history_page,optional,default=1"`
+	HistoryPageSize int   `form:"history_page_size,optional,default=20"`
+}
+
+type GetHonorWallResp struct {
+	Success            bool                 `json:"success"`
+	ViewerScope        string               `json:"viewer_scope"`
+	Profile            HonorWallProfile     `json:"profile"`
+	EquippedTitle      *TitleInfo           `json:"equipped_title,optional"`
+	Summary            HonorWallSummary     `json:"summary"`
+	RecentHonors       []HonorItem          `json:"recent_honors"`
+	CareerAchievements []AchievementDef     `json:"career_achievements"`
+	CurrentSeason      *HonorWallSeasonInfo `json:"current_season,optional"`
+	History            HonorWallHistory     `json:"history"`
+}
+
 type GetLeaderboardReq struct {
 	GameType int `form:"game_type,optional,default=3"`
 	Page     int `form:"page,default=1"`
@@ -1125,6 +1145,17 @@ type GetMatchRefereeQRCodeResp struct {
 	Success          bool   `json:"success"`
 	QrcodeData       string `json:"qrcode_data"`
 	ExpiresInSeconds int64  `json:"expires_in_seconds"`
+}
+
+type GetMatchRewardSummaryReq struct {
+	MatchId int64 `form:"match_id"`
+}
+
+type GetMatchRewardSummaryResp struct {
+	Success bool              `json:"success"`
+	Status  string            `json:"status"`
+	Message string            `json:"message,optional"`
+	List    []MatchRewardItem `json:"list"`
 }
 
 type GetMatchShareDataReq struct {
@@ -1579,6 +1610,49 @@ type HandleFriendRequestReq struct {
 	RequestId int64 `json:"request_id"`
 }
 
+type HonorItem struct {
+	Id              int64  `json:"id"`
+	Type            string `json:"type"`
+	Name            string `json:"name"`
+	Description     string `json:"description,optional"`
+	Icon            string `json:"icon,optional"`
+	SourceType      string `json:"source_type"`
+	SourceRefId     int64  `json:"source_ref_id,optional"`
+	SourceRefName   string `json:"source_ref_name,optional"`
+	RewardTitleName string `json:"reward_title_name,optional"`
+	EarnedAt        string `json:"earned_at"`
+}
+
+type HonorWallHistory struct {
+	Total            int64                 `json:"total"`
+	Honors           []HonorItem           `json:"honors"`
+	ChallengeSeason  *HonorWallSeasonInfo  `json:"challenge_season,optional"`
+	ChallengeRecords []SeasonChallengeInfo `json:"challenge_records"`
+}
+
+type HonorWallProfile struct {
+	UserId   int64  `json:"user_id"`
+	Nickname string `json:"nickname"`
+	Avatar   string `json:"avatar"`
+}
+
+type HonorWallSeasonInfo struct {
+	SeasonId   int64                 `json:"season_id"`
+	SeasonName string                `json:"season_name"`
+	StartDate  string                `json:"start_date"`
+	EndDate    string                `json:"end_date"`
+	Status     int                   `json:"status"`
+	GameType   int                   `json:"game_type"`
+	Challenges []SeasonChallengeInfo `json:"challenges"`
+}
+
+type HonorWallSummary struct {
+	CareerUnlocked   int `json:"career_unlocked"`
+	CareerTotal      int `json:"career_total"`
+	SeasonHonors     int `json:"season_honors"`
+	TournamentHonors int `json:"tournament_honors"`
+}
+
 type JoinMatchRefereeReq struct {
 	MatchId   int64  `json:"match_id"`
 	JoinToken string `json:"join_token"`
@@ -1743,6 +1817,17 @@ type MatchListResp struct {
 	Success bool            `json:"success"`
 	Total   int64           `json:"total"`
 	List    []MatchListItem `json:"list"`
+}
+
+type MatchRewardItem struct {
+	AchievementId   int64  `json:"achievement_id"`
+	AchievementKey  string `json:"achievement_key"`
+	AchievementName string `json:"achievement_name"`
+	Description     string `json:"description"`
+	Icon            string `json:"icon"`
+	RewardTitleId   int64  `json:"reward_title_id,optional"`
+	RewardTitleName string `json:"reward_title_name,optional"`
+	UnlockedAt      string `json:"unlocked_at"`
 }
 
 type MatchScoreReq struct {
@@ -2189,6 +2274,15 @@ type SearchUserResp struct {
 	List    []SearchUserItem `json:"list"`
 }
 
+type SeasonChallengeInfo struct {
+	Key         string `json:"key"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Threshold   int    `json:"threshold"`
+	Progress    int    `json:"progress"`
+	Completed   bool   `json:"completed"`
+}
+
 type SeasonInfo struct {
 	Id             int64   `json:"id"`
 	Name           string  `json:"name"`
@@ -2323,11 +2417,15 @@ type StartNextRoundResp struct {
 }
 
 type TitleInfo struct {
-	Id        int64  `json:"id"`
-	TitleName string `json:"title_name"`
-	Source    string `json:"source"`
-	Equipped  bool   `json:"equipped"`
-	CreatedAt string `json:"created_at"`
+	Id            int64  `json:"id"`
+	TitleName     string `json:"title_name"`
+	Source        string `json:"source"`
+	SourceType    string `json:"source_type,optional"`
+	SourceRefId   int64  `json:"source_ref_id,optional"`
+	SourceRefName string `json:"source_ref_name,optional"`
+	Equipped      bool   `json:"equipped"`
+	GrantedAt     string `json:"granted_at,optional"`
+	CreatedAt     string `json:"created_at"`
 }
 
 type TournamentBracketMatch struct {

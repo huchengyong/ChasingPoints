@@ -62,9 +62,14 @@
 					</view>
 				</view>
 
-				<button class="primary-btn hero-primary-btn" @tap="goToPkReport">
-					<text>PK 报表</text>
-				</button>
+				<view class="hero-action-grid">
+					<button class="primary-btn hero-primary-btn" @tap="goToPkReport">
+						<text>PK 报表</text>
+					</button>
+					<button class="secondary-btn" @tap="goToHonorWall">
+						<text>查看荣誉墙</text>
+					</button>
+				</view>
 			</view>
 
 			<view class="section-card">
@@ -138,6 +143,7 @@ import { usePageTheme } from '@/utils/page-theme.js'
 import { useUserStore } from '@/store/user.js'
 import { getOpponentList } from '@/api/match.js'
 import { buildFriendPkReportUrl } from '@/utils/friend-entry.js'
+import { buildHonorWallUrl } from '@/utils/honor-wall.js'
 import {
 	buildOpponentCardViewModels,
 	buildOpponentH2HUrl,
@@ -246,6 +252,12 @@ const goToBattleDetail = (item) => {
 
 const goToPkReport = () => {
 	uni.navigateTo({ url: buildFriendPkReportUrl(friendPayload.value) })
+}
+
+const goToHonorWall = () => {
+	uni.navigateTo({
+		url: buildHonorWallUrl({ userId: friendProfile.id, gameType: 3 })
+	})
 }
 
 onLoad((options) => {

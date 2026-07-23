@@ -159,6 +159,7 @@ func handleConfirmedFinishAction(ctx context.Context, svcCtx *svc.ServiceContext
 	}
 
 	if replayed {
+		NewFinishMatchLogic(ctx, svcCtx).syncAchievementProgressForCompletedMatch(match)
 		view, viewErr := loadMatchWriteState(svcCtx, userId, match)
 		if viewErr != nil {
 			return &types.FinishMatchActionResp{Success: false, Accepted: false, ClientActionId: req.ClientActionId, Message: "加载对局快照失败"}, nil
