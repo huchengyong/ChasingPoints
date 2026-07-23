@@ -8,7 +8,10 @@ import {
   getAchievementCategoryLabel,
   groupAchievementsByCategory,
   getTitleSourceClass,
-  getTitleSourceLabel
+  getTitleSourceDescription,
+  getTitleSourceLabel,
+  resolveTitleSelection,
+  sortTitleOptions
 } from '../utils/achievement-page.js'
 
 const achievementIndexSource = readFileSync(
@@ -17,10 +20,6 @@ const achievementIndexSource = readFileSync(
 )
 const achievementDetailSource = readFileSync(
   new URL('../subPages/achievement/detail.vue', import.meta.url),
-  'utf8'
-)
-const titleSource = readFileSync(
-  new URL('../subPages/achievement/titles.vue', import.meta.url),
   'utf8'
 )
 const matchResultSource = readFileSync(
@@ -69,6 +68,36 @@ test('title sources display Chinese labels while keeping stable style classes', 
   assert.equal(getTitleSourceClass('赛季'), 'season')
 })
 
+test('title options put the equipped title first without disturbing the remaining API order', () => {
+  const input = [
+    { id: 1, title_name: '胜场新星', equipped: false },
+    { id: 2, title_name: 'S3 冠军', equipped: true },
+    { id: 3, title_name: '城市杯四强', equipped: false }
+  ]
+
+  assert.deepEqual(sortTitleOptions(input).map(item => item.id), [2, 1, 3])
+  assert.deepEqual(input.map(item => item.id), [1, 2, 3])
+})
+
+test('title source descriptions use the source type and readable origin name', () => {
+  assert.equal(
+    getTitleSourceDescription({ source_type: 'achievement', source_ref_name: '五连胜成就' }),
+    '生涯成就 · 五连胜成就'
+  )
+  assert.equal(
+    getTitleSourceDescription({ source_type: 'season', source_ref_name: 'S3' }),
+    '赛季荣誉 · S3'
+  )
+  assert.equal(getTitleSourceDescription({ source_type: 'tournament' }), '赛事荣誉')
+})
+
+test('title selection resolves no-op, equip and unequip actions without confirmation state', () => {
+  assert.deepEqual(resolveTitleSelection({ currentTitleId: 2, selectedTitleId: 2 }), { action: 'close' })
+  assert.deepEqual(resolveTitleSelection({ currentTitleId: 2, selectedTitleId: 3 }), { action: 'equip', titleId: 3 })
+  assert.deepEqual(resolveTitleSelection({ currentTitleId: 2, selectedTitleId: 0 }), { action: 'unequip', titleId: 2 })
+  assert.deepEqual(resolveTitleSelection({ currentTitleId: 0, selectedTitleId: 0 }), { action: 'close' })
+})
+
 test('achievement index is upgraded to the three-track honor wall', () => {
   assert.match(achievementIndexSource, /achievementGroups/)
   assert.match(achievementIndexSource, /honor-hero-card/)
@@ -87,9 +116,12 @@ test('achievement pages use shared mapping and refresh the honor wall on show', 
   assert.match(achievementDetailSource, /getAchievementCategoryLabel/)
 })
 
-test('titles page normalizes title source labels', () => {
-  assert.match(titleSource, /getTitleSourceLabel\(item\.source\)/)
-  assert.match(titleSource, /getTitleSourceClass\(item\.source\)/)
+test('honor wall owns title source copy and direct selection actions', () => {
+  assert.match(achievementIndexSource, /getTitleSourceDescription\(item\)/)
+  assert.match(achievementIndexSource, /resolveTitleSelection/)
+  assert.match(achievementIndexSource, /佩戴/)
+  assert.match(achievementIndexSource, /不佩戴称号/)
+  assert.doesNotMatch(achievementIndexSource, /前往称号管理|装备称号|卸下称号/)
 })
 
 test('match result empty copy uses special-record wording', () => {

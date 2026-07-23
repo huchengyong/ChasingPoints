@@ -1,8 +1,11 @@
 package model
 
 import (
+	"errors"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 func TestSeasonChallengeSnapshotModelUpsertBatchIsIdempotent(t *testing.T) {
@@ -100,6 +103,109 @@ func TestUserTitleModelFindRecentPermanentExcludesAchievementTitles(t *testing.T
 	}
 	if len(list) != 2 || list[0].SourceType != "tournament" || list[1].SourceType != "season" {
 		t.Fatalf("unexpected permanent titles: %+v", list)
+	}
+}
+
+func TestUserTitleModelEquipTitleSwitchesExclusiveTitle(t *testing.T) {
+	db := newAchievementClosedLoopTestDB(t)
+	if err := db.AutoMigrate(&UserTitle{}); err != nil {
+		t.Fatalf("auto migrate titles: %v", err)
+	}
+
+	equippedAt := time.Now().Add(-time.Hour)
+	titles := []UserTitle{
+		{UserId: 9, TitleKey: "old", TitleName: "旧称号", SourceType: "achievement", SourceRefId: 1, Equipped: 1, EquippedAt: &equippedAt},
+		{UserId: 9, TitleKey: "new", TitleName: "新称号", SourceType: "season", SourceRefId: 2},
+	}
+	if err := db.Create(&titles).Error; err != nil {
+		t.Fatalf("seed titles: %v", err)
+	}
+
+	if err := NewUserTitleModel(db).EquipTitle(9, titles[1].Id, true); err != nil {
+		t.Fatalf("equip new title: %v", err)
+	}
+
+	var stored []UserTitle
+	if err := db.Where("user_id = ?", 9).Order("id ASC").Find(&stored).Error; err != nil {
+		t.Fatalf("reload titles: %v", err)
+	}
+	if len(stored) != 2 {
+		t.Fatalf("expected 2 titles, got %d", len(stored))
+	}
+	if stored[0].Equipped != 0 || stored[0].EquippedAt != nil {
+		t.Fatalf("expected old title unequipped, got %+v", stored[0])
+	}
+	if stored[1].Equipped != 1 || stored[1].EquippedAt == nil {
+		t.Fatalf("expected new title equipped, got %+v", stored[1])
+	}
+}
+
+func TestUserTitleModelEquipTitleAllowsNoCurrentTitle(t *testing.T) {
+	db := newAchievementClosedLoopTestDB(t)
+	if err := db.AutoMigrate(&UserTitle{}); err != nil {
+		t.Fatalf("auto migrate titles: %v", err)
+	}
+
+	equippedAt := time.Now()
+	title := UserTitle{UserId: 9, TitleKey: "current", TitleName: "当前称号", SourceType: "achievement", SourceRefId: 1, Equipped: 1, EquippedAt: &equippedAt}
+	if err := db.Create(&title).Error; err != nil {
+		t.Fatalf("seed title: %v", err)
+	}
+
+	model := NewUserTitleModel(db)
+	if err := model.EquipTitle(9, title.Id, false); err != nil {
+		t.Fatalf("unequip title: %v", err)
+	}
+
+	stored, err := model.FindEquippedByUserId(9)
+	if err != nil {
+		t.Fatalf("find equipped title: %v", err)
+	}
+	if stored != nil {
+		t.Fatalf("expected no current title, got %+v", stored)
+	}
+}
+
+func TestUserTitleModelEquipTitleRollsBackInvalidOrForeignSelection(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		foreignID bool
+	}{
+		{name: "invalid title"},
+		{name: "foreign title", foreignID: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			db := newAchievementClosedLoopTestDB(t)
+			if err := db.AutoMigrate(&UserTitle{}); err != nil {
+				t.Fatalf("auto migrate titles: %v", err)
+			}
+
+			equippedAt := time.Now().Add(-time.Hour)
+			titles := []UserTitle{
+				{UserId: 9, TitleKey: "current", TitleName: "当前称号", SourceType: "achievement", SourceRefId: 1, Equipped: 1, EquippedAt: &equippedAt},
+				{UserId: 10, TitleKey: "foreign", TitleName: "他人称号", SourceType: "season", SourceRefId: 2},
+			}
+			if err := db.Create(&titles).Error; err != nil {
+				t.Fatalf("seed titles: %v", err)
+			}
+
+			titleID := int64(999999)
+			if tc.foreignID {
+				titleID = titles[1].Id
+			}
+			err := NewUserTitleModel(db).EquipTitle(9, titleID, true)
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				t.Fatalf("expected record not found, got %v", err)
+			}
+
+			var current UserTitle
+			if err := db.First(&current, titles[0].Id).Error; err != nil {
+				t.Fatalf("reload current title: %v", err)
+			}
+			if current.Equipped != 1 || current.EquippedAt == nil {
+				t.Fatalf("expected original title preserved after rollback, got %+v", current)
+			}
+		})
 	}
 }
 

@@ -31,16 +31,16 @@
 					</view>
 				</view>
 
-				<view class="equipped-title-card" :class="{ interactive: isSelf }" @tap="goToTitles">
+				<view class="equipped-title-card" :class="{ interactive: isSelf }" @tap="openTitleSelector">
 					<view class="title-medal">
 						<uni-icons type="medal-filled" size="25" color="#ffffff"></uni-icons>
 					</view>
 					<view class="title-copy">
 						<text class="title-label">当前称号</text>
-						<text class="title-name">{{ wall.equipped_title?.title_name || '暂未装备称号' }}</text>
+						<text class="title-name">{{ wall.equipped_title?.title_name || '暂未佩戴称号' }}</text>
 						<text class="title-source">{{ equippedTitleSource }}</text>
 					</view>
-					<uni-icons v-if="isSelf" type="right" size="18" color="#ffffff"></uni-icons>
+					<text v-if="isSelf" class="title-action">{{ wall.equipped_title ? '更换' : '选择' }}</text>
 				</view>
 
 				<view class="summary-grid">
@@ -261,17 +261,114 @@
 					<text class="state-description">赛季排名或赛事名次产生后，会永久陈列在这里</text>
 				</view>
 			</view>
+			</view>
+
+			<view v-if="isSelf && showTitleSelector" class="title-selector-layer" @touchmove.stop>
+				<view class="title-selector-mask" @tap="closeTitleSelector"></view>
+				<view class="title-selector-panel" @tap.stop>
+					<view class="title-selector-handle"></view>
+					<view class="title-selector-header">
+						<view class="title-selector-heading">
+							<text class="title-selector-title">选择佩戴称号</text>
+							<text class="title-selector-description">选择后立即生效，仅改变对外展示</text>
+						</view>
+						<view class="title-selector-close" @tap="closeTitleSelector">
+							<uni-icons type="closeempty" size="20" :color="isDarkMode ? '#b9aa83' : '#64748b'"></uni-icons>
+						</view>
+					</view>
+
+					<view v-if="titleListLoading" class="title-selector-state title-selector-loading">
+						<uni-icons type="spinner-cycle" size="32" color="#E0AE12"></uni-icons>
+						<text class="title-selector-state-title">正在加载已获称号</text>
+					</view>
+
+					<view v-else-if="titleListFailed" class="title-selector-state title-selector-failed">
+						<uni-icons type="info-filled" size="32" color="#E0AE12"></uni-icons>
+						<text class="title-selector-state-title">称号列表暂时没加载出来</text>
+						<text class="title-selector-state-description">当前佩戴状态不会改变，可以重新加载后再选择</text>
+						<button class="title-selector-retry" @tap="loadTitles">
+							<text>重新加载称号</text>
+						</button>
+					</view>
+
+					<view v-else-if="titleListLoaded && titleList.length === 0" class="title-selector-state title-selector-empty">
+						<view class="title-selector-empty-icon"><text>🎖️</text></view>
+						<text class="title-selector-state-title">暂无可佩戴称号</text>
+						<text class="title-selector-state-description">解锁生涯成就或获得赛季、赛事荣誉后，称号会出现在这里</text>
+						<view class="title-options empty-title-options">
+							<view
+								class="title-option none-option selected"
+								:class="{ disabled: titleSubmitting }"
+								@tap="selectNoTitle"
+							>
+								<view class="title-option-icon none"><text>—</text></view>
+								<view class="title-option-copy">
+									<text class="title-option-name">不佩戴称号</text>
+									<text class="title-option-source">已获称号为空，当前没有对外展示的称号</text>
+								</view>
+								<view class="title-option-check">
+									<uni-icons type="checkmarkempty" size="14" color="#ffffff"></uni-icons>
+								</view>
+							</view>
+						</view>
+					</view>
+
+					<scroll-view v-else class="title-selector-list" scroll-y :show-scrollbar="false">
+						<view class="title-options">
+							<view
+								v-for="item in titleOptions"
+								:key="item.id"
+								class="title-option"
+								:class="{ selected: item.equipped, disabled: titleSubmitting }"
+								@tap="selectTitle(item)"
+							>
+								<view class="title-option-icon" :class="getTitleSourceClass(item.source_type || item.source)">
+									<uni-icons type="medal-filled" size="21" color="currentColor"></uni-icons>
+								</view>
+								<view class="title-option-copy">
+									<text class="title-option-name">{{ item.title_name }}</text>
+									<text class="title-option-source">{{ getTitleSourceDescription(item) }}</text>
+								</view>
+								<view class="title-option-check">
+									<uni-icons v-if="item.equipped" type="checkmarkempty" size="14" color="#ffffff"></uni-icons>
+								</view>
+							</view>
+
+							<view
+								class="title-option none-option"
+								:class="{ selected: currentTitleId === 0, disabled: titleSubmitting }"
+								@tap="selectNoTitle"
+							>
+								<view class="title-option-icon none"><text>—</text></view>
+								<view class="title-option-copy">
+									<text class="title-option-name">不佩戴称号</text>
+									<text class="title-option-source">隐藏对外展示，已获称号仍永久保留</text>
+								</view>
+								<view class="title-option-check">
+									<uni-icons v-if="currentTitleId === 0" type="checkmarkempty" size="14" color="#ffffff"></uni-icons>
+								</view>
+							</view>
+						</view>
+					</scroll-view>
+				</view>
+			</view>
 		</view>
-	</view>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
-import { onLoad, onPullDownRefresh, onReachBottom, onShow } from '@dcloudio/uni-app'
-import { getHonorWall } from '@/api/achievement.js'
+import { onBackPress, onLoad, onPullDownRefresh, onReachBottom, onShow } from '@dcloudio/uni-app'
+import { equipTitle, getHonorWall, getUserTitles } from '@/api/achievement.js'
 import { getNotificationList, markAsRead } from '@/api/notification.js'
 import { useNotificationStore } from '@/store/notification.js'
-import { getAchievementCategoryEmoji, groupAchievementsByCategory } from '@/utils/achievement-page.js'
+import {
+	getAchievementCategoryEmoji,
+	getTitleSourceClass,
+	getTitleSourceDescription,
+	groupAchievementsByCategory,
+	resolveTitleSelection,
+	sortTitleOptions
+} from '@/utils/achievement-page.js'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import {
 	buildChallengeViewModel,
@@ -337,9 +434,17 @@ const selectedHistorySeasonId = ref(0)
 const historyPage = ref(1)
 const historyPageSize = 20
 const wall = ref(createEmptyWall())
+const showTitleSelector = ref(false)
+const titleList = ref([])
+const titleListLoading = ref(false)
+const titleListLoaded = ref(false)
+const titleListFailed = ref(false)
+const titleSubmitting = ref(false)
 
 const isSelf = computed(() => wall.value.viewer_scope !== 'friend')
 const tabs = computed(() => buildHonorWallTabs(wall.value.viewer_scope))
+const currentTitleId = computed(() => Number(wall.value.equipped_title?.id || 0))
+const titleOptions = computed(() => sortTitleOptions(titleList.value))
 const gameTypeTabs = GAME_TYPE_TABS
 const currentGameTypeLabel = computed(() => (
 	gameTypeTabs.find(item => item.value === currentGameType.value)?.label || '中式八球'
@@ -347,9 +452,8 @@ const currentGameTypeLabel = computed(() => (
 const profileAvatar = computed(() => resolveAvatarUrl(wall.value.profile.avatar, wall.value.profile.user_id))
 const equippedTitleSource = computed(() => {
 	const title = wall.value.equipped_title
-	if (!title) return isSelf.value ? '可前往称号管理装备' : 'TA 暂未装备称号'
-	if (title.source_ref_name) return `来自 ${title.source_ref_name}`
-	return title.source_type === 'season' ? '赛季荣誉称号' : title.source_type === 'tournament' ? '赛事荣誉称号' : '生涯成就称号'
+	if (!title) return isSelf.value ? '选择一个已获称号进行展示' : 'TA 暂未佩戴称号'
+	return getTitleSourceDescription(title)
 })
 const summaryItems = computed(() => ([
 	{ key: 'career', label: '生涯成就', value: `${wall.value.summary.career_unlocked || 0}/${wall.value.summary.career_total || 0}` },
@@ -482,10 +586,87 @@ const goToDetail = (id) => {
 	uni.navigateTo({ url: `/subPages/achievement/detail?id=${id}` })
 }
 
-const goToTitles = () => {
-	if (!isSelf.value) return
-	uni.navigateTo({ url: '/subPages/achievement/titles' })
+const syncEquippedTitleFromList = () => {
+	const equipped = titleList.value.find(item => item.equipped) || null
+	wall.value.equipped_title = equipped ? { ...equipped } : null
 }
+
+const loadTitles = async () => {
+	if (titleListLoading.value) return
+	titleListLoading.value = true
+	titleListFailed.value = false
+
+	try {
+		const response = await getUserTitles()
+		const list = Array.isArray(response?.list) ? response.list : Array.isArray(response) ? response : []
+		titleList.value = list
+		titleListLoaded.value = true
+		syncEquippedTitleFromList()
+	} catch (error) {
+		console.error('加载称号列表失败:', error)
+		titleListFailed.value = true
+	} finally {
+		titleListLoading.value = false
+	}
+}
+
+const openTitleSelector = async () => {
+	if (!isSelf.value) return
+	showTitleSelector.value = true
+	if (titleListLoaded.value) {
+		syncEquippedTitleFromList()
+		return
+	}
+	await loadTitles()
+}
+
+const closeTitleSelector = () => {
+	showTitleSelector.value = false
+}
+
+const submitTitleSelection = async (item = null) => {
+	if (titleSubmitting.value) return
+	const selection = resolveTitleSelection({
+		currentTitleId: currentTitleId.value,
+		selectedTitleId: item?.id || 0
+	})
+	if (selection.action === 'close') {
+		closeTitleSelector()
+		return
+	}
+
+	titleSubmitting.value = true
+	try {
+		await equipTitle({
+			title_id: selection.titleId,
+			equip: selection.action === 'equip'
+		})
+		if (selection.action === 'equip') {
+			titleList.value = titleList.value.map(title => ({
+				...title,
+				equipped: Number(title.id) === selection.titleId
+			}))
+			const equipped = titleList.value.find(title => title.equipped)
+			wall.value.equipped_title = equipped ? { ...equipped } : null
+			closeTitleSelector()
+			uni.showToast({ title: `已佩戴「${equipped?.title_name || ''}」`, icon: 'none' })
+			return
+		}
+
+		titleList.value = titleList.value.map(title => ({ ...title, equipped: false }))
+		wall.value.equipped_title = null
+		closeTitleSelector()
+		uni.showToast({ title: '已停止展示称号', icon: 'none' })
+	} catch (error) {
+		console.error('切换称号失败:', error)
+		uni.showToast({ title: error.message || '称号切换失败', icon: 'none' })
+	} finally {
+		titleSubmitting.value = false
+	}
+}
+
+const selectTitle = (item) => submitTitleSelection(item)
+const selectNoTitle = () => submitTitleSelection()
 
 onLoad((options) => {
 	const normalized = normalizeHonorWallOptions(options)
@@ -507,6 +688,12 @@ onPullDownRefresh(() => {
 
 onReachBottom(() => {
 	if (activeTab.value === 'history') loadMoreHistory()
+})
+
+onBackPress(() => {
+	if (!showTitleSelector.value) return false
+	closeTitleSelector()
+	return true
 })
 </script>
 

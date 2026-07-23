@@ -21,6 +21,7 @@ const userTabSource = readFileSync(new URL('../pages/user/index.vue', import.met
 const friendHomepageSource = readFileSync(new URL('../subPages/social/friendHomepage.vue', import.meta.url), 'utf8')
 const notificationSource = readFileSync(new URL('../subPages/notification/index.vue', import.meta.url), 'utf8')
 const achievementApiSource = readFileSync(new URL('../api/achievement.js', import.meta.url), 'utf8')
+const pagesJsonSource = readFileSync(new URL('../pages.json', import.meta.url), 'utf8')
 
 test('honor wall options and tabs keep self progress private from friend views', () => {
   assert.deepEqual(normalizeHonorWallOptions({ user_id: '18', game_type: '4', tab: 'season' }), {
@@ -141,13 +142,32 @@ test('honor wall urls preserve friend and game type context', () => {
   )
 })
 
-test('honor wall page keeps private season progress out of friend tabs and preserves existing detail/title routes', () => {
+test('honor wall page keeps private season progress out of friend tabs and opens title selection inline for self', () => {
   assert.match(honorWallSource, /buildHonorWallTabs\(wall\.value\.viewer_scope\)/)
   assert.match(honorWallSource, /if \(!isSelf\.value \|\| !id\) return/)
   assert.match(honorWallSource, /\/subPages\/achievement\/detail\?id=/)
-  assert.match(honorWallSource, /\/subPages\/achievement\/titles/)
+  assert.match(honorWallSource, /@tap="openTitleSelector"/)
+  assert.match(honorWallSource, /const openTitleSelector = async \(\) => \{\s*if \(!isSelf\.value\) return/)
+  assert.match(honorWallSource, /v-if="isSelf && showTitleSelector"/)
+  assert.match(honorWallSource, /await getUserTitles\(\)/)
   assert.match(honorWallSource, /presentLatestSeasonRollover/)
+  assert.doesNotMatch(honorWallSource, /\/subPages\/achievement\/titles/)
   assert.doesNotMatch(honorWallSource, /分享荣誉墙|精选展示|手动精选/)
+})
+
+test('inline title selector covers loading, retry, empty, selection and system-back states without phase-one extras', () => {
+  assert.match(honorWallSource, /title-selector-loading/)
+  assert.match(honorWallSource, /重新加载称号/)
+  assert.match(honorWallSource, /暂无可佩戴称号/)
+  assert.match(honorWallSource, /不佩戴称号/)
+  assert.match(honorWallSource, /@tap="selectTitle\(item\)"/)
+  assert.match(honorWallSource, /@tap="selectNoTitle"/)
+  assert.match(honorWallSource, /if \(titleListLoaded\.value\) \{/)
+  assert.match(honorWallSource, /titleListFailed\.value = true/)
+  assert.match(honorWallSource, /if \(titleSubmitting\.value\) return/)
+  assert.match(honorWallSource, /equip:\s*selection\.action === 'equip'/)
+  assert.match(honorWallSource, /onBackPress/)
+  assert.doesNotMatch(honorWallSource, /搜索称号|来源筛选|确认佩戴|确认卸下|批量编辑|称号统计/)
 })
 
 test('honor wall layout protects small screens and long copy from horizontal overflow', () => {
@@ -155,6 +175,8 @@ test('honor wall layout protects small screens and long copy from horizontal ove
   assert.match(honorWallStyle, /word-break:\s*break-word/)
   assert.match(honorWallStyle, /flex-wrap:\s*wrap/)
   assert.match(honorWallStyle, /max-width:\s*360px/)
+  assert.match(honorWallStyle, /title-selector-list[\s\S]*max-height:/)
+  assert.match(honorWallStyle, /env\(safe-area-inset-bottom\)/)
   assert.doesNotMatch(honorWallStyle, /white-space:\s*nowrap/)
 })
 
@@ -170,7 +192,12 @@ test('notification mapping recognizes season rollover and honors its url payload
   assert.match(userTabSource, /presentLatestSeasonRollover/)
 })
 
-test('achievement API exposes the honor wall through the request facade', () => {
+test('new client removes the title-management route while keeping existing title API facades', () => {
+  assert.doesNotMatch(pagesJsonSource, /"path"\s*:\s*"titles"/)
   assert.match(achievementApiSource, /getHonorWall/)
   assert.match(achievementApiSource, /\/api\/achievement\/honor-wall/)
+  assert.match(achievementApiSource, /export const getUserTitles/)
+  assert.match(achievementApiSource, /\/api\/achievement\/titles/)
+  assert.match(achievementApiSource, /export const equipTitle/)
+  assert.match(achievementApiSource, /\/api\/achievement\/title\/equip/)
 })

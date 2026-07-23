@@ -246,12 +246,6 @@
 					"style": {
 						"navigationBarTitleText": "成就详情"
 					}
-				},
-				{
-					"path": "titles",
-					"style": {
-						"navigationBarTitleText": "称号管理"
-					}
 				}
 			]
 		},
