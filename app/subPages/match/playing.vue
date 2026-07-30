@@ -107,12 +107,28 @@
 						<text class="panel-desc">{{ actionPanelDescription }}</text>
 					</view>
 
-				<view v-if="isRoundWinMode" class="action-grid is-three">
+				<view v-if="isRoundWinMode && isReferee" class="referee-action-groups referee-round-win-groups">
+					<view v-for="group in refereeRoundWinGroups" :key="group.actor" class="action-column">
+						<text :class="['action-column__title', group.actor === 1 ? 'is-me' : 'is-opponent']">{{ group.label }}获胜</text>
+						<view class="action-grid is-three">
+							<button
+								v-for="item in group.options"
+								:key="item.type"
+								:class="['action-btn', group.actor === 1 ? 'action-btn--me' : 'action-btn--opponent']"
+								@click="handleOpponentWin(item.type, item.score, group.actor)"
+							>
+								<text class="action-btn__title">{{ item.title }}</text>
+								<text class="action-btn__desc">{{ item.desc }}</text>
+							</button>
+						</view>
+					</view>
+				</view>
+				<view v-else-if="isRoundWinMode" class="action-grid is-three">
 					<button
 						v-for="item in roundWinActionOptions"
 						:key="item.type"
 						class="action-btn action-btn--opponent"
-						@click="handleOpponentWin(item.type)"
+						@click="handleOpponentWin(item.type, item.score, 2)"
 					>
 						<text class="action-btn__title">{{ item.title }}</text>
 						<text class="action-btn__desc">{{ item.desc }}</text>
@@ -122,7 +138,19 @@
 				<view v-if="gameType === 1" class="snooker-layout">
 					<view class="snooker-section">
 						<view class="snooker-section__head">
-							<text class="action-column__title is-opponent">给对手计分</text>
+							<view class="snooker-section__title-group">
+								<text class="action-column__title is-opponent">{{ snookerScoreTitle }}</text>
+								<view v-if="isReferee" class="participant-switch" data-referee-score-target>
+									<button
+										v-for="actor in refereeActors"
+										:key="actor"
+										:class="['participant-switch__btn', { 'is-active': snookerScoringActor === actor }]"
+										@click="snookerScoringActor = actor"
+									>
+										{{ resolveScoringParticipantLabel({ viewerRole: 'referee', uiActor: actor }) }}
+									</button>
+								</view>
+							</view>
 							<text :class="['snooker-red-counter', { 'is-warning': snookerRedBallRemaining <= 2 && !isSnookerRedDisabled, 'is-finished': isSnookerRedDisabled }]">
 								{{ snookerRedBallText }}
 							</text>
@@ -176,7 +204,19 @@
 					</view>
 
 					<view class="snooker-section">
-						<text class="action-column__title is-me">对手犯规，给我方加分</text>
+						<view class="snooker-section__title-group">
+							<text class="action-column__title is-me">{{ snookerFoulTitle }}</text>
+							<view v-if="isReferee" class="participant-switch" data-referee-foul-target>
+								<button
+									v-for="actor in refereeActors"
+									:key="actor"
+									:class="['participant-switch__btn', { 'is-active': snookerFoulingActor === actor }]"
+									@click="snookerFoulingActor = actor"
+								>
+									{{ resolveScoringParticipantLabel({ viewerRole: 'referee', uiActor: actor }) }}犯规
+								</button>
+							</view>
+						</view>
 						<view class="snooker-stage is-foul">
 							<view class="snooker-stage__left">
 								<view class="snooker-ball-row is-foul-top">
@@ -222,12 +262,39 @@
 					</view>
 				</view>
 
-				<view v-if="gameType === 2" class="jiuqiu-layout">
+				<view v-if="gameType === 2 && isReferee" class="jiuqiu-layout referee-jiuqiu-layout">
+					<view v-for="group in refereeJiuqiuGroups" :key="group.actor" class="action-column" :data-referee-actor="group.actor">
+						<text :class="['action-column__title', group.actor === 1 ? 'is-me' : 'is-opponent']">记到{{ group.label }}</text>
+						<button
+							:class="['action-btn', group.actor === 1 ? 'action-btn--me' : 'action-btn--opponent']"
+							@click="handleOpponentWin(group.options[0].type, group.options[0].score, group.actor)"
+						>
+							<text class="action-btn__title">{{ group.options[0].title }}</text>
+							<text class="action-btn__desc">{{ group.options[0].desc }}</text>
+						</button>
+						<view class="action-row-two">
+							<button
+								v-for="item in group.options.slice(1)"
+								:key="item.type"
+								:class="['action-btn', 'action-btn--compact', group.actor === 1 ? 'action-btn--me' : 'action-btn--opponent']"
+								@click="handleOpponentWin(item.type, item.score, group.actor)"
+							>
+								<text class="action-btn__title">{{ item.title }}</text>
+								<text class="action-btn__desc">{{ item.desc }}</text>
+							</button>
+						</view>
+						<button :class="['action-btn', 'action-btn--compact', group.actor === 1 ? 'action-btn--me' : 'action-btn--opponent']" @click="handleFoul(group.actor)">
+							<text class="action-btn__title">{{ group.label }}犯规</text>
+							<text class="action-btn__desc">{{ group.foulScoringLabel }} +1 分</text>
+						</button>
+					</view>
+				</view>
+				<view v-else-if="gameType === 2" class="jiuqiu-layout">
 					<view class="action-column">
 						<text class="action-column__title is-opponent">记到对手</text>
 						<button
 							class="action-btn action-btn--opponent"
-							@click="handleOpponentWin(jiuqiuNormalOption.type, jiuqiuNormalOption.score)"
+							@click="handleOpponentWin(jiuqiuNormalOption.type, jiuqiuNormalOption.score, 2)"
 						>
 							<text class="action-btn__title">{{ jiuqiuNormalOption.title }}</text>
 							<text class="action-btn__desc">{{ jiuqiuNormalOption.desc }}</text>
@@ -237,7 +304,7 @@
 								v-for="item in jiuqiuGoldOptions"
 								:key="item.type"
 								class="action-btn action-btn--opponent action-btn--compact"
-								@click="handleOpponentWin(item.type, item.score)"
+								@click="handleOpponentWin(item.type, item.score, 2)"
 							>
 								<text class="action-btn__title">{{ item.title }}</text>
 								<text class="action-btn__desc">{{ item.desc }}</text>
@@ -305,6 +372,15 @@ import { consumeResultNavigationGuard, getMatchHistoryPageUrl, getMatchHistoryTa
 import { buildMatchActionPayload } from '@/utils/match-action.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolvePlayingViewerUi } from '@/utils/match-role-view.js'
+import {
+	buildJiuqiuWinOptions,
+	buildRoundWinActionOptions,
+	resolveFoulFeedback,
+	resolveMatchApiActor,
+	resolveScoreFeedback,
+	resolveScoringParticipantLabel,
+	resolveWinFeedback
+} from '@/utils/match-scoring-target.js'
 import { resolveSnookerFinishMatchAction, resolveSnookerNextFrameAction } from '@/utils/snooker-frame.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import { shouldInvalidateRankAfterSettlement } from '@/utils/rank-cache.js'
@@ -357,6 +433,8 @@ let syncTimeoutId = null // 同步超时定时器
 let wsHandlersReady = false
 const resultNavigationState = { hasNavigatedToResult: false }
 const pendingFinishAction = ref(null) // 裁判结束确认的回退 action
+const snookerScoringActor = ref(1)
+const snookerFoulingActor = ref(1)
 
 const pageLog = (message, payload) => {
 	if (payload === undefined) {
@@ -411,6 +489,15 @@ const gameTypeName = computed(() => {
 })
 
 const gameSubtitle = computed(() => {
+	if (viewerRole.value === 'referee') {
+		switch (gameType.value) {
+			case 1: return '上方为整场 frame，下方记录当前局得分'
+			case 2: return '分别记录选手1与选手2得分'
+			case 3:
+			case 4: return '明确判定双方的本局胜法'
+			default: return ''
+		}
+	}
 	switch (gameType.value) {
 		case 1: return '上方为整场 frame，下方记录当前局得分'
 		case 2: return '区分我方得分与对手得分'
@@ -474,9 +561,9 @@ const actionPanelDescription = computed(() => {
 	if (viewerRole.value === 'referee') {
 		switch (gameType.value) {
 			case 1:
-				return '为选手2记录进球，为选手1记录对手犯规得分'
+				return '分别选择得分方和犯规方，再记录对应球值'
 			case 2:
-				return '左列为选手1得分，右列为选手2得分'
+				return '为选手1或选手2记录得分与犯规'
 			case 3:
 			case 4:
 				return '以下按钮会判给对应选手本局胜'
@@ -497,23 +584,21 @@ const actionPanelDescription = computed(() => {
 	}
 })
 
+const isReferee = computed(() => viewerRole.value === 'referee')
 const isRoundWinMode = computed(() => gameType.value === 3 || gameType.value === 4)
+const refereeActors = [1, 2]
 
-const roundWinActionOptions = computed(() => {
-	if (gameType.value === 4) {
-		return [
-			{ type: 'normal', title: '对手普胜', desc: '本局计给对手' },
-			{ type: 'small_gold', title: '对手小金', desc: '对手金球直接制胜' },
-			{ type: 'big_gold', title: '对手大金', desc: '对手开球直接制胜' }
-		]
-	}
+const roundWinActionOptions = computed(() => buildRoundWinActionOptions({
+	gameType: gameType.value,
+	viewerRole: viewerRole.value,
+	uiActor: 2
+}))
 
-	return [
-		{ type: 'normal', title: '对手普胜', desc: '本局计给对手' },
-		{ type: 'break_clear', title: '对手炸清', desc: '对手直接清台获胜' },
-		{ type: 'continue_clear', title: '对手接清', desc: '对手连续清台获胜' }
-	]
-})
+const refereeRoundWinGroups = computed(() => refereeActors.map(actor => ({
+	actor,
+	label: resolveScoringParticipantLabel({ viewerRole: 'referee', uiActor: actor }),
+	options: buildRoundWinActionOptions({ gameType: gameType.value, viewerRole: 'referee', uiActor: actor })
+})))
 
 const snookerScoreBalls = computed(() => ([
 	{ key: 'red', name: '红球', color: 'red', score: 1 },
@@ -540,15 +625,25 @@ const snookerPrimaryFoul = computed(() => snookerFoulOptions.value[0])
 const snookerFoulTopRow = computed(() => snookerFoulOptions.value.slice(1, 3))
 const snookerFoulBottomRow = computed(() => snookerFoulOptions.value.slice(3))
 
-const jiuqiuWinOptions = computed(() => [
-	{ type: 'normal', score: 4, title: '对手普胜', desc: '对手 +4 分' },
-	{ type: 'small_gold', score: 7, title: '对手小金', desc: '对手 +7 分' },
-	{ type: 'big_gold', score: 10, title: '对手大金', desc: '对手 +10 分' }
-])
+const jiuqiuWinOptions = computed(() => buildJiuqiuWinOptions({
+	viewerRole: viewerRole.value,
+	uiActor: 2
+}))
 
 const jiuqiuNormalOption = computed(() => jiuqiuWinOptions.value[0])
-
 const jiuqiuGoldOptions = computed(() => jiuqiuWinOptions.value.slice(1))
+const refereeJiuqiuGroups = computed(() => refereeActors.map(actor => ({
+	actor,
+	label: resolveScoringParticipantLabel({ viewerRole: 'referee', uiActor: actor }),
+	foulScoringLabel: resolveScoringParticipantLabel({ viewerRole: 'referee', uiActor: actor === 1 ? 2 : 1 }),
+	options: buildJiuqiuWinOptions({ viewerRole: 'referee', uiActor: actor })
+})))
+const snookerScoreTitle = computed(() => isReferee.value
+	? `给${resolveScoringParticipantLabel({ viewerRole: 'referee', uiActor: snookerScoringActor.value })}计分`
+	: '给对手计分')
+const snookerFoulTitle = computed(() => isReferee.value
+	? `${resolveScoringParticipantLabel({ viewerRole: 'referee', uiActor: snookerFoulingActor.value })}犯规，给${resolveScoringParticipantLabel({ viewerRole: 'referee', uiActor: snookerFoulingActor.value === 1 ? 2 : 1 })}加分`
+	: '对手犯规，给我方加分')
 
 // ========== 生命周期 ==========
 onLoad((options) => {
@@ -1201,21 +1296,14 @@ const handleMatchEnd = (data) => {
  * 后端存储从player1视角：actor=1是player1，actor=2是player2
  * 前端操作从当前用户视角："我"的操作应该发送正确的actor
  */
-const convertActor = (uiActor) => {
-	// uiActor: 前端UI视角的actor，1=我方，2=对手方
-	if (isPlayer1.value) {
-		// 当前用户是player1，不需要转换
-		return uiActor
-	} else {
-		// 当前用户是player2，需要反转
-		// UI中的"我方"(actor=1) 实际上是后端的"对手方"(actor=2)
-		// UI中的"对手方"(actor=2) 实际上是后端的"我方"(actor=1)
-		return uiActor === 1 ? 2 : 1
-	}
-}
+const convertActor = (uiActor) => resolveMatchApiActor({
+	viewerRole: viewerRole.value,
+	isPlayer1: isPlayer1.value,
+	uiActor
+})
 
 /**
- * 加分 (斯诺克模式 - 固定给对手加分)
+ * 加分（斯诺克模式）
  */
 const handleAddScore = async (score) => {
 	if (!ensureViewerCapability(canScore.value, '当前只有裁判可以记分')) return
@@ -1236,9 +1324,10 @@ const handleAddScore = async (score) => {
 	
 		try {
 			showSyncLoading()
+			const scoringActor = isReferee.value ? snookerScoringActor.value : 2
 			const res = await matchScore(buildActionRequest({
 				match_id: matchId.value,
-				actor: convertActor(2), // 固定给对手加分
+				actor: convertActor(scoringActor),
 				score: score
 			}))
 			if (!res?.success) {
@@ -1249,8 +1338,8 @@ const handleAddScore = async (score) => {
 			}
 			applyWriteResponse(res)
 			hideSyncLoading()
-			pageLog('加分HTTP成功', { matchId: matchId.value, score, serverRevision: res?.server_revision ?? res?.snapshot?.server_revision })
-			uni.showToast({ title: `已给对手 +${score} 分`, icon: 'none' })
+			pageLog('加分HTTP成功', { matchId: matchId.value, score, scoringActor, serverRevision: res?.server_revision ?? res?.snapshot?.server_revision })
+			uni.showToast({ title: resolveScoreFeedback({ viewerRole: viewerRole.value, uiActor: scoringActor, score }), icon: 'none' })
 		} catch (error) {
 		console.error('[MatchPlaying] 加分失败', { matchId: matchId.value, score, error })
 		hideSyncLoading()
@@ -1281,7 +1370,7 @@ const handleFoul = async (actor) => {
 			applyWriteResponse(res)
 			hideSyncLoading()
 			pageLog('犯规HTTP成功', { matchId: matchId.value, actor, serverRevision: res?.server_revision ?? res?.snapshot?.server_revision })
-			uni.showToast({ title: '对手犯规，我方 +1 分', icon: 'none' })
+			uni.showToast({ title: resolveFoulFeedback({ viewerRole: viewerRole.value, foulingActor: actor, score: 1 }), icon: 'none' })
 		} catch (error) {
 		console.error('[MatchPlaying] 犯规失败', { matchId: matchId.value, actor, error })
 		hideSyncLoading()
@@ -1295,9 +1384,10 @@ const handleFoulByScore = async (score) => {
 
 		try {
 			showSyncLoading()
+			const foulingActor = isReferee.value ? snookerFoulingActor.value : 2
 			const res = await matchFoul(buildActionRequest({
 				match_id: matchId.value,
-				actor: convertActor(2),
+				actor: convertActor(foulingActor),
 				score
 			}))
 			if (!res?.success) {
@@ -1308,8 +1398,8 @@ const handleFoulByScore = async (score) => {
 			}
 			applyWriteResponse(res)
 			hideSyncLoading()
-			pageLog('犯规加分HTTP成功', { matchId: matchId.value, score, serverRevision: res?.server_revision ?? res?.snapshot?.server_revision })
-			uni.showToast({ title: `对手犯规，我方 +${score} 分`, icon: 'none' })
+			pageLog('犯规加分HTTP成功', { matchId: matchId.value, score, foulingActor, serverRevision: res?.server_revision ?? res?.snapshot?.server_revision })
+			uni.showToast({ title: resolveFoulFeedback({ viewerRole: viewerRole.value, foulingActor, score }), icon: 'none' })
 		} catch (error) {
 		console.error('[MatchPlaying] 犯规加分失败', { matchId: matchId.value, score, error })
 		hideSyncLoading()
@@ -1344,8 +1434,8 @@ const handleOpponentWin = async (winType, score = 1, winnerActor = 2) => {
 			}
 			applyWriteResponse(res)
 			hideSyncLoading()
-			pageLog('结束单局HTTP成功', { matchId: matchId.value, winType, score, roundNo: res.round_no, serverRevision: res?.server_revision ?? res?.snapshot?.server_revision })
-			uni.showToast({ title: winnerActor === 1 ? '已判给我方' : '已判给对手', icon: 'none' })
+			pageLog('结束单局HTTP成功', { matchId: matchId.value, winType, score, winnerActor, roundNo: res.round_no, serverRevision: res?.server_revision ?? res?.snapshot?.server_revision })
+			uni.showToast({ title: resolveWinFeedback({ viewerRole: viewerRole.value, uiActor: winnerActor }), icon: 'none' })
 		} catch (error) {
 		console.error('[MatchPlaying] 结束单局失败', { matchId: matchId.value, winType, score, error })
 		hideSyncLoading()
@@ -1370,8 +1460,12 @@ const handleNextRound = async () => {
 		return
 	}
 
+	const nextFrameWinnerLabel = resolveScoringParticipantLabel({
+		viewerRole: viewerRole.value,
+		uiActor: nextFrameAction.winner
+	})
 	const modalContent = nextFrameAction.action === 'settle_and_start_next_round'
-		? `将按当前局比分 ${currentFrameMyScore.value}:${currentFrameOpponentScore.value} 自动判定${nextFrameAction.winner === 1 ? '我方' : '对手'}赢下本局，并开始下一局。`
+		? `将按当前局比分 ${currentFrameMyScore.value}:${currentFrameOpponentScore.value} 自动判定${nextFrameWinnerLabel}赢下本局，并开始下一局。`
 		: '确定要开始新的一局吗？'
 
 	uni.showModal({

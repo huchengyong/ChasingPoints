@@ -804,7 +804,7 @@ type DurationStats struct {
 
 type EndRoundReq struct {
 	MatchId        int64  `json:"match_id"`
-	Winner         int    `json:"winner"`                   // 1=我 2=对手
+	Winner         int    `json:"winner"`                   // 1=选手1 2=选手2
 	WinType        string `json:"win_type,optional"`        // 获胜方式
 	Score          int    `json:"score,optional,default=1"` // 获胜得分，默认1分
 	ClientActionId string `json:"client_action_id"`
@@ -1776,7 +1776,7 @@ type MatchDetailData struct {
 
 type MatchFoulReq struct {
 	MatchId        int64  `json:"match_id"`
-	Actor          int    `json:"actor"`          // 犯规方
+	Actor          int    `json:"actor"`          // 犯规方：1=选手1 2=选手2
 	Score          int    `json:"score,optional"` // 犯规加分，默认1
 	ClientActionId string `json:"client_action_id"`
 	BaseRevision   int64  `json:"base_revision"`
@@ -1832,7 +1832,7 @@ type MatchRewardItem struct {
 
 type MatchScoreReq struct {
 	MatchId        int64  `json:"match_id"`
-	Actor          int    `json:"actor"` // 1=我 2=对手
+	Actor          int    `json:"actor"` // 1=选手1 2=选手2
 	Score          int    `json:"score"` // 加的分数
 	ClientActionId string `json:"client_action_id"`
 	BaseRevision   int64  `json:"base_revision"`
