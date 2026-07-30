@@ -4,16 +4,18 @@
 package types
 
 type AchievementDef struct {
-	Id          int64  `json:"id"`
-	Key         string `json:"key"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Icon        string `json:"icon"`
-	Category    string `json:"category"`
-	Threshold   int    `json:"threshold"`
-	Progress    int    `json:"progress"`
-	Unlocked    bool   `json:"unlocked"`
-	UnlockedAt  string `json:"unlocked_at,omitempty"`
+	Id              int64  `json:"id"`
+	Key             string `json:"key"`
+	Name            string `json:"name"`
+	Description     string `json:"description"`
+	Icon            string `json:"icon"`
+	Category        string `json:"category"`
+	GameType        int    `json:"game_type"`
+	RewardTitleName string `json:"reward_title_name,optional"`
+	Threshold       int    `json:"threshold"`
+	Progress        int    `json:"progress"`
+	Unlocked        bool   `json:"unlocked"`
+	UnlockedAt      string `json:"unlocked_at,omitempty"`
 }
 
 type AchievementItem struct {
@@ -1647,10 +1649,15 @@ type HonorWallSeasonInfo struct {
 }
 
 type HonorWallSummary struct {
-	CareerUnlocked   int `json:"career_unlocked"`
-	CareerTotal      int `json:"career_total"`
-	SeasonHonors     int `json:"season_honors"`
-	TournamentHonors int `json:"tournament_honors"`
+	CareerUnlocked    int `json:"career_unlocked"`
+	CareerTotal       int `json:"career_total"`
+	UniversalUnlocked int `json:"universal_unlocked"`
+	UniversalTotal    int `json:"universal_total"`
+	SpecialtyGameType int `json:"specialty_game_type"`
+	SpecialtyUnlocked int `json:"specialty_unlocked"`
+	SpecialtyTotal    int `json:"specialty_total"`
+	SeasonHonors      int `json:"season_honors"`
+	TournamentHonors  int `json:"tournament_honors"`
 }
 
 type JoinMatchRefereeReq struct {

@@ -37,7 +37,7 @@ func (l *GetAchievementListLogic) GetAchievementList(req *types.GetAchievementLi
 	if req.Category != "" {
 		achievements, err = l.svcCtx.AchievementModel.FindByCategory(req.Category)
 	} else {
-		achievements, err = l.svcCtx.AchievementModel.FindAll()
+		achievements, err = l.svcCtx.AchievementModel.FindActive()
 	}
 	if err != nil {
 		l.Logger.Errorf("查询成就定义失败: %v", err)
@@ -70,16 +70,18 @@ func (l *GetAchievementListLogic) GetAchievementList(req *types.GetAchievementLi
 		}
 
 		list = append(list, types.AchievementDef{
-			Id:          achievement.Id,
-			Key:         achievement.Key,
-			Name:        achievement.Name,
-			Description: achievement.Description,
-			Icon:        achievement.Icon,
-			Category:    achievement.Category,
-			Threshold:   achievement.Threshold,
-			Progress:    progress,
-			Unlocked:    unlocked,
-			UnlockedAt:  unlockedAt,
+			Id:              achievement.Id,
+			Key:             achievement.Key,
+			Name:            achievement.Name,
+			Description:     achievement.Description,
+			Icon:            achievement.Icon,
+			Category:        achievement.Category,
+			GameType:        achievement.GameType,
+			RewardTitleName: achievement.RewardTitleName,
+			Threshold:       achievement.Threshold,
+			Progress:        progress,
+			Unlocked:        unlocked,
+			UnlockedAt:      unlockedAt,
 		})
 	}
 

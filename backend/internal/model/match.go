@@ -282,6 +282,19 @@ func (m *MatchModel) ListCompletedForRankingReplay() ([]Match, error) {
 	return matches, err
 }
 
+func (m *MatchModel) ListCompletedForAchievementRebuild() ([]Match, error) {
+	var matches []Match
+	err := m.db.
+		Where("status = ? AND deleted_at IS NULL", 2).
+		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", MatchModeRanked).
+		Where("result IN ?", []int{1, 2}).
+		Where("opponent_id IS NOT NULL AND opponent_id > 0 AND opponent_id <> user_id").
+		Where("EXISTS (SELECT 1 FROM match_rounds WHERE match_rounds.match_id = matches.id AND winner IS NOT NULL AND (win_type IS NULL OR win_type <> ?))", "start").
+		Order("COALESCE(end_time, match_time) ASC, id ASC").
+		Find(&matches).Error
+	return matches, err
+}
+
 func (m *MatchModel) ListCompletedRankedBetweenWithTx(tx *gorm.DB, start, end time.Time) ([]Match, error) {
 	db := m.db
 	if tx != nil {
@@ -919,6 +932,18 @@ func (m *MatchModel) ListCompletedRoundsWithTx(tx *gorm.DB, matchId int64) ([]Ma
 	return rounds, err
 }
 
+func (m *MatchModel) ListCompletedRoundsByMatchIDs(matchIds []int64) ([]MatchRound, error) {
+	if len(matchIds) == 0 {
+		return []MatchRound{}, nil
+	}
+	var rounds []MatchRound
+	err := m.db.
+		Where("match_id IN ? AND winner IS NOT NULL AND (win_type IS NULL OR win_type <> ?)", matchIds, "start").
+		Order("match_id ASC, round_no ASC, id ASC").
+		Find(&rounds).Error
+	return rounds, err
+}
+
 // ========== MatchAction 操作 ==========
 
 // CreateAction 创建操作日志
@@ -1105,6 +1130,18 @@ func (m *MatchModel) GetAchievementsWithTx(tx *gorm.DB, matchId int64) ([]MatchA
 		db = tx
 	}
 	err := db.Where("match_id = ?", matchId).Find(&list).Error
+	return list, err
+}
+
+func (m *MatchModel) ListAchievementsByMatchIDs(matchIds []int64) ([]MatchAchievement, error) {
+	if len(matchIds) == 0 {
+		return []MatchAchievement{}, nil
+	}
+	var list []MatchAchievement
+	err := m.db.
+		Where("match_id IN ?", matchIds).
+		Order("match_id ASC, actor ASC, achievement_type ASC, id ASC").
+		Find(&list).Error
 	return list, err
 }
 

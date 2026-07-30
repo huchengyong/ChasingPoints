@@ -39,7 +39,7 @@ func (l *GetUserAchievementsLogic) GetUserAchievements() (resp *types.GetUserAch
 		return &types.GetUserAchievementsResp{Success: false}, nil
 	}
 
-	achievements, err := l.svcCtx.AchievementModel.FindAll()
+	achievements, err := l.svcCtx.AchievementModel.FindActive()
 	if err != nil {
 		l.Logger.Errorf("查询成就定义失败: %v", err)
 		return &types.GetUserAchievementsResp{Success: false}, nil
@@ -58,15 +58,17 @@ func (l *GetUserAchievementsLogic) GetUserAchievements() (resp *types.GetUserAch
 		}
 
 		item := types.AchievementDef{
-			Id:          achievement.Id,
-			Key:         achievement.Key,
-			Name:        achievement.Name,
-			Description: achievement.Description,
-			Icon:        achievement.Icon,
-			Category:    achievement.Category,
-			Threshold:   achievement.Threshold,
-			Progress:    unlocked.Progress,
-			Unlocked:    true,
+			Id:              achievement.Id,
+			Key:             achievement.Key,
+			Name:            achievement.Name,
+			Description:     achievement.Description,
+			Icon:            achievement.Icon,
+			Category:        achievement.Category,
+			GameType:        achievement.GameType,
+			RewardTitleName: achievement.RewardTitleName,
+			Threshold:       achievement.Threshold,
+			Progress:        unlocked.Progress,
+			Unlocked:        true,
 		}
 		if unlocked.UnlockedAt != nil {
 			item.UnlockedAt = unlocked.UnlockedAt.Format("2006-01-02 15:04:05")

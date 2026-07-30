@@ -18,11 +18,18 @@ func NewTitleGrantService(svcCtx *svc.ServiceContext) *TitleGrantService {
 }
 
 func (s *TitleGrantService) GrantAchievementTitle(userId int64, achievement model.Achievement) error {
+	_, err := s.GrantAchievementTitleAt(userId, achievement, time.Now())
+	return err
+}
+
+func (s *TitleGrantService) GrantAchievementTitleAt(userId int64, achievement model.Achievement, grantedAt time.Time) (bool, error) {
 	if achievement.RewardTitleKey == "" || achievement.RewardTitleName == "" {
-		return nil
+		return false, nil
+	}
+	if grantedAt.IsZero() {
+		grantedAt = time.Now()
 	}
 
-	now := time.Now()
 	achievementId := achievement.Id
 	title := &model.UserTitle{
 		UserId:                 userId,
@@ -33,10 +40,10 @@ func (s *TitleGrantService) GrantAchievementTitle(userId int64, achievement mode
 		SourceRefId:            achievement.Id,
 		SourceRefName:          achievement.Name,
 		GrantedByAchievementId: &achievementId,
-		GrantedAt:              &now,
+		GrantedAt:              &grantedAt,
 	}
 
-	return s.svcCtx.DB.Clauses(clause.OnConflict{
+	result := s.svcCtx.DB.Clauses(clause.OnConflict{
 		Columns: []clause.Column{
 			{Name: "user_id"},
 			{Name: "title_key"},
@@ -44,5 +51,9 @@ func (s *TitleGrantService) GrantAchievementTitle(userId int64, achievement mode
 			{Name: "source_ref_id"},
 		},
 		DoNothing: true,
-	}).Create(title).Error
+	}).Create(title)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
 }

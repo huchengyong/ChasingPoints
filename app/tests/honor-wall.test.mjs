@@ -3,12 +3,15 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 import {
+  buildCareerSummaryItems,
   buildChallengeViewModel,
   buildHistorySeasonOptions,
   buildHonorWallTabs,
   buildHonorWallUrl,
   buildRecentHonorViewModel,
   buildSeasonRolloverModal,
+  buildUpcomingAchievementSection,
+  createLatestRequestGuard,
   findLatestUnreadSeasonRollover,
   normalizeHonorWallOptions,
   presentLatestSeasonRollover,
@@ -32,6 +35,90 @@ test('honor wall options and tabs keep self progress private from friend views',
   })
   assert.deepEqual(buildHonorWallTabs('self').map(item => item.key), ['career', 'season', 'history'])
   assert.deepEqual(buildHonorWallTabs('friend').map(item => item.key), ['career', 'history'])
+})
+
+test('career summary separates universal and selected specialty progress', () => {
+  assert.deepEqual(buildCareerSummaryItems({
+    universal_unlocked: 8,
+    universal_total: 15,
+    specialty_game_type: 3,
+    specialty_unlocked: 2,
+    specialty_total: 3,
+    season_honors: 4,
+    tournament_honors: 5
+  }, 3, '中式八球'), [
+    { key: 'universal', label: '通用成就', value: '8/15' },
+    { key: 'specialty', label: '中式八球专精', value: '2/3' },
+    { key: 'season', label: '赛季荣誉', value: 4 },
+    { key: 'tournament', label: '赛事荣誉', value: 5 }
+  ])
+})
+
+test('upcoming achievements use universal plus selected game type with stable ranking', () => {
+  const achievements = [
+    { id: 1, game_type: 0, progress: 8, threshold: 10, unlocked: false },
+    { id: 2, game_type: 3, progress: 4, threshold: 5, unlocked: false },
+    { id: 3, game_type: 3, progress: 0, threshold: 1, unlocked: false },
+    { id: 4, game_type: 1, progress: 99, threshold: 100, unlocked: false },
+    { id: 5, game_type: 0, progress: 1, threshold: 1, unlocked: true },
+    { id: 6, game_type: 0, progress: 2, threshold: 10, unlocked: false }
+  ]
+  const section = buildUpcomingAchievementSection(achievements, 3, 'self')
+  assert.equal(section.hidden, false)
+  assert.equal(section.completed, false)
+  assert.deepEqual(section.items.map(item => item.id), [1, 2, 6])
+  assert.equal(section.items[0].progressPercent, 80)
+  assert.equal(section.items[2].remainingText, '还差 8 达成')
+
+  const zeroFallback = buildUpcomingAchievementSection([
+    { id: 10, game_type: 3, progress: 0, threshold: 1, unlocked: false },
+    { id: 11, game_type: 0, progress: 0, threshold: 10, unlocked: false }
+  ], 3, 'self')
+  assert.deepEqual(zeroFallback.items.map(item => item.id), [10, 11])
+
+  const complete = buildUpcomingAchievementSection([
+    { id: 20, game_type: 0, progress: 1, threshold: 1, unlocked: true },
+    { id: 21, game_type: 3, progress: 1, threshold: 1, unlocked: true },
+    { id: 22, game_type: 4, progress: 0, threshold: 1, unlocked: false }
+  ], 3, 'self')
+  assert.equal(complete.completed, true)
+  assert.deepEqual(complete.items, [])
+
+  const invalidData = buildUpcomingAchievementSection([
+    null,
+    { id: 30, game_type: 3, progress: -5, threshold: 1, unlocked: false },
+    { id: 31, game_type: 3, progress: 1, threshold: 0, unlocked: false },
+    { id: 32, game_type: 4, progress: 1, threshold: 1, unlocked: false }
+  ], 99, 'self')
+  assert.deepEqual(invalidData.items.map(item => item.id), [30])
+  assert.equal(invalidData.items[0].progress, 0)
+
+  const friend = buildUpcomingAchievementSection(achievements, 3, 'friend')
+  assert.equal(friend.hidden, true)
+  assert.deepEqual(friend.items, [])
+})
+
+test('latest honor wall request wins when an older response arrives later', async () => {
+  const guard = createLatestRequestGuard()
+  const applied = []
+  let resolveFirst
+  let resolveSecond
+  const firstResponse = new Promise(resolve => { resolveFirst = resolve })
+  const secondResponse = new Promise(resolve => { resolveSecond = resolve })
+  const applyResponse = async (label, response) => {
+    const requestId = guard.next()
+    await response
+    if (guard.isLatest(requestId)) applied.push(label)
+  }
+
+  const firstTask = applyResponse('斯诺克', firstResponse)
+  const secondTask = applyResponse('美式九球', secondResponse)
+  resolveSecond()
+  await secondTask
+  resolveFirst()
+  await firstTask
+
+  assert.deepEqual(applied, ['美式九球'])
 })
 
 test('challenge view model exposes readable progress and completion copy', () => {
@@ -143,6 +230,12 @@ test('honor wall urls preserve friend and game type context', () => {
 })
 
 test('honor wall page keeps private season progress out of friend tabs and opens title selection inline for self', () => {
+  assert.match(honorWallSource, /buildCareerSummaryItems/)
+  assert.match(honorWallSource, /buildUpcomingAchievementSection/)
+  assert.match(honorWallSource, /createLatestRequestGuard/)
+  assert.match(honorWallSource, /if \(!wallRequestGuard\.isLatest\(requestId\)\) return/)
+  assert.match(honorWallSource, /通用里程碑/)
+  assert.match(honorWallSource, /球种绝技/)
   assert.match(honorWallSource, /buildHonorWallTabs\(wall\.value\.viewer_scope\)/)
   assert.match(honorWallSource, /if \(!isSelf\.value \|\| !id\) return/)
   assert.match(honorWallSource, /\/subPages\/achievement\/detail\?id=/)

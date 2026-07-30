@@ -1,9 +1,8 @@
 export const ACHIEVEMENT_CATEGORY_GROUPS = [
+  { key: 'match', label: '对局' },
   { key: 'wins', label: '胜场' },
   { key: 'streak', label: '连胜' },
-  { key: 'special', label: '特殊' },
-  { key: 'match', label: '对局' },
-  { key: 'tournament', label: '赛事' }
+  { key: 'tournament', label: '赛事历程' }
 ]
 
 const categoryLabelMap = {
@@ -22,6 +21,21 @@ const categoryEmojiMap = {
   match: '🎱',
   tournament: '🏆',
   social: '👥'
+}
+
+const achievementGameTypeLabelMap = {
+  0: '通用',
+  1: '斯诺克',
+  2: '九球追分',
+  3: '中式八球',
+  4: '美式九球'
+}
+
+const achievementGameTypeEmojiMap = {
+  1: '🔴',
+  2: '🎯',
+  3: '🎱',
+  4: '9️⃣'
 }
 
 const titleSourceMap = {
@@ -59,6 +73,15 @@ export const getAchievementCategoryEmoji = (category) => {
   return categoryEmojiMap[category] || '🎯'
 }
 
+export const getAchievementGameTypeLabel = (gameType) => {
+  return achievementGameTypeLabelMap[Number(gameType)] || '通用'
+}
+
+export const getAchievementFallbackEmoji = (achievement = {}) => {
+  const gameType = Number(achievement.game_type || 0)
+  return achievementGameTypeEmojiMap[gameType] || getAchievementCategoryEmoji(achievement.category)
+}
+
 export const groupAchievementsByCategory = (list) => {
   if (!Array.isArray(list)) return []
 
@@ -84,6 +107,18 @@ export const groupAchievementsByCategory = (list) => {
   })
 
   return groups
+}
+
+export const groupUniversalAchievements = (list) => {
+  const universal = (Array.isArray(list) ? list : []).filter(item => Number(item?.game_type || 0) === 0)
+  return groupAchievementsByCategory(universal).filter(group => group.key !== 'special')
+}
+
+export const filterSpecialtyAchievements = (list, gameType, { unlockedOnly = false } = {}) => {
+  const selectedGameType = [1, 2, 3, 4].includes(Number(gameType)) ? Number(gameType) : 3
+  return (Array.isArray(list) ? list : []).filter(item => (
+    Number(item?.game_type || 0) === selectedGameType && (!unlockedOnly || Boolean(item?.unlocked))
+  ))
 }
 
 export const getTitleSourceLabel = (source) => {

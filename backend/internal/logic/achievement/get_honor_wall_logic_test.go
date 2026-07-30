@@ -113,6 +113,12 @@ func TestGetHonorWallSelfIncludesLockedProgressCurrentSeasonAndHistory(t *testin
 	if len(resp.CareerAchievements) != 2 || resp.Summary.CareerUnlocked != 1 || resp.Summary.CareerTotal != 2 {
 		t.Fatalf("unexpected career data: %+v", resp)
 	}
+	if resp.Summary.UniversalUnlocked != 1 || resp.Summary.UniversalTotal != 1 || resp.Summary.SpecialtyGameType != 3 || resp.Summary.SpecialtyUnlocked != 0 || resp.Summary.SpecialtyTotal != 1 {
+		t.Fatalf("unexpected split career summary: %+v", resp.Summary)
+	}
+	if resp.CareerAchievements[0].GameType != 0 || resp.CareerAchievements[0].RewardTitleName != "胜场新星" || resp.CareerAchievements[1].GameType != 3 {
+		t.Fatalf("expected career metadata in payload: %+v", resp.CareerAchievements)
+	}
 	if resp.EquippedTitle == nil || resp.EquippedTitle.SourceRefName != "S2" {
 		t.Fatalf("expected equipped title source details: %+v", resp.EquippedTitle)
 	}
@@ -151,11 +157,58 @@ func TestGetHonorWallFriendOnlyReceivesUnlockedAndPermanentHonors(t *testing.T) 
 	if len(resp.CareerAchievements) != 1 || !resp.CareerAchievements[0].Unlocked {
 		t.Fatalf("friend must only receive unlocked achievements: %+v", resp.CareerAchievements)
 	}
+	if resp.Summary.CareerTotal != 2 || resp.Summary.UniversalTotal != 1 || resp.Summary.SpecialtyGameType != 3 || resp.Summary.SpecialtyTotal != 1 {
+		t.Fatalf("friend summary must retain full catalog counts: %+v", resp.Summary)
+	}
 	if resp.CurrentSeason != nil || resp.History.ChallengeSeason != nil || len(resp.History.ChallengeRecords) != 0 {
 		t.Fatalf("friend must not receive private season progress: %+v", resp)
 	}
 	if len(resp.History.Honors) != 1 || resp.History.Honors[0].Name != "S2 前十" {
 		t.Fatalf("friend should receive permanent honors: %+v", resp.History.Honors)
+	}
+}
+
+func TestGetHonorWallSplitsSpecialtySummaryForAllGameTypes(t *testing.T) {
+	for _, tc := range []struct {
+		name                  string
+		requestedGameType     int
+		wantGameType          int
+		wantSpecialtyUnlocked int
+	}{
+		{name: "snooker", requestedGameType: 1, wantGameType: 1},
+		{name: "chasing nine ball", requestedGameType: 2, wantGameType: 2},
+		{name: "chinese eight ball", requestedGameType: 3, wantGameType: 3, wantSpecialtyUnlocked: 1},
+		{name: "american nine ball", requestedGameType: 4, wantGameType: 4},
+		{name: "invalid defaults to chinese eight ball", requestedGameType: 99, wantGameType: 3, wantSpecialtyUnlocked: 1},
+		{name: "zero defaults to chinese eight ball", requestedGameType: 0, wantGameType: 3, wantSpecialtyUnlocked: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svcCtx, db := newHonorWallTestSvc(t)
+			seedHonorWallUser(t, svcCtx, 1001, "本人")
+			definitions := []model.Achievement{
+				{Key: "match_1", Name: "初入战局", Category: "match", GameType: 0, MetricKey: MetricMatchesTotal, ProgressMode: ProgressModeSum, Threshold: 1, Sort: 1, Status: 1},
+				{Key: "snooker_break_50_1", Name: "半百一杆", Category: "special", GameType: 1, MetricKey: MetricBreak50Total, ProgressMode: ProgressModeSum, Threshold: 1, Sort: 2, Status: 1},
+				{Key: "chasing_golden_break_1", Name: "小金初现", Category: "special", GameType: 2, MetricKey: MetricGoldenBreakTotal, ProgressMode: ProgressModeSum, Threshold: 1, Sort: 3, Status: 1},
+				{Key: "break_clear_1", Name: "初次炸清", Category: "special", GameType: 3, MetricKey: MetricBreakClearTotal, ProgressMode: ProgressModeSum, Threshold: 1, Sort: 4, Status: 1},
+				{Key: "american_golden_break_1", Name: "小金初现", Category: "special", GameType: 4, MetricKey: MetricGoldenBreakTotal, ProgressMode: ProgressModeSum, Threshold: 1, Sort: 5, Status: 1},
+			}
+			if err := db.Create(&definitions).Error; err != nil {
+				t.Fatalf("seed scoped achievements: %v", err)
+			}
+			seedHonorWallUnlocked(t, db, 1001, definitions[0].Id, 1, time.Now())
+			seedHonorWallUnlocked(t, db, 1001, definitions[3].Id, 1, time.Now())
+
+			resp, err := NewGetHonorWallLogic(honorWallContext(1001), svcCtx).GetHonorWall(&types.GetHonorWallReq{GameType: tc.requestedGameType})
+			if err != nil {
+				t.Fatalf("get honor wall: %v", err)
+			}
+			if len(resp.CareerAchievements) != 5 || resp.Summary.CareerTotal != 5 || resp.Summary.CareerUnlocked != 2 {
+				t.Fatalf("unexpected full career summary: %+v", resp.Summary)
+			}
+			if resp.Summary.UniversalTotal != 1 || resp.Summary.UniversalUnlocked != 1 || resp.Summary.SpecialtyTotal != 1 || resp.Summary.SpecialtyUnlocked != tc.wantSpecialtyUnlocked || resp.Summary.SpecialtyGameType != tc.wantGameType {
+				t.Fatalf("unexpected scoped summary: %+v", resp.Summary)
+			}
+		})
 	}
 }
 
@@ -217,8 +270,8 @@ func seedHonorWallUser(t *testing.T, svcCtx *svc.ServiceContext, userId int64, n
 func seedHonorWallAchievements(t *testing.T, db *gorm.DB) []model.Achievement {
 	t.Helper()
 	definitions := []model.Achievement{
-		{Key: "wins_10", Name: "十胜起步", Description: "累计赢下 10 场", Category: "wins", MetricKey: MetricWinsTotal, ProgressMode: ProgressModeSum, Threshold: 10, RewardTitleName: "胜场新星", Sort: 1, Status: 1},
-		{Key: "match_20", Name: "百战磨砺", Description: "累计完成比赛", Category: "match", MetricKey: MetricMatchesTotal, ProgressMode: ProgressModeSum, Threshold: 20, Sort: 2, Status: 1},
+		{Key: "wins_10", Name: "十胜起步", Description: "累计赢下 10 场", Category: "wins", GameType: 0, MetricKey: MetricWinsTotal, ProgressMode: ProgressModeSum, Threshold: 10, RewardTitleName: "胜场新星", Sort: 1, Status: 1},
+		{Key: "break_clear_1", Name: "初次炸清", Description: "打出 1 次炸清", Category: "special", GameType: 3, MetricKey: MetricBreakClearTotal, ProgressMode: ProgressModeSum, Threshold: 1, Sort: 2, Status: 1},
 	}
 	if err := db.Create(&definitions).Error; err != nil {
 		t.Fatalf("seed achievements: %v", err)

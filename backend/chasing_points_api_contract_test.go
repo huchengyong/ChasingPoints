@@ -2,8 +2,11 @@ package main
 
 import (
 	"os"
+	"reflect"
 	"strings"
 	"testing"
+
+	"chasing_points/internal/types"
 )
 
 func TestHonorWallAndRewardSummaryAPIContract(t *testing.T) {
@@ -14,10 +17,19 @@ func TestHonorWallAndRewardSummaryAPIContract(t *testing.T) {
 	text := string(apiContent)
 
 	requiredSnippets := []string{
+		"type AchievementDef",
+		"GameType        int    `json:\"game_type\"`",
+		"RewardTitleName string `json:\"reward_title_name,optional\"`",
 		"type GetHonorWallReq",
 		"UserId          int64 `form:\"user_id,optional\"`",
 		"GameType        int   `form:\"game_type,optional,default=3\"`",
 		"HistorySeasonId int64 `form:\"history_season_id,optional\"`",
+		"type HonorWallSummary",
+		"CareerUnlocked    int `json:\"career_unlocked\"`",
+		"UniversalUnlocked int `json:\"universal_unlocked\"`",
+		"SpecialtyGameType int `json:\"specialty_game_type\"`",
+		"SpecialtyUnlocked int `json:\"specialty_unlocked\"`",
+		"SpecialtyTotal    int `json:\"specialty_total\"`",
 		"type GetHonorWallResp",
 		"ViewerScope",
 		"RecentHonors",
@@ -41,6 +53,34 @@ func TestHonorWallAndRewardSummaryAPIContract(t *testing.T) {
 
 	assertJWTServerBlock(t, text, "prefix: /api/achievement", "get /honor-wall")
 	assertJWTServerBlock(t, text, "prefix: /api/match", "get /reward-summary")
+}
+
+func TestGeneratedAchievementPayloadContract(t *testing.T) {
+	assertJSONTag := func(value any, fieldName, wantTag string) {
+		t.Helper()
+		field, ok := reflect.TypeOf(value).FieldByName(fieldName)
+		if !ok {
+			t.Fatalf("missing generated field %s", fieldName)
+		}
+		if got := field.Tag.Get("json"); got != wantTag {
+			t.Fatalf("field %s json tag = %q, want %q", fieldName, got, wantTag)
+		}
+	}
+
+	achievement := types.AchievementDef{}
+	assertJSONTag(achievement, "Id", "id")
+	assertJSONTag(achievement, "Progress", "progress")
+	assertJSONTag(achievement, "GameType", "game_type")
+	assertJSONTag(achievement, "RewardTitleName", "reward_title_name,optional")
+
+	summary := types.HonorWallSummary{}
+	assertJSONTag(summary, "CareerUnlocked", "career_unlocked")
+	assertJSONTag(summary, "CareerTotal", "career_total")
+	assertJSONTag(summary, "UniversalUnlocked", "universal_unlocked")
+	assertJSONTag(summary, "UniversalTotal", "universal_total")
+	assertJSONTag(summary, "SpecialtyGameType", "specialty_game_type")
+	assertJSONTag(summary, "SpecialtyUnlocked", "specialty_unlocked")
+	assertJSONTag(summary, "SpecialtyTotal", "specialty_total")
 }
 
 func TestGeneratedRoutesContainHonorWallAndRewardSummary(t *testing.T) {

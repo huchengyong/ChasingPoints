@@ -91,7 +91,7 @@ func (m *AchievementModel) FindActive() ([]Achievement, error) {
 
 func (m *AchievementModel) FindByCategory(category string) ([]Achievement, error) {
 	var list []Achievement
-	err := m.db.Where("category = ?", category).Order("id ASC").Find(&list).Error
+	err := m.db.Where("category = ? AND status = ?", category, 1).Order("sort ASC, id ASC").Find(&list).Error
 	return list, err
 }
 
@@ -117,6 +117,59 @@ func (m *UserAchievementModel) FindByUserId(userId int64) ([]UserAchievement, er
 	var list []UserAchievement
 	err := m.db.Where("user_id = ?", userId).Order("id ASC").Find(&list).Error
 	return list, err
+}
+
+func (m *UserAchievementModel) FindByUserIds(userIds []int64) ([]UserAchievement, error) {
+	if len(userIds) == 0 {
+		return []UserAchievement{}, nil
+	}
+	var list []UserAchievement
+	err := m.db.Where("user_id IN ?", userIds).Order("user_id ASC, achievement_id ASC").Find(&list).Error
+	return list, err
+}
+
+func (m *UserAchievementModel) UpsertCareerRebuildSnapshot(snapshot *UserAchievement) error {
+	if snapshot == nil {
+		return nil
+	}
+	return m.db.Clauses(m.careerRebuildSnapshotConflict()).Create(snapshot).Error
+}
+
+func (m *UserAchievementModel) UpsertCareerRebuildSnapshots(snapshots []UserAchievement) error {
+	if len(snapshots) == 0 {
+		return nil
+	}
+	return m.db.Clauses(m.careerRebuildSnapshotConflict()).Create(&snapshots).Error
+}
+
+func (m *UserAchievementModel) careerRebuildSnapshotConflict() clause.OnConflict {
+	incoming := func(column string) string {
+		if m.db.Dialector.Name() == "mysql" {
+			return "VALUES(" + column + ")"
+		}
+		return "excluded." + column
+	}
+	incomingProgress := incoming("progress")
+	incomingUnlocked := incoming("unlocked")
+	incomingUnlockedAt := incoming("unlocked_at")
+	incomingSourceType := incoming("unlocked_source_type")
+	incomingSourceID := incoming("unlocked_source_id")
+	incomingRewardGranted := incoming("reward_granted")
+	incomingRewardGrantedAt := incoming("reward_granted_at")
+	earlierUnlock := incomingUnlockedAt + " IS NOT NULL AND (unlocked_at IS NULL OR " + incomingUnlockedAt + " < unlocked_at)"
+
+	return clause.OnConflict{
+		Columns: []clause.Column{{Name: "user_id"}, {Name: "achievement_id"}},
+		DoUpdates: clause.Set{
+			{Column: clause.Column{Name: "progress"}, Value: gorm.Expr("CASE WHEN " + incomingProgress + " > progress THEN " + incomingProgress + " ELSE progress END")},
+			{Column: clause.Column{Name: "unlocked_source_type"}, Value: gorm.Expr("CASE WHEN " + earlierUnlock + " THEN " + incomingSourceType + " ELSE unlocked_source_type END")},
+			{Column: clause.Column{Name: "unlocked_source_id"}, Value: gorm.Expr("CASE WHEN " + earlierUnlock + " THEN " + incomingSourceID + " ELSE unlocked_source_id END")},
+			{Column: clause.Column{Name: "unlocked_at"}, Value: gorm.Expr("CASE WHEN unlocked_at IS NULL THEN " + incomingUnlockedAt + " WHEN " + incomingUnlockedAt + " IS NULL THEN unlocked_at WHEN " + incomingUnlockedAt + " < unlocked_at THEN " + incomingUnlockedAt + " ELSE unlocked_at END")},
+			{Column: clause.Column{Name: "unlocked"}, Value: gorm.Expr("CASE WHEN " + incomingUnlocked + " > unlocked THEN " + incomingUnlocked + " ELSE unlocked END")},
+			{Column: clause.Column{Name: "reward_granted_at"}, Value: gorm.Expr("CASE WHEN reward_granted_at IS NULL THEN " + incomingRewardGrantedAt + " WHEN " + incomingRewardGrantedAt + " IS NULL THEN reward_granted_at WHEN " + incomingRewardGrantedAt + " < reward_granted_at THEN " + incomingRewardGrantedAt + " ELSE reward_granted_at END")},
+			{Column: clause.Column{Name: "reward_granted"}, Value: gorm.Expr("CASE WHEN " + incomingRewardGranted + " > reward_granted THEN " + incomingRewardGranted + " ELSE reward_granted END")},
+		},
+	}
 }
 
 func (m *UserAchievementModel) FindUnlockedByUserId(userId int64) ([]UserAchievement, error) {
@@ -180,6 +233,18 @@ func NewUserTitleModel(db *gorm.DB) *UserTitleModel {
 func (m *UserTitleModel) FindByUserId(userId int64) ([]UserTitle, error) {
 	var list []UserTitle
 	err := m.db.Where("user_id = ?", userId).Order("id DESC").Find(&list).Error
+	return list, err
+}
+
+func (m *UserTitleModel) FindAchievementTitlesByUserIds(userIds []int64) ([]UserTitle, error) {
+	if len(userIds) == 0 {
+		return []UserTitle{}, nil
+	}
+	var list []UserTitle
+	err := m.db.
+		Where("user_id IN ? AND source_type = ?", userIds, "achievement").
+		Order("user_id ASC, source_ref_id ASC, id ASC").
+		Find(&list).Error
 	return list, err
 }
 
@@ -314,7 +379,23 @@ func NewAchievementProgressEventModel(db *gorm.DB) *AchievementProgressEventMode
 }
 
 func (m *AchievementProgressEventModel) CreateIfAbsent(event *AchievementProgressEvent) (bool, error) {
-	result := m.db.Clauses(clause.OnConflict{
+	result := m.db.Clauses(achievementProgressEventConflict()).Create(event)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
+}
+
+func (m *AchievementProgressEventModel) CreateCareerRebuildBatch(events []AchievementProgressEvent) (int64, error) {
+	if len(events) == 0 {
+		return 0, nil
+	}
+	result := m.db.Clauses(achievementProgressEventConflict()).Create(&events)
+	return result.RowsAffected, result.Error
+}
+
+func achievementProgressEventConflict() clause.OnConflict {
+	return clause.OnConflict{
 		Columns: []clause.Column{
 			{Name: "user_id"},
 			{Name: "source_type"},
@@ -322,11 +403,13 @@ func (m *AchievementProgressEventModel) CreateIfAbsent(event *AchievementProgres
 			{Name: "metric_key"},
 		},
 		DoNothing: true,
-	}).Create(event)
-	if result.Error != nil {
-		return false, result.Error
 	}
-	return result.RowsAffected > 0, nil
+}
+
+func (m *AchievementProgressEventModel) ListAllForCareerRebuild() ([]AchievementProgressEvent, error) {
+	var list []AchievementProgressEvent
+	err := m.db.Order("occurred_at ASC, id ASC").Find(&list).Error
+	return list, err
 }
 
 func (m *AchievementProgressEventModel) FindBySourceMetric(userId int64, sourceType string, sourceId int64, metricKey string) (*AchievementProgressEvent, error) {

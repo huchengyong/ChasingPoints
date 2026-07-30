@@ -28,20 +28,24 @@ func TestBuildSeasonTopAchievementsPreservesUnlockOrder(t *testing.T) {
 
 	achievementDefs := []model.Achievement{
 		{
-			Id:          1,
-			Key:         "golden_break",
-			Name:        "黄金开球",
-			Description: "开球直接清台",
-			Category:    "match",
-			Threshold:   1,
+			Id:              1,
+			Key:             "golden_break",
+			Name:            "黄金开球",
+			Description:     "开球直接清台",
+			Category:        "special",
+			GameType:        2,
+			RewardTitleName: "小金猎手",
+			Threshold:       1,
 		},
 		{
-			Id:          2,
-			Key:         "run_out",
-			Name:        "连续清台",
-			Description: "连续完成清台",
-			Category:    "match",
-			Threshold:   5,
+			Id:              2,
+			Key:             "run_out",
+			Name:            "连续清台",
+			Description:     "连续完成清台",
+			Category:        "special",
+			GameType:        3,
+			RewardTitleName: "清台猎手",
+			Threshold:       5,
 		},
 	}
 
@@ -49,8 +53,8 @@ func TestBuildSeasonTopAchievementsPreservesUnlockOrder(t *testing.T) {
 	if len(list) != 2 {
 		t.Fatalf("expected 2 achievements, got %d", len(list))
 	}
-	if list[0].Id != 2 || list[0].Name != "连续清台" {
-		t.Fatalf("expected latest unlocked achievement first, got %+v", list[0])
+	if list[0].Id != 2 || list[0].Name != "连续清台" || list[0].GameType != 3 || list[0].RewardTitleName != "清台猎手" {
+		t.Fatalf("expected latest unlocked achievement with metadata first, got %+v", list[0])
 	}
 	if list[1].Id != 1 || list[1].UnlockedAt == "" {
 		t.Fatalf("expected second achievement with unlocked time, got %+v", list[1])
