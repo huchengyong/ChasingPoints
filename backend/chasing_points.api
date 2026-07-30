@@ -227,38 +227,54 @@ type RoundRecord {
 
 // 公开对局详情数据（第三方视角）
 type PublicMatchDetailData {
-	Id                       int64         `json:"id"`
-	GameType                 int           `json:"game_type"`
-	MatchMode                string        `json:"match_mode,optional"`
-	Visibility               string        `json:"visibility,optional"`
-	FinishState              string        `json:"finish_state,optional"`
-	Status                   int           `json:"status"` // 1=进行中 2=已完成 3=已取消
-	ServerRevision           int64         `json:"server_revision"`
-	Player1Id                int64         `json:"player1_id"`
-	Player1Name              string        `json:"player1_name"`
-	Player1Avatar            string        `json:"player1_avatar"`
-	Player2Id                int64         `json:"player2_id"`
-	Player2Name              string        `json:"player2_name"`
-	Player2Avatar            string        `json:"player2_avatar"`
-	RefereeBound             bool          `json:"referee_bound,optional"`
-	RefereeUserId            int64         `json:"referee_user_id,optional"`
-	RefereeName              string        `json:"referee_name,optional"`
-	RefereeAvatar            string        `json:"referee_avatar,optional"`
-	RefereeJoinedAt          string        `json:"referee_joined_at,optional"`
-	CompletedByUserId        int64         `json:"completed_by_user_id,optional"`
-	CompletionSource         string        `json:"completion_source,optional"`
-	ViewerRole               string        `json:"viewer_role,optional"`
-	Player1Score             int           `json:"player1_score"`
-	Player2Score             int           `json:"player2_score"`
-	CurrentFramePlayer1Score int           `json:"current_frame_player1_score,optional"`
-	CurrentFramePlayer2Score int           `json:"current_frame_player2_score,optional"`
-	CurrentFrameStarted      bool          `json:"current_frame_started,optional"`
-	CurrentRound             int           `json:"current_round"`
-	TotalRounds              int           `json:"total_rounds"`
-	DurationSeconds          int64         `json:"duration_seconds"`
-	RefereeDurationSeconds   int64         `json:"referee_duration_seconds,optional"`
-	Rounds                   []RoundRecord `json:"rounds"` // 局记录
-	CreatedAt                string        `json:"created_at"`
+	Id                            int64         `json:"id"`
+	GameType                      int           `json:"game_type"`
+	MatchMode                     string        `json:"match_mode,optional"`
+	Visibility                    string        `json:"visibility,optional"`
+	FinishState                   string        `json:"finish_state,optional"`
+	Status                        int           `json:"status"` // 1=进行中 2=已完成 3=已取消
+	ServerRevision                int64         `json:"server_revision"`
+	Player1Id                     int64         `json:"player1_id"`
+	Player1Name                   string        `json:"player1_name"`
+	Player1Avatar                 string        `json:"player1_avatar"`
+	Player2Id                     int64         `json:"player2_id"`
+	Player2Name                   string        `json:"player2_name"`
+	Player2Avatar                 string        `json:"player2_avatar"`
+	RefereeBound                  bool          `json:"referee_bound,optional"`
+	RefereeUserId                 int64         `json:"referee_user_id,optional"`
+	RefereeName                   string        `json:"referee_name,optional"`
+	RefereeAvatar                 string        `json:"referee_avatar,optional"`
+	RefereeJoinedAt               string        `json:"referee_joined_at,optional"`
+	CompletedByUserId             int64         `json:"completed_by_user_id,optional"`
+	CompletionSource              string        `json:"completion_source,optional"`
+	ViewerRole                    string        `json:"viewer_role,optional"`
+	Player1Score                  int           `json:"player1_score"`
+	Player2Score                  int           `json:"player2_score"`
+	CurrentFramePlayer1Score      int           `json:"current_frame_player1_score,optional"`
+	CurrentFramePlayer2Score      int           `json:"current_frame_player2_score,optional"`
+	CurrentFrameStarted           bool          `json:"current_frame_started,optional"`
+	SnookerRulesVersion           int           `json:"snooker_rules_version,optional"`
+	BestOfFrames                  int           `json:"best_of_frames,optional"`
+	StartingActor                 int           `json:"starting_actor,optional"`
+	SnookerPhase                  string        `json:"snooker_phase,optional"`
+	SnookerBallOn                 string        `json:"snooker_ball_on,optional"`
+	SnookerStriker                int           `json:"snooker_striker,optional"`
+	SnookerVisitNo                int           `json:"snooker_visit_no,optional"`
+	SnookerCurrentBreak           int           `json:"snooker_current_break,optional"`
+	SnookerRedsRemaining          int           `json:"snooker_reds_remaining,optional"`
+	SnookerFreeBallAvailable      bool          `json:"snooker_free_ball_available,optional"`
+	SnookerCueBallInHand          bool          `json:"snooker_cue_ball_in_hand,optional"`
+	SnookerMissWarningActive      bool          `json:"snooker_miss_warning_active,optional"`
+	SnookerRespottedBlackPending  bool          `json:"snooker_respotted_black_pending,optional"`
+	SnookerPendingConcessionActor int           `json:"snooker_pending_concession_actor,optional"`
+	SnookerPendingConcessionScope string        `json:"snooker_pending_concession_scope,optional"`
+	SnookerFrameEndReason         string        `json:"snooker_frame_end_reason,optional"`
+	CurrentRound                  int           `json:"current_round"`
+	TotalRounds                   int           `json:"total_rounds"`
+	DurationSeconds               int64         `json:"duration_seconds"`
+	RefereeDurationSeconds        int64         `json:"referee_duration_seconds,optional"`
+	Rounds                        []RoundRecord `json:"rounds"` // 局记录
+	CreatedAt                     string        `json:"created_at"`
 }
 
 // 公开对局详情响应
@@ -691,18 +707,37 @@ type MatchSyncSnapshot {
 	SnookerClearedColors          []int            `json:"snooker_cleared_colors,optional"`
 	SnookerExpectedClearanceScore int              `json:"snooker_expected_clearance_score,optional"`
 	SnookerClearanceCompleted     bool             `json:"snooker_clearance_completed,optional"`
+	SnookerRulesVersion           int              `json:"snooker_rules_version,optional"`
+	BestOfFrames                  int              `json:"best_of_frames,optional"`
+	StartingActor                 int              `json:"starting_actor,optional"`
+	SnookerPhase                  string           `json:"snooker_phase,optional"`
+	SnookerBallOn                 string           `json:"snooker_ball_on,optional"`
+	SnookerStriker                int              `json:"snooker_striker,optional"`
+	SnookerVisitNo                int              `json:"snooker_visit_no,optional"`
+	SnookerCurrentBreak           int              `json:"snooker_current_break,optional"`
+	SnookerRedsRemaining          int              `json:"snooker_reds_remaining,optional"`
+	SnookerFreeBallAvailable      bool             `json:"snooker_free_ball_available,optional"`
+	SnookerCueBallInHand          bool             `json:"snooker_cue_ball_in_hand,optional"`
+	SnookerMissWarningActive      bool             `json:"snooker_miss_warning_active,optional"`
+	SnookerRespottedBlackPending  bool             `json:"snooker_respotted_black_pending,optional"`
+	SnookerPendingConcessionActor int              `json:"snooker_pending_concession_actor,optional"`
+	SnookerPendingConcessionScope string           `json:"snooker_pending_concession_scope,optional"`
+	SnookerFrameEndReason         string           `json:"snooker_frame_end_reason,optional"`
 }
 
 // 开始对局
 type StartMatchReq {
-	GameType       int    `json:"game_type"` // 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
-	GameMode       string `json:"game_mode,optional"` // 比赛模式
-	MatchMode      string `json:"match_mode,optional"` // practice/ranked，缺省按 ranked
-	Visibility     string `json:"visibility,optional"` // private/public，排位固定 public
-	OpponentId     int64  `json:"opponent_id"` // 对手ID（平台用户，必填）
-	OpponentName   string `json:"opponent_name"` // 对手昵称
-	OpponentAvatar string `json:"opponent_avatar,optional"` // 对手头像
-	ChallengeId    int64  `json:"challenge_id,optional"` // 已接受邀约 ID
+	GameType            int    `json:"game_type"` // 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
+	GameMode            string `json:"game_mode,optional"` // 比赛模式
+	MatchMode           string `json:"match_mode,optional"` // practice/ranked，缺省按 ranked
+	Visibility          string `json:"visibility,optional"` // private/public，排位固定 public
+	OpponentId          int64  `json:"opponent_id"` // 对手ID（平台用户，必填）
+	OpponentName        string `json:"opponent_name"` // 对手昵称
+	OpponentAvatar      string `json:"opponent_avatar,optional"` // 对手头像
+	ChallengeId         int64  `json:"challenge_id,optional"` // 已接受邀约 ID
+	SnookerRulesVersion int    `json:"snooker_rules_version,optional"` // 斯诺克规则版本：旧客户端缺省为1，新客户端显式提交2
+	BestOfFrames        int    `json:"best_of_frames,optional"` // 版本2斯诺克总局数，必须为正奇数
+	StartingActor       int    `json:"starting_actor,optional"` // 版本2斯诺克首局开球方：1/2
 }
 
 type StartMatchResp {
@@ -792,9 +827,54 @@ type StartNextRoundResp {
 type MatchFoulReq {
 	MatchId        int64  `json:"match_id"`
 	Actor          int    `json:"actor"` // 犯规方：1=选手1 2=选手2
-	Score          int    `json:"score,optional"` // 犯规加分，默认1
+	Score          int    `json:"score,optional"` // 斯诺克旧规则兼容；版本2只允许专用动作接口
 	ClientActionId string `json:"client_action_id"`
 	BaseRevision   int64  `json:"base_revision"`
+}
+
+// 斯诺克一次击球结果
+// outcome: pot/no_score/foul
+// foul_resolution: incoming_plays/offender_plays_from_left/offender_replays_original
+type SnookerStrokeReq {
+	MatchId              int64  `json:"match_id"`
+	Actor                int    `json:"actor"`
+	Outcome              string `json:"outcome"`
+	BallOnValue          int    `json:"ball_on_value,optional"`
+	PottedReds           int    `json:"potted_reds,optional"`
+	BallOnPotted         bool   `json:"ball_on_potted,optional"`
+	FreeBallValue        int    `json:"free_ball_value,optional"`
+	FreeBallPotted       bool   `json:"free_ball_potted,optional"`
+	Penalty              int    `json:"penalty,optional"`
+	RedsRemoved          int    `json:"reds_removed,optional"`
+	FoulAndMiss          bool   `json:"foul_and_miss,optional"`
+	MissSequenceEligible bool   `json:"miss_sequence_eligible,optional"`
+	FoulResolution       string `json:"foul_resolution,optional"`
+	FreeBallAwarded      bool   `json:"free_ball_awarded,optional"`
+	CueBallInHand        bool   `json:"cue_ball_in_hand,optional"`
+	ClientActionId       string `json:"client_action_id"`
+	BaseRevision         int64  `json:"base_revision"`
+}
+
+// 斯诺克局级动作
+// action: start_respotted_black/offer_concession/accept_concession/reject_concession/award_frame
+type SnookerFrameActionReq {
+	MatchId        int64  `json:"match_id"`
+	Actor          int    `json:"actor"`
+	Action         string `json:"action"`
+	Scope          string `json:"scope,optional"`
+	Winner         int    `json:"winner,optional"`
+	Reason         string `json:"reason,optional"`
+	ClientActionId string `json:"client_action_id"`
+	BaseRevision   int64  `json:"base_revision"`
+}
+
+type SnookerActionResp {
+	Accepted       bool              `json:"accepted"`
+	Success        bool              `json:"success"`
+	Message        string            `json:"message,optional"`
+	ClientActionId string            `json:"client_action_id,optional"`
+	ServerRevision int64             `json:"server_revision"`
+	Snapshot       MatchSyncSnapshot `json:"snapshot"`
 }
 
 // 撤销
@@ -868,49 +948,65 @@ type CancelMatchReq {
 
 // 获取进行中对局
 type CurrentMatchInfo {
-	Id                        int64            `json:"id"`
-	GameType                  int              `json:"game_type"`
-	GameTypeName              string           `json:"game_type_name"`
-	GameMode                  string           `json:"game_mode"`
-	MatchMode                 string           `json:"match_mode,optional"`
-	Visibility                string           `json:"visibility,optional"`
-	FinishState               string           `json:"finish_state,optional"`
-	FinishRequestedBy         int64            `json:"finish_requested_by,optional"`
-	ViewerRole                string           `json:"viewer_role,optional"`
-	RefereeBound              bool             `json:"referee_bound,optional"`
-	RefereeUserId             int64            `json:"referee_user_id,optional"`
-	RefereeName               string           `json:"referee_name,optional"`
-	RefereeAvatar             string           `json:"referee_avatar,optional"`
-	RefereeJoinedAt           string           `json:"referee_joined_at,optional"`
-	CompletedByUserId         int64            `json:"completed_by_user_id,optional"`
-	CompletionSource          string           `json:"completion_source,optional"`
-	CanScore                  bool             `json:"can_score,optional"`
-	CanUndo                   bool             `json:"can_undo,optional"`
-	CanFinish                 bool             `json:"can_finish,optional"`
-	CanRequestFinish          bool             `json:"can_request_finish,optional"`
-	CanConfirmFinish          bool             `json:"can_confirm_finish,optional"`
-	CanDisputeFinish          bool             `json:"can_dispute_finish,optional"`
-	CanWithdrawFinish         bool             `json:"can_withdraw_finish,optional"`
-	LastAction                *MatchLastAction `json:"last_action,optional"`
-	Player1Id                 int64            `json:"player1_id"`
-	Player1Name               string           `json:"player1_name"`
-	Player1Avatar             string           `json:"player1_avatar"`
-	Player2Id                 int64            `json:"player2_id"`
-	Player2Name               string           `json:"player2_name"`
-	Player2Avatar             string           `json:"player2_avatar"`
-	OpponentId                int64            `json:"opponent_id,optional"`
-	OpponentName              string           `json:"opponent_name"`
-	OpponentAvatar            string           `json:"opponent_avatar,optional"`
-	MyScore                   int              `json:"my_score"`
-	OpponentScore             int              `json:"opponent_score"`
-	CurrentFrameStarted       bool             `json:"current_frame_started,optional"`
-	CurrentFrameMyScore       int              `json:"current_frame_my_score,optional"`
-	CurrentFrameOpponentScore int              `json:"current_frame_opponent_score,optional"`
-	CurrentRound              int              `json:"current_round"`
-	ServerRevision            int64            `json:"server_revision"`
-	MatchTime                 string           `json:"match_time"`
-	DurationSeconds           int64            `json:"duration_seconds"` // 对局已持续秒数
-	RefereeDurationSeconds    int64            `json:"referee_duration_seconds,optional"` // 裁判执裁时长
+	Id                            int64            `json:"id"`
+	GameType                      int              `json:"game_type"`
+	GameTypeName                  string           `json:"game_type_name"`
+	GameMode                      string           `json:"game_mode"`
+	MatchMode                     string           `json:"match_mode,optional"`
+	Visibility                    string           `json:"visibility,optional"`
+	FinishState                   string           `json:"finish_state,optional"`
+	FinishRequestedBy             int64            `json:"finish_requested_by,optional"`
+	ViewerRole                    string           `json:"viewer_role,optional"`
+	RefereeBound                  bool             `json:"referee_bound,optional"`
+	RefereeUserId                 int64            `json:"referee_user_id,optional"`
+	RefereeName                   string           `json:"referee_name,optional"`
+	RefereeAvatar                 string           `json:"referee_avatar,optional"`
+	RefereeJoinedAt               string           `json:"referee_joined_at,optional"`
+	CompletedByUserId             int64            `json:"completed_by_user_id,optional"`
+	CompletionSource              string           `json:"completion_source,optional"`
+	CanScore                      bool             `json:"can_score,optional"`
+	CanUndo                       bool             `json:"can_undo,optional"`
+	CanFinish                     bool             `json:"can_finish,optional"`
+	CanRequestFinish              bool             `json:"can_request_finish,optional"`
+	CanConfirmFinish              bool             `json:"can_confirm_finish,optional"`
+	CanDisputeFinish              bool             `json:"can_dispute_finish,optional"`
+	CanWithdrawFinish             bool             `json:"can_withdraw_finish,optional"`
+	LastAction                    *MatchLastAction `json:"last_action,optional"`
+	Player1Id                     int64            `json:"player1_id"`
+	Player1Name                   string           `json:"player1_name"`
+	Player1Avatar                 string           `json:"player1_avatar"`
+	Player2Id                     int64            `json:"player2_id"`
+	Player2Name                   string           `json:"player2_name"`
+	Player2Avatar                 string           `json:"player2_avatar"`
+	OpponentId                    int64            `json:"opponent_id,optional"`
+	OpponentName                  string           `json:"opponent_name"`
+	OpponentAvatar                string           `json:"opponent_avatar,optional"`
+	MyScore                       int              `json:"my_score"`
+	OpponentScore                 int              `json:"opponent_score"`
+	CurrentFrameStarted           bool             `json:"current_frame_started,optional"`
+	CurrentFrameMyScore           int              `json:"current_frame_my_score,optional"`
+	CurrentFrameOpponentScore     int              `json:"current_frame_opponent_score,optional"`
+	CurrentRound                  int              `json:"current_round"`
+	SnookerRulesVersion           int              `json:"snooker_rules_version,optional"`
+	BestOfFrames                  int              `json:"best_of_frames,optional"`
+	StartingActor                 int              `json:"starting_actor,optional"`
+	SnookerPhase                  string           `json:"snooker_phase,optional"`
+	SnookerBallOn                 string           `json:"snooker_ball_on,optional"`
+	SnookerStriker                int              `json:"snooker_striker,optional"`
+	SnookerVisitNo                int              `json:"snooker_visit_no,optional"`
+	SnookerCurrentBreak           int              `json:"snooker_current_break,optional"`
+	SnookerRedsRemaining          int              `json:"snooker_reds_remaining,optional"`
+	SnookerFreeBallAvailable      bool             `json:"snooker_free_ball_available,optional"`
+	SnookerCueBallInHand          bool             `json:"snooker_cue_ball_in_hand,optional"`
+	SnookerMissWarningActive      bool             `json:"snooker_miss_warning_active,optional"`
+	SnookerRespottedBlackPending  bool             `json:"snooker_respotted_black_pending,optional"`
+	SnookerPendingConcessionActor int              `json:"snooker_pending_concession_actor,optional"`
+	SnookerPendingConcessionScope string           `json:"snooker_pending_concession_scope,optional"`
+	SnookerFrameEndReason         string           `json:"snooker_frame_end_reason,optional"`
+	ServerRevision                int64            `json:"server_revision"`
+	MatchTime                     string           `json:"match_time"`
+	DurationSeconds               int64            `json:"duration_seconds"` // 对局已持续秒数
+	RefereeDurationSeconds        int64            `json:"referee_duration_seconds,optional"` // 裁判执裁时长
 }
 
 type GetCurrentMatchResp {
@@ -1189,6 +1285,22 @@ type MatchDetailData {
 	SnookerClearedColors          []int              `json:"snooker_cleared_colors,optional"`
 	SnookerExpectedClearanceScore int                `json:"snooker_expected_clearance_score,optional"`
 	SnookerClearanceCompleted     bool               `json:"snooker_clearance_completed,optional"`
+	SnookerRulesVersion           int                `json:"snooker_rules_version,optional"`
+	BestOfFrames                  int                `json:"best_of_frames,optional"`
+	StartingActor                 int                `json:"starting_actor,optional"`
+	SnookerPhase                  string             `json:"snooker_phase,optional"`
+	SnookerBallOn                 string             `json:"snooker_ball_on,optional"`
+	SnookerStriker                int                `json:"snooker_striker,optional"`
+	SnookerVisitNo                int                `json:"snooker_visit_no,optional"`
+	SnookerCurrentBreak           int                `json:"snooker_current_break,optional"`
+	SnookerRedsRemaining          int                `json:"snooker_reds_remaining,optional"`
+	SnookerFreeBallAvailable      bool               `json:"snooker_free_ball_available,optional"`
+	SnookerCueBallInHand          bool               `json:"snooker_cue_ball_in_hand,optional"`
+	SnookerMissWarningActive      bool               `json:"snooker_miss_warning_active,optional"`
+	SnookerRespottedBlackPending  bool               `json:"snooker_respotted_black_pending,optional"`
+	SnookerPendingConcessionActor int                `json:"snooker_pending_concession_actor,optional"`
+	SnookerPendingConcessionScope string             `json:"snooker_pending_concession_scope,optional"`
+	SnookerFrameEndReason         string             `json:"snooker_frame_end_reason,optional"`
 	SummaryHighlights             []MatchSummaryItem `json:"summary_highlights,optional"`
 	SummaryStats                  []MatchSummaryItem `json:"summary_stats,optional"`
 	Achievements                  MatchAchievement   `json:"achievements"`
@@ -1242,6 +1354,14 @@ service chasing_points-api {
 	@doc "犯规"
 	@handler MatchFoul
 	post /foul (MatchFoulReq) returns (MatchScoreResp)
+
+	@doc "记录斯诺克击球结果"
+	@handler SnookerStroke
+	post /snooker/stroke (SnookerStrokeReq) returns (SnookerActionResp)
+
+	@doc "记录斯诺克局级动作"
+	@handler SnookerFrameAction
+	post /snooker/frame-action (SnookerFrameActionReq) returns (SnookerActionResp)
 
 	@doc "撤销操作"
 	@handler MatchUndo

@@ -7,10 +7,13 @@ import (
 )
 
 func validateSnookerScore(state model.SnookerRoundState, score int) error {
+	if score < 1 || score > 7 {
+		return fmt.Errorf("斯诺克进球分值必须为1至7分")
+	}
 	if score == 1 && state.RedBallCount >= 15 {
 		return fmt.Errorf("本局红球已打完")
 	}
-	if score < 2 || score > 7 {
+	if score == 1 {
 		return nil
 	}
 	if !state.ClearanceStarted {

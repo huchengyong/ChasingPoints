@@ -54,6 +54,22 @@ type ScoreUpdateData struct {
 	SnookerClearedColors          []int  `json:"snooker_cleared_colors,omitempty"`
 	SnookerExpectedClearanceScore int    `json:"snooker_expected_clearance_score,omitempty"`
 	SnookerClearanceCompleted     bool   `json:"snooker_clearance_completed,omitempty"`
+	SnookerRulesVersion           int    `json:"snooker_rules_version,omitempty"`
+	BestOfFrames                  int    `json:"best_of_frames,omitempty"`
+	StartingActor                 int    `json:"starting_actor,omitempty"`
+	SnookerPhase                  string `json:"snooker_phase,omitempty"`
+	SnookerBallOn                 string `json:"snooker_ball_on,omitempty"`
+	SnookerStriker                int    `json:"snooker_striker,omitempty"`
+	SnookerVisitNo                int    `json:"snooker_visit_no,omitempty"`
+	SnookerCurrentBreak           int    `json:"snooker_current_break,omitempty"`
+	SnookerRedsRemaining          int    `json:"snooker_reds_remaining,omitempty"`
+	SnookerFreeBallAvailable      bool   `json:"snooker_free_ball_available,omitempty"`
+	SnookerCueBallInHand          bool   `json:"snooker_cue_ball_in_hand,omitempty"`
+	SnookerMissWarningActive      bool   `json:"snooker_miss_warning_active,omitempty"`
+	SnookerRespottedBlackPending  bool   `json:"snooker_respotted_black_pending,omitempty"`
+	SnookerPendingConcessionActor int    `json:"snooker_pending_concession_actor,omitempty"`
+	SnookerPendingConcessionScope string `json:"snooker_pending_concession_scope,omitempty"`
+	SnookerFrameEndReason         string `json:"snooker_frame_end_reason,omitempty"`
 	Status                        int    `json:"status"`
 }
 
@@ -78,6 +94,22 @@ type MatchSyncData struct {
 	SnookerClearedColors          []int                  `json:"snooker_cleared_colors,omitempty"`
 	SnookerExpectedClearanceScore int                    `json:"snooker_expected_clearance_score,omitempty"`
 	SnookerClearanceCompleted     bool                   `json:"snooker_clearance_completed,omitempty"`
+	SnookerRulesVersion           int                    `json:"snooker_rules_version,omitempty"`
+	BestOfFrames                  int                    `json:"best_of_frames,omitempty"`
+	StartingActor                 int                    `json:"starting_actor,omitempty"`
+	SnookerPhase                  string                 `json:"snooker_phase,omitempty"`
+	SnookerBallOn                 string                 `json:"snooker_ball_on,omitempty"`
+	SnookerStriker                int                    `json:"snooker_striker,omitempty"`
+	SnookerVisitNo                int                    `json:"snooker_visit_no,omitempty"`
+	SnookerCurrentBreak           int                    `json:"snooker_current_break,omitempty"`
+	SnookerRedsRemaining          int                    `json:"snooker_reds_remaining,omitempty"`
+	SnookerFreeBallAvailable      bool                   `json:"snooker_free_ball_available,omitempty"`
+	SnookerCueBallInHand          bool                   `json:"snooker_cue_ball_in_hand,omitempty"`
+	SnookerMissWarningActive      bool                   `json:"snooker_miss_warning_active,omitempty"`
+	SnookerRespottedBlackPending  bool                   `json:"snooker_respotted_black_pending,omitempty"`
+	SnookerPendingConcessionActor int                    `json:"snooker_pending_concession_actor,omitempty"`
+	SnookerPendingConcessionScope string                 `json:"snooker_pending_concession_scope,omitempty"`
+	SnookerFrameEndReason         string                 `json:"snooker_frame_end_reason,omitempty"`
 	CurrentRound                  int                    `json:"current_round"`
 	TotalRounds                   int                    `json:"total_rounds"`
 	Rounds                        []MatchSyncRound       `json:"rounds"`
@@ -482,6 +514,22 @@ func buildMatchSyncDataForViewer(match *model.Match, userId int64, completedRoun
 		SnookerClearedColors:          snookerState.ClearedColors,
 		SnookerExpectedClearanceScore: snookerState.ExpectedClearanceScore,
 		SnookerClearanceCompleted:     snookerState.ClearanceCompleted,
+		SnookerRulesVersion:           match.SnookerRulesVersion,
+		BestOfFrames:                  match.BestOfFrames,
+		StartingActor:                 match.StartingActor,
+		SnookerPhase:                  snookerState.Phase,
+		SnookerBallOn:                 snookerState.BallOn,
+		SnookerStriker:                snookerState.Striker,
+		SnookerVisitNo:                snookerState.VisitNo,
+		SnookerCurrentBreak:           snookerState.CurrentBreak,
+		SnookerRedsRemaining:          snookerState.RedsRemaining,
+		SnookerFreeBallAvailable:      snookerState.FreeBallAvailable,
+		SnookerCueBallInHand:          snookerState.CueBallInHand,
+		SnookerMissWarningActive:      snookerState.MissWarningActive,
+		SnookerRespottedBlackPending:  snookerState.Phase == model.SnookerPhaseRespottedBlackPending,
+		SnookerPendingConcessionActor: snookerState.PendingConcessionActor,
+		SnookerPendingConcessionScope: snookerState.PendingConcessionScope,
+		SnookerFrameEndReason:         snookerState.FrameEndReason,
 		CurrentRound:                  currentRound,
 		TotalRounds:                   int(completedRoundCount),
 		Rounds:                        buildMatchSyncRounds(rounds),
@@ -542,7 +590,8 @@ func resolveMatchSyncCapabilities(match *model.Match, userId int64) (string, boo
 		return "", refereeBound, refereeUserId, false, false, false, false, false, false, false
 	}
 	if viewerRole == "referee" {
-		return viewerRole, refereeBound, refereeUserId, true, true, true, false, false, false, false
+		canFinish := !(match.GameType == 1 && match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA)
+		return viewerRole, refereeBound, refereeUserId, true, true, canFinish, false, false, false, false
 	}
 	mode := model.NormalizeMatchMode(match.MatchMode)
 	pending := model.NormalizeFinishState(match.FinishState) == model.FinishStatePendingConfirmation
@@ -554,6 +603,13 @@ func resolveMatchSyncCapabilities(match *model.Match, userId int64) (string, boo
 	canConfirmFinish := !refereeBound && pending && requestedBy > 0 && requestedBy != userId
 	canDisputeFinish := canConfirmFinish
 	canWithdrawFinish := !refereeBound && pending && requestedBy == userId
+	if match.GameType == 1 && match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA {
+		canFinish = false
+		canRequestFinish = false
+		canConfirmFinish = false
+		canDisputeFinish = false
+		canWithdrawFinish = false
+	}
 	return viewerRole, refereeBound, refereeUserId, canScore, canUndo, canFinish, canRequestFinish, canConfirmFinish, canDisputeFinish, canWithdrawFinish
 }
 
@@ -602,6 +658,19 @@ func buildMatchSyncLastAction(svcCtx *svc.ServiceContext, match *model.Match, us
 		description = fmt.Sprintf("%s撤回结束请求", actorName)
 	case "finish_expired":
 		description = "结束请求已过期，对局恢复进行中"
+	case model.MatchActionTypeSnookerStroke:
+		if event, err := model.DecodeSnookerEvent(action.ExtraData); err == nil {
+			switch event.Outcome {
+			case model.SnookerOutcomePot:
+				description = fmt.Sprintf("%s本杆得%d分", actorName, action.ScoreChange)
+			case model.SnookerOutcomeNoScore:
+				description = fmt.Sprintf("%s未进球，上手结束", actorName)
+			case model.SnookerOutcomeFoul:
+				description = fmt.Sprintf("%s犯规，对方获%d分", actorName, action.ScoreChange)
+			}
+		}
+	case model.MatchActionTypeSnookerFrameAction:
+		description = "斯诺克局状态已更新"
 	}
 	return &types.MatchLastAction{
 		ActionType:     action.ActionType,
@@ -659,7 +728,20 @@ func (c *Client) sendMatchSync() {
 	snookerState := model.SnookerRoundState{}
 	if match.GameType == 1 {
 		if actions, actionsErr := c.SvcCtx.MatchModel.ListActiveActions(c.MatchId); actionsErr == nil {
-			snookerState = model.BuildSnookerRoundState(actions, int(roundCount)+1)
+			roundNo := int(roundCount) + 1
+			if !match.CurrentFrameStarted && roundCount > 0 {
+				roundNo = int(roundCount)
+			}
+			if match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA {
+				starter := model.SnookerStartingActor(match.StartingActor, roundNo)
+				if state, replayErr := model.ReplaySnookerRoundV2(actions, roundNo, starter); replayErr == nil {
+					snookerState = state
+				} else {
+					logx.Errorf("回放斯诺克版本2当前局失败: matchId=%d, err=%v", c.MatchId, replayErr)
+				}
+			} else {
+				snookerState = model.BuildSnookerRoundState(actions, roundNo)
+			}
 		} else {
 			logx.Errorf("获取斯诺克当前局操作失败: matchId=%d, err=%v", c.MatchId, actionsErr)
 		}

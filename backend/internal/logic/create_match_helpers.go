@@ -42,16 +42,31 @@ func resolveReplayAchievementScores(
 	storedAchievements []model.MatchAchievement,
 	rewardMap map[string]int,
 ) (int, int) {
+	player1, player2, err := resolveReplayAchievementScoresStrict(gameType, rounds, actions, storedAchievements, rewardMap)
+	if err != nil {
+		return 0, 0
+	}
+	return player1, player2
+}
+
+func resolveReplayAchievementScoresStrict(
+	gameType int,
+	rounds []model.MatchRound,
+	actions []model.MatchAction,
+	storedAchievements []model.MatchAchievement,
+	rewardMap map[string]int,
+) (int, int, error) {
 	if gameType == 1 && len(actions) > 0 {
 		if len(rounds) > 0 {
-			return calculateSnookerAchievementScoresByActor(filterSnookerActionsToCompletedRounds(actions, rounds), rewardMap)
+			actions = filterSnookerActionsToCompletedRounds(actions, rounds)
 		}
-		return calculateSnookerAchievementScoresByActor(actions, rewardMap)
+		return calculateSnookerAchievementScoresByActorStrict(actions, rewardMap)
 	}
 	if len(rounds) > 0 {
-		return calculateAchievementScoresByActor(rounds, rewardMap)
+		player1, player2 := calculateAchievementScoresByActor(rounds, rewardMap)
+		return player1, player2, nil
 	}
-	return calculateAchievementScoreFromStoredAchievements(storedAchievements, rewardMap), 0
+	return calculateAchievementScoreFromStoredAchievements(storedAchievements, rewardMap), 0, nil
 }
 
 func ResolveReplayAchievementScores(
@@ -62,6 +77,16 @@ func ResolveReplayAchievementScores(
 	rewardMap map[string]int,
 ) (int, int) {
 	return resolveReplayAchievementScores(gameType, rounds, actions, storedAchievements, rewardMap)
+}
+
+func ResolveReplayAchievementScoresStrict(
+	gameType int,
+	rounds []model.MatchRound,
+	actions []model.MatchAction,
+	storedAchievements []model.MatchAchievement,
+	rewardMap map[string]int,
+) (int, int, error) {
+	return resolveReplayAchievementScoresStrict(gameType, rounds, actions, storedAchievements, rewardMap)
 }
 
 func applyHistoricalMatchSeasonSnapshot(recordInfo *types.SeasonRecordInfo, season *model.Season, startScore, endScore, peakScore int, hasRankLogs bool) *types.SeasonRecordInfo {

@@ -330,6 +330,7 @@ import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { getNotificationList, markAsRead } from '@/api/notification.js'
 import { buildHonorWallUrl, presentLatestSeasonRollover } from '@/utils/honor-wall.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
+import { chooseSnookerStartFormat } from '@/utils/snooker-start-format.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import {
 	POST_LOGIN_ACTIONS,
@@ -367,6 +368,7 @@ const showQrCodeModal = ref(false)
 const qrcodeLoading = ref(false)
 const qrcodeUrl = ref('')
 const selectedGameType = ref(null)
+const selectedSnookerFormat = ref(null)
 const currentRankGameType = ref(3)
 const currentMatch = ref(null)
 const rankInfo = computed(() => rankStore.rankInfoMap[currentRankGameType.value] || null)
@@ -752,8 +754,13 @@ const handleStartPK = () => {
 	showGameTypeModal.value = true
 }
 
-const handleGameTypeConfirm = (gameType) => {
+const handleGameTypeConfirm = async (gameType) => {
 	selectedGameType.value = gameType
+	selectedSnookerFormat.value = null
+	if (Number(gameType) === 1) {
+		selectedSnookerFormat.value = await chooseSnookerStartFormat(uni)
+		if (!selectedSnookerFormat.value) return
+	}
 	handleScanCode()
 }
 
@@ -780,7 +787,8 @@ const handleMatchResult = async (scanResult) => {
 		const res = await startMatch({
 			game_type: selectedGameType.value,
 			opponent_id: opponentData.user_id,
-			opponent_name: opponentData.nickname || '对手'
+			opponent_name: opponentData.nickname || '对手',
+			...(selectedSnookerFormat.value || {})
 		})
 		uni.hideLoading()
 

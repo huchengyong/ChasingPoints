@@ -145,6 +145,35 @@ func TestNotificationDispatchCreatesRowAndTriggersPushAndWSWhenEnabled(t *testin
 	}
 }
 
+func TestNotificationDispatchDedupeKeySuppressesDuplicateRowPushAndWS(t *testing.T) {
+	svcCtx := newNotificationDispatchTestSvc(t)
+	seedNotificationDispatchUser(t, svcCtx, 2003, "push-token")
+
+	pushCount := 0
+	wsCount := 0
+	service := NewNotificationDispatchService(svcCtx)
+	service.pushSender = func(string, string, string, map[string]interface{}) { pushCount++ }
+	service.wsSender = func(int64, string) { wsCount++ }
+	input := NotificationDispatchInput{
+		UserId: 2003, Type: "match_result", DedupeKey: "match:9002",
+		Title: "对局已结束", Content: "结果：胜利（2:0）", WSCategory: "match_result",
+	}
+	if err := service.Dispatch(input); err != nil {
+		t.Fatalf("first dispatch: %v", err)
+	}
+	if err := service.Dispatch(input); err != nil {
+		t.Fatalf("duplicate dispatch: %v", err)
+	}
+
+	var count int64
+	if err := svcCtx.DB.Model(&model.Notification{}).Where("user_id = ? AND type = ?", 2003, "match_result").Count(&count).Error; err != nil {
+		t.Fatalf("count notifications: %v", err)
+	}
+	if count != 1 || pushCount != 1 || wsCount != 1 {
+		t.Fatalf("expected one deduplicated dispatch, rows=%d push=%d ws=%d", count, pushCount, wsCount)
+	}
+}
+
 func TestNotificationDispatchMapsFiveRealBusinessTypes(t *testing.T) {
 	service := NewNotificationDispatchService(&svc.ServiceContext{})
 

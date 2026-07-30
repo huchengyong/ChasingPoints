@@ -31,6 +31,15 @@ test('validateStartMatchPayload accepts positive opponent id', () => {
   )
 })
 
+test('validateStartMatchPayload requires snooker best-of and starting actor', () => {
+  assert.equal(validateStartMatchPayload({ game_type: 1, opponent_id: 2001 }), '斯诺克总局数必须为正奇数')
+  assert.equal(validateStartMatchPayload({ game_type: 1, opponent_id: 2001, best_of_frames: 4, starting_actor: 1 }), '斯诺克总局数必须为正奇数')
+  assert.equal(validateStartMatchPayload({ game_type: 1, opponent_id: 2001, best_of_frames: 3, starting_actor: 0 }), '请选择首局开球方')
+  assert.equal(validateStartMatchPayload({ game_type: 1, opponent_id: 2001, best_of_frames: 7, starting_actor: 2 }), '')
+  assert.equal(validateStartMatchPayload({ game_type: 1, opponent_id: 2001, snooker_rules_version: 1 }), '')
+  assert.equal(validateStartMatchPayload({ game_type: 1, opponent_id: 2001, snooker_rules_version: 3 }), '不支持的斯诺克规则版本')
+})
+
 test('normalizeStartMatchOptions defaults practice to private and ranked to public', () => {
   assert.deepEqual(normalizeStartMatchOptions({ match_mode: 'practice' }), {
     match_mode: 'practice',
@@ -63,6 +72,25 @@ test('buildStartMatchPayload carries challenge and mode context without bypassin
   )
 })
 
+test('buildStartMatchPayload carries snooker format only for snooker', () => {
+  assert.deepEqual(buildStartMatchPayload({
+    gameType: 1,
+    opponent: { id: 2001, nickname: '球友A' },
+    bestOfFrames: 7,
+    startingActor: 2
+  }), {
+    game_type: 1,
+    opponent_id: 2001,
+    opponent_name: '球友A',
+    opponent_avatar: '',
+    match_mode: 'ranked',
+    visibility: 'public',
+    snooker_rules_version: 2,
+    best_of_frames: 7,
+    starting_actor: 2
+  })
+})
+
 test('pending challenge and rematch contexts use independent required fields', () => {
   assert.equal(normalizePendingMatchContext('pending_match_challenge', JSON.stringify({
     challenge_id: 88,
@@ -85,6 +113,22 @@ test('pending challenge and rematch contexts use independent required fields', (
     game_type: 2,
     match_mode: 'ranked',
     visibility: 'public'
+  })
+  assert.deepEqual(normalizePendingMatchContext('pending_match_rematch', JSON.stringify({
+    opponent_id: 2001,
+    game_type: 1,
+    best_of_frames: 5,
+    starting_actor: 2
+  })).context, {
+    context_type: 'rematch',
+    challenge_id: 0,
+    opponent_id: 2001,
+    game_type: 1,
+    match_mode: 'practice',
+    visibility: 'private',
+    snooker_rules_version: 2,
+    best_of_frames: 5,
+    starting_actor: 2
   })
 })
 

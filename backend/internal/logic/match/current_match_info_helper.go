@@ -17,6 +17,16 @@ func buildCurrentMatchInfo(svcCtx *svc.ServiceContext, userId int64, match *mode
 	if svcCtx != nil && svcCtx.MatchModel != nil {
 		roundCount, _ = svcCtx.MatchModel.GetRoundCount(match.Id)
 	}
+	snookerState := model.SnookerRoundState{ClearedColors: make([]int, 0, 6)}
+	if match.GameType == 1 {
+		roundNo := int(roundCount) + 1
+		if !match.CurrentFrameStarted && roundCount > 0 {
+			roundNo = int(roundCount)
+		}
+		if state, err := loadSnookerStateForMatch(svcCtx, match, roundNo); err == nil {
+			snookerState = state
+		}
+	}
 
 	capabilities := resolveMatchViewerCapabilities(match, userId)
 	isPlayer1 := !shouldUsePlayer2Perspective(capabilities.ViewerRole)
@@ -97,50 +107,78 @@ func buildCurrentMatchInfo(svcCtx *svc.ServiceContext, userId int64, match *mode
 	}
 
 	completedByUserId := resolveCompletedByUserId(match)
+	canFinish := capabilities.CanFinish
+	canRequestFinish := capabilities.CanRequestFinish
+	canConfirmFinish := capabilities.CanConfirmFinish
+	canDisputeFinish := capabilities.CanDisputeFinish
+	canWithdrawFinish := capabilities.CanWithdrawFinish
+	if match.GameType == 1 && match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA {
+		canFinish = false
+		canRequestFinish = false
+		canConfirmFinish = false
+		canDisputeFinish = false
+		canWithdrawFinish = false
+	}
 
 	return &types.CurrentMatchInfo{
-		Id:                        match.Id,
-		GameType:                  match.GameType,
-		GameTypeName:              GetGameTypeName(match.GameType),
-		GameMode:                  match.GameMode,
-		MatchMode:                 model.NormalizeMatchMode(match.MatchMode),
-		Visibility:                model.NormalizeMatchVisibility(match.Visibility, match.MatchMode),
-		FinishState:               model.NormalizeFinishState(match.FinishState),
-		FinishRequestedBy:         resolveFinishRequestedBy(match),
-		ViewerRole:                capabilities.ViewerRole,
-		RefereeBound:              capabilities.RefereeBound,
-		RefereeUserId:             capabilities.RefereeUserId,
-		RefereeName:               refereeName,
-		RefereeAvatar:             refereeAvatar,
-		RefereeJoinedAt:           refereeJoinedAt,
-		RefereeDurationSeconds:    refereeDurationSeconds,
-		CompletedByUserId:         completedByUserId,
-		CompletionSource:          resolveCompletionSource(match),
-		CanScore:                  capabilities.CanScore,
-		CanUndo:                   capabilities.CanUndo,
-		CanFinish:                 capabilities.CanFinish,
-		CanRequestFinish:          capabilities.CanRequestFinish,
-		CanConfirmFinish:          capabilities.CanConfirmFinish,
-		CanDisputeFinish:          capabilities.CanDisputeFinish,
-		CanWithdrawFinish:         capabilities.CanWithdrawFinish,
-		LastAction:                buildMatchLastAction(svcCtx, userId, match),
-		Player1Id:                 match.UserId,
-		Player1Name:               player1Name,
-		Player1Avatar:             player1Avatar,
-		Player2Id:                 player2Id,
-		Player2Name:               player2Name,
-		Player2Avatar:             player2Avatar,
-		OpponentId:                opponentId,
-		OpponentName:              opponentName,
-		OpponentAvatar:            opponentAvatar,
-		MyScore:                   myScore,
-		OpponentScore:             opponentScore,
-		CurrentFrameStarted:       match.CurrentFrameStarted,
-		CurrentFrameMyScore:       currentFrameMyScore,
-		CurrentFrameOpponentScore: currentFrameOpponentScore,
-		CurrentRound:              int(roundCount) + 1,
-		ServerRevision:            match.SyncRevision,
-		MatchTime:                 match.MatchTime.Format("2006-01-02T15:04:05+08:00"),
-		DurationSeconds:           durationSeconds,
+		Id:                            match.Id,
+		GameType:                      match.GameType,
+		GameTypeName:                  GetGameTypeName(match.GameType),
+		GameMode:                      match.GameMode,
+		MatchMode:                     model.NormalizeMatchMode(match.MatchMode),
+		Visibility:                    model.NormalizeMatchVisibility(match.Visibility, match.MatchMode),
+		FinishState:                   model.NormalizeFinishState(match.FinishState),
+		FinishRequestedBy:             resolveFinishRequestedBy(match),
+		ViewerRole:                    capabilities.ViewerRole,
+		RefereeBound:                  capabilities.RefereeBound,
+		RefereeUserId:                 capabilities.RefereeUserId,
+		RefereeName:                   refereeName,
+		RefereeAvatar:                 refereeAvatar,
+		RefereeJoinedAt:               refereeJoinedAt,
+		RefereeDurationSeconds:        refereeDurationSeconds,
+		CompletedByUserId:             completedByUserId,
+		CompletionSource:              resolveCompletionSource(match),
+		CanScore:                      capabilities.CanScore,
+		CanUndo:                       capabilities.CanUndo,
+		CanFinish:                     canFinish,
+		CanRequestFinish:              canRequestFinish,
+		CanConfirmFinish:              canConfirmFinish,
+		CanDisputeFinish:              canDisputeFinish,
+		CanWithdrawFinish:             canWithdrawFinish,
+		LastAction:                    buildMatchLastAction(svcCtx, userId, match),
+		Player1Id:                     match.UserId,
+		Player1Name:                   player1Name,
+		Player1Avatar:                 player1Avatar,
+		Player2Id:                     player2Id,
+		Player2Name:                   player2Name,
+		Player2Avatar:                 player2Avatar,
+		OpponentId:                    opponentId,
+		OpponentName:                  opponentName,
+		OpponentAvatar:                opponentAvatar,
+		MyScore:                       myScore,
+		OpponentScore:                 opponentScore,
+		CurrentFrameStarted:           match.CurrentFrameStarted,
+		CurrentFrameMyScore:           currentFrameMyScore,
+		CurrentFrameOpponentScore:     currentFrameOpponentScore,
+		CurrentRound:                  int(roundCount) + 1,
+		SnookerRulesVersion:           match.SnookerRulesVersion,
+		BestOfFrames:                  match.BestOfFrames,
+		StartingActor:                 match.StartingActor,
+		SnookerPhase:                  snookerState.Phase,
+		SnookerBallOn:                 snookerState.BallOn,
+		SnookerStriker:                snookerState.Striker,
+		SnookerVisitNo:                snookerState.VisitNo,
+		SnookerCurrentBreak:           snookerState.CurrentBreak,
+		SnookerRedsRemaining:          snookerState.RedsRemaining,
+		SnookerFreeBallAvailable:      snookerState.FreeBallAvailable,
+		SnookerCueBallInHand:          snookerState.CueBallInHand,
+		SnookerMissWarningActive:      snookerState.MissWarningActive,
+		SnookerRespottedBlackPending:  snookerState.Phase == model.SnookerPhaseRespottedBlackPending,
+		SnookerPendingConcessionActor: snookerState.PendingConcessionActor,
+		SnookerPendingConcessionScope: snookerState.PendingConcessionScope,
+		SnookerFrameEndReason:         snookerState.FrameEndReason,
+		ServerRevision:                match.SyncRevision,
+		MatchTime:                     match.MatchTime.Format("2006-01-02T15:04:05+08:00"),
+		DurationSeconds:               durationSeconds,
 	}
 }

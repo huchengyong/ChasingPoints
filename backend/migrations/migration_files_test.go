@@ -335,6 +335,31 @@ func TestSeedMinimumAchievementsMigrationContainsClosedLoopDefinitions(t *testin
 	}
 }
 
+func TestSnookerRulesV2MigrationUsesCompatibleConditionalColumns(t *testing.T) {
+	content, err := os.ReadFile("20260730120000_add_snooker_rules_v2.sql")
+	if err != nil {
+		t.Fatalf("read snooker rules migration: %v", err)
+	}
+
+	text := string(content)
+	for _, snippet := range []string{
+		"-- +goose Up",
+		"-- +goose Down",
+		"`snooker_rules_version`",
+		"`best_of_frames`",
+		"`starting_actor`",
+		"information_schema.COLUMNS",
+		"PREPARE stmt FROM @ddl",
+	} {
+		if !strings.Contains(text, snippet) {
+			t.Fatalf("expected snooker rules migration to contain %q", snippet)
+		}
+	}
+	if strings.Contains(text, "ADD COLUMN IF NOT EXISTS") || strings.Contains(text, "DROP COLUMN IF EXISTS") {
+		t.Fatal("snooker rules migration must keep MySQL-compatible information_schema guards")
+	}
+}
+
 func TestHonorWallSeasonAchievementsMigrationContainsRequiredSchema(t *testing.T) {
 	content, err := os.ReadFile("20260723100000_add_honor_wall_season_achievements.sql")
 	if err != nil {

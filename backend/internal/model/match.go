@@ -27,6 +27,9 @@ const (
 	CompletionSourcePlayerDirect    = "player_direct"
 	CompletionSourcePlayerConfirmed = "player_confirmed"
 	CompletionSourceUnknown         = "unknown"
+
+	SnookerRulesVersionLegacy = 1
+	SnookerRulesVersionWPBSA  = 2
 )
 
 func NormalizeMatchMode(mode string) string {
@@ -61,6 +64,9 @@ type Match struct {
 	OpponentName               string         `gorm:"size:50;not null" json:"opponent_name"`
 	GameType                   int            `gorm:"not null" json:"game_type"` // 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
 	GameMode                   string         `gorm:"size:20" json:"game_mode"`  // 比赛模式
+	SnookerRulesVersion        int            `gorm:"not null;default:1" json:"snooker_rules_version"`
+	BestOfFrames               int            `gorm:"not null;default:0" json:"best_of_frames"`
+	StartingActor              int            `gorm:"not null;default:0" json:"starting_actor"`
 	MatchMode                  string         `gorm:"size:20;not null;index" json:"match_mode"`
 	Visibility                 string         `gorm:"size:20;not null;index" json:"visibility"`
 	FinishConfirmationRequired bool           `gorm:"not null;default:false" json:"finish_confirmation_required"`
@@ -884,8 +890,16 @@ func (m *MatchModel) CreateRoundWithTx(tx *gorm.DB, round *MatchRound) error {
 
 // GetRoundCount 获取对局的局数
 func (m *MatchModel) GetRoundCount(matchId int64) (int64, error) {
+	return m.GetRoundCountWithTx(nil, matchId)
+}
+
+func (m *MatchModel) GetRoundCountWithTx(tx *gorm.DB, matchId int64) (int64, error) {
 	var count int64
-	err := m.db.Model(&MatchRound{}).
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	err := db.Model(&MatchRound{}).
 		Where("match_id = ? AND winner IS NOT NULL AND win_type <> ?", matchId, "start").
 		Count(&count).Error
 	return count, err

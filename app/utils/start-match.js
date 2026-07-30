@@ -8,6 +8,16 @@ export const validateStartMatchPayload = (payload = {}) => {
   if (mode && !['practice', 'ranked'].includes(mode)) return '请选择有效的对局模式'
   if (visibility && !['private', 'public'].includes(visibility)) return '请选择有效的公开范围'
   if (mode === 'ranked' && visibility === 'private') return '排位赛必须公开展示'
+  if (Number(payload.game_type || payload.gameType || 0) === 1) {
+    const rulesVersion = Number(payload.snooker_rules_version || payload.snookerRulesVersion || 2)
+    if (![1, 2].includes(rulesVersion)) return '不支持的斯诺克规则版本'
+    if (rulesVersion === 2) {
+      const bestOfFrames = Number(payload.best_of_frames || payload.bestOfFrames || 0)
+      const startingActor = Number(payload.starting_actor || payload.startingActor || 0)
+      if (!Number.isInteger(bestOfFrames) || bestOfFrames <= 0 || bestOfFrames % 2 === 0) return '斯诺克总局数必须为正奇数'
+      if (![1, 2].includes(startingActor)) return '请选择首局开球方'
+    }
+  }
   return ''
 }
 
@@ -45,6 +55,11 @@ export const normalizePendingMatchContext = (storageKey = '', raw = '') => {
     match_mode: parsed?.match_mode === 'ranked' ? 'ranked' : 'practice',
     visibility: parsed?.visibility === 'public' ? 'public' : 'private'
   }
+  if (context.game_type === 1) {
+    context.snooker_rules_version = Number(parsed?.snooker_rules_version || 2)
+    context.best_of_frames = Number(parsed?.best_of_frames || 0)
+    context.starting_actor = Number(parsed?.starting_actor || 0)
+  }
   const valid = context.opponent_id > 0 && context.game_type > 0 && (type !== 'challenge' || context.challenge_id > 0)
   return {
     valid,
@@ -66,7 +81,9 @@ export const buildStartMatchPayload = ({
   opponent = {},
   matchMode = 'ranked',
   visibility,
-  challengeId = 0
+  challengeId = 0,
+  bestOfFrames = 3,
+  startingActor = 1
 } = {}) => {
   const options = normalizeStartMatchOptions({ matchMode, visibility })
   const payload = {
@@ -77,5 +94,10 @@ export const buildStartMatchPayload = ({
     ...options
   }
   if (Number(challengeId) > 0) payload.challenge_id = Number(challengeId)
+  if (payload.game_type === 1) {
+    payload.snooker_rules_version = 2
+    payload.best_of_frames = Number(bestOfFrames) || 0
+    payload.starting_actor = Number(startingActor) || 0
+  }
   return payload
 }

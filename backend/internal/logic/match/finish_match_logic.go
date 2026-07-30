@@ -50,6 +50,26 @@ func (l *FinishMatchLogic) finishMatchImmediately(req *types.FinishMatchReq, for
 		l.Logger.Errorf("对局不存在: %v", err)
 		return &types.FinishMatchResp{Success: false}, nil
 	}
+	if isSnookerV2Match(match) {
+		if _, authorityErr := validateMatchWriteAuthority(match, userId); authorityErr != nil {
+			return &types.FinishMatchResp{Success: false, Accepted: false, Message: authorityErr.Error()}, nil
+		}
+		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
+		if stateErr != nil {
+			return &types.FinishMatchResp{Success: false, Accepted: false, Message: "加载对局快照失败"}, nil
+		}
+		scoreView := buildMatchWriteScoreView(userId, match)
+		return &types.FinishMatchResp{
+			Success:        false,
+			Accepted:       false,
+			Message:        "版本2斯诺克将按赛制自动结束，请使用认输或裁判判局",
+			ClientActionId: req.ClientActionId,
+			ServerRevision: view.Snapshot.ServerRevision,
+			Snapshot:       view.Snapshot,
+			MyScore:        scoreView.MyScore,
+			OpponentScore:  scoreView.OpponentScore,
+		}, nil
+	}
 	if !force && shouldRequestRankedFinish(match, userId) {
 		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
 		if stateErr != nil {
@@ -240,6 +260,7 @@ func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, user
 		if notifyErr := logicx.DispatchNotification(l.svcCtx, logicx.NotificationDispatchInput{
 			UserId:      match.UserId,
 			Type:        "match_result",
+			DedupeKey:   fmt.Sprintf("match:%d", match.Id),
 			Title:       "对局已结束",
 			Content:     content,
 			Data:        buildNotificationPayload("/subPages/match/matchResult", match.Id, 0),
@@ -261,6 +282,7 @@ func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, user
 			if notifyErr := logicx.DispatchNotification(l.svcCtx, logicx.NotificationDispatchInput{
 				UserId:      *match.OpponentId,
 				Type:        "match_result",
+				DedupeKey:   fmt.Sprintf("match:%d", match.Id),
 				Title:       "对局已结束",
 				Content:     opContent,
 				Data:        buildNotificationPayload("/subPages/match/matchResult", match.Id, 0),
@@ -394,6 +416,33 @@ func (l *FinishMatchLogic) settleMatchWithCompletionSourceTx(tx *gorm.DB, match 
 		match.Remark = req.Remark
 	}
 
+	if isSnookerV2Match(match) {
+		actions, err := l.svcCtx.MatchModel.ListActiveActionsWithTx(tx, match.Id)
+		if err != nil {
+			return finishMatchSettlement{}, err
+		}
+		countsByActor, err := calculateSnookerBreakAchievementCounts(actions)
+		if err != nil {
+			return finishMatchSettlement{}, err
+		}
+		for actor, counts := range countsByActor {
+			for _, item := range []struct {
+				achievementType string
+				count           int
+			}{
+				{achievementType: "break_50", count: counts.FiftyPlus},
+				{achievementType: "break_100", count: counts.Centuries},
+				{achievementType: "break_147", count: counts.Break147},
+			} {
+				if item.count > 0 {
+					if err := l.svcCtx.MatchModel.SaveAchievementWithTx(tx, match.Id, item.achievementType, item.count, actor); err != nil {
+						return finishMatchSettlement{}, err
+					}
+				}
+			}
+		}
+	}
+
 	player1Win := result == 1
 	player1RawAchievementScore := 0
 	player2RawAchievementScore := 0
@@ -412,13 +461,16 @@ func (l *FinishMatchLogic) settleMatchWithCompletionSourceTx(tx *gorm.DB, match 
 		if err != nil {
 			return finishMatchSettlement{}, err
 		}
-		player1RawAchievementScore, player2RawAchievementScore = resolveReplayAchievementScores(
+		player1RawAchievementScore, player2RawAchievementScore, err = resolveReplayAchievementScoresStrict(
 			match.GameType,
 			rounds,
 			actions,
 			nil,
 			rewardMap,
 		)
+		if err != nil {
+			return finishMatchSettlement{}, err
+		}
 	}
 
 	serverRevision, err := l.svcCtx.MatchModel.BumpMatchRevisionWithTx(tx, match)

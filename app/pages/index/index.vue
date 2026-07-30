@@ -211,6 +211,7 @@ import {
   resolveHomeVenueEmptyAction
 } from '@/utils/home-index.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
+import { chooseSnookerStartFormat } from '@/utils/snooker-start-format.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const userStore = useUserStore()
@@ -226,6 +227,7 @@ const refreshing = ref(false)
 const homeLoading = ref(true)
 const showGameTypeModal = ref(false)
 const selectedGameType = ref(null)
+const selectedSnookerFormat = ref(null)
 const currentMatch = ref(null)
 const leaderboardTopThree = ref([])
 const myRanking = ref(null)
@@ -577,8 +579,13 @@ const handleStartPK = () => {
   showGameTypeModal.value = true
 }
 
-const handleGameTypeConfirm = (gameType) => {
+const handleGameTypeConfirm = async (gameType) => {
   selectedGameType.value = gameType
+  selectedSnookerFormat.value = null
+  if (Number(gameType) === 1) {
+    selectedSnookerFormat.value = await chooseSnookerStartFormat(uni)
+    if (!selectedSnookerFormat.value) return
+  }
 
   let handledByScan = false
   // #ifdef APP-PLUS || APP-HARMONY
@@ -619,7 +626,8 @@ const handleMatchResult = async (scanResult) => {
     const res = await startMatch({
       game_type: selectedGameType.value,
       opponent_id: opponentData.user_id,
-      opponent_name: opponentData.nickname || '对手'
+      opponent_name: opponentData.nickname || '对手',
+      ...(selectedSnookerFormat.value || {})
     })
     uni.hideLoading()
     handleStartMatchOutcome(resolveStartMatchGuardAction({

@@ -78,18 +78,21 @@ export const getPublicMatchDetail = (params) => {
 
 /**
  * 开始对局
- * @param {Object} data 对局信息
+ * @param {Object} data 对局信息；斯诺克需包含 best_of_frames、starting_actor
  * @returns {Promise}
  */
-export const startMatch = (data) => {
-  const message = validateStartMatchPayload(data)
+export const startMatch = (data = {}) => {
+  const payload = Number(data.game_type || data.gameType || 0) === 1
+    ? { ...data, snooker_rules_version: Number(data.snooker_rules_version || data.snookerRulesVersion || 2) }
+    : data
+  const message = validateStartMatchPayload(payload)
   if (message) {
     return Promise.resolve({
       success: false,
       message
     })
   }
-  return post('/api/match/start', data)
+  return post('/api/match/start', payload)
 }
 
 /**
@@ -215,6 +218,24 @@ export const startNextRound = (data) => {
  */
 export const matchFoul = (data) => {
   return post('/api/match/foul', data)
+}
+
+/**
+ * 记录版本2斯诺克一次击球结果
+ * @param {Object} data 击球方、结果、入袋球及犯规决定
+ * @returns {Promise}
+ */
+export const snookerStroke = (data) => {
+  return post('/api/match/snooker/stroke', data)
+}
+
+/**
+ * 记录版本2斯诺克局级动作
+ * @param {Object} data 重置黑球、认输或裁判判局动作
+ * @returns {Promise}
+ */
+export const snookerFrameAction = (data) => {
+  return post('/api/match/snooker/frame-action', data)
 }
 
 /**

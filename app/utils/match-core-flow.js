@@ -43,6 +43,10 @@ export const buildRematchContext = (match = {}) => {
     match_mode: match.match_mode === 'ranked' ? 'ranked' : 'practice'
   }
   if (match.visibility) context.visibility = match.visibility === 'public' ? 'public' : 'private'
+  if (context.game_type === 1) {
+    context.best_of_frames = Number(match.best_of_frames) || 3
+    context.starting_actor = Number(match.starting_actor) === 2 ? 2 : 1
+  }
   return context
 }
 

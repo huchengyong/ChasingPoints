@@ -240,6 +240,22 @@ func calculateSnookerBreakStatsForActors(actions []model.MatchAction, myActor in
 
 func calculateSnookerBreakStats(actions []model.MatchAction, actor int) snookerBreakStats {
 	stats := snookerBreakStats{}
+	if breaks, version2, err := collectSnookerBreaksByActor(actions); version2 {
+		if err != nil {
+			return stats
+		}
+		for _, score := range breaks[actor] {
+			if score > stats.Highest {
+				stats.Highest = score
+			}
+			if score >= 100 {
+				stats.Centuries++
+			} else if score >= 50 {
+				stats.FiftyPlus++
+			}
+		}
+		return stats
+	}
 	current := 0
 	currentRound := 0
 	finalize := func() {
@@ -285,43 +301,23 @@ func calculateSnookerBreakStats(actions []model.MatchAction, actor int) snookerB
 }
 
 func calculateSnookerHighestBreak(actions []model.MatchAction, actor int) int {
-	best := 0
-	current := 0
-	currentRound := 0
-
-	for _, action := range actions {
-		if action.RoundNo != currentRound {
-			currentRound = action.RoundNo
-			current = 0
-		}
-
-		switch action.ActionType {
-		case "score":
-			if action.Actor == actor && action.ScoreChange > 0 {
-				current += action.ScoreChange
-				if current > best {
-					best = current
-				}
-				continue
-			}
-			current = 0
-		case "foul", "win", "round_start":
-			current = 0
-		default:
-			if action.Actor != actor {
-				current = 0
-			}
-		}
-	}
-
-	return best
+	return calculateSnookerBreakStats(actions, actor).Highest
 }
 
 func calculateSnookerRedBallPots(actions []model.MatchAction, actor int) int {
 	count := 0
 	for _, action := range actions {
-		if action.Actor == actor && action.ActionType == "score" && action.ScoreChange == 1 {
+		if action.Actor != actor {
+			continue
+		}
+		if action.ActionType == "score" && action.ScoreChange == 1 {
 			count++
+			continue
+		}
+		if action.ActionType == model.MatchActionTypeSnookerStroke {
+			if event, err := model.DecodeSnookerEvent(action.ExtraData); err == nil && event.Outcome == model.SnookerOutcomePot {
+				count += event.PottedReds
+			}
 		}
 	}
 	return count
