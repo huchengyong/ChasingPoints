@@ -15,85 +15,90 @@
 			<text class="sheet-subtitle">用于账号找回、重要赛事通知和已有账号安全合并</text>
 			
 			<!-- #ifdef MP-WEIXIN -->
-			<view class="wechat-phone-copy">
-				<text>授权微信手机号后即可完成绑定，可随时稍后处理。</text>
-			</view>
-			<view class="binding-benefits">
-				<text>账号找回</text>
-				<text>赛事通知</text>
-				<text>账号合并</text>
-			</view>
-
-			<view class="bind-btn-container">
-				<button
-					class="bind-btn"
-					:class="{ active: canAuthorizeWechatPhone }"
-					:disabled="!canAuthorizeWechatPhone || loading"
-					open-type="getPhoneNumber"
-					@getphonenumber="handleWechatPhoneNumber"
-				>
-					{{ loading ? '绑定中...' : '授权微信手机号' }}
-				</button>
-				<button v-if="closable" class="close-text-btn" :disabled="!canClose" @click="handleClose">
-					稍后绑定
-				</button>
-			</view>
-			<!-- #endif -->
-
-			<!-- #ifndef MP-WEIXIN -->
-			<!-- 手机号输入 -->
-			<view class="input-group">
-				<text class="input-label">手机号</text>
-				<view class="input-wrapper">
-					<text class="country-code">+86</text>
-					<input
-						class="phone-input"
-						type="number"
-						v-model="phone"
-						placeholder="请输入手机号码"
-						maxlength="11"
-						@input="handlePhoneInput"
-					/>
+			<template v-if="!useSmsBinding">
+				<view class="wechat-phone-copy">
+					<text>授权微信手机号后即可完成绑定，可随时稍后处理。</text>
 				</view>
-				<text class="error-text" v-if="phoneError">{{ phoneError }}</text>
-			</view>
-			
-			<!-- 验证码输入 -->
-			<view class="input-group">
-				<text class="input-label">验证码</text>
-				<view class="input-wrapper code-wrapper">
-					<input
-						class="code-input"
-						type="number"
-						v-model="code"
-						placeholder="请输入6位验证码"
-						maxlength="6"
-					/>
-					<text
-						class="send-code-btn"
-						:class="{ disabled: !canSendCode }"
-						@click="handleSendCode"
+				<view class="binding-benefits">
+					<text>账号找回</text>
+					<text>赛事通知</text>
+					<text>账号合并</text>
+				</view>
+
+				<view class="bind-btn-container">
+					<button
+						class="bind-btn"
+						:class="{ active: canAuthorizeWechatPhone }"
+						:disabled="!canAuthorizeWechatPhone || loading"
+						open-type="getPhoneNumber"
+						@getphonenumber="handleWechatPhoneNumber"
 					>
-						{{ isSendingCode ? '发送中...' : (countdown > 0 ? `${countdown}s后重发` : '获取验证码') }}
-					</text>
+						{{ loading ? '绑定中...' : '授权微信手机号' }}
+					</button>
+					<button v-if="closable" class="close-text-btn" :disabled="!canClose" @click="handleClose">
+						稍后绑定
+					</button>
 				</view>
-			</view>
-			
-			<!-- 绑定按钮 -->
-			<view class="bind-btn-container">
-				<button
-					class="bind-btn"
-					:class="{ active: canBind }"
-					:disabled="!canBind || loading"
-					@click="handleBind"
-				>
-					{{ loading ? '绑定中...' : '立即绑定' }}
-				</button>
-				<button v-if="closable" class="close-text-btn" :disabled="!canClose" @click="handleClose">
-					稍后绑定
-				</button>
-			</view>
+			</template>
 			<!-- #endif -->
+
+			<view v-if="showSmsBinding" class="sms-binding-form">
+				<!-- 手机号输入 -->
+				<view class="input-group">
+					<text class="input-label">手机号</text>
+					<view class="input-wrapper">
+						<text class="country-code">+86</text>
+						<input
+							class="phone-input"
+							type="number"
+							v-model="phone"
+							placeholder="请输入手机号码"
+							maxlength="11"
+							@input="handlePhoneInput"
+						/>
+					</view>
+					<text class="error-text" v-if="phoneError">{{ phoneError }}</text>
+				</view>
+
+				<!-- 验证码输入 -->
+				<view class="input-group">
+					<text class="input-label">验证码</text>
+					<view class="input-wrapper code-wrapper">
+						<input
+							class="code-input"
+							type="number"
+							v-model="code"
+							placeholder="请输入6位验证码"
+							maxlength="6"
+						/>
+						<button
+							class="send-code-btn"
+							:class="{ disabled: !canSendCode }"
+							:disabled="isSendingCode || countdown > 0"
+							@click="handleSendCode"
+						>
+							{{ isSendingCode ? '发送中...' : (countdown > 0 ? `${countdown}s后重发` : '获取验证码') }}
+						</button>
+					</view>
+					<text v-if="slowAction === 'send'" class="slow-action-hint">网络稍慢，正在继续尝试</text>
+				</view>
+
+				<!-- 绑定按钮 -->
+				<view class="bind-btn-container">
+					<button
+						class="bind-btn"
+						:class="{ active: canBind }"
+						:disabled="!canBind || loading"
+						@click="handleBind"
+					>
+						{{ loading ? '绑定中...' : '立即绑定' }}
+					</button>
+					<button v-if="closable" class="close-text-btn" :disabled="!canClose" @click="handleClose">
+						稍后绑定
+					</button>
+				</view>
+				<text v-if="slowAction === 'bind'" class="slow-action-hint">网络稍慢，正在继续尝试</text>
+			</view>
 			
 			<!-- 协议文本 -->
 			<view v-if="requireAgreement" class="agreement-section">
@@ -124,7 +129,7 @@ import {
 	resolveBindPhoneSuccess,
 	shouldResetBindPhoneVerification
 } from '@/utils/bind-phone-flow.js'
-import { resolveEntryFunnelAgreementState } from '@/utils/entry-funnel.js'
+import { AUTH_SLOW_FEEDBACK_DELAY, resolveEntryFunnelAgreementState } from '@/utils/entry-funnel.js'
 
 const ENTRY_FUNNEL_AGREEMENT_KEY = 'entry_funnel_agreement_accepted'
 const ENTRY_FUNNEL_SESSION_KEY = 'entry_funnel_session_active'
@@ -147,6 +152,10 @@ export default {
 		requireAgreement: {
 			type: Boolean,
 			default: true
+		},
+		useSmsBinding: {
+			type: Boolean,
+			default: false
 		}
 	},
 	emits: ['close', 'success'],
@@ -159,6 +168,8 @@ export default {
 			timer: null,
 			isSendingCode: false,
 			loading: false,
+			slowAction: '',
+			slowTimer: null,
 			isAgreed: false
 		}
 	},
@@ -168,6 +179,13 @@ export default {
 	computed: {
 		displayDarkMode() {
 			return this.isDarkMode
+		},
+		showSmsBinding() {
+			let isWechatMiniProgram = false
+			// #ifdef MP-WEIXIN
+			isWechatMiniProgram = true
+			// #endif
+			return !isWechatMiniProgram || this.useSmsBinding
 		},
 		canSendCode() {
 			return canRequestBindPhoneSms({
@@ -251,19 +269,39 @@ export default {
 			this.phone = ''
 			this.phoneError = ''
 			this.loading = false
+			this.clearSlowAction()
 			this.isAgreed = false
+		},
+
+		startSlowAction(action) {
+			this.clearSlowAction()
+			this.slowTimer = setTimeout(() => {
+				if (this.isSendingCode || this.loading) this.slowAction = action
+			}, AUTH_SLOW_FEEDBACK_DELAY)
+		},
+
+		clearSlowAction() {
+			if (this.slowTimer) {
+				clearTimeout(this.slowTimer)
+				this.slowTimer = null
+			}
+			this.slowAction = ''
 		},
 		
 		async handleSendCode() {
-			if (!this.canSendCode) return
+			if (this.isSendingCode || this.countdown > 0) return
 			
-			// 验证手机号
 			if (!isValidBindPhone(this.phone)) {
-				this.phoneError = '请输入正确的手机号'
+				this.phoneError = this.phone ? '请输入正确的手机号' : '请输入手机号'
+				uni.showToast({
+					title: this.phoneError,
+					icon: 'none'
+				})
 				return
 			}
 			
 			this.isSendingCode = true
+			this.startSlowAction('send')
 
 			try {
 				const res = await sendSms(this.phone, 'bind')
@@ -297,6 +335,7 @@ export default {
 				})
 			} finally {
 				this.isSendingCode = false
+				this.clearSlowAction()
 			}
 		},
 		
@@ -304,6 +343,7 @@ export default {
 			if (!this.canBind || this.loading) return
 			
 			this.loading = true
+			this.startSlowAction('bind')
 			
 			try {
 				const res = await bindPhone(this.phone, this.code)
@@ -317,6 +357,7 @@ export default {
 				})
 			} finally {
 				this.loading = false
+				this.clearSlowAction()
 			}
 		},
 
@@ -332,6 +373,7 @@ export default {
 			if (!this.canAuthorizeWechatPhone || this.loading) return
 
 			this.loading = true
+			this.startSlowAction('bind')
 			try {
 				const res = await wechatMiniBindPhone(code)
 				this.handleBindResponse(res, '')
@@ -342,6 +384,7 @@ export default {
 				})
 			} finally {
 				this.loading = false
+				this.clearSlowAction()
 			}
 		},
 
@@ -380,6 +423,7 @@ export default {
 	
 	beforeUnmount() {
 		this.resetVerificationState()
+		this.clearSlowAction()
 	}
 }
 </script>
@@ -513,7 +557,8 @@ $dark-input-bg: transparent;
 	}
 
 	.code-input {
-		padding: 0 32rpx;
+		min-width: 0;
+		padding: 0 16rpx 0 32rpx;
 	}
 
 	.code-wrapper {
@@ -521,16 +566,32 @@ $dark-input-bg: transparent;
 	}
 
 	.send-code-btn {
-		position: absolute;
-		right: 16rpx;
-		padding: 16rpx 24rpx;
+		position: static;
+		flex-shrink: 0;
+		height: 64rpx;
+		line-height: 64rpx;
+		margin: 0 16rpx 0 0;
+		padding: 0 24rpx;
 		font-size: 28rpx;
 		font-weight: 500;
 		color: #c69200;
+		background: transparent;
+		border: none;
 		border-radius: 12rpx;
+		box-sizing: border-box;
+		white-space: nowrap;
+
+		&::after {
+			display: none;
+		}
 
 		&.disabled {
 			color: #9ca3af;
+		}
+
+		&[disabled] {
+			color: #9ca3af !important;
+			background: transparent;
 		}
 	}
 
@@ -539,6 +600,15 @@ $dark-input-bg: transparent;
 		font-size: 24rpx;
 		color: #ef4444;
 		margin-top: 8rpx;
+	}
+
+	.slow-action-hint {
+		display: block;
+		margin-top: 10rpx;
+		color: #9a7b2a;
+		font-size: 22rpx;
+		line-height: 1.4;
+		text-align: center;
 	}
 
 	.bind-btn-container {
@@ -769,6 +839,10 @@ $dark-input-bg: transparent;
 			.link {
 				color: #f7e7a8;
 			}
+		}
+
+		.slow-action-hint {
+			color: #d7b95c;
 		}
 	}
 }

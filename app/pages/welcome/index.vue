@@ -24,12 +24,21 @@
 			<view class="button-section">
 				<button
 					class="btn-primary"
-					:class="{ 'wechat-primary': isWechatMiniProgram }"
+					:class="{ 'wechat-primary': isWechatMiniProgram, authenticating: authGate.isAuthenticating }"
 					:disabled="welcomeActions.primaryDisabled"
 					@click="handlePrimaryEntry"
 				>
 					{{ welcomeActions.primaryText }}
 				</button>
+				<view
+					v-if="authFeedback.visible"
+					class="auth-feedback-card"
+					:class="`is-${authFeedback.phase}`"
+				>
+					<view class="auth-feedback-progress"></view>
+					<view class="auth-feedback-dot"></view>
+					<text class="auth-feedback-message">{{ authFeedback.message }}</text>
+				</view>
 
 				<button
 					v-if="welcomeActions.showPhoneLogin"
@@ -56,13 +65,13 @@
 			</view>
 
 			<view class="agreement">
-				<view class="agreement-row" @click="toggleAgreement">
+				<view class="agreement-row" :class="{ disabled: authGate.isAuthenticating }" @click="toggleAgreement">
 					<view class="checkbox" :class="{ checked: isAgreed }">
 						<uni-icons v-if="isAgreed" type="checkmarkempty" size="14" color="#231c0b"></uni-icons>
 					</view>
 					<text class="agreement-text">我已阅读并同意</text>
 				</view>
-				<view class="agreement-links">
+				<view class="agreement-links" :class="{ disabled: authGate.isAuthenticating }">
 					<text class="link" @click.stop="openUserAgreement">《用户协议》</text>
 					<text class="separator">和</text>
 					<text class="link" @click.stop="openPrivacyPolicy">《隐私政策》</text>
@@ -74,6 +83,7 @@
 			:show="showBindPhoneModal"
 			:closable="true"
 			:is-dark-mode="isDarkMode"
+			:use-sms-binding="true"
 			:require-agreement="false"
 			@close="handleBindPhoneClose"
 			@success="handleBindPhoneSuccess"
@@ -99,6 +109,8 @@ import { wechatMiniLogin } from '@/api/auth.js'
 import { useUserStore } from '@/store/user.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import {
+	AUTH_SLOW_FEEDBACK_DELAY,
+	resolveAuthenticationFeedback,
 	resolveAuthenticationGate,
 	resolveEntryFunnelAgreementState,
 	resolveWechatPostLoginState,
@@ -126,6 +138,7 @@ const shouldShow = ref(false)
 const isPageActive = ref(true)
 const isAgreed = ref(false)
 const isWechatLogging = ref(false)
+const isSlowLogging = ref(false)
 const showBindPhoneModal = ref(false)
 const showAgreementSheet = ref(false)
 const pendingAgreementAction = ref('')
@@ -133,11 +146,33 @@ const authGate = computed(() => resolveAuthenticationGate({
 	isWechatLogging: isWechatLogging.value,
 	isPageActive: isPageActive.value
 }))
+const authFeedback = computed(() => resolveAuthenticationFeedback({
+	isAuthenticating: authGate.value.isAuthenticating,
+	isSlow: isSlowLogging.value
+}))
+let authSlowFeedbackTimer = null
+
+const startAuthFeedback = () => {
+	isSlowLogging.value = false
+	if (authSlowFeedbackTimer) clearTimeout(authSlowFeedbackTimer)
+	authSlowFeedbackTimer = setTimeout(() => {
+		if (authGate.value.isAuthenticating) isSlowLogging.value = true
+	}, AUTH_SLOW_FEEDBACK_DELAY)
+}
+
+const clearAuthFeedback = () => {
+	if (authSlowFeedbackTimer) {
+		clearTimeout(authSlowFeedbackTimer)
+		authSlowFeedbackTimer = null
+	}
+	isSlowLogging.value = false
+}
 const welcomeActions = computed(() => resolveWelcomeActions({
 	isHarmony: isHarmonyPlatform,
 	isWechatMini: isWechatMiniProgram,
 	isAgreed: isAgreed.value,
-	isLogging: isWechatLogging.value
+	isLogging: isWechatLogging.value,
+	isSlowLogging: isSlowLogging.value
 }))
 
 onShow(() => {
@@ -164,6 +199,7 @@ onShow(() => {
 
 onUnload(() => {
 	isPageActive.value = false
+	clearAuthFeedback()
 	const visibleRoutes = getCurrentPages().map((page) => page.route)
 	if (shouldClearEntryFunnelAgreementSession({
 		currentRoute: 'pages/welcome/index',
@@ -179,6 +215,7 @@ const persistAgreementState = (value) => {
 }
 
 const toggleAgreement = () => {
+	if (authGate.value.isAuthenticating) return
 	isAgreed.value = !isAgreed.value
 	persistAgreementState(isAgreed.value)
 }
@@ -239,6 +276,7 @@ const handleWechatMiniLogin = async () => {
 	if (isWechatLogging.value) return
 
 	isWechatLogging.value = true
+	startAuthFeedback()
 	try {
 		const loginResult = await new Promise((resolve, reject) => {
 			uni.login({
@@ -271,6 +309,7 @@ const handleWechatMiniLogin = async () => {
 		})
 	} finally {
 		isWechatLogging.value = false
+		clearAuthFeedback()
 	}
 }
 
@@ -284,6 +323,19 @@ const handleHuaweiLogin = () => {
 
 const handleBindPhoneSuccess = (payload) => {
 	showBindPhoneModal.value = false
+	if (payload?.action === 'relogin') {
+		userStore.logout()
+		const encodedPhone = encodeURIComponent(payload?.phone || '')
+		uni.navigateTo({
+			url: `/pages/login/login?method=phone&phone=${encodedPhone}`
+		})
+		uni.showToast({
+			title: payload.message || '账号已合并，请使用手机号登录',
+			icon: 'none'
+		})
+		return
+	}
+
 	navigateToHome()
 	uni.showToast({
 		title: payload?.message || '绑定成功',
@@ -324,12 +376,14 @@ const handleAgreementAccepted = () => {
 }
 
 const openUserAgreement = () => {
+	if (authGate.value.isAuthenticating) return
 	uni.navigateTo({
 		url: '/subPages/agreement/userAgreement'
 	})
 }
 
 const openPrivacyPolicy = () => {
+	if (authGate.value.isAuthenticating) return
 	uni.navigateTo({
 		url: '/subPages/agreement/privacyPolicy'
 	})

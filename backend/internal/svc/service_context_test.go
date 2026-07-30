@@ -27,4 +27,10 @@ func TestNewServiceModelsWiresAchievementClosedLoopModels(t *testing.T) {
 	if models.AchievementProgressEventModel == nil {
 		t.Fatal("expected achievement progress event model")
 	}
+	if models.SeasonChallengeSnapshotModel == nil {
+		t.Fatal("expected season challenge snapshot model")
+	}
+	if models.SeasonSettlementModel == nil {
+		t.Fatal("expected season settlement model")
+	}
 }

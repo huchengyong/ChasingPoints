@@ -6,6 +6,7 @@ import { THEME_CHANGE_EVENT, useThemeStore } from '@/store/theme.js'
 export const usePageTheme = () => {
   const themeStore = useThemeStore()
   const isDarkMode = computed(() => themeStore.isDarkMode)
+  const themeMode = computed(() => themeStore.themeMode)
 
   const applyTheme = () => {
     themeStore.applyNavigationBarTheme()
@@ -26,6 +27,7 @@ export const usePageTheme = () => {
 
   return {
     isDarkMode,
-    toggleTheme: () => themeStore.toggleTheme()
+    themeMode,
+    setThemeMode: (mode) => themeStore.setThemeMode(mode)
   }
 }

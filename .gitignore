@@ -56,3 +56,8 @@ docs/plans
 .omx/
 .gocache
 .gomodcache
+.claude/
+.codex/
+.opencode/
+.codegraph/
+.pi/

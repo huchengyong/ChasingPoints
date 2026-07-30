@@ -25,22 +25,32 @@
 				<view class="wechat-actions">
 					<button
 						class="wechat-login-btn"
+						:class="{ authenticating: authGate.isAuthenticating }"
 						:disabled="authGate.isAuthenticating"
 						@click="handleWechatMiniLogin"
 					>
-						{{ isWechatLogging ? '正在进入...' : '微信一键进入' }}
+						{{ isWechatLogging ? (isSlowLogging ? '网络稍慢，正在继续…' : '正在安全登录…') : '微信一键进入' }}
 					</button>
+					<view
+						v-if="authFeedback.visible"
+						class="auth-feedback-card"
+						:class="`is-${authFeedback.phase}`"
+					>
+						<view class="auth-feedback-progress"></view>
+						<view class="auth-feedback-dot"></view>
+						<text class="auth-feedback-message">{{ authFeedback.message }}</text>
+					</view>
 					<button class="phone-login-btn" :disabled="authGate.isAuthenticating" @click="switchLoginMode">手机号登录</button>
 				</view>
 
 				<view class="agreement-block">
-					<view class="agreement-row" @click="toggleAgreement">
+					<view class="agreement-row" :class="{ disabled: authGate.isAuthenticating }" @click="toggleAgreement">
 						<view class="checkbox" :class="{ checked: isAgreed }">
 							<uni-icons v-if="isAgreed" type="checkmarkempty" size="14" color="#231c0b"></uni-icons>
 						</view>
 						<text class="agreement-text">我已阅读并同意</text>
 					</view>
-					<view class="agreement-links">
+					<view class="agreement-links" :class="{ disabled: authGate.isAuthenticating }">
 						<text class="link" @click.stop="showAgreement('user')">《用户协议》</text>
 						<text class="separator">和</text>
 						<text class="link" @click.stop="showAgreement('privacy')">《隐私政策》</text>
@@ -72,6 +82,7 @@
 								placeholder="请输入手机号"
 								class="form-input"
 								maxlength="11"
+								:disabled="authGate.isAuthenticating"
 							/>
 						</view>
 						<text v-if="phoneError" class="field-error">{{ phoneError }}</text>
@@ -86,6 +97,7 @@
 								placeholder="请输入6位验证码"
 								class="form-input code-input"
 								maxlength="6"
+								:disabled="authGate.isAuthenticating"
 							/>
 							<button class="send-code-btn" :disabled="!canSendCode" @click="handleSendCode">
 								{{ sendCodeText }}
@@ -109,9 +121,18 @@
 					</view>
 				</view>
 
-				<button class="login-btn" :disabled="!canSubmit" @click="handleLogin">
-					{{ isLogging ? '正在进入...' : '登录 / 注册' }}
+				<button class="login-btn" :class="{ authenticating: authGate.isAuthenticating }" :disabled="!canSubmit" @click="handleLogin">
+					{{ isLogging ? (isSlowLogging ? '网络稍慢，正在继续…' : '正在安全登录…') : '登录 / 注册' }}
 				</button>
+					<view
+						v-if="authFeedback.visible && !isHuaweiLogging"
+						class="auth-feedback-card"
+						:class="`is-${authFeedback.phase}`"
+					>
+						<view class="auth-feedback-progress"></view>
+						<view class="auth-feedback-dot"></view>
+						<text class="auth-feedback-message">{{ authFeedback.message }}</text>
+					</view>
 				<text
 					v-if="isWechatMiniProgram"
 					class="mode-switch"
@@ -125,10 +146,19 @@
 						<text class="divider-text">其他可用方式</text>
 						<view class="divider-line"></view>
 					</view>
-					<button class="third-party-btn" @click="handleHuaweiLogin">
+					<button class="third-party-btn" :class="{ authenticating: authGate.isAuthenticating }" :disabled="authGate.isAuthenticating" @click="handleHuaweiLogin">
 						<image src="/static/images/huawei.svg" mode="aspectFit" />
-						<text>华为账号登录</text>
+						<text>{{ isHuaweiLogging ? (isSlowLogging ? '网络稍慢，正在继续…' : '正在安全登录…') : '华为账号登录' }}</text>
 					</button>
+					<view
+						v-if="authFeedback.visible && isHuaweiLogging"
+						class="auth-feedback-card"
+						:class="`is-${authFeedback.phase}`"
+					>
+						<view class="auth-feedback-progress"></view>
+						<view class="auth-feedback-dot"></view>
+						<text class="auth-feedback-message">{{ authFeedback.message }}</text>
+					</view>
 				</view>
 			</view>
 		</view>
@@ -137,7 +167,8 @@
 			:show="showBindPhoneModal"
 			:closable="true"
 			:is-dark-mode="isDarkMode"
-			:require-agreement="!isWechatMiniProgram"
+			:use-sms-binding="true"
+			:require-agreement="false"
 			@close="handleBindPhoneClose"
 			@success="handleBindPhoneSuccess"
 		/>
@@ -165,11 +196,13 @@ import {
 	canAttemptLogin,
 	canAttemptWechatMiniLogin,
 	canRequestSms,
+	AUTH_SLOW_FEEDBACK_DELAY,
 	getCodeError,
 	getPhoneError,
 	isCodeValid,
 	isPhoneValid,
 	resolveAlternateLoginMode,
+	resolveAuthenticationFeedback,
 	resolveAuthenticationGate,
 	resolveEntryFunnelAgreementState,
 	resolveLoginMode,
@@ -211,6 +244,8 @@ const countdown = ref(0)
 const isSending = ref(false)
 const isLogging = ref(false)
 const isWechatLogging = ref(false)
+const isHuaweiLogging = ref(false)
+const isSlowLogging = ref(false)
 const isPageActive = ref(true)
 const showBindPhoneModal = ref(false)
 const isAgreed = ref(false)
@@ -219,7 +254,12 @@ const pendingAgreementAction = ref('')
 const authGate = computed(() => resolveAuthenticationGate({
 	isWechatLogging: isWechatLogging.value,
 	isPhoneLogging: isLogging.value,
+	isHuaweiLogging: isHuaweiLogging.value,
 	isPageActive: isPageActive.value
+}))
+const authFeedback = computed(() => resolveAuthenticationFeedback({
+	isAuthenticating: authGate.value.isAuthenticating,
+	isSlow: isSlowLogging.value
 }))
 const showHuaweiLogin = computed(() => isHarmonyPlatform)
 const phoneError = computed(() => getPhoneError(formData.phone))
@@ -247,7 +287,24 @@ const sendCodeText = computed(() => {
 })
 
 let countdownTimer = null
+let authSlowFeedbackTimer = null
 let completedLoginFlow = false
+
+const startAuthFeedback = () => {
+	isSlowLogging.value = false
+	if (authSlowFeedbackTimer) clearTimeout(authSlowFeedbackTimer)
+	authSlowFeedbackTimer = setTimeout(() => {
+		if (authGate.value.isAuthenticating) isSlowLogging.value = true
+	}, AUTH_SLOW_FEEDBACK_DELAY)
+}
+
+const clearAuthFeedback = () => {
+	if (authSlowFeedbackTimer) {
+		clearTimeout(authSlowFeedbackTimer)
+		authSlowFeedbackTimer = null
+	}
+	isSlowLogging.value = false
+}
 
 const switchLoginMode = () => {
 	if (!isWechatMiniProgram) return
@@ -260,6 +317,7 @@ const persistAgreementState = (value) => {
 }
 
 const toggleAgreement = () => {
+	if (authGate.value.isAuthenticating) return
 	isAgreed.value = !isAgreed.value
 	persistAgreementState(isAgreed.value)
 }
@@ -362,6 +420,7 @@ const handleLogin = async () => {
 	}
 
 	isLogging.value = true
+	startAuthFeedback()
 
 	try {
 		const res = await login({
@@ -386,6 +445,7 @@ const handleLogin = async () => {
 		})
 	} finally {
 		isLogging.value = false
+		clearAuthFeedback()
 	}
 }
 
@@ -399,6 +459,7 @@ const handleWechatMiniLogin = async () => {
 
 	// #ifdef MP-WEIXIN
 	isWechatLogging.value = true
+	startAuthFeedback()
 	try {
 		const loginResult = await new Promise((resolve, reject) => {
 			uni.login({
@@ -432,20 +493,21 @@ const handleWechatMiniLogin = async () => {
 		})
 	} finally {
 		isWechatLogging.value = false
+		clearAuthFeedback()
 	}
 	// #endif
 }
 
 const handleHuaweiLogin = async () => {
+	if (!authGate.value.canStart) return
 	if (!isAgreed.value) {
 		requestAgreementFor('huawei')
 		return
 	}
 
 	// #ifdef APP-HARMONY
-	uni.showLoading({
-		title: '正在登录...'
-	})
+	isHuaweiLogging.value = true
+	startAuthFeedback()
 
 	try {
 		const userInfo = await new Promise((resolve, reject) => {
@@ -478,7 +540,6 @@ const handleHuaweiLogin = async () => {
 
 		userStore.login(loginResult)
 		uni.setStorageSync(WELCOME_PAGE_VIEWED_KEY, true)
-		uni.hideLoading()
 
 		if (loginResult.need_bind_phone) {
 			showBindPhoneModal.value = true
@@ -492,11 +553,13 @@ const handleHuaweiLogin = async () => {
 			icon: 'success'
 		})
 	} catch (error) {
-		uni.hideLoading()
 		uni.showToast({
 			title: error.message || '华为登录失败',
 			icon: 'none'
 		})
+	} finally {
+		isHuaweiLogging.value = false
+		clearAuthFeedback()
 	}
 	// #endif
 }
@@ -524,6 +587,7 @@ const handleBindPhoneSuccess = (payload) => {
 
 	if (payload?.action === 'relogin') {
 		userStore.logout()
+		authMode.value = 'phone'
 		formData.phone = payload?.phone || ''
 		formData.code = ''
 		uni.showToast({
@@ -557,6 +621,7 @@ const handleBindPhoneClose = () => {
 }
 
 const showAgreement = (type) => {
+	if (authGate.value.isAuthenticating) return
 	const url = type === 'user'
 		? '/subPages/agreement/userAgreement'
 		: '/subPages/agreement/privacyPolicy'
@@ -568,6 +633,9 @@ onLoad((options) => {
 		isWechatMini: isWechatMiniProgram,
 		requestedMethod: options?.method
 	})
+	formData.phone = options?.phone
+		? decodeURIComponent(options.phone)
+		: ''
 })
 
 onShow(() => {
@@ -586,6 +654,7 @@ onShow(() => {
 
 onUnload(() => {
 	isPageActive.value = false
+	clearAuthFeedback()
 	const visibleRoutes = getCurrentPages().map((page) => page.route)
 	if (shouldClearEntryFunnelAgreementSession({
 		currentRoute: 'pages/login/login',
@@ -604,6 +673,7 @@ onUnload(() => {
 })
 
 onUnmounted(() => {
+	clearAuthFeedback()
 	if (countdownTimer) {
 		clearInterval(countdownTimer)
 		countdownTimer = null
@@ -615,7 +685,7 @@ onUnmounted(() => {
 .login-container {
 	min-height: 100vh;
 	box-sizing: border-box;
-	padding: calc(44rpx + env(safe-area-inset-top)) 40rpx calc(32rpx + env(safe-area-inset-bottom));
+	padding: calc(76rpx + env(safe-area-inset-top)) 40rpx calc(32rpx + env(safe-area-inset-bottom));
 	background:
 		radial-gradient(circle at 88% 5%, rgba(224, 174, 18, 0.18), transparent 28%),
 		linear-gradient(180deg, #fffdf8 0%, #f8f3e9 100%);
@@ -629,7 +699,7 @@ onUnmounted(() => {
 }
 
 .login-content {
-	min-height: calc(100vh - 76rpx - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+	min-height: calc(100vh - 108rpx - env(safe-area-inset-top) - env(safe-area-inset-bottom));
 	display: flex;
 	flex-direction: column;
 }
@@ -638,6 +708,7 @@ onUnmounted(() => {
 	display: flex;
 	align-items: center;
 	gap: 18rpx;
+	margin-top: 112rpx;
 }
 
 .brand-logo {
@@ -681,7 +752,7 @@ onUnmounted(() => {
 }
 
 .hero-section {
-	margin-top: 116rpx;
+	margin-top: 156rpx;
 	display: flex;
 	flex-direction: column;
 }
@@ -780,6 +851,11 @@ onUnmounted(() => {
 	background: #07c160;
 	color: #ffffff;
 	box-shadow: 0 16rpx 30rpx rgba(7, 193, 96, 0.17);
+	transition: opacity 0.2s ease, transform 0.2s ease;
+
+	&.authenticating {
+		animation: auth-pulse 1.4s ease-in-out infinite;
+	}
 
 	&[disabled] {
 		opacity: 0.5;
@@ -796,6 +872,71 @@ onUnmounted(() => {
 
 .phone-login-btn[disabled] {
 	opacity: 0.45;
+}
+
+.authenticating {
+	animation: auth-pulse 1.4s ease-in-out infinite;
+}
+
+.auth-feedback-card {
+	position: relative;
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	width: 100%;
+	padding: 18rpx 20rpx;
+	border: 1rpx solid rgba(201, 151, 0, 0.24);
+	border-radius: 20rpx;
+	background: rgba(255, 250, 232, 0.88);
+	box-sizing: border-box;
+
+	&.is-slow {
+		border-color: rgba(201, 151, 0, 0.5);
+		background: #fff4c9;
+	}
+}
+
+.auth-feedback-progress {
+	position: absolute;
+	top: 0;
+	left: -36%;
+	width: 36%;
+	height: 4rpx;
+	border-radius: 999rpx;
+	background: linear-gradient(90deg, transparent, #e0ae12, transparent);
+	animation: auth-progress 1.2s ease-in-out infinite;
+}
+
+.auth-feedback-dot {
+	width: 16rpx;
+	height: 16rpx;
+	border-radius: 50%;
+	background: #d29d00;
+	box-shadow: 0 0 0 8rpx rgba(210, 157, 0, 0.12);
+	animation: auth-dot 1.2s ease-in-out infinite;
+	flex-shrink: 0;
+}
+
+.auth-feedback-message {
+	color: #604700;
+	font-size: 24rpx;
+	font-weight: 800;
+	line-height: 1.4;
+}
+
+.dark-mode .auth-feedback-card {
+	border-color: rgba(224, 174, 18, 0.3);
+	background: rgba(224, 174, 18, 0.08);
+
+	&.is-slow {
+		border-color: rgba(224, 174, 18, 0.56);
+		background: rgba(224, 174, 18, 0.14);
+	}
+}
+
+.dark-mode .auth-feedback-message {
+	color: #f4d66f;
 }
 
 .dark-mode .phone-login-btn {
@@ -817,6 +958,12 @@ onUnmounted(() => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+}
+
+.agreement-row.disabled,
+.agreement-links.disabled {
+	opacity: 0.45;
+	pointer-events: none;
 }
 
 .checkbox {
@@ -865,6 +1012,34 @@ onUnmounted(() => {
 
 .dark-mode .link {
 	color: #efd476;
+}
+
+@keyframes auth-pulse {
+	0%,
+	100% {
+		opacity: 0.62;
+	}
+	50% {
+		opacity: 0.9;
+	}
+}
+
+@keyframes auth-progress {
+	to {
+		left: 100%;
+	}
+}
+
+@keyframes auth-dot {
+	0%,
+	100% {
+		transform: scale(0.86);
+		opacity: 0.68;
+	}
+	50% {
+		transform: scale(1);
+		opacity: 1;
+	}
 }
 
 .phone-mode {

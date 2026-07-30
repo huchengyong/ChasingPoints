@@ -24,55 +24,59 @@ func buildCurrentMatchInfo(svcCtx *svc.ServiceContext, userId int64, match *mode
 	opponentScore := match.OpponentScore
 	currentFrameMyScore := match.CurrentFrameMyScore
 	currentFrameOpponentScore := match.CurrentFrameOpponentScore
-	opponentName := match.OpponentName
-	opponentAvatar := ""
-	opponentId := int64(0)
+	player1Name := "玩家1"
+	player1Avatar := ""
+	player2Id := int64(0)
+	player2Name := match.OpponentName
+	player2Avatar := ""
+	if player2Name == "" {
+		player2Name = "玩家2"
+	}
+	if svcCtx != nil && svcCtx.UserModel != nil {
+		if player1, err := svcCtx.UserModel.FindById(match.UserId); err == nil && player1 != nil {
+			if player1.Nickname != "" {
+				player1Name = player1.Nickname
+			}
+			player1Avatar = player1.Avatar
+		}
+	}
+	if match.OpponentId != nil {
+		player2Id = *match.OpponentId
+		if svcCtx != nil && svcCtx.UserModel != nil {
+			if player2, err := svcCtx.UserModel.FindById(*match.OpponentId); err == nil && player2 != nil {
+				if player2.Nickname != "" {
+					player2Name = player2.Nickname
+				}
+				player2Avatar = player2.Avatar
+			}
+		}
+	}
+	opponentId := player2Id
+	opponentName := player2Name
+	opponentAvatar := player2Avatar
 	refereeName := ""
+	refereeAvatar := ""
+	refereeJoinedAt := ""
 
 	if capabilities.RefereeBound && svcCtx != nil && svcCtx.UserModel != nil {
 		if referee, err := svcCtx.UserModel.FindById(capabilities.RefereeUserId); err == nil && referee != nil {
 			refereeName = referee.Nickname
+			refereeAvatar = referee.Avatar
 		}
 	}
 
-	if capabilities.ViewerRole == matchViewerRoleReferee {
-		if match.OpponentId != nil {
-			opponentId = *match.OpponentId
-			if svcCtx != nil && svcCtx.UserModel != nil {
-				if user, err := svcCtx.UserModel.FindById(*match.OpponentId); err == nil && user != nil {
-					if user.Nickname != "" {
-						opponentName = user.Nickname
-					}
-					opponentAvatar = user.Avatar
-				}
-			}
-		}
-	} else if isPlayer1 {
-		if match.OpponentId != nil {
-			opponentId = *match.OpponentId
-			if svcCtx != nil && svcCtx.UserModel != nil {
-				if user, err := svcCtx.UserModel.FindById(*match.OpponentId); err == nil && user != nil {
-					if user.Nickname != "" {
-						opponentName = user.Nickname
-					}
-					opponentAvatar = user.Avatar
-				}
-			}
-		}
-	} else {
+	if match.RefereeJoinedAt != nil {
+		refereeJoinedAt = match.RefereeJoinedAt.Format("2006-01-02T15:04:05+08:00")
+	}
+
+	if capabilities.ViewerRole != matchViewerRoleReferee && !isPlayer1 {
 		myScore = match.OpponentScore
 		opponentScore = match.MyScore
 		currentFrameMyScore = match.CurrentFrameOpponentScore
 		currentFrameOpponentScore = match.CurrentFrameMyScore
 		opponentId = match.UserId
-		if svcCtx != nil && svcCtx.UserModel != nil {
-			if user, err := svcCtx.UserModel.FindById(match.UserId); err == nil && user != nil {
-				if user.Nickname != "" {
-					opponentName = user.Nickname
-				}
-				opponentAvatar = user.Avatar
-			}
-		}
+		opponentName = player1Name
+		opponentAvatar = player1Avatar
 	}
 
 	durationSeconds := int64(time.Since(match.MatchTime).Seconds())
@@ -80,18 +84,52 @@ func buildCurrentMatchInfo(svcCtx *svc.ServiceContext, userId int64, match *mode
 		durationSeconds = 0
 	}
 
+	refereeDurationSeconds := int64(0)
+	if match.RefereeJoinedAt != nil {
+		if match.EndTime != nil {
+			refereeDurationSeconds = int64(match.EndTime.Sub(*match.RefereeJoinedAt).Seconds())
+		} else {
+			refereeDurationSeconds = int64(time.Since(*match.RefereeJoinedAt).Seconds())
+		}
+		if refereeDurationSeconds < 0 {
+			refereeDurationSeconds = 0
+		}
+	}
+
+	completedByUserId := resolveCompletedByUserId(match)
+
 	return &types.CurrentMatchInfo{
 		Id:                        match.Id,
 		GameType:                  match.GameType,
 		GameTypeName:              GetGameTypeName(match.GameType),
 		GameMode:                  match.GameMode,
+		MatchMode:                 model.NormalizeMatchMode(match.MatchMode),
+		Visibility:                model.NormalizeMatchVisibility(match.Visibility, match.MatchMode),
+		FinishState:               model.NormalizeFinishState(match.FinishState),
+		FinishRequestedBy:         resolveFinishRequestedBy(match),
 		ViewerRole:                capabilities.ViewerRole,
 		RefereeBound:              capabilities.RefereeBound,
 		RefereeUserId:             capabilities.RefereeUserId,
 		RefereeName:               refereeName,
+		RefereeAvatar:             refereeAvatar,
+		RefereeJoinedAt:           refereeJoinedAt,
+		RefereeDurationSeconds:    refereeDurationSeconds,
+		CompletedByUserId:         completedByUserId,
+		CompletionSource:          resolveCompletionSource(match),
 		CanScore:                  capabilities.CanScore,
 		CanUndo:                   capabilities.CanUndo,
 		CanFinish:                 capabilities.CanFinish,
+		CanRequestFinish:          capabilities.CanRequestFinish,
+		CanConfirmFinish:          capabilities.CanConfirmFinish,
+		CanDisputeFinish:          capabilities.CanDisputeFinish,
+		CanWithdrawFinish:         capabilities.CanWithdrawFinish,
+		LastAction:                buildMatchLastAction(svcCtx, userId, match),
+		Player1Id:                 match.UserId,
+		Player1Name:               player1Name,
+		Player1Avatar:             player1Avatar,
+		Player2Id:                 player2Id,
+		Player2Name:               player2Name,
+		Player2Avatar:             player2Avatar,
 		OpponentId:                opponentId,
 		OpponentName:              opponentName,
 		OpponentAvatar:            opponentAvatar,

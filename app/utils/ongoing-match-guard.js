@@ -7,7 +7,11 @@ const normalizeMatchPayload = (match = {}, fallback = {}) => {
     match_id: normalizedMatchId,
     game_type: Number(match.game_type || fallback.game_type || 3),
     opponent_name: match.opponent_name || fallback.opponent_name || '对手',
-    opponent_avatar: match.opponent_avatar || fallback.opponent_avatar || ''
+    opponent_avatar: match.opponent_avatar || fallback.opponent_avatar || '',
+    opponent_id: Number(match.opponent_id || fallback.opponent_id || 0),
+    match_mode: match.match_mode || fallback.match_mode || 'ranked',
+    visibility: match.visibility || fallback.visibility || 'public',
+    challenge_id: Number(match.challenge_id || fallback.challenge_id || 0)
   }
 }
 
@@ -81,13 +85,14 @@ export const resolveStartMatchGuardAction = ({
   const scannedFallback = {
     game_type: selectedGameType,
     opponent_name: scannedOpponent.nickname || scannedOpponent.opponent_name || '对手',
-    opponent_avatar: scannedOpponent.avatar || scannedOpponent.opponent_avatar || ''
+    opponent_avatar: scannedOpponent.avatar || scannedOpponent.opponent_avatar || '',
+    opponent_id: Number(scannedOpponent.user_id || scannedOpponent.opponent_id || 0)
   }
 
   if (response.action === 'created') {
     return {
       type: 'navigate',
-      match: normalizeMatchPayload({ match_id: response.match_id }, scannedFallback)
+      match: normalizeMatchPayload(response.match || { match_id: response.match_id }, scannedFallback)
     }
   }
 

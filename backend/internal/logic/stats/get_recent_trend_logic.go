@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -48,6 +49,7 @@ func (l *GetRecentTrendLogic) GetRecentTrend(req *types.GetRecentTrendReq) (resp
 	query := l.svcCtx.DB.Table("matches").
 		Select("id, user_id, match_time, result").
 		Where("(user_id = ? OR opponent_id = ?) AND status = 2", userIdInt, userIdInt)
+	query = query.Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", model.MatchModeRanked)
 
 	if req != nil && req.GameType > 0 {
 		query = query.Where("game_type = ?", req.GameType)

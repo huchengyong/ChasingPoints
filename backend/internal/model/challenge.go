@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Challenge struct {
@@ -44,10 +45,23 @@ func (m *ChallengeModel) FindById(id int64) (*Challenge, error) {
 	return &challenge, err
 }
 
+func (m *ChallengeModel) FindByIdForUpdateWithTx(tx *gorm.DB, id int64) (*Challenge, error) {
+	var challenge Challenge
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	err := db.Clauses(clause.Locking{Strength: "UPDATE"}).First(&challenge, id).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &challenge, err
+}
+
 func (m *ChallengeModel) GetPendingByUserId(userId int64) ([]Challenge, error) {
 	now := time.Now()
 	var list []Challenge
-	err := m.db.Where("(to_user_id = ? OR from_user_id = ?) AND status = 0 AND expires_at > ?", userId, userId, now).
+	err := m.db.Where("(to_user_id = ? OR from_user_id = ?) AND ((status = 0 AND expires_at > ?) OR status IN (1, 2, 3))", userId, userId, now).
 		Order("created_at DESC, id DESC").
 		Find(&list).Error
 	return list, err
@@ -66,6 +80,24 @@ func (m *ChallengeModel) Accept(challengeId, userId, matchId int64) error {
 	result := m.db.Model(&Challenge{}).
 		Where("id = ? AND to_user_id = ? AND status = 0", challengeId, userId).
 		Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+func (m *ChallengeModel) LinkAcceptedWithTx(tx *gorm.DB, challengeId, fromUserId, toUserId int64, gameType int, matchId int64) error {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	result := db.Model(&Challenge{}).
+		Where("id = ? AND status = 1 AND match_id IS NULL AND game_type = ? AND ((from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?))",
+			challengeId, gameType, fromUserId, toUserId, toUserId, fromUserId).
+		Updates(map[string]interface{}{"match_id": matchId})
 	if result.Error != nil {
 		return result.Error
 	}

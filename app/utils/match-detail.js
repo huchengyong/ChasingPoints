@@ -47,7 +47,16 @@ export const normalizeMatchDetailPayload = (match = {}, { perspectiveUserId = 0 
       status: pickNumber(match.status) || 1,
       duration_seconds: pickNumber(match.duration_seconds),
       current_round: pickNumber(match.current_round) || 1,
-      total_rounds: pickNumber(match.total_rounds)
+      total_rounds: pickNumber(match.total_rounds),
+      viewer_role: match.viewer_role || '',
+      referee_bound: !!match.referee_bound,
+      referee_user_id: pickNumber(match.referee_user_id),
+      referee_name: match.referee_name || '',
+      referee_avatar: match.referee_avatar || '',
+      referee_joined_at: match.referee_joined_at || '',
+      referee_duration_seconds: pickNumber(match.referee_duration_seconds),
+      completed_by_user_id: pickNumber(match.completed_by_user_id),
+      completion_source: match.completion_source || 'unknown'
     },
     player1Info: {
       name: shouldSwapPerspective

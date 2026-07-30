@@ -5,12 +5,14 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Notification struct {
 	Id        int64     `gorm:"primarykey"`
-	UserId    int64     `gorm:"not null;index"`
-	Type      string    `gorm:"size:30;not null"`
+	UserId    int64     `gorm:"not null;index;uniqueIndex:uk_notifications_user_type_dedupe,priority:1"`
+	Type      string    `gorm:"size:30;not null;uniqueIndex:uk_notifications_user_type_dedupe,priority:2"`
+	DedupeKey *string   `gorm:"size:128;uniqueIndex:uk_notifications_user_type_dedupe,priority:3"`
 	Title     string    `gorm:"size:200;not null"`
 	Content   string    `gorm:"size:500"`
 	Data      *string   `gorm:"type:json"`
@@ -94,6 +96,40 @@ func (m *NotificationModel) Delete(userId, notificationId int64) error {
 
 func (m *NotificationModel) Create(notification *Notification) error {
 	return m.db.Create(notification).Error
+}
+
+func (m *NotificationModel) CreateIfAbsent(notification *Notification) (bool, error) {
+	return m.CreateIfAbsentWithTx(nil, notification)
+}
+
+func (m *NotificationModel) CreateIfAbsentWithTx(tx *gorm.DB, notification *Notification) (bool, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	result := db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{
+			{Name: "user_id"},
+			{Name: "type"},
+			{Name: "dedupe_key"},
+		},
+		DoNothing: true,
+	}).Create(notification)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
+}
+
+func (m *NotificationModel) FindLatestUnreadByType(userId int64, notificationType string) (*Notification, error) {
+	var notification Notification
+	err := m.db.Where("user_id = ? AND type = ? AND is_read = 0", userId, notificationType).
+		Order("created_at DESC, id DESC").
+		First(&notification).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &notification, err
 }
 
 func (m *NotificationModel) DeleteFriendRequestNotification(userId, requestId int64, legacyContent string) error {

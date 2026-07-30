@@ -76,8 +76,9 @@ const getTypeIcon = (type) => {
 		friend_request: '👥',
 		follow: '⭐',
 		match_result: '🏁',
-		rank_change: '📊',
-		system: '📢'
+			rank_change: '📊',
+			season_rollover: '🔄',
+			system: '📢'
 	}
 	return map[type] || '🔔'
 }
@@ -99,7 +100,7 @@ const parseNotificationData = (data) => {
 
 const navigateByNotification = (item) => {
 	const data = parseNotificationData(item.data)
-	const target = data.target || ''
+	const target = data.target || data.url || ''
 
 	if (target === '/subPages/match/matchResult' && data.match_id) {
 		uni.navigateTo({ url: `${target}?match_id=${data.match_id}&from=history` })
@@ -353,4 +354,45 @@ onPullDownRefresh(() => {
 		font-size: 26rpx;
 		color: #c69200;
 	}
+
+.notification-page.dark-mode {
+	background: #141109;
+
+	.top-bar,
+	.notification-list .notification-item {
+		background: #1e180d;
+	}
+
+	.top-bar {
+		border-bottom-color: #3a2e16;
+	}
+
+	.notification-list .notification-item {
+		&.unread {
+			background: #2a2110;
+		}
+
+		.item-icon.type-system {
+			background: #3a2e16;
+		}
+
+		.item-content .item-title {
+			color: #fff7e1;
+		}
+
+		.item-content .item-body {
+			color: #d7c89b;
+		}
+
+		.item-content .item-time {
+			color: #9f926e;
+		}
+	}
+
+	.page-subtitle,
+	.empty-text,
+	.empty-hint {
+		color: #9f926e;
+	}
+}
 </style>

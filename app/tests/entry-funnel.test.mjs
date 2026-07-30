@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import * as entryFunnel from '../utils/entry-funnel.js'
 
 import {
   canAttemptLogin,
@@ -12,6 +13,7 @@ import {
   maskPhone,
   resolveAlternateLoginMode,
   resolveAuthenticationGate,
+  resolveAuthenticationPhase,
   resolveEntryFunnelAgreementState,
   resolveLoginMode,
   resolvePostLoginNavigation,
@@ -56,11 +58,50 @@ test('resolveAuthenticationGate blocks competing auth actions and ignores result
     canLeave: false,
     shouldHandleResult: true
   })
+  assert.deepEqual(resolveAuthenticationGate({ isHuaweiLogging: true }), {
+    isAuthenticating: true,
+    canStart: false,
+    canLeave: false,
+    shouldHandleResult: true
+  })
   assert.deepEqual(resolveAuthenticationGate({ isPageActive: false }), {
     isAuthenticating: false,
     canStart: false,
     canLeave: false,
     shouldHandleResult: false
+  })
+})
+
+test('resolveAuthenticationPhase escalates only active requests after the slow threshold', () => {
+  assert.equal(resolveAuthenticationPhase(), 'idle')
+  assert.equal(resolveAuthenticationPhase({ isAuthenticating: false, elapsedMs: 3000 }), 'idle')
+  assert.equal(resolveAuthenticationPhase({ isAuthenticating: true, elapsedMs: 0 }), 'pending')
+  assert.equal(resolveAuthenticationPhase({ isAuthenticating: true, elapsedMs: 2999 }), 'pending')
+  assert.equal(resolveAuthenticationPhase({ isAuthenticating: true, elapsedMs: 3000 }), 'slow')
+})
+
+test('resolveAuthenticationFeedback keeps pending feedback visible and upgrades slow requests', () => {
+  assert.equal(typeof entryFunnel.resolveAuthenticationFeedback, 'function')
+  assert.deepEqual(entryFunnel.resolveAuthenticationFeedback(), {
+    visible: false,
+    phase: 'idle',
+    message: ''
+  })
+  assert.deepEqual(entryFunnel.resolveAuthenticationFeedback({
+    isAuthenticating: true,
+    isSlow: false
+  }), {
+    visible: true,
+    phase: 'pending',
+    message: '追分正在为您完成登录'
+  })
+  assert.deepEqual(entryFunnel.resolveAuthenticationFeedback({
+    isAuthenticating: true,
+    isSlow: true
+  }), {
+    visible: true,
+    phase: 'slow',
+    message: '网络有些慢，追分竭尽全力为您继续尝试中'
   })
 })
 
@@ -105,6 +146,18 @@ test('resolveWelcomeActions shows Huawei login on HarmonyOS', () => {
   assert.equal(result.secondaryText, '华为账号登录')
   assert.equal(result.primaryDisabled, false)
   assert.equal(result.secondaryDisabled, false)
+})
+
+test('resolveWelcomeActions makes a slow WeChat request visible without changing idle actions', () => {
+  const result = resolveWelcomeActions({
+    isHarmony: false,
+    isWechatMini: true,
+    isLogging: true,
+    isSlowLogging: true
+  })
+
+  assert.equal(result.primaryText, '网络稍慢，正在继续…')
+  assert.equal(result.primaryDisabled, true)
 })
 
 test('isPhoneValid accepts mainland mobile numbers', () => {

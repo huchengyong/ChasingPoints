@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -32,6 +33,9 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 		l.Logger.Errorf("对局不存在: %v", err)
 		return &types.GetPublicMatchDetailResp{Success: false}, nil
 	}
+	if model.NormalizeMatchVisibility(match.Visibility, match.MatchMode) != model.MatchVisibilityPublic {
+		return &types.GetPublicMatchDetailResp{Success: false}, nil
+	}
 
 	// 查询创建者(player1)信息
 	player1Name := "玩家1"
@@ -50,6 +54,36 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 		if player2, _ := l.svcCtx.UserModel.FindById(*match.OpponentId); player2 != nil {
 			player2Name = player2.Nickname
 			player2Avatar = player2.Avatar
+		}
+	}
+
+	// 裁判信息（仅公开对局可见）
+	refereeBound := match.RefereeUserId != nil && *match.RefereeUserId > 0
+	refereeUserId := int64(0)
+	refereeName := ""
+	refereeAvatar := ""
+	refereeJoinedAt := ""
+	if refereeBound {
+		refereeUserId = *match.RefereeUserId
+		if referee, _ := l.svcCtx.UserModel.FindById(*match.RefereeUserId); referee != nil {
+			refereeName = referee.Nickname
+			refereeAvatar = referee.Avatar
+		}
+		if match.RefereeJoinedAt != nil {
+			refereeJoinedAt = match.RefereeJoinedAt.Format("2006-01-02T15:04:05+08:00")
+		}
+	}
+	completedByUserId, completionSource := resolvePublicCompletionAttribution(match)
+
+	refereeDurationSeconds := int64(0)
+	if refereeBound && match.RefereeJoinedAt != nil {
+		if match.EndTime != nil {
+			refereeDurationSeconds = int64(match.EndTime.Sub(*match.RefereeJoinedAt).Seconds())
+		} else {
+			refereeDurationSeconds = int64(time.Since(*match.RefereeJoinedAt).Seconds())
+		}
+		if refereeDurationSeconds < 0 {
+			refereeDurationSeconds = 0
 		}
 	}
 
@@ -93,6 +127,9 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 		Match: &types.PublicMatchDetailData{
 			Id:                       match.Id,
 			GameType:                 match.GameType,
+			MatchMode:                model.NormalizeMatchMode(match.MatchMode),
+			Visibility:               model.NormalizeMatchVisibility(match.Visibility, match.MatchMode),
+			FinishState:              model.NormalizeFinishState(match.FinishState),
 			Status:                   match.Status,
 			ServerRevision:           match.SyncRevision,
 			Player1Id:                match.UserId,
@@ -101,6 +138,15 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 			Player2Id:                player2Id,
 			Player2Name:              player2Name,
 			Player2Avatar:            player2Avatar,
+			RefereeBound:             refereeBound,
+			RefereeUserId:            refereeUserId,
+			RefereeName:              refereeName,
+			RefereeAvatar:            refereeAvatar,
+			RefereeJoinedAt:          refereeJoinedAt,
+			RefereeDurationSeconds:   refereeDurationSeconds,
+			CompletedByUserId:        completedByUserId,
+			CompletionSource:         completionSource,
+			ViewerRole:               "spectator",
 			Player1Score:             match.MyScore,
 			Player2Score:             match.OpponentScore,
 			CurrentFramePlayer1Score: match.CurrentFrameMyScore,
@@ -113,4 +159,18 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 			CreatedAt:                match.CreatedAt.Format("2006-01-02 15:04:05"),
 		},
 	}, nil
+}
+
+func resolvePublicCompletionAttribution(match *model.Match) (int64, string) {
+	if match == nil || match.Status != 2 {
+		return 0, model.CompletionSourceUnknown
+	}
+	completedByUserId := int64(0)
+	if match.CompletedByUserId != nil {
+		completedByUserId = *match.CompletedByUserId
+	}
+	if match.CompletionSource == "" {
+		return completedByUserId, model.CompletionSourceUnknown
+	}
+	return completedByUserId, match.CompletionSource
 }

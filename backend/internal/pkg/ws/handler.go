@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -45,6 +46,25 @@ func MatchWSHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			if err != nil {
 				logx.Errorf("WebSocket token验证失败: %v", err)
 				http.Error(w, "invalid token", http.StatusUnauthorized)
+				return
+			}
+		}
+
+		match, err := svcCtx.MatchModel.FindById(matchId)
+		if err != nil || match == nil {
+			http.Error(w, "match not found", http.StatusNotFound)
+			return
+		}
+		if model.NormalizeMatchVisibility(match.Visibility, match.MatchMode) == model.MatchVisibilityPrivate {
+			if token == "" {
+				http.Error(w, "missing token", http.StatusUnauthorized)
+				return
+			}
+			isParticipant := match.UserId == userId ||
+				(match.OpponentId != nil && *match.OpponentId == userId) ||
+				(match.RefereeUserId != nil && *match.RefereeUserId == userId)
+			if !isParticipant {
+				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}
 		}

@@ -59,11 +59,22 @@ func TestProgressServiceAggregatesSumUnlocksAndGrantsTitleOnce(t *testing.T) {
 	mustAppendProgressEvent(t, service, AchievementProgressEventInput{
 		UserId: 1001, SourceType: SourceTypeMatch, SourceId: 3002, GameType: 1, MetricKey: MetricWinsTotal, MetricValue: 6,
 	}, true)
-	if err := service.RefreshUserAchievements(1001); err != nil {
+	results, err := service.RefreshUserAchievementsWithSource(1001, SourceTypeMatch, 3002)
+	if err != nil {
 		t.Fatalf("refresh user achievements: %v", err)
 	}
-	if err := service.RefreshUserAchievements(1001); err != nil {
+	if len(results) != 1 {
+		t.Fatalf("expected one newly unlocked achievement, got %d", len(results))
+	}
+	if results[0].Achievement.Id != 1 || results[0].RewardTitle == nil || results[0].RewardTitle.TitleKey != "title_wins_10" {
+		t.Fatalf("unexpected unlock result: %+v", results[0])
+	}
+	retryResults, err := service.RefreshUserAchievementsWithSource(1001, SourceTypeMatch, 3999)
+	if err != nil {
 		t.Fatalf("refresh user achievements again: %v", err)
+	}
+	if len(retryResults) != 0 {
+		t.Fatalf("expected retry to return no new unlocks, got %d", len(retryResults))
 	}
 
 	var ua model.UserAchievement
@@ -75,6 +86,9 @@ func TestProgressServiceAggregatesSumUnlocksAndGrantsTitleOnce(t *testing.T) {
 	}
 	if ua.Unlocked != 1 || ua.UnlockedAt == nil {
 		t.Fatalf("expected unlocked achievement with unlocked_at, got unlocked=%d unlocked_at=%v", ua.Unlocked, ua.UnlockedAt)
+	}
+	if ua.UnlockedSourceType != SourceTypeMatch || ua.UnlockedSourceId != 3002 {
+		t.Fatalf("expected first unlock source match/3002, got %s/%d", ua.UnlockedSourceType, ua.UnlockedSourceId)
 	}
 	if ua.RewardGranted != 1 || ua.RewardGrantedAt == nil {
 		t.Fatalf("expected granted reward with timestamp, got granted=%d granted_at=%v", ua.RewardGranted, ua.RewardGrantedAt)
@@ -96,6 +110,70 @@ func TestProgressServiceAggregatesSumUnlocksAndGrantsTitleOnce(t *testing.T) {
 	}
 	if title.GrantedByAchievementId == nil || *title.GrantedByAchievementId != 1 {
 		t.Fatalf("expected granted_by_achievement_id 1, got %v", title.GrantedByAchievementId)
+	}
+}
+
+func TestProgressServiceReturnsMultipleUnlocksWithPairedTitles(t *testing.T) {
+	svcCtx := newAchievementProgressTestSvc(t)
+	service := NewAchievementProgressService(svcCtx)
+	definitions := []model.Achievement{
+		{
+			Id:              4,
+			Key:             "first_match",
+			Name:            "初次登场",
+			Category:        "match",
+			GameType:        3,
+			MetricKey:       MetricMatchesTotal,
+			ProgressMode:    ProgressModeSum,
+			Threshold:       1,
+			RewardTitleKey:  "title_first_match",
+			RewardTitleName: "初次登场",
+			Sort:            1,
+			Status:          1,
+		},
+		{
+			Id:              5,
+			Key:             "match_rookie",
+			Name:            "新锐球手",
+			Category:        "match",
+			GameType:        3,
+			MetricKey:       MetricMatchesTotal,
+			ProgressMode:    ProgressModeSum,
+			Threshold:       1,
+			RewardTitleKey:  "title_match_rookie",
+			RewardTitleName: "新锐球手",
+			Sort:            2,
+			Status:          1,
+		},
+	}
+	for i := range definitions {
+		seedAchievementProgressDef(t, svcCtx, &definitions[i])
+	}
+
+	mustAppendProgressEvent(t, service, AchievementProgressEventInput{
+		UserId: 1004, SourceType: SourceTypeMatch, SourceId: 6001, GameType: 3, MetricKey: MetricMatchesTotal, MetricValue: 1,
+	}, true)
+	results, err := service.RefreshUserAchievementsWithSource(1004, SourceTypeMatch, 6001)
+	if err != nil {
+		t.Fatalf("refresh user achievements with source: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected two newly unlocked achievements, got %d", len(results))
+	}
+	for index, result := range results {
+		want := definitions[index]
+		if result.Achievement.Id != want.Id {
+			t.Fatalf("expected result %d achievement %d, got %d", index, want.Id, result.Achievement.Id)
+		}
+		if result.UserAchievement.UnlockedSourceType != SourceTypeMatch || result.UserAchievement.UnlockedSourceId != 6001 {
+			t.Fatalf("unexpected source for achievement %d: %s/%d", want.Id, result.UserAchievement.UnlockedSourceType, result.UserAchievement.UnlockedSourceId)
+		}
+		if result.RewardTitle == nil || result.RewardTitle.TitleName != want.RewardTitleName {
+			t.Fatalf("expected paired title %s, got %+v", want.RewardTitleName, result.RewardTitle)
+		}
+		if result.RewardTitle.GrantedByAchievementId == nil || *result.RewardTitle.GrantedByAchievementId != want.Id {
+			t.Fatalf("expected title paired to achievement %d, got %+v", want.Id, result.RewardTitle.GrantedByAchievementId)
+		}
 	}
 }
 

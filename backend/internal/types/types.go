@@ -250,6 +250,9 @@ type AdminMatchInfo struct {
 	Id            int64  `json:"id"`
 	GameType      int    `json:"game_type"`
 	GameTypeName  string `json:"game_type_name"`
+	MatchMode     string `json:"match_mode,optional"`
+	Visibility    string `json:"visibility,optional"`
+	FinishState   string `json:"finish_state,optional"`
 	Player1Name   string `json:"player1_name"`
 	Player2Name   string `json:"player2_name"`
 	MyScore       int    `json:"my_score"`
@@ -322,6 +325,9 @@ type AdminRecentMatch struct {
 	Id            int64  `json:"id"`
 	GameType      int    `json:"game_type"`
 	GameTypeName  string `json:"game_type_name"`
+	MatchMode     string `json:"match_mode,optional"`
+	Visibility    string `json:"visibility,optional"`
+	FinishState   string `json:"finish_state,optional"`
 	Player1Name   string `json:"player1_name"`
 	Player2Name   string `json:"player2_name"`
 	MyScore       int    `json:"my_score"`
@@ -581,7 +587,7 @@ type AdminVenueRewardConfigUpdateReq struct {
 	Enabled              bool   `json:"enabled"`
 	PopupEnabled         bool   `json:"popup_enabled"`
 	RewardDays           int    `json:"reward_days"`
-	NewUserWindowDays    int    `json:"new_user_window_days"`
+	NewUserWindowDays    int    `json:"new_user_window_days,optional"`
 	WelcomeRewardEnabled bool   `json:"welcome_reward_enabled"`
 	WelcomeRewardDays    int    `json:"welcome_reward_days"`
 	StartAt              string `json:"start_at,optional"`
@@ -643,6 +649,7 @@ type CancelMatchReq struct {
 
 type ChallengeInfo struct {
 	Id           int64  `json:"id"`
+	MatchId      int64  `json:"match_id,optional"`
 	FromUserId   int64  `json:"from_user_id"`
 	FromNickname string `json:"from_nickname"`
 	FromAvatar   string `json:"from_avatar"`
@@ -739,29 +746,49 @@ type CreateVenueResp struct {
 }
 
 type CurrentMatchInfo struct {
-	Id                        int64  `json:"id"`
-	GameType                  int    `json:"game_type"`
-	GameTypeName              string `json:"game_type_name"`
-	GameMode                  string `json:"game_mode"`
-	ViewerRole                string `json:"viewer_role,optional"`
-	RefereeBound              bool   `json:"referee_bound,optional"`
-	RefereeUserId             int64  `json:"referee_user_id,optional"`
-	RefereeName               string `json:"referee_name,optional"`
-	CanScore                  bool   `json:"can_score,optional"`
-	CanUndo                   bool   `json:"can_undo,optional"`
-	CanFinish                 bool   `json:"can_finish,optional"`
-	OpponentId                int64  `json:"opponent_id,optional"`
-	OpponentName              string `json:"opponent_name"`
-	OpponentAvatar            string `json:"opponent_avatar,optional"`
-	MyScore                   int    `json:"my_score"`
-	OpponentScore             int    `json:"opponent_score"`
-	CurrentFrameStarted       bool   `json:"current_frame_started,optional"`
-	CurrentFrameMyScore       int    `json:"current_frame_my_score,optional"`
-	CurrentFrameOpponentScore int    `json:"current_frame_opponent_score,optional"`
-	CurrentRound              int    `json:"current_round"`
-	ServerRevision            int64  `json:"server_revision"`
-	MatchTime                 string `json:"match_time"`
-	DurationSeconds           int64  `json:"duration_seconds"` // 对局已持续秒数
+	Id                        int64            `json:"id"`
+	GameType                  int              `json:"game_type"`
+	GameTypeName              string           `json:"game_type_name"`
+	GameMode                  string           `json:"game_mode"`
+	MatchMode                 string           `json:"match_mode,optional"`
+	Visibility                string           `json:"visibility,optional"`
+	FinishState               string           `json:"finish_state,optional"`
+	FinishRequestedBy         int64            `json:"finish_requested_by,optional"`
+	ViewerRole                string           `json:"viewer_role,optional"`
+	RefereeBound              bool             `json:"referee_bound,optional"`
+	RefereeUserId             int64            `json:"referee_user_id,optional"`
+	RefereeName               string           `json:"referee_name,optional"`
+	RefereeAvatar             string           `json:"referee_avatar,optional"`
+	RefereeJoinedAt           string           `json:"referee_joined_at,optional"`
+	CompletedByUserId         int64            `json:"completed_by_user_id,optional"`
+	CompletionSource          string           `json:"completion_source,optional"`
+	CanScore                  bool             `json:"can_score,optional"`
+	CanUndo                   bool             `json:"can_undo,optional"`
+	CanFinish                 bool             `json:"can_finish,optional"`
+	CanRequestFinish          bool             `json:"can_request_finish,optional"`
+	CanConfirmFinish          bool             `json:"can_confirm_finish,optional"`
+	CanDisputeFinish          bool             `json:"can_dispute_finish,optional"`
+	CanWithdrawFinish         bool             `json:"can_withdraw_finish,optional"`
+	LastAction                *MatchLastAction `json:"last_action,optional"`
+	Player1Id                 int64            `json:"player1_id"`
+	Player1Name               string           `json:"player1_name"`
+	Player1Avatar             string           `json:"player1_avatar"`
+	Player2Id                 int64            `json:"player2_id"`
+	Player2Name               string           `json:"player2_name"`
+	Player2Avatar             string           `json:"player2_avatar"`
+	OpponentId                int64            `json:"opponent_id,optional"`
+	OpponentName              string           `json:"opponent_name"`
+	OpponentAvatar            string           `json:"opponent_avatar,optional"`
+	MyScore                   int              `json:"my_score"`
+	OpponentScore             int              `json:"opponent_score"`
+	CurrentFrameStarted       bool             `json:"current_frame_started,optional"`
+	CurrentFrameMyScore       int              `json:"current_frame_my_score,optional"`
+	CurrentFrameOpponentScore int              `json:"current_frame_opponent_score,optional"`
+	CurrentRound              int              `json:"current_round"`
+	ServerRevision            int64            `json:"server_revision"`
+	MatchTime                 string           `json:"match_time"`
+	DurationSeconds           int64            `json:"duration_seconds"`                  // 对局已持续秒数
+	RefereeDurationSeconds    int64            `json:"referee_duration_seconds,optional"` // 裁判执裁时长
 }
 
 type DeleteFriendReq struct {
@@ -777,7 +804,7 @@ type DurationStats struct {
 
 type EndRoundReq struct {
 	MatchId        int64  `json:"match_id"`
-	Winner         int    `json:"winner"`                   // 1=我 2=对手
+	Winner         int    `json:"winner"`                   // 1=选手1 2=选手2
 	WinType        string `json:"win_type,optional"`        // 获胜方式
 	Score          int    `json:"score,optional,default=1"` // 获胜得分，默认1分
 	ClientActionId string `json:"client_action_id"`
@@ -879,6 +906,26 @@ type FavoriteVenueRewardStatusResp struct {
 	RejectReason       string `json:"reject_reason,optional"`
 }
 
+type FinishMatchActionReq struct {
+	MatchId        int64  `json:"match_id"`
+	ClientActionId string `json:"client_action_id"`
+	BaseRevision   int64  `json:"base_revision"`
+}
+
+type FinishMatchActionResp struct {
+	Accepted          bool              `json:"accepted"`
+	Success           bool              `json:"success"`
+	Action            string            `json:"action,optional"`
+	Message           string            `json:"message,optional"`
+	CompletedByUserId int64             `json:"completed_by_user_id,optional"`
+	CompletionSource  string            `json:"completion_source,optional"`
+	ClientActionId    string            `json:"client_action_id,optional"`
+	ServerRevision    int64             `json:"server_revision"`
+	FinishState       string            `json:"finish_state,optional"`
+	FinishRequestedBy int64             `json:"finish_requested_by,optional"`
+	Snapshot          MatchSyncSnapshot `json:"snapshot"`
+}
+
 type FinishMatchReq struct {
 	MatchId        int64  `json:"match_id"`
 	Remark         string `json:"remark,optional"`
@@ -887,14 +934,18 @@ type FinishMatchReq struct {
 }
 
 type FinishMatchResp struct {
-	Accepted       bool              `json:"accepted"`
-	Success        bool              `json:"success"`
-	Result         int               `json:"result"` // 1=胜利 2=失败 3=平局
-	ClientActionId string            `json:"client_action_id,optional"`
-	ServerRevision int64             `json:"server_revision"`
-	Snapshot       MatchSyncSnapshot `json:"snapshot"`
-	MyScore        int               `json:"my_score"`
-	OpponentScore  int               `json:"opponent_score"`
+	Accepted          bool              `json:"accepted"`
+	Success           bool              `json:"success"`
+	Message           string            `json:"message,optional"`
+	ViewerRole        string            `json:"viewer_role,optional"`
+	CompletedByUserId int64             `json:"completed_by_user_id,optional"`
+	CompletionSource  string            `json:"completion_source,optional"`
+	Result            int               `json:"result"` // 1=胜利 2=失败 3=平局
+	ClientActionId    string            `json:"client_action_id,optional"`
+	ServerRevision    int64             `json:"server_revision"`
+	Snapshot          MatchSyncSnapshot `json:"snapshot"`
+	MyScore           int               `json:"my_score"`
+	OpponentScore     int               `json:"opponent_score"`
 }
 
 type FollowReq struct {
@@ -1029,6 +1080,26 @@ type GetGlossaryResp struct {
 	List    []GlossaryItemInfo `json:"list"`
 }
 
+type GetHonorWallReq struct {
+	UserId          int64 `form:"user_id,optional"`
+	GameType        int   `form:"game_type,optional,default=3"`
+	HistorySeasonId int64 `form:"history_season_id,optional"`
+	HistoryPage     int   `form:"history_page,optional,default=1"`
+	HistoryPageSize int   `form:"history_page_size,optional,default=20"`
+}
+
+type GetHonorWallResp struct {
+	Success            bool                 `json:"success"`
+	ViewerScope        string               `json:"viewer_scope"`
+	Profile            HonorWallProfile     `json:"profile"`
+	EquippedTitle      *TitleInfo           `json:"equipped_title,optional"`
+	Summary            HonorWallSummary     `json:"summary"`
+	RecentHonors       []HonorItem          `json:"recent_honors"`
+	CareerAchievements []AchievementDef     `json:"career_achievements"`
+	CurrentSeason      *HonorWallSeasonInfo `json:"current_season,optional"`
+	History            HonorWallHistory     `json:"history"`
+}
+
 type GetLeaderboardReq struct {
 	GameType int `form:"game_type,optional,default=3"`
 	Page     int `form:"page,default=1"`
@@ -1074,6 +1145,17 @@ type GetMatchRefereeQRCodeResp struct {
 	Success          bool   `json:"success"`
 	QrcodeData       string `json:"qrcode_data"`
 	ExpiresInSeconds int64  `json:"expires_in_seconds"`
+}
+
+type GetMatchRewardSummaryReq struct {
+	MatchId int64 `form:"match_id"`
+}
+
+type GetMatchRewardSummaryResp struct {
+	Success bool              `json:"success"`
+	Status  string            `json:"status"`
+	Message string            `json:"message,optional"`
+	List    []MatchRewardItem `json:"list"`
 }
 
 type GetMatchShareDataReq struct {
@@ -1416,6 +1498,11 @@ type GetUserRankInfoResp struct {
 	RankInfo *RankInfo `json:"rank_info"`
 }
 
+type GetUserRankInfosResp struct {
+	Success   bool               `json:"success"`
+	RankInfos []UserRankInfoItem `json:"rank_infos"`
+}
+
 type GetUserReputationResp struct {
 	Success    bool   `json:"success"`
 	Score      int    `json:"score"`
@@ -1523,6 +1610,49 @@ type HandleFriendRequestReq struct {
 	RequestId int64 `json:"request_id"`
 }
 
+type HonorItem struct {
+	Id              int64  `json:"id"`
+	Type            string `json:"type"`
+	Name            string `json:"name"`
+	Description     string `json:"description,optional"`
+	Icon            string `json:"icon,optional"`
+	SourceType      string `json:"source_type"`
+	SourceRefId     int64  `json:"source_ref_id,optional"`
+	SourceRefName   string `json:"source_ref_name,optional"`
+	RewardTitleName string `json:"reward_title_name,optional"`
+	EarnedAt        string `json:"earned_at"`
+}
+
+type HonorWallHistory struct {
+	Total            int64                 `json:"total"`
+	Honors           []HonorItem           `json:"honors"`
+	ChallengeSeason  *HonorWallSeasonInfo  `json:"challenge_season,optional"`
+	ChallengeRecords []SeasonChallengeInfo `json:"challenge_records"`
+}
+
+type HonorWallProfile struct {
+	UserId   int64  `json:"user_id"`
+	Nickname string `json:"nickname"`
+	Avatar   string `json:"avatar"`
+}
+
+type HonorWallSeasonInfo struct {
+	SeasonId   int64                 `json:"season_id"`
+	SeasonName string                `json:"season_name"`
+	StartDate  string                `json:"start_date"`
+	EndDate    string                `json:"end_date"`
+	Status     int                   `json:"status"`
+	GameType   int                   `json:"game_type"`
+	Challenges []SeasonChallengeInfo `json:"challenges"`
+}
+
+type HonorWallSummary struct {
+	CareerUnlocked   int `json:"career_unlocked"`
+	CareerTotal      int `json:"career_total"`
+	SeasonHonors     int `json:"season_honors"`
+	TournamentHonors int `json:"tournament_honors"`
+}
+
 type JoinMatchRefereeReq struct {
 	MatchId   int64  `json:"match_id"`
 	JoinToken string `json:"join_token"`
@@ -1589,7 +1719,14 @@ type MatchAchievement struct {
 
 type MatchDetailData struct {
 	Id                            int64              `json:"id"`
+	Player1Id                     int64              `json:"player1_id"`
+	Player2Id                     int64              `json:"player2_id"`
+	OpponentId                    int64              `json:"opponent_id,optional"`
 	GameType                      int                `json:"game_type"`
+	MatchMode                     string             `json:"match_mode,optional"`
+	Visibility                    string             `json:"visibility,optional"`
+	FinishState                   string             `json:"finish_state,optional"`
+	FinishRequestedBy             int64              `json:"finish_requested_by,optional"`
 	Status                        int                `json:"status"` // 1=进行中 2=已完成 3=已取消
 	ServerRevision                int64              `json:"server_revision"`
 	IsPlayer1                     bool               `json:"is_player1"` // 当前用户是否是创建者(用于视角判断)
@@ -1597,9 +1734,19 @@ type MatchDetailData struct {
 	RefereeBound                  bool               `json:"referee_bound,optional"`
 	RefereeUserId                 int64              `json:"referee_user_id,optional"`
 	RefereeName                   string             `json:"referee_name,optional"`
+	RefereeAvatar                 string             `json:"referee_avatar,optional"`
+	RefereeJoinedAt               string             `json:"referee_joined_at,optional"`
+	RefereeDurationSeconds        int64              `json:"referee_duration_seconds,optional"`
+	CompletedByUserId             int64              `json:"completed_by_user_id,optional"`
+	CompletionSource              string             `json:"completion_source,optional"`
 	CanScore                      bool               `json:"can_score,optional"`
 	CanUndo                       bool               `json:"can_undo,optional"`
 	CanFinish                     bool               `json:"can_finish,optional"`
+	CanRequestFinish              bool               `json:"can_request_finish,optional"`
+	CanConfirmFinish              bool               `json:"can_confirm_finish,optional"`
+	CanDisputeFinish              bool               `json:"can_dispute_finish,optional"`
+	CanWithdrawFinish             bool               `json:"can_withdraw_finish,optional"`
+	LastAction                    *MatchLastAction   `json:"last_action,optional"`
 	MyScore                       int                `json:"my_score"`       // 从当前用户视角的分数
 	OpponentScore                 int                `json:"opponent_score"` // 从当前用户视角的对手分数
 	MyName                        string             `json:"my_name"`
@@ -1629,10 +1776,18 @@ type MatchDetailData struct {
 
 type MatchFoulReq struct {
 	MatchId        int64  `json:"match_id"`
-	Actor          int    `json:"actor"`          // 犯规方
+	Actor          int    `json:"actor"`          // 犯规方：1=选手1 2=选手2
 	Score          int    `json:"score,optional"` // 犯规加分，默认1
 	ClientActionId string `json:"client_action_id"`
 	BaseRevision   int64  `json:"base_revision"`
+}
+
+type MatchLastAction struct {
+	ActionType     string `json:"action_type,optional"`
+	Actor          int    `json:"actor,optional"`
+	ScoreChange    int    `json:"score_change,optional"`
+	ServerRevision int64  `json:"server_revision,optional"`
+	Description    string `json:"description,optional"`
 }
 
 type MatchListItem struct {
@@ -1640,6 +1795,9 @@ type MatchListItem struct {
 	OpponentId     int64  `json:"opponent_id"` // 对手ID（注册用户才有）
 	GameType       int    `json:"game_type"`
 	GameTypeName   string `json:"game_type_name"`
+	MatchMode      string `json:"match_mode,optional"`
+	Visibility     string `json:"visibility,optional"`
+	FinishState    string `json:"finish_state,optional"`
 	OpponentName   string `json:"opponent_name"`
 	OpponentAvatar string `json:"opponent_avatar"`
 	MyScore        int    `json:"my_score"`
@@ -1661,9 +1819,20 @@ type MatchListResp struct {
 	List    []MatchListItem `json:"list"`
 }
 
+type MatchRewardItem struct {
+	AchievementId   int64  `json:"achievement_id"`
+	AchievementKey  string `json:"achievement_key"`
+	AchievementName string `json:"achievement_name"`
+	Description     string `json:"description"`
+	Icon            string `json:"icon"`
+	RewardTitleId   int64  `json:"reward_title_id,optional"`
+	RewardTitleName string `json:"reward_title_name,optional"`
+	UnlockedAt      string `json:"unlocked_at"`
+}
+
 type MatchScoreReq struct {
 	MatchId        int64  `json:"match_id"`
-	Actor          int    `json:"actor"` // 1=我 2=对手
+	Actor          int    `json:"actor"` // 1=选手1 2=选手2
 	Score          int    `json:"score"` // 加的分数
 	ClientActionId string `json:"client_action_id"`
 	BaseRevision   int64  `json:"base_revision"`
@@ -1714,28 +1883,42 @@ type MatchSummaryItem struct {
 }
 
 type MatchSyncSnapshot struct {
-	MatchId                       int64  `json:"match_id"`
-	Status                        int    `json:"status"`
-	ServerRevision                int64  `json:"server_revision"`
-	ViewerRole                    string `json:"viewer_role,optional"`
-	RefereeBound                  bool   `json:"referee_bound,optional"`
-	RefereeUserId                 int64  `json:"referee_user_id,optional"`
-	RefereeName                   string `json:"referee_name,optional"`
-	CanScore                      bool   `json:"can_score,optional"`
-	CanUndo                       bool   `json:"can_undo,optional"`
-	CanFinish                     bool   `json:"can_finish,optional"`
-	MyScore                       int    `json:"my_score"`
-	OpponentScore                 int    `json:"opponent_score"`
-	CurrentFrameStarted           bool   `json:"current_frame_started,optional"`
-	CurrentFrameMyScore           int    `json:"current_frame_my_score,optional"`
-	CurrentFrameOpponentScore     int    `json:"current_frame_opponent_score,optional"`
-	CurrentRound                  int    `json:"current_round"`
-	TotalRounds                   int    `json:"total_rounds"`
-	RedBallCount                  int    `json:"red_ball_count,optional"`
-	SnookerClearanceStarted       bool   `json:"snooker_clearance_started,optional"`
-	SnookerClearedColors          []int  `json:"snooker_cleared_colors,optional"`
-	SnookerExpectedClearanceScore int    `json:"snooker_expected_clearance_score,optional"`
-	SnookerClearanceCompleted     bool   `json:"snooker_clearance_completed,optional"`
+	MatchId                       int64            `json:"match_id"`
+	Status                        int              `json:"status"`
+	ServerRevision                int64            `json:"server_revision"`
+	MatchMode                     string           `json:"match_mode,optional"`
+	Visibility                    string           `json:"visibility,optional"`
+	FinishState                   string           `json:"finish_state,optional"`
+	FinishRequestedBy             int64            `json:"finish_requested_by,optional"`
+	ViewerRole                    string           `json:"viewer_role,optional"`
+	RefereeBound                  bool             `json:"referee_bound,optional"`
+	RefereeUserId                 int64            `json:"referee_user_id,optional"`
+	RefereeName                   string           `json:"referee_name,optional"`
+	RefereeAvatar                 string           `json:"referee_avatar,optional"`
+	RefereeJoinedAt               string           `json:"referee_joined_at,optional"`
+	CompletedByUserId             int64            `json:"completed_by_user_id,optional"`
+	CompletionSource              string           `json:"completion_source,optional"`
+	RefereeDurationSeconds        int64            `json:"referee_duration_seconds,optional"`
+	CanScore                      bool             `json:"can_score,optional"`
+	CanUndo                       bool             `json:"can_undo,optional"`
+	CanFinish                     bool             `json:"can_finish,optional"`
+	CanRequestFinish              bool             `json:"can_request_finish,optional"`
+	CanConfirmFinish              bool             `json:"can_confirm_finish,optional"`
+	CanDisputeFinish              bool             `json:"can_dispute_finish,optional"`
+	CanWithdrawFinish             bool             `json:"can_withdraw_finish,optional"`
+	LastAction                    *MatchLastAction `json:"last_action,optional"`
+	MyScore                       int              `json:"my_score"`
+	OpponentScore                 int              `json:"opponent_score"`
+	CurrentFrameStarted           bool             `json:"current_frame_started,optional"`
+	CurrentFrameMyScore           int              `json:"current_frame_my_score,optional"`
+	CurrentFrameOpponentScore     int              `json:"current_frame_opponent_score,optional"`
+	CurrentRound                  int              `json:"current_round"`
+	TotalRounds                   int              `json:"total_rounds"`
+	RedBallCount                  int              `json:"red_ball_count,optional"`
+	SnookerClearanceStarted       bool             `json:"snooker_clearance_started,optional"`
+	SnookerClearedColors          []int            `json:"snooker_cleared_colors,optional"`
+	SnookerExpectedClearanceScore int              `json:"snooker_expected_clearance_score,optional"`
+	SnookerClearanceCompleted     bool             `json:"snooker_clearance_completed,optional"`
 }
 
 type MatchUndoReq struct {
@@ -1796,6 +1979,9 @@ type OngoingMatchItem struct {
 	Id              int64  `json:"id"`
 	GameType        int    `json:"game_type"`
 	GameTypeName    string `json:"game_type_name"`
+	MatchMode       string `json:"match_mode,optional"`
+	Visibility      string `json:"visibility,optional"`
+	FinishState     string `json:"finish_state,optional"`
 	Player1Id       int64  `json:"player1_id"` // 玩家1(创建者)ID
 	Player1Name     string `json:"player1_name"`
 	Player1Avatar   string `json:"player1_avatar"`
@@ -1850,6 +2036,9 @@ type PostIdReq struct {
 type PublicMatchDetailData struct {
 	Id                       int64         `json:"id"`
 	GameType                 int           `json:"game_type"`
+	MatchMode                string        `json:"match_mode,optional"`
+	Visibility               string        `json:"visibility,optional"`
+	FinishState              string        `json:"finish_state,optional"`
 	Status                   int           `json:"status"` // 1=进行中 2=已完成 3=已取消
 	ServerRevision           int64         `json:"server_revision"`
 	Player1Id                int64         `json:"player1_id"`
@@ -1858,6 +2047,14 @@ type PublicMatchDetailData struct {
 	Player2Id                int64         `json:"player2_id"`
 	Player2Name              string        `json:"player2_name"`
 	Player2Avatar            string        `json:"player2_avatar"`
+	RefereeBound             bool          `json:"referee_bound,optional"`
+	RefereeUserId            int64         `json:"referee_user_id,optional"`
+	RefereeName              string        `json:"referee_name,optional"`
+	RefereeAvatar            string        `json:"referee_avatar,optional"`
+	RefereeJoinedAt          string        `json:"referee_joined_at,optional"`
+	CompletedByUserId        int64         `json:"completed_by_user_id,optional"`
+	CompletionSource         string        `json:"completion_source,optional"`
+	ViewerRole               string        `json:"viewer_role,optional"`
 	Player1Score             int           `json:"player1_score"`
 	Player2Score             int           `json:"player2_score"`
 	CurrentFramePlayer1Score int           `json:"current_frame_player1_score,optional"`
@@ -1866,6 +2063,7 @@ type PublicMatchDetailData struct {
 	CurrentRound             int           `json:"current_round"`
 	TotalRounds              int           `json:"total_rounds"`
 	DurationSeconds          int64         `json:"duration_seconds"`
+	RefereeDurationSeconds   int64         `json:"referee_duration_seconds,optional"`
 	Rounds                   []RoundRecord `json:"rounds"` // 局记录
 	CreatedAt                string        `json:"created_at"`
 }
@@ -1874,6 +2072,9 @@ type PublicMatchListItem struct {
 	Id              int64  `json:"id"`
 	GameType        int    `json:"game_type"`
 	GameTypeName    string `json:"game_type_name"`
+	MatchMode       string `json:"match_mode,optional"`
+	Visibility      string `json:"visibility,optional"`
+	FinishState     string `json:"finish_state,optional"`
 	Status          int    `json:"status"`
 	StatusText      string `json:"status_text"`
 	Player1Id       int64  `json:"player1_id"`
@@ -1912,7 +2113,7 @@ type RankDetail struct {
 }
 
 type RankInfo struct {
-	Level       int    `json:"level"`        // 段位等级 1-5
+	Level       int    `json:"level"`        // 段位等级 1-6
 	Name        string `json:"name"`         // 段位名称
 	Icon        string `json:"icon"`         // 段位图标URL
 	RankScore   int    `json:"rank_score"`   // 当前排位分
@@ -1931,6 +2132,68 @@ type RankItem struct {
 	Icon      string `json:"icon"`
 	MinScore  int    `json:"min_score"`  // 晋升最低分
 	IsCurrent bool   `json:"is_current"` // 是否当前段位
+}
+
+type RefereeHistoryItem struct {
+	Id                     int64  `json:"id"`
+	Player1Id              int64  `json:"player1_id"`
+	Player1Name            string `json:"player1_name"`
+	Player1Avatar          string `json:"player1_avatar"`
+	Player2Id              int64  `json:"player2_id"`
+	Player2Name            string `json:"player2_name"`
+	Player2Avatar          string `json:"player2_avatar"`
+	Player1Score           int    `json:"player1_score"`
+	Player2Score           int    `json:"player2_score"`
+	GameType               int    `json:"game_type"`
+	GameTypeName           string `json:"game_type_name"`
+	MatchMode              string `json:"match_mode,optional"`
+	Visibility             string `json:"visibility,optional"`
+	Status                 int    `json:"status"`
+	StatusText             string `json:"status_text"`
+	RefereeJoinedAt        string `json:"referee_joined_at,optional"`
+	EndTime                string `json:"end_time,optional"`
+	RefereeDurationSeconds int64  `json:"referee_duration_seconds"`
+	CompletedByUserId      int64  `json:"completed_by_user_id,optional"`
+	CompletionSource       string `json:"completion_source,optional"`
+}
+
+type RefereeHistoryReq struct {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+}
+
+type RefereeHistoryResp struct {
+	Success bool                 `json:"success"`
+	Total   int64                `json:"total"`
+	List    []RefereeHistoryItem `json:"list"`
+}
+
+type RefereePreviewInfo struct {
+	Player1Id     int64  `json:"player1_id"`
+	Player1Name   string `json:"player1_name"`
+	Player1Avatar string `json:"player1_avatar"`
+	Player2Id     int64  `json:"player2_id"`
+	Player2Name   string `json:"player2_name"`
+	Player2Avatar string `json:"player2_avatar"`
+	Player1Score  int    `json:"player1_score"`
+	Player2Score  int    `json:"player2_score"`
+	GameType      int    `json:"game_type"`
+	GameTypeName  string `json:"game_type_name"`
+	MatchMode     string `json:"match_mode,optional"`
+	Visibility    string `json:"visibility,optional"`
+	Status        int    `json:"status"`
+	StatusText    string `json:"status_text"`
+}
+
+type RefereePreviewReq struct {
+	MatchId   int64  `json:"match_id"`
+	JoinToken string `json:"join_token"`
+}
+
+type RefereePreviewResp struct {
+	Success bool                `json:"success"`
+	Message string              `json:"message,optional"`
+	Preview *RefereePreviewInfo `json:"preview,optional"`
 }
 
 type RefreshTokenReq struct {
@@ -2009,6 +2272,15 @@ type SearchUserReq struct {
 type SearchUserResp struct {
 	Success bool             `json:"success"`
 	List    []SearchUserItem `json:"list"`
+}
+
+type SeasonChallengeInfo struct {
+	Key         string `json:"key"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Threshold   int    `json:"threshold"`
+	Progress    int    `json:"progress"`
+	Completed   bool   `json:"completed"`
 }
 
 type SeasonInfo struct {
@@ -2106,9 +2378,12 @@ type SocialPostInfo struct {
 type StartMatchReq struct {
 	GameType       int    `json:"game_type"`                // 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
 	GameMode       string `json:"game_mode,optional"`       // 比赛模式
+	MatchMode      string `json:"match_mode,optional"`      // practice/ranked，缺省按 ranked
+	Visibility     string `json:"visibility,optional"`      // private/public，排位固定 public
 	OpponentId     int64  `json:"opponent_id"`              // 对手ID（平台用户，必填）
 	OpponentName   string `json:"opponent_name"`            // 对手昵称
 	OpponentAvatar string `json:"opponent_avatar,optional"` // 对手头像
+	ChallengeId    int64  `json:"challenge_id,optional"`    // 已接受邀约 ID
 }
 
 type StartMatchResp struct {
@@ -2117,6 +2392,7 @@ type StartMatchResp struct {
 	BlockReason  string            `json:"block_reason,optional"` // self_ongoing/opponent_ongoing
 	Message      string            `json:"message,optional"`
 	MatchId      int64             `json:"match_id"`
+	Match        *CurrentMatchInfo `json:"match,optional"`
 	OngoingMatch *CurrentMatchInfo `json:"ongoing_match,optional"`
 }
 
@@ -2141,11 +2417,15 @@ type StartNextRoundResp struct {
 }
 
 type TitleInfo struct {
-	Id        int64  `json:"id"`
-	TitleName string `json:"title_name"`
-	Source    string `json:"source"`
-	Equipped  bool   `json:"equipped"`
-	CreatedAt string `json:"created_at"`
+	Id            int64  `json:"id"`
+	TitleName     string `json:"title_name"`
+	Source        string `json:"source"`
+	SourceType    string `json:"source_type,optional"`
+	SourceRefId   int64  `json:"source_ref_id,optional"`
+	SourceRefName string `json:"source_ref_name,optional"`
+	Equipped      bool   `json:"equipped"`
+	GrantedAt     string `json:"granted_at,optional"`
+	CreatedAt     string `json:"created_at"`
 }
 
 type TournamentBracketMatch struct {
@@ -2261,6 +2541,11 @@ type UserInfo struct {
 	Avatar    string `json:"avatar"`
 	Status    int    `json:"status"`
 	CreatedAt string `json:"created_at"`
+}
+
+type UserRankInfoItem struct {
+	GameType int       `json:"game_type"`
+	RankInfo *RankInfo `json:"rank_info"`
 }
 
 type UserReputationLogItem struct {

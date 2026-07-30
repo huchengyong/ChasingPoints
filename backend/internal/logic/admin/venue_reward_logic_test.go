@@ -58,7 +58,7 @@ func TestAdminVenueRewardConfigRoundTrip(t *testing.T) {
 	if !getResp.Success || getResp.RewardDays != 30 || getResp.NewUserWindowDays != 7 {
 		t.Fatalf("unexpected get resp: %#v", getResp)
 	}
-	if !getResp.WelcomeRewardEnabled || getResp.WelcomeRewardDays != 7 {
+	if getResp.WelcomeRewardEnabled || getResp.WelcomeRewardDays != 7 {
 		t.Fatalf("unexpected welcome reward resp: %#v", getResp)
 	}
 
@@ -140,7 +140,7 @@ func TestAdminGetVenueRewardConfigReturnsDefaultDisabledWhenMissing(t *testing.T
 	if resp.RewardDays != 30 || resp.NewUserWindowDays != 7 {
 		t.Fatalf("expected default reward values, got %#v", resp)
 	}
-	if !resp.WelcomeRewardEnabled || resp.WelcomeRewardDays != 7 {
+	if resp.WelcomeRewardEnabled || resp.WelcomeRewardDays != 7 {
 		t.Fatalf("expected default welcome reward values, got %#v", resp)
 	}
 }

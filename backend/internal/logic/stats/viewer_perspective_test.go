@@ -131,7 +131,7 @@ func seedStatsViewerPerspectiveFixtures(t *testing.T, svcCtx *svc.ServiceContext
 
 	seedStatsRanking(t, svcCtx, &model.UserRanking{UserId: strongOpponentID, GameType: 2, RankScore: 1800, RankLevel: 3})
 	seedStatsRanking(t, svcCtx, &model.UserRanking{UserId: weakOpponentID, GameType: 2, RankScore: 800, RankLevel: 1})
-	seedStatsRanking(t, svcCtx, &model.UserRanking{UserId: ignoredOpponentID, GameType: 4, RankScore: 2600, RankLevel: 5})
+	seedStatsRanking(t, svcCtx, &model.UserRanking{UserId: ignoredOpponentID, GameType: 4, RankScore: 2600, RankLevel: 6})
 }
 
 func TestStatsByGameTypeUsesViewerPerspectiveForOpponentMatches(t *testing.T) {
@@ -248,5 +248,34 @@ func TestOpponentStrengthFiltersGameTypeAndUsesActualOpponent(t *testing.T) {
 	}
 	if _, ok := byRange["高级(2001+)"]; ok {
 		t.Fatalf("game type 4 opponent leaked into game type 2 strength stats: %#v", resp.List)
+	}
+}
+
+func TestCompetitiveStatsExcludePracticeMatches(t *testing.T) {
+	svcCtx := newStatsLogicTestSvc(t)
+	viewerID := int64(101)
+	opponentID := int64(202)
+	win := 1
+	for _, match := range []*model.Match{
+		{
+			Id: 21, UserId: viewerID, OpponentId: &opponentID, OpponentName: "对手", GameType: 3,
+			MatchMode: model.MatchModeRanked, Visibility: model.MatchVisibilityPublic, MyScore: 7, OpponentScore: 5,
+			Status: 2, Result: &win, MatchTime: time.Now(),
+		},
+		{
+			Id: 22, UserId: viewerID, OpponentId: &opponentID, OpponentName: "对手", GameType: 3,
+			MatchMode: model.MatchModePractice, Visibility: model.MatchVisibilityPrivate, MyScore: 9, OpponentScore: 1,
+			Status: 2, Result: &win, MatchTime: time.Now().Add(time.Minute),
+		},
+	} {
+		seedStatsMatch(t, svcCtx, match)
+	}
+
+	resp, err := NewGetStatsByGameTypeLogic(statsLogicCtx(viewerID), svcCtx).GetStatsByGameType()
+	if err != nil {
+		t.Fatalf("get competitive stats: %v", err)
+	}
+	if len(resp.List) != 1 || resp.List[0].TotalMatches != 1 || resp.List[0].Wins != 1 || resp.List[0].HighestScore != 7 {
+		t.Fatalf("practice match leaked into game type stats: %#v", resp.List)
 	}
 }

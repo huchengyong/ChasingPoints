@@ -38,6 +38,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
+				// 获取本人或好友荣誉墙
+				Method:  http.MethodGet,
+				Path:    "/honor-wall",
+				Handler: achievement.GetHonorWallHandler(serverCtx),
+			},
+			{
 				// 获取成就列表
 				Method:  http.MethodGet,
 				Path:    "/list",
@@ -575,6 +581,30 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: match.FinishMatchHandler(serverCtx),
 			},
 			{
+				// 确认排位结束请求
+				Method:  http.MethodPost,
+				Path:    "/finish/confirm",
+				Handler: match.ConfirmFinishMatchHandler(serverCtx),
+			},
+			{
+				// 对排位结束请求提出异议
+				Method:  http.MethodPost,
+				Path:    "/finish/dispute",
+				Handler: match.DisputeFinishMatchHandler(serverCtx),
+			},
+			{
+				// 发起排位结束确认
+				Method:  http.MethodPost,
+				Path:    "/finish/request",
+				Handler: match.RequestFinishMatchHandler(serverCtx),
+			},
+			{
+				// 撤回排位结束请求
+				Method:  http.MethodPost,
+				Path:    "/finish/withdraw",
+				Handler: match.WithdrawFinishMatchHandler(serverCtx),
+			},
+			{
 				// 犯规
 				Method:  http.MethodPost,
 				Path:    "/foul",
@@ -605,16 +635,34 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: match.GetMatchQRCodeHandler(serverCtx),
 			},
 			{
+				// 获取裁判历史
+				Method:  http.MethodGet,
+				Path:    "/referee/history",
+				Handler: match.GetRefereeHistoryHandler(serverCtx),
+			},
+			{
 				// 扫码加入并担任本场裁判
 				Method:  http.MethodPost,
 				Path:    "/referee/join",
 				Handler: match.JoinMatchRefereeHandler(serverCtx),
 			},
 			{
+				// 裁判码预览
+				Method:  http.MethodPost,
+				Path:    "/referee/preview",
+				Handler: match.RefereePreviewHandler(serverCtx),
+			},
+			{
 				// 获取本场裁判二维码
 				Method:  http.MethodGet,
 				Path:    "/referee/qrcode",
 				Handler: match.GetMatchRefereeQRCodeHandler(serverCtx),
+			},
+			{
+				// 获取本场新解锁荣誉
+				Method:  http.MethodGet,
+				Path:    "/reward-summary",
+				Handler: match.GetMatchRewardSummaryHandler(serverCtx),
 			},
 			{
 				// 结束一局
@@ -805,6 +853,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodGet,
 				Path:    "/info",
 				Handler: rank.GetUserRankInfoHandler(serverCtx),
+			},
+			{
+				// 获取用户全部球种段位信息
+				Method:  http.MethodGet,
+				Path:    "/infos",
+				Handler: rank.GetUserRankInfosHandler(serverCtx),
 			},
 			{
 				// 获取段位列表

@@ -64,6 +64,9 @@ func (l *GetPendingChallengesLogic) GetPendingChallenges() (resp *types.GetPendi
 			Status:     challenge.Status,
 			CreatedAt:  challenge.CreatedAt.Format("2006-01-02 15:04:05"),
 		}
+		if challenge.MatchId != nil {
+			info.MatchId = *challenge.MatchId
+		}
 		if fromUser != nil {
 			info.FromNickname = fromUser.Nickname
 			info.FromAvatar = fromUser.Avatar

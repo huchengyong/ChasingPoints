@@ -342,4 +342,40 @@ onMounted(() => {
 	font-size: 24rpx;
 	color: #cbd5e1;
 }
+
+.venue-page.dark-mode {
+	background: #141109;
+
+	.location-bar,
+	.mode-tabs,
+	.venue-card {
+		background: #1e180d;
+	}
+
+	.location-bar .location-info .location-text,
+	.venue-card .card-right .venue-name {
+		color: #fff7e1;
+	}
+
+	.mode-tabs .tab-item,
+	.venue-card .card-left .venue-img-wrap .venue-img-placeholder,
+	.venue-card .card-right .venue-meta .meta-item {
+		background: #2a2110;
+		color: #d7c89b;
+	}
+
+	.mode-tabs .tab-item.active {
+		background: rgba(224, 174, 18, 0.18);
+		border-color: rgba(224, 174, 18, 0.42);
+		color: #f7e7a8;
+	}
+
+	.loading-text,
+	.venue-address,
+	.venue-checkins,
+	.empty-text,
+	.no-more {
+		color: #9f926e;
+	}
+}
 </style>

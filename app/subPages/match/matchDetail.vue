@@ -21,7 +21,7 @@
 						<view class="avatar-wrapper">
 							<image 
 								class="avatar" 
-								:src="player1Info.avatar || '/static/images/default-avatar.png'" 
+								:src="resolveAvatarUrl(player1Info.avatar, player1UserId)"
 								mode="aspectFill" 
 							/>
 						</view>
@@ -36,7 +36,7 @@
 						<view class="avatar-wrapper">
 							<image 
 								class="avatar" 
-								:src="player2Info.avatar || '/static/images/default-avatar.png'" 
+								:src="resolveAvatarUrl(player2Info.avatar, player2UserId)"
 								mode="aspectFill" 
 							/>
 						</view>
@@ -70,6 +70,24 @@
 					</view>
 				</view>
 			</view>
+
+			<view v-if="refereeCard.hasReferee" class="referee-card">
+				<image
+					class="referee-card__avatar"
+					:src="resolveAvatarUrl(refereeCard.refereeAvatar, refereeCard.refereeUserId)"
+					mode="aspectFill"
+				/>
+				<view class="referee-card__content">
+					<text class="referee-card__label">{{ refereeCard.neutralLabel }}</text>
+					<text class="referee-card__name">{{ refereeCard.refereeName }}</text>
+					<text v-if="refereeCard.refereeJoinedAt" class="referee-card__meta">加入时间 {{ refereeCard.refereeJoinedAt }}</text>
+					<text v-if="refereeCard.refereeDurationText" class="referee-card__meta">执裁时长 {{ refereeCard.refereeDurationText }}</text>
+					<text v-if="refereeCard.hasReliableAttribution" class="referee-card__meta">{{ refereeCard.completionLabel }}</text>
+					<text v-else-if="matchData.status === 2" class="referee-card__meta">本场曾绑定裁判</text>
+				</view>
+			</view>
+
+			<button v-if="showH2H" class="h2h-entry-button" @tap="handleOpenH2H">查看双方交锋记录</button>
 
 			<!-- 局记录列表 -->
 			<view class="round-history">
@@ -114,6 +132,8 @@ import {
 	shouldShowSpectateBadge,
 	shouldUsePublicMatchDetail
 } from '@/utils/match-detail.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import { resolveRefereeIdentityCard } from '@/utils/match-referee-view.js'
 
 // ========== 响应式数据 ==========
 const loading = ref(true)
@@ -128,7 +148,16 @@ const matchData = ref({
 	status: 0,
 	duration_seconds: 0,
 	current_round: 1,
-	total_rounds: 0
+	total_rounds: 0,
+	viewer_role: '',
+	referee_bound: false,
+	referee_user_id: 0,
+	referee_name: '',
+	referee_avatar: '',
+	referee_joined_at: '',
+	referee_duration_seconds: 0,
+	completed_by_user_id: 0,
+	completion_source: 'unknown'
 })
 const player1Info = ref({
 	name: '',
@@ -138,6 +167,8 @@ const player2Info = ref({
 	name: '',
 	avatar: ''
 })
+const player1UserId = ref(0)
+const player2UserId = ref(0)
 const roundRecords = ref([])
 let wsHandlersReady = false
 
@@ -170,6 +201,20 @@ const matchStatusText = computed(() => {
 	if (matchData.value.status === 3) return '已取消'
 	return '进行中'
 })
+
+const refereeCard = computed(() => resolveRefereeIdentityCard({
+	refereeBound: matchData.value.referee_bound,
+	refereeUserId: matchData.value.referee_user_id,
+	refereeName: matchData.value.referee_name,
+	refereeAvatar: matchData.value.referee_avatar,
+	refereeJoinedAt: matchData.value.referee_joined_at,
+	refereeDurationSeconds: matchData.value.referee_duration_seconds,
+	completedByUserId: matchData.value.completed_by_user_id,
+	completionSource: matchData.value.completion_source,
+	status: matchData.value.status
+}))
+
+const showH2H = computed(() => matchData.value.status === 2 && matchData.value.viewer_role !== 'referee')
 
 // ========== 生命周期 ==========
 onLoad((options) => {
@@ -249,7 +294,15 @@ const loadMatchData = async () => {
 			matchData.value = normalized.matchData
 			player1Info.value = normalized.player1Info
 			player2Info.value = normalized.player2Info
+			const player1Id = Number(res.match.player1_id || res.match.my_user_id || res.match.my_id || 0)
+			const player2Id = Number(res.match.player2_id || res.match.opponent_id || 0)
+			const shouldSwap = perspectiveUserId.value > 0 && player2Id === perspectiveUserId.value && player1Id !== perspectiveUserId.value
+			player1UserId.value = shouldSwap ? player2Id : player1Id
+			player2UserId.value = shouldSwap ? player1Id : player2Id
 			roundRecords.value = normalized.roundRecords
+			if (matchData.value.viewer_role === 'referee') {
+				uni.setNavigationBarTitle({ title: '执裁详情' })
+			}
 			if (wsHandlersReady && matchData.value.status === 1 && !matchWS.isConnected()) {
 				connectWebSocket()
 			}
@@ -343,6 +396,14 @@ const handleSync = (data) => {
 	matchData.value.player2_score = data.player2_score || 0
 	matchData.value.current_round = data.current_round || 1
 	matchData.value.total_rounds = data.total_rounds || 0
+	if (typeof data.referee_bound === 'boolean') matchData.value.referee_bound = data.referee_bound
+	if (data.referee_user_id !== undefined) matchData.value.referee_user_id = Number(data.referee_user_id || 0)
+	if (data.referee_name !== undefined) matchData.value.referee_name = data.referee_name || ''
+	if (data.referee_avatar !== undefined) matchData.value.referee_avatar = data.referee_avatar || ''
+	if (data.referee_joined_at !== undefined) matchData.value.referee_joined_at = data.referee_joined_at || ''
+	if (data.referee_duration_seconds !== undefined) matchData.value.referee_duration_seconds = Number(data.referee_duration_seconds || 0)
+	if (data.completed_by_user_id !== undefined) matchData.value.completed_by_user_id = Number(data.completed_by_user_id || 0)
+	if (data.completion_source !== undefined) matchData.value.completion_source = data.completion_source || 'unknown'
 	if (Array.isArray(data.rounds)) {
 		roundRecords.value = data.rounds
 	}
@@ -403,6 +464,16 @@ const getRoundResultTone = (round) => {
 
 const getRoundResultText = (round) => {
 	return round.resultText || (round.result === 'win' || round.winner === 1 ? '胜' : '负')
+}
+
+const handleOpenH2H = () => {
+	const player1Id = Number(player1UserId.value || 0)
+	const player2Id = Number(player2UserId.value || 0)
+	if (!player1Id || !player2Id) {
+		uni.showToast({ title: '暂无可用的交锋记录', icon: 'none' })
+		return
+	}
+	uni.navigateTo({ url: `/subPages/user/h2hRecord?target_user_id=${player1Id}&opponent_id=${player2Id}` })
 }
 </script>
 

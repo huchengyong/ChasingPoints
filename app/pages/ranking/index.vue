@@ -63,7 +63,7 @@
 					<view class="podium-user second" :class="{ 'is-empty': !podiumSlots[0].user }" @click="podiumSlots[0].user && handleUserClick(podiumSlots[0].user)">
 						<template v-if="podiumSlots[0].user">
 							<view class="avatar-wrapper">
-								<image class="avatar" :src="podiumSlots[0].user.avatar || '/static/images/default-avatar.png'" mode="aspectFill"></image>
+								<image class="avatar" :src="resolveAvatarUrl(podiumSlots[0].user.avatar, podiumSlots[0].user.user_id)" mode="aspectFill"></image>
 								<view class="rank-badge silver">2</view>
 							</view>
 							<text class="nickname">{{ podiumSlots[0].user.nickname || '球手' }}</text>
@@ -78,7 +78,7 @@
 								<uni-icons type="medal-filled" size="48" color="#fbbf24"></uni-icons>
 							</view>
 							<view class="avatar-wrapper">
-								<image class="avatar" :src="podiumSlots[1].user.avatar || '/static/images/default-avatar.png'" mode="aspectFill"></image>
+								<image class="avatar" :src="resolveAvatarUrl(podiumSlots[1].user.avatar, podiumSlots[1].user.user_id)" mode="aspectFill"></image>
 								<view class="rank-badge gold">1</view>
 							</view>
 							<text class="nickname">{{ podiumSlots[1].user.nickname || '球手' }}</text>
@@ -90,7 +90,7 @@
 					<view class="podium-user third" :class="{ 'is-empty': !podiumSlots[2].user }" @click="podiumSlots[2].user && handleUserClick(podiumSlots[2].user)">
 						<template v-if="podiumSlots[2].user">
 							<view class="avatar-wrapper">
-								<image class="avatar" :src="podiumSlots[2].user.avatar || '/static/images/default-avatar.png'" mode="aspectFill"></image>
+								<image class="avatar" :src="resolveAvatarUrl(podiumSlots[2].user.avatar, podiumSlots[2].user.user_id)" mode="aspectFill"></image>
 								<view class="rank-badge bronze">3</view>
 							</view>
 							<text class="nickname">{{ podiumSlots[2].user.nickname || '球手' }}</text>
@@ -110,7 +110,7 @@
 				>
 					<text class="item-rank">{{ item.rank }}</text>
 					<view class="item-info">
-						<image class="item-avatar" :src="item.avatar || '/static/images/default-avatar.png'" mode="aspectFill"></image>
+						<image class="item-avatar" :src="resolveAvatarUrl(item.avatar, item.user_id)" mode="aspectFill"></image>
 						<view class="item-details">
 							<text class="item-nickname">{{ item.nickname || '球手' }}</text>
 							<text class="item-rank-name">{{ item.rank_name }} | {{ item.rank_score }}分</text>
@@ -126,7 +126,7 @@
 			<view class="my-ranking-card" v-if="myRanking">
 				<text class="my-rank">{{ myRanking.rank > 0 ? myRanking.rank : '-' }}</text>
 				<view class="my-info">
-					<image class="my-avatar" :src="myRanking.avatar || '/static/images/default-avatar.png'" mode="aspectFill"></image>
+					<image class="my-avatar" :src="resolveAvatarUrl(myRanking.avatar, myRanking.user_id)" mode="aspectFill"></image>
 					<view class="my-details">
 						<text class="my-label">{{ myRanking.rank > 0 ? '我的排名' : '暂未上榜' }}</text>
 						<text class="my-rank-name">{{ myRanking.rank > 0 ? myRanking.rank_name : '完成首场该模式对局后入榜' }}</text>
@@ -154,6 +154,7 @@ import gameTypeModal from '@/components/gameTypeModal.vue'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
 import { buildLeaderboardPodiumSlots } from '@/utils/ranking-podium.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const { isDarkMode } = usePageTheme()
 

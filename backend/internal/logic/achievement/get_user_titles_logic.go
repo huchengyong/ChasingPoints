@@ -40,13 +40,7 @@ func (l *GetUserTitlesLogic) GetUserTitles() (resp *types.GetUserTitlesResp, err
 
 	list := make([]types.TitleInfo, 0, len(titles))
 	for _, title := range titles {
-		list = append(list, types.TitleInfo{
-			Id:        title.Id,
-			TitleName: title.TitleName,
-			Source:    title.Source,
-			Equipped:  title.Equipped == 1,
-			CreatedAt: title.CreatedAt.Format("2006-01-02 15:04:05"),
-		})
+		list = append(list, *titleToInfo(&title))
 	}
 
 	return &types.GetUserTitlesResp{

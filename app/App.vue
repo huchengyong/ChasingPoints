@@ -1,10 +1,13 @@
 <script>
 	import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
 	import { useUserStore } from '@/store/user.js'
+	import { useRankStore } from '@/store/rank.js'
+	import { userWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 	import { getCurrentMatch } from '@/api/match.js'
 	import { post } from '@/utils/request.js'
 	import { buildPlayingRoute, shouldPromptOngoingMatch } from '@/utils/ongoing-match-guard.js'
 	import { applyRuntimeTheme } from '@/utils/theme-application.js'
+	import { resolveSystemDarkMode } from '@/utils/theme-preference.js'
 
 	export default {
 		themeChangeCallback: null, // 保存主题变化回调函数引用
@@ -16,6 +19,10 @@
 		maxOngoingMatchReminderRetries: 5,
 		onLaunch: function() {
 			console.log('App Launch')
+			const themeStore = useThemeStore()
+			themeStore.initializeTheme(this.getSystemThemeInfo())
+			userWS.off(WS_MESSAGE_TYPES.RANK_INFO_UPDATED, this.handleRankInfoUpdated)
+			userWS.on(WS_MESSAGE_TYPES.RANK_INFO_UPDATED, this.handleRankInfoUpdated)
 			// 推送注册
 			// #ifdef APP-PLUS
 			try {
@@ -51,25 +58,44 @@
 		onShow: function() {
 			console.log('App Show')
 			const themeStore = useThemeStore()
-			const sysInfo = uni.getSystemInfoSync()
-			themeStore.setThemeFromSystem(sysInfo.osTheme === 'dark')
+			themeStore.setThemeFromSystem(resolveSystemDarkMode(
+				this.getSystemThemeInfo(),
+				themeStore.systemIsDark
+			))
 			// 应用当前主题样式
 			this.applyTheme()
-			
+			const userStore = useUserStore()
+			const rankStore = useRankStore()
+			if (userStore.isLoggedIn) {
+				rankStore.invalidate(userStore.userId)
+				this.connectUserWS()
+			} else {
+				rankStore.clear()
+				userWS.disconnect()
+			}
+
+			if (this.themeChangeCallback && typeof uni.offThemeChange === 'function') {
+				uni.offThemeChange(this.themeChangeCallback)
+			}
+
 			// 保存回调函数引用，以便后续取消监听
 			const self = this
 			this.themeChangeCallback = function (res) {
-				themeStore.setThemeFromSystem(res?.theme === 'dark')
+				themeStore.setThemeFromSystem(resolveSystemDarkMode(res, themeStore.systemIsDark))
 				self.applyTheme()
 			}
-			uni.onThemeChange(this.themeChangeCallback)
+			if (typeof uni.onThemeChange === 'function') {
+				uni.onThemeChange(this.themeChangeCallback)
+			}
 			this.checkOngoingMatchReminder()
 		},
 		onHide: function() {
+			userWS.disconnect()
 			// 取消监听时需要传入与注册时相同的回调函数引用
-			if (this.themeChangeCallback) {
+			if (this.themeChangeCallback && typeof uni.offThemeChange === 'function') {
 				uni.offThemeChange(this.themeChangeCallback)
 			}
+			this.themeChangeCallback = null
 			if (this.ongoingMatchReminderRetryTimer) {
 				clearTimeout(this.ongoingMatchReminderRetryTimer)
 				this.ongoingMatchReminderRetryTimer = null
@@ -80,6 +106,25 @@
 			this.ongoingMatchReminderRetryCount = 0
 		},
 		methods: {
+			connectUserWS() {
+				userWS.connect().catch((error) => {
+					console.error('[App] 用户WS连接失败:', error)
+				})
+			},
+			handleRankInfoUpdated() {
+				const userStore = useUserStore()
+				if (userStore.isLoggedIn) {
+					useRankStore().invalidate(userStore.userId)
+				}
+			},
+			getSystemThemeInfo() {
+				try {
+					return uni.getSystemInfoSync()
+				} catch (error) {
+					console.warn('[App] 获取系统主题失败:', error)
+					return {}
+				}
+			},
 			applyTheme(theme) {
 				const themeStore = useThemeStore()
 				
@@ -148,13 +193,16 @@
 
 						this.ongoingMatchReminderShown = true
 						this.ongoingMatchPromptVisible = true
+						const finishPending = currentMatch.finish_state === 'pending_confirmation'
 
 						uni.showModal({
-							title: '你有未结束的对局',
-							content: currentMatch.viewer_role === 'referee'
-								? `你担任裁判的${currentMatch.game_type_name || 'PK'}对局仍在进行中，是否立即进入？`
-								: `你和 ${currentMatch.opponent_name || '对手'} 的${currentMatch.game_type_name || 'PK'}对局仍在进行中，是否立即进入？`,
-							confirmText: '进入对局',
+							title: finishPending ? '有一场对局等待确认' : '你有未结束的对局',
+							content: finishPending
+								? `你和 ${currentMatch.opponent_name || '对手'} 的排位赛正在等待结束确认，是否立即处理？`
+								: currentMatch.viewer_role === 'referee'
+									? `你担任裁判的${currentMatch.game_type_name || 'PK'}对局仍在进行中，是否立即进入？`
+									: `你和 ${currentMatch.opponent_name || '对手'} 的${currentMatch.game_type_name || 'PK'}对局仍在进行中，是否立即进入？`,
+							confirmText: finishPending ? '处理确认' : '进入对局',
 							cancelText: '暂不进入',
 							success: ({ confirm }) => {
 								if (confirm) {
@@ -217,29 +265,18 @@
 		--danger-color: #ef4444;
 	}
 
-	/* 暗色主题 */
-		@media (prefers-color-scheme: dark) {
-			page {
-				/* 主色调 */
-				--primary-color: #e0ae12;
-				--primary-color-light: rgba(224, 174, 18, 0.2);
-
-				/* 背景色 */
-				--bg-color: #141109;
-				--card-bg: #1e180d;
-				--input-bg: #1e180d;
-
-				/* 文字颜色 */
-				--text-primary: #fff7e1;
-				--text-secondary: #d7c89b;
-				--text-tertiary: #9f926e;
-
-				/* 边框颜色 */
-				--border-color: #3a2e16;
-
-				/* 其他 */
-				--divider-color: #241d0f;
-				--danger-color: #ef4444;
-			}
-		}
+	/* 暗色变量由应用最终计算出的主题控制，避免手动浅色与系统暗色互相覆盖。 */
+	.dark-mode {
+		--primary-color: #e0ae12;
+		--primary-color-light: rgba(224, 174, 18, 0.2);
+		--bg-color: #141109;
+		--card-bg: #1e180d;
+		--input-bg: #1e180d;
+		--text-primary: #fff7e1;
+		--text-secondary: #d7c89b;
+		--text-tertiary: #9f926e;
+		--border-color: #3a2e16;
+		--divider-color: #241d0f;
+		--danger-color: #ef4444;
+	}
 	</style>

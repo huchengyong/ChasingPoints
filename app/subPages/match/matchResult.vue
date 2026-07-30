@@ -7,7 +7,7 @@
 				</button>
 			</view>
 			<view class="header-center">
-				<text class="header-title">对局总结</text>
+				<text class="header-title">{{ refereeViewConfig.pageTitle }}</text>
 				<text class="header-subtitle">{{ gameTypeName }}</text>
 			</view>
 			<view class="header-side header-side-right">
@@ -25,10 +25,10 @@
 		<scroll-view v-else class="content-scroll" scroll-y>
 			<view class="main-content">
 				<view class="hero-card">
-					<view :class="['hero-banner', isWin ? 'is-win' : 'is-lose']">
+					<view :class="['hero-banner', isReferee ? 'is-neutral' : (isWin ? 'is-win' : 'is-lose')]">
 						<view class="hero-topbar">
 							<view class="hero-tag">
-								<uni-icons :type="isWin ? 'medal' : 'flag'" size="14" color="#ffffff"></uni-icons>
+								<uni-icons :type="isReferee ? 'person-filled' : (isWin ? 'medal' : 'flag')" size="14" color="#ffffff"></uni-icons>
 								<text>{{ resultTagText }}</text>
 							</view>
 							<text class="hero-time">{{ createdAtRelativeText }}</text>
@@ -41,11 +41,11 @@
 
 						<view class="versus-board">
 							<view class="player-panel">
-								<view :class="['avatar-shell', isWin ? 'is-winner' : 'is-neutral']">
+								<view :class="['avatar-shell', isReferee ? 'is-neutral' : (isWin ? 'is-winner' : 'is-neutral')]">
 									<image class="avatar" :src="myAvatar" mode="aspectFill"></image>
 								</view>
 								<text class="player-name">{{ matchData.my_name || '我' }}</text>
-								<text class="player-extra">{{ formatWinRate(matchData.my_win_rate) }} 胜率</text>
+								<text class="player-extra">{{ isReferee ? '选手' : (formatWinRate(matchData.my_win_rate) + ' 胜率') }}</text>
 							</view>
 
 							<view class="score-panel">
@@ -58,11 +58,11 @@
 							</view>
 
 							<view class="player-panel">
-								<view :class="['avatar-shell', !isWin ? 'is-winner' : 'is-neutral']">
+								<view :class="['avatar-shell', isReferee ? 'is-neutral' : (!isWin ? 'is-winner' : 'is-neutral')]">
 									<image class="avatar" :src="opponentAvatar" mode="aspectFill"></image>
 								</view>
 								<text class="player-name">{{ matchData.opponent_name || '对手' }}</text>
-								<text class="player-extra">{{ formatWinRate(matchData.opponent_win_rate) }} 胜率</text>
+								<text class="player-extra">{{ isReferee ? '选手' : (formatWinRate(matchData.opponent_win_rate) + ' 胜率') }}</text>
 							</view>
 						</view>
 
@@ -74,7 +74,7 @@
 						</view>
 					</view>
 
-					<view class="rank-section">
+					<view class="rank-section" v-if="refereeViewConfig.showRankChange">
 						<view class="section-head compact">
 							<view>
 								<text class="section-title">排位变化</text>
@@ -100,6 +100,82 @@
 								<text class="rank-note">{{ opponentRankNote }}</text>
 							</view>
 						</view>
+					</view>
+				</view>
+
+				<view
+					v-if="rewardSummary.visible"
+					:class="['reward-section', 'info-card', { 'is-pending': rewardSummary.state === 'pending' }]"
+				>
+					<view v-if="rewardSummary.state === 'pending'" class="reward-pending">
+						<view class="reward-pending-icon">
+							<uni-icons type="spinner-cycle" size="24" :color="isDarkMode ? '#D6C5A3' : '#7C6846'"></uni-icons>
+						</view>
+						<view class="reward-pending-copy">
+							<text class="reward-pending-title">正在同步本场荣誉</text>
+							<text class="reward-pending-message">{{ rewardSummary.message }}</text>
+							<text class="reward-pending-hint">
+								{{ rewardSummary.shouldRetry ? '即将自动重试，请稍候…' : '稍后再次进入本页即可继续查看' }}
+							</text>
+						</view>
+					</view>
+
+					<view v-else class="reward-ready-content">
+						<view class="reward-section-head">
+							<view class="reward-heading-copy">
+								<view class="reward-kicker">
+									<uni-icons type="medal" size="16" color="#B7791F"></uni-icons>
+									<text>本场新解锁</text>
+								</view>
+								<text class="reward-section-title">荣誉已永久记录</text>
+								<text class="reward-section-caption">{{ rewardSummary.message }}</text>
+							</view>
+							<text class="reward-count">+{{ rewardSummary.rewards.length }}</text>
+						</view>
+
+						<view class="reward-list">
+							<view
+								v-for="(reward, index) in rewardSummary.rewards"
+								:key="reward.id || reward.key || index"
+								class="reward-item"
+							>
+								<view class="reward-icon-shell">
+									<image v-if="reward.icon" class="reward-icon-image" :src="reward.icon" mode="aspectFit"></image>
+									<uni-icons v-else type="trophy" size="26" color="#B7791F"></uni-icons>
+								</view>
+								<view class="reward-item-copy">
+									<text class="reward-item-label">新成就</text>
+									<text class="reward-item-name">{{ reward.achievementName }}</text>
+									<text class="reward-item-description">{{ reward.description }}</text>
+									<view v-if="reward.rewardTitleName" class="reward-title-pill">
+										<uni-icons type="medal-filled" size="14" color="#B7791F"></uni-icons>
+										<text>奖励称号 · {{ reward.rewardTitleName }}</text>
+									</view>
+								</view>
+							</view>
+						</view>
+
+						<button class="reward-wall-button" @tap="handleHonorWall">
+							<text>查看荣誉墙</text>
+							<uni-icons type="right" size="16" color="#B7791F"></uni-icons>
+						</button>
+					</view>
+				</view>
+
+				<view class="referee-card" v-if="refereeCard.hasReferee">
+					<view class="referee-card-head">
+						<uni-icons type="person-filled" size="18" color="#E0AE12"></uni-icons>
+						<text class="referee-card-title">{{ refereeCard.neutralLabel }}</text>
+					</view>
+					<view class="referee-card-body">
+						<image class="referee-card-avatar" :src="resolveAvatarUrl(refereeCard.refereeAvatar, refereeCard.refereeUserId)" mode="aspectFill"/>
+						<view class="referee-card-info">
+							<text class="referee-card-name">{{ refereeCard.refereeName }}</text>
+							<text class="referee-card-duration" v-if="refereeCard.refereeDurationText">执裁时长 {{ refereeCard.refereeDurationText }}</text>
+						</view>
+					</view>
+					<view class="referee-card-footer" v-if="refereeCard.hasReliableAttribution">
+						<text class="referee-attribution-label">完成方式：{{ refereeCard.completionLabel }}</text>
 					</view>
 				</view>
 
@@ -161,36 +237,48 @@
 			</view>
 		</scroll-view>
 
-		<view class="footer">
+		<view class="footer" v-if="refereeViewConfig.showH2HActions">
 			<button
 				v-if="!fromHistory"
 				class="footer-btn btn-primary"
-				@click="handleSave"
+				@click="handleRematch"
 			>
 				{{ primaryActionText }}
 			</button>
 			<button class="footer-btn btn-secondary" @click="handleShare">
 				{{ secondaryActionText }}
 			</button>
+			<button class="footer-btn btn-link" @click="handleH2H">查看交锋记录</button>
 		</view>
 	</view>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
-import { getMatchDetail } from '@/api/match.js'
+import { onLoad, onUnload } from '@dcloudio/uni-app'
+import { getMatchDetail, getMatchRewardSummary } from '@/api/match.js'
 import { formatDateTime, formatRelativeTime } from '@/utils/format.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveMatchRankingRightsSummary } from '@/utils/member-ranking-rights.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import { buildRematchContext } from '@/utils/match-core-flow.js'
+import { resolveRefereeIdentityCard, resolveRefereeResultViewConfig, resolveCompletionSourceLabel } from '@/utils/match-referee-view.js'
+import {
+	buildMatchRewardHonorWallUrl,
+	MATCH_REWARD_MAX_ATTEMPTS,
+	MATCH_REWARD_RETRY_DELAY_MS,
+	resolveMatchRewardSummary
+} from '@/utils/match-result-page.js'
 
-const DEFAULT_AVATAR = '/static/default-avatar.png'
 const SHARE_LINK = 'https://appgallery.huawei.com/app/detail?id=hm.dianzaozao.ballmall&channelId=SHARE&source=appshare'
 
 const matchId = ref(null)
 const fromHistory = ref(false)
 const loading = ref(true)
 const isRedirecting = ref(false)
+const rewardSummary = ref(resolveMatchRewardSummary({ success: true, status: 'ready', list: [] }))
+let rewardRetryTimer = null
+let rewardSummaryDisposed = false
 const matchData = ref({
 	my_score: 0,
 	opponent_score: 0,
@@ -216,10 +304,29 @@ const statusBarHeight = ref(0)
 const { isDarkMode } = usePageTheme()
 const headerIconColor = computed(() => (isDarkMode.value ? '#f8fafc' : '#1f2937'))
 
+const refereeCard = computed(() => resolveRefereeIdentityCard({
+	refereeBound: matchData.value.referee_bound,
+	refereeUserId: matchData.value.referee_user_id,
+	refereeName: matchData.value.referee_name,
+	refereeAvatar: matchData.value.referee_avatar,
+	refereeJoinedAt: matchData.value.referee_joined_at,
+	refereeDurationSeconds: matchData.value.referee_duration_seconds,
+	completedByUserId: matchData.value.completed_by_user_id,
+	completionSource: matchData.value.completion_source
+}))
+
+const refereeViewConfig = computed(() => resolveRefereeResultViewConfig({
+	viewerRole: matchData.value.viewer_role,
+	status: 2
+}))
+
+const completionLabel = computed(() => resolveCompletionSourceLabel(matchData.value.completion_source))
+
 const systemInfo = uni.getSystemInfoSync()
 statusBarHeight.value = systemInfo.statusBarHeight || 20
 
-const isWin = computed(() => matchData.value.my_score > matchData.value.opponent_score)
+const isReferee = computed(() => matchData.value.viewer_role === 'referee')
+const isWin = computed(() => !isReferee.value && matchData.value.my_score > matchData.value.opponent_score)
 const scoreGap = computed(() => Math.abs((matchData.value.my_score || 0) - (matchData.value.opponent_score || 0)))
 
 const gameTypeName = computed(() => {
@@ -237,11 +344,18 @@ const gameTypeName = computed(() => {
 	}
 })
 
-const resultTitle = computed(() => (isWin.value ? '拿下这一场' : '这场先记下'))
+const resultTitle = computed(() => {
+	if (isReferee.value) return '执裁记录'
+	return isWin.value ? '拿下这一场' : '这场先记下'
+})
 
-const resultTagText = computed(() => (isWin.value ? '胜利战报' : '复盘战报'))
+const resultTagText = computed(() => {
+	if (isReferee.value) return '裁判视角'
+	return isWin.value ? '胜利战报' : '复盘战报'
+})
 
 const resultSubtitle = computed(() => {
+	if (isReferee.value) return '你已完成本场执裁，对局结果已录入系统。'
 	if (isWin.value) {
 		if (scoreGap.value >= 3) {
 			return '整场节奏控制稳定，关键分兑现得更彻底。'
@@ -270,6 +384,7 @@ const scoreGapUnit = computed(() => (matchData.value.game_type === 2 ? '分' : '
 const scoreGapLabel = computed(() => (matchData.value.game_type === 2 ? '分差' : '局差'))
 
 const scoreSummaryText = computed(() => {
+	if (isReferee.value) return matchData.value.game_type === 2 ? '本场最终比分' : '本场最终局数'
 	if (scoreGap.value === 0) return matchData.value.game_type === 2 ? '双方比分持平' : '双方局数持平'
 	return isWin.value
 		? `领先 ${scoreGap.value} ${scoreGapUnit.value}收下对局`
@@ -328,9 +443,15 @@ const statsData = computed(() => {
 	}))
 })
 
-const myAvatar = computed(() => matchData.value.my_avatar || DEFAULT_AVATAR)
-const opponentAvatar = computed(() => matchData.value.opponent_avatar || DEFAULT_AVATAR)
-const primaryActionText = computed(() => '保存并完成')
+const myAvatar = computed(() => resolveAvatarUrl(
+	matchData.value.my_avatar,
+	matchData.value.my_user_id || matchData.value.user_id
+))
+const opponentAvatar = computed(() => resolveAvatarUrl(
+	matchData.value.opponent_avatar,
+	matchData.value.opponent_id
+))
+const primaryActionText = computed(() => '再来一局')
 const secondaryActionText = computed(() => (fromHistory.value ? '生成战绩海报' : '分享战绩'))
 
 onLoad((options) => {
@@ -339,6 +460,12 @@ onLoad((options) => {
 	}
 	fromHistory.value = options.from === 'history'
 	loadMatchData()
+	loadRewardSummary()
+})
+
+onUnload(() => {
+	rewardSummaryDisposed = true
+	if (rewardRetryTimer) clearTimeout(rewardRetryTimer)
 })
 
 const loadMatchData = async () => {
@@ -370,6 +497,29 @@ const loadMatchData = async () => {
 		})
 	} finally {
 		loading.value = false
+	}
+}
+
+const loadRewardSummary = async (attempt = 1) => {
+	if (!matchId.value) return
+
+	try {
+		const res = await getMatchRewardSummary({ match_id: matchId.value })
+		if (rewardSummaryDisposed) return
+		rewardSummary.value = resolveMatchRewardSummary(res, {
+			attempt,
+			maxAttempts: MATCH_REWARD_MAX_ATTEMPTS
+		})
+		if (rewardSummary.value.shouldRetry) {
+			rewardRetryTimer = setTimeout(() => {
+				rewardRetryTimer = null
+				loadRewardSummary(attempt + 1)
+			}, MATCH_REWARD_RETRY_DELAY_MS)
+		}
+	} catch (error) {
+		if (rewardSummaryDisposed) return
+		console.error('加载本场荣誉奖励失败:', error)
+		rewardSummary.value = resolveMatchRewardSummary()
 	}
 }
 
@@ -450,15 +600,25 @@ const redirectToMatchHistory = () => {
 	})
 }
 
-const handleSave = () => {
-	uni.showToast({
-		title: '记录已保存',
-		icon: 'success'
-	})
+const handleRematch = () => {
+	const context = buildRematchContext(matchData.value)
+	if (!context.opponent_id) {
+		uni.showToast({ title: '缺少对手信息，请从对局页重新扫码', icon: 'none' })
+		return
+	}
+	uni.setStorageSync('pending_match_rematch', JSON.stringify(context))
+	uni.switchTab({ url: '/pages/match/index' })
+}
 
-	setTimeout(() => {
-		handleClose()
-	}, 300)
+const handleH2H = () => {
+	const opponentId = Number(matchData.value.opponent_id || 0)
+	if (!opponentId) {
+		uni.showToast({ title: '暂无可用的交锋记录', icon: 'none' })
+		return
+	}
+	uni.navigateTo({
+		url: `/subPages/user/h2hRecord?opponent_id=${opponentId}&opponent_name=${encodeURIComponent(matchData.value.opponent_name || '对手')}`
+	})
 }
 
 const handleShare = () => {
@@ -472,6 +632,12 @@ const handleShare = () => {
 		fail: () => {
 			copyShareLink()
 		}
+	})
+}
+
+const handleHonorWall = () => {
+	uni.navigateTo({
+		url: buildMatchRewardHonorWallUrl(matchData.value.game_type)
 	})
 }
 

@@ -16,6 +16,31 @@ const welcomeSource = readFileSync(new URL('../pages/welcome/index.vue', import.
 const welcomeStyleSource = readFileSync(new URL('../pages/welcome/index.scss', import.meta.url), 'utf8')
 const loginSource = readFileSync(new URL('../pages/login/login.vue', import.meta.url), 'utf8')
 
+function extractSourceBetween(source, startMarker, endMarker) {
+	const start = source.indexOf(startMarker)
+	const end = source.indexOf(endMarker, start)
+	return start >= 0 && end > start ? source.slice(start, end) : ''
+}
+
+function extractReloginBranch(source) {
+	return source.match(/if \(payload\?\.action === 'relogin'\) \{[\s\S]*?\n\t\}/)?.[0] || ''
+}
+
+const welcomeBindPhoneSuccessSource = extractSourceBetween(
+	welcomeSource,
+	'const handleBindPhoneSuccess',
+	'const handleBindPhoneClose'
+)
+const welcomeReloginBranchSource = extractReloginBranch(welcomeBindPhoneSuccessSource)
+const welcomeNormalBindSuccessSource = welcomeBindPhoneSuccessSource.replace(welcomeReloginBranchSource, '')
+const loginBindPhoneSuccessSource = extractSourceBetween(
+	loginSource,
+	'const handleBindPhoneSuccess',
+	'const handleBindPhoneClose'
+)
+const loginReloginBranchSource = extractReloginBranch(loginBindPhoneSuccessSource)
+const loginNormalBindSuccessSource = loginBindPhoneSuccessSource.replace(loginReloginBranchSource, '')
+
 test('WeChat mini login only starts after agreement while idle', () => {
   assert.equal(canAttemptWechatMiniLogin({ isAgreed: false, isLogging: false }), false)
   assert.equal(canAttemptWechatMiniLogin({ isAgreed: true, isLogging: true }), false)
@@ -85,9 +110,25 @@ test('welcome page delays navigation until an unbound user handles the phone pro
 	assert.match(welcomeSource, /if \(!authGate\.value\.shouldHandleResult\) return/)
 	assert.match(welcomeSource, /postLoginState\.action === 'bind-phone'[\s\S]*?showBindPhoneModal\.value = true[\s\S]*?return[\s\S]*?navigateToHome\(\)/)
 	assert.match(welcomeSource, /if \(hasViewed && !showBindPhoneModal\.value\)/)
+	assert.match(welcomeSource, /:use-sms-binding="true"/)
 	assert.match(welcomeSource, /:require-agreement="false"/)
 	assert.match(welcomeSource, /bindingSkipped:\s*true/)
 	assert.match(welcomeSource, /handleBindPhoneSuccess/)
+})
+
+test('welcome page enters home after binding or choosing to bind later', () => {
+	assert.match(welcomeNormalBindSuccessSource, /navigateToHome\(\)/)
+	assert.match(welcomeSource, /handleBindPhoneClose[\s\S]*?bindingSkipped:\s*true[\s\S]*?navigateToHome\(\)/)
+})
+
+test('welcome page sends merged accounts to phone login with the bound phone prefilled', () => {
+	assert.match(welcomeReloginBranchSource, /userStore\.logout\(\)/)
+	assert.match(welcomeReloginBranchSource, /encodeURIComponent\(payload\?\.phone \|\| ''\)/)
+	assert.match(welcomeReloginBranchSource, /url:\s*`\/pages\/login\/login\?method=phone&phone=\$\{encodedPhone\}`/)
+	assert.match(welcomeReloginBranchSource, /\n\t\treturn\n\t\}$/)
+	assert.doesNotMatch(welcomeReloginBranchSource, /navigateToHome\(\)/)
+	assert.match(welcomeNormalBindSuccessSource, /navigateToHome\(\)/)
+	assert.match(loginSource, /onLoad\(\(options\) => \{[\s\S]*?formData\.phone = options\?\.phone[\s\S]*?decodeURIComponent\(options\.phone\)/)
 })
 
 test('welcome page matches the ivory light and warm dark login visual', () => {
@@ -112,8 +153,19 @@ test('login page defers navigation for unbound WeChat users and reuses prior con
   assert.match(loginSource, /isLogging:\s*authGate\.value\.isAuthenticating/)
   assert.match(loginSource, /if \(!authGate\.value\.shouldHandleResult\) return/)
   assert.match(loginSource, /postLoginState\.action === 'bind-phone'[\s\S]*?showBindPhoneModal\.value = true[\s\S]*?return[\s\S]*?navigateAfterLogin\(\)/)
-  assert.match(loginSource, /:require-agreement="!isWechatMiniProgram"/)
-  assert.match(loginSource, /bindingSkipped:\s*true/)
+	assert.match(loginSource, /:use-sms-binding="true"/)
+	assert.match(loginSource, /:require-agreement="false"/)
+	assert.match(loginSource, /bindingSkipped:\s*true/)
+})
+
+test('login page keeps merged accounts on a prefilled phone login state', () => {
+	assert.match(loginReloginBranchSource, /userStore\.logout\(\)/)
+	assert.match(loginReloginBranchSource, /authMode\.value = 'phone'/)
+	assert.match(loginReloginBranchSource, /formData\.phone = payload\?\.phone \|\| ''/)
+	assert.match(loginReloginBranchSource, /formData\.code = ''/)
+	assert.match(loginReloginBranchSource, /\n\t\treturn\n\t\}$/)
+	assert.doesNotMatch(loginReloginBranchSource, /navigateAfterLogin\(\)/)
+	assert.match(loginNormalBindSuccessSource, /navigateAfterLogin\(\)/)
 })
 
 test('login page uses ivory light styling and a matching warm dark theme', () => {

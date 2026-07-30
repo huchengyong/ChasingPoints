@@ -177,34 +177,28 @@
 
 .card-chip,
 .status-tag {
-	padding: 8rpx 16rpx;
-	border-radius: 999rpx;
 	font-size: 22rpx;
+	font-weight: 500;
 }
 
 .game-chip {
 	color: #7c5b12;
-	background: rgba(224, 174, 18, 0.16);
 }
 
 .status-tag {
 	&.status-0 {
-		background: #e0f2fe;
 		color: #0369a1;
 	}
 
 	&.status-1 {
-		background: rgba(224, 174, 18, 0.16);
 		color: #C69200;
 	}
 
 	&.status-2 {
-		background: #f1f5f9;
 		color: #64748b;
 	}
 
 	&.status-3 {
-		background: #fee2e2;
 		color: #dc2626;
 	}
 }
@@ -327,4 +321,52 @@
 	text-align: center;
 	font-size: 24rpx;
 	color: #94a3b8;
+}
+
+.tournament-page.dark-mode {
+	background: linear-gradient(180deg, #141109 0%, #171309 40%, #141109 100%);
+
+	.toolbar,
+	.tournament-card,
+	.empty-state {
+		background: rgba(30, 24, 13, 0.96);
+		box-shadow: none;
+	}
+
+	.filter-item,
+	.meta-item {
+		background: #2a2110;
+		border-color: #3a2e16;
+	}
+
+	.card-cover {
+		background: #3a2e16;
+	}
+
+	.filter-value,
+	.card-title,
+	.meta-value,
+	.empty-title {
+		color: #fff7e1;
+	}
+
+	.filter-label,
+	.toolbar-tip,
+	.card-summary,
+	.meta-label,
+	.footer-source,
+	.loading-text,
+	.empty-text,
+	.no-more {
+		color: #9f926e;
+	}
+
+	.card-footer {
+		border-top-color: #3a2e16;
+	}
+
+	.status-tag.status-2 {
+		background: #3a2e16;
+		color: #d7c89b;
+	}
 }

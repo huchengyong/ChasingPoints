@@ -46,3 +46,34 @@ test('resolvePlayingViewerUi turns players into readonly viewers after referee b
     }
   )
 })
+
+test('resolvePlayingViewerUi exposes ranked finish actions from server capabilities', () => {
+  assert.deepEqual(
+    resolvePlayingViewerUi({
+      viewerRole: 'player2',
+      canScore: false,
+      canUndo: false,
+      canFinish: false,
+      canConfirmFinish: true,
+      canDisputeFinish: true,
+      finishState: 'pending_confirmation',
+      lastAction: { description: '我方发起结束确认' }
+    }),
+    {
+      leftIdentity: '我方',
+      rightIdentity: '对手',
+      subtitleSuffix: '左我右敌',
+      roleLabel: '选手视角',
+      showActionPanel: false,
+      showUndoButton: false,
+      showFinishButton: false,
+      readonlyHint: '等待对手处理结束确认',
+      showFinishRequestButton: false,
+      showFinishConfirmButton: true,
+      showFinishDisputeButton: true,
+      showFinishWithdrawButton: false,
+      finishState: 'pending_confirmation',
+      lastAction: { description: '我方发起结束确认' }
+    }
+  )
+})

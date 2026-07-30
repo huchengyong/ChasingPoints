@@ -8,7 +8,11 @@ PORT_WAIT_SECONDS ?= 30
 BUILD_DIR := bin
 BUILD_BINARY := $(BUILD_DIR)/chasing_points
 
-.PHONY: server build
+.PHONY: server build admin
+
+admin:
+	cd admin && npm run dev
+
 server:
 	@if [ ! -f "$(ENV_FILE)" ]; then \
 		echo "Missing env file: $(ENV_FILE)"; \

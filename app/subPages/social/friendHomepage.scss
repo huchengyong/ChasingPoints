@@ -46,13 +46,16 @@
 		.status-chip,
 		.retry-btn,
 		.battle-avatar-placeholder,
-		.battle-badge.waiting {
+		.battle-badge.waiting,
+		.secondary-btn {
 			background: #334155;
 			border-color: #475569;
 		}
 
 		.retry-btn,
-		.retry-btn text {
+		.retry-btn text,
+		.secondary-btn,
+		.secondary-btn text {
 			color: #f8fafc;
 		}
 
@@ -197,11 +200,8 @@
 }
 
 .friend-rank {
-	padding: 6rpx 14rpx;
-	border-radius: 999rpx;
-	background: rgba(224, 174, 18, 0.14);
 	font-size: 22rpx;
-	font-weight: 600;
+	font-weight: 500;
 	color: #C69200;
 }
 
@@ -221,14 +221,9 @@
 }
 
 .status-chip {
-	padding: 10rpx 18rpx;
-	border-radius: 999rpx;
-	background: rgba(224, 174, 18, 0.12);
-	border: 1rpx solid rgba(224, 174, 18, 0.24);
-
 	text {
 		font-size: 22rpx;
-		font-weight: 600;
+		font-weight: 500;
 		color: #C69200;
 	}
 }
@@ -276,18 +271,21 @@
 	margin-top: 18rpx;
 }
 
-.hero-primary-btn {
+.hero-action-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 16rpx;
 	margin-top: 24rpx;
 }
 
-.fact-chip {
-	padding: 14rpx 18rpx;
-	border-radius: 999rpx;
-	background: rgba(255, 255, 255, 0.82);
+.hero-primary-btn {
+	margin: 0;
+}
 
+.fact-chip {
 	text {
 		font-size: 22rpx;
-		font-weight: 600;
+		font-weight: 500;
 		color: #1e293b;
 	}
 }
@@ -322,6 +320,29 @@
 	text {
 		font-size: 28rpx;
 		font-weight: 600;
+	}
+
+	&::after {
+		display: none;
+	}
+}
+
+.secondary-btn {
+	width: 100%;
+	height: 88rpx;
+	line-height: 88rpx;
+	margin: 0;
+	padding: 0 16rpx;
+	box-sizing: border-box;
+	border-radius: 22rpx;
+	border: 1rpx solid rgba(224, 174, 18, 0.48);
+	background: #fffaf0;
+	color: #8a6506;
+
+	text {
+		font-size: 27rpx;
+		font-weight: 600;
+		color: #8a6506;
 	}
 
 	&::after {
@@ -453,44 +474,34 @@
 }
 
 .battle-badge {
-	padding: 6rpx 14rpx;
-	border-radius: 999rpx;
 	font-size: 20rpx;
 	line-height: 1;
 
 	text {
 		font-size: 20rpx;
-		font-weight: 600;
+		font-weight: 500;
 	}
 }
 
 .battle-badge.lead {
-	background: rgba(16, 185, 129, 0.12);
-
 	text {
 		color: #059669;
 	}
 }
 
 .battle-badge.trail {
-	background: rgba(239, 68, 68, 0.12);
-
 	text {
 		color: #dc2626;
 	}
 }
 
 .battle-badge.balanced {
-	background: rgba(59, 130, 246, 0.12);
-
 	text {
 		color: #2563eb;
 	}
 }
 
 .battle-badge.waiting {
-	background: #f1f5f9;
-
 	text {
 		color: #64748b;
 	}

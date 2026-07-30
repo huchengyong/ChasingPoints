@@ -1,8 +1,9 @@
 import { getGameTypeLabel } from './game-types.js'
 import { formatEventNewsTime, getEventNewsStatusText } from './home-index.js'
+import { DEFAULT_USER_AVATAR } from './user-profile.js'
 
 export const DEFAULT_EVENT_COVER = 'https://images.gc.wstservices.co.uk/fit-in/400x600/4ddad400-99d3-11ee-94e8-c9d138e537ff.png'
-export const DEFAULT_PLAYER_AVATAR = '/static/images/default-avatar.png'
+export const DEFAULT_PLAYER_AVATAR = DEFAULT_USER_AVATAR
 
 const MATCH_ACTIVE_STATUSES = new Set([0, 1])
 const MATCH_LIVE_FALLBACK_WINDOW_MS = 12 * 60 * 60 * 1000

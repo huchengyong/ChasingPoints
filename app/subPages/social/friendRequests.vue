@@ -16,7 +16,7 @@
 				<view class="request-card-main">
 					<image
 						class="request-avatar"
-						:src="item.avatar || '/static/images/default-avatar.png'"
+						:src="resolveAvatarUrl(item.avatar, item.from_user_id || item.user_id || item.friend_user_id)"
 						mode="aspectFill"
 					/>
 					<view class="request-info">
@@ -67,6 +67,7 @@ import { getFriendRequests, acceptFriendRequest, rejectFriendRequest } from '@/a
 import { useFriendRequestStore } from '@/store/friendRequest.js'
 import { formatRelativeTime } from '@/utils/format.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const { isDarkMode } = usePageTheme()
 
@@ -301,21 +302,15 @@ onPullDownRefresh(() => {
 			.status-text {
 				display: inline-flex;
 				align-items: center;
-				justify-content: center;
-				padding: 0 20rpx;
-				height: 52rpx;
-				border-radius: 999rpx;
 				font-size: 22rpx;
-				font-weight: 600;
+				font-weight: 500;
 
 				&.accepted {
 					color: #0f766e;
-					background: rgba(15, 118, 110, 0.1);
 				}
 
 				&.rejected {
 					color: #94a3b8;
-					background: #f8fafc;
 				}
 			}
 		}
@@ -345,6 +340,44 @@ onPullDownRefresh(() => {
 	.empty-text {
 		font-size: 28rpx;
 		color: #94a3b8;
+	}
+}
+
+.requests-page.dark-mode {
+	background: #141109;
+
+	.request-list .request-item {
+		background: #1e180d;
+		border-color: #3a2e16;
+		box-shadow: none;
+
+		.request-avatar,
+		.request-actions .action-reject,
+		.request-status .status-text.rejected {
+			background: #2a2110;
+			border-color: #3a2e16;
+		}
+
+		.request-name {
+			color: #fff7e1;
+		}
+
+		.request-message,
+		.request-actions .action-reject {
+			color: #d7c89b;
+		}
+
+		.request-time,
+		.request-message.is-muted,
+		.request-status .status-text.rejected {
+			color: #9f926e;
+		}
+	}
+
+	.loading-text,
+	.load-more-text,
+	.empty-text {
+		color: #9f926e;
 	}
 }
 </style>

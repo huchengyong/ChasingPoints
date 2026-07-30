@@ -15,7 +15,13 @@ export const WS_MESSAGE_TYPES = {
   MATCH_END: 'match_end',
   MATCH_START: 'match_start',
   MATCH_ROLE_CHANGED: 'match_role_changed',
+  MATCH_FINISH_REQUEST: 'match_finish_request',
+  MATCH_FINISH_CONFIRM: 'match_finish_confirm',
+  MATCH_FINISH_DISPUTE: 'match_finish_dispute',
+  MATCH_FINISH_WITHDRAW: 'match_finish_withdraw',
+  MATCH_FINISH_EXPIRED: 'match_finish_expired',
   NOTIFICATION_UPDATE: 'notification_update',
+  RANK_INFO_UPDATED: 'rank_info_updated',
   SYNC: 'sync',
   PING: 'ping',
   PONG: 'pong'
@@ -328,86 +334,121 @@ class UserWebSocket {
     this.messageHandlers = new Map()
     this.isConnecting = false
     this.manualDisconnect = false
+    this.connectionGeneration = 0
+    this.connectPromise = null
+    this.connectReject = null
   }
 
   connect() {
-    return new Promise((resolve, reject) => {
-      if (this.socket && this.state === SOCKET_STATES.OPEN) {
-        resolve()
-        return
-      }
+    if (this.socket && this.state === SOCKET_STATES.OPEN) {
+      return Promise.resolve()
+    }
+    if (this.isConnecting && this.connectPromise) {
+      return this.connectPromise
+    }
 
-      if (this.isConnecting) {
-        reject(new Error('正在连接中'))
-        return
-      }
+    const token = uni.getStorageSync('token')
+    if (!token) {
+      return Promise.reject(new Error('未登录'))
+    }
 
-      const token = uni.getStorageSync('token')
-      if (!token) {
-        reject(new Error('未登录'))
-        return
-      }
+    this.clearReconnectTimer()
+    this.stopHeartbeat()
+    this.manualDisconnect = false
+    this.isConnecting = true
+    this.state = this.reconnectAttempts > 0 ? SOCKET_STATES.RECONNECTING : SOCKET_STATES.CONNECTING
+    this.connectionGeneration += 1
+    const connectionGeneration = this.connectionGeneration
+    logUserWS('开始连接', { attempt: this.reconnectAttempts, state: this.state })
 
-      this.clearReconnectTimer()
-      this.stopHeartbeat()
-      this.manualDisconnect = false
-      this.isConnecting = true
-      this.state = this.reconnectAttempts > 0 ? SOCKET_STATES.RECONNECTING : SOCKET_STATES.CONNECTING
-      logUserWS('开始连接', { attempt: this.reconnectAttempts, state: this.state })
-
-      const socketTask = uni.connectSocket({
-        url: `${WS_BASE_URL}/api/user/ws?token=${token}`,
-        complete: () => {}
-      })
-
-      this.socket = socketTask
-
-      let settled = false
-      const resolveOnce = () => {
-        if (!settled) {
-          settled = true
-          resolve()
-        }
-      }
-      const rejectOnce = (error) => {
-        if (!settled) {
-          settled = true
-          reject(error)
-        }
-      }
-
-      socketTask.onOpen(() => {
-        this.isConnecting = false
-        this.state = SOCKET_STATES.OPEN
-        this.reconnectAttempts = 0
-        this.startHeartbeat()
-        logUserWS('连接成功', { state: this.state })
-        resolveOnce()
-      })
-
-      socketTask.onClose((res) => {
-        const shouldReconnect = !this.manualDisconnect
-        this.cleanupClosedSocket()
-        logUserWS('连接关闭', { shouldReconnect, detail: res })
-        if (shouldReconnect) {
-          this.handleReconnect()
-        }
-      })
-
-      socketTask.onError((err) => {
-        this.isConnecting = false
-        this.state = SOCKET_STATES.ERROR
-        errorUserWS('连接错误', { detail: err })
-        rejectOnce(err)
-      })
-
-      socketTask.onMessage((res) => {
-        this.handleMessage(res.data)
-      })
+    const socketTask = uni.connectSocket({
+      url: `${WS_BASE_URL}/api/user/ws?token=${token}`,
+      complete: () => {}
     })
+    this.socket = socketTask
+
+    let settled = false
+    let resolveOnce
+    let rejectOnce
+    const promise = new Promise((resolve, reject) => {
+      const clearPendingConnect = () => {
+        if (this.connectionGeneration === connectionGeneration) {
+          this.connectPromise = null
+          this.connectReject = null
+        }
+      }
+      resolveOnce = () => {
+        if (settled) return
+        settled = true
+        clearPendingConnect()
+        resolve()
+      }
+      rejectOnce = (error) => {
+        if (settled) return
+        settled = true
+        clearPendingConnect()
+        reject(error)
+      }
+    })
+    this.connectPromise = promise
+    this.connectReject = rejectOnce
+
+    const isCurrentConnection = () => (
+      this.socket === socketTask && this.connectionGeneration === connectionGeneration
+    )
+
+    socketTask.onOpen(() => {
+      if (!isCurrentConnection()) {
+        rejectOnce(new Error('用户 WebSocket 连接已替换'))
+        return
+      }
+      this.isConnecting = false
+      this.state = SOCKET_STATES.OPEN
+      this.reconnectAttempts = 0
+      this.startHeartbeat()
+      logUserWS('连接成功', { state: this.state })
+      resolveOnce()
+    })
+
+    socketTask.onClose((res) => {
+      if (!isCurrentConnection()) {
+        rejectOnce(new Error('用户 WebSocket 连接已替换'))
+        return
+      }
+      const shouldReconnect = !this.manualDisconnect
+      this.cleanupClosedSocket()
+      rejectOnce(new Error('用户 WebSocket 连接已关闭'))
+      logUserWS('连接关闭', { shouldReconnect, detail: res })
+      if (shouldReconnect) {
+        this.handleReconnect()
+      }
+    })
+
+    socketTask.onError((err) => {
+      if (!isCurrentConnection()) {
+        rejectOnce(new Error('用户 WebSocket 连接已替换'))
+        return
+      }
+      this.isConnecting = false
+      this.state = SOCKET_STATES.ERROR
+      errorUserWS('连接错误', { detail: err })
+      rejectOnce(err)
+    })
+
+    socketTask.onMessage((res) => {
+      if (isCurrentConnection()) {
+        this.handleMessage(res.data)
+      }
+    })
+
+    return promise
   }
 
   disconnect() {
+    this.connectionGeneration += 1
+    const rejectPendingConnect = this.connectReject
+    this.connectPromise = null
+    this.connectReject = null
     this.manualDisconnect = true
     this.clearReconnectTimer()
     this.stopHeartbeat()
@@ -417,6 +458,10 @@ class UserWebSocket {
     const activeSocket = this.socket
     this.socket = null
     this.reconnectAttempts = 0
+
+    if (rejectPendingConnect) {
+      rejectPendingConnect(new Error('用户 WebSocket 已断开'))
+    }
 
     if (activeSocket) {
       activeSocket.close({

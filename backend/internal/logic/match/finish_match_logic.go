@@ -33,6 +33,10 @@ func NewFinishMatchLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Finis
 }
 
 func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.FinishMatchResp, err error) {
+	return l.finishMatchImmediately(req, false)
+}
+
+func (l *FinishMatchLogic) finishMatchImmediately(req *types.FinishMatchReq, force bool) (resp *types.FinishMatchResp, err error) {
 	// 获取用户ID
 	userId, err := utils.GetUserIDFromCtx(l.ctx)
 	if err != nil {
@@ -46,9 +50,27 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 		l.Logger.Errorf("对局不存在: %v", err)
 		return &types.FinishMatchResp{Success: false}, nil
 	}
+	if !force && shouldRequestRankedFinish(match, userId) {
+		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
+		if stateErr != nil {
+			return &types.FinishMatchResp{Success: false, Accepted: false, Message: "加载对局快照失败"}, nil
+		}
+		scoreView := buildMatchWriteScoreView(userId, match)
+		return &types.FinishMatchResp{
+			Success:        false,
+			Accepted:       false,
+			Message:        "本场排位赛需要双方确认，请使用结束确认流程",
+			Result:         3,
+			ClientActionId: req.ClientActionId,
+			ServerRevision: view.Snapshot.ServerRevision,
+			Snapshot:       view.Snapshot,
+			MyScore:        scoreView.MyScore,
+			OpponentScore:  scoreView.OpponentScore,
+		}, nil
+	}
 
 	// 验证用户权限
-	capabilities, authorityErr := validateMatchWriteAuthority(match, userId)
+	_, authorityErr := validateMatchWriteAuthority(match, userId)
 	if authorityErr != nil {
 		if authorityErr == errMatchViewerNotParticipant {
 			l.Logger.Errorf("用户不是对局参与者: matchUserId=%d, matchOpponentId=%v, refereeUserId=%v, currentUserId=%d",
@@ -84,7 +106,12 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 		return &types.FinishMatchResp{Success: false, Accepted: false}, nil
 	}
 	if existingAction != nil {
-		l.awardMemberGrowthForMatch(match.Id, match.UserId, match.OpponentId)
+		if existingAction.ActionType != "match_end" || existingAction.Actor != resolveFinishActionActor(match, userId) || existingAction.BaseRevision != req.BaseRevision {
+			return &types.FinishMatchResp{Success: false, Accepted: false, ClientActionId: req.ClientActionId}, nil
+		}
+		if model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked {
+			l.awardMemberGrowthForMatch(match.Id, match.UserId, match.OpponentId)
+		}
 		l.syncAchievementProgressForCompletedMatch(match)
 		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
 		if stateErr != nil {
@@ -133,172 +160,11 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 		}, nil
 	}
 
-	// 验证对局状态
-	if match.Status != 1 {
-		return &types.FinishMatchResp{Success: false}, nil
-	}
-
-	// 计算比赛结果（从创建者视角）
-	var result int
-	if match.MyScore > match.OpponentScore {
-		result = 1 // 胜利
-	} else if match.MyScore < match.OpponentScore {
-		result = 2 // 失败
-	} else {
-		result = 3 // 平局
-	}
-
-	// 更新对局状态
-	now := time.Now()
-	match.Status = 2 // 已完成
-	match.Result = &result
-	match.EndTime = &now
-	if match.GameType == 1 {
-		match.CurrentFrameStarted = false
-		match.CurrentFrameMyScore = 0
-		match.CurrentFrameOpponentScore = 0
-	}
-	if req.Remark != "" {
-		match.Remark = req.Remark
-	}
-
-	settlementService := NewRankSettlementService(l.svcCtx.RankingModel)
-	player1Win := result == 1
-	player1RawAchievementScore := 0
-	player2RawAchievementScore := 0
-	completedRounds := 0
-	if result != 3 {
-		rewardMap, rewardErr := l.getAchievementRewardMap(match.GameType)
-		if rewardErr != nil {
-			l.Logger.Errorf("获取成就奖励配置失败: %v", rewardErr)
-			return &types.FinishMatchResp{Success: false}, nil
-		}
-		rounds, roundsErr := l.svcCtx.MatchModel.ListCompletedRounds(match.Id)
-		if roundsErr != nil {
-			l.Logger.Errorf("获取对局局记录失败: %v", roundsErr)
-			return &types.FinishMatchResp{Success: false}, nil
-		}
-		completedRounds = len(rounds)
-		actions, actionsErr := l.svcCtx.MatchModel.ListActiveActions(match.Id)
-		if actionsErr != nil {
-			l.Logger.Errorf("获取对局操作记录失败: %v", actionsErr)
-			return &types.FinishMatchResp{Success: false}, nil
-		}
-		player1RawAchievementScore, player2RawAchievementScore = resolveReplayAchievementScores(
-			match.GameType,
-			rounds,
-			actions,
-			nil,
-			rewardMap,
-		)
-	}
-
-	actionActor := 1
-	if capabilities.ViewerRole == matchViewerRolePlayer2 {
-		actionActor = 2
-	}
-	action := &model.MatchAction{
-		MatchId:        match.Id,
-		RoundNo:        0,
-		ActionType:     "match_end",
-		Actor:          actionActor,
-		ScoreChange:    0,
-		ClientActionId: stringPointer(req.ClientActionId),
-		BaseRevision:   req.BaseRevision,
-	}
-	var serverRevision int64
+	var settlement finishMatchSettlement
 	err = l.svcCtx.DB.Transaction(func(tx *gorm.DB) error {
-		revision, revisionErr := l.svcCtx.MatchModel.BumpMatchRevisionWithTx(tx, match)
-		if revisionErr != nil {
-			return revisionErr
-		}
-		serverRevision = revision
-		if err := l.svcCtx.MatchModel.CreateActionWithRevisionWithTx(tx, action, serverRevision); err != nil {
-			return err
-		}
-
-		if result == 3 {
-			return nil
-		}
-
-		effectiveAt := resolveRankChangeEffectiveAt(match)
-		player1Ranking, err := l.svcCtx.RankingModel.FindOrCreateWithTx(tx, match.UserId, match.GameType)
-		if err != nil {
-			return err
-		}
-		player1OpponentScore := -1
-		var player2Ranking *model.UserRanking
-		player2OpponentScore := -1
-		if match.OpponentId != nil && *match.OpponentId > 0 {
-			player2Ranking, err = l.svcCtx.RankingModel.FindOrCreateWithTx(tx, *match.OpponentId, match.GameType)
-			if err != nil {
-				return err
-			}
-			player1OpponentScore = player2Ranking.RankScore
-			player2OpponentScore = player1Ranking.RankScore
-		}
-
-		player1Policy, err := buildRankSettlementPolicy(
-			tx,
-			l.svcCtx,
-			match.UserId,
-			match.OpponentId,
-			match.GameType,
-			effectiveAt,
-			match.Id,
-			completedRounds,
-			player1OpponentScore,
-		)
-		if err != nil {
-			return err
-		}
-
-		player1AchievementScore := 0
-		if player1Policy.MemberActive {
-			player1AchievementScore = calculateMemberAchievementRankingScoreWithPercent(player1RawAchievementScore, player1Win, true, player1Policy.MemberMultiplierPercent)
-		} else if player1Policy.OrdinaryUserAchievementEnabled && player1Win {
-			player1AchievementScore = player1RawAchievementScore
-		}
-		player1Settlement := settlementService.SettleWithPolicy(player1Ranking, player1Win, player1AchievementScore, player1Policy)
-		applySettlementToRanking(player1Ranking, player1Settlement)
-		if err := l.svcCtx.RankingModel.UpdateRankingSnapshot(tx, player1Ranking); err != nil {
-			return err
-		}
-
-		changeLogs := []model.RankChangeLog{
-			buildRankChangeLog(match.Id, match.UserId, match.GameType, resultLabel(player1Win, false), effectiveAt, player1Settlement),
-		}
-
-		if match.OpponentId != nil && *match.OpponentId > 0 {
-			player2Policy, err := buildRankSettlementPolicy(
-				tx,
-				l.svcCtx,
-				*match.OpponentId,
-				&match.UserId,
-				match.GameType,
-				effectiveAt,
-				match.Id,
-				completedRounds,
-				player2OpponentScore,
-			)
-			if err != nil {
-				return err
-			}
-			player2AchievementScore := 0
-			if player2Policy.MemberActive {
-				player2AchievementScore = calculateMemberAchievementRankingScoreWithPercent(player2RawAchievementScore, !player1Win, true, player2Policy.MemberMultiplierPercent)
-			} else if player2Policy.OrdinaryUserAchievementEnabled && !player1Win {
-				player2AchievementScore = player2RawAchievementScore
-			}
-			player2Settlement := settlementService.SettleWithPolicy(player2Ranking, !player1Win, player2AchievementScore, player2Policy)
-			applySettlementToRanking(player2Ranking, player2Settlement)
-			if err := l.svcCtx.RankingModel.UpdateRankingSnapshot(tx, player2Ranking); err != nil {
-				return err
-			}
-			changeLogs = append(changeLogs, buildRankChangeLog(match.Id, *match.OpponentId, match.GameType, resultLabel(!player1Win, false), effectiveAt, player2Settlement))
-		}
-
-		return l.svcCtx.RankingModel.CreateRankChangeLogs(tx, changeLogs)
+		var err error
+		settlement, err = l.settleMatchWithTx(tx, match, userId, req)
+		return err
 	})
 	if err != nil {
 		if isRetryableMatchWriteError(err) {
@@ -313,7 +179,12 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 				result = *replayState.Match.Result
 			}
 			if replayState.ExistingAction != nil {
-				l.awardMemberGrowthForMatch(replayState.Match.Id, replayState.Match.UserId, replayState.Match.OpponentId)
+				if replayState.Match != nil {
+					if model.NormalizeMatchMode(replayState.Match.MatchMode) == model.MatchModeRanked {
+						l.awardMemberGrowthForMatch(replayState.Match.Id, replayState.Match.UserId, replayState.Match.OpponentId)
+					}
+					l.syncAchievementProgressForCompletedMatch(replayState.Match)
+				}
 				return &types.FinishMatchResp{
 					Accepted:       true,
 					Success:        true,
@@ -339,22 +210,27 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 		l.Logger.Errorf("结束对局事务失败: %v", err)
 		return &types.FinishMatchResp{Success: false}, nil
 	}
+	result := settlement.Result
+	return l.finishMatchPostCommit(req, userId, match, result)
+}
 
-	l.applyMatchReputation(match)
-
+func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, userId int64, match *model.Match, result int) (*types.FinishMatchResp, error) {
+	if model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked {
+		l.applyMatchReputation(match)
+	}
 	view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
 	if stateErr != nil {
 		l.Logger.Errorf("加载写入快照失败: matchId=%d, clientActionId=%s, err=%v", match.Id, req.ClientActionId, stateErr)
 		return &types.FinishMatchResp{Success: false, Accepted: false}, nil
 	}
-
-	l.awardMemberGrowthForMatch(match.Id, match.UserId, match.OpponentId)
+	if model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked {
+		l.awardMemberGrowthForMatch(match.Id, match.UserId, match.OpponentId)
+	}
 	l.syncAchievementProgressForCompletedMatch(match)
 
 	l.Logger.Infof("用户 %d 结束对局 %d，比分: %d:%d，结果: %d",
 		userId, match.Id, match.MyScore, match.OpponentScore, result)
-
-	// ========== 通知双方对局结果 + 推送 ==========
+	broadcastRankInfoUpdated(match, result)
 	if result != 3 {
 		resultText := "胜利"
 		if result == 2 {
@@ -400,7 +276,6 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 		}
 	}
 
-	// 推送 WebSocket 消息通知双方对局已结束
 	if ws.GlobalHub != nil {
 		l.Logger.Infof("广播对局结束: matchId=%d, result=%d, player1=%d, player2=%d",
 			match.Id, result, match.MyScore, match.OpponentScore)
@@ -415,6 +290,7 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 				"player2_score":   match.OpponentScore,
 				"status":          match.Status,
 				"result":          result,
+				"match_mode":      model.NormalizeMatchMode(match.MatchMode),
 			},
 		})
 	}
@@ -430,6 +306,220 @@ func (l *FinishMatchLogic) FinishMatch(req *types.FinishMatchReq) (resp *types.F
 		MyScore:        scoreView.MyScore,
 		OpponentScore:  scoreView.OpponentScore,
 	}, nil
+}
+
+func broadcastRankInfoUpdated(match *model.Match, result int) {
+	if ws.GlobalHub == nil || match == nil || result == 3 || model.NormalizeMatchMode(match.MatchMode) != model.MatchModeRanked {
+		return
+	}
+
+	userIds := map[int64]struct{}{match.UserId: struct{}{}}
+	if match.OpponentId != nil && *match.OpponentId > 0 {
+		userIds[*match.OpponentId] = struct{}{}
+	}
+	for userId := range userIds {
+		if userId <= 0 {
+			continue
+		}
+		ws.GlobalHub.SendToUser(userId, &ws.Message{
+			Type: "rank_info_updated",
+			Data: map[string]interface{}{
+				"match_id":  match.Id,
+				"game_type": match.GameType,
+			},
+		})
+	}
+}
+
+func resolveCompletedByUserId(match *model.Match) int64 {
+	if match == nil || match.Status != 2 || match.CompletedByUserId == nil {
+		return 0
+	}
+	return *match.CompletedByUserId
+}
+
+func resolveCompletionSource(match *model.Match) string {
+	if match == nil || match.Status != 2 || match.CompletionSource == "" {
+		return model.CompletionSourceUnknown
+	}
+	return match.CompletionSource
+}
+
+type finishMatchSettlement struct {
+	Result         int
+	ServerRevision int64
+}
+
+func (l *FinishMatchLogic) settleMatchWithTx(tx *gorm.DB, match *model.Match, userId int64, req *types.FinishMatchReq) (finishMatchSettlement, error) {
+	return l.settleMatchWithCompletionSourceTx(tx, match, userId, req, "")
+}
+
+func (l *FinishMatchLogic) settleMatchWithCompletionSourceTx(tx *gorm.DB, match *model.Match, userId int64, req *types.FinishMatchReq, completionSource string) (finishMatchSettlement, error) {
+	if match == nil || match.Status != 1 || req == nil {
+		return finishMatchSettlement{}, errFinishActionInvalid
+	}
+
+	result := 3
+	if match.MyScore > match.OpponentScore {
+		result = 1
+	} else if match.MyScore < match.OpponentScore {
+		result = 2
+	}
+	now := time.Now()
+	match.Status = 2
+	match.Result = &result
+	match.EndTime = &now
+	clearFinishRequest(match)
+
+	// 写入完成归因
+	if match.CompletedByUserId == nil {
+		completedBy := &userId
+		source := completionSource
+		if match.RefereeUserId != nil && *match.RefereeUserId > 0 {
+			completedBy = match.RefereeUserId
+			source = model.CompletionSourceReferee
+		}
+		if source == "" {
+			source = model.CompletionSourcePlayerDirect
+		}
+		match.CompletedByUserId = completedBy
+		match.CompletionSource = source
+	}
+	if match.GameType == 1 {
+		match.CurrentFrameStarted = false
+		match.CurrentFrameMyScore = 0
+		match.CurrentFrameOpponentScore = 0
+	}
+	if req.Remark != "" {
+		match.Remark = req.Remark
+	}
+
+	player1Win := result == 1
+	player1RawAchievementScore := 0
+	player2RawAchievementScore := 0
+	completedRounds := 0
+	if result != 3 && model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked {
+		rewardMap, err := l.getAchievementRewardMap(match.GameType)
+		if err != nil {
+			return finishMatchSettlement{}, err
+		}
+		rounds, err := l.svcCtx.MatchModel.ListCompletedRoundsWithTx(tx, match.Id)
+		if err != nil {
+			return finishMatchSettlement{}, err
+		}
+		completedRounds = len(rounds)
+		actions, err := l.svcCtx.MatchModel.ListActiveActionsWithTx(tx, match.Id)
+		if err != nil {
+			return finishMatchSettlement{}, err
+		}
+		player1RawAchievementScore, player2RawAchievementScore = resolveReplayAchievementScores(
+			match.GameType,
+			rounds,
+			actions,
+			nil,
+			rewardMap,
+		)
+	}
+
+	serverRevision, err := l.svcCtx.MatchModel.BumpMatchRevisionWithTx(tx, match)
+	if err != nil {
+		return finishMatchSettlement{}, err
+	}
+	if err := l.svcCtx.MatchModel.CreateActionWithRevisionWithTx(tx, &model.MatchAction{
+		MatchId:        match.Id,
+		RoundNo:        0,
+		ActionType:     "match_end",
+		Actor:          resolveFinishActionActor(match, userId),
+		ScoreChange:    0,
+		ClientActionId: stringPointer(req.ClientActionId),
+		BaseRevision:   req.BaseRevision,
+	}, serverRevision); err != nil {
+		return finishMatchSettlement{}, err
+	}
+
+	if result == 3 || model.NormalizeMatchMode(match.MatchMode) == model.MatchModePractice {
+		return finishMatchSettlement{Result: result, ServerRevision: serverRevision}, nil
+	}
+
+	settlementService := NewRankSettlementService(l.svcCtx.RankingModel)
+	effectiveAt := resolveRankChangeEffectiveAt(match)
+	player1Ranking, err := l.svcCtx.RankingModel.FindOrCreateWithTx(tx, match.UserId, match.GameType)
+	if err != nil {
+		return finishMatchSettlement{}, err
+	}
+	player1OpponentScore := -1
+	var player2Ranking *model.UserRanking
+	player2OpponentScore := -1
+	if match.OpponentId != nil && *match.OpponentId > 0 {
+		player2Ranking, err = l.svcCtx.RankingModel.FindOrCreateWithTx(tx, *match.OpponentId, match.GameType)
+		if err != nil {
+			return finishMatchSettlement{}, err
+		}
+		player1OpponentScore = player2Ranking.RankScore
+		player2OpponentScore = player1Ranking.RankScore
+	}
+
+	player1Policy, err := buildRankSettlementPolicy(
+		tx,
+		l.svcCtx,
+		match.UserId,
+		match.OpponentId,
+		match.GameType,
+		effectiveAt,
+		match.Id,
+		completedRounds,
+		player1OpponentScore,
+	)
+	if err != nil {
+		return finishMatchSettlement{}, err
+	}
+	player1AchievementScore := 0
+	if player1Policy.MemberActive {
+		player1AchievementScore = calculateMemberAchievementRankingScoreWithPercent(player1RawAchievementScore, player1Win, true, player1Policy.MemberMultiplierPercent)
+	} else if player1Policy.OrdinaryUserAchievementEnabled && player1Win {
+		player1AchievementScore = player1RawAchievementScore
+	}
+	player1Settlement := settlementService.SettleWithPolicy(player1Ranking, player1Win, player1AchievementScore, player1Policy)
+	applySettlementToRanking(player1Ranking, player1Settlement)
+	if err := l.svcCtx.RankingModel.UpdateRankingSnapshot(tx, player1Ranking); err != nil {
+		return finishMatchSettlement{}, err
+	}
+
+	changeLogs := []model.RankChangeLog{
+		buildRankChangeLog(match.Id, match.UserId, match.GameType, resultLabel(player1Win, false), effectiveAt, player1Settlement),
+	}
+	if match.OpponentId != nil && *match.OpponentId > 0 {
+		player2Policy, err := buildRankSettlementPolicy(
+			tx,
+			l.svcCtx,
+			*match.OpponentId,
+			&match.UserId,
+			match.GameType,
+			effectiveAt,
+			match.Id,
+			completedRounds,
+			player2OpponentScore,
+		)
+		if err != nil {
+			return finishMatchSettlement{}, err
+		}
+		player2AchievementScore := 0
+		if player2Policy.MemberActive {
+			player2AchievementScore = calculateMemberAchievementRankingScoreWithPercent(player2RawAchievementScore, !player1Win, true, player2Policy.MemberMultiplierPercent)
+		} else if player2Policy.OrdinaryUserAchievementEnabled && !player1Win {
+			player2AchievementScore = player2RawAchievementScore
+		}
+		player2Settlement := settlementService.SettleWithPolicy(player2Ranking, !player1Win, player2AchievementScore, player2Policy)
+		applySettlementToRanking(player2Ranking, player2Settlement)
+		if err := l.svcCtx.RankingModel.UpdateRankingSnapshot(tx, player2Ranking); err != nil {
+			return finishMatchSettlement{}, err
+		}
+		changeLogs = append(changeLogs, buildRankChangeLog(match.Id, *match.OpponentId, match.GameType, resultLabel(!player1Win, false), effectiveAt, player2Settlement))
+	}
+	if err := l.svcCtx.RankingModel.CreateRankChangeLogs(tx, changeLogs); err != nil {
+		return finishMatchSettlement{}, err
+	}
+	return finishMatchSettlement{Result: result, ServerRevision: serverRevision}, nil
 }
 
 func (l *FinishMatchLogic) getAchievementRewardMap(gameType int) (map[string]int, error) {
@@ -476,15 +566,24 @@ func (l *FinishMatchLogic) syncAchievementProgressForCompletedMatch(match *model
 }
 
 func (l *FinishMatchLogic) syncAchievementProgressForCompletedMatchWithError(match *model.Match) error {
-	if match == nil || l.svcCtx == nil || l.svcCtx.DB == nil || l.svcCtx.MatchModel == nil ||
-		l.svcCtx.RankingModel == nil || l.svcCtx.AchievementProgressEventModel == nil {
+	if match == nil || match.Status != 2 {
 		return nil
 	}
-	if match.Status != 2 || match.Result == nil || *match.Result == 3 {
+	if match.AchievementSyncedAt != nil {
 		return nil
 	}
-	if match.OpponentId == nil || *match.OpponentId <= 0 || *match.OpponentId == match.UserId {
-		return nil
+	if l.svcCtx == nil || l.svcCtx.DB == nil || l.svcCtx.MatchModel == nil {
+		return fmt.Errorf("achievement sync infrastructure is unavailable")
+	}
+	if match.Result == nil {
+		return fmt.Errorf("completed match %d has no result", match.Id)
+	}
+	if model.NormalizeMatchMode(match.MatchMode) == model.MatchModePractice || *match.Result == 3 ||
+		match.OpponentId == nil || *match.OpponentId <= 0 || *match.OpponentId == match.UserId {
+		return l.markAchievementSyncComplete(match)
+	}
+	if l.svcCtx.RankingModel == nil || l.svcCtx.AchievementProgressEventModel == nil {
+		return fmt.Errorf("achievement sync infrastructure is unavailable")
 	}
 
 	roundCount, err := l.svcCtx.MatchModel.GetRoundCount(match.Id)
@@ -492,7 +591,7 @@ func (l *FinishMatchLogic) syncAchievementProgressForCompletedMatchWithError(mat
 		return err
 	}
 	if roundCount == 0 {
-		return nil
+		return l.markAchievementSyncComplete(match)
 	}
 
 	player1ID := match.UserId
@@ -541,10 +640,19 @@ func (l *FinishMatchLogic) syncAchievementProgressForCompletedMatchWithError(mat
 	}
 
 	for _, playerID := range playerIDs {
-		if err := progressService.RefreshUserAchievements(playerID); err != nil {
+		if _, err := progressService.RefreshUserAchievementsWithSource(playerID, achievementx.SourceTypeMatch, match.Id); err != nil {
 			return err
 		}
 	}
+	return l.markAchievementSyncComplete(match)
+}
+
+func (l *FinishMatchLogic) markAchievementSyncComplete(match *model.Match) error {
+	now := time.Now()
+	if err := l.svcCtx.MatchModel.MarkAchievementSynced(match.Id, now); err != nil {
+		return err
+	}
+	match.AchievementSyncedAt = &now
 	return nil
 }
 
@@ -556,6 +664,7 @@ func appendMatchAchievementProgressEvent(service *achievementx.AchievementProgre
 		GameType:    match.GameType,
 		MetricKey:   metricKey,
 		MetricValue: metricValue,
+		OccurredAt:  resolveRankChangeEffectiveAt(match),
 	})
 	return err
 }

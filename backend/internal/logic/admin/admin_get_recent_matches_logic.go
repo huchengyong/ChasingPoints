@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -45,6 +46,9 @@ func (l *AdminGetRecentMatchesLogic) AdminGetRecentMatches() (resp *types.AdminR
 			Id:            match.Id,
 			GameType:      match.GameType,
 			GameTypeName:  gameTypeName,
+			MatchMode:     model.NormalizeMatchMode(match.MatchMode),
+			Visibility:    model.NormalizeMatchVisibility(match.Visibility, match.MatchMode),
+			FinishState:   model.NormalizeFinishState(match.FinishState),
 			Player1Name:   player1Name,
 			Player2Name:   player2Name,
 			MyScore:       match.MyScore,

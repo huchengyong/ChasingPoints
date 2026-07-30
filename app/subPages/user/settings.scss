@@ -96,6 +96,20 @@ $border-color-dark: rgba(247, 231, 168, 0.12);
             transition: color 0.3s ease;
             min-width: 0;
         }
+
+		.menu-copy {
+			min-width: 0;
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+		}
+
+		.menu-description {
+			margin-top: 8rpx;
+			font-size: 22rpx;
+			line-height: 1.45;
+			color: $text-secondary-light;
+		}
     }
 
     .menu-right {
@@ -118,6 +132,36 @@ $border-color-dark: rgba(247, 231, 168, 0.12);
     }
 }
 
+.privacy-switch {
+	position: relative;
+	width: 86rpx;
+	height: 48rpx;
+	flex-shrink: 0;
+	border-radius: 999rpx;
+	background: #cbd5e1;
+	transition: background-color 0.2s ease;
+
+	&.active {
+		background: $primary-color;
+	}
+}
+
+.privacy-switch-thumb {
+	position: absolute;
+	top: 6rpx;
+	left: 6rpx;
+	width: 36rpx;
+	height: 36rpx;
+	border-radius: 50%;
+	background: #ffffff;
+	box-shadow: 0 4rpx 10rpx rgba(15, 23, 42, 0.18);
+	transition: transform 0.2s ease;
+
+	&.active {
+		transform: translateX(38rpx);
+	}
+}
+
 .avatar-preview {
     width: 72rpx;
     height: 72rpx;
@@ -133,132 +177,44 @@ $border-color-dark: rgba(247, 231, 168, 0.12);
     height: 100%;
 }
 
-// 深色模式开关
-.switch-wrapper {
-    position: relative;
-    width: 102rpx;
-    height: 62rpx;
-
-    .switch-track {
-        width: 100%;
-        height: 100%;
-        border-radius: 999rpx;
-        background-color: $border-color-light;
-        display: flex;
-        align-items: center;
-        padding: 4rpx;
-        transition: background-color 0.3s ease;
-
-        &.active {
-            background-color: $primary-color;
-        }
-    }
-
-    .switch-thumb {
-        width: 54rpx;
-        height: 54rpx;
-        border-radius: 50%;
-        background-color: #ffffff;
-        box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
-        transition: transform 0.3s ease;
-
-        &.active {
-            transform: translateX(40rpx);
-        }
-    }
+.theme-menu-item {
+	align-items: flex-start;
+	flex-direction: column;
 }
 
-// ========== 编辑昵称弹框样式 ==========
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 50;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
+.theme-options {
+	display: flex;
+	width: 100%;
+	gap: 12rpx;
+	padding-left: 96rpx;
+	box-sizing: border-box;
 }
 
-.modal-container {
-    width: 85%;
-    max-width: 640rpx;
-    margin: 0 32rpx;
-    padding: 48rpx;
-    background-color: $card-bg-light;
-    border-radius: 24rpx;
-    box-shadow: 0 20rpx 50rpx rgba(0, 0, 0, 0.15);
-    transition: background-color 0.3s ease;
+.theme-option {
+	flex: 1;
+	height: 64rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 999rpx;
+	background: #f8fafc;
+	border: 1rpx solid $border-color-light;
+	box-sizing: border-box;
 
-    .modal-title {
-        text-align: center;
-        font-size: 36rpx;
-        font-weight: 700;
-        color: $text-primary-light;
-        transition: color 0.3s ease;
-    }
+	text {
+		font-size: 24rpx;
+		color: $text-secondary-light;
+	}
 
-    .modal-input-wrapper {
-        margin-top: 48rpx;
-    }
+	&.active {
+		background: rgba(224, 174, 18, 0.14);
+		border-color: rgba(224, 174, 18, 0.42);
 
-    .modal-input {
-        width: 100%;
-        height: 96rpx;
-        padding: 0 24rpx;
-        box-sizing: border-box;
-        background-color: rgba(100, 116, 139, 0.1);
-        border: 2rpx solid $border-color-light;
-        border-radius: 16rpx;
-        font-size: 32rpx;
-        color: $text-primary-light;
-        transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
-    }
-
-    .modal-buttons {
-        display: flex;
-        gap: 24rpx;
-        margin-top: 48rpx;
-    }
-
-    .modal-btn {
-        flex: 1;
-        height: 88rpx;
-        line-height: 88rpx;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 16rpx;
-        font-size: 32rpx;
-        font-weight: 600;
-
-        &::after {
-            display: none;
-        }
-
-        &.cancel {
-            background-color: $border-color-light;
-
-            text {
-                color: $text-secondary-light;
-            }
-        }
-
-        &.confirm {
-            background-color: $primary-color;
-
-            text {
-                color: #ffffff;
-            }
-        }
-
-        &:disabled {
-            opacity: 0.6;
-        }
-    }
+		text {
+			color: #8a6510;
+			font-weight: 600;
+		}
+	}
 }
 
 .page-actions {
@@ -269,7 +225,7 @@ $border-color-dark: rgba(247, 231, 168, 0.12);
     width: 100%;
     height: 92rpx;
     line-height: 92rpx;
-    margin-top: 24rpx;
+	margin: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -328,6 +284,10 @@ $border-color-dark: rgba(247, 231, 168, 0.12);
             .menu-text {
                 color: $text-primary-dark;
             }
+
+			.menu-description {
+				color: $text-secondary-dark;
+			}
         }
 
         .menu-right {
@@ -337,47 +297,38 @@ $border-color-dark: rgba(247, 231, 168, 0.12);
         }
     }
 
-    .switch-wrapper {
-        .switch-track {
-            background-color: $border-color-dark;
+	.theme-option {
+		background: rgba(255, 247, 225, 0.05);
+		border-color: $border-color-dark;
 
-            &.active {
-                background-color: $primary-color;
-            }
-        }
+		text {
+			color: $text-secondary-dark;
+		}
+
+		&.active {
+			background: rgba(224, 174, 18, 0.18);
+			border-color: rgba(224, 174, 18, 0.5);
+
+			text {
+				color: #f7e7a8;
+			}
+		}
+	}
+
+	.privacy-switch {
+		background: #4b4537;
+
+		&.active {
+			background: $primary-color;
+		}
+	}
+
+    .logout-btn {
+        box-shadow: none;
     }
 
-    // 弹框深色模式
-    .modal-container {
-        background-color: $card-bg-dark;
-
-        .modal-title {
-            color: $text-primary-dark;
-        }
-
-            .modal-input {
-                background-color: rgba(255, 247, 225, 0.06);
-                border-color: $border-color-dark;
-                color: $text-primary-dark;
-            }
-
-        .modal-btn {
-            &.cancel {
-                background-color: $border-color-dark;
-
-                text {
-                    color: $text-secondary-dark;
-                }
-            }
-        }
-
-        .logout-btn {
-            box-shadow: none;
-        }
-
-        .avatar-preview {
-            border-color: rgba(247, 231, 168, 0.18);
-            background: rgba(247, 216, 106, 0.12);
-        }
+    .avatar-preview {
+        border-color: rgba(247, 231, 168, 0.18);
+        background: rgba(247, 216, 106, 0.12);
     }
 }

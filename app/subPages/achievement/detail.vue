@@ -269,4 +269,55 @@ onLoad((options) => {
 		color: #94a3b8;
 	}
 }
+
+.detail-page.dark-mode {
+	background: #141109;
+
+	.loading-text,
+	.empty-text,
+	.info-label,
+	.progress-current,
+	.progress-percent {
+		color: #9f926e;
+	}
+
+	.hero-section {
+		background: linear-gradient(180deg, #2a2110, #141109);
+
+		&.unlocked {
+			background: linear-gradient(180deg, rgba(224, 174, 18, 0.22), #141109);
+		}
+
+		.hero-icon {
+			background: #1e180d;
+		}
+	}
+
+	.hero-name,
+	.info-value,
+	.progress-title {
+		color: #fff7e1;
+	}
+
+	.info-card,
+	.progress-card {
+		background: #1e180d;
+	}
+
+	.info-card .info-row {
+		border-bottom-color: #3a2e16;
+	}
+
+	.progress-card .progress-bar-large {
+		background: #3a2e16;
+	}
+
+	.unlock-card {
+		background: rgba(224, 174, 18, 0.18);
+
+		.unlock-time {
+			color: #f7e7a8;
+		}
+	}
+}
 </style>

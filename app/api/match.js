@@ -59,6 +59,15 @@ export const getMatchDetail = (params) => {
 }
 
 /**
+ * 获取当前用户的本场新解锁荣誉
+ * @param {Object} params { match_id }
+ * @returns {Promise}
+ */
+export const getMatchRewardSummary = (params) => {
+  return get('/api/match/reward-summary', params)
+}
+
+/**
  * 获取公开对局详情（观战模式，无需登录）
  * @param {Object} params { match_id }
  * @returns {Promise}
@@ -90,6 +99,22 @@ export const startMatch = (data) => {
  */
 export const finishMatch = (data) => {
   return post('/api/match/finish', data)
+}
+
+export const requestFinishMatch = (data) => {
+  return post('/api/match/finish/request', data)
+}
+
+export const confirmFinishMatch = (data) => {
+  return post('/api/match/finish/confirm', data)
+}
+
+export const disputeFinishMatch = (data) => {
+  return post('/api/match/finish/dispute', data)
+}
+
+export const withdrawFinishMatch = (data) => {
+  return post('/api/match/finish/withdraw', data)
 }
 
 /**
@@ -134,6 +159,26 @@ export const getMatchRefereeQRCode = (params) => {
  */
 export const joinMatchReferee = (data) => {
   return post('/api/match/referee/join', data)
+}
+
+/**
+ * 裁判码预览
+ * @param {Object} data { match_id, join_token }
+ * @returns {Promise}
+ */
+export const previewMatchReferee = (data) => {
+  return post('/api/match/referee/preview', data)
+}
+
+/**
+ * 获取裁判历史
+ * @param {Object} params 查询参数
+ * @param {number} params.page 页码
+ * @param {number} params.page_size 每页条数
+ * @returns {Promise}
+ */
+export const getRefereeHistory = (params = {}) => {
+  return get('/api/match/referee/history', params)
 }
 
 /**

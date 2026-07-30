@@ -8,12 +8,14 @@
           <text class="title">追分</text>
           <text class="subtitle">{{ headerSubtitle }}</text>
         </view>
+        <!-- #ifndef MP-WEIXIN -->
         <view class="header-right" @tap="goNotification">
           <uni-icons type="chat" size="22" :color="isDarkMode ? '#e2e8f0' : '#1e293b'"></uni-icons>
           <view v-if="notificationStore.unreadCount > 0" class="header-badge">
             <text>{{ notificationStore.unreadCount > 99 ? '99+' : notificationStore.unreadCount }}</text>
           </view>
         </view>
+        <!-- #endif -->
       </view>
     </view>
 
@@ -119,7 +121,7 @@
             <view v-for="item in leaderboardTopThree" :key="item.user_id || item.rank" class="ranking-row">
               <view class="ranking-left">
                 <text class="ranking-rank">#{{ item.rank }}</text>
-                <image class="ranking-avatar" :src="item.avatar || '/static/images/default-avatar.png'" mode="aspectFill"></image>
+                <image class="ranking-avatar" :src="resolveAvatarUrl(item.avatar, item.user_id)" mode="aspectFill"></image>
                 <view class="ranking-copy">
                   <text class="ranking-name">{{ item.nickname || '球手' }}</text>
                   <text class="ranking-meta">{{ item.rank_name || '冲榜中' }}</text>
@@ -209,12 +211,13 @@ import {
   resolveHomeVenueEmptyAction
 } from '@/utils/home-index.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const userStore = useUserStore()
 const { isDarkMode } = usePageTheme()
 const notificationStore = useNotificationStore()
 
-const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight)
+const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const userId = computed(() => userStore.userId)
 const userName = computed(() => userStore.nickname || '球友')
