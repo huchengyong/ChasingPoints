@@ -6,6 +6,12 @@ const honorSourceLabels = {
   tournament: '赛事荣誉'
 }
 
+const challengeIconPaths = {
+  season_matches_20: '/static/images/achievements/season_matches_20.png',
+  season_wins_10: '/static/images/achievements/season_wins_10.png',
+  season_tournament_finish_1: '/static/images/achievements/season_tournament_finish_1.png'
+}
+
 const parseData = (data) => {
   if (!data) return {}
   if (typeof data === 'object') return data
@@ -127,6 +133,7 @@ export const buildChallengeViewModel = (challenge = {}) => {
     progress,
     threshold,
     completed,
+    icon: challengeIconPaths[challenge.key] || '',
     progressPercent: getProgressPercent({ progress, threshold, completed }),
     progressText: completed ? '已完成' : `${progress}/${threshold}`,
     remainingText: completed ? '本赛季已达成' : `还差 ${Math.max(0, threshold - progress)} 完成`

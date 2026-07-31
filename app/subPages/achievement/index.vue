@@ -277,7 +277,10 @@
 						</view>
 						<view class="challenge-list">
 							<view v-for="challenge in currentChallenges" :key="challenge.key" class="challenge-row">
-								<view class="challenge-icon"><text>{{ getChallengeEmoji(challenge.key) }}</text></view>
+								<view class="challenge-icon" :class="{ 'has-image': challenge.icon }">
+									<image v-if="challenge.icon" :src="challenge.icon" mode="aspectFit"></image>
+									<text v-else>{{ getChallengeEmoji(challenge.key) }}</text>
+								</view>
 								<view class="challenge-copy">
 									<view class="challenge-title-row">
 										<text class="challenge-name">{{ challenge.name }}</text>
@@ -324,6 +327,10 @@
 						<text class="archive-title">{{ wall.history.challenge_season.season_name }} · {{ currentGameTypeLabel }}</text>
 						<view v-if="archivedChallenges.length" class="archive-challenge-list">
 							<view v-for="item in archivedChallenges" :key="item.key" class="archive-challenge-row">
+								<view class="challenge-icon" :class="{ 'has-image': item.icon }">
+									<image v-if="item.icon" :src="item.icon" mode="aspectFit"></image>
+									<text v-else>{{ getChallengeEmoji(item.key) }}</text>
+								</view>
 								<view class="archive-challenge-copy">
 									<text class="archive-challenge-name">{{ item.name }}</text>
 									<text class="archive-challenge-description">{{ item.description }}</text>

@@ -122,14 +122,19 @@ test('latest honor wall request wins when an older response arrives later', asyn
 })
 
 test('challenge view model exposes readable progress and completion copy', () => {
-  assert.deepEqual(buildChallengeViewModel({ progress: 12, threshold: 20, completed: false }), {
+  assert.deepEqual(buildChallengeViewModel({ key: 'season_matches_20', progress: 12, threshold: 20, completed: false }), {
+    key: 'season_matches_20',
     progress: 12,
     threshold: 20,
     completed: false,
+    icon: '/static/images/achievements/season_matches_20.png',
     progressPercent: 60,
     progressText: '12/20',
     remainingText: '还差 8 完成'
   })
+  assert.equal(buildChallengeViewModel({ key: 'season_wins_10' }).icon, '/static/images/achievements/season_wins_10.png')
+  assert.equal(buildChallengeViewModel({ key: 'season_tournament_finish_1' }).icon, '/static/images/achievements/season_tournament_finish_1.png')
+  assert.equal(buildChallengeViewModel({ key: 'unknown' }).icon, '')
   assert.equal(buildChallengeViewModel({ progress: 23, threshold: 20 }).progressPercent, 100)
   assert.equal(buildChallengeViewModel({ progress: 20, threshold: 20 }).progressText, '已完成')
 })

@@ -624,6 +624,16 @@
 	font-size: 30rpx;
 }
 
+.challenge-icon.has-image {
+	border-radius: 0;
+	background: transparent;
+}
+
+.challenge-icon image {
+	width: 68rpx;
+	height: 68rpx;
+}
+
 .challenge-progress {
 	font-size: 22rpx;
 	font-weight: 650;
