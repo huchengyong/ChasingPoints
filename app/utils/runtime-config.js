@@ -1,7 +1,7 @@
 const NETWORK_CONFIG_BY_ENV = {
   development: {
-    httpBaseUrl: 'https://api.zhuifen.cn',
-    wsBaseUrl: 'wss://ws.zhuifen.cn'
+    httpBaseUrl: 'https://api-zhuifen.kekemate.cn',
+    wsBaseUrl: 'wss://api-zhuifen.kekemate.cn'
   },
   production: {
     httpBaseUrl: 'https://api.zhuifen.cn',
