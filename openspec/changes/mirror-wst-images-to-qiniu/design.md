@@ -40,10 +40,11 @@ WST 球员头像和赛事封面当前以 `https://images.gc.wstservices.co.uk/..
 
 - HTTPS URL；
 - 精确主机 `images.gc.wstservices.co.uk`；
-- `image/png`、`image/jpeg` 或 `image/webp` 响应；
+- 声明为 `image/png`、JPEG（含 WST 使用的 `image/jpg` 别名）或 `image/webp` 的响应；
+- 文件签名可识别为 PNG、JPEG 或 WebP，且 URL 扩展名与实际签名类型一致；
 - 200 响应且大小不超过固定上限。
 
-下载请求不设置 Referer，并使用明确超时和限长读取。任何不满足约束的来源均按镜像失败处理，不允许调用方传入其他主机，从而避免形成 SSRF 或第三方转存入口。
+下载请求不设置 Referer，并使用明确超时和限长读取。WST 个别 JPEG 会错误声明为 `image/png`，因此最终上传 MIME 以文件签名为准；HTML、任意文件和不满足其他约束的来源仍按镜像失败处理，不允许调用方传入其他主机，从而避免形成 SSRF 或第三方转存入口。
 
 ### 3. 使用来源 URL 派生确定性对象键
 

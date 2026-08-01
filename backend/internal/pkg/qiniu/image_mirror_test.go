@@ -119,14 +119,17 @@ func TestUploadServiceRecognizesManagedPublicURL(t *testing.T) {
 
 func TestDownloadWSTImageAcceptsAllowedTypesWithoutReferer(t *testing.T) {
 	tests := []struct {
-		name        string
-		url         string
-		contentType string
-		data        []byte
+		name         string
+		url          string
+		declaredType string
+		actualType   string
+		data         []byte
 	}{
-		{name: "png", url: "https://images.gc.wstservices.co.uk/a.png", contentType: "image/png", data: []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0}},
-		{name: "jpeg", url: "https://images.gc.wstservices.co.uk/a.jpg", contentType: "image/jpeg", data: []byte{0xff, 0xd8, 0xff, 0xdb}},
-		{name: "webp", url: "https://images.gc.wstservices.co.uk/a.webp", contentType: "image/webp", data: []byte("RIFF1234WEBP")},
+		{name: "png", url: "https://images.gc.wstservices.co.uk/a.png", declaredType: "image/png", actualType: "image/png", data: []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0}},
+		{name: "jpeg", url: "https://images.gc.wstservices.co.uk/a.jpg", declaredType: "image/jpeg", actualType: "image/jpeg", data: []byte{0xff, 0xd8, 0xff, 0xdb}},
+		{name: "jpeg alias", url: "https://images.gc.wstservices.co.uk/a.jpg", declaredType: "image/jpg", actualType: "image/jpeg", data: []byte{0xff, 0xd8, 0xff, 0xdb}},
+		{name: "misreported jpeg", url: "https://images.gc.wstservices.co.uk/a.jpg", declaredType: "image/png", actualType: "image/jpeg", data: []byte{0xff, 0xd8, 0xff, 0xdb}},
+		{name: "webp", url: "https://images.gc.wstservices.co.uk/a.webp", declaredType: "image/webp", actualType: "image/webp", data: []byte("RIFF1234WEBP")},
 	}
 
 	for _, tt := range tests {
@@ -135,14 +138,14 @@ func TestDownloadWSTImageAcceptsAllowedTypesWithoutReferer(t *testing.T) {
 				if req.Header.Get("Referer") != "" {
 					t.Fatalf("unexpected referer: %q", req.Header.Get("Referer"))
 				}
-				return imageResponse(req, http.StatusOK, tt.contentType+"; charset=binary", tt.data), nil
+				return imageResponse(req, http.StatusOK, tt.declaredType+"; charset=binary", tt.data), nil
 			})}
 
 			data, contentType, err := downloadWSTImage(context.Background(), client, tt.url)
 			if err != nil {
 				t.Fatalf("download image: %v", err)
 			}
-			if contentType != tt.contentType || !bytes.Equal(data, tt.data) {
+			if contentType != tt.actualType || !bytes.Equal(data, tt.data) {
 				t.Fatalf("unexpected result: type=%q data=%v", contentType, data)
 			}
 		})

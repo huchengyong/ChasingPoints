@@ -161,12 +161,13 @@ func downloadWSTImage(ctx context.Context, client *http.Client, sourceURL string
 		return nil, "", fmt.Errorf("WST image exceeds size limit")
 	}
 
-	contentType, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
-	if err != nil || !isAllowedImageContentType(contentType) {
+	declaredContentType, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
+	if err != nil {
 		return nil, "", fmt.Errorf("unsupported WST image content type")
 	}
-	if !extensionMatchesContentType(ext, contentType) {
-		return nil, "", fmt.Errorf("WST image extension does not match content type")
+	declaredContentType = normalizeImageContentType(declaredContentType)
+	if !isAllowedImageContentType(declaredContentType) {
+		return nil, "", fmt.Errorf("unsupported WST image content type")
 	}
 
 	data, err := io.ReadAll(io.LimitReader(resp.Body, mirrorDownloadLimit+1))
@@ -176,10 +177,23 @@ func downloadWSTImage(ctx context.Context, client *http.Client, sourceURL string
 	if len(data) == 0 || len(data) > mirrorDownloadLimit {
 		return nil, "", fmt.Errorf("WST image has invalid size")
 	}
-	if !matchesImageSignature(data, contentType) {
+
+	contentType := detectImageContentType(data)
+	if contentType == "" {
 		return nil, "", fmt.Errorf("WST image content is invalid")
 	}
+	if !extensionMatchesContentType(ext, contentType) {
+		return nil, "", fmt.Errorf("WST image extension does not match content type")
+	}
 	return data, contentType, nil
+}
+
+func normalizeImageContentType(contentType string) string {
+	normalized := strings.ToLower(strings.TrimSpace(contentType))
+	if normalized == "image/jpg" {
+		return "image/jpeg"
+	}
+	return normalized
 }
 
 func isAllowedImageContentType(contentType string) bool {
@@ -204,16 +218,16 @@ func extensionMatchesContentType(ext, contentType string) bool {
 	}
 }
 
-func matchesImageSignature(data []byte, contentType string) bool {
-	switch contentType {
-	case "image/png":
-		return len(data) >= 8 && bytes.Equal(data[:8], []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'})
-	case "image/jpeg":
-		return len(data) >= 3 && data[0] == 0xff && data[1] == 0xd8 && data[2] == 0xff
-	case "image/webp":
-		return len(data) >= 12 && string(data[:4]) == "RIFF" && string(data[8:12]) == "WEBP"
+func detectImageContentType(data []byte) string {
+	switch {
+	case len(data) >= 8 && bytes.Equal(data[:8], []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}):
+		return "image/png"
+	case len(data) >= 3 && data[0] == 0xff && data[1] == 0xd8 && data[2] == 0xff:
+		return "image/jpeg"
+	case len(data) >= 12 && string(data[:4]) == "RIFF" && string(data[8:12]) == "WEBP":
+		return "image/webp"
 	default:
-		return false
+		return ""
 	}
 }
 
