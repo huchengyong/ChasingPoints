@@ -140,16 +140,18 @@ func buildSeasonTopAchievements(unlockedAchievements []model.UserAchievement, ac
 		}
 
 		list = append(list, types.AchievementDef{
-			Id:          def.Id,
-			Key:         def.Key,
-			Name:        def.Name,
-			Description: def.Description,
-			Icon:        def.Icon,
-			Category:    def.Category,
-			Threshold:   def.Threshold,
-			Progress:    unlocked.Progress,
-			Unlocked:    unlocked.Unlocked == 1,
-			UnlockedAt:  unlockedAt,
+			Id:              def.Id,
+			Key:             def.Key,
+			Name:            def.Name,
+			Description:     def.Description,
+			Icon:            def.Icon,
+			Category:        def.Category,
+			GameType:        def.GameType,
+			RewardTitleName: def.RewardTitleName,
+			Threshold:       def.Threshold,
+			Progress:        unlocked.Progress,
+			Unlocked:        unlocked.Unlocked == 1,
+			UnlockedAt:      unlockedAt,
 		})
 	}
 

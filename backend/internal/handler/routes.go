@@ -683,6 +683,18 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: match.MatchScoreHandler(serverCtx),
 			},
 			{
+				// 记录斯诺克局级动作
+				Method:  http.MethodPost,
+				Path:    "/snooker/frame-action",
+				Handler: match.SnookerFrameActionHandler(serverCtx),
+			},
+			{
+				// 记录斯诺克击球结果
+				Method:  http.MethodPost,
+				Path:    "/snooker/stroke",
+				Handler: match.SnookerStrokeHandler(serverCtx),
+			},
+			{
 				// 开始对局
 				Method:  http.MethodPost,
 				Path:    "/start",

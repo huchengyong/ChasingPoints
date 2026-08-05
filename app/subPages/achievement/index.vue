@@ -90,17 +90,57 @@
 				<view class="section-heading page-section-heading">
 					<view class="heading-copy">
 						<text class="section-title">生涯成就</text>
-						<text class="section-description">永久累计，不随赛季清零</text>
+						<text class="section-description">永久累计，不随赛季清零；球种绝技独立展示</text>
 					</view>
-					<text class="section-count">{{ wall.summary.career_unlocked || 0 }}/{{ wall.summary.career_total || 0 }}</text>
 				</view>
 
-				<view v-if="achievementGroups.length" class="achievement-groups">
-					<view v-for="group in achievementGroups" :key="group.key" class="content-card achievement-group">
+				<view v-if="isSelf && !upcomingSection.hidden" class="content-card upcoming-card">
+					<view class="section-heading compact-heading">
+						<text class="section-title">即将达成</text>
+						<text class="section-hint">通用 + {{ currentGameTypeLabel }}</text>
+					</view>
+					<view v-if="upcomingSection.items.length" class="upcoming-list">
+						<view
+							v-for="item in upcomingSection.items"
+							:key="item.id"
+							class="achievement-row upcoming-row interactive"
+							@tap="goToDetail(item.id)"
+						>
+							<view class="achievement-icon locked">
+								<image v-if="hasAchievementIcon(item)" :src="item.icon" mode="aspectFit" @error="handleAchievementIconError(item)"></image>
+								<text v-else>{{ getFallbackEmoji(item) }}</text>
+							</view>
+							<view class="achievement-copy">
+								<view class="achievement-name-row">
+									<text class="achievement-name">{{ item.name }}</text>
+									<text class="upcoming-percent">{{ item.progressPercent }}%</text>
+								</view>
+								<view class="progress-track">
+									<view class="progress-fill" :style="{ width: `${item.progressPercent}%` }"></view>
+								</view>
+								<text class="progress-note">{{ item.progressText }} · {{ item.remainingText }}</text>
+							</view>
+							<uni-icons type="right" size="16" :color="isDarkMode ? '#9f926e' : '#94a3b8'"></uni-icons>
+						</view>
+					</view>
+					<view v-else class="inline-empty upcoming-complete">
+						<text>{{ upcomingEmptyText }}</text>
+					</view>
+				</view>
+
+				<view class="section-heading page-section-heading career-section-heading">
+					<view class="heading-copy">
+						<text class="section-title">通用里程碑</text>
+						<text class="section-description">对局、胜场、连胜与赛事历程跨球种累计</text>
+					</view>
+					<text class="section-count">{{ wall.summary.universal_unlocked || 0 }}/{{ wall.summary.universal_total || 0 }}</text>
+				</view>
+				<view v-if="universalGroups.length" class="achievement-groups">
+					<view v-for="group in universalGroups" :key="group.key" class="content-card achievement-group">
 						<view class="group-header">
 							<view class="group-title-wrap">
 								<text class="group-emoji">{{ getCategoryEmoji(group.key) }}</text>
-								<text class="group-title">{{ group.label }}成就</text>
+								<text class="group-title">{{ group.label }}</text>
 							</view>
 							<text class="group-count">{{ group.list.length }} 项</text>
 						</view>
@@ -112,8 +152,8 @@
 							@tap="goToDetail(item.id)"
 						>
 							<view class="achievement-icon" :class="{ locked: !item.unlocked }">
-								<image v-if="item.icon" :src="item.icon" mode="aspectFit"></image>
-								<text v-else>{{ getCategoryEmoji(item.category) }}</text>
+								<image v-if="hasAchievementIcon(item)" :src="item.icon" mode="aspectFit" @error="handleAchievementIconError(item)"></image>
+								<text v-else>{{ getFallbackEmoji(item) }}</text>
 							</view>
 							<view class="achievement-copy">
 								<view class="achievement-name-row">
@@ -131,8 +171,64 @@
 					</view>
 				</view>
 				<view v-else class="content-card state-panel compact-state">
-					<text class="state-title">暂无可展示的生涯成就</text>
-					<text class="state-description">完成有效比赛后，成就进度会自动更新</text>
+					<text class="state-title">暂无通用里程碑</text>
+					<text class="state-description">完成有效比赛后，通用进度会自动更新</text>
+				</view>
+
+				<view class="section-heading page-section-heading career-section-heading">
+					<view class="heading-copy">
+						<text class="section-title">球种绝技</text>
+						<text class="section-description">只计算当前球种，不要求跨球种集齐</text>
+					</view>
+					<text class="section-count">{{ wall.summary.specialty_unlocked || 0 }}/{{ wall.summary.specialty_total || 0 }}</text>
+				</view>
+				<view class="game-type-grid career-game-type-grid">
+					<view
+						v-for="item in gameTypeTabs"
+						:key="item.value"
+						class="game-type-chip"
+						:class="{ active: currentGameType === item.value }"
+						@tap="handleGameTypeChange(item.value)"
+					>
+						<text>{{ item.label }}</text>
+					</view>
+				</view>
+				<view v-if="specialtyAchievements.length" class="content-card specialty-card">
+					<view class="group-header">
+						<view class="group-title-wrap">
+							<text class="group-emoji">{{ getFallbackEmoji(specialtyAchievements[0]) }}</text>
+							<text class="group-title">{{ currentGameTypeLabel }}绝技</text>
+						</view>
+						<text class="group-count">{{ specialtyAchievements.length }} 项</text>
+					</view>
+					<view
+						v-for="item in specialtyAchievements"
+						:key="item.id"
+						class="achievement-row"
+						:class="{ unlocked: item.unlocked, interactive: isSelf }"
+						@tap="goToDetail(item.id)"
+					>
+						<view class="achievement-icon" :class="{ locked: !item.unlocked }">
+							<image v-if="hasAchievementIcon(item)" :src="item.icon" mode="aspectFit" @error="handleAchievementIconError(item)"></image>
+							<text v-else>{{ getFallbackEmoji(item) }}</text>
+						</view>
+						<view class="achievement-copy">
+							<view class="achievement-name-row">
+								<text class="achievement-name">{{ item.name }}</text>
+								<text v-if="item.unlocked" class="unlocked-tag">已解锁</text>
+							</view>
+							<text class="achievement-description">{{ item.description || '完成目标即可永久点亮' }}</text>
+							<view class="progress-track">
+								<view class="progress-fill" :style="{ width: `${getCareerProgressPercent(item)}%` }"></view>
+							</view>
+							<text class="progress-note">{{ getCareerProgressText(item) }}</text>
+						</view>
+						<uni-icons v-if="isSelf" type="right" size="16" :color="isDarkMode ? '#9f926e' : '#94a3b8'"></uni-icons>
+					</view>
+				</view>
+				<view v-else class="content-card state-panel compact-state">
+					<text class="state-title">暂无{{ currentGameTypeLabel }}绝技</text>
+					<text class="state-description">{{ isSelf ? '完成该球种的特殊战绩后会在这里点亮' : 'TA 尚未解锁该球种绝技' }}</text>
 				</view>
 			</view>
 
@@ -181,7 +277,10 @@
 						</view>
 						<view class="challenge-list">
 							<view v-for="challenge in currentChallenges" :key="challenge.key" class="challenge-row">
-								<view class="challenge-icon"><text>{{ getChallengeEmoji(challenge.key) }}</text></view>
+								<view class="challenge-icon" :class="{ 'has-image': challenge.icon }">
+									<image v-if="challenge.icon" :src="challenge.icon" mode="aspectFit"></image>
+									<text v-else>{{ getChallengeEmoji(challenge.key) }}</text>
+								</view>
 								<view class="challenge-copy">
 									<view class="challenge-title-row">
 										<text class="challenge-name">{{ challenge.name }}</text>
@@ -228,6 +327,10 @@
 						<text class="archive-title">{{ wall.history.challenge_season.season_name }} · {{ currentGameTypeLabel }}</text>
 						<view v-if="archivedChallenges.length" class="archive-challenge-list">
 							<view v-for="item in archivedChallenges" :key="item.key" class="archive-challenge-row">
+								<view class="challenge-icon" :class="{ 'has-image': item.icon }">
+									<image v-if="item.icon" :src="item.icon" mode="aspectFit"></image>
+									<text v-else>{{ getChallengeEmoji(item.key) }}</text>
+								</view>
 								<view class="archive-challenge-copy">
 									<text class="archive-challenge-name">{{ item.name }}</text>
 									<text class="archive-challenge-description">{{ item.description }}</text>
@@ -362,19 +465,25 @@ import { equipTitle, getHonorWall, getUserTitles } from '@/api/achievement.js'
 import { getNotificationList, markAsRead } from '@/api/notification.js'
 import { useNotificationStore } from '@/store/notification.js'
 import {
+	filterSpecialtyAchievements,
 	getAchievementCategoryEmoji,
+	getAchievementFallbackEmoji,
+	getAchievementGameTypeLabel,
 	getTitleSourceClass,
 	getTitleSourceDescription,
-	groupAchievementsByCategory,
+	groupUniversalAchievements,
 	resolveTitleSelection,
 	sortTitleOptions
 } from '@/utils/achievement-page.js'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import {
+	buildCareerSummaryItems,
 	buildChallengeViewModel,
 	buildHistorySeasonOptions,
 	buildHonorWallTabs,
 	buildRecentHonorViewModel,
+	buildUpcomingAchievementSection,
+	createLatestRequestGuard,
 	getProgressPercent,
 	normalizeHonorWallOptions,
 	presentLatestSeasonRollover,
@@ -393,6 +502,11 @@ const createEmptyWall = () => ({
 	summary: {
 		career_unlocked: 0,
 		career_total: 0,
+		universal_unlocked: 0,
+		universal_total: 0,
+		specialty_game_type: 3,
+		specialty_unlocked: 0,
+		specialty_total: 0,
 		season_honors: 0,
 		tournament_honors: 0
 	},
@@ -440,6 +554,8 @@ const titleListLoading = ref(false)
 const titleListLoaded = ref(false)
 const titleListFailed = ref(false)
 const titleSubmitting = ref(false)
+const brokenAchievementIcons = ref({})
+const wallRequestGuard = createLatestRequestGuard()
 
 const isSelf = computed(() => wall.value.viewer_scope !== 'friend')
 const tabs = computed(() => buildHonorWallTabs(wall.value.viewer_scope))
@@ -447,7 +563,7 @@ const currentTitleId = computed(() => Number(wall.value.equipped_title?.id || 0)
 const titleOptions = computed(() => sortTitleOptions(titleList.value))
 const gameTypeTabs = GAME_TYPE_TABS
 const currentGameTypeLabel = computed(() => (
-	gameTypeTabs.find(item => item.value === currentGameType.value)?.label || '中式八球'
+	gameTypeTabs.find(item => item.value === currentGameType.value)?.label || getAchievementGameTypeLabel(currentGameType.value)
 ))
 const profileAvatar = computed(() => resolveAvatarUrl(wall.value.profile.avatar, wall.value.profile.user_id))
 const equippedTitleSource = computed(() => {
@@ -455,13 +571,28 @@ const equippedTitleSource = computed(() => {
 	if (!title) return isSelf.value ? '选择一个已获称号进行展示' : 'TA 暂未佩戴称号'
 	return getTitleSourceDescription(title)
 })
-const summaryItems = computed(() => ([
-	{ key: 'career', label: '生涯成就', value: `${wall.value.summary.career_unlocked || 0}/${wall.value.summary.career_total || 0}` },
-	{ key: 'season', label: '赛季荣誉', value: wall.value.summary.season_honors || 0 },
-	{ key: 'tournament', label: '赛事荣誉', value: wall.value.summary.tournament_honors || 0 }
-]))
+const summaryItems = computed(() => buildCareerSummaryItems(
+	wall.value.summary,
+	currentGameType.value,
+	currentGameTypeLabel.value
+))
 const recentHonors = computed(() => wall.value.recent_honors.map(buildRecentHonorViewModel))
-const achievementGroups = computed(() => groupAchievementsByCategory(wall.value.career_achievements))
+const universalGroups = computed(() => groupUniversalAchievements(wall.value.career_achievements))
+const specialtyAchievements = computed(() => filterSpecialtyAchievements(
+	wall.value.career_achievements,
+	currentGameType.value,
+	{ unlockedOnly: !isSelf.value }
+))
+const upcomingSection = computed(() => buildUpcomingAchievementSection(
+	wall.value.career_achievements,
+	currentGameType.value,
+	wall.value.viewer_scope
+))
+const upcomingEmptyText = computed(() => (
+	upcomingSection.value.completed
+		? `通用成就与${currentGameTypeLabel.value}绝技已全部达成`
+		: '暂无可追踪的成就目标'
+))
 const currentSeasonState = computed(() => resolveCurrentSeasonState(wall.value.current_season))
 const currentChallenges = computed(() => (
 	(wall.value.current_season?.challenges || []).map(buildChallengeViewModel)
@@ -478,6 +609,14 @@ const seasonDateText = computed(() => {
 
 const formatDate = (value = '') => String(value || '').slice(0, 10).replace(/-/g, '.')
 const getCategoryEmoji = getAchievementCategoryEmoji
+const getFallbackEmoji = getAchievementFallbackEmoji
+const achievementIconKey = (item = {}) => String(item.id || item.key || '')
+const hasAchievementIcon = (item = {}) => Boolean(item.icon && !brokenAchievementIcons.value[achievementIconKey(item)])
+const handleAchievementIconError = (item = {}) => {
+	const key = achievementIconKey(item)
+	if (!key) return
+	brokenAchievementIcons.value = { ...brokenAchievementIcons.value, [key]: true }
+}
 const getHonorEmoji = (item = {}) => {
 	if (item.source_type === 'season') return '👑'
 	if (item.source_type === 'tournament') return '🏆'
@@ -510,7 +649,9 @@ const buildRequestParams = () => {
 }
 
 const loadData = async ({ appendHistory = false } = {}) => {
-	if (appendHistory ? historyLoading.value : refreshing.value) return
+	if (appendHistory && (historyLoading.value || loading.value || refreshing.value)) return
+	const requestId = wallRequestGuard.next()
+	const requestParams = buildRequestParams()
 	if (appendHistory) {
 		historyLoading.value = true
 	} else if (!loaded.value) {
@@ -521,8 +662,9 @@ const loadData = async ({ appendHistory = false } = {}) => {
 	loadFailed.value = false
 
 	try {
-		const response = await getHonorWall(buildRequestParams())
+		const response = await getHonorWall(requestParams)
 		if (!response?.success) throw new Error(response?.message || '荣誉墙加载失败')
+		if (!wallRequestGuard.isLatest(requestId)) return
 		const normalized = normalizeWall(response)
 		if (appendHistory) {
 			normalized.history.honors = [...historyHonors.value, ...normalized.history.honors]
@@ -533,6 +675,7 @@ const loadData = async ({ appendHistory = false } = {}) => {
 		if (!allowedTabs.includes(activeTab.value)) activeTab.value = 'career'
 		if (isSelf.value && !appendHistory) showLatestRollover()
 	} catch (error) {
+		if (!wallRequestGuard.isLatest(requestId)) return
 		console.error('加载荣誉墙失败:', error)
 		loadFailed.value = true
 		if (appendHistory) historyPage.value = Math.max(1, historyPage.value - 1)
@@ -540,6 +683,7 @@ const loadData = async ({ appendHistory = false } = {}) => {
 			uni.showToast({ title: error.message || '荣誉墙更新失败', icon: 'none' })
 		}
 	} finally {
+		if (!wallRequestGuard.isLatest(requestId)) return
 		loading.value = false
 		refreshing.value = false
 		historyLoading.value = false

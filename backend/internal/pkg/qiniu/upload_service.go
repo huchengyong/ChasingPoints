@@ -37,16 +37,19 @@ type UploadService struct {
 	bucket       string
 	uploadURL    string
 	publicDomain string
+	imageMirror  *imageMirrorClient
 }
 
 func NewUploadService(cfg Config) *UploadService {
-	return &UploadService{
+	service := &UploadService{
 		accessKey:    strings.TrimSpace(cfg.AccessKey),
 		secretKey:    strings.TrimSpace(cfg.SecretKey),
 		bucket:       strings.TrimSpace(cfg.Bucket),
 		uploadURL:    normalizeUploadURL(cfg.UploadURL),
 		publicDomain: strings.TrimSpace(cfg.PublicDomain),
 	}
+	service.imageMirror = newImageMirrorClient(service)
+	return service
 }
 
 func (s *UploadService) Enabled() bool {

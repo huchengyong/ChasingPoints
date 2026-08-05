@@ -49,6 +49,32 @@ func buildMatchLastAction(svcCtx *svc.ServiceContext, userId int64, match *model
 		result.Description = fmt.Sprintf("%s提出异议", actorName)
 	case "finish_withdraw":
 		result.Description = fmt.Sprintf("%s撤回结束请求", actorName)
+	case model.MatchActionTypeSnookerStroke:
+		if event, err := model.DecodeSnookerEvent(action.ExtraData); err == nil {
+			switch event.Outcome {
+			case model.SnookerOutcomePot:
+				result.Description = fmt.Sprintf("%s本杆得%d分", actorName, action.ScoreChange)
+			case model.SnookerOutcomeNoScore:
+				result.Description = fmt.Sprintf("%s未进球，上手结束", actorName)
+			case model.SnookerOutcomeFoul:
+				result.Description = fmt.Sprintf("%s犯规，对方获%d分", actorName, action.ScoreChange)
+			}
+		}
+	case model.MatchActionTypeSnookerFrameAction:
+		if event, err := model.DecodeSnookerEvent(action.ExtraData); err == nil {
+			switch event.FrameAction {
+			case model.SnookerFrameActionStartRespottedBlack:
+				result.Description = fmt.Sprintf("%s先打重置黑球", actorName)
+			case model.SnookerFrameActionOfferConcession:
+				result.Description = fmt.Sprintf("%s提出认输", actorName)
+			case model.SnookerFrameActionAcceptConcession:
+				result.Description = fmt.Sprintf("%s接受认输", actorName)
+			case model.SnookerFrameActionRejectConcession:
+				result.Description = fmt.Sprintf("%s拒绝认输", actorName)
+			case model.SnookerFrameActionAwardFrame:
+				result.Description = "裁判完成判局"
+			}
+		}
 	default:
 		result.Description = action.ActionType
 	}

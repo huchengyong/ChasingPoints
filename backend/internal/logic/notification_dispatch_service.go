@@ -9,6 +9,7 @@ import (
 type NotificationDispatchInput struct {
 	UserId      int64
 	Type        string
+	DedupeKey   string
 	Title       string
 	Content     string
 	Data        *string
@@ -50,15 +51,27 @@ func (s *NotificationDispatchService) Dispatch(input NotificationDispatchInput) 
 		return nil
 	}
 
-	if err := s.svcCtx.NotificationModel.Create(&model.Notification{
+	notification := &model.Notification{
 		UserId:  input.UserId,
 		Type:    input.Type,
 		Title:   input.Title,
 		Content: input.Content,
 		Data:    input.Data,
 		IsRead:  0,
-	}); err != nil {
+	}
+	created := true
+	if input.DedupeKey != "" {
+		notification.DedupeKey = &input.DedupeKey
+		var err error
+		created, err = s.svcCtx.NotificationModel.CreateIfAbsent(notification)
+		if err != nil {
+			return err
+		}
+	} else if err := s.svcCtx.NotificationModel.Create(notification); err != nil {
 		return err
+	}
+	if !created {
+		return nil
 	}
 
 	if s.pushSender != nil && s.svcCtx.UserModel != nil {

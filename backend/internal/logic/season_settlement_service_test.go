@@ -19,6 +19,18 @@ import (
 func TestSeasonSettlementServiceSettlesOneSeasonAndIsIdempotent(t *testing.T) {
 	svcCtx := newSeasonSettlementTestSvc(t)
 	season, nextSeason, now := seedSeasonSettlementScenario(t, svcCtx, true)
+	unlockedAt := season.StartDate.Add(10 * 24 * time.Hour)
+	equippedAt := unlockedAt.Add(time.Hour)
+	careerAchievement := model.Achievement{Id: 900, Key: "match_100", Name: "百战磨砺", Category: "match", GameType: 0, MetricKey: achievementx.MetricMatchesTotal, ProgressMode: achievementx.ProgressModeSum, Threshold: 100, Status: 1}
+	if err := svcCtx.DB.Create(&careerAchievement).Error; err != nil {
+		t.Fatalf("seed career achievement: %v", err)
+	}
+	if err := svcCtx.DB.Create(&model.UserAchievement{UserId: 10, AchievementId: careerAchievement.Id, Progress: 100, Unlocked: 1, UnlockedAt: &unlockedAt, UnlockedSourceType: achievementx.SourceTypeMatch, UnlockedSourceId: 301, RewardGranted: 1, RewardGrantedAt: &unlockedAt}).Error; err != nil {
+		t.Fatalf("seed career progress: %v", err)
+	}
+	if err := svcCtx.DB.Create(&model.UserTitle{UserId: 10, TitleKey: "title_match_100", TitleName: "资深球手", Source: achievementx.SourceTypeAchievement, SourceType: achievementx.SourceTypeAchievement, SourceRefId: careerAchievement.Id, SourceRefName: careerAchievement.Name, Equipped: 1, EquippedAt: &equippedAt, GrantedAt: &unlockedAt}).Error; err != nil {
+		t.Fatalf("seed career title: %v", err)
+	}
 	service := NewSeasonSettlementService(svcCtx)
 	service.sendRealtime = func(seasonRolloverRealtimeNotice) error { return nil }
 
@@ -40,6 +52,16 @@ func TestSeasonSettlementServiceSettlesOneSeasonAndIsIdempotent(t *testing.T) {
 	assertSeasonSettlementTitles(t, svcCtx, season.Id, 3)
 	assertSeasonSettlementSnapshots(t, svcCtx, season.Id, 3)
 	assertSeasonRolloverNotifications(t, svcCtx, season, &nextSeason, 3)
+	assertCareerAssetsPreserved(t, svcCtx, 10, careerAchievement.Id, unlockedAt, equippedAt)
+	challengeProgress, err := achievementx.NewSeasonChallengeService(svcCtx).GetProgress(10, &nextSeason, 3)
+	if err != nil {
+		t.Fatalf("get next season challenge progress: %v", err)
+	}
+	for _, item := range challengeProgress {
+		if item.Progress != 0 || item.Completed {
+			t.Fatalf("next season challenge must start empty: %+v", challengeProgress)
+		}
+	}
 
 	retrySummary, err := service.SettleSeasonAt(context.Background(), season.Id, now.Add(time.Minute))
 	if err != nil {
@@ -229,6 +251,8 @@ func newSeasonSettlementTestSvc(t *testing.T) *svc.ServiceContext {
 	sqlDB.SetMaxOpenConns(1)
 	if err := db.AutoMigrate(
 		&model.User{},
+		&model.Achievement{},
+		&model.UserAchievement{},
 		&model.Season{},
 		&model.SeasonRecord{},
 		&model.SeasonSettlement{},
@@ -356,6 +380,24 @@ func seedSeasonRankLog(t *testing.T, svcCtx *svc.ServiceContext, userID, matchID
 		EffectiveAt: effectiveAt,
 	}).Error; err != nil {
 		t.Fatalf("create rank log user=%d match=%d: %v", userID, matchID, err)
+	}
+}
+
+func assertCareerAssetsPreserved(t *testing.T, svcCtx *svc.ServiceContext, userID, achievementID int64, unlockedAt, equippedAt time.Time) {
+	t.Helper()
+	var userAchievement model.UserAchievement
+	if err := svcCtx.DB.Where("user_id = ? AND achievement_id = ?", userID, achievementID).First(&userAchievement).Error; err != nil {
+		t.Fatalf("find preserved career achievement: %v", err)
+	}
+	if userAchievement.Progress != 100 || userAchievement.Unlocked != 1 || userAchievement.UnlockedAt == nil || !userAchievement.UnlockedAt.Equal(unlockedAt) {
+		t.Fatalf("career achievement changed during settlement: %+v", userAchievement)
+	}
+	var title model.UserTitle
+	if err := svcCtx.DB.Where("user_id = ? AND source_type = ? AND source_ref_id = ?", userID, achievementx.SourceTypeAchievement, achievementID).First(&title).Error; err != nil {
+		t.Fatalf("find preserved career title: %v", err)
+	}
+	if title.TitleName != "资深球手" || title.Equipped != 1 || title.EquippedAt == nil || !title.EquippedAt.Equal(equippedAt) {
+		t.Fatalf("career title changed during settlement: %+v", title)
 	}
 }
 

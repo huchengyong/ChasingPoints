@@ -49,6 +49,34 @@ func TestValidateStartMatchReqRejectsSelfMatch(t *testing.T) {
 	}
 }
 
+func TestValidateStartMatchReqNegotiatesSnookerRulesVersion(t *testing.T) {
+	legacy := &types.StartMatchReq{GameType: 1, OpponentId: 200}
+	if message := validateStartMatchReq(100, legacy); message != "" {
+		t.Fatalf("legacy client should remain compatible: %q", message)
+	}
+	if legacy.SnookerRulesVersion != model.SnookerRulesVersionLegacy || legacy.BestOfFrames != 0 || legacy.StartingActor != 0 {
+		t.Fatalf("unexpected legacy negotiation: %+v", legacy)
+	}
+
+	version2 := &types.StartMatchReq{
+		GameType: 1, OpponentId: 200, SnookerRulesVersion: model.SnookerRulesVersionWPBSA,
+		BestOfFrames: 7, StartingActor: 2,
+	}
+	if message := validateStartMatchReq(100, version2); message != "" {
+		t.Fatalf("valid version 2 rejected: %q", message)
+	}
+	if message := validateStartMatchReq(100, &types.StartMatchReq{
+		GameType: 1, OpponentId: 200, SnookerRulesVersion: model.SnookerRulesVersionWPBSA,
+	}); message != "斯诺克总局数必须为正奇数" {
+		t.Fatalf("unexpected invalid format message: %q", message)
+	}
+	if message := validateStartMatchReq(100, &types.StartMatchReq{
+		GameType: 1, OpponentId: 200, SnookerRulesVersion: 3,
+	}); message != "不支持的斯诺克规则版本" {
+		t.Fatalf("unexpected unsupported version message: %q", message)
+	}
+}
+
 func TestEvaluateStartMatchDecisionResumesExistingMatchForSameOpponentAndGameType(t *testing.T) {
 	existing := &model.Match{
 		Id:           88,

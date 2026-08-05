@@ -112,19 +112,48 @@ func buildCareerAchievementDefs(definitions []model.Achievement, userAchievement
 			continue
 		}
 		list = append(list, types.AchievementDef{
-			Id:          definition.Id,
-			Key:         definition.Key,
-			Name:        definition.Name,
-			Description: definition.Description,
-			Icon:        definition.Icon,
-			Category:    definition.Category,
-			Threshold:   definition.Threshold,
-			Progress:    progress,
-			Unlocked:    unlocked,
-			UnlockedAt:  unlockedAt,
+			Id:              definition.Id,
+			Key:             definition.Key,
+			Name:            definition.Name,
+			Description:     definition.Description,
+			Icon:            definition.Icon,
+			Category:        definition.Category,
+			GameType:        definition.GameType,
+			RewardTitleName: definition.RewardTitleName,
+			Threshold:       definition.Threshold,
+			Progress:        progress,
+			Unlocked:        unlocked,
+			UnlockedAt:      unlockedAt,
 		})
 	}
 	return list, unlockedTotal
+}
+
+func countCareerAchievementScopes(definitions []model.Achievement, userAchievements []model.UserAchievement, gameType int) (int, int, int, int) {
+	unlockedByAchievement := make(map[int64]bool, len(userAchievements))
+	for _, userAchievement := range userAchievements {
+		unlockedByAchievement[userAchievement.AchievementId] = userAchievement.Unlocked == 1
+	}
+
+	universalUnlocked := 0
+	universalTotal := 0
+	specialtyUnlocked := 0
+	specialtyTotal := 0
+	for _, definition := range definitions {
+		switch definition.GameType {
+		case 0:
+			universalTotal++
+			if unlockedByAchievement[definition.Id] {
+				universalUnlocked++
+			}
+		case gameType:
+			specialtyTotal++
+			if unlockedByAchievement[definition.Id] {
+				specialtyUnlocked++
+			}
+		}
+	}
+	return universalUnlocked, universalTotal, specialtyUnlocked, specialtyTotal
 }
 
 func titleToInfo(title *model.UserTitle) *types.TitleInfo {

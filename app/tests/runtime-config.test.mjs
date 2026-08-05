@@ -8,8 +8,8 @@ import {
 
 test('resolveNetworkConfig uses development hosts', () => {
   assert.deepEqual(resolveNetworkConfig({ env: 'development' }), {
-    httpBaseUrl: 'https://api.zhuifen.cn',
-    wsBaseUrl: 'wss://ws.zhuifen.cn'
+    httpBaseUrl: 'https://api-zhuifen.kekemate.cn',
+    wsBaseUrl: 'wss://api-zhuifen.kekemate.cn'
   })
 })
 

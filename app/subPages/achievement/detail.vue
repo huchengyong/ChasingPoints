@@ -10,7 +10,8 @@
 			<!-- 成就图标 -->
 			<view class="hero-section" :class="{ unlocked: achievement.unlocked }">
 				<view class="hero-icon">
-					<text class="icon-emoji">{{ getCategoryEmoji(achievement.category) }}</text>
+					<image v-if="hasDetailIcon" :src="achievement.icon" mode="aspectFit" @error="handleDetailIconError"></image>
+					<text v-else class="icon-emoji">{{ getFallbackEmoji(achievement) }}</text>
 				</view>
 				<text class="hero-name">{{ achievement.name }}</text>
 				<view v-if="achievement.unlocked" class="unlock-badge">
@@ -21,8 +22,8 @@
 
 			<!-- 详情卡片 -->
 			<view class="info-card">
-				<view class="info-row">
-					<text class="info-label">描述</text>
+				<view class="info-row condition-row">
+					<text class="info-label">解锁条件</text>
 					<text class="info-value">{{ achievement.description || '完成指定目标解锁此成就' }}</text>
 				</view>
 				<view class="info-row">
@@ -30,8 +31,12 @@
 					<text class="info-value">{{ getAchievementCategoryLabel(achievement.category) }}</text>
 				</view>
 				<view class="info-row">
-					<text class="info-label">解锁条件</text>
-					<text class="info-value">累计达成 {{ achievement.threshold }} 次</text>
+					<text class="info-label">球种</text>
+					<text class="info-value">{{ getAchievementGameTypeLabel(achievement.game_type) }}</text>
+				</view>
+				<view v-if="achievement.reward_title_name" class="info-row reward-row">
+					<text class="info-label">奖励称号</text>
+					<text class="info-value reward-title">{{ achievement.reward_title_name }}</text>
 				</view>
 			</view>
 
@@ -69,7 +74,11 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getAchievementList } from '@/api/achievement.js'
-import { getAchievementCategoryEmoji, getAchievementCategoryLabel } from '@/utils/achievement-page.js'
+import {
+	getAchievementCategoryLabel,
+	getAchievementFallbackEmoji,
+	getAchievementGameTypeLabel
+} from '@/utils/achievement-page.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 
 const { isDarkMode } = usePageTheme()
@@ -77,6 +86,7 @@ const { isDarkMode } = usePageTheme()
 const loading = ref(true)
 const achievement = ref(null)
 const achievementId = ref(0)
+const iconFailed = ref(false)
 
 const progressPercent = computed(() => {
 	if (!achievement.value) return 0
@@ -85,7 +95,11 @@ const progressPercent = computed(() => {
 	return Math.min(Math.round(((achievement.value.progress || 0) / t) * 100), 100)
 })
 
-const getCategoryEmoji = getAchievementCategoryEmoji
+const getFallbackEmoji = getAchievementFallbackEmoji
+const hasDetailIcon = computed(() => Boolean(achievement.value?.icon && !iconFailed.value))
+const handleDetailIconError = () => {
+	iconFailed.value = true
+}
 
 const loadDetail = async () => {
 	loading.value = true
@@ -93,6 +107,7 @@ const loadDetail = async () => {
 		const res = await getAchievementList()
 		const list = res.list || res || []
 		achievement.value = list.find(a => String(a.id) === String(achievementId.value)) || null
+		iconFailed.value = false
 	} catch (e) {
 		console.error('加载成就详情失败:', e)
 	} finally {
@@ -147,6 +162,11 @@ onLoad((options) => {
 		box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.1);
 		margin-bottom: 24rpx;
 
+		image {
+			width: 112rpx;
+			height: 112rpx;
+		}
+
 		.icon-emoji {
 			font-size: 72rpx;
 		}
@@ -194,10 +214,17 @@ onLoad((options) => {
 		}
 		.info-value {
 			font-size: 28rpx;
+			line-height: 1.6;
 			color: #1e293b;
 			text-align: right;
 			flex: 1;
 			margin-left: 32rpx;
+			word-break: break-word;
+		}
+
+		.reward-title {
+			font-weight: 700;
+			color: #b17d00;
 		}
 	}
 }

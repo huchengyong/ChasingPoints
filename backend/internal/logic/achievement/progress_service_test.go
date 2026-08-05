@@ -259,6 +259,76 @@ func TestProgressServiceIgnoresDuplicateEvents(t *testing.T) {
 	}
 }
 
+func TestProgressServiceUniversalDefinitionsAggregateAcrossGameTypes(t *testing.T) {
+	svcCtx := newAchievementProgressTestSvc(t)
+	service := NewAchievementProgressService(svcCtx)
+	seedAchievementProgressDef(t, svcCtx, &model.Achievement{
+		Id:           10,
+		Key:          "match_2",
+		Name:         "两场对局",
+		Category:     "match",
+		GameType:     0,
+		MetricKey:    MetricMatchesTotal,
+		ProgressMode: ProgressModeSum,
+		Threshold:    2,
+		Status:       1,
+	})
+
+	mustAppendProgressEvent(t, service, AchievementProgressEventInput{UserId: 2001, SourceType: SourceTypeMatch, SourceId: 7001, GameType: 1, MetricKey: MetricMatchesTotal, MetricValue: 1}, true)
+	mustAppendProgressEvent(t, service, AchievementProgressEventInput{UserId: 2001, SourceType: SourceTypeMatch, SourceId: 7002, GameType: 4, MetricKey: MetricMatchesTotal, MetricValue: 1}, true)
+	if err := service.RefreshUserAchievements(2001); err != nil {
+		t.Fatalf("refresh universal achievements: %v", err)
+	}
+
+	var userAchievement model.UserAchievement
+	if err := svcCtx.DB.Where("user_id = ? AND achievement_id = ?", 2001, 10).First(&userAchievement).Error; err != nil {
+		t.Fatalf("find universal achievement: %v", err)
+	}
+	if userAchievement.Progress != 2 || userAchievement.Unlocked != 1 {
+		t.Fatalf("universal achievement should aggregate all game types: %+v", userAchievement)
+	}
+}
+
+func TestProgressServiceScopesSharedMetricsByGameType(t *testing.T) {
+	svcCtx := newAchievementProgressTestSvc(t)
+	service := NewAchievementProgressService(svcCtx)
+	definitions := []model.Achievement{
+		{Id: 11, Key: "chasing_golden_break_1", Name: "追分小金", Category: "special", GameType: 2, MetricKey: MetricGoldenBreakTotal, ProgressMode: ProgressModeSum, Threshold: 1, Sort: 1, Status: 1},
+		{Id: 12, Key: "american_golden_break_1", Name: "美式小金", Category: "special", GameType: 4, MetricKey: MetricGoldenBreakTotal, ProgressMode: ProgressModeSum, Threshold: 1, Sort: 2, Status: 1},
+	}
+	for i := range definitions {
+		seedAchievementProgressDef(t, svcCtx, &definitions[i])
+	}
+
+	mustAppendProgressEvent(t, service, AchievementProgressEventInput{UserId: 2002, SourceType: SourceTypeMatch, SourceId: 8001, GameType: 2, MetricKey: MetricGoldenBreakTotal, MetricValue: 1}, true)
+	if err := service.RefreshUserAchievements(2002); err != nil {
+		t.Fatalf("refresh chasing achievement: %v", err)
+	}
+
+	var chasing model.UserAchievement
+	if err := svcCtx.DB.Where("user_id = ? AND achievement_id = ?", 2002, 11).First(&chasing).Error; err != nil {
+		t.Fatalf("find chasing achievement: %v", err)
+	}
+	var american model.UserAchievement
+	if err := svcCtx.DB.Where("user_id = ? AND achievement_id = ?", 2002, 12).First(&american).Error; err != nil {
+		t.Fatalf("find american achievement: %v", err)
+	}
+	if chasing.Progress != 1 || chasing.Unlocked != 1 || american.Progress != 0 || american.Unlocked != 0 {
+		t.Fatalf("shared metric leaked across game types: chasing=%+v american=%+v", chasing, american)
+	}
+
+	mustAppendProgressEvent(t, service, AchievementProgressEventInput{UserId: 2002, SourceType: SourceTypeMatch, SourceId: 8002, GameType: 4, MetricKey: MetricGoldenBreakTotal, MetricValue: 1}, true)
+	if err := service.RefreshUserAchievements(2002); err != nil {
+		t.Fatalf("refresh american achievement: %v", err)
+	}
+	if err := svcCtx.DB.Where("user_id = ? AND achievement_id = ?", 2002, 12).First(&american).Error; err != nil {
+		t.Fatalf("reload american achievement: %v", err)
+	}
+	if american.Progress != 1 || american.Unlocked != 1 {
+		t.Fatalf("american achievement should unlock from its own event: %+v", american)
+	}
+}
+
 func seedAchievementProgressDef(t *testing.T, svcCtx *svc.ServiceContext, achievement *model.Achievement) {
 	t.Helper()
 

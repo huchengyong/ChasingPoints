@@ -42,6 +42,34 @@ func TestMatchDefaultsUseRankedPublicForLegacyRecords(t *testing.T) {
 	if stored.FinishConfirmationRequired {
 		t.Fatal("legacy match should default to immediate finish compatibility")
 	}
+	if stored.SnookerRulesVersion != SnookerRulesVersionLegacy || stored.BestOfFrames != 0 || stored.StartingActor != 0 {
+		t.Fatalf("unexpected legacy snooker defaults: version=%d bestOf=%d starter=%d", stored.SnookerRulesVersion, stored.BestOfFrames, stored.StartingActor)
+	}
+}
+
+func TestMatchPersistsSnookerRulesV2Format(t *testing.T) {
+	db := newMatchCoreFlowTestDB(t)
+	match := Match{
+		Id:                  2,
+		UserId:              10,
+		OpponentName:        "对手",
+		GameType:            1,
+		SnookerRulesVersion: SnookerRulesVersionWPBSA,
+		BestOfFrames:        7,
+		StartingActor:       2,
+		Status:              1,
+	}
+	if err := db.Create(&match).Error; err != nil {
+		t.Fatalf("create snooker v2 match: %v", err)
+	}
+
+	var stored Match
+	if err := db.First(&stored, match.Id).Error; err != nil {
+		t.Fatalf("load snooker v2 match: %v", err)
+	}
+	if stored.SnookerRulesVersion != SnookerRulesVersionWPBSA || stored.BestOfFrames != 7 || stored.StartingActor != 2 {
+		t.Fatalf("unexpected snooker v2 format: version=%d bestOf=%d starter=%d", stored.SnookerRulesVersion, stored.BestOfFrames, stored.StartingActor)
+	}
 }
 
 func TestListPublicMatchesHidesPrivateMatchesExceptParticipantFriendView(t *testing.T) {

@@ -131,6 +131,9 @@ func (l *StartMatchLogic) StartMatch(req *types.StartMatchReq) (resp *types.Star
 			OpponentName:               req.OpponentName,
 			GameType:                   req.GameType,
 			GameMode:                   req.GameMode,
+			SnookerRulesVersion:        req.SnookerRulesVersion,
+			BestOfFrames:               req.BestOfFrames,
+			StartingActor:              req.StartingActor,
 			MatchMode:                  req.MatchMode,
 			Visibility:                 req.Visibility,
 			FinishConfirmationRequired: finishConfirmationRequired,
@@ -276,6 +279,29 @@ func validateStartMatchReq(userId int64, req *types.StartMatchReq) string {
 	}
 	if req.OpponentId == userId {
 		return "不能和自己发起 PK"
+	}
+	if req.GameType == 1 {
+		if req.SnookerRulesVersion == 0 {
+			req.SnookerRulesVersion = model.SnookerRulesVersionLegacy
+		}
+		switch req.SnookerRulesVersion {
+		case model.SnookerRulesVersionLegacy:
+			req.BestOfFrames = 0
+			req.StartingActor = 0
+		case model.SnookerRulesVersionWPBSA:
+			if req.BestOfFrames <= 0 || req.BestOfFrames%2 == 0 {
+				return "斯诺克总局数必须为正奇数"
+			}
+			if req.StartingActor != 1 && req.StartingActor != 2 {
+				return "请选择首局开球方"
+			}
+		default:
+			return "不支持的斯诺克规则版本"
+		}
+	} else {
+		req.SnookerRulesVersion = model.SnookerRulesVersionLegacy
+		req.BestOfFrames = 0
+		req.StartingActor = 0
 	}
 	return ""
 }

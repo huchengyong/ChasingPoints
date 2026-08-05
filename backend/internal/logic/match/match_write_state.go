@@ -30,12 +30,11 @@ func loadMatchWriteState(svcCtx *svc.ServiceContext, userId int64, match *model.
 			roundNo = int(roundCount)
 		}
 		if roundNo > 0 {
-			actions, actionsErr := svcCtx.MatchModel.ListActiveActions(match.Id)
-			if actionsErr != nil {
-				return state, actionsErr
+			snookerState, err = loadSnookerStateForMatch(svcCtx, match, roundNo)
+			if err != nil {
+				return state, err
 			}
-			snookerState = model.BuildSnookerRoundState(actions, roundNo)
-			if !match.CurrentFrameStarted {
+			if !match.CurrentFrameStarted && match.SnookerRulesVersion != model.SnookerRulesVersionWPBSA {
 				snookerState = model.SnookerRoundState{ClearedColors: make([]int, 0, 6)}
 			}
 		}

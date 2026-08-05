@@ -313,6 +313,7 @@ import {
 	normalizePendingMatchContext,
 	validateScannedOpponentForContext
 } from '@/utils/start-match.js'
+import { chooseSnookerStartFormat } from '@/utils/snooker-start-format.js'
 
 // ========== 状态管理 ==========
 const userStore = useUserStore()
@@ -327,6 +328,8 @@ const showGameTypeModal = ref(false)
 const selectedGameType = ref(null)
 const startMatchMode = ref('practice')
 const startMatchVisibility = ref('private')
+const snookerBestOfFrames = ref(3)
+const snookerStartingActor = ref(1)
 const pendingStartContext = ref(null)
 const scanIntent = ref('start')
 const showMatchQrModal = ref(false)
@@ -455,8 +458,16 @@ const consumePendingChallengeContext = () => {
 		selectedGameType.value = result.context.game_type
 		startMatchMode.value = result.context.match_mode
 		startMatchVisibility.value = result.context.visibility
+		snookerBestOfFrames.value = Number(result.context.best_of_frames) || 3
+		snookerStartingActor.value = Number(result.context.starting_actor) === 2 ? 2 : 1
 		scanIntent.value = 'start'
-		setTimeout(handleScanCode, 80)
+		setTimeout(() => {
+			if (Number(result.context.game_type) === 1) {
+				chooseSnookerFormatThenScan()
+				return
+			}
+			handleScanCode()
+		}, 80)
 		return
 	}
 }
@@ -759,9 +770,21 @@ const handleGameTypeConfirm = (gameType) => {
 		success: ({ tapIndex }) => {
 			startMatchMode.value = tapIndex === 2 ? 'ranked' : 'practice'
 			startMatchVisibility.value = tapIndex === 1 || tapIndex === 2 ? 'public' : 'private'
+			if (Number(gameType) === 1) {
+				chooseSnookerFormatThenScan()
+				return
+			}
 			handleScanCode()
 		}
 	})
+}
+
+const chooseSnookerFormatThenScan = async () => {
+	const format = await chooseSnookerStartFormat(uni)
+	if (!format) return
+	snookerBestOfFrames.value = format.best_of_frames
+	snookerStartingActor.value = format.starting_actor
+	handleScanCode()
 }
 
 /**
@@ -819,7 +842,9 @@ const handleMatchResult = async (scanResult) => {
 			opponent: opponentData,
 			matchMode: startMatchMode.value,
 			visibility: startMatchVisibility.value,
-			challengeId: pendingStartContext.value?.challenge_id || 0
+			challengeId: pendingStartContext.value?.challenge_id || 0,
+			bestOfFrames: snookerBestOfFrames.value,
+			startingActor: snookerStartingActor.value
 		}))
 
 		// 隐藏加载

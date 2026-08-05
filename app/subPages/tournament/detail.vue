@@ -138,7 +138,6 @@ import { ref } from 'vue'
 import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { getEventNewsView } from '@/api/event-news.js'
 import { pickEventNewsViewPayload } from '@/utils/event-news-response.js'
-import { cacheSaiXunMatchAvatars } from '@/utils/image-cache.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import {
 	DEFAULT_EVENT_COVER,
@@ -159,51 +158,9 @@ const rawEventPayload = ref(null)
 
 let eventViewRefreshTimer = null
 
-const mergeCachedRoundAvatars = (rounds = [], previousRounds = []) => {
-	const previousMatches = new Map()
-
-	previousRounds.forEach((round) => {
-		;(round?.matches || []).forEach((match) => {
-			previousMatches.set(match.id, match)
-		})
-	})
-
-	return rounds.map((round) => ({
-		...round,
-		matches: (round.matches || []).map((match) => {
-			const previousMatch = previousMatches.get(match.id)
-			if (!previousMatch) return match
-
-			return {
-				...match,
-				homePlayerAvatar: previousMatch.homePlayerAvatar || match.homePlayerAvatar,
-				awayPlayerAvatar: previousMatch.awayPlayerAvatar || match.awayPlayerAvatar
-			}
-		})
-	}))
-}
-
 const renderEventView = (now = Date.now()) => {
 	if (!rawEventPayload.value) return
-
-	const previousRounds = eventView.value?.rounds || []
-	const nextView = normalizeEventView(rawEventPayload.value, now)
-	eventView.value = {
-		...nextView,
-		rounds: mergeCachedRoundAvatars(nextView.rounds, previousRounds)
-	}
-}
-
-const warmCachedPlayerAvatars = async (view) => {
-	if (!view || !Array.isArray(view.rounds) || view.rounds.length === 0) return
-
-	const cachedRounds = await cacheSaiXunMatchAvatars(view.rounds)
-	if (!eventView.value || eventView.value.id !== view.id) return
-
-	eventView.value = {
-		...eventView.value,
-		rounds: cachedRounds
-	}
+	eventView.value = normalizeEventView(rawEventPayload.value, now)
 }
 
 const normalizeEventView = ({ eventNews, tournament, matches }, now = Date.now()) => {
@@ -275,7 +232,6 @@ const fetchDetail = async () => {
 		rawEventPayload.value = payload
 		renderEventView(Date.now())
 		startEventViewRefreshTimer()
-		void warmCachedPlayerAvatars(eventView.value)
 	} catch (e) {
 		console.error('获取赛事详情失败', e)
 		rawEventPayload.value = null

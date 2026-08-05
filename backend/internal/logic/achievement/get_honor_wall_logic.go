@@ -35,6 +35,7 @@ func (l *GetHonorWallLogic) GetHonorWall(req *types.GetHonorWallReq) (resp *type
 	if req == nil {
 		req = &types.GetHonorWallReq{}
 	}
+	specialtyGameType := normalizeSeasonChallengeGameType(req.GameType)
 
 	targetUserId := req.UserId
 	if targetUserId <= 0 {
@@ -75,6 +76,7 @@ func (l *GetHonorWallLogic) GetHonorWall(req *types.GetHonorWallReq) (resp *type
 
 	includeLocked := viewerScope == "self"
 	careerAchievements, unlockedTotal := buildCareerAchievementDefs(definitions, userAchievements, includeLocked)
+	universalUnlocked, universalTotal, specialtyUnlocked, specialtyTotal := countCareerAchievementScopes(definitions, userAchievements, specialtyGameType)
 	recentHonors := buildRecentHonors(userAchievements, definitions, titles)
 	equippedTitle, err := l.svcCtx.UserTitleModel.FindEquippedByUserId(targetUserId)
 	if err != nil {
@@ -112,10 +114,15 @@ func (l *GetHonorWallLogic) GetHonorWall(req *types.GetHonorWallReq) (resp *type
 		},
 		EquippedTitle: titleToInfo(equippedTitle),
 		Summary: types.HonorWallSummary{
-			CareerUnlocked:   unlockedTotal,
-			CareerTotal:      len(definitions),
-			SeasonHonors:     seasonHonors,
-			TournamentHonors: tournamentHonors,
+			CareerUnlocked:    unlockedTotal,
+			CareerTotal:       len(definitions),
+			UniversalUnlocked: universalUnlocked,
+			UniversalTotal:    universalTotal,
+			SpecialtyGameType: specialtyGameType,
+			SpecialtyUnlocked: specialtyUnlocked,
+			SpecialtyTotal:    specialtyTotal,
+			SeasonHonors:      seasonHonors,
+			TournamentHonors:  tournamentHonors,
 		},
 		RecentHonors:       recentHonors,
 		CareerAchievements: careerAchievements,

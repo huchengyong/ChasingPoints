@@ -27,6 +27,9 @@ const (
 	CompletionSourcePlayerDirect    = "player_direct"
 	CompletionSourcePlayerConfirmed = "player_confirmed"
 	CompletionSourceUnknown         = "unknown"
+
+	SnookerRulesVersionLegacy = 1
+	SnookerRulesVersionWPBSA  = 2
 )
 
 func NormalizeMatchMode(mode string) string {
@@ -61,6 +64,9 @@ type Match struct {
 	OpponentName               string         `gorm:"size:50;not null" json:"opponent_name"`
 	GameType                   int            `gorm:"not null" json:"game_type"` // 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
 	GameMode                   string         `gorm:"size:20" json:"game_mode"`  // 比赛模式
+	SnookerRulesVersion        int            `gorm:"not null;default:1" json:"snooker_rules_version"`
+	BestOfFrames               int            `gorm:"not null;default:0" json:"best_of_frames"`
+	StartingActor              int            `gorm:"not null;default:0" json:"starting_actor"`
 	MatchMode                  string         `gorm:"size:20;not null;index" json:"match_mode"`
 	Visibility                 string         `gorm:"size:20;not null;index" json:"visibility"`
 	FinishConfirmationRequired bool           `gorm:"not null;default:false" json:"finish_confirmation_required"`
@@ -278,6 +284,19 @@ func (m *MatchModel) ListCompletedForRankingReplay() ([]Match, error) {
 		Order("end_time ASC").
 		Order("match_time ASC").
 		Order("id ASC").
+		Find(&matches).Error
+	return matches, err
+}
+
+func (m *MatchModel) ListCompletedForAchievementRebuild() ([]Match, error) {
+	var matches []Match
+	err := m.db.
+		Where("status = ? AND deleted_at IS NULL", 2).
+		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", MatchModeRanked).
+		Where("result IN ?", []int{1, 2}).
+		Where("opponent_id IS NOT NULL AND opponent_id > 0 AND opponent_id <> user_id").
+		Where("EXISTS (SELECT 1 FROM match_rounds WHERE match_rounds.match_id = matches.id AND winner IS NOT NULL AND (win_type IS NULL OR win_type <> ?))", "start").
+		Order("COALESCE(end_time, match_time) ASC, id ASC").
 		Find(&matches).Error
 	return matches, err
 }
@@ -871,8 +890,16 @@ func (m *MatchModel) CreateRoundWithTx(tx *gorm.DB, round *MatchRound) error {
 
 // GetRoundCount 获取对局的局数
 func (m *MatchModel) GetRoundCount(matchId int64) (int64, error) {
+	return m.GetRoundCountWithTx(nil, matchId)
+}
+
+func (m *MatchModel) GetRoundCountWithTx(tx *gorm.DB, matchId int64) (int64, error) {
 	var count int64
-	err := m.db.Model(&MatchRound{}).
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	err := db.Model(&MatchRound{}).
 		Where("match_id = ? AND winner IS NOT NULL AND win_type <> ?", matchId, "start").
 		Count(&count).Error
 	return count, err
@@ -915,6 +942,18 @@ func (m *MatchModel) ListCompletedRoundsWithTx(tx *gorm.DB, matchId int64) ([]Ma
 	err := db.
 		Where("match_id = ? AND winner IS NOT NULL AND win_type <> ?", matchId, "start").
 		Order("round_no ASC").
+		Find(&rounds).Error
+	return rounds, err
+}
+
+func (m *MatchModel) ListCompletedRoundsByMatchIDs(matchIds []int64) ([]MatchRound, error) {
+	if len(matchIds) == 0 {
+		return []MatchRound{}, nil
+	}
+	var rounds []MatchRound
+	err := m.db.
+		Where("match_id IN ? AND winner IS NOT NULL AND (win_type IS NULL OR win_type <> ?)", matchIds, "start").
+		Order("match_id ASC, round_no ASC, id ASC").
 		Find(&rounds).Error
 	return rounds, err
 }
@@ -1105,6 +1144,18 @@ func (m *MatchModel) GetAchievementsWithTx(tx *gorm.DB, matchId int64) ([]MatchA
 		db = tx
 	}
 	err := db.Where("match_id = ?", matchId).Find(&list).Error
+	return list, err
+}
+
+func (m *MatchModel) ListAchievementsByMatchIDs(matchIds []int64) ([]MatchAchievement, error) {
+	if len(matchIds) == 0 {
+		return []MatchAchievement{}, nil
+	}
+	var list []MatchAchievement
+	err := m.db.
+		Where("match_id IN ?", matchIds).
+		Order("match_id ASC, actor ASC, achievement_type ASC, id ASC").
+		Find(&list).Error
 	return list, err
 }
 

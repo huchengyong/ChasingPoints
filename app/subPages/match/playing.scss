@@ -506,6 +506,232 @@ $success: #1bb56b;
 	gap: 28rpx;
 }
 
+.snooker-v2-layout {
+	display: flex;
+	flex-direction: column;
+	gap: 24rpx;
+}
+
+.snooker-v2-status,
+.snooker-v2-section {
+	padding: 24rpx;
+	border-radius: 24rpx;
+	background: rgba(24, 34, 45, 0.04);
+	border: 2rpx solid rgba(24, 34, 45, 0.07);
+	box-sizing: border-box;
+}
+
+.snooker-v2-status__row,
+.snooker-v2-status__target,
+.snooker-v2-status__meta {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16rpx;
+}
+
+.snooker-v2-status__target,
+.snooker-v2-status__meta {
+	margin-top: 16rpx;
+	font-size: 22rpx;
+	color: $text-secondary-light;
+}
+
+.snooker-v2-status__phase,
+.snooker-v2-section__title {
+	font-size: 26rpx;
+	font-weight: 800;
+	color: $text-primary-light;
+}
+
+.snooker-v2-status__format {
+	font-size: 20rpx;
+	color: $text-secondary-light;
+}
+
+.snooker-v2-alert {
+	display: block;
+	margin-top: 16rpx;
+	padding: 14rpx 18rpx;
+	border-radius: 16rpx;
+	background: rgba(224, 174, 18, 0.14);
+	color: #9a6f00;
+	font-size: 21rpx;
+	line-height: 1.45;
+
+	&.is-danger {
+		background: rgba(239, 68, 68, 0.12);
+		color: #b91c1c;
+	}
+}
+
+.snooker-v2-section {
+	display: flex;
+	flex-direction: column;
+	gap: 20rpx;
+}
+
+.snooker-v2-pot-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 14rpx;
+}
+
+.snooker-v2-pot {
+	margin: 0;
+	min-height: 112rpx;
+	padding: 16rpx 10rpx;
+	border-radius: 20rpx;
+	border: 2rpx solid rgba(24, 34, 45, 0.08);
+	background: #ffffff;
+	color: $text-primary-light;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 8rpx;
+	font-size: 23rpx;
+	font-weight: 700;
+	line-height: 1.2;
+	box-sizing: border-box;
+
+	&::after {
+		display: none;
+	}
+
+	&.is-red { border-color: rgba(213, 34, 34, 0.38); }
+	&.is-yellow { border-color: rgba(243, 194, 26, 0.5); }
+	&.is-green { border-color: rgba(32, 160, 92, 0.4); }
+	&.is-brown { border-color: rgba(138, 90, 52, 0.42); }
+	&.is-blue { border-color: rgba(45, 124, 244, 0.42); }
+	&.is-pink { border-color: rgba(239, 113, 178, 0.42); }
+	&.is-black { border-color: rgba(28, 35, 48, 0.5); }
+}
+
+.snooker-v2-pot__score {
+	font-size: 18rpx;
+	font-weight: 500;
+	color: $text-secondary-light;
+}
+
+.snooker-v2-actions {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 14rpx;
+
+	&.is-two {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+.snooker-v2-action {
+	margin: 0;
+	height: 80rpx;
+	line-height: 80rpx;
+	padding: 0 18rpx;
+	border-radius: 18rpx;
+	background: rgba(11, 122, 255, 0.1);
+	color: $me-primary;
+	font-size: 22rpx;
+	font-weight: 700;
+	box-sizing: border-box;
+
+	&::after {
+		display: none;
+	}
+
+	&.is-highlight {
+		background: rgba(224, 174, 18, 0.18);
+		color: #9a6f00;
+	}
+
+	&.is-danger {
+		background: rgba(239, 68, 68, 0.12);
+		color: #b91c1c;
+	}
+}
+
+.snooker-v2-field {
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+
+	&.is-counter {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+	}
+}
+
+.snooker-v2-field__label {
+	font-size: 22rpx;
+	font-weight: 700;
+	color: $text-primary-light;
+}
+
+.snooker-v2-chips,
+.snooker-v2-toggle-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12rpx;
+
+	&.is-column {
+		flex-direction: column;
+		flex-wrap: nowrap;
+	}
+}
+
+.snooker-v2-chip,
+.snooker-v2-toggle {
+	margin: 0;
+	height: 64rpx;
+	line-height: 64rpx;
+	padding: 0 20rpx;
+	border-radius: 999rpx;
+	background: rgba(24, 34, 45, 0.06);
+	color: $text-secondary-light;
+	font-size: 20rpx;
+	box-sizing: border-box;
+
+	&::after {
+		display: none;
+	}
+
+	&.active {
+		background: $me-primary;
+		color: #ffffff;
+	}
+}
+
+.snooker-v2-counter {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+
+	button {
+		margin: 0;
+		width: 64rpx;
+		height: 64rpx;
+		line-height: 64rpx;
+		padding: 0;
+		border-radius: 50%;
+		background: rgba(24, 34, 45, 0.08);
+		color: $text-primary-light;
+		font-size: 30rpx;
+
+		&::after {
+			display: none;
+		}
+	}
+
+	text {
+		min-width: 36rpx;
+		text-align: center;
+		font-size: 28rpx;
+		font-weight: 800;
+	}
+}
+
 .snooker-layout {
 	display: flex;
 	flex-direction: column;
@@ -1001,6 +1227,44 @@ $success: #1bb56b;
 		border-color: rgba(11, 122, 255, 0.22);
 	}
 
+	.snooker-v2-status,
+	.snooker-v2-section {
+		background: rgba(255, 255, 255, 0.05);
+		border-color: rgba(255, 255, 255, 0.08);
+	}
+
+	.snooker-v2-status__phase,
+	.snooker-v2-section__title,
+	.snooker-v2-field__label,
+	.snooker-v2-counter text {
+		color: $text-primary-dark;
+	}
+
+	.snooker-v2-status__target,
+	.snooker-v2-status__meta,
+	.snooker-v2-status__format,
+	.snooker-v2-pot__score {
+		color: $text-secondary-dark;
+	}
+
+	.snooker-v2-pot {
+		background: rgba(255, 255, 255, 0.06);
+		color: $text-primary-dark;
+	}
+
+	.snooker-v2-chip,
+	.snooker-v2-toggle,
+	.snooker-v2-counter button {
+		background: rgba(255, 255, 255, 0.08);
+		color: $text-secondary-dark;
+	}
+
+	.snooker-v2-chip.active,
+	.snooker-v2-toggle.active {
+		background: $me-primary;
+		color: #ffffff;
+	}
+
 	.snooker-ball-btn {
 		background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(34, 50, 65, 0.94));
 		border-color: rgba(255, 255, 255, 0.06);
@@ -1128,6 +1392,16 @@ $success: #1bb56b;
 	.action-grid.is-three,
 	.jiuqiu-layout {
 		grid-template-columns: 1fr;
+	}
+
+	.snooker-v2-pot-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.snooker-v2-status__target,
+	.snooker-v2-status__meta {
+		align-items: flex-start;
+		flex-direction: column;
 	}
 
 	.snooker-stage {

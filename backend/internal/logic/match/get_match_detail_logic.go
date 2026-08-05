@@ -216,20 +216,29 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 	completedRounds, _ := l.svcCtx.MatchModel.ListCompletedRounds(match.Id)
 	actions, _ := l.svcCtx.MatchModel.ListActiveActions(match.Id)
 	actionsForSummary := actions
+	snookerState := model.SnookerRoundState{ClearedColors: make([]int, 0, 6)}
 	if match.GameType == 1 {
-		state := model.BuildSnookerRoundState(actions, currentRound)
-		redBallCount = state.RedBallCount
-		snookerClearanceStarted = state.ClearanceStarted
-		snookerClearedColors = state.ClearedColors
-		snookerExpectedClearanceScore = state.ExpectedClearanceScore
-		snookerClearanceCompleted = state.ClearanceCompleted
+		stateRound := currentRound
+		if !match.CurrentFrameStarted && roundCount > 0 {
+			stateRound = int(roundCount)
+		}
+		if state, stateErr := loadSnookerStateForMatch(l.svcCtx, match, stateRound); stateErr == nil {
+			snookerState = state
+		}
+		redBallCount = snookerState.RedBallCount
+		snookerClearanceStarted = snookerState.ClearanceStarted
+		snookerClearedColors = snookerState.ClearedColors
+		snookerExpectedClearanceScore = snookerState.ExpectedClearanceScore
+		snookerClearanceCompleted = snookerState.ClearanceCompleted
 		if !match.CurrentFrameStarted {
-			redBallCount = 0
-			snookerClearanceStarted = false
-			snookerClearedColors = make([]int, 0, 6)
-			snookerExpectedClearanceScore = 0
-			snookerClearanceCompleted = false
 			actionsForSummary = filterSnookerActionsToCompletedRounds(actions, completedRounds)
+			if match.SnookerRulesVersion != model.SnookerRulesVersionWPBSA {
+				redBallCount = 0
+				snookerClearanceStarted = false
+				snookerClearedColors = make([]int, 0, 6)
+				snookerExpectedClearanceScore = 0
+				snookerClearanceCompleted = false
+			}
 		}
 	}
 
@@ -284,11 +293,11 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			CompletionSource:              resolveCompletionSource(match),
 			CanScore:                      capabilities.CanScore,
 			CanUndo:                       capabilities.CanUndo,
-			CanFinish:                     capabilities.CanFinish,
-			CanRequestFinish:              capabilities.CanRequestFinish,
-			CanConfirmFinish:              capabilities.CanConfirmFinish,
-			CanDisputeFinish:              capabilities.CanDisputeFinish,
-			CanWithdrawFinish:             capabilities.CanWithdrawFinish,
+			CanFinish:                     capabilities.CanFinish && !isSnookerV2Match(match),
+			CanRequestFinish:              capabilities.CanRequestFinish && !isSnookerV2Match(match),
+			CanConfirmFinish:              capabilities.CanConfirmFinish && !isSnookerV2Match(match),
+			CanDisputeFinish:              capabilities.CanDisputeFinish && !isSnookerV2Match(match),
+			CanWithdrawFinish:             capabilities.CanWithdrawFinish && !isSnookerV2Match(match),
 			LastAction:                    buildMatchLastAction(l.svcCtx, userId, match),
 			MyScore:                       myScore,
 			OpponentScore:                 opponentScore,
@@ -311,6 +320,22 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			SnookerClearedColors:          snookerClearedColors,
 			SnookerExpectedClearanceScore: snookerExpectedClearanceScore,
 			SnookerClearanceCompleted:     snookerClearanceCompleted,
+			SnookerRulesVersion:           match.SnookerRulesVersion,
+			BestOfFrames:                  match.BestOfFrames,
+			StartingActor:                 match.StartingActor,
+			SnookerPhase:                  snookerState.Phase,
+			SnookerBallOn:                 snookerState.BallOn,
+			SnookerStriker:                snookerState.Striker,
+			SnookerVisitNo:                snookerState.VisitNo,
+			SnookerCurrentBreak:           snookerState.CurrentBreak,
+			SnookerRedsRemaining:          snookerState.RedsRemaining,
+			SnookerFreeBallAvailable:      snookerState.FreeBallAvailable,
+			SnookerCueBallInHand:          snookerState.CueBallInHand,
+			SnookerMissWarningActive:      snookerState.MissWarningActive,
+			SnookerRespottedBlackPending:  snookerState.Phase == model.SnookerPhaseRespottedBlackPending,
+			SnookerPendingConcessionActor: snookerState.PendingConcessionActor,
+			SnookerPendingConcessionScope: snookerState.PendingConcessionScope,
+			SnookerFrameEndReason:         snookerState.FrameEndReason,
 			SummaryHighlights:             summaryHighlights,
 			SummaryStats:                  summaryStats,
 			Achievements:                  achievements,
