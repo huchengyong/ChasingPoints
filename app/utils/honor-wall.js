@@ -116,6 +116,51 @@ export const buildUpcomingAchievementSection = (achievements = [], gameType = 3,
   }
 }
 
+export const resolveHonorWallLoadError = ({ error = {} } = {}) => {
+  const category = error?.category || 'business'
+
+  if (error?._isSuperseded) {
+    return {
+      kind: 'superseded',
+      handled: true,
+      title: '登录状态已更新',
+      description: '请重新加载当前账号的荣誉墙',
+      showRetry: true
+    }
+  }
+  if (category === 'session') {
+    return {
+      kind: 'session',
+      handled: Boolean(error?._isHandled),
+      title: '登录状态已失效',
+      description: '请重新登录后查看荣誉墙',
+      showRetry: false
+    }
+  }
+  if (category === 'network') {
+    return {
+      kind: 'network',
+      title: '荣誉墙暂时没加载出来',
+      description: '请检查网络后重试，已有荣誉不会受到影响',
+      showRetry: true
+    }
+  }
+  if (category === 'forbidden') {
+    return {
+      kind: 'forbidden',
+      title: '暂无查看权限',
+      description: '仅本人或好友可以查看该荣誉墙',
+      showRetry: false
+    }
+  }
+  return {
+    kind: 'server',
+    title: '荣誉墙暂时无法加载',
+    description: '服务开小差了，请稍后重试',
+    showRetry: true
+  }
+}
+
 export const getProgressPercent = ({ progress = 0, threshold = 0, completed = false, unlocked = false } = {}) => {
   if (completed || unlocked) return 100
   const safeThreshold = Number(threshold) || 0

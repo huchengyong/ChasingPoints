@@ -93,6 +93,9 @@ func (l *LoginByOauthLogic) LoginByOauth(req *types.LoginByOauthReq) (resp *type
 
 		needBindPhone = true
 	}
+	if user.Status != 1 {
+		return &types.LoginByOauthResp{Success: false}, fmt.Errorf("%s", loginUnavailableMessage)
+	}
 
 	tokenPair, err := issueAuthTokenPair(user.Id, l.svcCtx)
 	if err != nil {

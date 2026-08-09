@@ -83,6 +83,53 @@ func TestGeneratedAchievementPayloadContract(t *testing.T) {
 	assertJSONTag(summary, "SpecialtyTotal", "specialty_total")
 }
 
+func TestBindPhoneRespAdditiveSessionContract(t *testing.T) {
+	apiContent, err := os.ReadFile("chasing_points.api")
+	if err != nil {
+		t.Fatalf("read api contract: %v", err)
+	}
+	text := string(apiContent)
+
+	requiredFields := []struct {
+		name string
+		tag  string
+	}{
+		{name: "Success", tag: "json:\"success\""},
+		{name: "Message", tag: "json:\"message\""},
+		{name: "MergedAccount", tag: "json:\"merged_account\""},
+		{name: "AccessToken", tag: "json:\"access_token,optional\""},
+		{name: "RefreshToken", tag: "json:\"refresh_token,optional\""},
+		{name: "ExpiresIn", tag: "json:\"expires_in,optional\""},
+		{name: "NeedBindPhone", tag: "json:\"need_bind_phone\""},
+		{name: "UserInfo", tag: "json:\"user_info,optional\""},
+	}
+	block := text[strings.Index(text, "type BindPhoneResp"):]
+	block = block[:strings.Index(block, "\n}")]
+	for _, field := range requiredFields {
+		if !strings.Contains(block, field.name) || !strings.Contains(block, field.tag) {
+			t.Fatalf("expected bind phone contract to declare %s with %s", field.name, field.tag)
+		}
+	}
+
+	resp := types.BindPhoneResp{}
+	assertFieldJSONTag(t, resp, "AccessToken", "access_token,optional")
+	assertFieldJSONTag(t, resp, "RefreshToken", "refresh_token,optional")
+	assertFieldJSONTag(t, resp, "ExpiresIn", "expires_in,optional")
+	assertFieldJSONTag(t, resp, "NeedBindPhone", "need_bind_phone")
+	assertFieldJSONTag(t, resp, "UserInfo", "user_info,optional")
+}
+
+func assertFieldJSONTag(t *testing.T, value any, fieldName, wantTag string) {
+	t.Helper()
+	field, ok := reflect.TypeOf(value).FieldByName(fieldName)
+	if !ok {
+		t.Fatalf("missing generated field %s", fieldName)
+	}
+	if got := field.Tag.Get("json"); got != wantTag {
+		t.Fatalf("field %s json tag = %q, want %q", fieldName, got, wantTag)
+	}
+}
+
 func TestGeneratedRoutesContainHonorWallAndRewardSummary(t *testing.T) {
 	content, err := os.ReadFile("internal/handler/routes.go")
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 	logicx "chasing_points/internal/logic"
 	"chasing_points/internal/logic/wstsync"
 	"chasing_points/internal/middleware"
+	"chasing_points/internal/pkg/httperror"
 	"chasing_points/internal/pkg/ws"
 	"chasing_points/internal/svc"
 
@@ -31,6 +32,7 @@ func main() {
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c, conf.UseEnv())
+	httperror.Configure()
 
 	server := rest.MustNewServer(c.RestConf, rest.WithCors("*", "http://localhost:3000", "https://admin-bm.dianzaozao.com"))
 	defer server.Stop()
@@ -40,6 +42,7 @@ func main() {
 
 	// 注册全局中间件
 	server.Use(middleware.RequestContextMiddleware)
+	server.Use(middleware.NewActiveUserSessionMiddleware(svcCtx.UserModel).Handle)
 
 	// 初始化 WebSocket Hub
 	ws.InitGlobalHub()

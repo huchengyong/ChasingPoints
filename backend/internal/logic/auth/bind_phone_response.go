@@ -2,17 +2,11 @@ package auth
 
 import "chasing_points/internal/types"
 
-func buildBindPhoneSuccessResp(mergedAccount bool) *types.BindPhoneResp {
-	resp := &types.BindPhoneResp{
+func buildBindPhoneSuccessResp() *types.BindPhoneResp {
+	return &types.BindPhoneResp{
 		Success:       true,
-		MergedAccount: mergedAccount,
+		Message:       "绑定成功",
+		MergedAccount: false,
+		NeedBindPhone: false,
 	}
-
-	if mergedAccount {
-		resp.Message = "账号已合并，请使用手机号登录"
-		return resp
-	}
-
-	resp.Message = "绑定成功"
-	return resp
 }

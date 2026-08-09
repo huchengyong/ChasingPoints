@@ -23,11 +23,25 @@ func newMatchWSHandlerTestServer(t *testing.T) (*httptest.Server, *Hub, string) 
 	if err != nil {
 		t.Fatalf("open sqlite db: %v", err)
 	}
-	if err := db.AutoMigrate(&model.Match{}, &model.MatchRound{}, &model.MatchAction{}); err != nil {
+	if err := db.AutoMigrate(&model.User{}, &model.Match{}, &model.MatchRound{}, &model.MatchAction{}); err != nil {
 		t.Fatalf("prepare ws handler schema: %v", err)
 	}
 	opponentID := int64(2002)
 	refereeID := int64(3003)
+	for _, user := range []model.User{
+		{Id: 1001, Nickname: "发起者", Status: 1},
+		{Id: 2002, Nickname: "对手", Status: 1},
+		{Id: 3003, Nickname: "裁判", Status: 1},
+		{Id: 4004, Nickname: "非参与者", Status: 1},
+		{Id: 6006, Nickname: "停用用户", Status: 1},
+	} {
+		if err := db.Create(&user).Error; err != nil {
+			t.Fatalf("create user %d: %v", user.Id, err)
+		}
+	}
+	if err := db.Model(&model.User{}).Where("id = ?", 6006).Update("status", 0).Error; err != nil {
+		t.Fatalf("disable ws test user: %v", err)
+	}
 	for _, match := range []model.Match{
 		{Id: 1, UserId: 1001, OpponentId: &opponentID, OpponentName: "对手", GameType: 3, MatchMode: model.MatchModeRanked, Visibility: model.MatchVisibilityPublic, Status: 1, CurrentFrameStarted: true, MatchTime: time.Now()},
 		{Id: 2, UserId: 1001, OpponentId: &opponentID, OpponentName: "对手", GameType: 3, MatchMode: model.MatchModePractice, Visibility: model.MatchVisibilityPrivate, RefereeUserId: &refereeID, Status: 1, CurrentFrameStarted: true, MatchTime: time.Now()},
@@ -43,7 +57,12 @@ func newMatchWSHandlerTestServer(t *testing.T) (*httptest.Server, *Hub, string) 
 	previousHub := GlobalHub
 	GlobalHub = hub
 	t.Cleanup(func() { GlobalHub = previousHub })
-	server := httptest.NewServer(MatchWSHandler(&svc.ServiceContext{Config: cfg, DB: db, MatchModel: model.NewMatchModel(db)}))
+	server := httptest.NewServer(MatchWSHandler(&svc.ServiceContext{
+		Config:     cfg,
+		DB:         db,
+		MatchModel: model.NewMatchModel(db),
+		UserModel:  model.NewUserModel(db),
+	}))
 	t.Cleanup(server.Close)
 	return server, hub, secret
 }
@@ -94,6 +113,9 @@ func TestMatchWSHandlerAuthorizesBeforeRegistration(t *testing.T) {
 func TestMatchWSHandlerRejectsUnauthorizedHandshakesWithoutRegistration(t *testing.T) {
 	server, hub, secret := newMatchWSHandlerTestServer(t)
 	nonParticipantToken, _ := pkgx.GenerateToken(4004, secret, 60)
+	refreshToken, _ := pkgx.GenerateTypedToken(1001, secret, 60, pkgx.RefreshTokenType)
+	deletedUserToken, _ := pkgx.GenerateTypedToken(9999, secret, 60, pkgx.AccessTokenType)
+	disabledUserToken, _ := pkgx.GenerateTypedToken(6006, secret, 60, pkgx.AccessTokenType)
 	tests := []struct {
 		name       string
 		path       string
@@ -101,6 +123,9 @@ func TestMatchWSHandlerRejectsUnauthorizedHandshakesWithoutRegistration(t *testi
 	}{
 		{name: "match not found", path: "/?match_id=999", statusCode: http.StatusNotFound},
 		{name: "invalid token", path: "/?match_id=1&token=invalid", statusCode: http.StatusUnauthorized},
+		{name: "refresh token", path: "/?match_id=1&token=" + refreshToken, statusCode: http.StatusUnauthorized},
+		{name: "deleted user token", path: "/?match_id=1&token=" + deletedUserToken, statusCode: http.StatusUnauthorized},
+		{name: "disabled user token", path: "/?match_id=1&token=" + disabledUserToken, statusCode: http.StatusUnauthorized},
 		{name: "private anonymous", path: "/?match_id=2", statusCode: http.StatusUnauthorized},
 		{name: "private non participant", path: "/?match_id=2&token=" + nonParticipantToken, statusCode: http.StatusForbidden},
 	}

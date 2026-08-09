@@ -5,6 +5,8 @@ import (
 	"chasing_points/internal/types"
 )
 
+const loginUnavailableMessage = "登录失败，请稍后重试"
+
 func buildAuthUserInfo(user *model.User) *types.UserInfo {
 	if user == nil {
 		return nil

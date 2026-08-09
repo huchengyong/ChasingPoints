@@ -176,6 +176,30 @@ func TestLoginAvatarSemantics(t *testing.T) {
 	}
 }
 
+func TestLoginRejectsDisabledExistingUserWithoutTokens(t *testing.T) {
+	svcCtx, _ := newAuthRewardTestSvc(t)
+	ctx := context.Background()
+	phone := "13700137000"
+	user := &model.User{Phone: &phone, Nickname: "停用用户", Status: 1}
+	if err := svcCtx.UserModel.Create(user); err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	if err := svcCtx.DB.Model(&model.User{}).Where("id = ?", user.Id).Update("status", 0).Error; err != nil {
+		t.Fatalf("disable user: %v", err)
+	}
+	if err := svcCtx.CodeManager.SaveCode(ctx, phone, "123456"); err != nil {
+		t.Fatalf("save sms code: %v", err)
+	}
+
+	resp, err := NewLoginLogic(ctx, svcCtx).Login(&types.LoginReq{Phone: phone, SmsCode: "123456"})
+	if err == nil {
+		t.Fatal("expected disabled user login to fail")
+	}
+	if resp == nil || resp.Success || resp.AccessToken != "" || resp.RefreshToken != "" {
+		t.Fatalf("disabled user received a session: %#v", resp)
+	}
+}
+
 func TestLoginByOauthCreatesNewUserWithoutWelcomeRewardByDefault(t *testing.T) {
 	svcCtx, _ := newAuthRewardTestSvc(t)
 	ctx := context.Background()
@@ -205,6 +229,35 @@ func TestLoginByOauthCreatesNewUserWithoutWelcomeRewardByDefault(t *testing.T) {
 	}
 	if oauth == nil || oauth.UserId != resp.UserInfo.Id {
 		t.Fatalf("expected oauth record bound to new user, got %#v", oauth)
+	}
+}
+
+func TestLoginByOauthRejectsDisabledExistingUserWithoutTokens(t *testing.T) {
+	svcCtx, _ := newAuthRewardTestSvc(t)
+	user := &model.User{Nickname: "停用 OAuth 用户", Status: 1}
+	if err := svcCtx.UserModel.Create(user); err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	if err := svcCtx.OauthModel.Create(&model.UserOauth{
+		UserId:   user.Id,
+		Provider: "huawei",
+		OpenId:   "disabled-openid",
+	}); err != nil {
+		t.Fatalf("create oauth: %v", err)
+	}
+	if err := svcCtx.DB.Model(&model.User{}).Where("id = ?", user.Id).Update("status", 0).Error; err != nil {
+		t.Fatalf("disable user: %v", err)
+	}
+
+	resp, err := NewLoginByOauthLogic(context.Background(), svcCtx).LoginByOauth(&types.LoginByOauthReq{
+		Provider: "huawei",
+		OpenId:   "disabled-openid",
+	})
+	if err == nil {
+		t.Fatal("expected disabled OAuth user login to fail")
+	}
+	if resp == nil || resp.Success || resp.AccessToken != "" || resp.RefreshToken != "" {
+		t.Fatalf("disabled OAuth user received a session: %#v", resp)
 	}
 }
 

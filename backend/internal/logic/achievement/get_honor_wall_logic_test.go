@@ -2,10 +2,12 @@ package achievement
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
 	"chasing_points/internal/model"
+	"chasing_points/internal/pkg/httperror"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -234,11 +236,16 @@ func TestGetHonorWallRejectsNonFriendAndBlacklistRelation(t *testing.T) {
 			}
 
 			resp, err := NewGetHonorWallLogic(honorWallContext(1001), svcCtx).GetHonorWall(&types.GetHonorWallReq{UserId: 2002})
-			if err != nil {
-				t.Fatalf("get honor wall: %v", err)
+			if err == nil || resp != nil {
+				t.Fatalf("expected forbidden error, got resp=%+v err=%v", resp, err)
 			}
-			if resp.Success {
-				t.Fatalf("expected access denial, got %+v", resp)
+			statusCode, body := httperror.Handle(err)
+			if statusCode != http.StatusForbidden {
+				t.Fatalf("expected 403, got %d", statusCode)
+			}
+			payload, ok := body.(httperror.Payload)
+			if !ok || payload.Reason != "HONOR_WALL_FORBIDDEN" || payload.Success {
+				t.Fatalf("unexpected forbidden payload: %#v", body)
 			}
 		})
 	}

@@ -6,11 +6,17 @@
 			<text class="state-description">生涯成就、赛季挑战与历届荣誉即将呈现</text>
 		</view>
 
+		<view v-else-if="sessionHandled && !loaded" class="state-panel full-state">
+			<uni-icons type="info-filled" size="40" color="#E0AE12"></uni-icons>
+			<text class="state-title">正在重新登录</text>
+			<text class="state-description">登录状态已更新，即将返回登录页</text>
+		</view>
+
 		<view v-else-if="loadFailed && !loaded" class="state-panel full-state">
 			<uni-icons type="info-filled" size="40" color="#E0AE12"></uni-icons>
-			<text class="state-title">荣誉墙暂时没加载出来</text>
-			<text class="state-description">请检查网络后重试，已有荣誉不会受到影响</text>
-			<button class="retry-button" @tap="loadData">
+			<text class="state-title">{{ loadErrorState?.title || '荣誉墙暂时没加载出来' }}</text>
+			<text class="state-description">{{ loadErrorState?.description || '请稍后重试，已有荣誉不会受到影响' }}</text>
+			<button v-if="loadErrorState?.showRetry" class="retry-button" @tap="loadData">
 				<text>重新加载</text>
 			</button>
 		</view>
@@ -487,7 +493,8 @@ import {
 	getProgressPercent,
 	normalizeHonorWallOptions,
 	presentLatestSeasonRollover,
-	resolveCurrentSeasonState
+	resolveCurrentSeasonState,
+	resolveHonorWallLoadError
 } from '@/utils/honor-wall.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
@@ -540,6 +547,8 @@ const loading = ref(true)
 const refreshing = ref(false)
 const historyLoading = ref(false)
 const loadFailed = ref(false)
+const loadErrorState = ref(null)
+const sessionHandled = ref(false)
 const loaded = ref(false)
 const targetUserId = ref(0)
 const currentGameType = ref(3)
@@ -660,6 +669,8 @@ const loadData = async ({ appendHistory = false } = {}) => {
 		refreshing.value = true
 	}
 	loadFailed.value = false
+	loadErrorState.value = null
+	sessionHandled.value = false
 
 	try {
 		const response = await getHonorWall(requestParams)
@@ -677,7 +688,20 @@ const loadData = async ({ appendHistory = false } = {}) => {
 	} catch (error) {
 		if (!wallRequestGuard.isLatest(requestId)) return
 		console.error('加载荣誉墙失败:', error)
+		const loadError = resolveHonorWallLoadError({ error })
+		if (loadError.kind === 'superseded') {
+			loadFailed.value = true
+			loadErrorState.value = loadError
+			if (appendHistory) historyPage.value = Math.max(1, historyPage.value - 1)
+			return
+		}
+		if (loadError.kind === 'session') {
+			// 全局会话失效流程已接管清理/提示/导航，页面不展示失败态、不重复提示
+			sessionHandled.value = true
+			return
+		}
 		loadFailed.value = true
+		loadErrorState.value = loadError
 		if (appendHistory) historyPage.value = Math.max(1, historyPage.value - 1)
 		if (loaded.value) {
 			uni.showToast({ title: error.message || '荣誉墙更新失败', icon: 'none' })

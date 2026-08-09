@@ -636,9 +636,14 @@ type BindPhoneReq struct {
 }
 
 type BindPhoneResp struct {
-	Success       bool   `json:"success"`
-	Message       string `json:"message"`
-	MergedAccount bool   `json:"merged_account"`
+	Success       bool      `json:"success"`
+	Message       string    `json:"message"`
+	MergedAccount bool      `json:"merged_account"`
+	AccessToken   string    `json:"access_token,optional"`
+	RefreshToken  string    `json:"refresh_token,optional"`
+	ExpiresIn     int64     `json:"expires_in,optional"`
+	NeedBindPhone bool      `json:"need_bind_phone"`
+	UserInfo      *UserInfo `json:"user_info,optional"`
 }
 
 type BlacklistFriendReq struct {

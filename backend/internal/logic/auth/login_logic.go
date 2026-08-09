@@ -72,6 +72,9 @@ func (l *LoginLogic) Login(req *types.LoginReq) (resp *types.LoginResp, err erro
 			}, fmt.Errorf("注册失败")
 		}
 	}
+	if user.Status != 1 {
+		return &types.LoginResp{Success: false}, fmt.Errorf("%s", loginUnavailableMessage)
+	}
 
 	tokenPair, err := issueAuthTokenPair(user.Id, l.svcCtx)
 	if err != nil {
