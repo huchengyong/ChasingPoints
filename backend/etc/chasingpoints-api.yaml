@@ -1,3 +1,9 @@
 Name: chasing_points-api
 Host: 0.0.0.0
 Port: 8888
+
+Log:
+  ServiceName: chasing_points-api
+  Mode: file
+  Path: tmp/logs
+  KeepDays: 7

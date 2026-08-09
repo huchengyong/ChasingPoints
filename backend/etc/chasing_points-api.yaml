@@ -98,9 +98,10 @@ WSTSync:
   HotLookaheadDays: 7
 
 Log:
-  Encoding: plain
-  Mode: console
+  ServiceName: chasing_points-api
+  Encoding: json
+  Mode: file
   Level: debug
-  MaxSize: 20
-  Rotation: size
+  Path: tmp/logs
+  KeepDays: 3
   Stat: false
