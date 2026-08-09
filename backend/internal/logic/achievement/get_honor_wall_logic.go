@@ -2,9 +2,11 @@ package achievement
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"chasing_points/internal/model"
+	"chasing_points/internal/pkg/httperror"
 	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -50,7 +52,7 @@ func (l *GetHonorWallLogic) GetHonorWall(req *types.GetHonorWallReq) (resp *type
 			return nil, allowErr
 		}
 		if !allowed {
-			return emptyHonorWallResponse(false), nil
+			return nil, httperror.New(http.StatusForbidden, "HONOR_WALL_FORBIDDEN", "暂无查看权限")
 		}
 		viewerScope = "friend"
 	}

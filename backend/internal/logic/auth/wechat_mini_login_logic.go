@@ -77,6 +77,9 @@ func (l *WechatMiniLoginLogic) WechatMiniLogin(req *types.WechatMiniLoginReq) (r
 			return nil, fmt.Errorf("用户数据异常")
 		}
 	}
+	if user.Status != 1 {
+		return &types.WechatMiniLoginResp{Success: false, Message: loginUnavailableMessage}, nil
+	}
 
 	tokenPair, err := issueAuthTokenPair(user.Id, l.svcCtx)
 	if err != nil {

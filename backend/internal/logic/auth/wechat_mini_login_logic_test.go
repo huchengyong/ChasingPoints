@@ -223,6 +223,33 @@ func TestWechatMiniLoginReusesExistingOAuthAssociation(t *testing.T) {
 	}
 }
 
+func TestWechatMiniLoginRejectsDisabledExistingUserWithoutTokens(t *testing.T) {
+	client := &fakeWechatMiniClient{identity: &wechatmini.Identity{OpenID: "wechat-openid-disabled"}}
+	svcCtx := newWechatMiniAuthTestSvc(t, client)
+	user := &model.User{Nickname: "停用微信用户", Status: 1}
+	if err := svcCtx.UserModel.Create(user); err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	if err := svcCtx.OauthModel.Create(&model.UserOauth{
+		UserId:   user.Id,
+		Provider: wechatMiniProvider,
+		OpenId:   "wechat-openid-disabled",
+	}); err != nil {
+		t.Fatalf("create oauth: %v", err)
+	}
+	if err := svcCtx.DB.Model(&model.User{}).Where("id = ?", user.Id).Update("status", 0).Error; err != nil {
+		t.Fatalf("disable user: %v", err)
+	}
+
+	resp, err := NewWechatMiniLoginLogic(context.Background(), svcCtx).WechatMiniLogin(&types.WechatMiniLoginReq{Code: "login-code"})
+	if err != nil {
+		t.Fatalf("disabled user login should return a safe response: %v", err)
+	}
+	if resp == nil || resp.Success || resp.AccessToken != "" || resp.RefreshToken != "" || resp.Message == "" {
+		t.Fatalf("disabled WeChat user received a session: %#v", resp)
+	}
+}
+
 func TestWechatMiniLoginFailureDoesNotCreateUser(t *testing.T) {
 	client := &fakeWechatMiniClient{err: &wechatmini.Error{Kind: wechatmini.ErrorKindRejected}}
 	svcCtx := newWechatMiniAuthTestSvc(t, client)
@@ -292,6 +319,55 @@ func TestWechatMiniBindPhoneMergesIntoPhoneAccountAndReturnsNewSession(t *testin
 	}
 	if deletedUser != nil {
 		t.Fatalf("expected temporary user deleted, got %#v", deletedUser)
+	}
+}
+
+func TestWechatMiniBindPhoneRejectsDisabledMergeTargetWithoutChangingSource(t *testing.T) {
+	phone := "13500135000"
+	svcCtx := newWechatMiniAuthTestSvc(t, &fakeWechatMiniClient{phone: phone})
+
+	temporaryUser := &model.User{Nickname: "微信用户", Status: 1}
+	if err := svcCtx.UserModel.Create(temporaryUser); err != nil {
+		t.Fatalf("create temporary user: %v", err)
+	}
+	if err := svcCtx.OauthModel.Create(&model.UserOauth{
+		UserId:   temporaryUser.Id,
+		Provider: wechatMiniProvider,
+		OpenId:   "wechat-openid-disabled-target",
+	}); err != nil {
+		t.Fatalf("create temporary oauth: %v", err)
+	}
+
+	phoneUser := &model.User{Phone: &phone, Nickname: "停用手机号用户", Status: 1}
+	if err := svcCtx.UserModel.Create(phoneUser); err != nil {
+		t.Fatalf("create phone user: %v", err)
+	}
+	if err := svcCtx.DB.Model(&model.User{}).Where("id = ?", phoneUser.Id).Update("status", 0).Error; err != nil {
+		t.Fatalf("disable phone user: %v", err)
+	}
+
+	ctx := context.WithValue(context.Background(), "user_id", float64(temporaryUser.Id))
+	resp, err := NewWechatMiniBindPhoneLogic(ctx, svcCtx).WechatMiniBindPhone(&types.WechatMiniBindPhoneReq{Code: "phone-code"})
+	if err != nil {
+		t.Fatalf("wechat mini bind disabled phone user: %v", err)
+	}
+	if resp.Success || resp.MergedAccount || resp.AccessToken != "" || resp.RefreshToken != "" {
+		t.Fatalf("expected disabled target merge rejection, got %#v", resp)
+	}
+
+	oauth, err := svcCtx.OauthModel.FindByProviderAndOpenId(wechatMiniProvider, "wechat-openid-disabled-target")
+	if err != nil {
+		t.Fatalf("find unchanged oauth: %v", err)
+	}
+	if oauth == nil || oauth.UserId != temporaryUser.Id {
+		t.Fatalf("oauth ownership changed for disabled target: %#v", oauth)
+	}
+	retainedUser, err := svcCtx.UserModel.FindById(temporaryUser.Id)
+	if err != nil {
+		t.Fatalf("find retained temporary user: %v", err)
+	}
+	if retainedUser == nil {
+		t.Fatal("temporary user was deleted for a disabled merge target")
 	}
 }
 

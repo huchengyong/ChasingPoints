@@ -1,6 +1,22 @@
 import { defineStore } from 'pinia'
 import { useRankStore } from './rank.js'
+import { useNotificationStore } from './notification.js'
+import { useFriendRequestStore } from './friendRequest.js'
 import { userWS } from '@/utils/websocket.js'
+import {
+  clearStoredSession,
+  clearUserScopedRuntimeState,
+  readStoredSession
+} from '@/utils/session-storage.js'
+
+const clearCurrentUserRuntimeState = () => {
+  clearUserScopedRuntimeState({
+    rankStore: useRankStore(),
+    notificationStore: useNotificationStore(),
+    friendRequestStore: useFriendRequestStore(),
+    userSocket: userWS
+  })
+}
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -9,7 +25,9 @@ export const useUserStore = defineStore('user', {
     userInfo: null,
     isLoggedIn: false,
     needBindPhone: false,
-    expiresIn: 0
+    expiresIn: 0,
+    // 仅运行时使用；登录、退出或账号合并替换会话时递增，使旧异步结果失效。
+    authGeneration: 0
   }),
 
   getters: {
@@ -30,8 +48,8 @@ export const useUserStore = defineStore('user', {
     // 登录
     login(data) {
       const nextUser = data.user || data.user_info
-      useRankStore().clear()
-      userWS.disconnect()
+      this.authGeneration += 1
+      clearCurrentUserRuntimeState()
       this.token = data.token || data.access_token
       this.refreshToken = data.refreshToken || data.refresh_token || ''
       this.userInfo = nextUser
@@ -62,10 +80,10 @@ export const useUserStore = defineStore('user', {
       }
     },
 
-    // 退出登录
+    // 退出登录：清空运行状态与全部持久化身份键，避免下次启动恢复旧用户
     logout() {
-      useRankStore().clear()
-      userWS.disconnect()
+      this.authGeneration += 1
+      clearCurrentUserRuntimeState()
       this.token = ''
       this.refreshToken = ''
       this.userInfo = null
@@ -73,10 +91,7 @@ export const useUserStore = defineStore('user', {
       this.needBindPhone = false
       this.expiresIn = 0
 
-      // 清除本地存储
-      uni.removeStorageSync('token')
-      uni.removeStorageSync('refreshToken')
-      uni.removeStorageSync('loginMethod')
+      clearStoredSession(uni)
     },
 
     // 设置是否需要绑定手机号
@@ -106,11 +121,11 @@ export const useUserStore = defineStore('user', {
 
     // 初始化（从本地存储恢复）
     init() {
-      const token = uni.getStorageSync('token')
-      if (token) {
+      const { token, refreshToken, hasSession } = readStoredSession(uni)
+      if (hasSession) {
         this.token = token
         this.isLoggedIn = true
-        this.refreshToken = uni.getStorageSync('refreshToken') || ''
+        this.refreshToken = refreshToken || ''
       }
     }
   },

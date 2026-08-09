@@ -141,6 +141,13 @@ test('bind phone uses native WeChat phone authorization only for mini programs',
   assert.match(source, /sessionReplaced/)
 })
 
+test('bind phone replaces the session atomically when merge returns target user tokens', () => {
+  // 短信与微信合并响应都必须走 userStore.login 原子替换 token/refresh/user_info
+  assert.match(source, /if \(outcome\.sessionReplaced\) \{/)
+  assert.match(source, /userStore\.login\(res\)/)
+  assert.match(source, /else if \(outcome\.action === 'complete'\) \{[\s\S]*?userStore\.bindPhoneSuccess\(outcome\.maskedPhone\)/)
+})
+
 const loginSource = readFileSync(
   new URL('../pages/login/login.vue', import.meta.url),
   'utf8'
@@ -149,6 +156,29 @@ const welcomeSource = readFileSync(
   new URL('../pages/welcome/index.vue', import.meta.url),
   'utf8'
 )
+const editProfileSource = readFileSync(
+  new URL('../subPages/user/editProfile.vue', import.meta.url),
+  'utf8'
+)
+
+test('parent pages keep the compat relogin fallback for merged accounts without tokens', () => {
+  for (const pageSource of [loginSource, welcomeSource, settingsSource, editProfileSource]) {
+    assert.match(pageSource, /payload\?\.action === 'relogin'/)
+    assert.match(pageSource, /userStore\.logout\(\)/)
+  }
+})
+
+test('settings and edit profile skip phone-only updates when the session was replaced', () => {
+  for (const pageSource of [settingsSource, editProfileSource]) {
+    assert.match(pageSource, /if \(!payload\?\.sessionReplaced\) \{/)
+    assert.match(pageSource, /userStore\.bindPhoneSuccess\(payload\?\.maskedPhone/)
+  }
+})
+
+test('login and welcome finish the flow after an atomic session replacement', () => {
+  assert.match(loginSource, /navigateAfterLogin\(\)/)
+  assert.match(welcomeSource, /navigateToHome\(\)/)
+})
 
 test('login page allows bind phone modal to close later and passes current theme through', () => {
   assert.match(loginSource, /:closable="true"/)

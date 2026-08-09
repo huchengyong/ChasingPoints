@@ -15,8 +15,13 @@ import {
   findLatestUnreadSeasonRollover,
   normalizeHonorWallOptions,
   presentLatestSeasonRollover,
-  resolveCurrentSeasonState
+  resolveCurrentSeasonState,
+  resolveHonorWallLoadError
 } from '../utils/honor-wall.js'
+import {
+  classifyRequestError,
+  createRequestError
+} from '../utils/request-errors.js'
 
 const honorWallSource = readFileSync(new URL('../subPages/achievement/index.vue', import.meta.url), 'utf8')
 const honorWallStyle = readFileSync(new URL('../subPages/achievement/index.scss', import.meta.url), 'utf8')
@@ -276,6 +281,72 @@ test('inline title selector covers loading, retry, empty, selection and system-b
   assert.match(honorWallSource, /equip:\s*selection\.action === 'equip'/)
   assert.match(honorWallSource, /onBackPress/)
   assert.doesNotMatch(honorWallSource, /搜索称号|来源筛选|确认佩戴|确认卸下|批量编辑|称号统计/)
+})
+
+test('honor wall load errors are classified by request error category', () => {
+  const network = resolveHonorWallLoadError({ error: { category: 'network' } })
+  assert.equal(network.kind, 'network')
+  assert.match(network.title, /荣誉墙暂时没加载出来/)
+  assert.match(network.description, /请检查网络/)
+  assert.equal(network.showRetry, true)
+
+  const forbiddenPayload = {
+    success: false,
+    reason: 'HONOR_WALL_FORBIDDEN',
+    message: '暂无查看权限'
+  }
+  const forbiddenError = createRequestError({
+    statusCode: 403,
+    data: forbiddenPayload,
+    message: forbiddenPayload.message,
+    category: classifyRequestError({ statusCode: 403, data: forbiddenPayload })
+  })
+  const forbidden = resolveHonorWallLoadError({ error: forbiddenError })
+  assert.equal(forbiddenError.category, 'forbidden')
+  assert.deepEqual(forbiddenError.responseData, forbiddenPayload)
+  assert.equal(forbidden.kind, 'forbidden')
+  assert.equal(forbidden.showRetry, false)
+  assert.doesNotMatch(forbidden.description, /网络/)
+
+  const server = resolveHonorWallLoadError({ error: { category: 'server' } })
+  assert.equal(server.kind, 'server')
+  assert.doesNotMatch(server.description, /网络/)
+  assert.equal(server.showRetry, true)
+
+  const business = resolveHonorWallLoadError({ error: { category: 'business' } })
+  assert.equal(business.kind, 'server')
+  assert.doesNotMatch(business.description, /网络/)
+})
+
+test('superseded session errors do not claim the current session is logging out', () => {
+  const superseded = resolveHonorWallLoadError({
+    error: { category: 'session', _isHandled: true, _isSuperseded: true }
+  })
+  assert.equal(superseded.kind, 'superseded')
+  assert.equal(superseded.showRetry, true)
+  assert.doesNotMatch(superseded.title, /重新登录/)
+  assert.doesNotMatch(superseded.description, /登录页|网络/)
+})
+
+test('globally handled session errors do not suggest retry or network checks', () => {
+  const session = resolveHonorWallLoadError({
+    error: { category: 'session', _isHandled: true }
+  })
+  assert.equal(session.kind, 'session')
+  assert.equal(session.handled, true)
+  assert.equal(session.showRetry, false)
+  assert.doesNotMatch(session.description, /网络/)
+})
+
+test('honor wall failure state is driven by error category, not a blanket network message', () => {
+  assert.match(honorWallSource, /resolveHonorWallLoadError/)
+  assert.match(honorWallSource, /loadErrorState\?\.title/)
+  assert.match(honorWallSource, /loadErrorState\?\.description/)
+  assert.match(honorWallSource, /sessionHandled && !loaded/)
+  assert.match(honorWallSource, /const loadError = resolveHonorWallLoadError\(\{ error \}\)/)
+  assert.match(honorWallSource, /if \(loadError\.kind === 'superseded'\)/)
+  assert.match(honorWallSource, /if \(loadError\.kind === 'session'\)/)
+  assert.match(honorWallSource, /loadErrorState\?\.showRetry/)
 })
 
 test('honor wall layout protects small screens and long copy from horizontal overflow', () => {

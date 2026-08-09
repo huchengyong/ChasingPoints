@@ -1,13 +1,15 @@
 package ws
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
 	"chasing_points/internal/model"
+	pkgx "chasing_points/internal/pkg"
 	"chasing_points/internal/svc"
 
-	"github.com/golang-jwt/jwt/v4"
+	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -42,10 +44,20 @@ func MatchWSHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		var userId int64
 		if token != "" {
 			// 验证token
-			userId, err = parseToken(token, svcCtx.Config.Auth.AccessSecret)
+			userId, err = parseAccessTokenUserID(token, svcCtx.Config.Auth.AccessSecret)
 			if err != nil {
 				logx.Errorf("WebSocket token验证失败: %v", err)
 				http.Error(w, "invalid token", http.StatusUnauthorized)
+				return
+			}
+			active, err := isActiveWebSocketUser(svcCtx, userId)
+			if err != nil {
+				logx.Errorf("WebSocket用户状态校验失败: userId=%d err=%v", userId, err)
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				return
+			}
+			if !active {
+				http.Error(w, "invalid user session", http.StatusUnauthorized)
 				return
 			}
 		}
@@ -98,20 +110,30 @@ func MatchWSHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	}
 }
 
-// parseToken 解析JWT token
-func parseToken(tokenString string, secret string) (int64, error) {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+func parseAccessTokenUserID(tokenString string, secret string) (int64, error) {
+	claims := &pkgx.JwtClaims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte(secret), nil
-	})
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	if err != nil {
 		return 0, err
 	}
-
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		if userIdFloat, ok := claims["user_id"].(float64); ok {
-			return int64(userIdFloat), nil
-		}
+	if !token.Valid || claims.UserId <= 0 {
+		return 0, jwt.ErrTokenInvalidClaims
 	}
+	if claims.TokenType != "" && claims.TokenType != pkgx.AccessTokenType {
+		return 0, jwt.ErrTokenInvalidClaims
+	}
+	return claims.UserId, nil
+}
 
-	return 0, jwt.ErrTokenInvalidClaims
+func isActiveWebSocketUser(svcCtx *svc.ServiceContext, userID int64) (bool, error) {
+	if svcCtx == nil || svcCtx.UserModel == nil {
+		return false, errors.New("user model missing")
+	}
+	user, err := svcCtx.UserModel.FindById(userID)
+	if err != nil {
+		return false, err
+	}
+	return user != nil && user.Status == 1, nil
 }

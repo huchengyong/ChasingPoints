@@ -4,8 +4,8 @@
 
 import { get, post } from '@/utils/request.js'
 
-export const getUserInfo = () => {
-  return get('/api/user/info')
+export const getUserInfo = (options = {}) => {
+  return get('/api/user/info', {}, options)
 }
 
 export const getUserReputation = () => {

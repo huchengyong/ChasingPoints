@@ -4,19 +4,36 @@
 	import { useRankStore } from '@/store/rank.js'
 	import { userWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 	import { getCurrentMatch } from '@/api/match.js'
+	import { getUserInfo } from '@/api/user.js'
 	import { post } from '@/utils/request.js'
 	import { buildPlayingRoute, shouldPromptOngoingMatch } from '@/utils/ongoing-match-guard.js'
 	import { applyRuntimeTheme } from '@/utils/theme-application.js'
 	import { resolveSystemDarkMode } from '@/utils/theme-preference.js'
+	import {
+		canApplySessionRecoveryResult,
+		createSessionRecovery
+	} from '@/utils/session-recovery.js'
+
+	// 网络/5xx 静默保留凭证；SESSION_INVALID 仍由请求层统一清理并引导重新登录。
+	const sessionRecovery = createSessionRecovery({
+		getUserInfo: () => getUserInfo({ silent: true }),
+		onSessionInvalid: () => {}
+	})
 
 	export default {
 		themeChangeCallback: null, // 保存主题变化回调函数引用
 		ongoingMatchReminderShown: false,
 		ongoingMatchReminderPending: false,
+		ongoingMatchReminderPendingKey: '',
 		ongoingMatchPromptVisible: false,
 		ongoingMatchReminderRetryCount: 0,
 		ongoingMatchReminderRetryTimer: null,
 		maxOngoingMatchReminderRetries: 5,
+		appIsForeground: false,
+		sessionRecoveryLifecycle: 0,
+		validatedAuthGeneration: -1,
+		pushTokenUploadPendingKey: '',
+		pushTokenUploadedKey: '',
 		onLaunch: function() {
 			console.log('App Launch')
 			const themeStore = useThemeStore()
@@ -30,12 +47,7 @@
 					success: (res) => {
 						console.log('[Push] Got client ID:', res.cid)
 						uni.setStorageSync('pushClientId', res.cid)
-						const token = uni.getStorageSync('token')
-						if (token && res.cid) {
-							post('/api/user/push-token', { push_client_id: res.cid })
-								.then(() => console.log('[Push] Token uploaded'))
-								.catch(err => console.error('[Push] Token upload failed:', err))
-						}
+						this.uploadPushTokenIfValidated()
 					},
 					fail: (err) => {
 						console.error('[Push] getPushClientId failed:', err)
@@ -57,6 +69,8 @@
 		},
 		onShow: function() {
 			console.log('App Show')
+			this.appIsForeground = true
+			this.sessionRecoveryLifecycle += 1
 			const themeStore = useThemeStore()
 			themeStore.setThemeFromSystem(resolveSystemDarkMode(
 				this.getSystemThemeInfo(),
@@ -67,9 +81,9 @@
 			const userStore = useUserStore()
 			const rankStore = useRankStore()
 			if (userStore.isLoggedIn) {
-				rankStore.invalidate(userStore.userId)
-				this.connectUserWS()
+				this.restoreUserSession(rankStore)
 			} else {
+				this.validatedAuthGeneration = -1
 				rankStore.clear()
 				userWS.disconnect()
 			}
@@ -87,9 +101,11 @@
 			if (typeof uni.onThemeChange === 'function') {
 				uni.onThemeChange(this.themeChangeCallback)
 			}
-			this.checkOngoingMatchReminder()
 		},
 		onHide: function() {
+			this.appIsForeground = false
+			this.sessionRecoveryLifecycle += 1
+			this.validatedAuthGeneration = -1
 			userWS.disconnect()
 			// 取消监听时需要传入与注册时相同的回调函数引用
 			if (this.themeChangeCallback && typeof uni.offThemeChange === 'function') {
@@ -102,10 +118,71 @@
 			}
 			this.ongoingMatchReminderShown = false
 			this.ongoingMatchReminderPending = false
+			this.ongoingMatchReminderPendingKey = ''
 			this.ongoingMatchPromptVisible = false
 			this.ongoingMatchReminderRetryCount = 0
 		},
 		methods: {
+			// 恢复持久化会话：helper 只返回服务端资料；应用前再次校验
+			// auth generation、App 前台状态和当前生命周期，拒绝旧账号/后台延迟结果。
+			restoreUserSession(rankStore) {
+				const userStore = useUserStore()
+				const targetRankStore = rankStore || useRankStore()
+				const expectedGeneration = userStore.authGeneration
+				const expectedLifecycleGeneration = this.sessionRecoveryLifecycle
+
+				sessionRecovery.validate(expectedGeneration)
+					.then((result) => {
+						if (!result?.valid) return
+						const currentUserStore = useUserStore()
+						if (!canApplySessionRecoveryResult({
+							expectedGeneration,
+							currentGeneration: currentUserStore.authGeneration,
+							expectedLifecycleGeneration,
+							currentLifecycleGeneration: this.sessionRecoveryLifecycle,
+							isLoggedIn: currentUserStore.isLoggedIn,
+							isForeground: this.appIsForeground
+						})) return
+
+						currentUserStore.updateUserInfo(result.userInfo)
+						this.validatedAuthGeneration = expectedGeneration
+						targetRankStore.invalidate(currentUserStore.userId)
+						this.connectUserWS()
+						this.uploadPushTokenIfValidated()
+						this.checkOngoingMatchReminder()
+					})
+					.catch(() => {})
+			},
+			hasValidatedAppSession() {
+				const userStore = useUserStore()
+				return this.appIsForeground &&
+					userStore.isLoggedIn &&
+					this.validatedAuthGeneration === userStore.authGeneration
+			},
+			uploadPushTokenIfValidated() {
+				if (!this.hasValidatedAppSession()) return
+				const pushClientId = String(uni.getStorageSync('pushClientId') || '')
+				if (!pushClientId) return
+
+				const userStore = useUserStore()
+				const uploadKey = `${userStore.authGeneration}:${pushClientId}`
+				if (this.pushTokenUploadPendingKey === uploadKey || this.pushTokenUploadedKey === uploadKey) return
+
+				this.pushTokenUploadPendingKey = uploadKey
+				post('/api/user/push-token', { push_client_id: pushClientId }, { silent: true })
+					.then(() => {
+						if (this.hasValidatedAppSession()) {
+							this.pushTokenUploadedKey = uploadKey
+						}
+						console.log('[Push] Token uploaded')
+					})
+					.catch(err => console.error('[Push] Token upload failed:', err))
+					.finally(() => {
+						if (this.pushTokenUploadPendingKey === uploadKey) {
+							this.pushTokenUploadPendingKey = ''
+						}
+					})
+			},
 			connectUserWS() {
 				userWS.connect().catch((error) => {
 					console.error('[App] 用户WS连接失败:', error)
@@ -127,7 +204,7 @@
 			},
 			applyTheme(theme) {
 				const themeStore = useThemeStore()
-				
+
 				// 如果没有传入 theme，从 store 或系统获取
 				if (!theme) {
 					// 优先使用 store 中的状态
@@ -165,9 +242,12 @@
 			},
 			checkOngoingMatchReminder() {
 				const userStore = useUserStore()
-				if (!userStore.isLoggedIn || this.ongoingMatchReminderPending || this.ongoingMatchPromptVisible) {
+				if (!this.hasValidatedAppSession() || this.ongoingMatchReminderPending || this.ongoingMatchPromptVisible) {
 					return
 				}
+				const expectedGeneration = userStore.authGeneration
+				const expectedLifecycleGeneration = this.sessionRecoveryLifecycle
+				const pendingKey = `${expectedGeneration}:${expectedLifecycleGeneration}`
 
 				const currentRoute = this.getCurrentRoute()
 				if (!currentRoute) {
@@ -178,12 +258,22 @@
 				this.ongoingMatchReminderRetryCount = 0
 
 				this.ongoingMatchReminderPending = true
+				this.ongoingMatchReminderPendingKey = pendingKey
 
 				getCurrentMatch({ silent: true })
 					.then((res) => {
+						const currentUserStore = useUserStore()
+						if (!this.hasValidatedAppSession() || !canApplySessionRecoveryResult({
+							expectedGeneration,
+							currentGeneration: currentUserStore.authGeneration,
+							expectedLifecycleGeneration,
+							currentLifecycleGeneration: this.sessionRecoveryLifecycle,
+							isLoggedIn: currentUserStore.isLoggedIn,
+							isForeground: this.appIsForeground
+						})) return
 						const currentMatch = res?.success ? res.match : null
 						if (!shouldPromptOngoingMatch({
-							isLoggedIn: userStore.isLoggedIn,
+							isLoggedIn: currentUserStore.isLoggedIn,
 							currentRoute,
 							currentMatch,
 							hasPromptedInForeground: this.ongoingMatchReminderShown
@@ -218,7 +308,10 @@
 					})
 					.catch(() => {})
 					.finally(() => {
-						this.ongoingMatchReminderPending = false
+						if (this.ongoingMatchReminderPendingKey === pendingKey) {
+							this.ongoingMatchReminderPending = false
+							this.ongoingMatchReminderPendingKey = ''
+						}
 					})
 			}
 		}

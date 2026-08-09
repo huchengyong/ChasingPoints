@@ -66,6 +66,9 @@ func (l *WechatMiniBindPhoneLogic) WechatMiniBindPhone(req *types.WechatMiniBind
 			return err
 		}
 		if existingUser != nil && existingUser.Id != currentUser.Id {
+			if existingUser.Status != 1 {
+				return errMergeTargetInactive
+			}
 			if err := l.svcCtx.OauthModel.UpdateUserIdWithTx(tx, currentUser.Id, existingUser.Id); err != nil {
 				return err
 			}

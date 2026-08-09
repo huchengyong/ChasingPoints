@@ -90,9 +90,14 @@ type BindPhoneReq {
 }
 
 type BindPhoneResp {
-	Success       bool   `json:"success"`
-	Message       string `json:"message"`
-	MergedAccount bool   `json:"merged_account"`
+	Success       bool      `json:"success"`
+	Message       string    `json:"message"`
+	MergedAccount bool      `json:"merged_account"`
+	AccessToken   string    `json:"access_token,optional"`
+	RefreshToken  string    `json:"refresh_token,optional"`
+	ExpiresIn     int64     `json:"expires_in,optional"`
+	NeedBindPhone bool      `json:"need_bind_phone"`
+	UserInfo      *UserInfo `json:"user_info,optional"`
 }
 
 // 微信小程序绑定手机号

@@ -7,7 +7,6 @@ import (
 
 	"chasing_points/internal/svc"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -25,10 +24,20 @@ func UserWSHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 
 		// 验证token
-		userId, err := parseUserToken(token, svcCtx.Config.Auth.AccessSecret)
+		userId, err := parseAccessTokenUserID(token, svcCtx.Config.Auth.AccessSecret)
 		if err != nil {
 			logx.Errorf("WebSocket token验证失败: %v", err)
 			http.Error(w, "invalid token", http.StatusUnauthorized)
+			return
+		}
+		active, err := isActiveWebSocketUser(svcCtx, userId)
+		if err != nil {
+			logx.Errorf("用户WebSocket状态校验失败: userId=%d err=%v", userId, err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		if !active {
+			http.Error(w, "invalid user session", http.StatusUnauthorized)
 			return
 		}
 
@@ -57,24 +66,6 @@ func UserWSHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 
 		logx.Infof("用户WebSocket连接建立: UserId=%d", userId)
 	}
-}
-
-// parseUserToken 解析用户JWT token
-func parseUserToken(tokenString string, secret string) (int64, error) {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		return []byte(secret), nil
-	})
-	if err != nil {
-		return 0, err
-	}
-
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		if userIdFloat, ok := claims["user_id"].(float64); ok {
-			return int64(userIdFloat), nil
-		}
-	}
-
-	return 0, jwt.ErrTokenInvalidClaims
 }
 
 // userReadPump 用户连接的读取方法（使用UnregisterUser而非Unregister）
