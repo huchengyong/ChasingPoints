@@ -10,6 +10,7 @@ import (
 	achievementx "chasing_points/internal/logic/achievement"
 	"chasing_points/internal/model"
 	"chasing_points/internal/pkg/ws"
+	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 
 	"github.com/zeromicro/go-zero/core/logx"
@@ -48,6 +49,10 @@ type seasonRolloverRealtimeNotice struct {
 	Data    seasonRolloverNotificationData
 }
 
+type SeasonSettlementOptions struct {
+	Notify bool
+}
+
 type SeasonSettlementService struct {
 	svcCtx       *svc.ServiceContext
 	sendRealtime func(seasonRolloverRealtimeNotice) error
@@ -64,6 +69,10 @@ func (s *SeasonSettlementService) SettleSeason(ctx context.Context, seasonId int
 }
 
 func (s *SeasonSettlementService) SettleSeasonAt(ctx context.Context, seasonId int64, now time.Time) (*SeasonSettlementSummary, error) {
+	return s.SettleSeasonWithOptionsAt(ctx, seasonId, now, SeasonSettlementOptions{Notify: true})
+}
+
+func (s *SeasonSettlementService) SettleSeasonWithOptionsAt(ctx context.Context, seasonId int64, now time.Time, options SeasonSettlementOptions) (*SeasonSettlementSummary, error) {
 	if now.IsZero() {
 		now = time.Now()
 	}
@@ -91,7 +100,11 @@ func (s *SeasonSettlementService) SettleSeasonAt(ctx context.Context, seasonId i
 		if season == nil {
 			return fmt.Errorf("season %d not found", seasonId)
 		}
-		if now.Before(seasonSettlementEndExclusive(season.EndDate)) {
+		_, endExclusive, boundsErr := seasonx.BoundsForConfig(s.svcCtx.Config.SeasonLifecycle, season)
+		if boundsErr != nil {
+			return boundsErr
+		}
+		if now.Before(endExclusive) {
 			return fmt.Errorf("season %d has not ended", seasonId)
 		}
 
@@ -111,7 +124,8 @@ func (s *SeasonSettlementService) SettleSeasonAt(ctx context.Context, seasonId i
 		if err := s.svcCtx.SeasonRecordModel.UpsertBatchWithTx(tx, records); err != nil {
 			return err
 		}
-		if _, err := achievementx.GrantSeasonTitlesWithTx(s.svcCtx, tx, []model.Season{*season}, records); err != nil {
+		seasonTitles, err := achievementx.GrantSeasonTitlesWithTx(s.svcCtx, tx, []model.Season{*season}, records)
+		if err != nil {
 			return err
 		}
 		snapshots, err := achievementx.NewSeasonChallengeService(s.svcCtx).ArchiveSeasonWithTx(tx, season, now)
@@ -119,19 +133,21 @@ func (s *SeasonSettlementService) SettleSeasonAt(ctx context.Context, seasonId i
 			return err
 		}
 
-		if season.Status == 1 {
-			if _, err := s.svcCtx.SeasonModel.UpdateStatusWithTx(tx, season.Id, 1, 2); err != nil {
-				return err
-			}
+		if _, err := s.svcCtx.SeasonModel.UpdateStatusToWithTx(tx, season.Id, 2); err != nil {
+			return err
 		}
-		nextSeason, err := s.activateReadySeasonWithTx(tx, now, season.StartDate)
+		season.Status = 2
+		nextSeason, err := s.resolveNextSeasonWithTx(tx, season, now)
 		if err != nil {
 			return err
 		}
 
-		notices, err := s.persistRolloverNotificationsWithTx(tx, *season, nextSeason, records, snapshots)
-		if err != nil {
-			return err
+		notices := []seasonRolloverRealtimeNotice{}
+		if options.Notify {
+			notices, err = s.persistRolloverNotificationsWithTx(tx, *season, nextSeason, records, snapshots)
+			if err != nil {
+				return err
+			}
 		}
 		realtimeNotices = notices
 
@@ -150,7 +166,7 @@ func (s *SeasonSettlementService) SettleSeasonAt(ctx context.Context, seasonId i
 		}
 
 		summary.SeasonRecords = len(records)
-		summary.SeasonTitles = countSeasonTitleRecords(records)
+		summary.SeasonTitles = seasonTitles
 		summary.ChallengeSnapshots = len(snapshots)
 		summary.Notifications = len(notices)
 		return nil
@@ -202,8 +218,11 @@ func (s *SeasonSettlementService) validate() error {
 }
 
 func (s *SeasonSettlementService) buildSeasonRecordsWithTx(tx *gorm.DB, season *model.Season) ([]model.SeasonRecord, error) {
-	endExclusive := seasonSettlementEndExclusive(season.EndDate)
-	matches, err := s.svcCtx.MatchModel.ListCompletedRankedBetweenWithTx(tx, season.StartDate, endExclusive)
+	startAt, endExclusive, err := seasonx.BoundsForConfig(s.svcCtx.Config.SeasonLifecycle, season)
+	if err != nil {
+		return nil, err
+	}
+	matches, err := s.svcCtx.MatchModel.ListCompletedRankedBetweenWithTx(tx, startAt, endExclusive)
 	if err != nil {
 		return nil, err
 	}
@@ -228,13 +247,12 @@ func (s *SeasonSettlementService) buildSeasonRecordsWithTx(tx *gorm.DB, season *
 	}
 
 	records := make([]model.SeasonRecord, 0, len(stats))
-	logEnd := endExclusive.Add(-time.Nanosecond)
 	for pair, item := range stats {
-		logs, err := s.svcCtx.RankingModel.ListRankChangesByUserAndGameTypeBetweenWithTx(tx, pair.UserId, pair.GameType, season.StartDate, logEnd)
+		logs, err := s.svcCtx.RankingModel.ListRankChangesByUserAndGameTypeBetweenHalfOpenWithTx(tx, pair.UserId, pair.GameType, startAt, endExclusive)
 		if err != nil {
 			return nil, err
 		}
-		before, err := s.svcCtx.RankingModel.FindLatestRankChangeBeforeByGameTypeWithTx(tx, pair.UserId, pair.GameType, season.StartDate)
+		before, err := s.svcCtx.RankingModel.FindLatestRankChangeBeforeByGameTypeWithTx(tx, pair.UserId, pair.GameType, startAt)
 		if err != nil {
 			return nil, err
 		}
@@ -269,6 +287,33 @@ func (s *SeasonSettlementService) buildSeasonRecordsWithTx(tx *gorm.DB, season *
 		records[i].FinalRank = rankByGameType[records[i].GameType]
 	}
 	return records, nil
+}
+
+func (s *SeasonSettlementService) resolveNextSeasonWithTx(tx *gorm.DB, settled *model.Season, now time.Time) (*model.Season, error) {
+	if settled == nil {
+		return nil, nil
+	}
+	next, err := s.svcCtx.SeasonModel.FindNextAfterStartWithTx(tx, settled.StartDate, true)
+	if err != nil || next == nil {
+		return next, err
+	}
+	startAt, _, err := seasonx.BoundsForConfig(s.svcCtx.Config.SeasonLifecycle, next)
+	if err != nil || now.Before(startAt) {
+		return nil, err
+	}
+	if next.Status != 0 {
+		return next, nil
+	}
+	current, err := s.svcCtx.SeasonModel.FindCurrentWithTx(tx, true)
+	if err != nil || current != nil {
+		return next, err
+	}
+	activated, err := s.svcCtx.SeasonModel.UpdateStatusWithTx(tx, next.Id, 0, 1)
+	if err != nil || !activated {
+		return nil, err
+	}
+	next.Status = 1
+	return next, nil
 }
 
 func (s *SeasonSettlementService) activateReadySeasonWithTx(tx *gorm.DB, now time.Time, after time.Time) (*model.Season, error) {
@@ -413,22 +458,8 @@ func (s *SeasonSettlementService) defaultSendRealtime(notice seasonRolloverRealt
 	return nil
 }
 
-func seasonSettlementEndExclusive(endDate time.Time) time.Time {
-	return time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 0, 0, 0, 0, endDate.Location()).AddDate(0, 0, 1)
-}
-
 func seasonRolloverDedupeKey(fromSeasonId, toSeasonId int64) string {
 	return fmt.Sprintf("season_rollover:%d:%d", fromSeasonId, toSeasonId)
-}
-
-func countSeasonTitleRecords(records []model.SeasonRecord) int {
-	count := 0
-	for _, record := range records {
-		if record.FinalRank >= 1 && record.FinalRank <= 10 {
-			count++
-		}
-	}
-	return count
 }
 
 func truncateSeasonSettlementError(message string) string {

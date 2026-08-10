@@ -274,28 +274,27 @@ func (m *MatchModel) FindCurrentByUserIdWithTx(tx *gorm.DB, userId int64) (*Matc
 	return &match, err
 }
 
-// ListCompletedForRankingReplay 获取用于段位历史回放的已完成对局
+// ListCompletedForRankingReplay 获取用于段位历史回放的有效排位对局。
 func (m *MatchModel) ListCompletedForRankingReplay() ([]Match, error) {
-	var matches []Match
-	err := m.db.
-		Where("status = ? AND deleted_at IS NULL", 2).
-		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", MatchModeRanked).
-		Order("CASE WHEN end_time IS NULL THEN 1 ELSE 0 END ASC").
-		Order("end_time ASC").
-		Order("match_time ASC").
-		Order("id ASC").
-		Find(&matches).Error
-	return matches, err
+	return m.ListCompletedForSeasonRecords()
 }
 
-func (m *MatchModel) ListCompletedForAchievementRebuild() ([]Match, error) {
-	var matches []Match
-	err := m.db.
+func completedRankedMatchScope(db *gorm.DB) *gorm.DB {
+	return db.
 		Where("status = ? AND deleted_at IS NULL", 2).
 		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", MatchModeRanked).
 		Where("result IN ?", []int{1, 2}).
 		Where("opponent_id IS NOT NULL AND opponent_id > 0 AND opponent_id <> user_id").
-		Where("EXISTS (SELECT 1 FROM match_rounds WHERE match_rounds.match_id = matches.id AND winner IS NOT NULL AND (win_type IS NULL OR win_type <> ?))", "start").
+		Where("EXISTS (SELECT 1 FROM match_rounds WHERE match_rounds.match_id = matches.id AND winner IS NOT NULL AND (win_type IS NULL OR win_type <> ?))", "start")
+}
+
+func (m *MatchModel) ListCompletedForAchievementRebuild() ([]Match, error) {
+	return m.ListCompletedForSeasonRecords()
+}
+
+func (m *MatchModel) ListCompletedForSeasonRecords() ([]Match, error) {
+	var matches []Match
+	err := completedRankedMatchScope(m.db).
 		Order("COALESCE(end_time, match_time) ASC, id ASC").
 		Find(&matches).Error
 	return matches, err
@@ -307,13 +306,8 @@ func (m *MatchModel) ListCompletedRankedBetweenWithTx(tx *gorm.DB, start, end ti
 		db = tx
 	}
 	var matches []Match
-	err := db.
-		Where("status = ? AND deleted_at IS NULL", 2).
-		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", MatchModeRanked).
-		Where("result IN ?", []int{1, 2}).
-		Where("opponent_id IS NOT NULL AND opponent_id > 0 AND opponent_id <> user_id").
+	err := completedRankedMatchScope(db).
 		Where("COALESCE(end_time, match_time) >= ? AND COALESCE(end_time, match_time) < ?", start, end).
-		Where("EXISTS (SELECT 1 FROM match_rounds WHERE match_rounds.match_id = matches.id AND winner IS NOT NULL AND win_type <> ?)", "start").
 		Order("COALESCE(end_time, match_time) ASC, id ASC").
 		Find(&matches).Error
 	return matches, err
@@ -900,7 +894,7 @@ func (m *MatchModel) GetRoundCountWithTx(tx *gorm.DB, matchId int64) (int64, err
 		db = tx
 	}
 	err := db.Model(&MatchRound{}).
-		Where("match_id = ? AND winner IS NOT NULL AND win_type <> ?", matchId, "start").
+		Where("match_id = ? AND winner IS NOT NULL AND (win_type IS NULL OR win_type <> ?)", matchId, "start").
 		Count(&count).Error
 	return count, err
 }
@@ -911,7 +905,7 @@ func (m *MatchModel) GetLastRoundWithTx(tx *gorm.DB, matchId int64) (*MatchRound
 	if tx != nil {
 		db = tx
 	}
-	err := db.Where("match_id = ? AND winner IS NOT NULL AND win_type <> ?", matchId, "start").
+	err := db.Where("match_id = ? AND winner IS NOT NULL AND (win_type IS NULL OR win_type <> ?)", matchId, "start").
 		Order("id DESC").
 		First(&round).Error
 	if err == gorm.ErrRecordNotFound {
@@ -940,7 +934,7 @@ func (m *MatchModel) ListCompletedRoundsWithTx(tx *gorm.DB, matchId int64) ([]Ma
 		db = tx
 	}
 	err := db.
-		Where("match_id = ? AND winner IS NOT NULL AND win_type <> ?", matchId, "start").
+		Where("match_id = ? AND winner IS NOT NULL AND (win_type IS NULL OR win_type <> ?)", matchId, "start").
 		Order("round_no ASC").
 		Find(&rounds).Error
 	return rounds, err

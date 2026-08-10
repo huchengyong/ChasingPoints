@@ -605,6 +605,32 @@ func (m *RankingModel) ListRankChangesByUserAndGameTypeBetweenWithTx(tx *gorm.DB
 	return logs, err
 }
 
+// ListRankChangesByUserAndGameTypeBetweenHalfOpen returns logs in [start, endExclusive).
+func (m *RankingModel) ListRankChangesByUserAndGameTypeBetweenHalfOpen(userId int64, gameType int, start, endExclusive time.Time) ([]RankChangeLog, error) {
+	return m.ListRankChangesByUserAndGameTypeBetweenHalfOpenWithTx(nil, userId, gameType, start, endExclusive)
+}
+
+func (m *RankingModel) ListRankChangesByUserAndGameTypeBetweenHalfOpenWithTx(tx *gorm.DB, userId int64, gameType int, start, endExclusive time.Time) ([]RankChangeLog, error) {
+	db, err := m.resolveDB(tx)
+	if err != nil {
+		return nil, err
+	}
+	supportsGameType, err := m.rankChangeLogSupportsGameType(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	var logs []RankChangeLog
+	err = applyRankChangeLogGameTypeFilter(
+		db.Where("user_id = ? AND change_type = ? AND effective_at >= ? AND effective_at < ?", userId, rankChangeTypeMatchResult, start, endExclusive),
+		supportsGameType,
+		gameType,
+	).
+		Order("effective_at ASC, id ASC").
+		Find(&logs).Error
+	return logs, err
+}
+
 // SumPositiveRankChangesByUserAndGameTypeBetween 汇总时间范围内的正向涨分
 func (m *RankingModel) SumPositiveRankChangesByUserAndGameTypeBetween(
 	tx *gorm.DB,

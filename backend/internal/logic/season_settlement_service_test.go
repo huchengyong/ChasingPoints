@@ -10,6 +10,7 @@ import (
 
 	achievementx "chasing_points/internal/logic/achievement"
 	"chasing_points/internal/model"
+	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 
 	"gorm.io/driver/sqlite"
@@ -84,6 +85,41 @@ func TestSeasonSettlementServiceSettlesOneSeasonAndIsIdempotent(t *testing.T) {
 	}
 }
 
+func TestSeasonSettlementServiceCountsMatchesThroughEndDateOnly(t *testing.T) {
+	svcCtx := newSeasonSettlementTestSvc(t)
+	season := model.Season{
+		Id:        30,
+		Name:      "S30",
+		StartDate: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC),
+		EndDate:   time.Date(2026, 7, 31, 0, 0, 0, 0, time.UTC),
+		Status:    1,
+	}
+	if err := svcCtx.SeasonModel.Create(&season); err != nil {
+		t.Fatalf("create boundary season: %v", err)
+	}
+	for _, userID := range []int64{10, 20} {
+		if err := svcCtx.UserModel.Create(&model.User{Id: userID, Nickname: "用户"}); err != nil {
+			t.Fatalf("create user %d: %v", userID, err)
+		}
+	}
+	location, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		t.Fatalf("load timezone: %v", err)
+	}
+	endExclusive := time.Date(2026, 8, 1, 0, 0, 0, 0, location)
+	seedSeasonSettlementMatch(t, svcCtx, 3001, 10, 20, 1, endExclusive.Add(-time.Second))
+	seedSeasonSettlementMatch(t, svcCtx, 3002, 10, 20, 1, endExclusive)
+	service := NewSeasonSettlementService(svcCtx)
+	service.sendRealtime = func(seasonRolloverRealtimeNotice) error { return nil }
+	if _, err := service.SettleSeasonAt(context.Background(), season.Id, endExclusive.Add(time.Hour)); err != nil {
+		t.Fatalf("settle boundary season: %v", err)
+	}
+	record, err := svcCtx.SeasonRecordModel.FindBySeasonAndUserAndGameType(season.Id, 10, 3)
+	if err != nil || record == nil || record.MatchesPlayed != 1 || record.Wins != 1 {
+		t.Fatalf("only completion before end-exclusive boundary may count: %+v err=%v", record, err)
+	}
+}
+
 func TestSeasonSettlementServiceEntersIntermissionAndLaterActivatesSeason(t *testing.T) {
 	svcCtx := newSeasonSettlementTestSvc(t)
 	season, _, now := seedSeasonSettlementScenario(t, svcCtx, false)
@@ -119,6 +155,81 @@ func TestSeasonSettlementServiceEntersIntermissionAndLaterActivatesSeason(t *tes
 		t.Fatalf("expected season %d activated, got %+v", next.Id, activated)
 	}
 	assertSingleActiveSeason(t, svcCtx, next.Id)
+}
+
+func TestSeasonSettlementDoesNotApplyRankResetRatio(t *testing.T) {
+	svcCtx := newSeasonSettlementTestSvc(t)
+	season, _, now := seedSeasonSettlementScenario(t, svcCtx, false)
+	if err := svcCtx.DB.AutoMigrate(&model.UserRanking{}); err != nil {
+		t.Fatalf("migrate ranking snapshot: %v", err)
+	}
+	if err := svcCtx.DB.Create(&model.UserRanking{UserId: 10, GameType: 3, RankScore: 1680, RankLevel: 5, TotalWins: 12, TotalLosses: 3}).Error; err != nil {
+		t.Fatalf("seed ranking: %v", err)
+	}
+	if err := svcCtx.DB.Model(&model.Season{}).Where("id = ?", season.Id).Update("rank_reset_ratio", 0.2).Error; err != nil {
+		t.Fatalf("set rank reset ratio: %v", err)
+	}
+	service := NewSeasonSettlementService(svcCtx)
+	service.sendRealtime = func(seasonRolloverRealtimeNotice) error { return nil }
+	if _, err := service.SettleSeasonAt(context.Background(), season.Id, now); err != nil {
+		t.Fatalf("settle season: %v", err)
+	}
+	var ranking model.UserRanking
+	if err := svcCtx.DB.Where("user_id = ? AND game_type = ?", 10, 3).First(&ranking).Error; err != nil {
+		t.Fatalf("find ranking after settlement: %v", err)
+	}
+	if ranking.RankScore != 1680 || ranking.RankLevel != 5 {
+		t.Fatalf("season settlement must not reset ranking: %+v", ranking)
+	}
+}
+
+func TestSeasonSettlementServiceCanSettleSilentlyForHistoricalRepair(t *testing.T) {
+	svcCtx := newSeasonSettlementTestSvc(t)
+	season, _, now := seedSeasonSettlementScenario(t, svcCtx, false)
+	service := NewSeasonSettlementService(svcCtx)
+	realtimeCalls := 0
+	service.sendRealtime = func(seasonRolloverRealtimeNotice) error {
+		realtimeCalls++
+		return nil
+	}
+
+	summary, err := service.SettleSeasonWithOptionsAt(context.Background(), season.Id, now, SeasonSettlementOptions{Notify: false})
+	if err != nil {
+		t.Fatalf("settle historical season silently: %v", err)
+	}
+	if summary.Notifications != 0 || realtimeCalls != 0 {
+		t.Fatalf("silent settlement must not notify: summary=%+v realtime=%d", summary, realtimeCalls)
+	}
+	var notifications int64
+	if err := svcCtx.DB.Model(&model.Notification{}).Where("type = ?", seasonRolloverNotificationType).Count(&notifications).Error; err != nil {
+		t.Fatalf("count silent notifications: %v", err)
+	}
+	if notifications != 0 {
+		t.Fatalf("silent settlement created %d notifications", notifications)
+	}
+	assertSeasonStatus(t, svcCtx, season.Id, 2)
+}
+
+func TestSeasonSettlementServiceUsesSeasonBoundaryForHistoricalTitleGrantTime(t *testing.T) {
+	svcCtx := newSeasonSettlementTestSvc(t)
+	season, _, now := seedSeasonSettlementScenario(t, svcCtx, false)
+	service := NewSeasonSettlementService(svcCtx)
+	service.sendRealtime = func(seasonRolloverRealtimeNotice) error { return nil }
+
+	if _, err := service.SettleSeasonWithOptionsAt(context.Background(), season.Id, now.AddDate(0, 2, 0), SeasonSettlementOptions{Notify: false}); err != nil {
+		t.Fatalf("settle historical season: %v", err)
+	}
+	_, expectedGrantedAt, err := seasonx.BoundsForConfig(svcCtx.Config.SeasonLifecycle, &season)
+	if err != nil {
+		t.Fatalf("resolve season end boundary: %v", err)
+	}
+	var title model.UserTitle
+	if err := svcCtx.DB.Where("source_type = ? AND source_ref_id = ?", achievementx.SourceTypeSeason, season.Id).First(&title).Error; err != nil {
+		t.Fatalf("find historical season title: %v", err)
+	}
+	if title.GrantedAt == nil || !title.GrantedAt.Equal(expectedGrantedAt) {
+		t.Fatalf("historical title must use season boundary, got %+v want %s", title.GrantedAt, expectedGrantedAt)
+	}
 }
 
 func TestSeasonSettlementRealtimeFailureDoesNotRollbackOrDuplicate(t *testing.T) {

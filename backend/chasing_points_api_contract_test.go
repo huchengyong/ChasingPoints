@@ -31,6 +31,7 @@ func TestHonorWallAndRewardSummaryAPIContract(t *testing.T) {
 		"SpecialtyUnlocked int `json:\"specialty_unlocked\"`",
 		"SpecialtyTotal    int `json:\"specialty_total\"`",
 		"type GetHonorWallResp",
+		"SeasonState        string               `json:\"season_state\"`",
 		"ViewerScope",
 		"RecentHonors",
 		"CareerAchievements",
@@ -44,7 +45,13 @@ func TestHonorWallAndRewardSummaryAPIContract(t *testing.T) {
 		"get /reward-summary (GetMatchRewardSummaryReq) returns (GetMatchRewardSummaryResp)",
 		"get /list (GetAchievementListReq) returns (GetAchievementListResp)",
 		"get /titles returns (GetUserTitlesResp)",
+		"type GetCurrentSeasonResp",
+		"SeasonState string      `json:\"season_state\"`",
+		"type SeasonInfo",
+		"StartAt        string  `json:\"start_at\"`",
+		"EndAtExclusive string  `json:\"end_at_exclusive\"`",
 	}
+
 	for _, snippet := range requiredSnippets {
 		if !strings.Contains(text, snippet) {
 			t.Fatalf("expected api contract to contain %q", snippet)
@@ -72,6 +79,15 @@ func TestGeneratedAchievementPayloadContract(t *testing.T) {
 	assertJSONTag(achievement, "Progress", "progress")
 	assertJSONTag(achievement, "GameType", "game_type")
 	assertJSONTag(achievement, "RewardTitleName", "reward_title_name,optional")
+
+	honorWall := types.GetHonorWallResp{}
+	assertJSONTag(honorWall, "SeasonState", "season_state")
+
+	currentSeason := types.GetCurrentSeasonResp{}
+	assertJSONTag(currentSeason, "SeasonState", "season_state")
+	seasonInfo := types.SeasonInfo{}
+	assertJSONTag(seasonInfo, "StartAt", "start_at")
+	assertJSONTag(seasonInfo, "EndAtExclusive", "end_at_exclusive")
 
 	summary := types.HonorWallSummary{}
 	assertJSONTag(summary, "CareerUnlocked", "career_unlocked")

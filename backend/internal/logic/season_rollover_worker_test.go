@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"chasing_points/internal/config"
+	achievementx "chasing_points/internal/logic/achievement"
 	"chasing_points/internal/model"
 )
 
@@ -33,6 +35,41 @@ func (f *fakeSeasonRolloverRunner) ActivateReadySeasonAt(_ context.Context, _ ti
 	defer f.mu.Unlock()
 	f.activationCalls++
 	return nil, nil
+}
+
+func TestSeasonRolloverWorkerLeavesDisabledLifecycleScheduleEmpty(t *testing.T) {
+	svcCtx := newSeasonSettlementTestSvc(t)
+	worker := newSeasonRolloverWorkerWithDeps(
+		svcCtx,
+		NewSeasonSettlementService(svcCtx),
+		func() time.Time { return time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC) },
+		time.Minute,
+	)
+	if err := worker.RunOnce(context.Background()); err != nil {
+		t.Fatalf("run disabled lifecycle worker: %v", err)
+	}
+	var count int64
+	if err := svcCtx.DB.Model(&model.Season{}).Count(&count).Error; err != nil {
+		t.Fatalf("count disabled lifecycle seasons: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("disabled lifecycle worker must not create seasons, got %d", count)
+	}
+}
+
+func TestSeasonRolloverWorkerDoesNotFallBackToLegacyWhenLifecycleConfigIsInvalid(t *testing.T) {
+	svcCtx := newSeasonSettlementTestSvc(t)
+	svcCtx.Config.SeasonLifecycle.Enabled = true
+	svcCtx.Config.SeasonLifecycle.AnchorDate = "invalid"
+	runner := &fakeSeasonRolloverRunner{}
+	worker := newSeasonRolloverWorkerWithDeps(svcCtx, runner, time.Now, time.Minute)
+
+	if err := worker.RunOnce(context.Background()); err == nil {
+		t.Fatal("expected invalid lifecycle config to stop worker")
+	}
+	if runner.settlementCalls != 0 || runner.activationCalls != 0 {
+		t.Fatalf("invalid lifecycle config must not run legacy rollover: %+v", runner)
+	}
 }
 
 func TestSeasonRolloverWorkerRetriesFailureOnNextRun(t *testing.T) {
@@ -92,6 +129,132 @@ func TestSeasonRolloverWorkerSkipsCompletedSettlement(t *testing.T) {
 	}
 	if runner.settlementCalls != 0 {
 		t.Fatalf("expected completed settlement skipped, got %d calls", runner.settlementCalls)
+	}
+}
+
+func TestSeasonRolloverWorkerEnsuresAndCatchesUpContinuousSchedule(t *testing.T) {
+	svcCtx := newSeasonSettlementTestSvc(t)
+	svcCtx.Config.SeasonLifecycle.Enabled = true
+	svcCtx.Config.SeasonLifecycle.AnchorDate = "2026-07-01"
+	svcCtx.Config.SeasonLifecycle.InitialNumber = 1
+	svcCtx.Config.SeasonLifecycle.CycleMonths = 1
+	svcCtx.Config.SeasonLifecycle.Timezone = "Asia/Shanghai"
+	now := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
+	runner := &fakeSeasonRolloverRunner{}
+	worker := newSeasonRolloverWorkerWithDeps(svcCtx, runner, func() time.Time { return now }, time.Minute)
+
+	if err := worker.RunOnce(context.Background()); err != nil {
+		t.Fatalf("run continuous worker: %v", err)
+	}
+	if runner.settlementCalls != 3 || runner.activationCalls != 0 {
+		t.Fatalf("continuous worker must settle July through September without legacy activation: settlements=%d activations=%d", runner.settlementCalls, runner.activationCalls)
+	}
+	seasons, err := svcCtx.SeasonModel.ListAll()
+	if err != nil {
+		t.Fatalf("list continuous seasons: %v", err)
+	}
+	if len(seasons) != 5 || seasons[3].Name != "S4" || seasons[3].Status != 1 || seasons[4].Status != 0 {
+		t.Fatalf("unexpected continuous schedule: %+v", seasons)
+	}
+}
+
+func TestSeasonRolloverWorkerDoesNotAdvanceStatusesBeforeFailedContinuousSettlement(t *testing.T) {
+	svcCtx := newSeasonSettlementTestSvc(t)
+	season, _, now := seedSeasonSettlementScenario(t, svcCtx, false)
+	svcCtx.Config.SeasonLifecycle = config.SeasonLifecycleConfig{
+		Enabled:       true,
+		AnchorDate:    "2026-07-01",
+		InitialNumber: 3,
+		CycleMonths:   1,
+		Timezone:      "Asia/Shanghai",
+	}
+	if err := svcCtx.DB.Migrator().DropTable(&model.Notification{}); err != nil {
+		t.Fatalf("drop notifications: %v", err)
+	}
+	worker := NewSeasonRolloverWorker(svcCtx)
+	worker.now = func() time.Time { return now }
+
+	if err := worker.RunOnce(context.Background()); err == nil {
+		t.Fatal("expected continuous settlement failure")
+	}
+	assertSeasonStatus(t, svcCtx, season.Id, 1)
+	seasons, err := svcCtx.SeasonModel.ListAll()
+	if err != nil {
+		t.Fatalf("list scheduled seasons after failure: %v", err)
+	}
+	for _, item := range seasons {
+		if item.Name == "S4" && item.Status != 0 {
+			t.Fatalf("failed settlement must not activate S4: %+v", seasons)
+		}
+	}
+
+	if err := svcCtx.DB.AutoMigrate(&model.Notification{}); err != nil {
+		t.Fatalf("restore notifications: %v", err)
+	}
+	if err := worker.RunOnce(context.Background()); err != nil {
+		t.Fatalf("retry continuous settlement: %v", err)
+	}
+	assertSeasonStatus(t, svcCtx, season.Id, 2)
+	seasons, err = svcCtx.SeasonModel.ListAll()
+	if err != nil {
+		t.Fatalf("list scheduled seasons after retry: %v", err)
+	}
+	for _, item := range seasons {
+		if item.Name == "S4" && item.Status != 1 {
+			t.Fatalf("successful settlement must atomically activate S4: %+v", item)
+		}
+	}
+}
+
+func TestSeasonRolloverWorkerCountsEventsFromDelayedActivationWindow(t *testing.T) {
+	svcCtx := newSeasonSettlementTestSvc(t)
+	_, _, now := seedSeasonSettlementScenario(t, svcCtx, false)
+	svcCtx.Config.SeasonLifecycle.Enabled = true
+	svcCtx.Config.SeasonLifecycle.AnchorDate = "2026-07-01"
+	svcCtx.Config.SeasonLifecycle.InitialNumber = 3
+	svcCtx.Config.SeasonLifecycle.CycleMonths = 1
+	svcCtx.Config.SeasonLifecycle.Timezone = "Asia/Shanghai"
+	location, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		t.Fatalf("load timezone: %v", err)
+	}
+	if _, err := svcCtx.AchievementProgressEventModel.CreateIfAbsent(model.NewAchievementProgressEvent(
+		10,
+		achievementx.SourceTypeMatch,
+		999,
+		3,
+		achievementx.MetricMatchesTotal,
+		5,
+		time.Date(2026, 8, 1, 2, 0, 0, 0, location),
+	)); err != nil {
+		t.Fatalf("seed delayed activation event: %v", err)
+	}
+	settler := NewSeasonSettlementService(svcCtx)
+	settler.sendRealtime = func(seasonRolloverRealtimeNotice) error { return nil }
+	worker := newSeasonRolloverWorkerWithDeps(svcCtx, settler, func() time.Time { return now }, time.Minute)
+	if err := worker.RunOnce(context.Background()); err != nil {
+		t.Fatalf("run delayed activation worker: %v", err)
+	}
+	seasons, err := svcCtx.SeasonModel.ListAll()
+	if err != nil {
+		t.Fatalf("list ensured seasons: %v", err)
+	}
+	var current *model.Season
+	for index := range seasons {
+		if seasons[index].Name == "S4" {
+			current = &seasons[index]
+			break
+		}
+	}
+	if current == nil || current.Status != 1 {
+		t.Fatalf("expected active S4 after delayed activation: %+v", seasons)
+	}
+	progress, err := achievementx.NewSeasonChallengeService(svcCtx).GetProgress(10, current, 3)
+	if err != nil {
+		t.Fatalf("get delayed activation challenge progress: %v", err)
+	}
+	if progress[0].Progress != 5 {
+		t.Fatalf("events since S4 boundary must not be discarded: %+v", progress)
 	}
 }
 

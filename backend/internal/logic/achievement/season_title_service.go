@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"chasing_points/internal/model"
+	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 
 	"gorm.io/gorm"
@@ -36,7 +37,11 @@ func GrantSeasonTitlesWithTx(svcCtx *svc.ServiceContext, tx *gorm.DB, seasons []
 		if !ok {
 			continue
 		}
-		created, err := grantSeasonTitleWithTx(svcCtx, tx, record.UserId, season, record.GameType, record.FinalRank, titleName)
+		grantedAt, err := seasonTitleGrantedAt(svcCtx, season)
+		if err != nil {
+			return 0, err
+		}
+		created, err := grantSeasonTitleWithTx(svcCtx, tx, record.UserId, season, record.GameType, record.FinalRank, titleName, grantedAt)
 		if err != nil {
 			return 0, err
 		}
@@ -48,12 +53,20 @@ func GrantSeasonTitlesWithTx(svcCtx *svc.ServiceContext, tx *gorm.DB, seasons []
 }
 
 func grantSeasonTitle(svcCtx *svc.ServiceContext, userId int64, season model.Season, gameType int, finalRank int, titleName string) error {
-	_, err := grantSeasonTitleWithTx(svcCtx, nil, userId, season, gameType, finalRank, titleName)
+	grantedAt, err := seasonTitleGrantedAt(svcCtx, season)
+	if err != nil {
+		return err
+	}
+	_, err = grantSeasonTitleWithTx(svcCtx, nil, userId, season, gameType, finalRank, titleName, grantedAt)
 	return err
 }
 
-func grantSeasonTitleWithTx(svcCtx *svc.ServiceContext, tx *gorm.DB, userId int64, season model.Season, gameType int, finalRank int, titleName string) (bool, error) {
-	now := time.Now()
+func seasonTitleGrantedAt(svcCtx *svc.ServiceContext, season model.Season) (time.Time, error) {
+	_, endExclusive, err := seasonx.BoundsForConfig(svcCtx.Config.SeasonLifecycle, &season)
+	return endExclusive, err
+}
+
+func grantSeasonTitleWithTx(svcCtx *svc.ServiceContext, tx *gorm.DB, userId int64, season model.Season, gameType int, finalRank int, titleName string, grantedAt time.Time) (bool, error) {
 	title := &model.UserTitle{
 		UserId:        userId,
 		TitleKey:      fmt.Sprintf("season_%d_game_%d_rank_%d", season.Id, gameType, finalRank),
@@ -62,7 +75,7 @@ func grantSeasonTitleWithTx(svcCtx *svc.ServiceContext, tx *gorm.DB, userId int6
 		SourceType:    SourceTypeSeason,
 		SourceRefId:   season.Id,
 		SourceRefName: season.Name,
-		GrantedAt:     &now,
+		GrantedAt:     &grantedAt,
 	}
 
 	db := svcCtx.DB

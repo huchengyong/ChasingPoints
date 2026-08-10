@@ -11,8 +11,8 @@ import (
 type Season struct {
 	Id             int64     `gorm:"primarykey"`
 	Name           string    `gorm:"size:128;not null"`
-	StartDate      time.Time `gorm:"not null;index"`
-	EndDate        time.Time `gorm:"not null"`
+	StartDate      time.Time `gorm:"not null;uniqueIndex:uk_seasons_start_date;index:idx_seasons_window,priority:1"`
+	EndDate        time.Time `gorm:"not null;index:idx_seasons_window,priority:2"`
 	Status         int       `gorm:"not null;default:0;index"`
 	RankResetRatio float64   `gorm:"not null;default:0.7"`
 	CreatedAt      time.Time `gorm:"autoCreateTime"`
@@ -56,6 +56,92 @@ func (m *SeasonModel) FindCurrent() (*Season, error) {
 		return nil, nil
 	}
 	return &season, err
+}
+
+func (m *SeasonModel) ListAllWithTx(tx *gorm.DB) ([]Season, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	var seasons []Season
+	err := db.Order("start_date ASC, id ASC").Find(&seasons).Error
+	return seasons, err
+}
+
+func (m *SeasonModel) FindByStartDate(startDate time.Time) (*Season, error) {
+	return m.FindByStartDateWithTx(nil, startDate, false)
+}
+
+func (m *SeasonModel) FindByStartDateWithTx(tx *gorm.DB, startDate time.Time, lock bool) (*Season, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	if lock {
+		db = db.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+	var season Season
+	err := db.Where("start_date = ?", startDate).First(&season).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &season, err
+}
+
+func (m *SeasonModel) FindByEffectiveTime(at time.Time) (*Season, error) {
+	day := time.Date(at.Year(), at.Month(), at.Day(), 0, 0, 0, 0, at.Location())
+	var season Season
+	err := m.db.Where("start_date <= ? AND end_date >= ?", day, day).Order("start_date DESC, id DESC").First(&season).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &season, err
+}
+
+func (m *SeasonModel) FindNextAfterStartWithTx(tx *gorm.DB, startDate time.Time, lock bool) (*Season, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	if lock {
+		db = db.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+	var season Season
+	err := db.Where("start_date > ?", startDate).Order("start_date ASC, id ASC").First(&season).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &season, err
+}
+
+func (m *SeasonModel) CreateIfAbsentWithTx(tx *gorm.DB, season *Season) (bool, error) {
+	if season == nil {
+		return false, nil
+	}
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	result := db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "start_date"}},
+		DoNothing: true,
+	}).Create(season)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
+}
+
+func (m *SeasonModel) UpdateStatusToWithTx(tx *gorm.DB, seasonId int64, status int) (bool, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	result := db.Model(&Season{}).Where("id = ? AND status <> ?", seasonId, status).Update("status", status)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
 }
 
 func (m *SeasonModel) FindById(id int64) (*Season, error) {
@@ -142,9 +228,7 @@ func (m *SeasonModel) FindLatest() (*Season, error) {
 }
 
 func (m *SeasonModel) ListAll() ([]Season, error) {
-	var seasons []Season
-	err := m.db.Order("start_date ASC, id ASC").Find(&seasons).Error
-	return seasons, err
+	return m.ListAllWithTx(nil)
 }
 
 func (m *SeasonModel) Create(season *Season) error {
@@ -255,15 +339,20 @@ func (m *SeasonRecordModel) DeleteAll(tx *gorm.DB) error {
 }
 
 func (m *SeasonRecordModel) FindUserWinByTypeInSeason(userId int64, startDate, endDate time.Time) (map[string]int, error) {
+	return m.FindUserWinByTypeInSeasonHalfOpen(userId, startDate, endDate.AddDate(0, 0, 1))
+}
+
+func (m *SeasonRecordModel) FindUserWinByTypeInSeasonHalfOpen(userId int64, startDate, endExclusive time.Time) (map[string]int, error) {
 	type row struct {
 		GameType int
 		Wins     int
 	}
 
 	var rows []row
-	err := m.db.Table("matches").
-		Select("game_type, SUM(CASE WHEN result = 1 THEN 1 ELSE 0 END) AS wins").
-		Where("user_id = ? AND status = 2 AND match_time >= ? AND match_time <= ?", userId, startDate, endDate).
+	err := completedRankedMatchScope(m.db.Table("matches")).
+		Select("game_type, SUM(CASE WHEN user_id = ? AND result = 1 THEN 1 WHEN opponent_id = ? AND result = 2 THEN 1 ELSE 0 END) AS wins", userId, userId).
+		Where("(user_id = ? OR opponent_id = ?)", userId, userId).
+		Where("COALESCE(end_time, match_time) >= ? AND COALESCE(end_time, match_time) < ?", startDate, endExclusive).
 		Group("game_type").
 		Scan(&rows).Error
 	if err != nil {

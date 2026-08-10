@@ -155,9 +155,16 @@ test('recent honors normalize achievement title pairing without duplicate displa
   })
 })
 
-test('current season state distinguishes active season and intermission', () => {
-  assert.equal(resolveCurrentSeasonState(null).mode, 'intermission')
-  assert.equal(resolveCurrentSeasonState({ season_id: 3, season_name: 'S3' }).title, 'S3')
+test('current season state distinguishes active, not-started, unavailable, and legacy responses', () => {
+  assert.deepEqual(resolveCurrentSeasonState(null), {
+    mode: 'not_started',
+    title: '赛季尚未开启',
+    description: '首个赛季开启后，这里会展示赛季挑战与当前进度。'
+  })
+  assert.equal(resolveCurrentSeasonState(null, 'unavailable').mode, 'unavailable')
+  assert.equal(resolveCurrentSeasonState(null, 'unavailable').title, '赛季数据更新中')
+  assert.equal(resolveCurrentSeasonState({ season_id: 3, season_name: 'S3' }, 'active').title, 'S3')
+  assert.equal(resolveCurrentSeasonState({ id: 4, name: 'S4' }).title, 'S4')
 })
 
 test('history season options dedupe permanent season honors', () => {
@@ -249,6 +256,9 @@ test('honor wall page keeps private season progress out of friend tabs and opens
   assert.match(honorWallSource, /v-if="isSelf && showTitleSelector"/)
   assert.match(honorWallSource, /await getUserTitles\(\)/)
   assert.match(honorWallSource, /presentLatestSeasonRollover/)
+  assert.match(honorWallSource, /wall\.value\.season_state/)
+  assert.match(honorWallSource, /currentSeasonState\.mode !== 'active'/)
+  assert.doesNotMatch(honorWallSource, /赛季间歇中/)
   assert.doesNotMatch(honorWallSource, /\/subPages\/achievement\/titles/)
   assert.doesNotMatch(honorWallSource, /分享荣誉墙|精选展示|手动精选/)
 })

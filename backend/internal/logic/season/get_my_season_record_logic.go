@@ -2,6 +2,7 @@ package season
 
 import (
 	"context"
+	"time"
 
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
@@ -27,6 +28,9 @@ func NewGetMySeasonRecordLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 }
 
 func (l *GetMySeasonRecordLogic) GetMySeasonRecord(req *types.GetMySeasonRecordReq) (resp *types.GetMySeasonRecordResp, err error) {
+	if req == nil {
+		req = &types.GetMySeasonRecordReq{}
+	}
 	userIdInt, err := utils.GetUserIDFromCtx(l.ctx)
 	if err != nil {
 		l.Logger.Errorf("获取用户ID失败: %v", err)
@@ -37,9 +41,9 @@ func (l *GetMySeasonRecordLogic) GetMySeasonRecord(req *types.GetMySeasonRecordR
 	var season *model.Season
 
 	if seasonId == 0 {
-		season, err = l.svcCtx.SeasonModel.FindCurrent()
+		season, _, err = resolveCurrentSeasonLifecycle(l.svcCtx, time.Now())
 		if err != nil {
-			l.Logger.Errorf("查询当前赛季失败: err=%v", err)
+			l.Logger.Errorf("解析当前赛季失败: err=%v", err)
 			return &types.GetMySeasonRecordResp{Success: false}, nil
 		}
 	} else {

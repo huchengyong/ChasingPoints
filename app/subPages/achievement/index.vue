@@ -252,7 +252,7 @@
 					</view>
 				</view>
 
-				<view v-if="currentSeasonState.mode === 'intermission'" class="content-card intermission-card">
+				<view v-if="currentSeasonState.mode !== 'active'" class="content-card intermission-card">
 					<view class="intermission-icon">
 						<uni-icons type="calendar-filled" size="30" color="#C69200"></uni-icons>
 					</view>
@@ -512,6 +512,7 @@ const createEmptyWall = () => ({
 	},
 	recent_honors: [],
 	career_achievements: [],
+	season_state: 'not_started',
 	current_season: null,
 	history: {
 		total: 0,
@@ -593,7 +594,10 @@ const upcomingEmptyText = computed(() => (
 		? `通用成就与${currentGameTypeLabel.value}绝技已全部达成`
 		: '暂无可追踪的成就目标'
 ))
-const currentSeasonState = computed(() => resolveCurrentSeasonState(wall.value.current_season))
+const currentSeasonState = computed(() => resolveCurrentSeasonState(
+	wall.value.current_season,
+	wall.value.season_state
+))
 const currentChallenges = computed(() => (
 	(wall.value.current_season?.challenges || []).map(buildChallengeViewModel)
 ))

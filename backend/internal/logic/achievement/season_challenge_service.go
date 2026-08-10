@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"chasing_points/internal/model"
+	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 
 	"gorm.io/gorm"
@@ -81,14 +82,18 @@ func (s *SeasonChallengeService) getProgressWithTx(tx *gorm.DB, userId int64, se
 		return result, nil
 	}
 
+	startAt, endExclusive, err := s.seasonBounds(season)
+	if err != nil {
+		return nil, err
+	}
 	metricKeys := seasonChallengeMetricKeys()
 	totals, err := s.svcCtx.AchievementProgressEventModel.SumMetricsBetweenWithTx(
 		tx,
 		userId,
 		gameType,
 		metricKeys,
-		season.StartDate,
-		seasonChallengeEndExclusive(season.EndDate),
+		startAt,
+		endExclusive,
 	)
 	if err != nil {
 		return nil, err
@@ -116,11 +121,15 @@ func (s *SeasonChallengeService) BuildSnapshotsWithTx(tx *gorm.DB, season *model
 		archivedAt = time.Now()
 	}
 
+	startAt, endExclusive, err := s.seasonBounds(season)
+	if err != nil {
+		return nil, err
+	}
 	pairs, err := s.svcCtx.AchievementProgressEventModel.ListUserGamesBetweenWithTx(
 		tx,
 		seasonChallengeMetricKeys(),
-		season.StartDate,
-		seasonChallengeEndExclusive(season.EndDate),
+		startAt,
+		endExclusive,
 	)
 	if err != nil {
 		return nil, err
@@ -173,12 +182,19 @@ func (s *SeasonChallengeService) FindArchived(userId, seasonId int64, gameType i
 	)
 }
 
-func seasonChallengeMetricKeys() []string {
+func (s *SeasonChallengeService) seasonBounds(season *model.Season) (time.Time, time.Time, error) {
+	if s == nil || s.svcCtx == nil {
+		return time.Time{}, time.Time{}, gorm.ErrInvalidDB
+	}
+	return seasonx.BoundsForConfig(s.svcCtx.Config.SeasonLifecycle, season)
+}
+
+func SeasonChallengeMetricKeys() []string {
 	return []string{MetricMatchesTotal, MetricWinsTotal, MetricTournamentFinishTotal}
 }
 
-func seasonChallengeEndExclusive(endDate time.Time) time.Time {
-	return time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 0, 0, 0, 0, endDate.Location()).AddDate(0, 0, 1)
+func seasonChallengeMetricKeys() []string {
+	return SeasonChallengeMetricKeys()
 }
 
 func normalizeSeasonChallengeGameType(gameType int) int {

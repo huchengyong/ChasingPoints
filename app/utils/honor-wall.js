@@ -140,17 +140,27 @@ export const buildChallengeViewModel = (challenge = {}) => {
   }
 }
 
-export const resolveCurrentSeasonState = (currentSeason) => {
-  if (!currentSeason || !Number(currentSeason.season_id || 0)) {
+export const resolveCurrentSeasonState = (currentSeason, seasonState = '') => {
+  const normalizedState = String(seasonState || '').trim()
+  const hasCurrentSeason = Boolean(currentSeason && Number(currentSeason.season_id || currentSeason.id || 0))
+
+  if (normalizedState === 'unavailable') {
     return {
-      mode: 'intermission',
-      title: '赛季间歇中',
-      description: '当前没有进行中的赛季，生涯成就与历届荣誉仍会永久保留。'
+      mode: 'unavailable',
+      title: '赛季数据更新中',
+      description: '赛季排期正在校验，生涯成就与历届荣誉不会受到影响。'
+    }
+  }
+  if (normalizedState === 'not_started' || !hasCurrentSeason) {
+    return {
+      mode: 'not_started',
+      title: '赛季尚未开启',
+      description: '首个赛季开启后，这里会展示赛季挑战与当前进度。'
     }
   }
   return {
     mode: 'active',
-    title: currentSeason.season_name || '当前赛季',
+    title: currentSeason.season_name || currentSeason.name || '当前赛季',
     description: '挑战按当前赛季与球种独立累计，新赛季会从零开始。'
   }
 }

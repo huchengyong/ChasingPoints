@@ -8,7 +8,7 @@
 
 		<view v-else class="season-content">
 			<!-- 赛季信息卡片 -->
-			<view class="season-card" v-if="season">
+			<view class="season-card" v-if="hasActiveSeason">
 				<view class="season-header">
 					<text class="season-name">{{ season.name }}</text>
 					<view class="season-status" :class="'status-' + season.status">
@@ -28,23 +28,25 @@
 
 			<view v-else class="no-season-card">
 				<text class="no-season-icon">🏆</text>
-				<text class="no-season-text">暂无进行中的赛季</text>
+				<text class="no-season-text">{{ seasonEmptyState.title }}</text>
+				<text class="no-season-description">{{ seasonEmptyState.description }}</text>
 			</view>
 
-			<view class="game-type-tabs">
-				<view
-					v-for="item in gameTypeTabs"
-					:key="item.value"
-					class="game-type-tab"
-					:class="{ active: currentGameType === item.value }"
-					@tap="handleGameTypeChange(item.value)"
-				>
-					<text>{{ item.label }}</text>
+			<template v-if="hasActiveSeason">
+				<view class="game-type-tabs">
+					<view
+						v-for="item in gameTypeTabs"
+						:key="item.value"
+						class="game-type-tab"
+						:class="{ active: currentGameType === item.value }"
+						@tap="handleGameTypeChange(item.value)"
+					>
+						<text>{{ item.label }}</text>
+					</view>
 				</view>
-			</view>
 
-			<!-- 我的赛季数据 -->
-			<view class="my-record-card" v-if="myRecord">
+				<!-- 我的赛季数据 -->
+				<view class="my-record-card" v-if="myRecord">
 				<text class="card-title">我的赛季数据</text>
 				<view class="record-stats">
 					<view class="stat-item">
@@ -69,8 +71,8 @@
 				</view>
 			</view>
 
-			<!-- 赛季排行榜 -->
-			<view class="leaderboard-card">
+				<!-- 赛季排行榜 -->
+				<view class="leaderboard-card">
 				<view class="card-header">
 					<text class="card-title">赛季排行榜</text>
 					<view class="report-btn" v-if="season && season.status === 2" @tap="goReport">
@@ -111,7 +113,8 @@
 				<view v-if="leaderboard.length > 0 && !hasMore" class="no-more">
 					<text>没有更多了</text>
 				</view>
-			</view>
+				</view>
+			</template>
 		</view>
 	</view>
 </template>
@@ -120,6 +123,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { getCurrentSeason, getSeasonLeaderboard, getMySeasonRecord } from '@/api/season.js'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
+import { resolveCurrentSeasonState } from '@/utils/honor-wall.js'
+import { resolveSeasonTimeline } from '@/utils/season-lifecycle.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
@@ -129,6 +134,7 @@ const statusMap = { 0: '未开始', 1: '进行中', 2: '已结束' }
 const gameTypeTabs = GAME_TYPE_TABS
 
 const season = ref(null)
+const seasonState = ref('not_started')
 const myRecord = ref(null)
 const leaderboard = ref([])
 const loading = ref(true)
@@ -136,42 +142,37 @@ const page = ref(1)
 const hasMore = ref(true)
 const currentGameType = ref(3)
 
+const seasonEmptyState = computed(() => resolveCurrentSeasonState(season.value, seasonState.value))
+const hasActiveSeason = computed(() => seasonState.value === 'active' && Boolean(season.value))
+const seasonTimeline = computed(() => resolveSeasonTimeline(season.value))
+
 const winRate = computed(() => {
 	if (!myRecord.value || myRecord.value.matches_played === 0) return 0
 	return Math.round((myRecord.value.wins / myRecord.value.matches_played) * 100)
 })
 
-const remainDays = computed(() => {
-	if (!season.value || !season.value.end_date) return 0
-	const end = new Date(season.value.end_date)
-	const now = new Date()
-	const diff = Math.ceil((end - now) / (1000 * 60 * 60 * 24))
-	return diff > 0 ? diff : 0
-})
-
-const progressPercent = computed(() => {
-	if (!season.value || !season.value.start_date || !season.value.end_date) return 0
-	const start = new Date(season.value.start_date).getTime()
-	const end = new Date(season.value.end_date).getTime()
-	const now = Date.now()
-	if (end <= start) return 100
-	const percent = ((now - start) / (end - start)) * 100
-	return Math.min(Math.max(percent, 0), 100)
-})
+const remainDays = computed(() => seasonTimeline.value.remainDays)
+const progressPercent = computed(() => seasonTimeline.value.progressPercent)
 
 const fetchSeason = async () => {
 	try {
 		const res = await getCurrentSeason()
-		if (res.success && res.season) {
-			season.value = res.season
+		if (!res?.success) {
+			season.value = null
+			seasonState.value = 'unavailable'
+			return
 		}
+		season.value = res.season || null
+		seasonState.value = res.season_state || (season.value ? 'active' : 'not_started')
 	} catch (e) {
 		console.error('获取赛季失败', e)
+		season.value = null
+		seasonState.value = 'unavailable'
 	}
 }
 
 const fetchMyRecord = async () => {
-	if (!season.value) return
+	if (!hasActiveSeason.value) return
 	try {
 		const res = await getMySeasonRecord({ season_id: season.value.id, game_type: currentGameType.value })
 		if (res.success && res.record) {
@@ -185,7 +186,7 @@ const fetchMyRecord = async () => {
 }
 
 const fetchLeaderboard = async (isRefresh = false) => {
-	if (!season.value) return
+	if (!hasActiveSeason.value) return
 	try {
 		const res = await getSeasonLeaderboard({
 			season_id: season.value.id,
@@ -208,19 +209,19 @@ const fetchLeaderboard = async (isRefresh = false) => {
 }
 
 const loadMoreLeaderboard = () => {
-	if (!hasMore.value) return
+	if (!hasActiveSeason.value || !hasMore.value) return
 	page.value++
 	fetchLeaderboard()
 }
 
 const goReport = () => {
-	if (season.value) {
+	if (hasActiveSeason.value) {
 		uni.navigateTo({ url: `/subPages/season/report?id=${season.value.id}&game_type=${currentGameType.value}` })
 	}
 }
 
 const handleGameTypeChange = async (gameType) => {
-	if (currentGameType.value === gameType) return
+	if (!hasActiveSeason.value || currentGameType.value === gameType) return
 	currentGameType.value = gameType
 	page.value = 1
 	hasMore.value = true
@@ -231,7 +232,7 @@ const handleGameTypeChange = async (gameType) => {
 onMounted(async () => {
 	loading.value = true
 	await fetchSeason()
-	if (season.value) {
+	if (hasActiveSeason.value) {
 		await Promise.all([fetchMyRecord(), fetchLeaderboard(true)])
 	}
 	loading.value = false
@@ -326,6 +327,7 @@ onMounted(async () => {
 	align-items: center;
 	.no-season-icon { font-size: 64rpx; margin-bottom: 16rpx; }
 	.no-season-text { font-size: 28rpx; color: #94a3b8; }
+	.no-season-description { margin-top: 12rpx; font-size: 24rpx; color: #94a3b8; text-align: center; line-height: 1.6; }
 }
 .my-record-card {
 	background: #fff;
@@ -450,6 +452,7 @@ onMounted(async () => {
 	.game-type-tab text,
 	.loading-text,
 	.no-season-text,
+	.no-season-description,
 	.stat-label,
 	.rank-score,
 	.empty-list,

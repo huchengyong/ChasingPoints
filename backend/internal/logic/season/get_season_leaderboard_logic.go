@@ -2,6 +2,7 @@ package season
 
 import (
 	"context"
+	"time"
 
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -25,40 +26,42 @@ func NewGetSeasonLeaderboardLogic(ctx context.Context, svcCtx *svc.ServiceContex
 }
 
 func (l *GetSeasonLeaderboardLogic) GetSeasonLeaderboard(req *types.GetSeasonLeaderboardReq) (resp *types.GetSeasonLeaderboardResp, err error) {
-	var seasonId int64 = req.SeasonId
+	if req == nil {
+		req = &types.GetSeasonLeaderboardReq{}
+	}
+	seasonId := req.SeasonId
 	var seasonInfo *types.SeasonInfo
 	gameType := 3
-	if req != nil && req.GameType > 0 {
+	if req.GameType > 0 {
 		gameType = req.GameType
 	}
 
 	if seasonId == 0 {
-		season, findErr := l.svcCtx.SeasonModel.FindCurrent()
+		season, state, findErr := resolveCurrentSeasonLifecycle(l.svcCtx, time.Now())
 		if findErr != nil {
-			l.Logger.Errorf("查询当前赛季失败: err=%v", findErr)
+			l.Logger.Errorf("解析当前赛季失败: err=%v", findErr)
 			return &types.GetSeasonLeaderboardResp{Success: false}, nil
 		}
-		if season == nil {
+		if season == nil && !l.svcCtx.Config.SeasonLifecycle.Enabled && state == "not_started" {
 			season, findErr = l.svcCtx.SeasonModel.FindLatest()
 			if findErr != nil {
 				l.Logger.Errorf("查询最近赛季失败: err=%v", findErr)
 				return &types.GetSeasonLeaderboardResp{Success: false}, nil
 			}
 		}
-
 		if season == nil {
 			return &types.GetSeasonLeaderboardResp{Success: true, Season: nil, Total: 0, List: []types.SeasonLeaderboardItem{}}, nil
 		}
 
 		seasonId = season.Id
-		seasonInfo = buildSeasonInfo(season)
+		seasonInfo = buildSeasonInfo(l.svcCtx, season)
 	} else {
 		season, findErr := l.svcCtx.SeasonModel.FindById(seasonId)
 		if findErr != nil {
 			l.Logger.Errorf("查询赛季失败: seasonId=%d err=%v", seasonId, findErr)
 			return &types.GetSeasonLeaderboardResp{Success: false}, nil
 		}
-		seasonInfo = buildSeasonInfo(season)
+		seasonInfo = buildSeasonInfo(l.svcCtx, season)
 	}
 
 	records, total, queryErr := l.svcCtx.SeasonRecordModel.FindLeaderboardByGameType(seasonId, gameType, req.Page, req.PageSize)

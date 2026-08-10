@@ -1023,8 +1023,9 @@ type GetCurrentMatchResp struct {
 }
 
 type GetCurrentSeasonResp struct {
-	Success bool        `json:"success"`
-	Season  *SeasonInfo `json:"season"`
+	Success     bool        `json:"success"`
+	SeasonState string      `json:"season_state"`
+	Season      *SeasonInfo `json:"season"`
 }
 
 type GetEventNewsListReq struct {
@@ -1108,6 +1109,7 @@ type GetHonorWallReq struct {
 
 type GetHonorWallResp struct {
 	Success            bool                 `json:"success"`
+	SeasonState        string               `json:"season_state"`
 	ViewerScope        string               `json:"viewer_scope"`
 	Profile            HonorWallProfile     `json:"profile"`
 	EquippedTitle      *TitleInfo           `json:"equipped_title,optional"`
@@ -2359,6 +2361,8 @@ type SeasonInfo struct {
 	Name           string  `json:"name"`
 	StartDate      string  `json:"start_date"`
 	EndDate        string  `json:"end_date"`
+	StartAt        string  `json:"start_at"`
+	EndAtExclusive string  `json:"end_at_exclusive"`
 	Status         int     `json:"status"`
 	RankResetRatio float64 `json:"rank_reset_ratio"`
 }

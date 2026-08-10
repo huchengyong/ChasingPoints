@@ -97,6 +97,13 @@ WSTSync:
   HotLookbackDays: 2
   HotLookaheadDays: 7
 
+SeasonLifecycle:
+  Enabled: false
+  AnchorDate: ""
+  InitialNumber: 1
+  CycleMonths: 1
+  Timezone: Asia/Shanghai
+
 Log:
   Encoding: plain
   Mode: console

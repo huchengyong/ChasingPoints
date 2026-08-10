@@ -193,6 +193,21 @@ func (m *UserAchievementModel) FindUnlockedByUserIdBetween(userId int64, startDa
 	return list, err
 }
 
+func (m *UserAchievementModel) FindUnlockedByUserIdBetweenHalfOpen(userId int64, startDate, endExclusive time.Time, limit int) ([]UserAchievement, error) {
+	var list []UserAchievement
+	query := m.db.Where(
+		"user_id = ? AND unlocked = 1 AND unlocked_at IS NOT NULL AND unlocked_at >= ? AND unlocked_at < ?",
+		userId,
+		startDate,
+		endExclusive,
+	).Order("unlocked_at DESC, id DESC")
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	err := query.Find(&list).Error
+	return list, err
+}
+
 func (m *UserAchievementModel) FindUnlockedBySource(userId int64, sourceType string, sourceId int64) ([]UserAchievement, error) {
 	var list []UserAchievement
 	err := m.db.Where(
@@ -410,6 +425,23 @@ func (m *AchievementProgressEventModel) ListAllForCareerRebuild() ([]Achievement
 	var list []AchievementProgressEvent
 	err := m.db.Order("occurred_at ASC, id ASC").Find(&list).Error
 	return list, err
+}
+
+func (m *AchievementProgressEventModel) CountUsersBetween(startAt, endExclusive time.Time) (int64, int64, error) {
+	query := m.db.Model(&AchievementProgressEvent{}).
+		Where("occurred_at >= ? AND occurred_at < ?", startAt, endExclusive)
+	var events int64
+	if err := query.Count(&events).Error; err != nil {
+		return 0, 0, err
+	}
+	var users int64
+	if err := m.db.Model(&AchievementProgressEvent{}).
+		Where("occurred_at >= ? AND occurred_at < ?", startAt, endExclusive).
+		Distinct("user_id").
+		Count(&users).Error; err != nil {
+		return 0, 0, err
+	}
+	return events, users, nil
 }
 
 func (m *AchievementProgressEventModel) FindBySourceMetric(userId int64, sourceType string, sourceId int64, metricKey string) (*AchievementProgressEvent, error) {

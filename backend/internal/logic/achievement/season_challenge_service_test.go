@@ -67,7 +67,11 @@ func TestSeasonChallengeServiceAggregatesBySeasonUserAndGameType(t *testing.T) {
 	service, ctx, _ := newSeasonChallengeTestService(t)
 	season := testSeason(3)
 	inside := season.StartDate.Add(24 * time.Hour)
-	after := seasonChallengeEndExclusive(season.EndDate).Add(time.Hour)
+	_, endExclusive, err := service.seasonBounds(&season)
+	if err != nil {
+		t.Fatalf("resolve season bounds: %v", err)
+	}
+	after := endExclusive.Add(time.Hour)
 
 	events := []*model.AchievementProgressEvent{
 		model.NewAchievementProgressEvent(10, SourceTypeMatch, 1, 3, MetricMatchesTotal, 12, inside),
@@ -96,6 +100,30 @@ func TestSeasonChallengeServiceAggregatesBySeasonUserAndGameType(t *testing.T) {
 	}
 	if byKey[SeasonChallengeTournamentKey].Progress != 1 || !byKey[SeasonChallengeTournamentKey].Completed {
 		t.Fatalf("unexpected tournament challenge: %+v", byKey[SeasonChallengeTournamentKey])
+	}
+}
+
+func TestSeasonChallengeServiceUsesEndExclusiveBoundary(t *testing.T) {
+	service, ctx, _ := newSeasonChallengeTestService(t)
+	season := testSeason(3)
+	_, endExclusive, err := service.seasonBounds(&season)
+	if err != nil {
+		t.Fatalf("resolve season bounds: %v", err)
+	}
+	for _, event := range []*model.AchievementProgressEvent{
+		model.NewAchievementProgressEvent(10, SourceTypeMatch, 100, 3, MetricMatchesTotal, 1, endExclusive.Add(-time.Second)),
+		model.NewAchievementProgressEvent(10, SourceTypeMatch, 101, 3, MetricMatchesTotal, 99, endExclusive),
+	} {
+		if _, err := ctx.AchievementProgressEventModel.CreateIfAbsent(event); err != nil {
+			t.Fatalf("seed boundary event: %v", err)
+		}
+	}
+	progress, err := service.GetProgress(10, &season, 3)
+	if err != nil {
+		t.Fatalf("get boundary progress: %v", err)
+	}
+	if progress[0].Progress != 1 {
+		t.Fatalf("only end-date event before the next boundary may count: %+v", progress)
 	}
 }
 
