@@ -23,7 +23,7 @@ func NewLikePostLogic(ctx context.Context, svcCtx *svc.ServiceContext) *LikePost
 	return &LikePostLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

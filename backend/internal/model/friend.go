@@ -45,6 +45,35 @@ func (FriendBlacklist) TableName() string {
 	return "friend_blacklists"
 }
 
+type FriendListProfile struct {
+	Id        int64     `gorm:"column:id"`
+	UserId    int64     `gorm:"column:user_id"`
+	Nickname  string    `gorm:"column:nickname"`
+	Avatar    string    `gorm:"column:avatar"`
+	RankLevel int       `gorm:"column:rank_level"`
+	RankName  string    `gorm:"column:rank_name"`
+	CreatedAt time.Time `gorm:"column:created_at"`
+}
+
+type FriendRequestProfile struct {
+	Id         int64     `gorm:"column:id"`
+	FromUserId int64     `gorm:"column:from_user_id"`
+	Nickname   string    `gorm:"column:nickname"`
+	Avatar     string    `gorm:"column:avatar"`
+	Message    string    `gorm:"column:message"`
+	Status     int       `gorm:"column:status"`
+	CreatedAt  time.Time `gorm:"column:created_at"`
+}
+
+type SearchUserProfile struct {
+	UserId            int64  `gorm:"column:user_id"`
+	Nickname          string `gorm:"column:nickname"`
+	Avatar            string `gorm:"column:avatar"`
+	RankName          string `gorm:"column:rank_name"`
+	IsFriend          bool   `gorm:"column:is_friend"`
+	HasPendingRequest bool   `gorm:"column:has_pending_request"`
+}
+
 type FriendModel struct {
 	db *gorm.DB
 }
@@ -92,6 +121,55 @@ func (m *FriendModel) GetFriendList(userId int64, page, pageSize int) ([]Friend,
 
 	var list []Friend
 	err := query.Order("created_at DESC, id DESC").Offset(offset).Limit(pageSize).Find(&list).Error
+	return list, total, err
+}
+
+func (m *FriendModel) ListFriendProfiles(userId int64, limit int) ([]FriendListProfile, error) {
+	if limit <= 0 {
+		limit = 30
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	var list []FriendListProfile
+	err := m.db.Table("friends AS f").
+		Select(`f.id, f.friend_id AS user_id, f.created_at, u.nickname, u.avatar,
+			COALESCE(r.rank_level, 1) AS rank_level, COALESCE(c.name, '') AS rank_name`).
+		Joins("JOIN users AS u ON u.id = f.friend_id").
+		Joins("LEFT JOIN user_ranking AS r ON r.user_id = f.friend_id AND r.game_type = ?", defaultRankingGameType).
+		Joins("LEFT JOIN rank_config AS c ON c.level = COALESCE(r.rank_level, 1)").
+		Where("f.user_id = ? AND f.status = 1", userId).
+		Order("f.created_at DESC, f.id DESC").
+		Limit(limit).
+		Scan(&list).Error
+	return list, err
+}
+
+func (m *FriendModel) GetFriendListWithProfiles(userId int64, page, pageSize int) ([]FriendListProfile, int64, error) {
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	offset := (page - 1) * pageSize
+
+	var total int64
+	if err := m.db.Model(&Friend{}).Where("user_id = ? AND status = 1", userId).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var list []FriendListProfile
+	err := m.db.Table("friends AS f").
+		Select(`f.id, f.friend_id AS user_id, f.created_at, u.nickname, u.avatar,
+			COALESCE(r.rank_level, 1) AS rank_level, COALESCE(c.name, '') AS rank_name`).
+		Joins("JOIN users AS u ON u.id = f.friend_id").
+		Joins("LEFT JOIN user_ranking AS r ON r.user_id = f.friend_id AND r.game_type = ?", defaultRankingGameType).
+		Joins("LEFT JOIN rank_config AS c ON c.level = COALESCE(r.rank_level, 1)").
+		Where("f.user_id = ? AND f.status = 1", userId).
+		Order("f.created_at DESC, f.id DESC").
+		Offset(offset).
+		Limit(pageSize).
+		Scan(&list).Error
 	return list, total, err
 }
 
@@ -170,12 +248,43 @@ func (m *FriendModel) BlacklistFriend(userId, blockedUserId int64) error {
 	})
 }
 
+func (m *FriendModel) GetPendingRequestCount(userId int64) (int64, error) {
+	var count int64
+	err := m.db.Model(&FriendRequest{}).
+		Where("to_user_id = ? AND status = 0", userId).
+		Count(&count).Error
+	return count, err
+}
+
 func (m *FriendModel) GetPendingRequests(userId int64) ([]FriendRequest, error) {
 	var list []FriendRequest
 	err := m.db.Where("to_user_id = ? AND status = 0", userId).
 		Order("created_at DESC, id DESC").
 		Find(&list).Error
 	return list, err
+}
+
+func (m *FriendModel) GetPendingRequestPageWithProfiles(userId int64, page, pageSize int) ([]FriendRequestProfile, int64, error) {
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	var total int64
+	if err := m.db.Model(&FriendRequest{}).Where("to_user_id = ? AND status = 0", userId).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var list []FriendRequestProfile
+	err := m.db.Table("friend_requests AS r").
+		Select("r.id, r.from_user_id, r.message, r.status, r.created_at, u.nickname, u.avatar").
+		Joins("JOIN users AS u ON u.id = r.from_user_id").
+		Where("r.to_user_id = ? AND r.status = 0", userId).
+		Order("r.created_at DESC, r.id DESC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Scan(&list).Error
+	return list, total, err
 }
 
 func (m *FriendModel) GetPendingRequestsBetweenUsers(userId1, userId2 int64) ([]FriendRequest, error) {
@@ -259,5 +368,34 @@ func (m *FriendModel) SearchUsers(searcherId int64, keyword string, limit int) (
 		Order("id DESC").
 		Limit(limit).
 		Find(&list).Error
+	return list, err
+}
+
+func (m *FriendModel) SearchUserProfiles(searcherId int64, keyword string, limit int) ([]SearchUserProfile, error) {
+	if keyword == "" {
+		return []SearchUserProfile{}, nil
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+	var list []SearchUserProfile
+	err := m.db.Table("users AS u").
+		Select(`u.id AS user_id, u.nickname, u.avatar, COALESCE(c.name, '') AS rank_name,
+			CASE WHEN EXISTS (SELECT 1 FROM friends AS f WHERE f.status = 1 AND ((f.user_id = ? AND f.friend_id = u.id) OR (f.user_id = u.id AND f.friend_id = ?))) THEN 1 ELSE 0 END AS is_friend,
+			CASE WHEN EXISTS (SELECT 1 FROM friend_requests AS p WHERE p.status = 0 AND ((p.from_user_id = ? AND p.to_user_id = u.id) OR (p.from_user_id = u.id AND p.to_user_id = ?))) THEN 1 ELSE 0 END AS has_pending_request`,
+			searcherId, searcherId, searcherId, searcherId).
+		Joins("LEFT JOIN user_ranking AS r ON r.user_id = u.id AND r.game_type = ?", defaultRankingGameType).
+		Joins("LEFT JOIN rank_config AS c ON c.level = COALESCE(r.rank_level, 1)").
+		Where("u.status = 1 AND u.id <> ?", searcherId).
+		Where("u.nickname LIKE ? OR u.phone = ?", "%"+keyword+"%", keyword).
+		Where(`NOT EXISTS (
+			SELECT 1
+			FROM friend_blacklists
+			WHERE (user_id = ? AND blocked_user_id = u.id)
+				OR (user_id = u.id AND blocked_user_id = ?)
+		)`, searcherId, searcherId).
+		Order("u.id DESC").
+		Limit(limit).
+		Scan(&list).Error
 	return list, err
 }

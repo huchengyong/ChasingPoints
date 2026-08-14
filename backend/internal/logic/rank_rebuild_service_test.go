@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"chasing_points/internal/model"
+	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 
 	"gorm.io/driver/sqlite"
@@ -60,6 +61,22 @@ func TestUpdateReplaySettlementStateOnlyAccumulatesPositiveDailyGain(t *testing.
 	}
 }
 
+func TestFindSeasonForTimeUsesCompletionBoundary(t *testing.T) {
+	location, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		t.Fatalf("load timezone: %v", err)
+	}
+	first := model.Season{Name: "S1", StartDate: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC), EndDate: time.Date(2026, 7, 31, 0, 0, 0, 0, time.UTC)}
+	second := model.Season{Name: "S2", StartDate: time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC), EndDate: time.Date(2026, 8, 31, 0, 0, 0, 0, time.UTC)}
+	_, boundary := seasonx.Bounds(&first, location)
+	if got := findSeasonForTime([]model.Season{first, second}, boundary.Add(-time.Second), location); got == nil || got.Name != "S1" {
+		t.Fatalf("last instant must stay in S1: %+v", got)
+	}
+	if got := findSeasonForTime([]model.Season{first, second}, boundary, location); got == nil || got.Name != "S2" {
+		t.Fatalf("boundary completion must enter S2: %+v", got)
+	}
+}
+
 func TestRankRebuildGrantsTraceableSeasonTitlesIdempotently(t *testing.T) {
 	svcCtx := newRankRebuildSeasonTitleTestSvc(t)
 	start := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
@@ -92,6 +109,10 @@ func TestRankRebuildGrantsTraceableSeasonTitlesIdempotently(t *testing.T) {
 		t.Fatalf("seed match: %v", err)
 	}
 	practiceResult := 1
+	winner := 1
+	if err := svcCtx.DB.Create(&model.MatchRound{MatchId: 9101, RoundNo: 1, Winner: &winner, WinType: "normal"}).Error; err != nil {
+		t.Fatalf("seed completed round: %v", err)
+	}
 	if err := svcCtx.MatchModel.Create(&model.Match{
 		Id:            9102,
 		UserId:        1001,
@@ -110,6 +131,27 @@ func TestRankRebuildGrantsTraceableSeasonTitlesIdempotently(t *testing.T) {
 		t.Fatalf("seed practice match: %v", err)
 	}
 
+	invalidOpponentID := int64(1003)
+	if err := svcCtx.MatchModel.Create(&model.Match{
+		Id:            9103,
+		UserId:        1001,
+		OpponentId:    &invalidOpponentID,
+		OpponentName:  "未完成对手",
+		GameType:      3,
+		MatchMode:     model.MatchModeRanked,
+		MyScore:       1,
+		OpponentScore: 0,
+		Status:        2,
+		Result:        &result,
+		MatchTime:     matchTime.Add(2 * time.Hour),
+		EndTime:       func() *time.Time { value := matchTime.Add(2 * time.Hour); return &value }(),
+	}); err != nil {
+		t.Fatalf("seed incomplete match: %v", err)
+	}
+	if err := svcCtx.DB.Create(&model.MatchRound{MatchId: 9103, RoundNo: 1, Winner: &winner, WinType: "start"}).Error; err != nil {
+		t.Fatalf("seed start round: %v", err)
+	}
+
 	summary, err := NewRankRebuildService(svcCtx).Rebuild(context.Background())
 	if err != nil {
 		t.Fatalf("rebuild ranks: %v", err)
@@ -122,6 +164,10 @@ func TestRankRebuildGrantsTraceableSeasonTitlesIdempotently(t *testing.T) {
 	}
 	assertSeasonRecordRank(t, svcCtx, 9001, 1001, 3, 1)
 	assertSeasonRecordRank(t, svcCtx, 9001, 1002, 3, 2)
+	invalidRecord, err := svcCtx.SeasonRecordModel.FindBySeasonAndUserAndGameType(9001, invalidOpponentID, 3)
+	if err != nil || invalidRecord != nil {
+		t.Fatalf("incomplete match must not produce season records: record=%+v err=%v", invalidRecord, err)
+	}
 	assertSeasonTitle(t, svcCtx, 1001, "S1中式八球赛季冠军", 9001, "S1")
 	assertSeasonTitle(t, svcCtx, 1002, "S1中式八球赛季亚军", 9001, "S1")
 

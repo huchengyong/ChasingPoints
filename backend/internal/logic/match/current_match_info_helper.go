@@ -9,6 +9,14 @@ import (
 )
 
 func buildCurrentMatchInfo(svcCtx *svc.ServiceContext, userId int64, match *model.Match) *types.CurrentMatchInfo {
+	return buildCurrentMatchInfoWithKnownUser(svcCtx, userId, match, nil)
+}
+
+func BuildCurrentMatchInfoWithKnownUser(svcCtx *svc.ServiceContext, userId int64, match *model.Match, knownUser *model.User) *types.CurrentMatchInfo {
+	return buildCurrentMatchInfoWithKnownUser(svcCtx, userId, match, knownUser)
+}
+
+func buildCurrentMatchInfoWithKnownUser(svcCtx *svc.ServiceContext, userId int64, match *model.Match, knownUser *model.User) *types.CurrentMatchInfo {
 	if match == nil {
 		return nil
 	}
@@ -42,7 +50,12 @@ func buildCurrentMatchInfo(svcCtx *svc.ServiceContext, userId int64, match *mode
 	if player2Name == "" {
 		player2Name = "玩家2"
 	}
-	if svcCtx != nil && svcCtx.UserModel != nil {
+	if knownUser != nil && knownUser.Id == match.UserId {
+		if knownUser.Nickname != "" {
+			player1Name = knownUser.Nickname
+		}
+		player1Avatar = knownUser.Avatar
+	} else if svcCtx != nil && svcCtx.UserModel != nil {
 		if player1, err := svcCtx.UserModel.FindById(match.UserId); err == nil && player1 != nil {
 			if player1.Nickname != "" {
 				player1Name = player1.Nickname
@@ -52,7 +65,12 @@ func buildCurrentMatchInfo(svcCtx *svc.ServiceContext, userId int64, match *mode
 	}
 	if match.OpponentId != nil {
 		player2Id = *match.OpponentId
-		if svcCtx != nil && svcCtx.UserModel != nil {
+		if knownUser != nil && knownUser.Id == *match.OpponentId {
+			if knownUser.Nickname != "" {
+				player2Name = knownUser.Nickname
+			}
+			player2Avatar = knownUser.Avatar
+		} else if svcCtx != nil && svcCtx.UserModel != nil {
 			if player2, err := svcCtx.UserModel.FindById(*match.OpponentId); err == nil && player2 != nil {
 				if player2.Nickname != "" {
 					player2Name = player2.Nickname
@@ -68,7 +86,10 @@ func buildCurrentMatchInfo(svcCtx *svc.ServiceContext, userId int64, match *mode
 	refereeAvatar := ""
 	refereeJoinedAt := ""
 
-	if capabilities.RefereeBound && svcCtx != nil && svcCtx.UserModel != nil {
+	if capabilities.RefereeBound && knownUser != nil && knownUser.Id == capabilities.RefereeUserId {
+		refereeName = knownUser.Nickname
+		refereeAvatar = knownUser.Avatar
+	} else if capabilities.RefereeBound && svcCtx != nil && svcCtx.UserModel != nil {
 		if referee, err := svcCtx.UserModel.FindById(capabilities.RefereeUserId); err == nil && referee != nil {
 			refereeName = referee.Nickname
 			refereeAvatar = referee.Avatar

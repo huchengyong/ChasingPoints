@@ -2,7 +2,9 @@ package match
 
 import (
 	"context"
+	"time"
 
+	"chasing_points/internal/requestctx"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -21,7 +23,7 @@ func NewGetCurrentMatchLogic(ctx context.Context, svcCtx *svc.ServiceContext) *G
 	return &GetCurrentMatchLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -46,12 +48,10 @@ func (l *GetCurrentMatchLogic) GetCurrentMatch() (resp *types.GetCurrentMatchRes
 			Match:   nil,
 		}, nil
 	}
-	if refreshed, expireErr := expireStaleFinishRequest(l.svcCtx, match); expireErr == nil && refreshed != nil {
-		match = refreshed
-	}
+	match = effectiveMatchForRead(match, time.Now())
 
 	return &types.GetCurrentMatchResp{
 		Success: true,
-		Match:   buildCurrentMatchInfo(l.svcCtx, userId, match),
+		Match:   BuildCurrentMatchInfoWithKnownUser(l.svcCtx, userId, match, requestctx.ActiveUser(l.ctx)),
 	}, nil
 }

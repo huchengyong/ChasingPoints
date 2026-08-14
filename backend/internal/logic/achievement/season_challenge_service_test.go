@@ -1,10 +1,13 @@
 package achievement
 
 import (
+	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"chasing_points/internal/model"
+	"chasing_points/internal/observability"
 	"chasing_points/internal/svc"
 
 	"gorm.io/driver/sqlite"
@@ -67,7 +70,11 @@ func TestSeasonChallengeServiceAggregatesBySeasonUserAndGameType(t *testing.T) {
 	service, ctx, _ := newSeasonChallengeTestService(t)
 	season := testSeason(3)
 	inside := season.StartDate.Add(24 * time.Hour)
-	after := seasonChallengeEndExclusive(season.EndDate).Add(time.Hour)
+	_, endExclusive, err := service.seasonBounds(&season)
+	if err != nil {
+		t.Fatalf("resolve season bounds: %v", err)
+	}
+	after := endExclusive.Add(time.Hour)
 
 	events := []*model.AchievementProgressEvent{
 		model.NewAchievementProgressEvent(10, SourceTypeMatch, 1, 3, MetricMatchesTotal, 12, inside),
@@ -96,6 +103,64 @@ func TestSeasonChallengeServiceAggregatesBySeasonUserAndGameType(t *testing.T) {
 	}
 	if byKey[SeasonChallengeTournamentKey].Progress != 1 || !byKey[SeasonChallengeTournamentKey].Completed {
 		t.Fatalf("unexpected tournament challenge: %+v", byKey[SeasonChallengeTournamentKey])
+	}
+}
+
+func TestSeasonChallengeServiceUsesEndExclusiveBoundary(t *testing.T) {
+	service, ctx, _ := newSeasonChallengeTestService(t)
+	season := testSeason(3)
+	_, endExclusive, err := service.seasonBounds(&season)
+	if err != nil {
+		t.Fatalf("resolve season bounds: %v", err)
+	}
+	for _, event := range []*model.AchievementProgressEvent{
+		model.NewAchievementProgressEvent(10, SourceTypeMatch, 100, 3, MetricMatchesTotal, 1, endExclusive.Add(-time.Second)),
+		model.NewAchievementProgressEvent(10, SourceTypeMatch, 101, 3, MetricMatchesTotal, 99, endExclusive),
+	} {
+		if _, err := ctx.AchievementProgressEventModel.CreateIfAbsent(event); err != nil {
+			t.Fatalf("seed boundary event: %v", err)
+		}
+	}
+	progress, err := service.GetProgress(10, &season, 3)
+	if err != nil {
+		t.Fatalf("get boundary progress: %v", err)
+	}
+	if progress[0].Progress != 1 {
+		t.Fatalf("only end-date event before the next boundary may count: %+v", progress)
+	}
+}
+
+func TestSeasonChallengeArchiveUsesBoundedGroupedQueries(t *testing.T) {
+	for _, testCase := range []struct {
+		pairs       int
+		wantQueries int64
+	}{{pairs: 1, wantQueries: 2}, {pairs: 100, wantQueries: 2}, {pairs: 1200, wantQueries: 6}} {
+		t.Run(fmt.Sprintf("pairs_%d", testCase.pairs), func(t *testing.T) {
+			_, _, db := newSeasonChallengeTestService(t)
+			season := testSeason(3)
+			events := make([]model.AchievementProgressEvent, 0, testCase.pairs)
+			for index := 1; index <= testCase.pairs; index++ {
+				events = append(events, *model.NewAchievementProgressEvent(int64(index), SourceTypeMatch, int64(index), 3, MetricMatchesTotal, 1, season.StartDate.Add(time.Hour)))
+			}
+			if err := db.CreateInBatches(&events, 200).Error; err != nil {
+				t.Fatalf("seed archive events: %v", err)
+			}
+			metrics := observability.NewRequestMetrics(time.Now())
+			requestDB := db.Session(&gorm.Session{Logger: observability.NewGormLogger(time.Hour)}).
+				WithContext(observability.WithRequestMetrics(context.Background(), metrics))
+			requestSvc := &svc.ServiceContext{
+				DB:                            requestDB,
+				AchievementProgressEventModel: model.NewAchievementProgressEventModel(requestDB),
+				SeasonChallengeSnapshotModel:  model.NewSeasonChallengeSnapshotModel(requestDB),
+			}
+			snapshots, err := NewSeasonChallengeService(requestSvc).BuildSnapshotsWithTx(nil, &season, season.EndDate.AddDate(0, 0, 1))
+			if err != nil || len(snapshots) != testCase.pairs*3 {
+				t.Fatalf("build grouped snapshots: count=%d err=%v", len(snapshots), err)
+			}
+			if sqlCount := metrics.Snapshot().SQLCount; sqlCount != testCase.wantQueries {
+				t.Fatalf("unexpected grouped archive query count: got=%d want=%d", sqlCount, testCase.wantQueries)
+			}
+		})
 	}
 }
 

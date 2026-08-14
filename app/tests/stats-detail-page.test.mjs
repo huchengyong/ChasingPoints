@@ -18,14 +18,14 @@ const statsDetailSource = readFileSync(
 
 test('stats detail page redirects guests straight to login instead of rendering a login-required placeholder', () => {
   assert.doesNotMatch(statsDetailSource, /login-required/)
-  assert.match(statsDetailSource, /const token = uni\.getStorageSync\('token'\)/)
-  assert.match(statsDetailSource, /if \(!token\) \{\s*goLogin\(\)\s*return/s)
+  assert.match(statsDetailSource, /const userStore = useUserStore\(\)/)
+  assert.match(statsDetailSource, /if \(!userStore\.isLoggedIn \|\| !userStore\.userId\) \{\s*goLogin\(\)\s*return/s)
   assert.match(statsDetailSource, /const goLogin = \(\) => \{\s*uni\.navigateTo\(\{ url: '\/pages\/login\/login' \}\)/s)
 })
 
 test('stats detail page only loads stats after passing the login guard', () => {
   assert.match(statsDetailSource, /onLoad\(\(options\) => \{[\s\S]*currentGame\.value = gameTypeKeyMap\[gameType\][\s\S]*\}\)\s*\n\s*\n\s*onShow/s)
-  assert.match(statsDetailSource, /onShow\([\s\S]*if \(!token\) \{\s*goLogin\(\)\s*return[\s\S]*loadAllStats\(\)/s)
+  assert.match(statsDetailSource, /onShow\([\s\S]*if \(!userStore\.isLoggedIn \|\| !userStore\.userId\) \{\s*goLogin\(\)\s*return[\s\S]*loadedStatsScopeVersion\.value !== userDataInvalidationStore\.versionOf\('stats'\)[\s\S]*loadAllStats\(\)/s)
   assert.doesNotMatch(statsDetailSource, /watch\(currentGame/)
 })
 
@@ -150,8 +150,10 @@ test('stats detail formats percent values from backend percent numbers', () => {
   assert.match(statsDetailSource, /{{ formatPercent\(tier\.win_rate\) }}%/)
 })
 
-test('stats detail requests opponent strength for the selected game type', () => {
-  assert.match(statsDetailSource, /getOpponentStrengthAnalysis\(\{ game_type: gameType \}\)/)
+test('stats detail requests one overview for the selected game type and filters loaded trends locally by month', () => {
+  assert.match(statsDetailSource, /getStatsOverview\(\{ game_type: gameType, trend_limit: 100 \}\)/)
+  assert.doesNotMatch(statsDetailSource, /getRecentTrend\(|getRankScoreTrend\(|getSingleHighScore\(|getMatchDurationStats\(|getOpponentStrengthAnalysis\(/)
+  assert.match(statsDetailSource, /const handleStatsMonthChange = \(offset\) => \{\s*selectedStatsMonthKey\.value = shiftMonthKey/s)
 })
 
 test('stats detail page exposes dark-mode styles for its main surfaces', () => {

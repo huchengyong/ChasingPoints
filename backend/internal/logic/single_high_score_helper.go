@@ -54,20 +54,49 @@ func buildSingleHighScoreRecords(candidates []singleHighScoreCandidate, limit in
 }
 
 func loadUserSingleHighScoreRecords(svcCtx *svc.ServiceContext, userId int64, gameType int, limit int) ([]types.SingleHighScoreRecord, error) {
+	if svcCtx == nil {
+		return []types.SingleHighScoreRecord{}, nil
+	}
+	if !svcCtx.CompetitiveReadModelsEnabled() {
+		return loadLegacyUserSingleHighScoreRecords(svcCtx, userId, gameType, limit)
+	}
+	if svcCtx.CompetitiveReadModel == nil {
+		return []types.SingleHighScoreRecord{}, nil
+	}
+	records, err := svcCtx.CompetitiveReadModel.ListParticipantHighScores(userId, gameType, limit)
+	if err != nil {
+		return nil, err
+	}
+	list := make([]types.SingleHighScoreRecord, 0, len(records))
+	for _, record := range records {
+		score := record.MatchHighScore
+		if record.GameType == 1 {
+			score = record.BestBreak
+		}
+		list = append(list, types.SingleHighScoreRecord{
+			MatchId:      record.MatchId,
+			Score:        score,
+			GameType:     record.GameType,
+			GameTypeName: GetGameTypeName(record.GameType),
+			OpponentName: record.OpponentName,
+			Date:         record.CompletedAt.Format("2006-01-02"),
+		})
+	}
+	return list, nil
+}
+
+func loadLegacyUserSingleHighScoreRecords(svcCtx *svc.ServiceContext, userId int64, gameType int, limit int) ([]types.SingleHighScoreRecord, error) {
 	if svcCtx == nil || svcCtx.MatchModel == nil {
 		return []types.SingleHighScoreRecord{}, nil
 	}
-
 	matches, err := svcCtx.MatchModel.ListCompletedWithPerspectiveByUserId(userId, gameType)
 	if err != nil {
 		return nil, err
 	}
-
 	matchIDs := make([]int64, 0, len(matches))
 	for _, match := range matches {
 		matchIDs = append(matchIDs, match.Id)
 	}
-
 	actionMap := map[int64][]model.MatchAction{}
 	if len(matchIDs) > 0 {
 		actions, err := svcCtx.MatchModel.ListActiveActionsByMatchIDs(matchIDs)
@@ -78,7 +107,6 @@ func loadUserSingleHighScoreRecords(svcCtx *svc.ServiceContext, userId int64, ga
 			actionMap[action.MatchId] = append(actionMap[action.MatchId], action)
 		}
 	}
-
 	candidates := make([]singleHighScoreCandidate, 0, len(matches))
 	for _, match := range matches {
 		viewerActor := 1
@@ -95,7 +123,6 @@ func loadUserSingleHighScoreRecords(svcCtx *svc.ServiceContext, userId int64, ga
 			Actions:      actionMap[match.Id],
 		})
 	}
-
 	return buildSingleHighScoreRecords(candidates, limit), nil
 }
 
@@ -104,14 +131,27 @@ func LoadUserSingleHighScoreRecords(svcCtx *svc.ServiceContext, userId int64, ga
 }
 
 func loadUserMaxSingleScore(svcCtx *svc.ServiceContext, userId int64, gameType int) (int, error) {
-	records, err := loadUserSingleHighScoreRecords(svcCtx, userId, gameType, 1)
-	if err != nil {
-		return 0, err
-	}
-	if len(records) == 0 {
+	if svcCtx == nil {
 		return 0, nil
 	}
-	return records[0].Score, nil
+	if !svcCtx.CompetitiveReadModelsEnabled() {
+		records, err := loadLegacyUserSingleHighScoreRecords(svcCtx, userId, gameType, 1)
+		if err != nil || len(records) == 0 {
+			return 0, err
+		}
+		return records[0].Score, nil
+	}
+	if svcCtx.CompetitiveReadModel == nil {
+		return 0, nil
+	}
+	stats, err := svcCtx.CompetitiveReadModel.FindStats(userId, gameType)
+	if err != nil || stats == nil {
+		return 0, err
+	}
+	if gameType == 1 {
+		return stats.HighestBreak, nil
+	}
+	return stats.HighestScore, nil
 }
 
 func LoadUserMaxSingleScore(svcCtx *svc.ServiceContext, userId int64, gameType int) (int, error) {

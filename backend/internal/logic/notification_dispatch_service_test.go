@@ -1,9 +1,12 @@
 package logic
 
 import (
+	"encoding/json"
 	"testing"
+	"time"
 
 	"chasing_points/internal/model"
+	"chasing_points/internal/pkg/ws"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/testsupport"
 	"chasing_points/internal/types"
@@ -65,7 +68,7 @@ func TestNotificationDispatchSkipsDisabledType(t *testing.T) {
 	service.pushSender = func(pushClientId, title, content string, data map[string]interface{}) {
 		pushCount++
 	}
-	service.wsSender = func(userId int64, category string) {
+	service.wsSender = func(userId int64, category string, unreadCount int) {
 		wsCount++
 	}
 
@@ -106,10 +109,10 @@ func TestNotificationDispatchCreatesRowAndTriggersPushAndWSWhenEnabled(t *testin
 			t.Fatalf("unexpected push token: %s", pushClientId)
 		}
 	}
-	service.wsSender = func(userId int64, category string) {
+	service.wsSender = func(userId int64, category string, unreadCount int) {
 		wsCount++
-		if userId != 2002 || category != "match_result" {
-			t.Fatalf("unexpected ws payload user=%d category=%s", userId, category)
+		if userId != 2002 || category != "match_result" || unreadCount != 1 {
+			t.Fatalf("unexpected ws payload user=%d category=%s unread=%d", userId, category, unreadCount)
 		}
 	}
 
@@ -145,6 +148,40 @@ func TestNotificationDispatchCreatesRowAndTriggersPushAndWSWhenEnabled(t *testin
 	}
 }
 
+func TestNotificationDispatchDefaultWSSenderCarriesLatestUnreadCount(t *testing.T) {
+	svcCtx := newNotificationDispatchTestSvc(t)
+	seedNotificationDispatchUser(t, svcCtx, 2004, "")
+	previousHub := ws.GlobalHub
+	hub := ws.NewHub()
+	ws.GlobalHub = hub
+	t.Cleanup(func() { ws.GlobalHub = previousHub })
+
+	if err := NewNotificationDispatchService(svcCtx).Dispatch(NotificationDispatchInput{
+		UserId: 2004, Type: "challenge", Title: "挑战提醒", Content: "收到挑战", WSCategory: "challenge",
+	}); err != nil {
+		t.Fatalf("dispatch notification: %v", err)
+	}
+
+	select {
+	case message := <-hub.SendUser:
+		var payload struct {
+			Type string `json:"type"`
+			Data struct {
+				Category    string `json:"category"`
+				UnreadCount int    `json:"unread_count"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(message.Message, &payload); err != nil {
+			t.Fatalf("decode ws message: %v", err)
+		}
+		if payload.Type != "notification_update" || payload.Data.Category != "challenge" || payload.Data.UnreadCount != 1 {
+			t.Fatalf("unexpected notification ws payload: %+v", payload)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("expected notification ws update")
+	}
+}
+
 func TestNotificationDispatchDedupeKeySuppressesDuplicateRowPushAndWS(t *testing.T) {
 	svcCtx := newNotificationDispatchTestSvc(t)
 	seedNotificationDispatchUser(t, svcCtx, 2003, "push-token")
@@ -153,7 +190,7 @@ func TestNotificationDispatchDedupeKeySuppressesDuplicateRowPushAndWS(t *testing
 	wsCount := 0
 	service := NewNotificationDispatchService(svcCtx)
 	service.pushSender = func(string, string, string, map[string]interface{}) { pushCount++ }
-	service.wsSender = func(int64, string) { wsCount++ }
+	service.wsSender = func(int64, string, int) { wsCount++ }
 	input := NotificationDispatchInput{
 		UserId: 2003, Type: "match_result", DedupeKey: "match:9002",
 		Title: "对局已结束", Content: "结果：胜利（2:0）", WSCategory: "match_result",

@@ -21,7 +21,7 @@ func NewSearchOpponentLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Se
 	return &SearchOpponentLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

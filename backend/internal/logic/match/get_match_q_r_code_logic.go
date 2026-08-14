@@ -23,7 +23,7 @@ func NewGetMatchQRCodeLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Ge
 	return &GetMatchQRCodeLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

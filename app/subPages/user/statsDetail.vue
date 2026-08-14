@@ -224,17 +224,12 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import {
-	getStatsByGameType,
-	getRecentTrend,
-	getRankScoreTrend,
-	getSingleHighScore,
-	getMatchDurationStats,
-	getOpponentStrengthAnalysis
-} from '@/api/stats.js'
+import { getStatsOverview } from '@/api/stats.js'
 import { GAME_TYPE_KEY_MAP, GAME_TYPE_STATS_TABS, GAME_TYPE_VALUE_MAP } from '@/utils/game-types.js'
 import { formatMonthKey } from '@/utils/format.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { useUserDataInvalidationStore } from '@/store/userDataInvalidation.js'
+import { useUserStore } from '@/store/user.js'
 import {
 	buildRankDeltaChartViewModel,
 	buildStatsTrendCalendarViewModel,
@@ -246,10 +241,14 @@ import {
 } from '@/utils/stats-detail.js'
 
 const { isDarkMode } = usePageTheme()
+const userStore = useUserStore()
+const userDataInvalidationStore = useUserDataInvalidationStore()
 
 const isStatsFetching = ref(true)
 const hasLoadedOnce = ref(false)
 const latestStatsRequestId = ref(0)
+const loadedIdentityKey = ref('')
+const loadedStatsScopeVersion = ref(0)
 const currentGame = ref('chinese_eight')
 const selectedStatsMonthKey = ref(formatMonthKey(new Date()))
 
@@ -269,6 +268,16 @@ const loadingMode = computed(() => resolveStatsDetailLoadingMode({
 }))
 const isInitialLoading = computed(() => loadingMode.value === 'initial')
 const isStatsRefreshing = computed(() => loadingMode.value === 'refreshing')
+
+const currentReadIdentity = () => ({
+	userId: userStore.userId,
+	authGeneration: userStore.authGeneration
+})
+
+const currentIdentityKey = () => {
+	const identity = currentReadIdentity()
+	return `${identity.userId}:${identity.authGeneration}`
+}
 
 const currentGameStats = computed(() => {
 	return gameTypeStats.value[currentGame.value] || {}
@@ -365,54 +374,54 @@ const normalizeHighScoreStats = (payload) => {
 
 const loadAllStats = async () => {
 	const requestId = latestStatsRequestId.value + 1
+	const requestIdentityKey = currentIdentityKey()
+	const requestScopeVersion = userDataInvalidationStore.versionOf('stats')
 	latestStatsRequestId.value = requestId
+	if (loadedIdentityKey.value && loadedIdentityKey.value !== requestIdentityKey) {
+		gameTypeStats.value = {}
+		trendData.value = []
+		rankData.value = []
+		highScore.value = {}
+		durationData.value = {}
+		opponentData.value = []
+		hasLoadedOnce.value = false
+	}
 	isStatsFetching.value = true
 	const gameType = gameTypeValueMap[currentGame.value] || 3
 	try {
-		const results = await Promise.allSettled([
-			getStatsByGameType(),
-			getRecentTrend({ limit: 300, game_type: gameType }),
-			getRankScoreTrend({ limit: 300, game_type: gameType }),
-			getSingleHighScore({ game_type: gameType }),
-			getMatchDurationStats({ game_type: gameType }),
-			getOpponentStrengthAnalysis({ game_type: gameType })
-		])
-
-		if (!shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value })) {
+		const data = await getStatsOverview({ game_type: gameType, trend_limit: 100 })
+		if (!shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value }) || currentIdentityKey() !== requestIdentityKey || !data?.success) {
 			return
 		}
 
-		if (results[0].status === 'fulfilled') {
-			const data = results[0].value
-			gameTypeStats.value = normalizeGameTypeStats(data)
+		const availability = data.availability || {}
+		if (availability.by_game_type !== false) {
+			gameTypeStats.value = normalizeGameTypeStats(data.by_game_type)
 		}
-		if (results[1].status === 'fulfilled') {
-			const data = results[1].value
-			trendData.value = data.list || data.matches || data || []
+		if (availability.recent_trend !== false) {
+			trendData.value = data.recent_trend || []
 		}
-		if (results[2].status === 'fulfilled') {
-			const data = results[2].value
-			rankData.value = data?.list ? data : (Array.isArray(data) ? data : [])
+		if (availability.rank_score_trend !== false) {
+			rankData.value = data.rank_score_trend || []
 		}
-		if (results[3].status === 'fulfilled') {
-			highScore.value = normalizeHighScoreStats(results[3].value)
+		if (availability.single_high_scores !== false) {
+			highScore.value = normalizeHighScoreStats({ list: data.single_high_scores })
 		}
-		if (results[4].status === 'fulfilled') {
-			durationData.value = normalizeDurationStats(results[4].value)
+		if (availability.duration !== false) {
+			durationData.value = normalizeDurationStats(data.duration)
 		}
-		if (results[5].status === 'fulfilled') {
-			opponentData.value = normalizeOpponentStrengthStats(results[5].value)
+		if (availability.opponent_strength !== false) {
+			opponentData.value = normalizeOpponentStrengthStats(data.opponent_strength)
 		}
-
 		hasLoadedOnce.value = true
+		loadedIdentityKey.value = requestIdentityKey
+		loadedStatsScopeVersion.value = requestScopeVersion
 	} catch (e) {
-		if (!shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value })) {
-			return
+		if (shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value }) && currentIdentityKey() === requestIdentityKey) {
+			console.error('加载统计数据失败:', e)
 		}
-
-		console.error('加载统计数据失败:', e)
 	} finally {
-		if (shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value })) {
+		if (shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value }) && currentIdentityKey() === requestIdentityKey) {
 			isStatsFetching.value = false
 		}
 	}
@@ -426,13 +435,14 @@ onLoad((options) => {
 })
 
 onShow(() => {
-	const token = uni.getStorageSync('token')
-	if (!token) {
+	if (!userStore.isLoggedIn || !userStore.userId) {
 		goLogin()
 		return
 	}
 
-	loadAllStats()
+	if (!hasLoadedOnce.value || loadedIdentityKey.value !== currentIdentityKey() || loadedStatsScopeVersion.value !== userDataInvalidationStore.versionOf('stats')) {
+		loadAllStats()
+	}
 })
 
 const handleGameChange = (gameKey) => {
@@ -453,7 +463,7 @@ const goLogin = () => {
 <style lang="scss" scoped>
 .stats-page {
 	min-height: 100vh;
-	background: #f1f5f9;
+	background: #FAF8F2;
 	padding-bottom: 60rpx;
 	padding-top: 24rpx;
 	box-sizing: border-box;
@@ -534,7 +544,7 @@ const goLogin = () => {
 	.loading-text {
 		margin-top: 16rpx;
 		font-size: 28rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 	}
 }
 
@@ -547,7 +557,7 @@ const goLogin = () => {
 	.section-title {
 		font-size: 30rpx;
 		font-weight: 700;
-		color: #1e293b;
+		color: #231C0B;
 		margin-bottom: 20rpx;
 		display: block;
 	}
@@ -577,8 +587,8 @@ const goLogin = () => {
 		line-height: 40rpx;
 		text-align: center;
 		border-radius: 22rpx;
-		background: #f1f5f9;
-		color: #64748b;
+		background: #FAF8F2;
+		color: #6E6242;
 		font-size: 30rpx;
 		font-weight: 700;
 	}
@@ -587,7 +597,7 @@ const goLogin = () => {
 		min-width: 132rpx;
 		text-align: center;
 		font-size: 24rpx;
-		color: #64748b;
+		color: #6E6242;
 	}
 }
 
@@ -603,9 +613,9 @@ const goLogin = () => {
 		position: relative;
 		padding: 12rpx 0;
 		border-radius: 10rpx;
-		background: #f1f5f9;
+		background: #FAF8F2;
 		font-size: 26rpx;
-		color: #64748b;
+		color: #6E6242;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -646,7 +656,7 @@ const goLogin = () => {
 		.stat-value {
 			font-size: 40rpx;
 			font-weight: 700;
-			color: #1e293b;
+			color: #231C0B;
 
 			&.highlight { color: #C69200; }
 			&.green { color: #22c55e; }
@@ -654,7 +664,7 @@ const goLogin = () => {
 		}
 		.stat-label {
 			font-size: 24rpx;
-			color: #94a3b8;
+			color: #9A8C67;
 			margin-top: 4rpx;
 		}
 	}
@@ -678,7 +688,7 @@ const goLogin = () => {
 	margin-bottom: 16rpx;
 	.trend-rate {
 		font-size: 26rpx;
-		color: #64748b;
+		color: #6E6242;
 	}
 }
 
@@ -688,7 +698,7 @@ const goLogin = () => {
 		grid-template-columns: repeat(7, 1fr);
 		margin-bottom: 8rpx;
 		font-size: 22rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 		text-align: center;
 	}
 
@@ -701,7 +711,7 @@ const goLogin = () => {
 	.calendar-cell {
 		min-height: 78rpx;
 		border-radius: 10rpx;
-		background: #f8fafc;
+		background: #FAF8F2;
 		padding: 6rpx;
 		box-sizing: border-box;
 		opacity: 1;
@@ -718,7 +728,7 @@ const goLogin = () => {
 			display: block;
 			font-size: 20rpx;
 			line-height: 22rpx;
-			color: #64748b;
+			color: #6E6242;
 		}
 
 		.calendar-results {
@@ -734,7 +744,7 @@ const goLogin = () => {
 			gap: 3rpx;
 			font-size: 18rpx;
 			line-height: 20rpx;
-			color: #475569;
+			color: #6E6242;
 		}
 
 		.calendar-dot {
@@ -759,7 +769,7 @@ const goLogin = () => {
 		align-items: center;
 		gap: 8rpx;
 		font-size: 22rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 
 		.dot-sample {
 			width: 16rpx;
@@ -789,7 +799,7 @@ const goLogin = () => {
 		}
 		.rank-label {
 			font-size: 24rpx;
-			color: #94a3b8;
+			color: #9A8C67;
 		}
 	}
 
@@ -806,14 +816,14 @@ const goLogin = () => {
 			.meta-value {
 				font-size: 32rpx;
 				font-weight: 600;
-				color: #1e293b;
+				color: #231C0B;
 
 				&.up { color: #22c55e; }
 				&.down { color: #ef4444; }
 			}
 			.meta-label {
 				font-size: 22rpx;
-				color: #94a3b8;
+				color: #9A8C67;
 			}
 		}
 	}
@@ -825,7 +835,7 @@ const goLogin = () => {
 		height: 220rpx;
 		display: flex;
 		align-items: stretch;
-		background: #f8fafc;
+		background: #FAF8F2;
 		border-radius: 12rpx;
 		padding: 12rpx 8rpx;
 		box-sizing: border-box;
@@ -838,7 +848,7 @@ const goLogin = () => {
 		right: 8rpx;
 		top: 50%;
 		height: 1rpx;
-		background: #e2e8f0;
+		background: #E9E2CF;
 	}
 
 	.rank-chart-day {
@@ -886,7 +896,7 @@ const goLogin = () => {
 			color: transparent;
 
 			&.visible {
-				color: #94a3b8;
+				color: #9A8C67;
 			}
 		}
 	}
@@ -909,13 +919,13 @@ const goLogin = () => {
 		}
 		.score-label {
 			font-size: 24rpx;
-			color: #94a3b8;
+			color: #9A8C67;
 		}
 	}
 	.score-sub {
 		.score-month {
 			font-size: 26rpx;
-			color: #64748b;
+			color: #6E6242;
 		}
 	}
 }
@@ -932,14 +942,14 @@ const goLogin = () => {
 		.duration-value {
 			font-size: 36rpx;
 			font-weight: 700;
-			color: #1e293b;
+			color: #231C0B;
 
 			&.green { color: #22c55e; }
 			&.amber { color: #f59e0b; }
 		}
 		.duration-label {
 			font-size: 24rpx;
-			color: #94a3b8;
+			color: #9A8C67;
 			margin-top: 4rpx;
 		}
 	}
@@ -955,14 +965,14 @@ const goLogin = () => {
 		.tier-name {
 			width: 120rpx;
 			font-size: 24rpx;
-			color: #64748b;
+			color: #6E6242;
 			flex-shrink: 0;
 		}
 
 		.tier-bar {
 			flex: 1;
 			height: 20rpx;
-			background: #f1f5f9;
+			background: #FAF8F2;
 			border-radius: 10rpx;
 			overflow: hidden;
 
@@ -990,6 +1000,6 @@ const goLogin = () => {
 	text-align: center;
 	padding: 32rpx 0;
 	font-size: 26rpx;
-	color: #94a3b8;
+	color: #9A8C67;
 }
 </style>

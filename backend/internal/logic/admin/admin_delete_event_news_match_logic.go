@@ -21,7 +21,7 @@ func NewAdminDeleteEventNewsMatchLogic(ctx context.Context, svcCtx *svc.ServiceC
 	return &AdminDeleteEventNewsMatchLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

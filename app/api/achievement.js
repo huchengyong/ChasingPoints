@@ -12,6 +12,10 @@ export const getAchievementList = (params = {}) => {
   return get('/api/achievement/list', params)
 }
 
+export const getAchievementDetail = (params = {}) => {
+  return get('/api/achievement/detail', params)
+}
+
 /**
  * 获取荣誉墙聚合数据
  * @param {Object} params { user_id, game_type, history_season_id, history_page, history_page_size }

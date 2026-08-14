@@ -13,7 +13,14 @@ func buildMatchLastAction(svcCtx *svc.ServiceContext, userId int64, match *model
 		return nil
 	}
 	action, err := svcCtx.MatchModel.GetLastAction(match.Id)
-	if err != nil || action == nil {
+	if err != nil {
+		return nil
+	}
+	return buildMatchLastActionFromAction(userId, match, action)
+}
+
+func buildMatchLastActionFromAction(userId int64, match *model.Match, action *model.MatchAction) *types.MatchLastAction {
+	if match == nil || action == nil {
 		return nil
 	}
 	result := &types.MatchLastAction{

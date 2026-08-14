@@ -124,14 +124,21 @@ func (s *MemberGrowthService) BuildSnapshot(user *model.User, profile *model.Mem
 }
 
 func (s *MemberGrowthService) GetSnapshotForUser(userId int64) (MemberGrowthSnapshot, error) {
-	if s == nil || s.svcCtx == nil || s.svcCtx.UserModel == nil || s.svcCtx.MemberGrowthProfileModel == nil {
+	if s == nil || s.svcCtx == nil || s.svcCtx.UserModel == nil {
 		return MemberGrowthSnapshot{}, errors.New("member growth service not ready")
 	}
 	user, err := s.svcCtx.UserModel.FindById(userId)
 	if err != nil {
 		return MemberGrowthSnapshot{}, err
 	}
-	profile, err := s.svcCtx.MemberGrowthProfileModel.FindByUserId(userId)
+	return s.GetSnapshot(user)
+}
+
+func (s *MemberGrowthService) GetSnapshot(user *model.User) (MemberGrowthSnapshot, error) {
+	if s == nil || s.svcCtx == nil || s.svcCtx.MemberGrowthProfileModel == nil || user == nil {
+		return MemberGrowthSnapshot{}, errors.New("member growth service not ready")
+	}
+	profile, err := s.svcCtx.MemberGrowthProfileModel.FindByUserId(user.Id)
 	if err != nil {
 		return MemberGrowthSnapshot{}, err
 	}

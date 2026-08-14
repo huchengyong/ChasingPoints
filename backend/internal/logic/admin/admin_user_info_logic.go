@@ -21,7 +21,7 @@ func NewAdminUserInfoLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Adm
 	return &AdminUserInfoLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

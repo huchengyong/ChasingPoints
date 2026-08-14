@@ -360,6 +360,38 @@ func TestSnookerRulesV2MigrationUsesCompatibleConditionalColumns(t *testing.T) {
 	}
 }
 
+func TestContinuousSeasonLifecycleMigrationProtectsUniqueStartDates(t *testing.T) {
+	content, err := os.ReadFile("20260810143000_add_continuous_season_lifecycle_indexes.sql")
+	if err != nil {
+		t.Fatalf("read continuous season lifecycle migration: %v", err)
+	}
+
+	text := string(content)
+	for _, snippet := range []string{
+		"-- +goose Up",
+		"-- +goose Down",
+		"information_schema.STATISTICS",
+		"duplicate season start dates",
+		"duplicate_season_start_dates_must_be_resolved",
+		"uk_seasons_start_date",
+		"`start_date`",
+		"idx_seasons_window",
+	} {
+		if !strings.Contains(text, snippet) {
+			t.Fatalf("expected continuous season lifecycle migration to contain %q", snippet)
+		}
+	}
+
+	downIndex := strings.Index(text, "-- +goose Down")
+	if downIndex < 0 {
+		t.Fatal("expected goose down block")
+	}
+	downBlock := text[downIndex:]
+	if strings.Contains(downBlock, "DELETE FROM `seasons`") || strings.Contains(downBlock, "DROP TABLE") {
+		t.Fatal("continuous season lifecycle down migration must preserve season and user assets")
+	}
+}
+
 func TestHonorWallSeasonAchievementsMigrationContainsRequiredSchema(t *testing.T) {
 	content, err := os.ReadFile("20260723100000_add_honor_wall_season_achievements.sql")
 	if err != nil {

@@ -24,7 +24,7 @@ func NewMatchScoreLogic(ctx context.Context, svcCtx *svc.ServiceContext) *MatchS
 	return &MatchScoreLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

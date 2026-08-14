@@ -22,7 +22,7 @@ type NotificationDispatchInput struct {
 type NotificationDispatchService struct {
 	svcCtx     *svc.ServiceContext
 	pushSender func(pushClientId, title, content string, data map[string]interface{})
-	wsSender   func(userId int64, category string)
+	wsSender   func(userId int64, category string, unreadCount int)
 }
 
 func NewNotificationDispatchService(svcCtx *svc.ServiceContext) *NotificationDispatchService {
@@ -93,7 +93,11 @@ func (s *NotificationDispatchService) Dispatch(input NotificationDispatchInput) 
 		if category == "" {
 			category = input.Type
 		}
-		s.wsSender(input.UserId, category)
+		unreadCount, unreadErr := s.svcCtx.NotificationModel.GetUnreadCount(input.UserId)
+		if unreadErr != nil {
+			return unreadErr
+		}
+		s.wsSender(input.UserId, category, int(unreadCount))
 	}
 
 	return nil
@@ -134,14 +138,15 @@ func (s *NotificationDispatchService) defaultPushSender(pushClientId, title, con
 	s.svcCtx.PushService.SendPush(pushClientId, title, content, data)
 }
 
-func (s *NotificationDispatchService) defaultWSSender(userId int64, category string) {
+func (s *NotificationDispatchService) defaultWSSender(userId int64, category string, unreadCount int) {
 	if ws.GlobalHub == nil {
 		return
 	}
 	ws.GlobalHub.SendToUser(userId, &ws.Message{
 		Type: "notification_update",
 		Data: map[string]interface{}{
-			"category": category,
+			"category":     category,
+			"unread_count": unreadCount,
 		},
 	})
 }

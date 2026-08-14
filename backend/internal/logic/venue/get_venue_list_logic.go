@@ -23,37 +23,39 @@ func NewGetVenueListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetV
 	return &GetVenueListLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
 func (l *GetVenueListLogic) GetVenueList(req *types.GetVenueListReq) (resp *types.GetVenueListResp, err error) {
-	list, total, err := l.svcCtx.VenueModel.FindList(req.Page, req.PageSize, req.City)
+	if req == nil {
+		req = &types.GetVenueListReq{}
+	}
+	params := struct {
+		Page, PageSize      int
+		City                string
+		Latitude, Longitude float64
+	}{req.Page, req.PageSize, req.City, venueLocationBucket(req.Latitude), venueLocationBucket(req.Longitude)}
+	result, err := loadVenueCache(l.ctx, l.svcCtx, "list", params, venueListCacheTTL, func() (types.GetVenueListResp, error) {
+		list, total, loadErr := l.svcCtx.VenueModel.FindListWithCheckinCount(req.Page, req.PageSize, req.City)
+		if loadErr != nil {
+			return types.GetVenueListResp{}, loadErr
+		}
+		items := make([]types.VenueInfo, 0, len(list))
+		for _, venue := range list {
+			distance := 0.0
+			if req.Latitude != 0 && req.Longitude != 0 {
+				distance = haversineDistanceMeters(req.Latitude, req.Longitude, venue.Latitude, venue.Longitude)
+			}
+			items = append(items, buildVenueInfo(venue, int(venue.CheckinCount), distance))
+		}
+		return types.GetVenueListResp{Success: true, Total: total, List: items}, nil
+	})
 	if err != nil {
 		l.Logger.Errorf("获取球馆列表失败: err=%v", err)
 		return &types.GetVenueListResp{Success: false}, nil
 	}
-
-	items := make([]types.VenueInfo, 0, len(list))
-	for _, venue := range list {
-		checkinCount, countErr := l.svcCtx.VenueModel.GetCheckinCount(venue.Id)
-		if countErr != nil {
-			l.Logger.Errorf("获取球馆签到数失败: venueId=%d err=%v", venue.Id, countErr)
-		}
-
-		distance := 0.0
-		if req.Latitude != 0 && req.Longitude != 0 {
-			distance = haversineDistanceMeters(req.Latitude, req.Longitude, venue.Latitude, venue.Longitude)
-		}
-
-		items = append(items, buildVenueInfo(venue, int(checkinCount), distance))
-	}
-
-	if items == nil {
-		items = []types.VenueInfo{}
-	}
-
-	return &types.GetVenueListResp{Success: true, Total: total, List: items}, nil
+	return &result, nil
 }
 
 func parseVenueImages(imagesJSON string) []string {

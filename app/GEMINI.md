@@ -61,7 +61,16 @@ app/
 - 对局写操作、登录漏斗、球房提交等规则，优先提炼为 `utils/*.js` 纯函数并补测试，而不是把规则散在页面里。
 - Push、主题、前台对局提醒属于 app 级行为，优先改 `App.vue`，不要把相同逻辑复制到页面。
 
+## CLIENT READ GUARDRAILS
+- 页面只能通过 `api/*.js` 请求数据；首屏优先使用聚合接口，避免 `onLoad`、`onMounted`、`onShow` 和子组件重复读取同一资源。
+- 禁止在 `utils/request.js` 增加通用 GET 缓存；single-flight、TTL/SWR、loaded/dirty 和失效逻辑必须属于具体领域 Store 或 helper。
+- 用户级缓存和 in-flight 必须绑定 `userId + authGeneration`；退出、切号或认证代次变化后，旧响应不得回写当前状态。
+- 公共缓存只能保存与访问者无关的数据；排行榜等 viewer 个性化字段必须按当前身份单独组装。
+- 写操作成功后必须精确失效相关资源 scope，不得用所有页面无条件强制刷新代替一致性管理。
+- 新增首屏读取逻辑时，应测试首次进入、重复 `onShow`、并发请求、退出/切号和旧 in-flight 返回等关键请求图。
+
 ## THEME AND UI CONSTRAINTS
+- 公开用户界面的品牌、颜色、间距、圆角、组件与可访问性规范统一遵循仓库根级 [DESIGN.md](/Users/wisesearch/Projects/ChasingPoints/DESIGN.md)。
 - 主题变量必须同时兼容 `theme.json`、`App.vue` 中的 CSS 变量和 `store/theme.js` 的运行时切换。
 - 主题色背景按钮文字统一使用白色 `#ffffff`。
 - 微信小程序 WXSS 不支持 `*` 通配选择器。任何会编译到 MP-WEIXIN 的 `.vue` / `.scss` 都禁止使用 `*`、`*::before`、`*::after`，包括 scoped 样式中的 `.container *`（会生成 `.container *.data-v-*` 并导致真机编译失败）；改用明确的类选择器或 `view`、`text`、`button`、`image`、`scroll-view` 等组件选择器。仅供其他端使用的规则必须通过 `#ifndef MP-WEIXIN` 排除。
@@ -78,12 +87,12 @@ app/
 # 安装依赖
 npm install
 
-# 运行当前纯逻辑测试
+# 运行纯逻辑测试与真实 Vue SFC/jsdom 挂载测试
 node --test tests/*.test.mjs
 ```
 
 ## KNOWN FACTS
-- `package.json` 当前只有 `dependencies`，没有 `scripts`；默认不要假设可以直接 `npm test`。
+- `package.json` 没有 `scripts`；默认不要假设可以直接 `npm test`。测试开发依赖包含 `vue`、`@vue/compiler-sfc`、`@vue/test-utils` 和 `jsdom`，用于直接编译并挂载关键 SFC。
 - 当前 HTTP 与 WebSocket 基地址由 `utils/runtime-config.js` 统一管理：开发环境默认走 tunnel，生产环境默认走正式域名。
 - `App.vue` 里会直接调用 `post('/api/user/push-token')`，这是 app 级基础设施调用，不是页面层越界。
 

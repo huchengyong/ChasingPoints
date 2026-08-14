@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"chasing_points/internal/config"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -20,15 +21,17 @@ func newMatchLogicTestSvc(t *testing.T) *svc.ServiceContext {
 	if err != nil {
 		t.Fatalf("open sqlite db: %v", err)
 	}
-	if err := db.AutoMigrate(&model.User{}, &model.Match{}, &model.Friend{}); err != nil {
+	if err := db.AutoMigrate(&model.User{}, &model.Match{}, &model.Friend{}, &model.MatchParticipantResult{}, &model.UserOpponentStats{}); err != nil {
 		t.Fatalf("prepare match logic schema: %v", err)
 	}
 
 	return &svc.ServiceContext{
-		DB:          db,
-		UserModel:   model.NewUserModel(db),
-		MatchModel:  model.NewMatchModel(db),
-		FriendModel: model.NewFriendModel(db),
+		DB:                   db,
+		UserModel:            model.NewUserModel(db),
+		MatchModel:           model.NewMatchModel(db),
+		CompetitiveReadModel: model.NewCompetitiveReadModel(db),
+		FriendModel:          model.NewFriendModel(db),
+		Config:               config.Config{CompetitiveReadModel: config.CompetitiveReadModelConfig{ReadMode: "enabled"}},
 	}
 }
 
@@ -111,6 +114,22 @@ func seedTargetH2HFixtures(t *testing.T, svcCtx *svc.ServiceContext) {
 		Result:        &win,
 		MatchTime:     time.Date(2026, 3, 31, 11, 0, 0, 0, time.UTC),
 	})
+	match1At := time.Date(2026, 3, 30, 10, 0, 0, 0, time.UTC)
+	match11At := time.Date(2026, 3, 30, 11, 0, 0, 0, time.UTC)
+	match12At := time.Date(2026, 3, 31, 11, 0, 0, 0, time.UTC)
+	if err := svcCtx.DB.Create(&[]model.MatchParticipantResult{
+		{MatchId: 1, UserId: 101, OpponentUserId: 303, OpponentNameKey: "user:303", OpponentName: "我的对手", GameType: 3, MatchMode: model.MatchModeRanked, Result: 1, MyScore: 7, OpponentScore: 5, CompletedAt: match1At},
+		{MatchId: 11, UserId: 202, OpponentUserId: 404, OpponentNameKey: "user:404", OpponentName: "好友对手", GameType: 3, MatchMode: model.MatchModeRanked, Result: 1, MyScore: 9, OpponentScore: 7, CompletedAt: match11At},
+		{MatchId: 12, UserId: 202, OpponentUserId: 404, OpponentNameKey: "user:404", OpponentName: "好友对手", GameType: 3, MatchMode: model.MatchModeRanked, Result: 2, MyScore: 8, OpponentScore: 9, CompletedAt: match12At},
+	}).Error; err != nil {
+		t.Fatalf("seed participant projections: %v", err)
+	}
+	if err := svcCtx.DB.Create(&[]model.UserOpponentStats{
+		{UserId: 101, OpponentUserId: 303, OpponentNameKey: "user:303", GameType: 0, TotalMatches: 1, Wins: 1, ScoreDiffSum: 2, CurrentWinStreak: 1, MaxWinStreak: 1},
+		{UserId: 202, OpponentUserId: 404, OpponentNameKey: "user:404", GameType: 0, TotalMatches: 2, Wins: 1, Losses: 1, ScoreDiffSum: 1, MaxWinStreak: 1},
+	}).Error; err != nil {
+		t.Fatalf("seed h2h snapshots: %v", err)
+	}
 }
 
 func TestGetH2HStatsUsesCurrentUserByDefault(t *testing.T) {

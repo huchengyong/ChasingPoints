@@ -22,11 +22,14 @@ func NewGetMatchListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetM
 	return &GetMatchListLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
 func (l *GetMatchListLogic) GetMatchList(req *types.MatchListReq) (resp *types.MatchListResp, err error) {
+	if req == nil {
+		req = &types.MatchListReq{}
+	}
 	// 获取用户ID
 	userId, err := utils.GetUserIDFromCtx(l.ctx)
 	if err != nil {
@@ -45,34 +48,68 @@ func (l *GetMatchListLogic) GetMatchList(req *types.MatchListReq) (resp *types.M
 	}
 	offset := (page - 1) * pageSize
 
-	// 查询对局列表
-	matches, total, err := l.svcCtx.MatchModel.ListByUserId(userId, req.GameType, req.Result, offset, pageSize)
+	if l.svcCtx == nil || l.svcCtx.MatchModel == nil {
+		return &types.MatchListResp{Success: false}, nil
+	}
+	if !l.svcCtx.CompetitiveReadModelsEnabled() {
+		return l.getLegacyMatchList(userId, req, offset, pageSize)
+	}
+	if l.svcCtx.DB == nil || l.svcCtx.CompetitiveReadModel == nil {
+		return &types.MatchListResp{Success: false}, nil
+	}
+	matches, total, err := l.svcCtx.CompetitiveReadModel.ListParticipantMatchPageWithTx(l.svcCtx.DB.WithContext(l.ctx), userId, req.GameType, req.Result, offset, pageSize)
 	if err != nil {
 		l.Logger.Errorf("查询对局列表失败: %v", err)
 		return &types.MatchListResp{Success: false}, nil
 	}
 
-	// 转换数据
+	list := make([]types.MatchListItem, 0, len(matches))
+	for _, match := range matches {
+		list = append(list, types.MatchListItem{
+			Id:             match.MatchId,
+			OpponentId:     match.OpponentUserId,
+			GameType:       match.GameType,
+			GameTypeName:   GetGameTypeName(match.GameType),
+			MatchMode:      model.NormalizeMatchMode(match.MatchMode),
+			Visibility:     model.NormalizeMatchVisibility(match.Visibility, match.MatchMode),
+			FinishState:    model.NormalizeFinishState(match.FinishState),
+			OpponentName:   match.OpponentName,
+			OpponentAvatar: match.OpponentAvatar,
+			MyScore:        match.MyScore,
+			OpponentScore:  match.OpponentScore,
+			Result:         match.Result,
+			MatchTime:      match.MatchTime.Format("2006-01-02T15:04:05+08:00"),
+		})
+	}
+
+	return &types.MatchListResp{
+		Success: true,
+		Total:   total,
+		List:    list,
+	}, nil
+}
+
+func (l *GetMatchListLogic) getLegacyMatchList(userID int64, req *types.MatchListReq, offset, pageSize int) (*types.MatchListResp, error) {
+	matches, total, err := l.svcCtx.MatchModel.ListByUserId(userID, req.GameType, req.Result, offset, pageSize)
+	if err != nil {
+		l.Logger.Errorf("查询历史对局列表失败: %v", err)
+		return &types.MatchListResp{Success: false}, nil
+	}
 	list := make([]types.MatchListItem, 0, len(matches))
 	for _, match := range matches {
 		result := 0
 		if match.Result != nil {
 			result = *match.Result
 		}
-		// 计算对手ID
-		var opponentId int64
+		opponentID := int64(0)
 		if match.IsAsOpponent {
-			// 用户是作为对手参与的，对手就是发起方（UserId）
-			opponentId = match.UserId
-		} else {
-			// 用户是发起方，对手ID在 OpponentId 字段中
-			if match.OpponentId != nil {
-				opponentId = *match.OpponentId
-			}
+			opponentID = match.UserId
+		} else if match.OpponentId != nil {
+			opponentID = *match.OpponentId
 		}
 		list = append(list, types.MatchListItem{
 			Id:             match.Id,
-			OpponentId:     opponentId,
+			OpponentId:     opponentID,
 			GameType:       match.GameType,
 			GameTypeName:   GetGameTypeName(match.GameType),
 			MatchMode:      model.NormalizeMatchMode(match.MatchMode),
@@ -86,10 +123,5 @@ func (l *GetMatchListLogic) GetMatchList(req *types.MatchListReq) (resp *types.M
 			MatchTime:      match.MatchTime.Format("2006-01-02T15:04:05+08:00"),
 		})
 	}
-
-	return &types.MatchListResp{
-		Success: true,
-		Total:   total,
-		List:    list,
-	}, nil
+	return &types.MatchListResp{Success: true, Total: total, List: list}, nil
 }

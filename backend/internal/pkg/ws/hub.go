@@ -707,10 +707,13 @@ func (c *Client) sendMatchSync() {
 		logx.Errorf("获取对局同步快照失败: matchId=%d, err=%v", c.MatchId, err)
 		return
 	}
-	expired := false
-	if refreshed, didExpire, _, expireErr := c.SvcCtx.MatchModel.ExpireStaleFinishRequest(c.MatchId); expireErr == nil && refreshed != nil {
-		match = refreshed
-		expired = didExpire
+	if match.FinishState == model.FinishStatePendingConfirmation && match.FinishRequestedAt != nil && !match.FinishRequestedAt.Add(model.FinishRequestTTL).After(time.Now()) {
+		effective := *match
+		effective.FinishState = model.FinishStateNone
+		effective.FinishRequestedBy = nil
+		effective.FinishRequestedAt = nil
+		effective.FinishRequestRevision = 0
+		match = &effective
 	}
 
 	roundCount, err := c.SvcCtx.MatchModel.GetRoundCount(c.MatchId)
@@ -746,10 +749,6 @@ func (c *Client) sendMatchSync() {
 			logx.Errorf("获取斯诺克当前局操作失败: matchId=%d, err=%v", c.MatchId, actionsErr)
 		}
 	}
-	if expired {
-		broadcastExpiredMatchSync(c.Hub, c.SvcCtx, match, roundCount, snookerState, rounds)
-	}
-
 	msg := &Message{
 		Type: "sync",
 		Data: func() MatchSyncData {
@@ -774,34 +773,4 @@ func (c *Client) sendMatchSync() {
 	default:
 		logx.Errorf("发送对局同步快照失败: matchId=%d, userId=%d", c.MatchId, c.UserId)
 	}
-}
-
-func broadcastExpiredMatchSync(hub *Hub, svcCtx *svc.ServiceContext, match *model.Match, roundCount int64, snookerState model.SnookerRoundState, rounds []model.MatchRound) {
-	if hub == nil || svcCtx == nil || match == nil {
-		return
-	}
-	userIds := []int64{0, match.UserId}
-	if match.OpponentId != nil && *match.OpponentId > 0 {
-		userIds = append(userIds, *match.OpponentId)
-	}
-	if match.RefereeUserId != nil && *match.RefereeUserId > 0 {
-		userIds = append(userIds, *match.RefereeUserId)
-	}
-	messages := make(map[int64]*Message, len(userIds))
-	for _, userId := range userIds {
-		if _, exists := messages[userId]; exists {
-			continue
-		}
-		snapshot := buildMatchSyncDataForViewer(match, userId, roundCount, snookerState, rounds)
-		hydrateMatchSyncRefereeProfile(svcCtx, &snapshot)
-		snapshot.LastAction = buildMatchSyncLastAction(svcCtx, match, userId)
-		messages[userId] = &Message{Type: "match_finish_expired", Data: map[string]interface{}{
-			"match_id":            match.Id,
-			"server_revision":     match.SyncRevision,
-			"finish_state":        model.NormalizeFinishState(match.FinishState),
-			"finish_requested_by": resolveFinishRequestedBy(match),
-			"snapshot":            snapshot,
-		}}
-	}
-	hub.BroadcastToMatchForUsers(match.Id, messages)
 }

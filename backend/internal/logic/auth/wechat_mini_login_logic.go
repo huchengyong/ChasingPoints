@@ -26,7 +26,7 @@ func NewWechatMiniLoginLogic(ctx context.Context, svcCtx *svc.ServiceContext) *W
 	return &WechatMiniLoginLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -79,6 +79,10 @@ func (l *WechatMiniLoginLogic) WechatMiniLogin(req *types.WechatMiniLoginReq) (r
 	}
 	if user.Status != 1 {
 		return &types.WechatMiniLoginResp{Success: false, Message: loginUnavailableMessage}, nil
+	}
+	if err := ensureUserRankingProfiles(l.svcCtx, user.Id); err != nil {
+		l.Logger.Errorf("初始化用户段位失败: %v", err)
+		return nil, err
 	}
 
 	tokenPair, err := issueAuthTokenPair(user.Id, l.svcCtx)

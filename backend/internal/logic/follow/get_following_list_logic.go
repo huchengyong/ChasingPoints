@@ -21,7 +21,7 @@ func NewGetFollowingListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *
 	return &GetFollowingListLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

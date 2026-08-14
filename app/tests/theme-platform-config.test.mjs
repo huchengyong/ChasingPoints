@@ -33,7 +33,7 @@ test('manual theme preference is stored separately from the current system theme
 })
 
 test('global theme variables are class-driven instead of media-query-driven', () => {
-  assert.match(appSource, /\.dark-mode\s*\{[\s\S]*--bg-color:\s*#141109;/)
+  assert.match(appSource, /\.dark-mode\s*\{[\s\S]*--ui-surface-page:\s*#141109;/)
   assert.doesNotMatch(appSource, /prefers-color-scheme/)
 })
 
@@ -65,4 +65,22 @@ test('every pages.json theme token exists in both themes and referenced tab icon
       }
     }
   }
+})
+
+test('native, CSS and runtime theme entry points share the warm-neutral brand palette', () => {
+  const runtimeThemeSource = readFileSync(new URL('../utils/theme-application.js', import.meta.url), 'utf8')
+
+  assert.equal(themeConfig.light.primary, '#E0AE12')
+  assert.equal(themeConfig.light.background, '#F7F4EC')
+  assert.equal(themeConfig.light.textPrimary, '#231C0B')
+  assert.equal(themeConfig.dark.background, '#141109')
+  assert.equal(themeConfig.dark.textPrimary, '#fff7e1')
+
+  assert.match(appSource, /--ui-brand-primary:\s*#E0AE12;/)
+  assert.match(appSource, /--ui-surface-page:\s*#F7F4EC;/)
+  assert.match(appSource, /--ui-text-primary:\s*#231C0B;/)
+
+  assert.match(runtimeThemeSource, /backgroundColor:\s*'#F7F4EC'/)
+  assert.match(runtimeThemeSource, /backgroundColor:\s*'#141109'/)
+  assert.match(runtimeThemeSource, /selectedColor:\s*'#E0AE12'/)
 })

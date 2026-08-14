@@ -23,7 +23,7 @@ func NewCreatePostLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Create
 	return &CreatePostLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

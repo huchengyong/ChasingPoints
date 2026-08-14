@@ -3,7 +3,7 @@ package rules
 import (
 	"context"
 
-	"chasing_points/internal/model"
+	"chasing_points/internal/logic/staticread"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -21,31 +21,29 @@ func NewGetRuleContentLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Ge
 	return &GetRuleContentLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
 func (l *GetRuleContentLogic) GetRuleContent(req *types.GetRuleContentReq) (resp *types.GetRuleContentResp, err error) {
-	if err = l.svcCtx.RulesContentModel.SeedData(model.GetDefaultRulesContent()); err != nil {
-		l.Logger.Errorf("初始化规则内容失败: %v", err)
-		return &types.GetRuleContentResp{Success: false, List: []types.RuleContentItem{}}, nil
+	category, contentType := "", ""
+	if req != nil {
+		category, contentType = req.Category, req.ContentType
 	}
-
-	rows, err := l.svcCtx.RulesContentModel.FindByCategoryAndType(req.Category, req.ContentType)
+	result, err := staticread.Load(l.ctx, l.svcCtx, staticread.Key("rules:content", category, contentType), func() (types.GetRuleContentResp, error) {
+		rows, loadErr := l.svcCtx.RulesContentModel.FindByCategoryAndType(category, contentType)
+		if loadErr != nil {
+			return types.GetRuleContentResp{}, loadErr
+		}
+		list := make([]types.RuleContentItem, 0, len(rows))
+		for _, item := range rows {
+			list = append(list, types.RuleContentItem{Id: item.Id, Title: item.Title, Content: item.Content, SortOrder: item.SortOrder})
+		}
+		return types.GetRuleContentResp{Success: true, List: list}, nil
+	})
 	if err != nil {
-		l.Logger.Errorf("查询规则内容失败, category=%s type=%s err=%v", req.Category, req.ContentType, err)
+		l.Logger.Errorf("查询规则内容失败, category=%s type=%s err=%v", category, contentType, err)
 		return &types.GetRuleContentResp{Success: false, List: []types.RuleContentItem{}}, nil
 	}
-
-	list := make([]types.RuleContentItem, 0, len(rows))
-	for _, item := range rows {
-		list = append(list, types.RuleContentItem{
-			Id:        item.Id,
-			Title:     item.Title,
-			Content:   item.Content,
-			SortOrder: item.SortOrder,
-		})
-	}
-
-	return &types.GetRuleContentResp{Success: true, List: list}, nil
+	return &result, nil
 }

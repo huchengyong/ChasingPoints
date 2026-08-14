@@ -25,7 +25,7 @@ func NewCreateVenueLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Creat
 	return &CreateVenueLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -70,6 +70,9 @@ func (l *CreateVenueLogic) CreateVenue(req *types.CreateVenueReq) (resp *types.C
 		}
 		l.Logger.Errorf("创建球馆及地理解析任务失败: userId=%d err=%v", userIdInt, err)
 		return &types.CreateVenueResp{Success: false, Message: "提交失败，请稍后再试"}, nil
+	}
+	if err := BumpVenueCacheVersion(l.ctx, l.svcCtx); err != nil {
+		l.Logger.Errorf("失效球馆缓存失败: venueId=%d err=%v", venue.Id, err)
 	}
 
 	return buildCreateVenueResp(venue.Id), nil

@@ -23,7 +23,7 @@ func NewCreateTournamentLogic(ctx context.Context, svcCtx *svc.ServiceContext) *
 	return &CreateTournamentLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -37,7 +37,7 @@ func (l *CreateTournamentLogic) CreateTournament(req *types.CreateTournamentReq)
 	if strings.TrimSpace(req.Name) == "" || req.GameType < 1 || req.GameType > 3 {
 		return &types.CreateTournamentResp{Success: false}, nil
 	}
-	if req.Format < 1 || req.Format > 4 {
+	if req.Format != 1 && req.Format != 3 {
 		return &types.CreateTournamentResp{Success: false}, nil
 	}
 	if req.MaxPlayers < 2 || req.MaxPlayers > 64 {

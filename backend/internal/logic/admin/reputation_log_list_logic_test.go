@@ -26,8 +26,8 @@ func newAdminReputationLogTestSvc(t *testing.T) *svc.ServiceContext {
 	}
 
 	return &svc.ServiceContext{
-		DB:                   db,
-		UserModel:            model.NewUserModel(db),
+		DB:                     db,
+		UserModel:              model.NewUserModel(db),
 		UserReputationLogModel: model.NewUserReputationLogModel(db),
 	}
 }

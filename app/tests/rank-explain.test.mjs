@@ -183,6 +183,13 @@ test('rank explain keeps selected and loaded game type data consistent after ref
   assert.match(pageSource, /currentGameType\.value = loadedGameType\.value/)
 })
 
+test('rank explain combines rankStore data with static rank configs', () => {
+  assert.match(pageSource, /getRankConfigs/)
+  assert.match(pageSource, /loadStatic\('rank-configs', getRankConfigs/)
+  assert.doesNotMatch(pageSource, /getRankList\(/)
+  assert.match(pageSource, /rankStore\.ensureFresh\(getReadIdentity\(\)\)/)
+})
+
 test('rank explain page removes old accordion and stale score rule copy', () => {
   assert.doesNotMatch(pageSource, /expandedLevel/)
   assert.doesNotMatch(pageSource, /toggleExpand/)

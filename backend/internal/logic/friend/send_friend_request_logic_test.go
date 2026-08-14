@@ -2,11 +2,13 @@ package friend
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
 
 	"chasing_points/internal/model"
+	"chasing_points/internal/pkg/ws"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/testsupport"
 	"chasing_points/internal/types"
@@ -80,6 +82,41 @@ func TestSendFriendRequestRejectsBlacklistedPair(t *testing.T) {
 	}
 	if requestCount != 0 {
 		t.Fatalf("expected 0 friend requests, got %d", requestCount)
+	}
+}
+
+func TestSendFriendRequestPushesExactPendingCount(t *testing.T) {
+	svcCtx := newFriendLogicTestSvc(t)
+	seedFriendLogicUser(t, svcCtx, 101, "发起人")
+	seedFriendLogicUser(t, svcCtx, 202, "目标用户")
+	previousHub := ws.GlobalHub
+	hub := ws.NewHub()
+	ws.GlobalHub = hub
+	t.Cleanup(func() { ws.GlobalHub = previousHub })
+
+	resp, err := NewSendFriendRequestLogic(friendLogicCtx(101), svcCtx).SendFriendRequest(&types.SendFriendRequestReq{ToUserId: 202})
+	if err != nil || resp == nil || !resp.Success {
+		t.Fatalf("send friend request: resp=%#v err=%v", resp, err)
+	}
+
+	foundExactCount := false
+	for i := 0; i < 2; i++ {
+		message := <-hub.SendUser
+		var payload struct {
+			Type string `json:"type"`
+			Data struct {
+				PendingFriendRequestCount *int64 `json:"pending_friend_request_count"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(message.Message, &payload); err != nil {
+			t.Fatalf("decode user event: %v", err)
+		}
+		if payload.Type == "user_data_updated" && payload.Data.PendingFriendRequestCount != nil && *payload.Data.PendingFriendRequestCount == 1 {
+			foundExactCount = true
+		}
+	}
+	if !foundExactCount {
+		t.Fatal("expected user_data_updated with the exact pending friend request count")
 	}
 }
 

@@ -24,8 +24,8 @@ defineProps<{
   margin: 0 0 12px;
   padding: 8px 14px;
   border-radius: 999px;
-  background: rgba(217, 166, 23, 0.12);
-  color: #9f6c00;
+  background: var(--ui-brand-tint);
+  color: var(--ui-brand-strong);
   font-weight: 600;
 }
 

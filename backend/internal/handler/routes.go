@@ -38,6 +38,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
+				// 按 ID 获取成就详情
+				Method:  http.MethodGet,
+				Path:    "/detail",
+				Handler: achievement.GetAchievementDetailHandler(serverCtx),
+			},
+			{
 				// 获取本人或好友荣誉墙
 				Method:  http.MethodGet,
 				Path:    "/honor-wall",
@@ -617,6 +623,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: match.GetH2HHistoryHandler(serverCtx),
 			},
 			{
+				// 获取交锋首屏概览
+				Method:  http.MethodGet,
+				Path:    "/h2h/overview",
+				Handler: match.GetH2HOverviewHandler(serverCtx),
+			},
+			{
 				// 获取交锋统计
 				Method:  http.MethodGet,
 				Path:    "/h2h/stats",
@@ -794,6 +806,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
+				// 获取好友与近期对手候选
+				Method:  http.MethodGet,
+				Path:    "/candidates",
+				Handler: opponent.GetOpponentCandidatesHandler(serverCtx),
+			},
+			{
 				// 获取对手列表
 				Method:  http.MethodGet,
 				Path:    "/list",
@@ -849,10 +867,22 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: public.GetOngoingMatchesHandler(serverCtx),
 			},
 			{
+				// 获取静态段位配置
+				Method:  http.MethodGet,
+				Path:    "/rank/configs",
+				Handler: public.GetRankConfigsHandler(serverCtx),
+			},
+			{
 				// 获取段位排行榜
 				Method:  http.MethodGet,
 				Path:    "/rank/leaderboard",
 				Handler: public.GetLeaderboardHandler(serverCtx),
+			},
+			{
+				// 获取榜单前三名与当前用户排名
+				Method:  http.MethodGet,
+				Path:    "/rank/leaderboard-summary",
+				Handler: public.GetLeaderboardSummaryHandler(serverCtx),
 			},
 		},
 		rest.WithPrefix("/api/public"),
@@ -938,6 +968,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodGet,
 				Path:    "/my-record",
 				Handler: season.GetMySeasonRecordHandler(serverCtx),
+			},
+			{
+				// 获取当前赛季概览
+				Method:  http.MethodGet,
+				Path:    "/overview",
+				Handler: season.GetSeasonOverviewHandler(serverCtx),
 			},
 			{
 				// 获取赛季报告
@@ -1057,6 +1093,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: stats.GetOpponentStrengthHandler(serverCtx),
 			},
 			{
+				// 获取竞技分析首屏概览
+				Method:  http.MethodGet,
+				Path:    "/overview",
+				Handler: stats.GetStatsOverviewHandler(serverCtx),
+			},
+			{
 				// 段位分变化趋势
 				Method:  http.MethodGet,
 				Path:    "/rank-score-trend",
@@ -1161,6 +1203,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
+				// 获取应用前台恢复所需的用户活动快照
+				Method:  http.MethodGet,
+				Path:    "/bootstrap",
+				Handler: user.GetUserBootstrapHandler(serverCtx),
+			},
+			{
 				// 获取常玩球馆奖励状态
 				Method:  http.MethodGet,
 				Path:    "/favorite-venue-reward-status",
@@ -1183,6 +1231,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodPost,
 				Path:    "/nickname",
 				Handler: user.UpdateNicknameHandler(serverCtx),
+			},
+			{
+				// 获取个人主页概览
+				Method:  http.MethodGet,
+				Path:    "/overview",
+				Handler: user.GetUserOverviewHandler(serverCtx),
 			},
 			{
 				// 获取用户隐私设置

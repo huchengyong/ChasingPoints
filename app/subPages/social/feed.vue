@@ -47,7 +47,7 @@
 							<text class="post-time">{{ item.relativeTime }}</text>
 						</view>
 						<view v-if="item.is_mine" class="post-menu" @tap="handleDelete(item)">
-							<uni-icons type="more-filled" size="20" color="#94a3b8"></uni-icons>
+							<uni-icons type="more-filled" size="20" color="#9A8C67"></uni-icons>
 						</view>
 					</view>
 
@@ -85,12 +85,12 @@
 							<uni-icons
 								:type="item.liked ? 'heart-filled' : 'heart'"
 								size="20"
-								:color="item.liked ? '#ef4444' : '#94a3b8'"
+								:color="item.liked ? '#ef4444' : '#9A8C67'"
 							></uni-icons>
 							<text :class="{ liked: item.liked }">{{ formatActionCount(item.likes_count, '点赞') }}</text>
 						</view>
 						<view class="action-item" @tap="toggleComments(item)">
-							<uni-icons type="chat" size="20" color="#94a3b8"></uni-icons>
+							<uni-icons type="chat" size="20" color="#9A8C67"></uni-icons>
 							<text>{{ formatActionCount(item.comments_count, '评论') }}</text>
 						</view>
 					</view>
@@ -408,7 +408,7 @@ onShow(() => {
 <style lang="scss" scoped>
 .feed-page {
 	min-height: 100vh;
-	background: #f1f5f9;
+	background: #FAF8F2;
 	display: flex;
 	flex-direction: column;
 
@@ -451,14 +451,14 @@ onShow(() => {
 	display: flex;
 	background: #fff;
 	padding: 0 32rpx;
-	border-bottom: 1rpx solid #e2e8f0;
+	border-bottom: 1rpx solid #E9E2CF;
 
 	.tab-item {
 		flex: 1;
 		text-align: center;
 		padding: 24rpx 0;
 		font-size: 30rpx;
-		color: #64748b;
+		color: #6E6242;
 		position: relative;
 
 		&.active {
@@ -488,7 +488,7 @@ onShow(() => {
 	.loading-text {
 		margin-top: 16rpx;
 		font-size: 28rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 	}
 }
 
@@ -503,7 +503,7 @@ onShow(() => {
 
 .post-card {
 	background: #fff;
-	border: 1rpx solid #e2e8f0;
+	border: 1rpx solid #E9E2CF;
 	border-radius: 20rpx;
 	padding: 28rpx;
 	margin-bottom: 20rpx;
@@ -526,11 +526,11 @@ onShow(() => {
 			.post-nickname {
 				font-size: 28rpx;
 				font-weight: 500;
-				color: #1e293b;
+				color: #231C0B;
 			}
 			.post-time {
 				font-size: 22rpx;
-				color: #94a3b8;
+				color: #9A8C67;
 				margin-top: 4rpx;
 			}
 		}
@@ -544,7 +544,7 @@ onShow(() => {
 		margin-bottom: 16rpx;
 		.post-text {
 			font-size: 28rpx;
-			color: #334155;
+			color: #6E6242;
 			line-height: 1.6;
 		}
 	}
@@ -588,7 +588,7 @@ onShow(() => {
 
 	.post-actions {
 		display: flex;
-		border-top: 1rpx solid #f1f5f9;
+		border-top: 1rpx solid #FAF8F2;
 		padding-top: 16rpx;
 		gap: 40rpx;
 
@@ -599,7 +599,7 @@ onShow(() => {
 
 			text {
 				font-size: 24rpx;
-				color: #94a3b8;
+				color: #9A8C67;
 
 				&.liked {
 					color: #ef4444;
@@ -626,13 +626,13 @@ onShow(() => {
 	.comment-section {
 		margin-top: 16rpx;
 		padding-top: 16rpx;
-		border-top: 1rpx solid #f1f5f9;
+		border-top: 1rpx solid #FAF8F2;
 
 		.comment-loading {
 			padding: 16rpx 0;
 			.comment-loading-text {
 				font-size: 24rpx;
-				color: #94a3b8;
+				color: #9A8C67;
 			}
 		}
 
@@ -646,7 +646,7 @@ onShow(() => {
 			}
 			.comment-text {
 				font-size: 24rpx;
-				color: #475569;
+				color: #6E6242;
 			}
 		}
 
@@ -654,7 +654,7 @@ onShow(() => {
 			padding: 16rpx 0;
 			text {
 				font-size: 24rpx;
-				color: #94a3b8;
+				color: #9A8C67;
 			}
 		}
 
@@ -666,7 +666,7 @@ onShow(() => {
 
 			.comment-input {
 				flex: 1;
-				background: #f1f5f9;
+				background: #FAF8F2;
 				border-radius: 32rpx;
 				padding: 12rpx 20rpx;
 				font-size: 26rpx;
@@ -678,7 +678,7 @@ onShow(() => {
 				border-radius: 32rpx;
 				text {
 					font-size: 26rpx;
-					color: #1f2937;
+					color: #231C0B;
 				}
 			}
 		}
@@ -698,12 +698,12 @@ onShow(() => {
 	.empty-title {
 		font-size: 30rpx;
 		font-weight: 500;
-		color: #1e293b;
+		color: #231C0B;
 		margin-bottom: 12rpx;
 	}
 	.empty-sub {
 		font-size: 26rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 	}
 }
 
@@ -725,7 +725,7 @@ onShow(() => {
 	padding: 24rpx;
 	.loading-more-text, .no-more-text {
 		font-size: 24rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 	}
 }
 

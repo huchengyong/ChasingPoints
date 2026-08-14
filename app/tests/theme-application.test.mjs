@@ -78,16 +78,16 @@ test('applyRuntimeTheme applies navigation colors but skips tabBar on non-tabBar
   ])
   assert.deepEqual(recorder.calls[0].options, {
     frontColor: '#000000',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#F7F4EC',
     animation: {
       duration: 300,
       timingFunc: 'easeIn'
     }
   })
   assert.deepEqual(recorder.calls[1].options, {
-    backgroundColor: '#ffffff',
-    backgroundColorTop: '#ffffff',
-    backgroundColorBottom: '#ffffff'
+    backgroundColor: '#F7F4EC',
+    backgroundColorTop: '#F7F4EC',
+    backgroundColorBottom: '#F7F4EC'
   })
   assert.deepEqual(recorder.calls[2].options, { textStyle: 'dark' })
 })
@@ -104,9 +104,9 @@ test('applyRuntimeTheme applies existing light tabBar colors on tabBar pages', (
   assert.deepEqual(recorder.calls.find((call) => call.method === 'setTabBarStyle'), {
     method: 'setTabBarStyle',
     options: {
-      backgroundColor: '#ffffff',
+      backgroundColor: '#F7F4EC',
       borderStyle: 'black',
-      color: '#64748b',
+      color: '#6E6242',
       selectedColor: '#E0AE12'
     }
   })

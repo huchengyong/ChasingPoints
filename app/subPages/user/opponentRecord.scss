@@ -1,13 +1,13 @@
 .opponent-record-container {
   min-height: 100vh;
-  background-color: #f1f5f9;
+  background-color: #FAF8F2;
   display: flex;
   flex-direction: column;
 }
 
 .search-section {
   padding: 24rpx 32rpx;
-  background-color: #f1f5f9;
+  background-color: #FAF8F2;
   box-sizing: border-box;
 }
 
@@ -25,10 +25,10 @@
   flex: 1;
   margin-left: 16rpx;
   font-size: 28rpx;
-  color: #1e293b;
+  color: #231C0B;
 
   &::placeholder {
-    color: #9ca3af;
+    color: #9A8C67;
   }
 }
 
@@ -112,14 +112,14 @@
   margin-top: 24rpx;
   font-size: 28rpx;
   text-align: center;
-  color: #64748b;
+  color: #6E6242;
 }
 
 .empty-hint {
   margin-top: 12rpx;
   font-size: 24rpx;
   text-align: center;
-  color: #94a3b8;
+  color: #9F926E;
 }
 
 .retry-btn,
@@ -150,7 +150,7 @@
 
 .login-btn {
   background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
-  color: #1f2937;
+  color: #231C0B;
   font-size: 28rpx;
   font-weight: 600;
 }
@@ -243,7 +243,7 @@
   max-width: 320rpx;
   font-size: 30rpx;
   font-weight: 700;
-  color: #1e293b;
+  color: #231C0B;
 }
 
 .relationship-badge {
@@ -269,14 +269,14 @@
 
   &.waiting {
     background: rgba(148, 163, 184, 0.16);
-    color: #64748b;
+    color: #6E6242;
   }
 }
 
 .opponent-summary {
   font-size: 24rpx;
   line-height: 1.6;
-  color: #475569;
+  color: #6E6242;
 }
 
 .meta-row {
@@ -288,7 +288,7 @@
 .meta-chip {
   font-size: 20rpx;
   font-weight: 500;
-  color: #64748b;
+  color: #6E6242;
 }
 
 .opponent-right {
@@ -302,7 +302,7 @@
 .win-rate {
   font-size: 36rpx;
   font-weight: 700;
-  color: #0f172a;
+  color: #231C0B;
 
   &.lead {
     color: #059669;
@@ -317,13 +317,13 @@
   }
 
   &.waiting {
-    color: #64748b;
+    color: #6E6242;
   }
 }
 
 .win-loss {
   font-size: 22rpx;
-  color: #94a3b8;
+  color: #9F926E;
 }
 
 .detail-link {
@@ -341,52 +341,52 @@
 
 .load-more-text {
   font-size: 24rpx;
-  color: #94a3b8;
+  color: #9F926E;
 }
 
 .opponent-record-container.dark-mode {
-  background-color: #0f172a;
+  background-color: #141109;
 
   .search-section {
-    background-color: #0f172a;
+    background-color: #141109;
   }
 
   .search-box {
-    background-color: #1e293b;
+    background-color: #1E180D;
   }
 
   .search-input {
-    color: #f8fafc;
+    color: #FFF7E1;
 
     &::placeholder {
-      color: #64748b;
+      color: #9F926E;
     }
   }
 
   .stats-card {
-    background: linear-gradient(135deg, #7c5b12 0%, #1e3a8a 100%);
+    background: linear-gradient(135deg, #7c5b12 0%, #a87708 100%);
   }
 
   .opponent-item {
-    background-color: #1e293b;
+    background-color: #1E180D;
     border-color: rgba(255, 255, 255, 0.05);
   }
 
   .avatar {
-    border-color: #334155;
+    border-color: #3A2E16;
   }
 
   .avatar-placeholder {
-    border-color: #334155;
+    border-color: #3A2E16;
   }
 
   .opponent-name,
   .win-rate {
-    color: #f8fafc;
+    color: #FFF7E1;
   }
 
   .opponent-summary {
-    color: #cbd5e1;
+    color: #D7C89B;
   }
 
   .last-match,
@@ -398,18 +398,18 @@
   .empty-hint,
   .load-more-text,
   .meta-chip {
-    color: #94a3b8;
+    color: #9F926E;
   }
 
   .meta-chip {
-    background: #334155;
+    background: #3A2E16;
   }
 
   .retry-btn {
-    background: #334155;
+    background: #3A2E16;
 
     text {
-      color: #f8fafc;
+      color: #FFF7E1;
     }
   }
 }

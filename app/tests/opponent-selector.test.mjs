@@ -2,6 +2,13 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import { buildOpponentSelectionList } from '../utils/opponent-selector.js'
+import { readFileSync } from 'node:fs'
+
+test('opponent selector loads server-deduplicated candidates instead of downloading friends and matches', () => {
+  const source = readFileSync(new URL('../subPages/match/opponentSelector.vue', import.meta.url), 'utf8')
+  assert.match(source, /getOpponentCandidates\(\{ limit: 30 \}\)/)
+  assert.doesNotMatch(source, /getFriendList\(|getMatchList\(|buildOpponentSelectionList/)
+})
 
 test('opponent selector prefers friends and keeps recent match order after de-duplication', () => {
   assert.deepEqual(buildOpponentSelectionList({

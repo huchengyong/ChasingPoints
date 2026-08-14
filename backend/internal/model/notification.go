@@ -56,6 +56,35 @@ func (m *NotificationModel) FindByUserId(userId int64, page, pageSize int, notif
 	return list, total, err
 }
 
+func (m *NotificationModel) FindPageWithUnreadCount(userId int64, page, pageSize int, notificationType string) ([]Notification, int64, int64, error) {
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	offset := (page - 1) * pageSize
+	var list []Notification
+	var total, unreadCount int64
+	err := m.db.Transaction(func(tx *gorm.DB) error {
+		query := tx.Model(&Notification{}).Where("user_id = ?", userId)
+		if notificationType != "" {
+			query = query.Where("type = ?", notificationType)
+		}
+		if err := query.Count(&total).Error; err != nil {
+			return err
+		}
+		if err := query.Order("created_at DESC, id DESC").Offset(offset).Limit(pageSize).Find(&list).Error; err != nil {
+			return err
+		}
+		return tx.Model(&Notification{}).Where("user_id = ? AND is_read = 0", userId).Count(&unreadCount).Error
+	})
+	return list, total, unreadCount, err
+}
+
 func (m *NotificationModel) MarkAsRead(userId, notificationId int64) error {
 	result := m.db.Model(&Notification{}).
 		Where("user_id = ? AND id = ?", userId, notificationId).
@@ -98,6 +127,21 @@ func (m *NotificationModel) Create(notification *Notification) error {
 	return m.db.Create(notification).Error
 }
 
+func (m *NotificationModel) CreateBatchIfAbsentWithTx(tx *gorm.DB, notifications []Notification, batchSize int) (int64, error) {
+	if len(notifications) == 0 {
+		return 0, nil
+	}
+	if batchSize <= 0 {
+		batchSize = 500
+	}
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	result := db.Clauses(notificationConflict()).CreateInBatches(&notifications, batchSize)
+	return result.RowsAffected, result.Error
+}
+
 func (m *NotificationModel) CreateIfAbsent(notification *Notification) (bool, error) {
 	return m.CreateIfAbsentWithTx(nil, notification)
 }
@@ -107,18 +151,22 @@ func (m *NotificationModel) CreateIfAbsentWithTx(tx *gorm.DB, notification *Noti
 	if tx != nil {
 		db = tx
 	}
-	result := db.Clauses(clause.OnConflict{
+	result := db.Clauses(notificationConflict()).Create(notification)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
+}
+
+func notificationConflict() clause.OnConflict {
+	return clause.OnConflict{
 		Columns: []clause.Column{
 			{Name: "user_id"},
 			{Name: "type"},
 			{Name: "dedupe_key"},
 		},
 		DoNothing: true,
-	}).Create(notification)
-	if result.Error != nil {
-		return false, result.Error
 	}
-	return result.RowsAffected > 0, nil
 }
 
 func (m *NotificationModel) FindLatestUnreadByType(userId int64, notificationType string) (*Notification, error) {

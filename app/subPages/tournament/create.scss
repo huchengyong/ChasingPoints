@@ -3,7 +3,7 @@
 	padding: 24rpx 24rpx 220rpx;
 	box-sizing: border-box;
 	background:
-		linear-gradient(180deg, #ffffff 0%, #f8fafc 40%, #f8fafc 100%);
+		linear-gradient(180deg, #ffffff 0%, #FAF8F2 40%, #FAF8F2 100%);
 }
 
 .page-intro,
@@ -16,7 +16,7 @@
 	margin-bottom: 20rpx;
 	padding: 32rpx 28rpx;
 	border-radius: 28rpx;
-	background: linear-gradient(135deg, #0f172a 0%, #7c5b12 62%, #38bdf8 100%);
+	background: linear-gradient(135deg, #3c2b08 0%, #7c5b12 62%, #c69200 100%);
 	box-shadow: 0 18rpx 40rpx rgba(37, 99, 235, 0.16);
 
 	.intro-copy {
@@ -61,7 +61,7 @@
 	.completion-fill {
 		height: 100%;
 		border-radius: inherit;
-		background: linear-gradient(90deg, #f8fafc 0%, #bfdbfe 100%);
+		background: linear-gradient(90deg, #FAF8F2 0%, #bfdbfe 100%);
 	}
 
 	.completion-tip {
@@ -138,7 +138,7 @@
 	display: block;
 	font-size: 32rpx;
 	font-weight: 700;
-	color: #0f172a;
+	color: #231C0B;
 }
 
 .section-tip {
@@ -146,12 +146,12 @@
 	margin-top: 10rpx;
 	font-size: 22rpx;
 	line-height: 1.5;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .form-item {
 	padding: 24rpx 0 28rpx;
-	border-bottom: 1rpx solid #e2e8f0;
+	border-bottom: 1rpx solid #E9E2CF;
 
 	&:last-child {
 		border-bottom: none;
@@ -168,7 +168,7 @@
 .form-label {
 	font-size: 28rpx;
 	font-weight: 600;
-	color: #1e293b;
+	color: #231C0B;
 }
 
 .label-required,
@@ -184,7 +184,7 @@
 }
 
 .label-optional {
-	color: #64748b;
+	color: #6E6242;
 }
 
 .label-complete {
@@ -196,15 +196,15 @@
 	width: 100%;
 	border-radius: 20rpx;
 	box-sizing: border-box;
-	background: #f8fafc;
-	color: #0f172a;
+	background: #FAF8F2;
+	color: #231C0B;
 }
 
 .form-input {
 	height: 92rpx;
 	padding: 0 24rpx;
 	font-size: 28rpx;
-	border: 1rpx solid #e2e8f0;
+	border: 1rpx solid #E9E2CF;
 	transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
@@ -218,9 +218,9 @@
 
 .form-picker-card {
 	padding: 22rpx 24rpx;
-	border: 1rpx solid #e2e8f0;
+	border: 1rpx solid #E9E2CF;
 	border-radius: 20rpx;
-	background: #f8fafc;
+	background: #FAF8F2;
 	transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
@@ -234,11 +234,11 @@
 	display: block;
 	font-size: 28rpx;
 	font-weight: 600;
-	color: #0f172a;
+	color: #231C0B;
 }
 
 .picker-title.placeholder {
-	color: #94a3b8;
+	color: #9A8C67;
 	font-weight: 500;
 }
 
@@ -247,7 +247,7 @@
 	margin-top: 8rpx;
 	font-size: 22rpx;
 	line-height: 1.5;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .field-hint {
@@ -255,7 +255,7 @@
 	margin-top: 12rpx;
 	font-size: 22rpx;
 	line-height: 1.5;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .field-meta {
@@ -274,7 +274,7 @@
 .field-count {
 	flex-shrink: 0;
 	font-size: 22rpx;
-	color: #94a3b8;
+	color: #9A8C67;
 }
 
 .form-textarea {
@@ -282,13 +282,13 @@
 	padding: 22rpx 24rpx;
 	font-size: 28rpx;
 	line-height: 1.6;
-	border: 1rpx solid #e2e8f0;
+	border: 1rpx solid #E9E2CF;
 	transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .form-item.is-complete {
 	.form-label {
-		color: #0f172a;
+		color: #231C0B;
 	}
 }
 
@@ -327,7 +327,7 @@
 	display: block;
 	font-size: 26rpx;
 	font-weight: 600;
-	color: #0f172a;
+	color: #231C0B;
 }
 
 .submit-tip {
@@ -335,7 +335,7 @@
 	margin-top: 8rpx;
 	font-size: 22rpx;
 	line-height: 1.5;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .submit-btn {

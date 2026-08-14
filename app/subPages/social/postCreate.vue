@@ -26,7 +26,7 @@
 					</view>
 				</view>
 				<view v-if="imageList.length < 9" class="image-add" @tap="chooseImage">
-					<uni-icons type="plusempty" size="36" color="#cbd5e1"></uni-icons>
+					<uni-icons type="plusempty" size="36" color="#9A8C67"></uni-icons>
 					<text class="add-text">{{ imageList.length }}/9</text>
 				</view>
 			</view>
@@ -152,7 +152,7 @@ const handlePublish = async () => {
 <style lang="scss" scoped>
 .post-create-page {
 	min-height: 100vh;
-	background: #f1f5f9;
+	background: #FAF8F2;
 	padding: 20rpx 24rpx;
 
 	&.dark-mode {
@@ -194,14 +194,14 @@ const handlePublish = async () => {
 		width: 100%;
 		min-height: 200rpx;
 		font-size: 30rpx;
-		color: #1e293b;
+		color: #231C0B;
 		line-height: 1.6;
 	}
 
 	.char-count {
 		text-align: right;
 		font-size: 22rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 		margin-top: 12rpx;
 	}
 }
@@ -245,8 +245,8 @@ const handlePublish = async () => {
 		.image-add {
 			width: calc(33.33% - 8rpx);
 			aspect-ratio: 1;
-			background: #f8fafc;
-			border: 2rpx dashed #cbd5e1;
+			background: #FAF8F2;
+			border: 2rpx dashed #E9E2CF;
 			border-radius: 12rpx;
 			display: flex;
 			flex-direction: column;
@@ -256,7 +256,7 @@ const handlePublish = async () => {
 
 			.add-text {
 				font-size: 22rpx;
-				color: #94a3b8;
+				color: #9A8C67;
 			}
 		}
 	}
@@ -270,7 +270,7 @@ const handlePublish = async () => {
 
 	.section-label {
 		font-size: 26rpx;
-		color: #64748b;
+		color: #6E6242;
 		margin-bottom: 16rpx;
 	}
 
@@ -281,9 +281,9 @@ const handlePublish = async () => {
 		.type-tag {
 			padding: 12rpx 28rpx;
 			border-radius: 32rpx;
-			background: #f1f5f9;
+			background: #FAF8F2;
 			font-size: 26rpx;
-			color: #64748b;
+			color: #6E6242;
 
 			&.active {
 				background: #E0AE12;
@@ -306,8 +306,8 @@ const handlePublish = async () => {
 		border: none;
 
 		&[disabled] {
-			background: #cbd5e1;
-			color: #94a3b8;
+			background: #E9E2CF;
+			color: #9A8C67;
 		}
 
 		&::after {

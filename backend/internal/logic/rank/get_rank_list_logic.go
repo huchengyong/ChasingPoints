@@ -3,6 +3,7 @@ package rank
 import (
 	"context"
 
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -21,7 +22,7 @@ func NewGetRankListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetRa
 	return &GetRankListLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -42,13 +43,16 @@ func (l *GetRankListLogic) GetRankList(req *types.GetRankListReq) (resp *types.G
 		gameType = req.GameType
 	}
 
-	ranking, err := l.svcCtx.RankingModel.FindOrCreateByGameType(userId, gameType)
+	ranking, err := l.svcCtx.RankingModel.FindByUserIdAndGameType(userId, gameType)
 	if err != nil {
 		l.Logger.Errorf("获取用户段位失败: %v", err)
 		return &types.GetRankListResp{
 			Success: false,
 			List:    []types.RankItem{},
 		}, nil
+	}
+	if ranking == nil {
+		ranking = &model.UserRanking{UserId: userId, GameType: gameType, RankLevel: 1}
 	}
 
 	// 获取所有段位配置

@@ -28,11 +28,27 @@ export const clearUserScopedRuntimeState = ({
   rankStore,
   notificationStore,
   friendRequestStore,
+  activityStore,
+  userOverviewStore,
+  userDataInvalidationStore,
+  publicReadStore,
   userSocket
 } = {}) => {
   rankStore?.clear()
-  notificationStore?.clearUnread()
-  friendRequestStore?.clearPendingCount()
+  if (typeof notificationStore?.clear === 'function') {
+    notificationStore.clear()
+  } else {
+    notificationStore?.clearUnread()
+  }
+  if (typeof friendRequestStore?.clear === 'function') {
+    friendRequestStore.clear()
+  } else {
+    friendRequestStore?.clearPendingCount()
+  }
+  activityStore?.clear()
+  userOverviewStore?.clear()
+  userDataInvalidationStore?.clear()
+  publicReadStore?.clearLeaderboard()
   userSocket?.disconnect()
 }
 

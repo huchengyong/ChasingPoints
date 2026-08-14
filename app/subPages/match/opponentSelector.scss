@@ -2,13 +2,13 @@
 	min-height: 100vh;
 	padding: 28rpx 28rpx 300rpx;
 	box-sizing: border-box;
-	background: linear-gradient(180deg, #fff8df 0, #f8fafc 360rpx);
+	background: linear-gradient(180deg, #fff8df 0, #FAF8F2 360rpx);
 }
 
 .selector-intro {
 	padding: 30rpx;
 	border-radius: 26rpx;
-	background: #1f2937;
+	background: #1E180D;
 	box-shadow: 0 18rpx 46rpx rgba(15, 23, 42, 0.16);
 }
 
@@ -39,13 +39,13 @@
 	gap: 18rpx;
 	text-align: center;
 	font-size: 26rpx;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .selector-empty-title {
 	font-size: 34rpx;
 	font-weight: 750;
-	color: #1e293b;
+	color: #231C0B;
 }
 
 .opponent-list {
@@ -75,7 +75,7 @@
 	width: 92rpx;
 	height: 92rpx;
 	border-radius: 50%;
-	background: #e2e8f0;
+	background: #E9E2CF;
 }
 
 .opponent-copy {
@@ -91,13 +91,13 @@
 .opponent-name {
 	font-size: 30rpx;
 	font-weight: 700;
-	color: #0f172a;
+	color: #231C0B;
 }
 
 .opponent-source {
 	margin-top: 6rpx;
 	font-size: 23rpx;
-	color: #94a3b8;
+	color: #9A8C67;
 }
 
 .selector-footer {
@@ -117,7 +117,7 @@
 	margin-bottom: 14rpx;
 	font-size: 25rpx;
 	font-weight: 700;
-	color: #475569;
+	color: #6E6242;
 }
 
 .game-type-grid {
@@ -132,9 +132,9 @@
 	margin: 0;
 	padding: 0 8rpx;
 	border-radius: 14rpx;
-	background: #f1f5f9;
+	background: #FAF8F2;
 	font-size: 22rpx;
-	color: #64748b;
+	color: #6E6242;
 
 	&::after { display: none; }
 
@@ -151,7 +151,7 @@
 	margin: 20rpx 0 0;
 	padding: 0;
 	border-radius: 18rpx;
-	background: #1f2937;
+	background: #1E180D;
 	font-size: 28rpx;
 	font-weight: 750;
 	color: #ffffff;

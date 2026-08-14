@@ -24,7 +24,7 @@
 						</button>
 					</view>
 					<button class="filter-button" :class="{ active: isSpectatorFilterActive }" @click="openFilterPanel">
-						<uni-icons type="tune-filled" size="20" :color="isSpectatorFilterActive ? '#ffffff' : (isDarkMode ? '#d7c89b' : '#64748b')"></uni-icons>
+						<uni-icons type="tune-filled" size="20" :color="isSpectatorFilterActive ? '#ffffff' : (isDarkMode ? '#d7c89b' : '#6E6242')"></uni-icons>
 					</button>
 				</view>
 			</view>
@@ -37,7 +37,7 @@
 
 			<!-- 空数据状态 -->
 			<view v-else-if="!visibleCurrentMatch && spectatorMatches.length === 0" class="empty-state">
-				<uni-icons type="medal" size="128" color="#6b7280" class="empty-icon"></uni-icons>
+				<uni-icons type="medal" size="128" color="#6E6242" class="empty-icon"></uni-icons>
 				<text class="empty-title">{{ emptyState.title }}</text>
 				<text class="empty-subtitle">{{ emptyState.subtitle }}</text>
 				<button class="start-button" @click="handleStartMatch">
@@ -141,7 +141,7 @@
 							{{ match.game_type_name }}
 						</view>
 						<view class="match-status" :class="{ finished: match.status === 2 }">
-							<uni-icons type="circle" size="14" :color="match.status === 2 ? '#94a3b8' : '#22c55e'"></uni-icons>
+							<uni-icons type="circle" size="14" :color="match.status === 2 ? '#9A8C67' : '#22c55e'"></uni-icons>
 							<text>{{ getStatusText(match) }}</text>
 						</view>
 					</view>
@@ -160,7 +160,7 @@
 				<view class="filter-panel-header">
 					<text class="filter-panel-title">筛选对局</text>
 					<button class="filter-close" @click="closeFilterPanel">
-						<uni-icons type="closeempty" size="20" :color="isDarkMode ? '#d7c89b' : '#64748b'"></uni-icons>
+						<uni-icons type="closeempty" size="20" :color="isDarkMode ? '#d7c89b' : '#6E6242'"></uni-icons>
 					</button>
 				</view>
 
@@ -219,7 +219,7 @@
 						<text class="match-qr-subtitle">请让对手使用发起对局扫码入口识别</text>
 					</view>
 					<button class="match-qr-close" @click="closeMatchQrModal">
-						<uni-icons type="closeempty" size="22" color="#64748b"></uni-icons>
+						<uni-icons type="closeempty" size="22" color="#6E6242"></uni-icons>
 					</button>
 				</view>
 				<view class="match-qr-body">
@@ -289,9 +289,10 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 import { onLoad, onShow, onPullDownRefresh } from '@dcloudio/uni-app'
+import { useActivityStore } from '@/store/activity.js'
 import { useUserStore } from '@/store/user.js'
 import { usePageTheme } from '@/utils/page-theme.js'
-import { getCurrentMatch, getPublicMatches, joinMatchReferee, previewMatchReferee, startMatch } from '@/api/match.js'
+import { getPublicMatches, joinMatchReferee, previewMatchReferee, startMatch } from '@/api/match.js'
 import { getMatchQRCode } from '@/api/match.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { shouldShowMatchPageLoading } from '@/utils/match-page.js'
@@ -317,12 +318,13 @@ import { chooseSnookerStartFormat } from '@/utils/snooker-start-format.js'
 
 // ========== 状态管理 ==========
 const userStore = useUserStore()
+const activityStore = useActivityStore()
 const { isDarkMode } = usePageTheme()
 
 // ========== 响应式数据 ==========
 const loading = ref(false)
 const refreshing = ref(false)
-const currentMatch = ref(null)
+const currentMatch = computed(() => (userStore.isLoggedIn ? activityStore.currentMatch : null))
 const spectatorMatches = ref([])
 const showGameTypeModal = ref(false)
 const selectedGameType = ref(null)
@@ -432,7 +434,7 @@ onLoad(() => {
 onPullDownRefresh(async () => {
 	refreshing.value = true
 	try {
-		await loadData()
+		await loadData({ forceActivity: true })
 	} finally {
 		refreshing.value = false
 		uni.stopPullDownRefresh()
@@ -441,7 +443,7 @@ onPullDownRefresh(async () => {
 
 onShow(() => {
 	consumePendingChallengeContext()
-	loadData()
+	if (!hasLoadedOnce.value) loadData()
 })
 
 const consumePendingChallengeContext = () => {
@@ -477,55 +479,36 @@ const consumePendingChallengeContext = () => {
 /**
  * 加载数据
  */
-const loadData = async () => {
+const hasLoadedOnce = ref(false)
+
+const loadData = async ({ forceActivity = false } = {}) => {
 	if (loading.value) return
 
 	loading.value = true
 	try {
-		// 并行请求：如果已登录则获取自己进行中的对局，同时获取平台所有正在进行的对局
-		const requests = [
-			getPublicMatches(buildSpectatorMatchListParams({
-				scope: currentScope.value,
-				status: currentStatus.value,
-				gameType: currentGameType.value,
-				page: 1,
-				pageSize: 20
-			})).catch(() => ({ success: false, list: [] }))
-		]
+		const publicMatchesRequest = getPublicMatches(buildSpectatorMatchListParams({
+			scope: currentScope.value,
+			status: currentStatus.value,
+			gameType: currentGameType.value,
+			page: 1,
+			pageSize: 20
+		})).catch(() => ({ success: false, list: [] }))
 
-		// 如果已登录，也获取自己进行中的对局
 		if (userStore.isLoggedIn) {
-			requests.unshift(getCurrentMatch().catch(() => ({ success: false })))
+			await activityStore.fetch({
+				userId: userStore.userId,
+				authGeneration: userStore.authGeneration
+			}, { force: forceActivity, silent: true }).catch(() => activityStore.snapshot())
 		}
-
-		const results = await Promise.all(requests)
-
-		if (userStore.isLoggedIn) {
-			// 设置我进行中的对局
-			const currentRes = results[0]
-			if (currentRes.success && currentRes.match) {
-				currentMatch.value = currentRes.match
-			} else {
-				currentMatch.value = null
-			}
-
-			// 设置公开观赛对局列表
-			const matchListRes = results[1]
-			if (matchListRes.success && matchListRes.list) {
-				spectatorMatches.value = filteredSpectatorList(matchListRes.list)
-			} else {
-				spectatorMatches.value = []
-			}
+		const matchListRes = await publicMatchesRequest
+		if (matchListRes.success && matchListRes.list) {
+			spectatorMatches.value = userStore.isLoggedIn
+				? filteredSpectatorList(matchListRes.list)
+				: matchListRes.list
 		} else {
-			currentMatch.value = null
-			// 设置公开观赛对局列表
-			const matchListRes = results[0]
-			if (matchListRes.success && matchListRes.list) {
-				spectatorMatches.value = matchListRes.list
-			} else {
-				spectatorMatches.value = []
-			}
+			spectatorMatches.value = []
 		}
+		hasLoadedOnce.value = true
 	} catch (error) {
 		console.error('加载对局数据失败:', error)
 	} finally {

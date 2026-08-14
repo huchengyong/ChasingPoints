@@ -1222,7 +1222,10 @@ const invalidateRankAfterSettlement = (payload = {}) => {
 		myScore: snapshot?.my_score ?? payload?.my_score ?? myScore.value,
 		opponentScore: snapshot?.opponent_score ?? payload?.opponent_score ?? opponentScore.value
 	})) {
-		rankStore.invalidate(userStore.userId)
+		rankStore.invalidate({
+			userId: userStore.userId,
+			authGeneration: userStore.authGeneration
+		})
 	}
 }
 

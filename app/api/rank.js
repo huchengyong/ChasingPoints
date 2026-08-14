@@ -36,3 +36,11 @@ export const getRankList = (params = {}) => {
 export const getLeaderboard = (params = {}) => {
   return get('/api/public/rank/leaderboard', params)
 }
+
+export const getLeaderboardSummary = (params = {}) => {
+  return get('/api/public/rank/leaderboard-summary', params)
+}
+
+export const getRankConfigs = () => {
+  return get('/api/public/rank/configs')
+}

@@ -24,7 +24,7 @@ func NewAcceptChallengeLogic(ctx context.Context, svcCtx *svc.ServiceContext) *A
 	return &AcceptChallengeLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -35,10 +35,6 @@ func (l *AcceptChallengeLogic) AcceptChallenge(req *types.HandleChallengeReq) (r
 		return &types.CommonResp{Success: false, Message: "获取用户信息失败"}, nil
 	}
 
-	if err = l.svcCtx.ChallengeModel.ExpireOld(); err != nil {
-		l.Logger.Errorf("过期挑战清理失败: err=%v", err)
-	}
-
 	challenge, err := l.svcCtx.ChallengeModel.FindById(req.ChallengeId)
 	if err != nil {
 		l.Logger.Errorf("查询挑战失败: challengeId=%d err=%v", req.ChallengeId, err)
@@ -47,8 +43,7 @@ func (l *AcceptChallengeLogic) AcceptChallenge(req *types.HandleChallengeReq) (r
 	if challenge == nil || challenge.ToUserId != userIdInt || challenge.Status != 0 {
 		return &types.CommonResp{Success: false, Message: "挑战不存在或已处理"}, nil
 	}
-	if challenge.ExpiresAt.Before(time.Now()) {
-		_ = l.svcCtx.ChallengeModel.ExpireOld()
+	if !challenge.ExpiresAt.After(time.Now()) {
 		return &types.CommonResp{Success: false, Message: "挑战已过期"}, nil
 	}
 

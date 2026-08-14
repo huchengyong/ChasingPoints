@@ -67,7 +67,7 @@
 							<text class="picker-title" :class="{ placeholder: !form.game_type }">{{ form.game_type ? gameTypeLabel : '请选择球种' }}</text>
 							<text class="picker-desc">方便大家快速了解赛事类型</text>
 						</view>
-						<uni-icons type="right" size="16" color="#94a3b8"></uni-icons>
+						<uni-icons type="right" size="16" color="#9A8C67"></uni-icons>
 					</view>
 				</picker>
 			</view>
@@ -82,7 +82,7 @@
 							<text class="picker-title" :class="{ placeholder: !form.format }">{{ form.format ? formatLabel : '请选择赛制' }}</text>
 							<text class="picker-desc">不同赛制会影响参赛人数和节奏</text>
 						</view>
-						<uni-icons type="right" size="16" color="#94a3b8"></uni-icons>
+						<uni-icons type="right" size="16" color="#9A8C67"></uni-icons>
 					</view>
 				</picker>
 			</view>
@@ -97,7 +97,7 @@
 							<text class="picker-title">{{ form.max_players }}人</text>
 							<text class="picker-desc">建议与赛制和场地承载能力匹配</text>
 						</view>
-						<uni-icons type="right" size="16" color="#94a3b8"></uni-icons>
+						<uni-icons type="right" size="16" color="#9A8C67"></uni-icons>
 					</view>
 				</picker>
 			</view>
@@ -112,7 +112,7 @@
 							<text class="picker-title" :class="{ placeholder: !form.start_time }">{{ form.start_time || '请选择日期' }}</text>
 							<text class="picker-desc">建议至少提前 1 天发布，方便报名和传播</text>
 						</view>
-						<uni-icons type="right" size="16" color="#94a3b8"></uni-icons>
+						<uni-icons type="right" size="16" color="#9A8C67"></uni-icons>
 					</view>
 				</picker>
 			</view>

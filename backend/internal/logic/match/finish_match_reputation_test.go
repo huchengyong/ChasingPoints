@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"chasing_points/internal/config"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -66,6 +67,7 @@ func newFinishMatchReputationTestSvc(t *testing.T) *svc.ServiceContext {
 		ReputationConfigModel:      model.NewReputationConfigModel(db),
 		UserReputationProfileModel: model.NewUserReputationProfileModel(db),
 		UserReputationLogModel:     model.NewUserReputationLogModel(db),
+		Config:                     config.Config{CompetitiveReadModel: config.CompetitiveReadModelConfig{ReadMode: "enabled"}},
 	}
 }
 

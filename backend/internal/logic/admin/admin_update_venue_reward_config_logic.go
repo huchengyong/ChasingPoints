@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	logicx "chasing_points/internal/logic"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -27,7 +28,7 @@ func NewAdminUpdateVenueRewardConfigLogic(ctx context.Context, svcCtx *svc.Servi
 	return &AdminUpdateVenueRewardConfigLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -107,6 +108,7 @@ func (l *AdminUpdateVenueRewardConfigLogic) AdminUpdateVenueRewardConfig(req *ty
 			Message: "保存奖励配置失败",
 		}, nil
 	}
+	logicx.InvalidateRuntimeConfigCache(l.ctx, l.svcCtx, logicx.FavoriteVenueRewardConfigCacheKey)
 
 	welcomeConfig, err := l.svcCtx.FavoriteVenueRewardConfigModel.FindByActivityKey(model.WelcomeMemberRewardActivityKey)
 	if err != nil {

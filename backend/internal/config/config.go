@@ -76,6 +76,12 @@ type Config struct {
 
 	WSTSync WSTSyncConfig
 
+	SeasonLifecycle SeasonLifecycleConfig
+
+	Observability ObservabilityConfig
+
+	CompetitiveReadModel CompetitiveReadModelConfig
+
 	// 支付宝支付配置
 	Alipay struct {
 		AppId      int64
@@ -125,4 +131,21 @@ type WSTSyncConfig struct {
 	HotIntervalMinutes int  `json:",env=WST_SYNC_HOT_INTERVAL_MINUTES,default=15"`
 	HotLookbackDays    int  `json:",env=WST_SYNC_HOT_LOOKBACK_DAYS,default=2"`
 	HotLookaheadDays   int  `json:",env=WST_SYNC_HOT_LOOKAHEAD_DAYS,default=7"`
+}
+
+type SeasonLifecycleConfig struct {
+	Enabled       bool   `json:",env=SEASON_LIFECYCLE_ENABLED,default=false"`
+	AnchorDate    string `json:",env=SEASON_LIFECYCLE_ANCHOR_DATE,optional"`
+	InitialNumber int    `json:",env=SEASON_LIFECYCLE_INITIAL_NUMBER,default=1"`
+	CycleMonths   int    `json:",env=SEASON_LIFECYCLE_CYCLE_MONTHS,default=1"`
+	Timezone      string `json:",env=SEASON_LIFECYCLE_TIMEZONE,default=Asia/Shanghai"`
+}
+
+type ObservabilityConfig struct {
+	SlowSQLThresholdMs int `json:",env=OBSERVABILITY_SLOW_SQL_THRESHOLD_MS,default=500"`
+}
+
+type CompetitiveReadModelConfig struct {
+	// ReadMode must remain disabled until completed_at backfill, rebuild and audit converge.
+	ReadMode string `json:",env=COMPETITIVE_READ_MODEL_READ_MODE,default=disabled"`
 }

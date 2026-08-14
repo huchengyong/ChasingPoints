@@ -25,8 +25,8 @@ func TestGetHonorWallHandlerReturnsSafeEmptyResponseWithoutUserContext(t *testin
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", recorder.Code)
 	}
-	if !strings.Contains(recorder.Body.String(), `"success":false`) {
-		t.Fatalf("expected safe unsuccessful response, got %s", recorder.Body.String())
+	if !strings.Contains(recorder.Body.String(), `"success":false`) || !strings.Contains(recorder.Body.String(), `"season_state":"not_started"`) {
+		t.Fatalf("expected safe unsuccessful response with lifecycle state, got %s", recorder.Body.String())
 	}
 }
 

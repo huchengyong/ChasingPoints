@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -65,6 +66,13 @@ func (m *UserModel) FindById(id int64) (*User, error) {
 	return m.FindByIdWithTx(nil, id)
 }
 
+func (m *UserModel) FindByIdWithContext(ctx context.Context, id int64) (*User, error) {
+	if ctx == nil {
+		return m.FindById(id)
+	}
+	return m.FindByIdWithTx(m.db.WithContext(ctx), id)
+}
+
 func (m *UserModel) FindByIdWithTx(tx *gorm.DB, id int64) (*User, error) {
 	db := m.db
 	if tx != nil {
@@ -78,12 +86,51 @@ func (m *UserModel) FindByIdWithTx(tx *gorm.DB, id int64) (*User, error) {
 	return &user, err
 }
 
+func (m *UserModel) FindByIds(ids []int64) (map[int64]User, error) {
+	return m.FindByIdsWithTx(nil, ids)
+}
+
+func (m *UserModel) FindByIdsWithTx(tx *gorm.DB, ids []int64) (map[int64]User, error) {
+	users := make(map[int64]User, len(ids))
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	const batchSize = 500
+	for start := 0; start < len(ids); start += batchSize {
+		end := start + batchSize
+		if end > len(ids) {
+			end = len(ids)
+		}
+		var list []User
+		if err := db.Where("id IN ?", ids[start:end]).Find(&list).Error; err != nil {
+			return nil, err
+		}
+		for _, user := range list {
+			users[user.Id] = user
+		}
+	}
+	return users, nil
+}
+
 func (m *UserModel) FindByIdForUpdateWithTx(tx *gorm.DB, id int64) (*User, error) {
 	db := m.db
 	if tx != nil {
 		db = tx
 	}
 	return m.FindByIdWithTx(db.Clauses(clause.Locking{Strength: "UPDATE"}), id)
+}
+
+func (m *UserModel) ListIDsAfter(afterID int64, limit int) ([]int64, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	if limit > 1000 {
+		limit = 1000
+	}
+	var ids []int64
+	err := m.db.Model(&User{}).Where("id > ?", afterID).Order("id ASC").Limit(limit).Pluck("id", &ids).Error
+	return ids, err
 }
 
 // Create 创建用户

@@ -20,7 +20,7 @@ func NewAlipayMemberSubscriptionNotifyLogic(ctx context.Context, svcCtx *svc.Ser
 	return &AlipayMemberSubscriptionNotifyLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

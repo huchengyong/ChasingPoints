@@ -1,11 +1,11 @@
-$bg-light: #f8fafc;
-$bg-dark: #0f172a;
+$bg-light: #FAF8F2;
+$bg-dark: #141109;
 $card-light: rgba(255, 255, 255, 0.94);
 $card-dark: rgba(30, 41, 59, 0.92);
-$text-primary-light: #0f172a;
-$text-secondary-light: #64748b;
-$text-primary-dark: #f8fafc;
-$text-secondary-dark: #94a3b8;
+$text-primary-light: #231C0B;
+$text-secondary-light: #6E6242;
+$text-primary-dark: #FFF7E1;
+$text-secondary-dark: #9F926E;
 $border-light: rgba(148, 163, 184, 0.18);
 $border-dark: rgba(148, 163, 184, 0.16);
 $primary: #E0AE12;
@@ -22,7 +22,7 @@ $shadow-dark: 0 24rpx 80rpx rgba(2, 6, 23, 0.5);
 	flex-direction: column;
 	background:
 		radial-gradient(circle at top left, rgba(224, 174, 18, 0.12), transparent 36%),
-		linear-gradient(180deg, #ffffff 0%, $bg-light 46%, #f8fafc 100%);
+		linear-gradient(180deg, #ffffff 0%, $bg-light 46%, #FAF8F2 100%);
 	position: relative;
 	transition: background 0.3s ease;
 	box-sizing: border-box;
@@ -920,7 +920,7 @@ $shadow-dark: 0 24rpx 80rpx rgba(2, 6, 23, 0.5);
 .result-container.dark-mode {
 	background:
 		radial-gradient(circle at top left, rgba(224, 174, 18, 0.16), transparent 32%),
-		linear-gradient(180deg, #0f172a 0%, $bg-dark 46%, #0b1120 100%);
+		linear-gradient(180deg, #241d10 0%, $bg-dark 46%, #141109 100%);
 
 	.header {
 		background: rgba(15, 23, 18, 0.84);

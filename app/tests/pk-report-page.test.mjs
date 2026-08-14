@@ -6,6 +6,8 @@ test('pk report page keeps compliance-safe share actions and removes post publis
   const source = readFileSync(new URL('../subPages/social/pkReport.vue', import.meta.url), 'utf8')
 
   assert.match(source, /buildPkReportHero/)
+  assert.match(source, /getH2HOverview\(\{ \.\.\.buildRequestParams\(\), page_size: 5 \}\)/)
+  assert.doesNotMatch(source, /getH2HStats\(|getH2HHistory\(/)
   assert.match(source, /buildPkEvidenceList/)
   assert.match(source, /copyShareSummary/)
   assert.match(source, /buildShareSummary/)

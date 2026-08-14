@@ -18,7 +18,7 @@
 
 			<!-- 首次加载 -->
 			<view class="loading-wrapper" v-if="isInitialLoading">
-				<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+				<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 				<text class="loading-text">加载中...</text>
 			</view>
 
@@ -156,7 +156,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { usePageTheme } from '@/utils/page-theme.js'
-import { getUserRankInfo, getRankList } from '@/api/rank.js'
+import { getRankConfigs } from '@/api/rank.js'
+import { usePublicReadStore } from '@/store/publicRead.js'
+import { useRankStore } from '@/store/rank.js'
+import { useUserStore } from '@/store/user.js'
 import { GAME_TYPE_TABS, getGameTypeLabel } from '@/utils/game-types.js'
 import {
 	buildRankGrowthPath,
@@ -171,6 +174,13 @@ import {
 
 // ========== 状态管理 ==========
 const { isDarkMode } = usePageTheme()
+const publicReadStore = usePublicReadStore()
+const rankStore = useRankStore()
+const userStore = useUserStore()
+const getReadIdentity = () => ({
+	userId: userStore.userId,
+	authGeneration: userStore.authGeneration
+})
 
 // ========== 响应式数据 ==========
 const isFetching = ref(true)
@@ -230,28 +240,30 @@ onShow(() => {
 /**
  * 获取数据
  */
-const fetchData = async () => {
+const fetchData = async ({ force = false } = {}) => {
 	const requestId = latestRequestId.value + 1
 	const requestedGameType = currentGameType.value
 	latestRequestId.value = requestId
 	isFetching.value = true
 
 	try {
-		// 并行请求用户段位信息和段位列表
-		const [infoRes, listRes] = await Promise.all([
-			getUserRankInfo({ game_type: requestedGameType }),
-			getRankList({ game_type: requestedGameType })
+		const [, listRes] = await Promise.all([
+			force
+				? rankStore.forceRefresh(getReadIdentity())
+				: rankStore.ensureFresh(getReadIdentity()),
+			publicReadStore.loadStatic('rank-configs', getRankConfigs, { force })
 		])
 
 		if (!shouldApplyRankExplainResponse({ requestId, latestRequestId: latestRequestId.value })) {
 			return
 		}
 
-		if (!infoRes.success || !infoRes.rank_info || !listRes.success || !listRes.list) {
+		const nextRankInfo = rankStore.rankInfoMap[requestedGameType]
+		if (!nextRankInfo || !listRes?.success || !listRes.list) {
 			throw new Error('段位数据加载失败')
 		}
 
-		rankInfo.value = infoRes.rank_info
+		rankInfo.value = nextRankInfo
 		rankList.value = listRes.list
 		loadedGameType.value = requestedGameType
 		hasLoadedOnce.value = true
@@ -283,7 +295,7 @@ const fetchData = async () => {
  * 首次加载失败后重新加载
  */
 const handleRetry = () => {
-	fetchData()
+	fetchData({ force: true })
 }
 
 /**

@@ -20,7 +20,7 @@
 .loading-text {
 	margin-top: 16rpx;
 	font-size: 28rpx;
-	color: #94a3b8;
+	color: #9A8C67;
 }
 
 .detail-content,
@@ -244,7 +244,7 @@
 	}
 
 	&.badge-2 {
-		color: #475569;
+		color: #6E6242;
 	}
 
 	&.badge-3 {
@@ -294,7 +294,7 @@
 	}
 
 	&.is-lose {
-		color: #64748b;
+		color: #6E6242;
 	}
 }
 
@@ -447,14 +447,14 @@
 	margin-top: 24rpx;
 	font-size: 34rpx;
 	font-weight: 700;
-	color: #0f172a;
+	color: #231C0B;
 }
 
 .empty-text {
 	margin-top: 14rpx;
 	font-size: 24rpx;
 	line-height: 1.6;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .empty-actions {
@@ -478,9 +478,9 @@
 	}
 
 	&.secondary {
-		background: #f8fafc;
-		color: #0f172a;
-		border: 1rpx solid #e2e8f0;
+		background: #FAF8F2;
+		color: #231C0B;
+		border: 1rpx solid #E9E2CF;
 	}
 }
 

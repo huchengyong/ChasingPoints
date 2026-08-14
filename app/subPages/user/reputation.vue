@@ -45,12 +45,12 @@
 				</view>
 
 				<view v-else-if="logsLoading && reputationLogs.length === 0" class="state-card">
-					<uni-icons type="spinner-cycle" size="32" :color="isDarkMode ? '#94a3b8' : '#64748b'"></uni-icons>
+					<uni-icons type="spinner-cycle" size="32" :color="isDarkMode ? '#9F926E' : '#6E6242'"></uni-icons>
 					<text class="state-title">正在加载信誉记录</text>
 				</view>
 
 				<view v-else-if="!logsLoading && reputationLogs.length === 0" class="state-card">
-					<uni-icons type="list" size="32" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+					<uni-icons type="list" size="32" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 					<text class="state-title">暂时还没有信誉变更记录</text>
 				</view>
 
@@ -101,11 +101,14 @@
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { usePageTheme } from '@/utils/page-theme.js'
-import { getUserReputation, getUserReputationLogs } from '@/api/user.js'
+import { getUserReputationLogs } from '@/api/user.js'
+import { useUserOverviewStore } from '@/store/userOverview.js'
+import { useUserStore } from '@/store/user.js'
 import { formatDateTime, formatRelativeTime } from '@/utils/format.js'
 
 const { isDarkMode } = usePageTheme()
-
+const userOverviewStore = useUserOverviewStore()
+const userStore = useUserStore()
 
 const statusLoading = ref(false)
 const statusError = ref('')
@@ -119,6 +122,7 @@ const hasMore = ref(true)
 const reputationLogs = ref([])
 const currentPage = ref(1)
 const total = ref(0)
+const logsLoaded = ref(false)
 
 const PAGE_SIZE = 20
 let statusRequestSeq = 0
@@ -152,13 +156,14 @@ const statusToneClass = computed(() => {
 })
 
 onShow(() => {
-	refreshPageData()
+	void loadStatus()
+	if (!logsLoaded.value) void loadLogs({ refresh: true })
 })
 
-const refreshPageData = () => {
-	void loadStatus()
-	void loadLogs({ refresh: true })
-}
+const getReadIdentity = () => ({
+	userId: userStore.userId,
+	authGeneration: userStore.authGeneration
+})
 
 const loadStatus = async ({ force = false } = {}) => {
 	if (statusLoading.value && !force) {
@@ -168,11 +173,13 @@ const loadStatus = async ({ force = false } = {}) => {
 	statusLoading.value = true
 	statusError.value = ''
 	try {
-		const res = await getUserReputation()
+		const overview = await userOverviewStore.fetch(getReadIdentity(), { force, silent: true })
 		if (requestSeq !== statusRequestSeq) {
 			return
 		}
-		reputationStatus.value = res || null
+		if (overview?.reputation?.success) {
+			reputationStatus.value = overview.reputation
+		}
 	} catch (error) {
 		if (requestSeq !== statusRequestSeq) {
 			return
@@ -215,6 +222,7 @@ const loadLogs = async ({ refresh = false, append = false, force = false } = {})
 		currentPage.value = targetPage
 		reputationLogs.value = append ? [...reputationLogs.value, ...list] : list
 		hasMore.value = reputationLogs.value.length < total.value
+		logsLoaded.value = true
 	} catch (error) {
 		if (requestSeq !== logsRequestSeq) {
 			return

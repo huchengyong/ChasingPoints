@@ -47,7 +47,7 @@ func TestBuildMatchSummaryForAmericanNine(t *testing.T) {
 	}
 }
 
-func TestBuildMatchSummaryForSnookerUsesCurrentMatchBreaks(t *testing.T) {
+func TestBuildMatchSummaryForSnookerUsesCurrentCompetitiveProfiles(t *testing.T) {
 	actions := []model.MatchAction{
 		{RoundNo: 1, Actor: 2, ActionType: "score", ScoreChange: 1},
 		{RoundNo: 1, Actor: 2, ActionType: "score", ScoreChange: 7},
@@ -84,14 +84,14 @@ func TestBuildMatchSummaryForSnookerUsesCurrentMatchBreaks(t *testing.T) {
 		types.MatchAchievement{},
 	)
 
-	if !hasSummaryItem(highlights, "最高单杆", "16 分") {
-		t.Fatalf("expected snooker highlights to use current match break, got %#v", highlights)
+	if !hasSummaryItem(highlights, "最高单杆", "81 分") {
+		t.Fatalf("expected snooker highlights to use the current competitive profile, got %#v", highlights)
 	}
-	if !hasSummaryItem(stats, "我的最高单杆", "16 分") {
-		t.Fatalf("expected snooker stats to use current match break, got %#v", stats)
+	if !hasSummaryItem(stats, "我的最高单杆", "81 分") {
+		t.Fatalf("expected snooker stats to use the current competitive profile, got %#v", stats)
 	}
-	if !hasSummaryItem(stats, "对手最高单杆", "48 分") {
-		t.Fatalf("expected opponent snooker stats to use current match break, got %#v", stats)
+	if !hasSummaryItem(stats, "对手最高单杆", "129 分") {
+		t.Fatalf("expected opponent snooker stats to use the current competitive profile, got %#v", stats)
 	}
 	if !hasSummaryItem(stats, "我的50+次数", "0 次") {
 		t.Fatalf("expected snooker stats to include my fifty-plus count, got %#v", stats)
@@ -108,8 +108,8 @@ func TestBuildMatchSummaryForSnookerUsesCurrentMatchBreaks(t *testing.T) {
 	if hasSummaryLabel(highlights, "我的红球进球") || hasSummaryLabel(stats, "我的红球进球") {
 		t.Fatalf("snooker summary should no longer expose red-ball pot counts, highlights=%#v stats=%#v", highlights, stats)
 	}
-	if hasSummaryItem(highlights, "最高单杆", "81 分") || hasSummaryItem(stats, "对手最高单杆", "129 分") {
-		t.Fatalf("snooker summary should not reuse historical max score, highlights=%#v stats=%#v", highlights, stats)
+	if hasSummaryItem(highlights, "最高单杆", "16 分") || hasSummaryItem(stats, "对手最高单杆", "48 分") {
+		t.Fatalf("snooker summary must not replace current profile values with this match's breaks, highlights=%#v stats=%#v", highlights, stats)
 	}
 }
 
@@ -133,7 +133,7 @@ func TestBuildMatchSummaryForSnookerIgnoresUnfinishedFrameActions(t *testing.T) 
 		0,
 		0.5,
 		0.5,
-		0,
+		16,
 		0,
 		0,
 		"2026-03-17 20:00",
@@ -227,7 +227,7 @@ func TestBuildMatchSummaryForSnookerTracksFiftyPlusAndCenturies(t *testing.T) {
 		1,
 		0.5,
 		0.5,
-		0,
+		147,
 		0,
 		0,
 		"2026-03-18 12:15:00",

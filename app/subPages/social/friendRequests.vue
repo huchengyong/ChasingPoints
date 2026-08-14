@@ -62,9 +62,10 @@
 
 <script setup>
 import { ref } from 'vue'
-import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
+import { onLoad, onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { getFriendRequests, acceptFriendRequest, rejectFriendRequest } from '@/api/friend.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
+import { useUserStore } from '@/store/user.js'
 import { formatRelativeTime } from '@/utils/format.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
@@ -78,6 +79,20 @@ const pageSize = 20
 const total = ref(0)
 const hasMore = ref(false)
 const friendRequestStore = useFriendRequestStore()
+const userStore = useUserStore()
+const latestRequestId = ref(0)
+const requestedIdentityKey = ref('')
+const loadedIdentityKey = ref('')
+
+const getReadIdentity = () => ({
+	userId: userStore.userId,
+	authGeneration: userStore.authGeneration
+})
+
+const currentIdentityKey = () => {
+	const identity = getReadIdentity()
+	return `${identity.userId}:${identity.authGeneration}`
+}
 
 const formatRequestTime = (dateTime) => {
 	if (!dateTime) return ''
@@ -87,12 +102,17 @@ const formatRequestTime = (dateTime) => {
 }
 
 const loadData = async (isRefresh = false) => {
+	const requestId = latestRequestId.value + 1
+	const requestIdentityKey = currentIdentityKey()
+	latestRequestId.value = requestId
+	requestedIdentityKey.value = requestIdentityKey
 	if (isRefresh) {
 		page.value = 1
 		loading.value = true
 	}
 	try {
 		const res = await getFriendRequests({ page: page.value, page_size: pageSize })
+		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
 		const list = res.list || res || []
 		if (isRefresh) {
 			requestList.value = list
@@ -100,11 +120,15 @@ const loadData = async (isRefresh = false) => {
 			requestList.value = [...requestList.value, ...list]
 		}
 		total.value = res.total || list.length
-		friendRequestStore.pendingCount = total.value
+		friendRequestStore.setPendingCount(total.value, getReadIdentity())
 		hasMore.value = requestList.value.length < total.value
+		loadedIdentityKey.value = requestIdentityKey
 	} catch (e) {
+		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
+		requestedIdentityKey.value = ''
 		console.error('加载好友请求失败:', e)
 	} finally {
+		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
 		loading.value = false
 		uni.stopPullDownRefresh()
 	}
@@ -117,11 +141,13 @@ const loadMore = () => {
 }
 
 const handleAccept = async (item) => {
+	const requestIdentityKey = currentIdentityKey()
 	try {
 		const res = await acceptFriendRequest({ request_id: item.id })
+		if (currentIdentityKey() !== requestIdentityKey) return
 		if (res.success) {
 			item.status = 1
-			friendRequestStore.decrementPendingCount()
+			friendRequestStore.decrementPendingCount(getReadIdentity())
 			total.value = Math.max(total.value - 1, 0)
 			uni.showToast({ title: '已接受', icon: 'success' })
 		} else {
@@ -133,11 +159,13 @@ const handleAccept = async (item) => {
 }
 
 const handleReject = async (item) => {
+	const requestIdentityKey = currentIdentityKey()
 	try {
 		const res = await rejectFriendRequest({ request_id: item.id })
+		if (currentIdentityKey() !== requestIdentityKey) return
 		if (res.success) {
 			item.status = 2
-			friendRequestStore.decrementPendingCount()
+			friendRequestStore.decrementPendingCount(getReadIdentity())
 			total.value = Math.max(total.value - 1, 0)
 			uni.showToast({ title: '已拒绝', icon: 'none' })
 		} else {
@@ -152,6 +180,15 @@ onLoad(() => {
 	loadData(true)
 })
 
+onShow(() => {
+	if (loadedIdentityKey.value !== currentIdentityKey() && requestedIdentityKey.value !== currentIdentityKey()) {
+		requestList.value = []
+		page.value = 1
+		loading.value = false
+		loadData(true)
+	}
+})
+
 onPullDownRefresh(() => {
 	loadData(true)
 })
@@ -160,7 +197,7 @@ onPullDownRefresh(() => {
 <style lang="scss" scoped>
 .requests-page {
 	min-height: 100vh;
-	background: #f1f5f9;
+	background: #FAF8F2;
 }
 
 .loading-state {
@@ -171,7 +208,7 @@ onPullDownRefresh(() => {
 	.loading-text {
 		margin-top: 16rpx;
 		font-size: 28rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 	}
 }
 
@@ -202,7 +239,7 @@ onPullDownRefresh(() => {
 			height: 96rpx;
 			border-radius: 50%;
 			border: 2rpx solid rgba(224, 174, 18, 0.16);
-			background: #f8fafc;
+			background: #FAF8F2;
 			flex-shrink: 0;
 		}
 
@@ -224,7 +261,7 @@ onPullDownRefresh(() => {
 			min-width: 0;
 			font-size: 30rpx;
 			font-weight: 600;
-			color: #1e293b;
+			color: #231C0B;
 			white-space: nowrap;
 			overflow: hidden;
 			text-overflow: ellipsis;
@@ -232,7 +269,7 @@ onPullDownRefresh(() => {
 
 		.request-time {
 			font-size: 22rpx;
-			color: #94a3b8;
+			color: #9A8C67;
 			white-space: nowrap;
 			flex-shrink: 0;
 		}
@@ -246,13 +283,13 @@ onPullDownRefresh(() => {
 			display: block;
 			font-size: 24rpx;
 			line-height: 1.5;
-			color: #64748b;
+			color: #6E6242;
 			overflow: hidden;
 			text-overflow: ellipsis;
 			white-space: nowrap;
 
 			&.is-muted {
-				color: #94a3b8;
+				color: #9A8C67;
 			}
 		}
 
@@ -281,8 +318,8 @@ onPullDownRefresh(() => {
 			}
 
 			.action-reject {
-				background: #f8fafc;
-				color: #64748b;
+				background: #FAF8F2;
+				color: #6E6242;
 				border: 1rpx solid rgba(148, 163, 184, 0.24);
 			}
 
@@ -310,7 +347,7 @@ onPullDownRefresh(() => {
 				}
 
 				&.rejected {
-					color: #94a3b8;
+					color: #9A8C67;
 				}
 			}
 		}
@@ -322,7 +359,7 @@ onPullDownRefresh(() => {
 		padding: 24rpx;
 		.load-more-text {
 			font-size: 26rpx;
-			color: #64748b;
+			color: #6E6242;
 		}
 	}
 }
@@ -339,7 +376,7 @@ onPullDownRefresh(() => {
 	}
 	.empty-text {
 		font-size: 28rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 	}
 }
 

@@ -42,7 +42,7 @@ func NewStartMatchLogic(ctx context.Context, svcCtx *svc.ServiceContext) *StartM
 	return &StartMatchLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

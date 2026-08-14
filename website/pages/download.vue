@@ -96,7 +96,7 @@ usePageSeo({
 
 .download-card__platform {
   margin: 0 0 10px;
-  color: #9f6c00;
+  color: var(--ui-brand-strong);
   font-weight: 600;
 }
 
@@ -125,7 +125,7 @@ usePageSeo({
   height: 44px;
   padding: 0 18px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #d9a617, #bb8400);
+  background: linear-gradient(135deg, var(--ui-brand-gradient-start), var(--ui-brand-gradient-end));
   color: #fff;
   font-weight: 700;
 }

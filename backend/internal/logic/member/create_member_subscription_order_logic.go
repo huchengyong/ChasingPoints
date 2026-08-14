@@ -24,7 +24,7 @@ func NewCreateMemberSubscriptionOrderLogic(ctx context.Context, svcCtx *svc.Serv
 	return &CreateMemberSubscriptionOrderLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

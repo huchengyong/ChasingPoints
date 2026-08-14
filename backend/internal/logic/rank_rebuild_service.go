@@ -7,6 +7,7 @@ import (
 
 	achievementx "chasing_points/internal/logic/achievement"
 	"chasing_points/internal/model"
+	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 
 	"gorm.io/gorm"
@@ -99,6 +100,10 @@ func (s *RankRebuildService) Rebuild(ctx context.Context) (*RankRebuildSummary, 
 	if err != nil {
 		return nil, err
 	}
+	seasonLocation, err := seasonx.LocationForConfig(s.svcCtx.Config.SeasonLifecycle)
+	if err != nil {
+		return nil, err
+	}
 
 	summary, err := s.DryRun(ctx)
 	if err != nil {
@@ -129,8 +134,7 @@ func (s *RankRebuildService) Rebuild(ctx context.Context) (*RankRebuildSummary, 
 			if match.OpponentId != nil && *match.OpponentId > 0 {
 				userGamePairs[rankUserGameKey{UserId: *match.OpponentId, GameType: match.GameType}] = struct{}{}
 			}
-
-			recordSeasonStats(seasonStats, seasons, &match)
+			recordSeasonStats(seasonStats, seasons, &match, seasonLocation)
 			effectiveAt := resolveRankChangeEffectiveAt(&match)
 			dayStart, _ := rankSettlementDayRange(effectiveAt)
 			if isDrawMatch(&match) {
@@ -232,7 +236,7 @@ func (s *RankRebuildService) Rebuild(ctx context.Context) (*RankRebuildSummary, 
 			updateReplaySettlementState(dailyPositiveGains, sameOpponentDailyCounts, &match, dayStart, player1Settlement.FinalChange, player2FinalChange)
 		}
 
-		records, recordsErr := s.buildSeasonRecords(tx, userGamePairs, seasonStats, seasons)
+		records, recordsErr := s.buildSeasonRecords(tx, userGamePairs, seasonStats, seasons, seasonLocation)
 		if recordsErr != nil {
 			return recordsErr
 		}
@@ -316,23 +320,25 @@ func (s *RankRebuildService) buildSeasonRecords(
 	userGamePairs map[rankUserGameKey]struct{},
 	seasonStats map[int64]map[rankUserGameKey]*seasonUserGameStats,
 	seasons []model.Season,
+	seasonLocation *time.Location,
 ) ([]model.SeasonRecord, error) {
 	records := make([]model.SeasonRecord, 0)
 
 	for _, season := range seasons {
 		seasonRecords := make([]model.SeasonRecord, 0)
 		statsByPair := seasonStats[season.Id]
+		startAt, endExclusive := seasonx.Bounds(&season, seasonLocation)
 		for pair := range userGamePairs {
 			stats := statsByPair[pair]
 			if stats == nil || stats.MatchesPlayed == 0 {
 				continue
 			}
 
-			seasonLogs, err := s.svcCtx.RankingModel.ListRankChangesByUserAndGameTypeBetweenWithTx(tx, pair.UserId, pair.GameType, season.StartDate, season.EndDate)
+			seasonLogs, err := s.svcCtx.RankingModel.ListRankChangesByUserAndGameTypeBetweenHalfOpenWithTx(tx, pair.UserId, pair.GameType, startAt, endExclusive)
 			if err != nil {
 				return nil, err
 			}
-			beforeLog, err := s.svcCtx.RankingModel.FindLatestRankChangeBeforeByGameTypeWithTx(tx, pair.UserId, pair.GameType, season.StartDate)
+			beforeLog, err := s.svcCtx.RankingModel.FindLatestRankChangeBeforeByGameTypeWithTx(tx, pair.UserId, pair.GameType, startAt)
 			if err != nil {
 				return nil, err
 			}
@@ -379,12 +385,13 @@ func recordSeasonStats(
 	seasonStats map[int64]map[rankUserGameKey]*seasonUserGameStats,
 	seasons []model.Season,
 	match *model.Match,
+	seasonLocation *time.Location,
 ) {
 	if match == nil {
 		return
 	}
 
-	season := findSeasonForTime(seasons, resolveRankChangeEffectiveAt(match))
+	season := findSeasonForTime(seasons, resolveRankChangeEffectiveAt(match), seasonLocation)
 	if season == nil {
 		return
 	}
@@ -437,9 +444,9 @@ func isPlayer1Win(match *model.Match) bool {
 	return match.MyScore > match.OpponentScore
 }
 
-func findSeasonForTime(seasons []model.Season, at time.Time) *model.Season {
+func findSeasonForTime(seasons []model.Season, at time.Time, seasonLocation *time.Location) *model.Season {
 	for i := range seasons {
-		if (at.Equal(seasons[i].StartDate) || at.After(seasons[i].StartDate)) && (at.Equal(seasons[i].EndDate) || at.Before(seasons[i].EndDate)) {
+		if seasonx.Contains(&seasons[i], at, seasonLocation) {
 			return &seasons[i]
 		}
 	}

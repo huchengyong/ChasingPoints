@@ -1,10 +1,10 @@
 .home-container {
   --home-bg: #ffffff;
   --home-surface: #ffffff;
-  --home-surface-secondary: #f8fafc;
-  --home-text-primary: #0f172a;
-  --home-text-secondary: #64748b;
-  --home-text-muted: #94a3b8;
+  --home-surface-secondary: #FAF8F2;
+  --home-text-primary: #231C0B;
+  --home-text-secondary: #6E6242;
+  --home-text-muted: #9A8C67;
   --home-border: rgba(148, 163, 184, 0.18);
   --home-accent: #e0ae12;
   --home-accent-strong: #c69200;
@@ -17,7 +17,7 @@
   overflow: hidden;
   box-sizing: border-box;
   background:
-    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    linear-gradient(180deg, #ffffff 0%, #FAF8F2 100%);
   color: var(--home-text-primary);
 
   &.dark-mode {

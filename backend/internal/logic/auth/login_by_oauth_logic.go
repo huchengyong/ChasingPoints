@@ -22,7 +22,7 @@ func NewLoginByOauthLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Logi
 	return &LoginByOauthLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -95,6 +95,10 @@ func (l *LoginByOauthLogic) LoginByOauth(req *types.LoginByOauthReq) (resp *type
 	}
 	if user.Status != 1 {
 		return &types.LoginByOauthResp{Success: false}, fmt.Errorf("%s", loginUnavailableMessage)
+	}
+	if err := ensureUserRankingProfiles(l.svcCtx, user.Id); err != nil {
+		l.Logger.Errorf("初始化用户段位失败: %v", err)
+		return &types.LoginByOauthResp{Success: false}, err
 	}
 
 	tokenPair, err := issueAuthTokenPair(user.Id, l.svcCtx)

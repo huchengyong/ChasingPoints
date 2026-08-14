@@ -151,8 +151,9 @@ test('user page keeps cached rank visible, enables manual refresh, and invalidat
   const appSource = readFileSync(new URL('../App.vue', import.meta.url), 'utf8')
 
   assert.match(userPageSource, /!hasRankCache && \(coreDataLoading \|\| rankLoading\)/)
-  assert.match(userPageSource, /rankStore\.forceRefresh\(userStore\.userId\)/)
-  assert.match(userPageSource, /data\?\.category === 'match_result'/)
+  assert.match(userPageSource, /rankStore\.forceRefresh\(getReadIdentity\(\)\)/)
+  assert.doesNotMatch(userPageSource, /fetchUnreadCount\(\)|fetchPendingCount\(\)/)
+  assert.match(appSource, /scopes\.includes\('rank'\)/)
   assert.match(pagesSource, /"path": "pages\/user\/index"[\s\S]*"enablePullDownRefresh": true/)
   assert.match(playingPageSource, /const handleSync[\s\S]*invalidateRankAfterSettlement\(data\)/)
   assert.match(playingPageSource, /const handleFinishStateUpdate[\s\S]*invalidateRankAfterSettlement\(data\)/)

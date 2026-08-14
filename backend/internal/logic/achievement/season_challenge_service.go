@@ -4,15 +4,17 @@ import (
 	"time"
 
 	"chasing_points/internal/model"
+	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 
 	"gorm.io/gorm"
 )
 
 const (
-	SeasonChallengeMatchesKey    = "season_matches_20"
-	SeasonChallengeWinsKey       = "season_wins_10"
-	SeasonChallengeTournamentKey = "season_tournament_finish_1"
+	seasonChallengeArchiveBatchSize = 500
+	SeasonChallengeMatchesKey       = "season_matches_20"
+	SeasonChallengeWinsKey          = "season_wins_10"
+	SeasonChallengeTournamentKey    = "season_tournament_finish_1"
 )
 
 type SeasonChallengeDefinition struct {
@@ -81,14 +83,18 @@ func (s *SeasonChallengeService) getProgressWithTx(tx *gorm.DB, userId int64, se
 		return result, nil
 	}
 
+	startAt, endExclusive, err := s.seasonBounds(season)
+	if err != nil {
+		return nil, err
+	}
 	metricKeys := seasonChallengeMetricKeys()
 	totals, err := s.svcCtx.AchievementProgressEventModel.SumMetricsBetweenWithTx(
 		tx,
 		userId,
 		gameType,
 		metricKeys,
-		season.StartDate,
-		seasonChallengeEndExclusive(season.EndDate),
+		startAt,
+		endExclusive,
 	)
 	if err != nil {
 		return nil, err
@@ -109,60 +115,85 @@ func (s *SeasonChallengeService) getProgressWithTx(tx *gorm.DB, userId int64, se
 }
 
 func (s *SeasonChallengeService) BuildSnapshotsWithTx(tx *gorm.DB, season *model.Season, archivedAt time.Time) ([]model.SeasonChallengeSnapshot, error) {
+	return s.buildSnapshotBatchesWithTx(tx, season, archivedAt, nil)
+}
+
+func (s *SeasonChallengeService) ArchiveSeasonWithTx(tx *gorm.DB, season *model.Season, archivedAt time.Time) ([]model.SeasonChallengeSnapshot, error) {
+	return s.buildSnapshotBatchesWithTx(tx, season, archivedAt, func(batch []model.SeasonChallengeSnapshot) error {
+		return s.svcCtx.SeasonChallengeSnapshotModel.UpsertBatchWithTx(tx, batch)
+	})
+}
+
+func (s *SeasonChallengeService) buildSnapshotBatchesWithTx(tx *gorm.DB, season *model.Season, archivedAt time.Time, persist func([]model.SeasonChallengeSnapshot) error) ([]model.SeasonChallengeSnapshot, error) {
 	if season == nil {
 		return []model.SeasonChallengeSnapshot{}, nil
 	}
 	if archivedAt.IsZero() {
 		archivedAt = time.Now()
 	}
-
-	pairs, err := s.svcCtx.AchievementProgressEventModel.ListUserGamesBetweenWithTx(
-		tx,
-		seasonChallengeMetricKeys(),
-		season.StartDate,
-		seasonChallengeEndExclusive(season.EndDate),
-	)
+	startAt, endExclusive, err := s.seasonBounds(season)
 	if err != nil {
 		return nil, err
 	}
-
-	snapshots := make([]model.SeasonChallengeSnapshot, 0, len(pairs)*len(seasonChallengeDefinitions))
-	for _, pair := range pairs {
-		gameType := normalizeSeasonChallengeGameType(pair.GameType)
-		progressList, progressErr := s.getProgressWithTx(tx, pair.UserId, season, gameType)
-		if progressErr != nil {
-			return nil, progressErr
+	metricKeys := seasonChallengeMetricKeys()
+	allSnapshots := make([]model.SeasonChallengeSnapshot, 0)
+	var afterUserID int64
+	var afterGameType int
+	for {
+		pairs, err := s.svcCtx.AchievementProgressEventModel.ListUserGamesBatchBetweenWithTx(
+			tx, metricKeys, startAt, endExclusive, afterUserID, afterGameType, seasonChallengeArchiveBatchSize,
+		)
+		if err != nil {
+			return nil, err
 		}
-		for _, item := range progressList {
-			completed := 0
-			if item.Completed {
-				completed = 1
+		if len(pairs) == 0 {
+			break
+		}
+		totals, err := s.svcCtx.AchievementProgressEventModel.SumMetricsForUserGamesBetweenWithTx(tx, pairs, metricKeys, startAt, endExclusive)
+		if err != nil {
+			return nil, err
+		}
+		progressByPair := make(map[model.AchievementProgressUserGame]map[string]int, len(pairs))
+		for _, total := range totals {
+			pair := model.AchievementProgressUserGame{UserId: total.UserId, GameType: total.GameType}
+			if progressByPair[pair] == nil {
+				progressByPair[pair] = make(map[string]int, len(metricKeys))
 			}
-			snapshots = append(snapshots, model.SeasonChallengeSnapshot{
-				SeasonId:      season.Id,
-				UserId:        pair.UserId,
-				GameType:      gameType,
-				ChallengeKey:  item.Key,
-				ChallengeName: item.Name,
-				Threshold:     item.Threshold,
-				Progress:      item.Progress,
-				Completed:     completed,
-				ArchivedAt:    archivedAt,
-			})
+			progressByPair[pair][total.MetricKey] = total.Total
+		}
+		batch := make([]model.SeasonChallengeSnapshot, 0, len(pairs)*len(seasonChallengeDefinitions))
+		for _, pair := range pairs {
+			gameType := normalizeSeasonChallengeGameType(pair.GameType)
+			progress := progressByPair[pair]
+			for _, definition := range seasonChallengeDefinitions {
+				value := progress[definition.MetricKey]
+				if value < 0 {
+					value = 0
+				}
+				completed := 0
+				if value >= definition.Threshold {
+					completed = 1
+				}
+				batch = append(batch, model.SeasonChallengeSnapshot{
+					SeasonId: season.Id, UserId: pair.UserId, GameType: gameType,
+					ChallengeKey: definition.Key, ChallengeName: definition.Name,
+					Threshold: definition.Threshold, Progress: value, Completed: completed, ArchivedAt: archivedAt,
+				})
+			}
+		}
+		if persist != nil {
+			if err := persist(batch); err != nil {
+				return nil, err
+			}
+		}
+		allSnapshots = append(allSnapshots, batch...)
+		last := pairs[len(pairs)-1]
+		afterUserID, afterGameType = last.UserId, last.GameType
+		if len(pairs) < seasonChallengeArchiveBatchSize {
+			break
 		}
 	}
-	return snapshots, nil
-}
-
-func (s *SeasonChallengeService) ArchiveSeasonWithTx(tx *gorm.DB, season *model.Season, archivedAt time.Time) ([]model.SeasonChallengeSnapshot, error) {
-	snapshots, err := s.BuildSnapshotsWithTx(tx, season, archivedAt)
-	if err != nil {
-		return nil, err
-	}
-	if err := s.svcCtx.SeasonChallengeSnapshotModel.UpsertBatchWithTx(tx, snapshots); err != nil {
-		return nil, err
-	}
-	return snapshots, nil
+	return allSnapshots, nil
 }
 
 func (s *SeasonChallengeService) FindArchived(userId, seasonId int64, gameType int) ([]model.SeasonChallengeSnapshot, error) {
@@ -173,12 +204,19 @@ func (s *SeasonChallengeService) FindArchived(userId, seasonId int64, gameType i
 	)
 }
 
-func seasonChallengeMetricKeys() []string {
+func (s *SeasonChallengeService) seasonBounds(season *model.Season) (time.Time, time.Time, error) {
+	if s == nil || s.svcCtx == nil {
+		return time.Time{}, time.Time{}, gorm.ErrInvalidDB
+	}
+	return seasonx.BoundsForConfig(s.svcCtx.Config.SeasonLifecycle, season)
+}
+
+func SeasonChallengeMetricKeys() []string {
 	return []string{MetricMatchesTotal, MetricWinsTotal, MetricTournamentFinishTotal}
 }
 
-func seasonChallengeEndExclusive(endDate time.Time) time.Time {
-	return time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 0, 0, 0, 0, endDate.Location()).AddDate(0, 0, 1)
+func seasonChallengeMetricKeys() []string {
+	return SeasonChallengeMetricKeys()
 }
 
 func normalizeSeasonChallengeGameType(gameType int) int {

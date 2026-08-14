@@ -586,11 +586,11 @@ $dark-input-bg: transparent;
 		}
 
 		&.disabled {
-			color: #9ca3af;
+			color: #9A8C67;
 		}
 
 		&[disabled] {
-			color: #9ca3af !important;
+			color: #9A8C67 !important;
 			background: transparent;
 		}
 	}
@@ -626,7 +626,7 @@ $dark-input-bg: transparent;
 		justify-content: center;
 		padding: 0;
 		background-color: #e5e5e5;
-		color: #9ca3af;
+		color: #9A8C67;
 		font-size: 32rpx;
 		font-weight: bold;
 		text-align: center;
@@ -640,7 +640,7 @@ $dark-input-bg: transparent;
 
 		&[disabled] {
 			background-color: #e5e5e5;
-			color: #9ca3af;
+			color: #9A8C67;
 		}
 
 		&::after {
@@ -802,12 +802,12 @@ $dark-input-bg: transparent;
 		}
 
 		.send-code-btn.disabled {
-			color: #6b7280;
+			color: #9F926E;
 		}
 
 		.bind-btn {
 			background-color: $dark-border;
-			color: #6b7280;
+			color: #9F926E;
 
 			&.active {
 				background: linear-gradient(135deg, #e5b928 0%, #c99700 100%);

@@ -26,7 +26,7 @@ func NewAdminProcessFeedbackTicketLogic(ctx context.Context, svcCtx *svc.Service
 	return &AdminProcessFeedbackTicketLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

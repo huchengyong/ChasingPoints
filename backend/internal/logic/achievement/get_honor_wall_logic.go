@@ -3,9 +3,11 @@ package achievement
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"chasing_points/internal/model"
 	"chasing_points/internal/pkg/httperror"
+	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -24,7 +26,7 @@ func NewGetHonorWallLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetH
 	return &GetHonorWallLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -108,6 +110,7 @@ func (l *GetHonorWallLogic) GetHonorWall(req *types.GetHonorWallReq) (resp *type
 
 	resp = &types.GetHonorWallResp{
 		Success:     true,
+		SeasonState: seasonx.StateNotStarted,
 		ViewerScope: viewerScope,
 		Profile: types.HonorWallProfile{
 			UserId:   user.Id,
@@ -157,16 +160,19 @@ func (l *GetHonorWallLogic) canViewFriendHonorWall(requesterId, targetUserId int
 func (l *GetHonorWallLogic) fillSelfSeasonData(resp *types.GetHonorWallResp, userId int64, req *types.GetHonorWallReq) error {
 	gameType := normalizeSeasonChallengeGameType(req.GameType)
 	challengeService := NewSeasonChallengeService(l.svcCtx)
-	currentSeason, err := l.svcCtx.SeasonModel.FindCurrent()
-	if err != nil {
-		return err
-	}
-	if currentSeason != nil {
+	currentSeason, state, currentErr := seasonx.ResolveCurrentLifecycle(l.svcCtx.Config.SeasonLifecycle, time.Now(), l.svcCtx.SeasonModel)
+	resp.SeasonState = state
+	if currentErr != nil {
+		l.Logger.Errorf("解析荣誉墙当前赛季失败: err=%v", currentErr)
+		resp.SeasonState = seasonx.StateUnavailable
+	} else if state == seasonx.StateActive && currentSeason != nil {
 		progress, progressErr := challengeService.GetProgress(userId, currentSeason, gameType)
 		if progressErr != nil {
-			return progressErr
+			l.Logger.Errorf("加载荣誉墙赛季挑战失败: err=%v", progressErr)
+			resp.SeasonState = seasonx.StateUnavailable
+		} else {
+			resp.CurrentSeason = honorWallSeasonInfo(currentSeason, gameType, seasonChallengeProgressToTypes(progress))
 		}
-		resp.CurrentSeason = honorWallSeasonInfo(currentSeason, gameType, seasonChallengeProgressToTypes(progress))
 	}
 
 	if req.HistorySeasonId <= 0 {
@@ -219,6 +225,7 @@ func normalizeHonorHistoryPage(page, pageSize int) (int, int) {
 func emptyHonorWallResponse(success bool) *types.GetHonorWallResp {
 	return &types.GetHonorWallResp{
 		Success:            success,
+		SeasonState:        seasonx.StateNotStarted,
 		RecentHonors:       []types.HonorItem{},
 		CareerAchievements: []types.AchievementDef{},
 		History: types.HonorWallHistory{

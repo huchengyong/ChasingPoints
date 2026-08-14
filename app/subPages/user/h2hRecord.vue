@@ -66,12 +66,12 @@
 		</view>
 
 		<view class="loading-wrapper" v-if="pageStatus === 'loading'">
-			<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+			<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
 		<view class="error-wrapper" v-else-if="pageStatus === 'error'">
-			<uni-icons type="info-filled" size="52" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+			<uni-icons type="info-filled" size="52" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 			<text class="error-text">{{ loadErrorMessage || '交锋数据加载失败' }}</text>
 			<button class="retry-btn" @click="fetchData">
 				<text>重新加载</text>
@@ -83,11 +83,11 @@
 				<text class="history-section-title">比赛历史</text>
 				<view class="history-month-row">
 					<button class="history-month-button" @click="shiftHistoryMonth(-1)">
-						<uni-icons type="left" size="18" :color="isDarkMode ? '#cbd5e1' : '#6b7280'"></uni-icons>
+						<uni-icons type="left" size="18" :color="isDarkMode ? '#D7C89B' : '#6E6242'"></uni-icons>
 					</button>
 					<text class="history-month-text">{{ calendarViewModel.title }}</text>
 					<button class="history-month-button" @click="shiftHistoryMonth(1)">
-						<uni-icons type="right" size="18" :color="isDarkMode ? '#cbd5e1' : '#6b7280'"></uni-icons>
+						<uni-icons type="right" size="18" :color="isDarkMode ? '#D7C89B' : '#6E6242'"></uni-icons>
 					</button>
 				</view>
 				<view class="history-view-switch">
@@ -174,7 +174,7 @@
 								<text class="result-text" :class="getResultClass(item.result)">{{ item.resultText }}</text>
 								<text class="diff-text">{{ item.diffText }}</text>
 							</view>
-							<uni-icons type="right" size="20" :color="isDarkMode ? '#64748b' : '#9ca3af'"></uni-icons>
+							<uni-icons type="right" size="20" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 						</view>
 					</view>
 
@@ -199,7 +199,8 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { onLoad, onReachBottom, onShow } from '@dcloudio/uni-app'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { useUserStore } from '@/store/user.js'
-import { getH2HStats, getH2HHistory } from '@/api/match.js'
+import { useUserDataInvalidationStore } from '@/store/userDataInvalidation.js'
+import { getH2HHistory, getH2HOverview } from '@/api/match.js'
 import { formatRelativeTime } from '@/utils/format.js'
 import {
 	buildH2HCalendarViewModel,
@@ -221,6 +222,7 @@ import {
 
 const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
+const userDataInvalidationStore = useUserDataInvalidationStore()
 
 const isLoadingMore = ref(false)
 const hasMore = ref(true)
@@ -228,7 +230,12 @@ const hasHandledTargetLoadFailure = ref(false)
 const statsLoaded = ref(false)
 const historyLoaded = ref(false)
 const loadErrorMessage = ref('')
+const isOverviewLoading = ref(false)
 const latestHistoryRequestId = ref(0)
+const requestedIdentityKey = ref('')
+const requestedH2HScopeVersion = ref(0)
+const loadedIdentityKey = ref('')
+const loadedH2HScopeVersion = ref(0)
 
 const opponentId = ref(0)
 const opponentName = ref('')
@@ -258,9 +265,18 @@ const historyList = ref([])
 const summaryHistory = ref([])
 const calendarHistory = ref([])
 const currentPage = ref(1)
-const pageSize = 10
-const calendarPageSize = 100
+const pageSize = 20
 const total = ref(0)
+
+const currentReadIdentity = () => ({
+	userId: userStore.userId,
+	authGeneration: userStore.authGeneration
+})
+
+const currentIdentityKey = () => {
+	const identity = currentReadIdentity()
+	return `${identity.userId}:${identity.authGeneration}`
+}
 
 const routeViewModel = computed(() => buildH2HViewModel({
 	targetUserId: targetUserId.value,
@@ -329,10 +345,16 @@ onLoad((options) => {
 
 onMounted(() => {
 	loadUserInfo()
-	fetchData()
+	if (userStore.isLoggedIn && userStore.userId) fetchData()
 })
 
 onShow(() => {
+	if (!userStore.isLoggedIn || !userStore.userId) return
+	const identityKey = currentIdentityKey()
+	const scopeVersion = userDataInvalidationStore.versionOf('h2h')
+	if (requestedIdentityKey.value !== identityKey || requestedH2HScopeVersion.value !== scopeVersion || (!isOverviewLoading.value && (loadedIdentityKey.value !== identityKey || loadedH2HScopeVersion.value !== scopeVersion))) {
+		fetchData()
+	}
 })
 
 onReachBottom(() => {
@@ -374,38 +396,56 @@ const handleTargetLoadFailure = (error) => {
 	return true
 }
 
+const buildH2HParams = (page = 1) => {
+	const range = buildH2HMonthDateRange(selectedMonthKey.value)
+	return buildH2HHistoryParams({
+		targetUserId: targetUserId.value,
+		opponentId: opponentId.value,
+		fallbackOpponentId: opponentData.id,
+		opponentName: opponentData.name || opponentName.value,
+		page,
+		pageSize,
+		result: 0,
+		startDate: range?.startDate || '',
+		endDate: range?.endDate || ''
+	})
+}
+
+const applyOverviewStats = (stats = {}) => {
+	statsData.totalMatches = stats.total_matches || 0
+	statsData.myWins = stats.my_wins || 0
+	statsData.opponentWins = stats.opponent_wins || 0
+	statsData.winRate = stats.win_rate || 0
+	statsData.avgScoreDiff = stats.avg_score_diff || 0
+	statsData.maxWinStreak = stats.max_win_streak || 0
+}
+
 const fetchData = async () => {
+	const requestId = latestHistoryRequestId.value + 1
+	const requestIdentityKey = currentIdentityKey()
+	const requestScopeVersion = userDataInvalidationStore.versionOf('h2h')
+	latestHistoryRequestId.value = requestId
+	requestedIdentityKey.value = requestIdentityKey
+	requestedH2HScopeVersion.value = requestScopeVersion
+	isOverviewLoading.value = true
+	if (loadedIdentityKey.value && loadedIdentityKey.value !== requestIdentityKey) {
+		applyOverviewStats()
+		historyList.value = []
+		summaryHistory.value = []
+		calendarHistory.value = []
+		total.value = 0
+	}
 	statsLoaded.value = false
 	historyLoaded.value = false
 	loadErrorMessage.value = ''
 	currentPage.value = 1
 	hasMore.value = true
-
 	try {
-		await Promise.all([
-			fetchStats(),
-			fetchMonthHistory(false)
-		])
-	} catch (error) {
-		console.error('获取数据失败:', error)
-		handleTargetLoadFailure(error)
-	}
-}
-
-const fetchStats = async () => {
-	try {
-		const params = {}
-		if (targetUserId.value > 0) {
-			params.target_user_id = targetUserId.value
+		const res = await getH2HOverview(buildH2HParams(1))
+		if (!shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value }) || currentIdentityKey() !== requestIdentityKey) return
+		if (!res?.success) {
+			throw new Error(res?.message || '交锋数据加载失败')
 		}
-		if (opponentId.value > 0) {
-			params.opponent_id = opponentId.value
-		} else if (opponentName.value) {
-			params.opponent_name = opponentName.value
-		}
-
-		const res = await getH2HStats(params)
-
 		if (res.opponent) {
 			opponentData.id = res.opponent.id || 0
 			opponentData.name = res.opponent.name || opponentName.value
@@ -413,138 +453,64 @@ const fetchStats = async () => {
 		} else {
 			opponentData.name = opponentName.value
 		}
-
-		if (res.stats) {
-			statsData.totalMatches = res.stats.total_matches || 0
-			statsData.myWins = res.stats.my_wins || 0
-			statsData.opponentWins = res.stats.opponent_wins || 0
-			statsData.winRate = res.stats.win_rate || 0
-			statsData.avgScoreDiff = res.stats.avg_score_diff || 0
-			statsData.maxWinStreak = res.stats.max_win_streak || 0
+		if (res.availability?.stats !== false) {
+			applyOverviewStats(res.stats)
+			statsLoaded.value = true
 		}
-
-		statsLoaded.value = true
+		if (res.availability?.history !== false) {
+			const list = res.list || []
+			total.value = res.total || 0
+			historyList.value = list
+			summaryHistory.value = list
+			calendarHistory.value = list
+			hasMore.value = Boolean(res.has_more) || historyList.value.length < total.value
+			historyLoaded.value = true
+		}
+		if (!statsLoaded.value || !historyLoaded.value) {
+			loadErrorMessage.value = '部分交锋数据加载失败'
+		}
+		loadedIdentityKey.value = requestIdentityKey
+		loadedH2HScopeVersion.value = requestScopeVersion
 	} catch (error) {
-		console.error('获取交锋统计失败:', error)
+		if (!shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value }) || currentIdentityKey() !== requestIdentityKey) return
+		console.error('获取交锋概览失败:', error)
 		opponentData.name = opponentName.value
-		loadErrorMessage.value = error?.message || '交锋统计加载失败'
-		throw error
+		loadErrorMessage.value = error?.message || '交锋数据加载失败'
+		handleTargetLoadFailure(error)
+	} finally {
+		if (shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value }) && currentIdentityKey() === requestIdentityKey) {
+			isOverviewLoading.value = false
+		}
 	}
 }
 
-const fetchHistory = async (isRefresh = false, isLoadMore = false) => {
-	if (isLoadingMore.value && !isRefresh) return
+const fetchNextHistory = async () => {
+	if (isLoadingMore.value || !hasMore.value) return
 	const requestId = latestHistoryRequestId.value + 1
+	const requestIdentityKey = currentIdentityKey()
 	latestHistoryRequestId.value = requestId
-
-	if (isRefresh) {
-		currentPage.value = 1
-		hasMore.value = true
-		isLoadingMore.value = false
-	} else if (isLoadMore) {
-		if (!hasMore.value) return
-		isLoadingMore.value = true
-		currentPage.value++
-	}
-
-	if (!isLoadMore) {
-		if (!historyLoaded.value) {
-			historyLoaded.value = false
-		}
-		if (statsLoaded.value) {
-			loadErrorMessage.value = ''
-		}
-	}
-
+	const nextPage = currentPage.value + 1
+	isLoadingMore.value = true
 	try {
-		const range = buildH2HMonthDateRange(selectedMonthKey.value)
-		const params = buildH2HHistoryParams({
-			targetUserId: targetUserId.value,
-			opponentId: opponentId.value,
-			fallbackOpponentId: opponentData.id,
-			opponentName: opponentData.name || opponentName.value,
-			page: currentPage.value,
-			pageSize,
-			result: 0,
-			startDate: range?.startDate || '',
-			endDate: range?.endDate || ''
-		})
-
-		const res = await getH2HHistory(params)
-		if (!shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value })) {
-			return
-		}
-
+		const res = await getH2HHistory(buildH2HParams(nextPage))
+		if (!shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value }) || currentIdentityKey() !== requestIdentityKey) return
 		const list = res.list || []
-		total.value = res.total || 0
-
-		if (isRefresh || !isLoadMore) {
-			historyList.value = list
-		} else {
-			historyList.value = [...historyList.value, ...list]
-		}
-
-		if (!isLoadMore) {
-			summaryHistory.value = historyList.value
-		}
-
+		currentPage.value = nextPage
+		total.value = res.total || total.value
+		historyList.value = [...historyList.value, ...list]
+		summaryHistory.value = historyList.value
+		calendarHistory.value = historyList.value
 		hasMore.value = historyList.value.length < total.value
 		historyLoaded.value = true
 	} catch (error) {
-		if (!shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value })) {
-			return
-		}
-
-		console.error('获取交锋历史失败:', error)
+		if (!shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value }) || currentIdentityKey() !== requestIdentityKey) return
+		console.error('加载更多交锋历史失败:', error)
 		loadErrorMessage.value = error?.message || '交锋历史加载失败'
-		handleTargetLoadFailure(error)
-		if (!isLoadMore) {
-			if (!historyLoaded.value) {
-				historyList.value = []
-			}
-			if (!historyLoaded.value) {
-				summaryHistory.value = []
-			}
-		}
 	} finally {
-		if (shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value })) {
+		if (shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value }) && currentIdentityKey() === requestIdentityKey) {
 			isLoadingMore.value = false
 		}
 	}
-}
-
-const fetchCalendarHistory = async () => {
-	const range = buildH2HMonthDateRange(selectedMonthKey.value)
-	if (!range) {
-		calendarHistory.value = summaryHistory.value
-		return
-	}
-
-	try {
-		const params = buildH2HHistoryParams({
-			targetUserId: targetUserId.value,
-			opponentId: opponentId.value,
-			fallbackOpponentId: opponentData.id,
-			opponentName: opponentData.name || opponentName.value,
-			page: 1,
-			pageSize: calendarPageSize,
-			result: 0,
-			startDate: range.startDate,
-			endDate: range.endDate
-		})
-		const res = await getH2HHistory(params)
-		calendarHistory.value = res.list || []
-	} catch (error) {
-		console.error('获取交锋日历失败:', error)
-		calendarHistory.value = summaryHistory.value
-	}
-}
-
-const fetchMonthHistory = async (isRefresh = true) => {
-	await Promise.all([
-		fetchHistory(isRefresh, false),
-		fetchCalendarHistory()
-	])
 }
 
 const setHistoryViewMode = (mode) => {
@@ -553,14 +519,12 @@ const setHistoryViewMode = (mode) => {
 
 const shiftHistoryMonth = (offset) => {
 	selectedMonthKey.value = shiftH2HMonthKey(selectedMonthKey.value, offset)
-	currentPage.value = 1
-	hasMore.value = true
-	fetchMonthHistory(true)
+	fetchData()
 }
 
 const onLoadMore = () => {
 	if (historyViewMode.value !== 'list') return
-	fetchHistory(false, true)
+	fetchNextHistory()
 }
 
 const goToMatchDetail = (matchId) => {

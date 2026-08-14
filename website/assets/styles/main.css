@@ -1,8 +1,49 @@
 :root {
   color-scheme: light;
   font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-  background: #f7f4ec;
-  color: #1f1a10;
+
+  /* 品牌色 */
+  --ui-brand-primary: #E0AE12;
+  --ui-brand-strong: #C69200;
+  --ui-brand-gradient-start: #D9A617;
+  --ui-brand-gradient-end: #BB8400;
+  --ui-brand-tint: rgba(224, 174, 18, 0.14);
+
+  /* 表面色 */
+  --ui-surface-page: #F7F4EC;
+  --ui-surface-card: #FFFFFF;
+  --ui-surface-subtle: #FAF8F2;
+  --ui-surface-accent: #1F1A10;
+
+  /* 文字色 */
+  --ui-text-primary: #231C0B;
+  --ui-text-secondary: #6E6242;
+  --ui-text-muted: #9A8C67;
+  --ui-text-on-accent: #FFF7E1;
+
+  /* 边框 */
+  --ui-border-default: #E9E2CF;
+
+  /* 语义色 */
+  --ui-success: #18B05B;
+  --ui-warning: #F97316;
+  --ui-danger: #EF4444;
+  --ui-info: #3B82F6;
+
+  /* 圆角 */
+  --ui-radius-sm: 8px;
+  --ui-radius-md: 12px;
+  --ui-radius-lg: 20px;
+  --ui-radius-xl: 28px;
+  --ui-radius-pill: 999px;
+
+  /* 阴影 */
+  --ui-shadow-soft: 0 2px 8px rgba(31, 26, 16, 0.05);
+  --ui-shadow-primary: 0 18px 34px rgba(187, 132, 0, 0.24);
+  --ui-shadow-card: 0 18px 40px rgba(31, 26, 16, 0.06);
+
+  background: var(--ui-surface-page);
+  color: var(--ui-text-primary);
 }
 
 * {
@@ -19,11 +60,48 @@ body,
 body {
   background:
     radial-gradient(circle at top, rgba(224, 174, 18, 0.16), transparent 30%),
-    linear-gradient(180deg, #f7f4ec 0%, #f3efe4 100%);
-  color: #1f1a10;
+    linear-gradient(180deg, var(--ui-surface-page) 0%, #f3efe4 100%);
+  color: var(--ui-text-primary);
 }
 
 a {
   color: inherit;
+  text-decoration: none;
+}
+
+/* 键盘焦点可见性 */
+:focus-visible {
+  outline: 2px solid var(--ui-brand-primary);
+  outline-offset: 2px;
+}
+
+/* 按压反馈 */
+a:active,
+button:active,
+[role='button']:active {
+  opacity: 0.9;
+}
+
+/* 禁用态 */
+button[disabled],
+input[disabled],
+textarea[disabled],
+select[disabled] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* 复用主 CTA */
+.ui-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 148px;
+  height: 52px;
+  padding: 0 22px;
+  border-radius: var(--ui-radius-pill);
+  background: linear-gradient(135deg, var(--ui-brand-gradient-start), var(--ui-brand-gradient-end));
+  color: #fff;
+  font-weight: 600;
   text-decoration: none;
 }

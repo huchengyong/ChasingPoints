@@ -320,6 +320,14 @@ service chasing_points-api {
 	)
 	@handler GetPublicMatchDetail
 	get /match/detail (GetPublicMatchDetailReq) returns (GetPublicMatchDetailResp)
+
+	@doc "获取榜单前三名与当前用户排名"
+	@handler GetLeaderboardSummary
+	get /rank/leaderboard-summary (GetLeaderboardSummaryReq) returns (GetLeaderboardSummaryResp)
+
+	@doc "获取静态段位配置"
+	@handler GetRankConfigs
+	get /rank/configs returns (GetRankConfigsResp)
 }
 
 @server (
@@ -454,6 +462,35 @@ type UserStatsResp {
 	MaxWinStreak int     `json:"max_win_streak"` // 最高连胜
 }
 
+// 聚合读取中非关键分区的可用性及失败原因。
+type ReadPartialError {
+	Scope   string `json:"scope"`
+	Message string `json:"message"`
+}
+
+type GetUserBootstrapResp {
+	Success                   bool               `json:"success"`
+	UserInfo                  *UserInfo          `json:"user_info"`
+	CurrentMatch              *CurrentMatchInfo  `json:"current_match"`
+	UnreadCount               int                `json:"unread_count"`
+	PendingFriendRequestCount int                `json:"pending_friend_request_count"`
+	LatestSeasonRollover      *NotificationInfo  `json:"latest_season_rollover"`
+	CompetitiveRevision       int64              `json:"competitive_revision"`
+	Availability              map[string]bool    `json:"availability"`
+	PartialErrors             []ReadPartialError `json:"partial_errors"`
+}
+
+type GetUserOverviewResp {
+	Success             bool                           `json:"success"`
+	Stats               *UserStatsResp                 `json:"stats"`
+	Reputation          *GetUserReputationResp         `json:"reputation"`
+	MemberStatus        *GetMemberStatusResp           `json:"member_status"`
+	FavoriteVenueReward *FavoriteVenueRewardStatusResp `json:"favorite_venue_reward"`
+	CompetitiveRevision int64                          `json:"competitive_revision"`
+	Availability        map[string]bool                `json:"availability"`
+	PartialErrors       []ReadPartialError             `json:"partial_errors"`
+}
+
 @server (
 	prefix: /api/user
 	group:  user
@@ -463,6 +500,14 @@ service chasing_points-api {
 	@doc "获取当前用户信息"
 	@handler GetUserInfo
 	get /info returns (GetUserInfoResp)
+
+	@doc "获取应用前台恢复所需的用户活动快照"
+	@handler GetUserBootstrap
+	get /bootstrap returns (GetUserBootstrapResp)
+
+	@doc "获取个人主页概览"
+	@handler GetUserOverview
+	get /overview returns (GetUserOverviewResp)
 
 	@doc "获取当前用户信誉状态"
 	@handler GetUserReputation
@@ -1097,6 +1142,28 @@ type H2HHistoryResp {
 	List    []MatchListItem `json:"list"`
 }
 
+type H2HOverviewReq {
+	TargetUserId int64  `form:"target_user_id,optional"`
+	OpponentId   int64  `form:"opponent_id,optional"`
+	OpponentName string `form:"opponent_name,optional"`
+	GameType     int    `form:"game_type,optional"`
+	PageSize     int    `form:"page_size,default=20"`
+	StartDate    string `form:"start_date,optional"`
+	EndDate      string `form:"end_date,optional"`
+}
+
+type H2HOverviewResp {
+	Success             bool               `json:"success"`
+	Opponent            *H2HOpponent       `json:"opponent"`
+	Stats               *H2HStats          `json:"stats"`
+	Total               int64              `json:"total"`
+	List                []MatchListItem    `json:"list"`
+	HasMore             bool               `json:"has_more"`
+	CompetitiveRevision int64              `json:"competitive_revision"`
+	Availability        map[string]bool    `json:"availability"`
+	PartialErrors       []ReadPartialError `json:"partial_errors"`
+}
+
 // 搜索对手
 type SearchOpponentReq {
 	Keyword string `form:"keyword"`
@@ -1416,6 +1483,10 @@ service chasing_points-api {
 	@handler GetH2HHistory
 	get /h2h/history (H2HHistoryReq) returns (H2HHistoryResp)
 
+	@doc "获取交锋首屏概览"
+	@handler GetH2HOverview
+	get /h2h/overview (H2HOverviewReq) returns (H2HOverviewResp)
+
 	@doc "获取匹配二维码"
 	@handler GetMatchQRCode
 	get /qrcode returns (GetMatchQRCodeResp)
@@ -1467,9 +1538,32 @@ type GetOpponentListResp {
 	Message        string               `json:"message,optional"`
 	Hidden         bool                 `json:"hidden"`
 	TotalOpponents int                  `json:"total_opponents"` // 总对手数
+	TotalMatches   int                  `json:"total_matches"` // 总交手场次
 	TotalWins      int                  `json:"total_wins"` // 总胜场
 	Total          int64                `json:"total"`
 	List           []OpponentRecordItem `json:"list"`
+}
+
+type OpponentCandidate {
+	UserId      int64  `json:"user_id"`
+	Name        string `json:"name"`
+	Avatar      string `json:"avatar"`
+	RankName    string `json:"rank_name,optional"`
+	Source      string `json:"source"`
+	LastMatchAt string `json:"last_match_at,optional"`
+}
+
+type GetOpponentCandidatesReq {
+	GameType int `form:"game_type,optional"`
+	Limit    int `form:"limit,default=30"`
+}
+
+type GetOpponentCandidatesResp {
+	Success             bool                `json:"success"`
+	List                []OpponentCandidate `json:"list"`
+	CompetitiveRevision int64               `json:"competitive_revision"`
+	Availability        map[string]bool     `json:"availability"`
+	PartialErrors       []ReadPartialError  `json:"partial_errors"`
 }
 
 @server (
@@ -1488,6 +1582,10 @@ service chasing_points-api {
 	)
 	@handler GetOpponentList
 	get /list (GetOpponentListReq) returns (GetOpponentListResp)
+
+	@doc "获取好友与近期对手候选"
+	@handler GetOpponentCandidates
+	get /candidates (GetOpponentCandidatesReq) returns (GetOpponentCandidatesResp)
 }
 
 // ==================== 段位相关 ====================
@@ -1574,6 +1672,31 @@ type GetLeaderboardResp {
 	List      []LeaderboardItem `json:"list"` // 第4名开始的列表
 }
 
+type RankConfigItem {
+	GameType int    `json:"game_type"`
+	Level    int    `json:"level"`
+	Name     string `json:"name"`
+	Icon     string `json:"icon"`
+	MinScore int    `json:"min_score"`
+}
+
+type GetRankConfigsResp {
+	Success bool             `json:"success"`
+	Version string           `json:"version"`
+	List    []RankConfigItem `json:"list"`
+}
+
+type GetLeaderboardSummaryReq {
+	GameType int `form:"game_type,optional,default=3"`
+}
+
+type GetLeaderboardSummaryResp {
+	Success   bool              `json:"success"`
+	TopThree  []LeaderboardItem `json:"top_three"`
+	MyRanking *LeaderboardItem  `json:"my_ranking"`
+	Version   string            `json:"version"`
+}
+
 @server (
 	prefix: /api/rank
 	group:  rank
@@ -1626,6 +1749,15 @@ type GetAchievementListReq {
 type GetAchievementListResp {
 	Success bool             `json:"success"`
 	List    []AchievementDef `json:"list"`
+}
+
+type GetAchievementDetailReq {
+	AchievementId int64 `form:"achievement_id"`
+}
+
+type GetAchievementDetailResp {
+	Success     bool            `json:"success"`
+	Achievement *AchievementDef `json:"achievement"`
 }
 
 type GetUserAchievementsResp {
@@ -1724,6 +1856,7 @@ type HonorWallHistory {
 
 type GetHonorWallResp {
 	Success            bool                 `json:"success"`
+	SeasonState        string               `json:"season_state"`
 	ViewerScope        string               `json:"viewer_scope"`
 	Profile            HonorWallProfile     `json:"profile"`
 	EquippedTitle      *TitleInfo           `json:"equipped_title,optional"`
@@ -1743,6 +1876,10 @@ service chasing_points-api {
 	@doc "获取成就列表"
 	@handler GetAchievementList
 	get /list (GetAchievementListReq) returns (GetAchievementListResp)
+
+	@doc "按 ID 获取成就详情"
+	@handler GetAchievementDetail
+	get /detail (GetAchievementDetailReq) returns (GetAchievementDetailResp)
 
 	@doc "获取已解锁成就"
 	@handler GetUserAchievements
@@ -2563,13 +2700,16 @@ type SeasonInfo {
 	Name           string  `json:"name"`
 	StartDate      string  `json:"start_date"`
 	EndDate        string  `json:"end_date"`
+	StartAt        string  `json:"start_at"`
+	EndAtExclusive string  `json:"end_at_exclusive"`
 	Status         int     `json:"status"`
 	RankResetRatio float64 `json:"rank_reset_ratio"`
 }
 
 type GetCurrentSeasonResp {
-	Success bool        `json:"success"`
-	Season  *SeasonInfo `json:"season"`
+	Success     bool        `json:"success"`
+	SeasonState string      `json:"season_state"`
+	Season      *SeasonInfo `json:"season"`
 }
 
 type SeasonLeaderboardItem {
@@ -2651,6 +2791,21 @@ type GetSeasonReportResp {
 	Report  *SeasonReportData `json:"report"`
 }
 
+type GetSeasonOverviewReq {
+	GameType int `form:"game_type,optional,default=3"`
+}
+
+type GetSeasonOverviewResp {
+	Success             bool                    `json:"success"`
+	SeasonState         string                  `json:"season_state"`
+	Season              *SeasonInfo             `json:"season"`
+	Record              *SeasonRecordInfo       `json:"record"`
+	Leaderboard         []SeasonLeaderboardItem `json:"leaderboard"`
+	CompetitiveRevision int64                   `json:"competitive_revision"`
+	Availability        map[string]bool         `json:"availability"`
+	PartialErrors       []ReadPartialError      `json:"partial_errors"`
+}
+
 @server (
 	prefix: /api/season
 	group:  season
@@ -2660,6 +2815,10 @@ service chasing_points-api {
 	@doc "获取我的赛季记录"
 	@handler GetMySeasonRecord
 	get /my-record (GetMySeasonRecordReq) returns (GetMySeasonRecordResp)
+
+	@doc "获取当前赛季概览"
+	@handler GetSeasonOverview
+	get /overview (GetSeasonOverviewReq) returns (GetSeasonOverviewResp)
 
 	@doc "获取赛季报告"
 	@handler GetSeasonReport
@@ -2907,9 +3066,10 @@ type GetNotificationListReq {
 }
 
 type GetNotificationListResp {
-	Success bool               `json:"success"`
-	Total   int64              `json:"total"`
-	List    []NotificationInfo `json:"list"`
+	Success     bool               `json:"success"`
+	Total       int64              `json:"total"`
+	UnreadCount int                `json:"unread_count"`
+	List        []NotificationInfo `json:"list"`
 }
 
 type NotificationIdReq {
@@ -3128,6 +3288,24 @@ type GetOpponentStrengthReq {
 	GameType int `form:"game_type,optional"`
 }
 
+type GetStatsOverviewReq {
+	GameType   int `form:"game_type,optional,default=3"`
+	TrendLimit int `form:"trend_limit,default=60"`
+}
+
+type GetStatsOverviewResp {
+	Success             bool                    `json:"success"`
+	ByGameType          []GameTypeStats         `json:"by_game_type"`
+	RecentTrend         []TrendPoint            `json:"recent_trend"`
+	RankScoreTrend      []TrendPoint            `json:"rank_score_trend"`
+	SingleHighScores    []SingleHighScoreRecord `json:"single_high_scores"`
+	Duration            *DurationStats          `json:"duration"`
+	OpponentStrength    []OpponentStrengthItem  `json:"opponent_strength"`
+	CompetitiveRevision int64                   `json:"competitive_revision"`
+	Availability        map[string]bool         `json:"availability"`
+	PartialErrors       []ReadPartialError      `json:"partial_errors"`
+}
+
 @server (
 	prefix: /api/stats
 	group:  stats
@@ -3137,6 +3315,10 @@ service chasing_points-api {
 	@doc "分球种统计"
 	@handler GetStatsByGameType
 	get /by-game-type returns (GetStatsByGameTypeResp)
+
+	@doc "获取竞技分析首屏概览"
+	@handler GetStatsOverview
+	get /overview (GetStatsOverviewReq) returns (GetStatsOverviewResp)
 
 	@doc "近N场胜率趋势"
 	@handler GetRecentTrend

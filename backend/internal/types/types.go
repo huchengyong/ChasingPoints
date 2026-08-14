@@ -1013,6 +1013,15 @@ type GameTypeStats struct {
 	HighestScore int     `json:"highest_score"`
 }
 
+type GetAchievementDetailReq struct {
+	AchievementId int64 `form:"achievement_id"`
+}
+
+type GetAchievementDetailResp struct {
+	Success     bool            `json:"success"`
+	Achievement *AchievementDef `json:"achievement"`
+}
+
 type GetAchievementListReq struct {
 	Category string `form:"category,optional"`
 }
@@ -1028,8 +1037,9 @@ type GetCurrentMatchResp struct {
 }
 
 type GetCurrentSeasonResp struct {
-	Success bool        `json:"success"`
-	Season  *SeasonInfo `json:"season"`
+	Success     bool        `json:"success"`
+	SeasonState string      `json:"season_state"`
+	Season      *SeasonInfo `json:"season"`
 }
 
 type GetEventNewsListReq struct {
@@ -1113,6 +1123,7 @@ type GetHonorWallReq struct {
 
 type GetHonorWallResp struct {
 	Success            bool                 `json:"success"`
+	SeasonState        string               `json:"season_state"`
 	ViewerScope        string               `json:"viewer_scope"`
 	Profile            HonorWallProfile     `json:"profile"`
 	EquippedTitle      *TitleInfo           `json:"equipped_title,optional"`
@@ -1135,6 +1146,17 @@ type GetLeaderboardResp struct {
 	TopThree  []LeaderboardItem `json:"top_three"`  // 前三名
 	MyRanking *LeaderboardItem  `json:"my_ranking"` // 我的排名
 	List      []LeaderboardItem `json:"list"`       // 第4名开始的列表
+}
+
+type GetLeaderboardSummaryReq struct {
+	GameType int `form:"game_type,optional,default=3"`
+}
+
+type GetLeaderboardSummaryResp struct {
+	Success   bool              `json:"success"`
+	TopThree  []LeaderboardItem `json:"top_three"`
+	MyRanking *LeaderboardItem  `json:"my_ranking"`
+	Version   string            `json:"version"`
 }
 
 type GetMatchDetailReq struct {
@@ -1273,9 +1295,10 @@ type GetNotificationListReq struct {
 }
 
 type GetNotificationListResp struct {
-	Success bool               `json:"success"`
-	Total   int64              `json:"total"`
-	List    []NotificationInfo `json:"list"`
+	Success     bool               `json:"success"`
+	Total       int64              `json:"total"`
+	UnreadCount int                `json:"unread_count"`
+	List        []NotificationInfo `json:"list"`
 }
 
 type GetOngoingMatchesReq struct {
@@ -1287,6 +1310,19 @@ type GetOngoingMatchesResp struct {
 	Success bool               `json:"success"`
 	Total   int64              `json:"total"`
 	List    []OngoingMatchItem `json:"list"`
+}
+
+type GetOpponentCandidatesReq struct {
+	GameType int `form:"game_type,optional"`
+	Limit    int `form:"limit,default=30"`
+}
+
+type GetOpponentCandidatesResp struct {
+	Success             bool                `json:"success"`
+	List                []OpponentCandidate `json:"list"`
+	CompetitiveRevision int64               `json:"competitive_revision"`
+	Availability        map[string]bool     `json:"availability"`
+	PartialErrors       []ReadPartialError  `json:"partial_errors"`
 }
 
 type GetOpponentListReq struct {
@@ -1301,6 +1337,7 @@ type GetOpponentListResp struct {
 	Message        string               `json:"message,optional"`
 	Hidden         bool                 `json:"hidden"`
 	TotalOpponents int                  `json:"total_opponents"` // 总对手数
+	TotalMatches   int                  `json:"total_matches"`   // 总交手场次
 	TotalWins      int                  `json:"total_wins"`      // 总胜场
 	Total          int64                `json:"total"`
 	List           []OpponentRecordItem `json:"list"`
@@ -1365,6 +1402,12 @@ type GetQiniuUploadTokenResp struct {
 	Domain      string `json:"domain,optional"`
 }
 
+type GetRankConfigsResp struct {
+	Success bool             `json:"success"`
+	Version string           `json:"version"`
+	List    []RankConfigItem `json:"list"`
+}
+
 type GetRankListReq struct {
 	GameType int `form:"game_type,optional,default=3"`
 }
@@ -1423,6 +1466,21 @@ type GetSeasonLeaderboardResp struct {
 	List    []SeasonLeaderboardItem `json:"list"`
 }
 
+type GetSeasonOverviewReq struct {
+	GameType int `form:"game_type,optional,default=3"`
+}
+
+type GetSeasonOverviewResp struct {
+	Success             bool                    `json:"success"`
+	SeasonState         string                  `json:"season_state"`
+	Season              *SeasonInfo             `json:"season"`
+	Record              *SeasonRecordInfo       `json:"record"`
+	Leaderboard         []SeasonLeaderboardItem `json:"leaderboard"`
+	CompetitiveRevision int64                   `json:"competitive_revision"`
+	Availability        map[string]bool         `json:"availability"`
+	PartialErrors       []ReadPartialError      `json:"partial_errors"`
+}
+
 type GetSeasonReportReq struct {
 	SeasonId int64 `form:"season_id"`
 	GameType int   `form:"game_type,optional,default=3"`
@@ -1446,6 +1504,24 @@ type GetSingleHighScoreResp struct {
 type GetStatsByGameTypeResp struct {
 	Success bool            `json:"success"`
 	List    []GameTypeStats `json:"list"`
+}
+
+type GetStatsOverviewReq struct {
+	GameType   int `form:"game_type,optional,default=3"`
+	TrendLimit int `form:"trend_limit,default=60"`
+}
+
+type GetStatsOverviewResp struct {
+	Success             bool                    `json:"success"`
+	ByGameType          []GameTypeStats         `json:"by_game_type"`
+	RecentTrend         []TrendPoint            `json:"recent_trend"`
+	RankScoreTrend      []TrendPoint            `json:"rank_score_trend"`
+	SingleHighScores    []SingleHighScoreRecord `json:"single_high_scores"`
+	Duration            *DurationStats          `json:"duration"`
+	OpponentStrength    []OpponentStrengthItem  `json:"opponent_strength"`
+	CompetitiveRevision int64                   `json:"competitive_revision"`
+	Availability        map[string]bool         `json:"availability"`
+	PartialErrors       []ReadPartialError      `json:"partial_errors"`
 }
 
 type GetTournamentBracketReq struct {
@@ -1502,9 +1578,32 @@ type GetUserAchievementsResp struct {
 	List    []AchievementDef `json:"list"`
 }
 
+type GetUserBootstrapResp struct {
+	Success                   bool               `json:"success"`
+	UserInfo                  *UserInfo          `json:"user_info"`
+	CurrentMatch              *CurrentMatchInfo  `json:"current_match"`
+	UnreadCount               int                `json:"unread_count"`
+	PendingFriendRequestCount int                `json:"pending_friend_request_count"`
+	LatestSeasonRollover      *NotificationInfo  `json:"latest_season_rollover"`
+	CompetitiveRevision       int64              `json:"competitive_revision"`
+	Availability              map[string]bool    `json:"availability"`
+	PartialErrors             []ReadPartialError `json:"partial_errors"`
+}
+
 type GetUserInfoResp struct {
 	Success  bool      `json:"success"`
 	UserInfo *UserInfo `json:"user_info"`
+}
+
+type GetUserOverviewResp struct {
+	Success             bool                           `json:"success"`
+	Stats               *UserStatsResp                 `json:"stats"`
+	Reputation          *GetUserReputationResp         `json:"reputation"`
+	MemberStatus        *GetMemberStatusResp           `json:"member_status"`
+	FavoriteVenueReward *FavoriteVenueRewardStatusResp `json:"favorite_venue_reward"`
+	CompetitiveRevision int64                          `json:"competitive_revision"`
+	Availability        map[string]bool                `json:"availability"`
+	PartialErrors       []ReadPartialError             `json:"partial_errors"`
 }
 
 type GetUserPrivacyResp struct {
@@ -1601,6 +1700,28 @@ type H2HOpponent struct {
 	Id     int64  `json:"id"`
 	Name   string `json:"name"`
 	Avatar string `json:"avatar"`
+}
+
+type H2HOverviewReq struct {
+	TargetUserId int64  `form:"target_user_id,optional"`
+	OpponentId   int64  `form:"opponent_id,optional"`
+	OpponentName string `form:"opponent_name,optional"`
+	GameType     int    `form:"game_type,optional"`
+	PageSize     int    `form:"page_size,default=20"`
+	StartDate    string `form:"start_date,optional"`
+	EndDate      string `form:"end_date,optional"`
+}
+
+type H2HOverviewResp struct {
+	Success             bool               `json:"success"`
+	Opponent            *H2HOpponent       `json:"opponent"`
+	Stats               *H2HStats          `json:"stats"`
+	Total               int64              `json:"total"`
+	List                []MatchListItem    `json:"list"`
+	HasMore             bool               `json:"has_more"`
+	CompetitiveRevision int64              `json:"competitive_revision"`
+	Availability        map[string]bool    `json:"availability"`
+	PartialErrors       []ReadPartialError `json:"partial_errors"`
 }
 
 type H2HStats struct {
@@ -2055,6 +2176,15 @@ type OngoingMatchItem struct {
 	DurationSeconds int64  `json:"duration_seconds"` // 对局已持续秒数，由服务端计算
 }
 
+type OpponentCandidate struct {
+	UserId      int64  `json:"user_id"`
+	Name        string `json:"name"`
+	Avatar      string `json:"avatar"`
+	RankName    string `json:"rank_name,optional"`
+	Source      string `json:"source"`
+	LastMatchAt string `json:"last_match_at,optional"`
+}
+
 type OpponentItem struct {
 	Id         int64  `json:"id"`
 	Name       string `json:"name"`
@@ -2183,6 +2313,14 @@ type PublicMatchListResp struct {
 	List    []PublicMatchListItem `json:"list"`
 }
 
+type RankConfigItem struct {
+	GameType int    `json:"game_type"`
+	Level    int    `json:"level"`
+	Name     string `json:"name"`
+	Icon     string `json:"icon"`
+	MinScore int    `json:"min_score"`
+}
+
 type RankDetail struct {
 	Label string `json:"label"`
 	Value int    `json:"value"`
@@ -2208,6 +2346,11 @@ type RankItem struct {
 	Icon      string `json:"icon"`
 	MinScore  int    `json:"min_score"`  // 晋升最低分
 	IsCurrent bool   `json:"is_current"` // 是否当前段位
+}
+
+type ReadPartialError struct {
+	Scope   string `json:"scope"`
+	Message string `json:"message"`
 }
 
 type RefereeHistoryItem struct {
@@ -2364,6 +2507,8 @@ type SeasonInfo struct {
 	Name           string  `json:"name"`
 	StartDate      string  `json:"start_date"`
 	EndDate        string  `json:"end_date"`
+	StartAt        string  `json:"start_at"`
+	EndAtExclusive string  `json:"end_at_exclusive"`
 	Status         int     `json:"status"`
 	RankResetRatio float64 `json:"rank_reset_ratio"`
 }

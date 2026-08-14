@@ -2,7 +2,7 @@
 	<view class="rules-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 搜索栏 -->
 		<view class="search-bar">
-			<uni-icons type="search" size="18" color="#94a3b8"></uni-icons>
+			<uni-icons type="search" size="18" color="#9A8C67"></uni-icons>
 			<input
 				class="search-input"
 				v-model="searchKeyword"
@@ -47,7 +47,7 @@
 						<text class="card-name">中式八球</text>
 						<text class="card-desc">中国流行的花色球比赛</text>
 					</view>
-					<uni-icons type="right" size="18" color="#94a3b8"></uni-icons>
+					<uni-icons type="right" size="18" color="#9A8C67"></uni-icons>
 				</view>
 				<view class="game-card nine-ball" @tap="goToDetail('nine_ball')">
 					<text class="card-emoji">🟡</text>
@@ -55,7 +55,7 @@
 						<text class="card-name">九球追分</text>
 						<text class="card-desc">9球制，必须按顺序击球</text>
 					</view>
-					<uni-icons type="right" size="18" color="#94a3b8"></uni-icons>
+					<uni-icons type="right" size="18" color="#9A8C67"></uni-icons>
 				</view>
 				<view class="game-card snooker" @tap="goToDetail('snooker')">
 					<text class="card-emoji">🔴</text>
@@ -63,7 +63,7 @@
 						<text class="card-name">斯诺克</text>
 						<text class="card-desc">22球制台球，得分制比赛</text>
 					</view>
-					<uni-icons type="right" size="18" color="#94a3b8"></uni-icons>
+					<uni-icons type="right" size="18" color="#9A8C67"></uni-icons>
 				</view>
 				<view class="game-card nine-ball" @tap="goToDetail('american_nine')">
 					<text class="card-emoji">🟠</text>
@@ -71,7 +71,7 @@
 						<text class="card-name">美式九球</text>
 						<text class="card-desc">赛局制九球，支持普胜、小金和大金</text>
 					</view>
-					<uni-icons type="right" size="18" color="#94a3b8"></uni-icons>
+					<uni-icons type="right" size="18" color="#9A8C67"></uni-icons>
 				</view>
 			</view>
 
@@ -85,7 +85,7 @@
 						<text class="glossary-desc">台球专业术语大全</text>
 					</view>
 				</view>
-				<uni-icons type="right" size="18" color="#94a3b8"></uni-icons>
+				<uni-icons type="right" size="18" color="#9A8C67"></uni-icons>
 			</view>
 		</view>
 	</view>
@@ -141,7 +141,7 @@ const goToGlossary = () => {
 <style lang="scss" scoped>
 .rules-page {
 	min-height: 100vh;
-	background: #f1f5f9;
+	background: #FAF8F2;
 	padding: 24rpx;
 }
 
@@ -157,7 +157,7 @@ const goToGlossary = () => {
 	.search-input {
 		flex: 1;
 		font-size: 28rpx;
-		color: #1e293b;
+		color: #231C0B;
 	}
 }
 
@@ -168,7 +168,7 @@ const goToGlossary = () => {
 	padding: 16rpx 8rpx;
 	font-size: 28rpx;
 	font-weight: 600;
-	color: #64748b;
+	color: #6E6242;
 
 	.clear-btn {
 		font-size: 24rpx;
@@ -196,13 +196,13 @@ const goToGlossary = () => {
 			.card-name {
 				font-size: 30rpx;
 				font-weight: 600;
-				color: #1e293b;
+				color: #231C0B;
 				display: block;
 				margin-bottom: 6rpx;
 			}
 			.card-desc {
 				font-size: 24rpx;
-				color: #94a3b8;
+				color: #9A8C67;
 			}
 		}
 	}
@@ -228,13 +228,13 @@ const goToGlossary = () => {
 			.glossary-name {
 				font-size: 30rpx;
 				font-weight: 600;
-				color: #1e293b;
+				color: #231C0B;
 				display: block;
 				margin-bottom: 6rpx;
 			}
 			.glossary-desc {
 				font-size: 24rpx;
-				color: #94a3b8;
+				color: #9A8C67;
 			}
 		}
 	}
@@ -249,13 +249,13 @@ const goToGlossary = () => {
 
 		.result-title {
 			font-size: 28rpx;
-			color: #1e293b;
+			color: #231C0B;
 			display: block;
 			margin-bottom: 8rpx;
 		}
 		.result-category {
 			font-size: 22rpx;
-			color: #94a3b8;
+			color: #9A8C67;
 		}
 	}
 }
@@ -270,7 +270,7 @@ const goToGlossary = () => {
 	text-align: center;
 	padding: 60rpx 0;
 	font-size: 28rpx;
-	color: #94a3b8;
+	color: #9A8C67;
 }
 
 .rules-page.dark-mode {

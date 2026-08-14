@@ -8,6 +8,7 @@ import (
 
 	"chasing_points/internal/model"
 	"chasing_points/internal/pkg/httperror"
+	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -259,11 +260,67 @@ func TestGetHonorWallEmptyStateWithoutActiveSeason(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get empty honor wall: %v", err)
 	}
-	if !resp.Success || resp.CurrentSeason != nil || resp.EquippedTitle != nil {
+	if !resp.Success || resp.SeasonState != "not_started" || resp.CurrentSeason != nil || resp.EquippedTitle != nil {
 		t.Fatalf("unexpected empty response: %+v", resp)
 	}
 	if resp.RecentHonors == nil || resp.CareerAchievements == nil || resp.History.Honors == nil || resp.History.ChallengeRecords == nil {
 		t.Fatalf("empty collections must be non-nil: %+v", resp)
+	}
+}
+
+func TestGetHonorWallLifecycleUnavailableKeepsCareerAssets(t *testing.T) {
+	svcCtx, db := newHonorWallTestSvc(t)
+	seedHonorWallUser(t, svcCtx, 1001, "赛季异常用户")
+	definitions := seedHonorWallAchievements(t, db)
+	seedHonorWallUnlocked(t, db, 1001, definitions[0].Id, 10, time.Now())
+	location, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		t.Fatalf("load timezone: %v", err)
+	}
+	now := time.Now().In(location)
+	svcCtx.Config.SeasonLifecycle.Enabled = true
+	svcCtx.Config.SeasonLifecycle.AnchorDate = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, location).Format(time.DateOnly)
+
+	resp, err := NewGetHonorWallLogic(honorWallContext(1001), svcCtx).GetHonorWall(nil)
+	if err != nil {
+		t.Fatalf("get unavailable honor wall: %v", err)
+	}
+	if !resp.Success || resp.SeasonState != "unavailable" || resp.CurrentSeason != nil || len(resp.CareerAchievements) != 2 || resp.Summary.CareerUnlocked != 1 {
+		t.Fatalf("season unavailability must not hide career assets: %+v", resp)
+	}
+}
+
+func TestGetHonorWallLifecycleUsesCurrentWindowBeforeStatusSync(t *testing.T) {
+	svcCtx, _ := newHonorWallTestSvc(t)
+	seedHonorWallUser(t, svcCtx, 1001, "延迟切换用户")
+	location, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		t.Fatalf("load timezone: %v", err)
+	}
+	now := time.Now()
+	anchor := time.Date(now.In(location).Year(), now.In(location).Month(), 1, 0, 0, 0, 0, location)
+	svcCtx.Config.SeasonLifecycle.Enabled = true
+	svcCtx.Config.SeasonLifecycle.AnchorDate = anchor.Format(time.DateOnly)
+	policy, err := seasonx.NewPolicy(svcCtx.Config.SeasonLifecycle)
+	if err != nil {
+		t.Fatalf("new policy: %v", err)
+	}
+	window, ok := policy.WindowAt(now)
+	if !ok {
+		t.Fatal("expected active window")
+	}
+	item := seasonx.WindowSeason(window)
+	item.Status = 0
+	if err := svcCtx.SeasonModel.Create(&item); err != nil {
+		t.Fatalf("seed delayed season: %v", err)
+	}
+
+	resp, err := NewGetHonorWallLogic(honorWallContext(1001), svcCtx).GetHonorWall(nil)
+	if err != nil {
+		t.Fatalf("get delayed honor wall: %v", err)
+	}
+	if !resp.Success || resp.SeasonState != "active" || resp.CurrentSeason == nil || resp.CurrentSeason.Status != 1 {
+		t.Fatalf("expected active season before status sync: %+v", resp)
 	}
 }
 

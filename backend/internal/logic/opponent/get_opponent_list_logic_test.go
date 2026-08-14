@@ -2,10 +2,13 @@ package opponent
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	"chasing_points/internal/config"
 	"chasing_points/internal/model"
+	"chasing_points/internal/observability"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -20,15 +23,17 @@ func newOpponentLogicTestSvc(t *testing.T) *svc.ServiceContext {
 	if err != nil {
 		t.Fatalf("open sqlite db: %v", err)
 	}
-	if err := db.AutoMigrate(&model.User{}, &model.Match{}, &model.Friend{}); err != nil {
+	if err := db.AutoMigrate(&model.User{}, &model.Match{}, &model.Friend{}, &model.UserOpponentStats{}); err != nil {
 		t.Fatalf("prepare opponent logic schema: %v", err)
 	}
 
 	return &svc.ServiceContext{
-		DB:          db,
-		UserModel:   model.NewUserModel(db),
-		MatchModel:  model.NewMatchModel(db),
-		FriendModel: model.NewFriendModel(db),
+		DB:                   db,
+		UserModel:            model.NewUserModel(db),
+		MatchModel:           model.NewMatchModel(db),
+		CompetitiveReadModel: model.NewCompetitiveReadModel(db),
+		FriendModel:          model.NewFriendModel(db),
+		Config:               config.Config{CompetitiveReadModel: config.CompetitiveReadModelConfig{ReadMode: "enabled"}},
 	}
 }
 
@@ -56,6 +61,54 @@ func seedOpponentLogicMatch(t *testing.T, svcCtx *svc.ServiceContext, match *mod
 	}
 }
 
+func TestGetOpponentListUsesFixedQueriesAndStableSnapshotPagination(t *testing.T) {
+	one := opponentListQueryCount(t, 1)
+	hundred := opponentListQueryCount(t, 100)
+	if one != 3 || hundred != 3 {
+		t.Fatalf("opponent list must use summary, count and page queries: one=%d hundred=%d", one, hundred)
+	}
+}
+
+func opponentListQueryCount(t *testing.T, rows int) int64 {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+fmt.Sprintf("-%d?mode=memory&cache=shared", rows)), &gorm.Config{Logger: observability.NewGormLogger(time.Hour)})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&model.User{}, &model.UserOpponentStats{}); err != nil {
+		t.Fatalf("prepare opponent query schema: %v", err)
+	}
+	users := []model.User{{Id: 1, Nickname: "我"}}
+	stats := make([]model.UserOpponentStats, 0, rows)
+	lastMatchAt := time.Date(2026, 8, 11, 12, 0, 0, 0, time.UTC)
+	for index := 1; index <= rows; index++ {
+		userID := int64(index + 1)
+		users = append(users, model.User{Id: userID, Nickname: fmt.Sprintf("对手%d", index)})
+		stats = append(stats, model.UserOpponentStats{UserId: 1, OpponentUserId: userID, OpponentNameKey: fmt.Sprintf("user:%d", userID), OpponentName: fmt.Sprintf("对手%d", index), GameType: 0, TotalMatches: 1, Wins: 1, LastMatchId: int64(index), LastMatchAt: &lastMatchAt})
+	}
+	if err := db.Create(&users).Error; err != nil {
+		t.Fatalf("seed users: %v", err)
+	}
+	if err := db.Create(&stats).Error; err != nil {
+		t.Fatalf("seed opponent stats: %v", err)
+	}
+	metrics := observability.NewRequestMetrics(time.Now())
+	ctx := observability.WithRequestMetrics(context.WithValue(context.Background(), "user_id", int64(1)), metrics)
+	requestDB := db.WithContext(ctx)
+	page := 1
+	if rows > 20 {
+		page = 2
+	}
+	resp, err := NewGetOpponentListLogic(ctx, &svc.ServiceContext{UserModel: model.NewUserModel(requestDB), CompetitiveReadModel: model.NewCompetitiveReadModel(requestDB), Config: config.Config{CompetitiveReadModel: config.CompetitiveReadModelConfig{ReadMode: "enabled"}}}).GetOpponentList(&types.GetOpponentListReq{Page: page, PageSize: 20})
+	if err != nil || !resp.Success || resp.Total != int64(rows) {
+		t.Fatalf("get opponent list: resp=%#v err=%v", resp, err)
+	}
+	if rows == 100 && (len(resp.List) != 20 || resp.List[0].Id != 81 || resp.List[19].Id != 62) {
+		t.Fatalf("opponent pagination must use last match id as stable tie-breaker: %+v", resp.List)
+	}
+	return metrics.Snapshot().SQLCount
+}
+
 func TestGetOpponentListUsesCurrentUserByDefault(t *testing.T) {
 	svcCtx := newOpponentLogicTestSvc(t)
 	seedOpponentLogicUser(t, svcCtx, 101, "查看者")
@@ -63,6 +116,7 @@ func TestGetOpponentListUsesCurrentUserByDefault(t *testing.T) {
 
 	win := 1
 	opponentID := int64(303)
+	lastMatchAt := time.Date(2026, 3, 30, 10, 0, 0, 0, time.UTC)
 	seedOpponentLogicMatch(t, svcCtx, &model.Match{
 		Id:            1,
 		UserId:        101,
@@ -73,8 +127,14 @@ func TestGetOpponentListUsesCurrentUserByDefault(t *testing.T) {
 		OpponentScore: 5,
 		Status:        2,
 		Result:        &win,
-		MatchTime:     time.Date(2026, 3, 30, 10, 0, 0, 0, time.UTC),
+		MatchTime:     lastMatchAt,
 	})
+	if err := svcCtx.DB.Create(&model.UserOpponentStats{
+		UserId: 101, OpponentUserId: 303, OpponentNameKey: "user:303", OpponentName: "默认对手",
+		GameType: 0, TotalMatches: 1, Wins: 1, LastMatchId: 1, LastMatchAt: &lastMatchAt,
+	}).Error; err != nil {
+		t.Fatalf("seed opponent snapshot: %v", err)
+	}
 
 	logic := NewGetOpponentListLogic(opponentLogicCtx(101), svcCtx)
 	resp, err := logic.GetOpponentList(&types.GetOpponentListReq{
@@ -117,6 +177,7 @@ func TestGetOpponentListAllowsViewingFriendTargetUser(t *testing.T) {
 		Result:        &win,
 		MatchTime:     time.Date(2026, 3, 30, 11, 0, 0, 0, time.UTC),
 	})
+	lastMatchAt := time.Date(2026, 3, 31, 11, 0, 0, 0, time.UTC)
 	seedOpponentLogicMatch(t, svcCtx, &model.Match{
 		Id:            12,
 		UserId:        404,
@@ -127,8 +188,14 @@ func TestGetOpponentListAllowsViewingFriendTargetUser(t *testing.T) {
 		OpponentScore: 8,
 		Status:        2,
 		Result:        &win,
-		MatchTime:     time.Date(2026, 3, 31, 11, 0, 0, 0, time.UTC),
+		MatchTime:     lastMatchAt,
 	})
+	if err := svcCtx.DB.Create(&model.UserOpponentStats{
+		UserId: 202, OpponentUserId: 404, OpponentNameKey: "user:404", OpponentName: "好友对手",
+		GameType: 0, TotalMatches: 2, Wins: 1, Losses: 1, LastMatchId: 12, LastMatchAt: &lastMatchAt,
+	}).Error; err != nil {
+		t.Fatalf("seed friend opponent snapshot: %v", err)
+	}
 
 	logic := NewGetOpponentListLogic(opponentLogicCtx(101), svcCtx)
 	resp, err := logic.GetOpponentList(&types.GetOpponentListReq{

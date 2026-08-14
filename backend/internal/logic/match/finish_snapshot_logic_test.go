@@ -1,12 +1,16 @@
 package match
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"chasing_points/internal/model"
 	"chasing_points/internal/pkg/ws"
+	"chasing_points/internal/testsupport"
 	"chasing_points/internal/types"
+
+	"gorm.io/gorm"
 )
 
 func TestPendingFinishIsReturnedByCurrentAndDetailWithViewerCapabilities(t *testing.T) {
@@ -67,7 +71,7 @@ func TestPendingFinishIsReturnedByCurrentAndDetailWithViewerCapabilities(t *test
 	}
 }
 
-func TestExpiredFinishRequestRestoresCurrentMatchAndBumpsRevision(t *testing.T) {
+func TestExpiredFinishRequestReadIsPureUntilWorkerRestoresState(t *testing.T) {
 	svcCtx := newFinishMatchReputationTestSvc(t)
 	opponentID := int64(2002)
 	requesterID := int64(1001)
@@ -92,6 +96,10 @@ func TestExpiredFinishRequestRestoresCurrentMatchAndBumpsRevision(t *testing.T) 
 	}); err != nil {
 		t.Fatalf("create expired pending match: %v", err)
 	}
+	recorder := testsupport.NewSQLWriteRecorder()
+	readDB := svcCtx.DB.Session(&gorm.Session{Logger: recorder})
+	svcCtx.MatchModel = model.NewMatchModel(readDB)
+	svcCtx.UserModel = model.NewUserModel(readDB)
 	previousHub := ws.GlobalHub
 	hub := ws.NewHub()
 	ws.GlobalHub = hub
@@ -101,8 +109,18 @@ func TestExpiredFinishRequestRestoresCurrentMatchAndBumpsRevision(t *testing.T) 
 	if err != nil || !current.Success || current.Match == nil {
 		t.Fatalf("expired current match should be restored: resp=%#v err=%v", current, err)
 	}
-	if current.Match.FinishState != model.FinishStateNone || current.Match.ServerRevision != 7 {
-		t.Fatalf("expected restored current match at revision 7, got %+v", current.Match)
+	if current.Match.FinishState != model.FinishStateNone || current.Match.ServerRevision != 6 {
+		t.Fatalf("expired read must expose an effective non-pending view without changing revision, got %+v", current.Match)
+	}
+	if writes := recorder.Writes(); len(writes) != 0 {
+		t.Fatalf("current match GET must not issue writes: %q", writes)
+	}
+	stored, err := svcCtx.MatchModel.FindById(9011)
+	if err != nil || stored == nil || stored.FinishState != model.FinishStatePendingConfirmation || stored.SyncRevision != 6 {
+		t.Fatalf("GET must not write the expired finish request: stored=%+v err=%v", stored, err)
+	}
+	if err := NewFinishRequestExpiryWorker(svcCtx).RunOnce(context.Background()); err != nil {
+		t.Fatalf("expire finish request worker: %v", err)
 	}
 	expiredMessage := readFinishBroadcast(t, hub)
 	if expiredMessage.Type != "match_finish_expired" {
@@ -112,9 +130,9 @@ func TestExpiredFinishRequestRestoresCurrentMatchAndBumpsRevision(t *testing.T) 
 	if expiredData["server_revision"].(float64) != 7 || expiredData["finish_state"] != model.FinishStateNone {
 		t.Fatalf("unexpected expiry broadcast data: %#v", expiredData)
 	}
-	stored, err := svcCtx.MatchModel.FindById(9011)
+	stored, err = svcCtx.MatchModel.FindById(9011)
 	if err != nil || stored == nil || stored.FinishState != model.FinishStateNone || stored.FinishRequestedBy != nil || stored.SyncRevision != 7 {
-		t.Fatalf("unexpected stored expired state: stored=%+v err=%v", stored, err)
+		t.Fatalf("worker must persist expired state: stored=%+v err=%v", stored, err)
 	}
 	var expiredActionCount int64
 	if err := svcCtx.DB.Model(&model.MatchAction{}).Where("match_id = ? AND action_type = ?", 9011, "finish_expired").Count(&expiredActionCount).Error; err != nil {

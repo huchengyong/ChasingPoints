@@ -94,7 +94,7 @@ onMounted(() => {
 <style lang="scss" scoped>
 .bracket-page {
 	min-height: 100vh;
-	background: #f1f5f9;
+	background: #FAF8F2;
 }
 .loading-state {
 	display: flex;
@@ -102,7 +102,7 @@ onMounted(() => {
 	align-items: center;
 	justify-content: center;
 	min-height: 60vh;
-	.loading-text { font-size: 28rpx; color: #64748b; margin-top: 16rpx; }
+	.loading-text { font-size: 28rpx; color: #6E6242; margin-top: 16rpx; }
 }
 .empty-state {
 	display: flex;
@@ -111,7 +111,7 @@ onMounted(() => {
 	justify-content: center;
 	min-height: 60vh;
 	.empty-icon { font-size: 80rpx; margin-bottom: 16rpx; }
-	.empty-text { font-size: 28rpx; color: #64748b; }
+	.empty-text { font-size: 28rpx; color: #6E6242; }
 }
 .bracket-scroll {
 	width: 100%;
@@ -135,7 +135,7 @@ onMounted(() => {
 		margin-bottom: 24rpx;
 		font-size: 26rpx;
 		font-weight: 600;
-		color: #64748b;
+		color: #6E6242;
 		background: #ffffff;
 		border-radius: 8rpx;
 	}
@@ -151,15 +151,15 @@ onMounted(() => {
 	background: #ffffff;
 	border-radius: 12rpx;
 	padding: 16rpx 20rpx;
-	border: 2rpx solid #e2e8f0;
-	&.completed { border-color: #cbd5e1; }
+	border: 2rpx solid #E9E2CF;
+	&.completed { border-color: #E9E2CF; }
 	.player-row {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
 		padding: 10rpx 8rpx;
 		border-radius: 6rpx;
-		.player-name { font-size: 26rpx; color: #1e293b; }
+		.player-name { font-size: 26rpx; color: #231C0B; }
 		.player-score { font-size: 24rpx; color: #22c55e; font-weight: 700; }
 		&.winner {
 			background: rgba(34, 197, 94, 0.1);
@@ -168,16 +168,16 @@ onMounted(() => {
 	}
 	.vs-line {
 		height: 2rpx;
-		background: #e2e8f0;
+		background: #E9E2CF;
 		margin: 6rpx 0;
 	}
 	.match-status {
 		text-align: center;
 		margin-top: 8rpx;
 		font-size: 20rpx;
-		.status-pending { color: #64748b; }
+		.status-pending { color: #6E6242; }
 		.status-live { color: #f59e0b; }
-		.status-done { color: #64748b; }
+		.status-done { color: #6E6242; }
 	}
 }
 

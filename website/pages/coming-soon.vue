@@ -91,13 +91,13 @@ usePageSeo({
 }
 
 .coming-soon-card__primary {
-  background: linear-gradient(135deg, #d9a617, #bb8400);
+  background: linear-gradient(135deg, var(--ui-brand-gradient-start), var(--ui-brand-gradient-end));
   color: #fff;
 }
 
 .coming-soon-card__secondary {
   border: 1px solid rgba(31, 26, 16, 0.1);
   background: rgba(255, 255, 255, 0.82);
-  color: #1f1a10;
+  color: var(--ui-text-primary);
 }
 </style>

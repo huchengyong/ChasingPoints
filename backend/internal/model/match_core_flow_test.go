@@ -14,7 +14,7 @@ func newMatchCoreFlowTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("open sqlite db: %v", err)
 	}
-	if err := db.AutoMigrate(&User{}, &Friend{}, &Match{}); err != nil {
+	if err := db.AutoMigrate(&User{}, &Friend{}, &Match{}, &MatchRound{}); err != nil {
 		t.Fatalf("prepare match schema: %v", err)
 	}
 	return db
@@ -165,6 +165,9 @@ func TestCompetitiveUserStatsExcludePracticeMatches(t *testing.T) {
 
 func TestRankingReplayExcludesPracticeMatches(t *testing.T) {
 	db := newMatchCoreFlowTestDB(t)
+	if err := db.AutoMigrate(&MatchRound{}); err != nil {
+		t.Fatalf("prepare match round schema: %v", err)
+	}
 	opponentID := int64(2)
 	win := 1
 	for _, match := range []Match{
@@ -174,6 +177,10 @@ func TestRankingReplayExcludesPracticeMatches(t *testing.T) {
 		if err := db.Create(&match).Error; err != nil {
 			t.Fatalf("create match %d: %v", match.Id, err)
 		}
+	}
+	winner := 1
+	if err := db.Create(&MatchRound{MatchId: 41, RoundNo: 1, Winner: &winner, WinType: "normal"}).Error; err != nil {
+		t.Fatalf("create completed round: %v", err)
 	}
 
 	matches, err := NewMatchModel(db).ListCompletedForRankingReplay()

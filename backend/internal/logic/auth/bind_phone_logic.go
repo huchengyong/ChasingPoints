@@ -31,7 +31,7 @@ func NewBindPhoneLogic(ctx context.Context, svcCtx *svc.ServiceContext) *BindPho
 	return &BindPhoneLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

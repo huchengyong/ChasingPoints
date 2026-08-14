@@ -3,34 +3,23 @@ package svc
 import (
 	"testing"
 
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
+	"chasing_points/internal/config"
+	"chasing_points/internal/model"
 )
 
-func TestNewServiceModelsWiresAchievementClosedLoopModels(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open sqlite db: %v", err)
+func TestCompetitiveReadModelsEnabledRequiresExplicitEnabledMode(t *testing.T) {
+	ctx := &ServiceContext{CompetitiveReadModel: &model.CompetitiveReadModel{}}
+	if ctx.CompetitiveReadModelsEnabled() {
+		t.Fatal("empty read mode must keep new read models disabled")
 	}
 
-	models := newServiceModels(db)
+	ctx.Config.CompetitiveReadModel.ReadMode = "enabled"
+	if !ctx.CompetitiveReadModelsEnabled() {
+		t.Fatal("enabled read mode must allow new read models")
+	}
 
-	if models.AchievementModel == nil {
-		t.Fatal("expected achievement model")
-	}
-	if models.UserAchievementModel == nil {
-		t.Fatal("expected user achievement model")
-	}
-	if models.UserTitleModel == nil {
-		t.Fatal("expected user title model")
-	}
-	if models.AchievementProgressEventModel == nil {
-		t.Fatal("expected achievement progress event model")
-	}
-	if models.SeasonChallengeSnapshotModel == nil {
-		t.Fatal("expected season challenge snapshot model")
-	}
-	if models.SeasonSettlementModel == nil {
-		t.Fatal("expected season settlement model")
+	ctx.Config = config.Config{CompetitiveReadModel: config.CompetitiveReadModelConfig{ReadMode: "disabled"}}
+	if ctx.CompetitiveReadModelsEnabled() {
+		t.Fatal("disabled read mode must keep legacy reads active")
 	}
 }

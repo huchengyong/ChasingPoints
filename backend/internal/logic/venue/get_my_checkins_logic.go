@@ -21,7 +21,7 @@ func NewGetMyCheckinsLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Get
 	return &GetMyCheckinsLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

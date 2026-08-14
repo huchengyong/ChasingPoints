@@ -27,7 +27,7 @@
 					<text class="item-time">{{ item.created_at }}</text>
 				</view>
 				<view class="item-delete" @tap.stop="handleDelete(item.id)">
-					<uni-icons type="trash" size="18" color="#94a3b8"></uni-icons>
+					<uni-icons type="trash" size="18" color="#9A8C67"></uni-icons>
 				</view>
 			</view>
 		</view>
@@ -53,21 +53,35 @@
 
 <script setup>
 import { ref } from 'vue'
-import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
+import { onLoad, onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { getNotificationList, markAsRead, markAllAsRead, deleteNotification } from '@/api/notification.js'
 import { useNotificationStore } from '@/store/notification.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
+import { useUserStore } from '@/store/user.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 
 const { isDarkMode } = usePageTheme()
 
 const notificationStore = useNotificationStore()
 const friendRequestStore = useFriendRequestStore()
+const userStore = useUserStore()
+const getReadIdentity = () => ({
+	userId: userStore.userId,
+	authGeneration: userStore.authGeneration
+})
 const notificationList = ref([])
 const loading = ref(false)
 const hasMore = ref(true)
 const page = ref(1)
 const pageSize = 20
+const latestRequestId = ref(0)
+const requestedIdentityKey = ref('')
+const loadedIdentityKey = ref('')
+
+const currentIdentityKey = () => {
+	const identity = getReadIdentity()
+	return `${identity.userId}:${identity.authGeneration}`
+}
 
 const getTypeIcon = (type) => {
 	const map = {
@@ -118,13 +132,15 @@ const navigateByNotification = (item) => {
 }
 
 const handleTapNotification = async (item) => {
+	const requestIdentityKey = currentIdentityKey()
 	if (!item.is_read) {
 		try {
 			await markAsRead({ notification_id: item.id })
+			if (currentIdentityKey() !== requestIdentityKey) return
 			item.is_read = true
-			notificationStore.decrementUnread()
+			notificationStore.decrementUnread(getReadIdentity())
 			if (item.type === 'friend_request' && item.title === '收到好友申请') {
-				friendRequestStore.fetchPendingCount()
+				friendRequestStore.fetchPendingCount(getReadIdentity())
 			}
 		} catch (e) {
 			console.error('标记已读失败:', e)
@@ -135,12 +151,14 @@ const handleTapNotification = async (item) => {
 }
 
 const handleReadAll = async () => {
+	const requestIdentityKey = currentIdentityKey()
 	try {
 		await markAllAsRead()
+		if (currentIdentityKey() !== requestIdentityKey) return
 		notificationList.value.forEach(item => {
 			item.is_read = true
 		})
-		notificationStore.clearUnread()
+		notificationStore.clearUnread(getReadIdentity())
 		uni.showToast({ title: '已全部标记为已读', icon: 'success' })
 	} catch (e) {
 		console.error('全部已读失败:', e)
@@ -149,13 +167,15 @@ const handleReadAll = async () => {
 }
 
 const handleDelete = async (id) => {
+	const requestIdentityKey = currentIdentityKey()
 	try {
 		await deleteNotification({ notification_id: id })
+		if (currentIdentityKey() !== requestIdentityKey) return
 		const idx = notificationList.value.findIndex(n => n.id === id)
 		if (idx >= 0) {
 			const item = notificationList.value[idx]
 			if (!item.is_read) {
-				notificationStore.decrementUnread()
+				notificationStore.decrementUnread(getReadIdentity())
 			}
 			notificationList.value.splice(idx, 1)
 		}
@@ -168,6 +188,10 @@ const handleDelete = async (id) => {
 
 const loadNotifications = async (isRefresh = false) => {
 	if (loading.value) return
+	const requestId = latestRequestId.value + 1
+	const requestIdentityKey = currentIdentityKey()
+	latestRequestId.value = requestId
+	requestedIdentityKey.value = requestIdentityKey
 	loading.value = true
 
 	if (isRefresh) {
@@ -177,7 +201,11 @@ const loadNotifications = async (isRefresh = false) => {
 
 	try {
 		const res = await getNotificationList({ page: page.value, page_size: pageSize })
-		const list = res.list || res || []
+		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
+		const list = res.list || []
+		if (Object.prototype.hasOwnProperty.call(res || {}, 'unread_count')) {
+			notificationStore.setUnreadCount(res.unread_count, getReadIdentity())
+		}
 
 		if (isRefresh) {
 			notificationList.value = list
@@ -186,9 +214,13 @@ const loadNotifications = async (isRefresh = false) => {
 		}
 
 		hasMore.value = list.length >= pageSize
+		loadedIdentityKey.value = requestIdentityKey
 	} catch (e) {
+		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
+		requestedIdentityKey.value = ''
 		console.error('加载通知失败:', e)
 	} finally {
+		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
 		loading.value = false
 		if (isRefresh) {
 			uni.stopPullDownRefresh()
@@ -203,7 +235,15 @@ const loadMore = () => {
 
 onLoad(() => {
 	loadNotifications(true)
-	notificationStore.fetchUnreadCount()
+})
+
+onShow(() => {
+	if (loadedIdentityKey.value !== currentIdentityKey() && requestedIdentityKey.value !== currentIdentityKey()) {
+		notificationList.value = []
+		page.value = 1
+		loading.value = false
+		loadNotifications(true)
+	}
 })
 
 onPullDownRefresh(() => {
@@ -214,7 +254,7 @@ onPullDownRefresh(() => {
 <style lang="scss" scoped>
 .notification-page {
 	min-height: 100vh;
-	background: #f1f5f9;
+	background: #FAF8F2;
 }
 
 .top-bar {
@@ -223,11 +263,11 @@ onPullDownRefresh(() => {
 	align-items: center;
 	padding: 24rpx 32rpx;
 	background: #fff;
-	border-bottom: 1rpx solid #f1f5f9;
+	border-bottom: 1rpx solid #FAF8F2;
 
 	.page-subtitle {
 		font-size: 28rpx;
-		color: #64748b;
+		color: #6E6242;
 	}
 		.read-all-btn {
 			font-size: 26rpx;
@@ -248,7 +288,7 @@ onPullDownRefresh(() => {
 		gap: 16rpx;
 
 			&.unread {
-				background: #f8fafc;
+				background: #FAF8F2;
 				border-left: 6rpx solid #e0ae12;
 			}
 
@@ -267,7 +307,7 @@ onPullDownRefresh(() => {
 			&.type-match_result { background: rgba(14, 165, 233, 0.12); }
 			&.type-rank_change { background: rgba(59, 130, 246, 0.12); }
 			&.type-friend_request { background: #f3e8ff; }
-			&.type-system { background: #f1f5f9; }
+			&.type-system { background: #FAF8F2; }
 
 			.icon-text {
 				font-size: 28rpx;
@@ -287,7 +327,7 @@ onPullDownRefresh(() => {
 				.item-title {
 					font-size: 28rpx;
 					font-weight: 600;
-					color: #1e293b;
+					color: #231C0B;
 				}
 					.unread-dot {
 						width: 12rpx;
@@ -300,7 +340,7 @@ onPullDownRefresh(() => {
 
 			.item-body {
 				font-size: 26rpx;
-				color: #64748b;
+				color: #6E6242;
 				display: block;
 				margin-bottom: 8rpx;
 				overflow: hidden;
@@ -310,7 +350,7 @@ onPullDownRefresh(() => {
 
 			.item-time {
 				font-size: 22rpx;
-				color: #94a3b8;
+				color: #9A8C67;
 			}
 		}
 
@@ -333,12 +373,12 @@ onPullDownRefresh(() => {
 	}
 	.empty-text {
 		font-size: 30rpx;
-		color: #64748b;
+		color: #6E6242;
 		margin-bottom: 8rpx;
 	}
 	.empty-hint {
 		font-size: 24rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 	}
 }
 

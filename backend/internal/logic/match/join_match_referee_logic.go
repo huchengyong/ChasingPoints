@@ -25,7 +25,7 @@ func NewJoinMatchRefereeLogic(ctx context.Context, svcCtx *svc.ServiceContext) *
 	return &JoinMatchRefereeLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

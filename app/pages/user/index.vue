@@ -36,28 +36,28 @@
 							<text class="guest-link-title">排行榜</text>
 							<text class="guest-link-desc">查看平台高手的段位与积分</text>
 						</view>
-						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
 					</view>
 					<view class="guest-link" @click="openRoute('/pages/match/index', true)">
 						<view class="guest-link-copy">
 							<text class="guest-link-title">正在进行的对局</text>
 							<text class="guest-link-desc">围观实时比赛与比分进展</text>
 						</view>
-						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
 					</view>
 					<view class="guest-link" @click="openRoute('/pages/social/index', true)">
 						<view class="guest-link-copy">
 							<text class="guest-link-title">赛讯</text>
 							<text class="guest-link-desc">查看赛事资讯和赛程更新</text>
 						</view>
-						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
 					</view>
 					<view class="guest-link guest-support-link" @click="handleHelp">
 						<view class="guest-link-copy">
 							<text class="guest-link-title">帮助、投诉与举报</text>
 							<text class="guest-link-desc">无需登录即可提交问题与反馈</text>
 						</view>
-						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
 					</view>
 				</view>
 			</template>
@@ -81,13 +81,13 @@
 					</view>
 					<view class="profile-actions">
 						<button class="icon-btn" @click="handleNotificationCenter">
-							<uni-icons type="notification-filled" size="20" :color="isDarkMode ? '#f7e7a8' : '#475569'"></uni-icons>
+							<uni-icons type="notification-filled" size="20" :color="isDarkMode ? '#f7e7a8' : '#6E6242'"></uni-icons>
 							<view v-if="pendingTotal > 0" class="icon-btn-badge">
 								<text>{{ pendingBadgeText }}</text>
 							</view>
 						</button>
 						<button class="icon-btn" @click="handleSettings">
-							<uni-icons type="gear" size="21" :color="isDarkMode ? '#f7e7a8' : '#475569'"></uni-icons>
+							<uni-icons type="gear" size="21" :color="isDarkMode ? '#f7e7a8' : '#6E6242'"></uni-icons>
 						</button>
 					</view>
 				</view>
@@ -256,7 +256,7 @@
 				<view class="float-reward-action">
 					<text>{{ compactRewardEntry.actionText }}</text>
 					<view class="float-reward-close" @click.stop="handleFloatRewardClose">
-						<uni-icons type="closeempty" size="14" :color="isDarkMode ? '#9f926e' : '#94a3b8'"></uni-icons>
+						<uni-icons type="closeempty" size="14" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
 					</view>
 				</view>
 			</view>
@@ -267,7 +267,7 @@
 				<view class="qrcode-modal-header">
 					<text class="qrcode-modal-title">{{ qrCodeModalCopy.title }}</text>
 					<view class="qrcode-modal-close" @click="closeQrCodeModal">
-						<uni-icons type="closeempty" size="24" :color="isDarkMode ? '#9f926e' : '#64748b'"></uni-icons>
+						<uni-icons type="closeempty" size="24" :color="isDarkMode ? '#9f926e' : '#6E6242'"></uni-icons>
 					</view>
 				</view>
 				<view class="qrcode-modal-body">
@@ -308,11 +308,11 @@
 <script setup>
 import { ref, reactive, computed, onUnmounted } from 'vue'
 import { onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app'
+import { useActivityStore } from '@/store/activity.js'
+import { useUserOverviewStore } from '@/store/userOverview.js'
 import { useUserStore } from '@/store/user.js'
 import { usePageTheme } from '@/utils/page-theme.js'
-import { getFavoriteVenueRewardStatus, getUserReputation, getUserStats } from '@/api/user.js'
-import { getMemberStatus } from '@/api/member.js'
-import { getCurrentMatch, getMatchQRCode, startMatch } from '@/api/match.js'
+import { getMatchQRCode, startMatch } from '@/api/match.js'
 import { useRankStore } from '@/store/rank.js'
 import { userWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import {
@@ -327,7 +327,7 @@ import gameTypeModal from '@/components/gameTypeModal.vue'
 import { useNotificationStore } from '@/store/notification.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
-import { getNotificationList, markAsRead } from '@/api/notification.js'
+import { markAsRead } from '@/api/notification.js'
 import { buildHonorWallUrl, presentLatestSeasonRollover } from '@/utils/honor-wall.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
 import { chooseSnookerStartFormat } from '@/utils/snooker-start-format.js'
@@ -347,6 +347,8 @@ import {
 import { resolveMemberGrowthCard } from '@/utils/member-center.js'
 
 const userStore = useUserStore()
+const activityStore = useActivityStore()
+const userOverviewStore = useUserOverviewStore()
 const rankStore = useRankStore()
 const { isDarkMode } = usePageTheme()
 const notificationStore = useNotificationStore()
@@ -370,7 +372,7 @@ const qrcodeUrl = ref('')
 const selectedGameType = ref(null)
 const selectedSnookerFormat = ref(null)
 const currentRankGameType = ref(3)
-const currentMatch = ref(null)
+const currentMatch = computed(() => (isLoggedIn.value ? activityStore.currentMatch : null))
 const rankInfo = computed(() => rankStore.rankInfoMap[currentRankGameType.value] || null)
 const favoriteVenueRewardStatus = ref(null)
 const memberStatus = ref(null)
@@ -485,104 +487,55 @@ onUnmounted(() => {
 	unsubscribeUserWS()
 })
 
-const loadHomepageData = async () => {
+const getReadIdentity = () => ({
+	userId: userStore.userId,
+	authGeneration: userStore.authGeneration
+})
+
+const applyUserOverview = (overview = {}) => {
+	const stats = overview.stats?.success ? overview.stats : null
+	userStats.totalMatches = stats?.total_matches || 0
+	userStats.wins = stats?.wins || 0
+	userStats.winRate = stats?.win_rate || 0
+	userStats.maxStreak = stats?.max_win_streak || 0
+	reputationStatus.value = overview.reputation?.success ? overview.reputation : null
+	favoriteVenueRewardStatus.value = overview.favoriteVenueRewardStatus?.success
+		? overview.favoriteVenueRewardStatus
+		: null
+	memberStatus.value = overview.memberStatus?.success ? overview.memberStatus : null
+}
+
+const loadHomepageData = async ({ force = false } = {}) => {
 	if (homepageLoading.value) return
 
 	homepageLoading.value = true
 	coreDataLoading.value = true
-	const secondaryRequests = Promise.allSettled([
-		notificationStore.fetchUnreadCount(),
-		friendRequestStore.fetchPendingCount(),
-		loadReputationStatus(),
-		loadFavoriteVenueRewardStatus(),
-		loadMemberStatus()
-	])
-
+	userStats.loading = true
+	const identity = getReadIdentity()
 	try {
-		await Promise.allSettled([
-			loadUserStats(),
-			loadRankInfo(),
-			loadCurrentMatch()
+		const [, overviewResult] = await Promise.allSettled([
+			activityStore.fetch(identity, { force, silent: true }),
+			userOverviewStore.fetch(identity, { force, silent: true }),
+			rankStore.ensureFresh(identity)
 		])
+		if (overviewResult.status === 'fulfilled') {
+			applyUserOverview(overviewResult.value)
+		} else {
+			applyUserOverview(userOverviewStore.snapshot())
+		}
 	} finally {
 		coreDataLoading.value = false
+		userStats.loading = false
+		homepageLoading.value = false
 	}
 
-	await secondaryRequests
 	migrateFavoriteVenueRewardFloatSnooze()
 	syncFloatRewardVisibility()
-	homepageLoading.value = false
-}
-
-const loadUserStats = async () => {
-	if (userStats.loading) return
-
-	userStats.loading = true
-	try {
-		const res = await getUserStats()
-		if (res.success) {
-			userStats.totalMatches = res.total_matches || 0
-			userStats.wins = res.wins || 0
-			userStats.winRate = res.win_rate || 0
-			userStats.maxStreak = res.max_win_streak || 0
-		}
-	} catch (error) {
-		console.error('获取用户统计失败:', error)
-	} finally {
-		userStats.loading = false
-	}
-}
-
-const loadReputationStatus = async () => {
-	try {
-		const res = await getUserReputation()
-		reputationStatus.value = res?.success ? res : null
-	} catch (error) {
-		console.error('获取信誉状态失败:', error)
-		reputationStatus.value = null
-	}
-}
-
-const loadRankInfo = async () => {
-	try {
-		await rankStore.ensureFresh(userStore.userId)
-	} catch (error) {
-		console.error('获取段位信息失败:', error)
-	}
-}
-
-const loadCurrentMatch = async () => {
-	try {
-		const res = await getCurrentMatch()
-		currentMatch.value = res.success && res.match ? res.match : null
-	} catch (error) {
-		console.error('获取当前对局失败:', error)
-		currentMatch.value = null
-	}
-}
-
-const loadFavoriteVenueRewardStatus = async () => {
-	try {
-		const res = await getFavoriteVenueRewardStatus()
-		favoriteVenueRewardStatus.value = res.success ? res : null
-	} catch (error) {
-		console.error('获取常玩球馆奖励状态失败:', error)
-		favoriteVenueRewardStatus.value = null
-	}
-}
-
-const loadMemberStatus = async () => {
-	try {
-		const res = await getMemberStatus()
-		memberStatus.value = res.success ? res : null
-	} catch (error) {
-		console.error('获取会员状态失败:', error)
-		memberStatus.value = null
-	}
 }
 
 const resetHomepageState = () => {
-	currentMatch.value = null
+	activityStore.clear()
+	userOverviewStore.clear()
 	rankStore.clear()
 	favoriteVenueRewardStatus.value = null
 	memberStatus.value = null
@@ -669,9 +622,7 @@ const connectUserWS = async () => {
 	try {
 		await userWS.connect()
 		userWS.off(WS_MESSAGE_TYPES.MATCH_START, handleMatchStart)
-		userWS.off(WS_MESSAGE_TYPES.NOTIFICATION_UPDATE, handleNotificationUpdate)
 		userWS.on(WS_MESSAGE_TYPES.MATCH_START, handleMatchStart)
-		userWS.on(WS_MESSAGE_TYPES.NOTIFICATION_UPDATE, handleNotificationUpdate)
 	} catch (error) {
 		console.error('[UserPage] 用户WS连接失败:', error)
 	}
@@ -679,15 +630,6 @@ const connectUserWS = async () => {
 
 const unsubscribeUserWS = () => {
 	userWS.off(WS_MESSAGE_TYPES.MATCH_START, handleMatchStart)
-	userWS.off(WS_MESSAGE_TYPES.NOTIFICATION_UPDATE, handleNotificationUpdate)
-}
-
-const handleNotificationUpdate = (data = {}) => {
-	if (data?.category === 'match_result') {
-		rankStore.invalidate(userStore.userId)
-	}
-	notificationStore.fetchUnreadCount()
-	friendRequestStore.fetchPendingCount()
 }
 
 const handleMatchStart = (data) => {
@@ -862,10 +804,13 @@ const handleAchievement = () => {
 
 const showLatestSeasonRollover = () => {
 	presentLatestSeasonRollover({
-		getNotificationList,
+		notification: activityStore.latestSeasonRollover,
 		markAsRead,
 		showModal: options => uni.showModal(options),
-		onRead: () => notificationStore.fetchUnreadCount()
+		onRead: () => {
+			activityStore.setLatestSeasonRollover(null)
+			notificationStore.decrementUnread(getReadIdentity())
+		}
 	}).catch(error => console.error('展示换季结果失败:', error))
 }
 
@@ -888,9 +833,15 @@ onPullDownRefresh(async () => {
 		return
 	}
 	try {
-		await rankStore.forceRefresh(userStore.userId)
+		await Promise.allSettled([
+			activityStore.fetch(getReadIdentity(), { force: true, silent: true }),
+			userOverviewStore.fetch(getReadIdentity(), { force: true, silent: true }),
+			rankStore.forceRefresh(getReadIdentity())
+		])
+		applyActivity(activityStore.snapshot())
+		applyUserOverview(userOverviewStore.snapshot())
 	} catch (error) {
-		console.error('刷新段位信息失败:', error)
+		console.error('刷新个人主页失败:', error)
 	} finally {
 		uni.stopPullDownRefresh()
 	}

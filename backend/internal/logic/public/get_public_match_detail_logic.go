@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	logicx "chasing_points/internal/logic"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -22,7 +23,7 @@ func NewGetPublicMatchDetailLogic(ctx context.Context, svcCtx *svc.ServiceContex
 	return &GetPublicMatchDetailLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -36,22 +37,30 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 	if model.NormalizeMatchVisibility(match.Visibility, match.MatchMode) != model.MatchVisibilityPublic {
 		return &types.GetPublicMatchDetailResp{Success: false}, nil
 	}
+	var completedCore *logicx.CompletedMatchCoreSummary
+	if match.Status == 2 {
+		completedCore, _ = logicx.BuildCompletedMatchCoreSummary(l.ctx, l.svcCtx, match)
+	}
 
-	// 查询创建者(player1)信息
 	player1Name := "玩家1"
 	player1Avatar := ""
-	if player1, _ := l.svcCtx.UserModel.FindById(match.UserId); player1 != nil {
+	if completedCore != nil && completedCore.Player1 != nil {
+		player1Name = completedCore.Player1.Nickname
+		player1Avatar = completedCore.Player1.Avatar
+	} else if player1, _ := l.svcCtx.UserModel.FindById(match.UserId); player1 != nil {
 		player1Name = player1.Nickname
 		player1Avatar = player1.Avatar
 	}
 
-	// 查询对手(player2)信息
 	player2Name := match.OpponentName
 	player2Avatar := ""
-	var player2Id int64 = 0
+	var player2Id int64
 	if match.OpponentId != nil {
 		player2Id = *match.OpponentId
-		if player2, _ := l.svcCtx.UserModel.FindById(*match.OpponentId); player2 != nil {
+		if completedCore != nil && completedCore.Player2 != nil {
+			player2Name = completedCore.Player2.Nickname
+			player2Avatar = completedCore.Player2.Avatar
+		} else if player2, _ := l.svcCtx.UserModel.FindById(*match.OpponentId); player2 != nil {
 			player2Name = player2.Nickname
 			player2Avatar = player2.Avatar
 		}
@@ -65,7 +74,10 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 	refereeJoinedAt := ""
 	if refereeBound {
 		refereeUserId = *match.RefereeUserId
-		if referee, _ := l.svcCtx.UserModel.FindById(*match.RefereeUserId); referee != nil {
+		if completedCore != nil && completedCore.Referee != nil {
+			refereeName = completedCore.Referee.Nickname
+			refereeAvatar = completedCore.Referee.Avatar
+		} else if referee, _ := l.svcCtx.UserModel.FindById(*match.RefereeUserId); referee != nil {
 			refereeName = referee.Nickname
 			refereeAvatar = referee.Avatar
 		}
@@ -95,25 +107,33 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 		durationSeconds = int64(match.EndTime.Sub(match.CreatedAt).Seconds())
 	}
 
-	// 查询局记录
 	var rounds []types.RoundRecord
-	if matchRounds, listErr := l.svcCtx.MatchModel.ListCompletedRounds(match.Id); listErr == nil {
-		for _, r := range matchRounds {
-			winner := 0
-			if r.Winner != nil {
-				winner = *r.Winner
-			}
-			rounds = append(rounds, types.RoundRecord{
-				RoundNumber:  r.RoundNo,
-				Player1Score: r.MyScore,       // MyScore 是 player1 的分数
-				Player2Score: r.OpponentScore, // OpponentScore 是 player2 的分数
-				Winner:       winner,
-			})
+	var matchRounds []model.MatchRound
+	if completedCore != nil {
+		matchRounds = completedCore.Rounds
+	} else {
+		matchRounds, _ = l.svcCtx.MatchModel.ListCompletedRounds(match.Id)
+	}
+	for _, r := range matchRounds {
+		winner := 0
+		if r.Winner != nil {
+			winner = *r.Winner
 		}
+		rounds = append(rounds, types.RoundRecord{
+			RoundNumber:  r.RoundNo,
+			Player1Score: r.MyScore,
+			Player2Score: r.OpponentScore,
+			Winner:       winner,
+		})
 	}
 
 	// 获取当前局数和总局数
-	roundCount, _ := l.svcCtx.MatchModel.GetRoundCount(match.Id)
+	var roundCount int64
+	if completedCore != nil {
+		roundCount = int64(len(completedCore.Rounds))
+	} else {
+		roundCount, _ = l.svcCtx.MatchModel.GetRoundCount(match.Id)
+	}
 	currentRound := int(roundCount) + 1 // 当前进行的是下一局
 	totalRounds := int(roundCount)      // 已完成的局数
 	if match.Status != 1 && !match.CurrentFrameStarted {
@@ -125,15 +145,19 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 		if !match.CurrentFrameStarted && roundCount > 0 {
 			roundNo = int(roundCount)
 		}
-		if actions, actionsErr := l.svcCtx.MatchModel.ListActiveActions(match.Id); actionsErr == nil {
-			if match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA {
-				starter := model.SnookerStartingActor(match.StartingActor, roundNo)
-				if state, replayErr := model.ReplaySnookerRoundV2(actions, roundNo, starter); replayErr == nil {
-					snookerState = state
-				}
-			} else {
-				snookerState = model.BuildSnookerRoundState(actions, roundNo)
+		var actions []model.MatchAction
+		if completedCore != nil {
+			actions = completedCore.Actions
+		} else {
+			actions, _ = l.svcCtx.MatchModel.ListActiveActions(match.Id)
+		}
+		if match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA {
+			starter := model.SnookerStartingActor(match.StartingActor, roundNo)
+			if state, replayErr := model.ReplaySnookerRoundV2(actions, roundNo, starter); replayErr == nil {
+				snookerState = state
 			}
+		} else {
+			snookerState = model.BuildSnookerRoundState(actions, roundNo)
 		}
 	}
 

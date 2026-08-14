@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"chasing_points/internal/model"
+	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -24,7 +25,7 @@ func NewGetSeasonReportLogic(ctx context.Context, svcCtx *svc.ServiceContext) *G
 	return &GetSeasonReportLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -50,6 +51,10 @@ func (l *GetSeasonReportLogic) GetSeasonReport(req *types.GetSeasonReportReq) (r
 	if season == nil {
 		return nil, fmt.Errorf("season not found")
 	}
+	startAt, endExclusive, err := seasonx.BoundsForConfig(l.svcCtx.Config.SeasonLifecycle, season)
+	if err != nil {
+		return nil, err
+	}
 
 	record, err := l.svcCtx.SeasonRecordModel.FindBySeasonAndUserAndGameType(season.Id, userIdInt, gameType)
 	if err != nil {
@@ -61,11 +66,11 @@ func (l *GetSeasonReportLogic) GetSeasonReport(req *types.GetSeasonReportReq) (r
 		recordInfo = buildSeasonRecordInfo(record, season.Name)
 	}
 
-	seasonLogs, err := l.svcCtx.RankingModel.ListRankChangesByUserAndGameTypeBetween(userIdInt, gameType, season.StartDate, season.EndDate)
+	seasonLogs, err := l.svcCtx.RankingModel.ListRankChangesByUserAndGameTypeBetweenHalfOpen(userIdInt, gameType, startAt, endExclusive)
 	if err != nil {
 		return nil, err
 	}
-	beforeLog, err := l.svcCtx.RankingModel.FindLatestRankChangeBeforeByGameType(userIdInt, gameType, season.StartDate)
+	beforeLog, err := l.svcCtx.RankingModel.FindLatestRankChangeBeforeByGameType(userIdInt, gameType, startAt)
 	if err != nil {
 		return nil, err
 	}
@@ -74,12 +79,12 @@ func (l *GetSeasonReportLogic) GetSeasonReport(req *types.GetSeasonReportReq) (r
 	rankTrend := buildSeasonRankTrendFromLogs(seasonLogs)
 	recordInfo = applyHistoricalMatchSeasonSnapshot(recordInfo, season, startScore, endScore, peakScore, len(seasonLogs) > 0)
 
-	winRateByType, err := l.svcCtx.SeasonRecordModel.FindUserWinByTypeInSeason(userIdInt, season.StartDate, season.EndDate)
+	winRateByType, err := l.svcCtx.SeasonRecordModel.FindUserWinsBySeason(season.Id, userIdInt)
 	if err != nil {
 		return nil, err
 	}
 
-	topAchievements, err := l.getTopAchievementsInSeason(userIdInt, season.StartDate, season.EndDate)
+	topAchievements, err := l.getTopAchievementsInSeason(userIdInt, startAt, endExclusive)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +101,7 @@ func (l *GetSeasonReportLogic) GetSeasonReport(req *types.GetSeasonReportReq) (r
 }
 
 func (l *GetSeasonReportLogic) getTopAchievementsInSeason(userId int64, startDate, endDate time.Time) ([]types.AchievementDef, error) {
-	unlockedAchievements, err := l.svcCtx.UserAchievementModel.FindUnlockedByUserIdBetween(userId, startDate, endDate, 3)
+	unlockedAchievements, err := l.svcCtx.UserAchievementModel.FindUnlockedByUserIdBetweenHalfOpen(userId, startDate, endDate, 3)
 	if err != nil {
 		return nil, err
 	}

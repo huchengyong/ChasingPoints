@@ -23,7 +23,7 @@ func NewGetFavoriteVenueRewardStatusLogic(ctx context.Context, svcCtx *svc.Servi
 	return &GetFavoriteVenueRewardStatusLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -34,7 +34,7 @@ func (l *GetFavoriteVenueRewardStatusLogic) GetFavoriteVenueRewardStatus() (resp
 		return &types.FavoriteVenueRewardStatusResp{Success: false}, nil
 	}
 
-	user, err := l.svcCtx.UserModel.FindById(userID)
+	user, err := currentUserFromRequest(l.ctx, l.svcCtx, userID)
 	if err != nil {
 		l.Logger.Errorf("查询用户失败: userId=%d err=%v", userID, err)
 		return &types.FavoriteVenueRewardStatusResp{Success: false}, nil
@@ -43,13 +43,10 @@ func (l *GetFavoriteVenueRewardStatusLogic) GetFavoriteVenueRewardStatus() (resp
 		return &types.FavoriteVenueRewardStatusResp{Success: false}, nil
 	}
 
-	config, err := l.svcCtx.FavoriteVenueRewardConfigModel.FindByActivityKey(model.FavoriteVenueRewardActivityKey)
+	config, err := logicx.LoadFavoriteVenueRewardConfig(l.svcCtx)
 	if err != nil {
 		l.Logger.Errorf("查询奖励配置失败: %v", err)
 		return &types.FavoriteVenueRewardStatusResp{Success: false}, nil
-	}
-	if config == nil {
-		config = model.DefaultFavoriteVenueRewardConfig()
 	}
 
 	resp = &types.FavoriteVenueRewardStatusResp{
@@ -61,39 +58,36 @@ func (l *GetFavoriteVenueRewardStatusLogic) GetFavoriteVenueRewardStatus() (resp
 		Status:            "not_started",
 	}
 
-	record, err := l.svcCtx.FavoriteVenueRewardRecordModel.FindByActivityAndUser(model.FavoriteVenueRewardActivityKey, userID)
+	snapshot, err := l.svcCtx.FavoriteVenueRewardRecordModel.FindStatusByUser(model.FavoriteVenueRewardActivityKey, userID)
 	if err != nil {
-		l.Logger.Errorf("查询奖励记录失败: userId=%d err=%v", userID, err)
+		l.Logger.Errorf("查询奖励状态失败: userId=%d err=%v", userID, err)
 		return &types.FavoriteVenueRewardStatusResp{Success: false}, nil
 	}
-	if record != nil {
+	if snapshot.RecordId != nil && snapshot.RecordVenueId != nil {
 		resp.Status = "reward_granted"
-		resp.SubmittedVenueId = record.VenueId
+		resp.SubmittedVenueId = *snapshot.RecordVenueId
 		if user.MemberExpiresAt != nil {
 			resp.MemberExpiresAt = logicx.FormatUTC8TimePtr(user.MemberExpiresAt)
-		} else {
-			resp.MemberExpiresAt = logicx.FormatUTC8Time(record.MemberExpiresAtAfter)
+		} else if snapshot.RecordMemberExpiresAtAfter != nil {
+			resp.MemberExpiresAt = logicx.FormatUTC8Time(*snapshot.RecordMemberExpiresAtAfter)
 		}
 		return resp, nil
 	}
 
-	latestVenue, err := l.svcCtx.VenueModel.FindLatestByOwnerUserId(userID)
-	if err != nil {
-		l.Logger.Errorf("查询用户最近球馆失败: userId=%d err=%v", userID, err)
-		return &types.FavoriteVenueRewardStatusResp{Success: false}, nil
-	}
-	if latestVenue != nil {
-		resp.SubmittedVenueId = latestVenue.Id
-		resp.SubmittedVenueName = latestVenue.Name
+	if snapshot.VenueId != nil {
+		resp.SubmittedVenueId = *snapshot.VenueId
+		resp.SubmittedVenueName = snapshot.VenueName
 
-		switch latestVenue.Status {
-		case model.VenueStatusPending:
-			resp.Status = "pending_review"
-			return resp, nil
-		case model.VenueStatusRejected:
-			resp.Status = "rejected"
-			resp.RejectReason = latestVenue.RejectReason
-			return resp, nil
+		if snapshot.VenueStatus != nil {
+			switch *snapshot.VenueStatus {
+			case model.VenueStatusPending:
+				resp.Status = "pending_review"
+				return resp, nil
+			case model.VenueStatusRejected:
+				resp.Status = "rejected"
+				resp.RejectReason = snapshot.VenueRejectReason
+				return resp, nil
+			}
 		}
 	}
 

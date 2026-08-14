@@ -1,10 +1,13 @@
 <script>
 	import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
+	import { useActivityStore } from '@/store/activity.js'
 	import { useUserStore } from '@/store/user.js'
 	import { useRankStore } from '@/store/rank.js'
+	import { useUserOverviewStore } from '@/store/userOverview.js'
+	import { useUserDataInvalidationStore } from '@/store/userDataInvalidation.js'
+	import { usePublicReadStore } from '@/store/publicRead.js'
 	import { userWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
-	import { getCurrentMatch } from '@/api/match.js'
-	import { getUserInfo } from '@/api/user.js'
+	import { getUserBootstrap } from '@/api/user.js'
 	import { post } from '@/utils/request.js'
 	import { buildPlayingRoute, shouldPromptOngoingMatch } from '@/utils/ongoing-match-guard.js'
 	import { applyRuntimeTheme } from '@/utils/theme-application.js'
@@ -16,12 +19,14 @@
 
 	// 网络/5xx 静默保留凭证；SESSION_INVALID 仍由请求层统一清理并引导重新登录。
 	const sessionRecovery = createSessionRecovery({
-		getUserInfo: () => getUserInfo({ silent: true }),
+		getUserInfo: () => getUserBootstrap({ silent: true }),
 		onSessionInvalid: () => {}
 	})
 
 	export default {
 		themeChangeCallback: null, // 保存主题变化回调函数引用
+		userSessionReadyCallback: null,
+		bootstrapActivityReservation: null,
 		ongoingMatchReminderShown: false,
 		ongoingMatchReminderPending: false,
 		ongoingMatchReminderPendingKey: '',
@@ -39,7 +44,18 @@
 			const themeStore = useThemeStore()
 			themeStore.initializeTheme(this.getSystemThemeInfo())
 			userWS.off(WS_MESSAGE_TYPES.RANK_INFO_UPDATED, this.handleRankInfoUpdated)
+			userWS.off(WS_MESSAGE_TYPES.USER_DATA_UPDATED, this.handleUserDataUpdated)
+			userWS.off(WS_MESSAGE_TYPES.NOTIFICATION_UPDATE, this.handleNotificationUpdate)
 			userWS.on(WS_MESSAGE_TYPES.RANK_INFO_UPDATED, this.handleRankInfoUpdated)
+			userWS.on(WS_MESSAGE_TYPES.USER_DATA_UPDATED, this.handleUserDataUpdated)
+			userWS.on(WS_MESSAGE_TYPES.NOTIFICATION_UPDATE, this.handleNotificationUpdate)
+			if (this.userSessionReadyCallback && typeof uni.$off === 'function') {
+				uni.$off('user-session-ready', this.userSessionReadyCallback)
+			}
+			this.userSessionReadyCallback = () => this.handleUserSessionReady()
+			if (typeof uni.$on === 'function') {
+				uni.$on('user-session-ready', this.userSessionReadyCallback)
+			}
 			// 推送注册
 			// #ifdef APP-PLUS
 			try {
@@ -81,7 +97,7 @@
 			const userStore = useUserStore()
 			const rankStore = useRankStore()
 			if (userStore.isLoggedIn) {
-				this.restoreUserSession(rankStore)
+				this.restoreUserSession()
 			} else {
 				this.validatedAuthGeneration = -1
 				rankStore.clear()
@@ -104,6 +120,8 @@
 		},
 		onHide: function() {
 			this.appIsForeground = false
+			this.bootstrapActivityReservation?.release()
+			this.bootstrapActivityReservation = null
 			this.sessionRecoveryLifecycle += 1
 			this.validatedAuthGeneration = -1
 			userWS.disconnect()
@@ -125,15 +143,24 @@
 		methods: {
 			// 恢复持久化会话：helper 只返回服务端资料；应用前再次校验
 			// auth generation、App 前台状态和当前生命周期，拒绝旧账号/后台延迟结果。
-			restoreUserSession(rankStore) {
+			restoreUserSession() {
 				const userStore = useUserStore()
-				const targetRankStore = rankStore || useRankStore()
 				const expectedGeneration = userStore.authGeneration
 				const expectedLifecycleGeneration = this.sessionRecoveryLifecycle
+				const bootstrapReservation = useActivityStore().reserveBootstrap({
+					userId: userStore.userId,
+					authGeneration: expectedGeneration
+				})
+				if (bootstrapReservation) {
+					this.bootstrapActivityReservation = bootstrapReservation
+				}
 
 				sessionRecovery.validate(expectedGeneration)
 					.then((result) => {
-						if (!result?.valid) return
+						if (!result?.valid) {
+							bootstrapReservation?.release()
+							return
+						}
 						const currentUserStore = useUserStore()
 						if (!canApplySessionRecoveryResult({
 							expectedGeneration,
@@ -142,16 +169,54 @@
 							currentLifecycleGeneration: this.sessionRecoveryLifecycle,
 							isLoggedIn: currentUserStore.isLoggedIn,
 							isForeground: this.appIsForeground
-						})) return
+						})) {
+							bootstrapReservation?.release()
+							return
+						}
 
 						currentUserStore.updateUserInfo(result.userInfo)
+						const identity = {
+							userId: currentUserStore.userId,
+							authGeneration: currentUserStore.authGeneration
+						}
+						if (bootstrapReservation?.matches(identity)) {
+							bootstrapReservation.apply(result.bootstrap)
+						} else {
+							bootstrapReservation?.release()
+							useActivityStore().applyBootstrap(identity, result.bootstrap)
+						}
+						if (this.bootstrapActivityReservation === bootstrapReservation) {
+							this.bootstrapActivityReservation = null
+						}
+						this.applyBootstrapCompetitiveRevision(identity, result.bootstrap)
 						this.validatedAuthGeneration = expectedGeneration
-						targetRankStore.invalidate(currentUserStore.userId)
 						this.connectUserWS()
 						this.uploadPushTokenIfValidated()
 						this.checkOngoingMatchReminder()
 					})
-					.catch(() => {})
+					.catch(() => {
+						bootstrapReservation?.release()
+						if (this.bootstrapActivityReservation === bootstrapReservation) {
+							this.bootstrapActivityReservation = null
+						}
+					})
+			},
+			handleUserSessionReady() {
+				if (this.appIsForeground && useUserStore().isLoggedIn) {
+					this.restoreUserSession()
+				}
+			},
+			applyBootstrapCompetitiveRevision(identity, bootstrap = {}) {
+				if (bootstrap?.availability?.competitive_revision === false) return
+				const invalidationStore = useUserDataInvalidationStore()
+				const previousRevision = invalidationStore.matchesIdentity(identity)
+					? invalidationStore.competitiveRevision
+					: 0
+				const revision = Number(bootstrap?.competitive_revision) || 0
+				const scopes = previousRevision > 0 && revision > previousRevision
+					? ['rank', 'stats', 'h2h', 'opponents', 'history', 'honor', 'season', 'leaderboard']
+					: []
+				invalidationStore.invalidate(identity, scopes, revision)
 			},
 			hasValidatedAppSession() {
 				const userStore = useUserStore()
@@ -188,10 +253,46 @@
 					console.error('[App] 用户WS连接失败:', error)
 				})
 			},
-			handleRankInfoUpdated() {
+			handleRankInfoUpdated(data = {}) {
+				this.handleUserDataUpdated({ ...data, scopes: ['rank'] })
+			},
+			handleUserDataUpdated(data = {}) {
 				const userStore = useUserStore()
-				if (userStore.isLoggedIn) {
-					useRankStore().invalidate(userStore.userId)
+				if (!userStore.isLoggedIn || !userStore.userId) return
+
+				const scopes = Array.isArray(data.scopes) ? data.scopes : []
+				const identity = {
+					userId: userStore.userId,
+					authGeneration: userStore.authGeneration
+				}
+				useUserDataInvalidationStore().invalidate(identity, scopes, data.competitive_revision)
+
+				if (scopes.includes('rank')) {
+					useRankStore().invalidate(identity)
+				}
+				if (scopes.some((scope) => ['stats', 'member', 'reputation'].includes(scope))) {
+					useUserOverviewStore().markDirty()
+				}
+				if (scopes.includes('leaderboard')) {
+					usePublicReadStore().invalidate('leaderboard')
+				}
+				if (Object.prototype.hasOwnProperty.call(data, 'pending_friend_request_count')) {
+					useActivityStore().setPendingFriendRequestCount(data.pending_friend_request_count, identity)
+				}
+			},
+			handleNotificationUpdate(data = {}) {
+				const userStore = useUserStore()
+				if (!userStore.isLoggedIn) return
+				const identity = {
+					userId: userStore.userId,
+					authGeneration: userStore.authGeneration
+				}
+				useUserDataInvalidationStore().invalidate(identity, ['notification'])
+				if (Object.prototype.hasOwnProperty.call(data, 'unread_count')) {
+					useActivityStore().setUnreadCount(data.unread_count, identity)
+				}
+				if (data.category === 'season_rollover') {
+					useActivityStore().markDirty()
 				}
 			},
 			getSystemThemeInfo() {
@@ -260,8 +361,11 @@
 				this.ongoingMatchReminderPending = true
 				this.ongoingMatchReminderPendingKey = pendingKey
 
-				getCurrentMatch({ silent: true })
-					.then((res) => {
+				useActivityStore().fetch({
+					userId: userStore.userId,
+					authGeneration: userStore.authGeneration
+				}, { silent: true })
+					.then((activity) => {
 						const currentUserStore = useUserStore()
 						if (!this.hasValidatedAppSession() || !canApplySessionRecoveryResult({
 							expectedGeneration,
@@ -271,7 +375,7 @@
 							isLoggedIn: currentUserStore.isLoggedIn,
 							isForeground: this.appIsForeground
 						})) return
-						const currentMatch = res?.success ? res.match : null
+						const currentMatch = activity?.currentMatch || null
 						if (!shouldPromptOngoingMatch({
 							isLoggedIn: currentUserStore.isLoggedIn,
 							currentRoute,
@@ -336,40 +440,83 @@
 
 	/* 全局 CSS 变量定义 - 亮色主题（默认） */
 	page {
-		/* 主色调 */
-		--primary-color: #e0ae12;
-		--primary-color-light: rgba(224, 174, 18, 0.14);
+		/* 品牌色 */
+		--ui-brand-primary: #E0AE12;
+		--ui-brand-strong: #C69200;
+		--ui-brand-gradient-start: #D9A617;
+		--ui-brand-gradient-end: #BB8400;
+		--ui-brand-tint: rgba(224, 174, 18, 0.14);
 
-		/* 背景色 */
-		--bg-color: #ffffff;
-		--card-bg: #ffffff;
-		--input-bg: #ffffff;
+		/* 表面色 */
+		--ui-surface-page: #F7F4EC;
+		--ui-surface-card: #FFFFFF;
+		--ui-surface-subtle: #FAF8F2;
 
-		/* 文字颜色 */
-		--text-primary: #0f172a;
-		--text-secondary: #64748b;
-		--text-tertiary: #94a3b8;
+		/* 文字色 */
+		--ui-text-primary: #231C0B;
+		--ui-text-secondary: #6E6242;
+		--ui-text-muted: #9A8C67;
 
-		/* 边框颜色 */
-		--border-color: #e5e7eb;
+		/* 边框 */
+		--ui-border-default: #E9E2CF;
 
-		/* 其他 */
-		--divider-color: #e5e7eb;
-		--danger-color: #ef4444;
+		/* 语义色 */
+		--ui-success: #18B05B;
+		--ui-warning: #F97316;
+		--ui-danger: #EF4444;
+		--ui-info: #3B82F6;
+
+		/* 圆角 */
+		--ui-radius-sm: 12rpx;
+		--ui-radius-md: 18rpx;
+		--ui-radius-lg: 24rpx;
+		--ui-radius-xl: 32rpx;
+		--ui-radius-pill: 999rpx;
+
+		/* 阴影 */
+		--ui-shadow-soft: 0 2rpx 8rpx rgba(31, 26, 16, 0.05);
+		--ui-shadow-primary: 0 8rpx 32rpx rgba(224, 174, 18, 0.22);
+		--ui-shadow-card: 0 16rpx 40rpx rgba(31, 26, 16, 0.08);
+
+		/* 兼容别名：迁移期保留，指向语义 Token */
+		--primary-color: var(--ui-brand-primary);
+		--primary-color-light: var(--ui-brand-tint);
+		--bg-color: var(--ui-surface-page);
+		--card-bg: var(--ui-surface-card);
+		--input-bg: var(--ui-surface-card);
+		--text-primary: var(--ui-text-primary);
+		--text-secondary: var(--ui-text-secondary);
+		--text-tertiary: var(--ui-text-muted);
+		--border-color: var(--ui-border-default);
+		--divider-color: var(--ui-border-default);
+		--danger-color: var(--ui-danger);
 	}
 
 	/* 暗色变量由应用最终计算出的主题控制，避免手动浅色与系统暗色互相覆盖。 */
 	.dark-mode {
-		--primary-color: #e0ae12;
-		--primary-color-light: rgba(224, 174, 18, 0.2);
-		--bg-color: #141109;
-		--card-bg: #1e180d;
-		--input-bg: #1e180d;
-		--text-primary: #fff7e1;
-		--text-secondary: #d7c89b;
-		--text-tertiary: #9f926e;
-		--border-color: #3a2e16;
-		--divider-color: #241d0f;
-		--danger-color: #ef4444;
+		--ui-brand-primary: #E0AE12;
+		--ui-brand-strong: #F0C542;
+		--ui-brand-gradient-start: #E0AE12;
+		--ui-brand-gradient-end: #A97500;
+		--ui-brand-tint: rgba(224, 174, 18, 0.20);
+
+		--ui-surface-page: #141109;
+		--ui-surface-card: #1E180D;
+		--ui-surface-subtle: #241D10;
+
+		--ui-text-primary: #FFF7E1;
+		--ui-text-secondary: #D7C89B;
+		--ui-text-muted: #9F926E;
+
+		--ui-border-default: #3A2E16;
+
+		--ui-success: #22C55E;
+		--ui-warning: #F97316;
+		--ui-danger: #EF4444;
+		--ui-info: #60A5FA;
+
+		--ui-shadow-soft: 0 2rpx 8rpx rgba(0, 0, 0, 0.20);
+		--ui-shadow-primary: 0 8rpx 32rpx rgba(0, 0, 0, 0.28);
+		--ui-shadow-card: 0 16rpx 40rpx rgba(0, 0, 0, 0.24);
 	}
 	</style>

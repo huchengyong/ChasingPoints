@@ -21,7 +21,7 @@ func NewAdminUpdateEventNewsMatchLogic(ctx context.Context, svcCtx *svc.ServiceC
 	return &AdminUpdateEventNewsMatchLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

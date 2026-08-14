@@ -78,6 +78,7 @@ The test: Every changed line should trace directly to the user's request.
 - 当前后端接口入口 logic 已按 `backend/internal/logic/<group>/` 分组；根目录 `backend/internal/logic/*.go` 只保留共享 helper / service / protocol / payload 等公共层。重新跑 goctl 后如果出现新的 `todo` 空壳文件，只有在同步补齐真实逻辑与 handler 引用后才允许提交。
 - 修改数据库表结构时，迁移、Gorm 模型、前后端字段命名和接口响应要一起核对。
 - 新增接口时，要同时考虑 `app/api` 或 `admin/src/api` 是否需要补对应门面。
+- 高频读链路必须保持服务端查询有界、GET 纯读和性能可观测；用户级客户端缓存与请求去重必须认证隔离，不得用无界扫描、N+1 或通用 GET 缓存换取短期便利。
 
 ## CURRENT TECH FACTS
 - `app/` 当前是 JavaScript 项目，没有统一 npm scripts；现有测试通过 `node --test tests/*.test.mjs` 执行。

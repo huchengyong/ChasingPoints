@@ -53,19 +53,19 @@ const getThemeStyles = ({ isDarkMode, animationDuration }) => {
   return {
     navigationBar: {
       frontColor: '#000000',
-      backgroundColor: '#ffffff',
+      backgroundColor: '#F7F4EC',
       animation: {
         duration: animationDuration,
         timingFunc: 'easeIn'
       }
     },
     tabBar: {
-      backgroundColor: '#ffffff',
+      backgroundColor: '#F7F4EC',
       borderStyle: 'black',
-      color: '#64748b',
+      color: '#6E6242',
       selectedColor: '#E0AE12'
     },
-    background: '#ffffff',
+    background: '#F7F4EC',
     backgroundTextStyle: 'dark',
     tabBarItems: TAB_BAR_ITEMS.map(([icon, selectedIcon]) => ({
       iconPath: `/static/tabbar/${icon}_${suffix}.png`,

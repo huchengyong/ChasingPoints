@@ -6,11 +6,11 @@ $primary-color: #e0ae12;
 // 浅色模式变量 (默认)
 $bg-light: #ffffff;
 $card-bg-light: #ffffff;
-$card-bg-light-hover: #f8fafc;
-$text-primary-light: #0f172a;
-$text-secondary-light: #64748b;
-$text-tertiary-light: #94a3b8;
-$border-color-light: #e5e7eb;
+$card-bg-light-hover: #FAF8F2;
+$text-primary-light: #231C0B;
+$text-secondary-light: #6E6242;
+$text-tertiary-light: #9A8C67;
+$border-color-light: #E9E2CF;
 
 // 深色模式变量
 $bg-dark: #141109;
@@ -197,7 +197,7 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
 .lobby-toolbar {
     padding: 20rpx;
     margin-bottom: 24rpx;
-    background-color: #f8fafc;
+    background-color: #FAF8F2;
     border-radius: 24rpx;
 }
 
@@ -338,7 +338,7 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
     gap: 8rpx;
     padding: 8rpx;
     border-radius: 22rpx;
-    background-color: #f8fafc;
+    background-color: #FAF8F2;
     border: 2rpx solid $border-color-light;
     box-sizing: border-box;
 }
@@ -431,7 +431,7 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
 }
 
 .filter-cancel {
-    background-color: #f8fafc;
+    background-color: #FAF8F2;
     border: 2rpx solid $border-color-light;
 
     text {
@@ -806,14 +806,14 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
 .match-qr-title {
     font-size: 34rpx;
     font-weight: 800;
-    color: #0f172a;
+    color: #231C0B;
 }
 
 .match-qr-subtitle {
     margin-top: 8rpx;
     font-size: 24rpx;
     line-height: 1.5;
-    color: #64748b;
+    color: #6E6242;
 }
 
 .match-qr-close {
@@ -823,7 +823,7 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
     margin: 0;
     padding: 0;
     border-radius: 50%;
-    background: #f1f5f9;
+    background: #FAF8F2;
 
     &::after { display: none; }
 }
@@ -836,7 +836,7 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
     align-items: center;
     justify-content: center;
     border-radius: 24rpx;
-    background: #f8fafc;
+    background: #FAF8F2;
 }
 
 .match-qr-state {
@@ -845,7 +845,7 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
     align-items: center;
     gap: 20rpx;
     font-size: 26rpx;
-    color: #64748b;
+    color: #6E6242;
 }
 
 .match-qr-error {
@@ -951,7 +951,7 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
     margin-top: 28rpx;
     padding: 28rpx 24rpx;
     border-radius: 22rpx;
-    background: #f8fafc;
+    background: #FAF8F2;
     text-align: center;
 }
 
@@ -974,7 +974,7 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
         width: 86rpx;
         height: 86rpx;
         border-radius: 50%;
-        background: #e5e7eb;
+        background: #E9E2CF;
     }
 
     text {
@@ -1036,7 +1036,7 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
 }
 
 .referee-preview-cancel {
-    background: #f1f5f9;
+    background: #FAF8F2;
     color: $text-secondary-light;
 }
 

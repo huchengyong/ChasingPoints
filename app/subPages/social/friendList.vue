@@ -8,7 +8,7 @@
 		<!-- 顶部搜索 + 操作 -->
 		<view class="header-bar">
 			<view class="search-box" @tap="goToAddFriend">
-				<uni-icons type="search" size="18" color="#94a3b8"></uni-icons>
+				<uni-icons type="search" size="18" color="#9A8C67"></uni-icons>
 				<text class="search-placeholder">搜索/添加好友</text>
 			</view>
 			<view class="header-actions">
@@ -63,7 +63,7 @@
 						</view>
 						<text class="friend-sub">ID: {{ item.friend_user_id }}</text>
 					</view>
-					<uni-icons type="right" size="16" color="#cbd5e1"></uni-icons>
+					<uni-icons type="right" size="16" color="#9A8C67"></uni-icons>
 				</view>
 			</view>
 
@@ -359,7 +359,7 @@ const showBlacklistConfirm = (item) => {
 		title: '加入黑名单',
 		content: `确定将「${item.nickname || '球友'}」加入黑名单吗？加入后会自动删除好友，并阻止彼此再次搜索和添加。`,
 		confirmText: '确认拉黑',
-		confirmColor: '#334155',
+		confirmColor: '#6E6242',
 		success: async (res) => {
 			if (res.confirm) {
 				try {
@@ -389,7 +389,7 @@ onPullDownRefresh(() => {
 <style lang="scss" scoped>
 .friend-list-page {
 	min-height: 100vh;
-	background: #f1f5f9;
+	background: #FAF8F2;
 }
 
 .page-banner {
@@ -419,14 +419,14 @@ onPullDownRefresh(() => {
 		flex: 1;
 		display: flex;
 		align-items: center;
-		background: #f1f5f9;
+		background: #FAF8F2;
 		border-radius: 36rpx;
 		padding: 16rpx 24rpx;
 		gap: 12rpx;
 
 		.search-placeholder {
 			font-size: 28rpx;
-			color: #94a3b8;
+			color: #9A8C67;
 		}
 	}
 
@@ -466,7 +466,7 @@ onPullDownRefresh(() => {
 	.loading-text {
 		margin-top: 16rpx;
 		font-size: 28rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 	}
 }
 
@@ -501,7 +501,7 @@ onPullDownRefresh(() => {
 			}
 
 			&.blacklist {
-				background: #475569;
+				background: #6E6242;
 			}
 
 			&.delete {
@@ -540,7 +540,7 @@ onPullDownRefresh(() => {
 				.friend-name {
 					font-size: 30rpx;
 					font-weight: 500;
-					color: #1e293b;
+					color: #231C0B;
 				}
 				.friend-rank {
 					font-size: 22rpx;
@@ -553,7 +553,7 @@ onPullDownRefresh(() => {
 
 			.friend-sub {
 				font-size: 24rpx;
-				color: #94a3b8;
+				color: #9A8C67;
 				margin-top: 6rpx;
 			}
 		}
@@ -565,7 +565,7 @@ onPullDownRefresh(() => {
 		padding: 24rpx;
 		.load-more-text {
 			font-size: 26rpx;
-			color: #64748b;
+			color: #6E6242;
 		}
 	}
 }
@@ -583,12 +583,12 @@ onPullDownRefresh(() => {
 	.empty-title {
 		font-size: 32rpx;
 		font-weight: 500;
-		color: #1e293b;
+		color: #231C0B;
 		margin-bottom: 12rpx;
 	}
 	.empty-sub {
 		font-size: 26rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 		margin-bottom: 40rpx;
 	}
 

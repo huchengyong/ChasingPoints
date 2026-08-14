@@ -91,15 +91,30 @@ func SupportedRankingGameTypes() []int {
 	return append([]int(nil), supportedRankingGameTypes...)
 }
 
-// RankingModel 段位相关数据库操作
-type RankingModel struct {
-	db                        *gorm.DB
+type rankingSchemaCapabilities struct {
 	rankChangeLogGameTypeOnce sync.Once
 	rankChangeLogHasGameType  bool
 }
 
+// RankingModel 段位相关数据库操作
+type RankingModel struct {
+	db           *gorm.DB
+	capabilities *rankingSchemaCapabilities
+}
+
 func NewRankingModel(db *gorm.DB) *RankingModel {
-	return &RankingModel{db: db}
+	return &RankingModel{db: db, capabilities: &rankingSchemaCapabilities{}}
+}
+
+func (m *RankingModel) WithDB(db *gorm.DB) *RankingModel {
+	if m == nil {
+		return NewRankingModel(db)
+	}
+	capabilities := m.capabilities
+	if capabilities == nil {
+		capabilities = &rankingSchemaCapabilities{}
+	}
+	return &RankingModel{db: db, capabilities: capabilities}
 }
 
 func (m *RankingModel) resolveDB(tx *gorm.DB) (*gorm.DB, error) {
@@ -118,11 +133,16 @@ func (m *RankingModel) rankChangeLogSupportsGameType(tx *gorm.DB) (bool, error) 
 		return false, err
 	}
 
-	m.rankChangeLogGameTypeOnce.Do(func() {
-		m.rankChangeLogHasGameType = db.Migrator().HasColumn(&RankChangeLog{}, "game_type")
+	capabilities := m.capabilities
+	if capabilities == nil {
+		capabilities = &rankingSchemaCapabilities{}
+		m.capabilities = capabilities
+	}
+	capabilities.rankChangeLogGameTypeOnce.Do(func() {
+		capabilities.rankChangeLogHasGameType = db.Migrator().HasColumn(&RankChangeLog{}, "game_type")
 	})
 
-	return m.rankChangeLogHasGameType, nil
+	return capabilities.rankChangeLogHasGameType, nil
 }
 
 func applyRankChangeLogGameTypeFilter(query *gorm.DB, enabled bool, gameType int) *gorm.DB {
@@ -213,6 +233,32 @@ func (m *RankingModel) FindByUserIdAndGameType(userId int64, gameType int) (*Use
 		return nil, nil
 	}
 	return &ranking, err
+}
+
+func (m *RankingModel) ListByUserId(userId int64) ([]UserRanking, error) {
+	db, err := m.resolveDB(nil)
+	if err != nil {
+		return nil, err
+	}
+	var rankings []UserRanking
+	err = db.Where("user_id = ?", userId).Order("game_type ASC").Find(&rankings).Error
+	return rankings, err
+}
+
+func (m *RankingModel) GetCompetitiveWinSummary(userId int64) (totalMatches, wins int, err error) {
+	db, err := m.resolveDB(nil)
+	if err != nil {
+		return 0, 0, err
+	}
+	var summary struct {
+		TotalMatches int
+		Wins         int
+	}
+	err = db.Model(&UserRanking{}).
+		Select("COALESCE(SUM(total_wins + total_losses), 0) AS total_matches, COALESCE(SUM(total_wins), 0) AS wins").
+		Where("user_id = ? AND game_type IN ?", userId, supportedRankingGameTypes).
+		Find(&summary).Error
+	return summary.TotalMatches, summary.Wins, err
 }
 
 // FindOrCreateByGameTypes 获取或初始化用户支持的全部球种段位记录。
@@ -552,6 +598,9 @@ func (m *RankingModel) ListRankChangesByUserAndGameType(userId int64, gameType i
 	if limit <= 0 {
 		limit = 30
 	}
+	if limit > 100 {
+		limit = 100
+	}
 
 	var logs []RankChangeLog
 	err = applyRankChangeLogGameTypeFilter(
@@ -597,6 +646,32 @@ func (m *RankingModel) ListRankChangesByUserAndGameTypeBetweenWithTx(tx *gorm.DB
 	var logs []RankChangeLog
 	err = applyRankChangeLogGameTypeFilter(
 		db.Where("user_id = ? AND change_type = ? AND effective_at >= ? AND effective_at <= ?", userId, rankChangeTypeMatchResult, start, end),
+		supportsGameType,
+		gameType,
+	).
+		Order("effective_at ASC, id ASC").
+		Find(&logs).Error
+	return logs, err
+}
+
+// ListRankChangesByUserAndGameTypeBetweenHalfOpen returns logs in [start, endExclusive).
+func (m *RankingModel) ListRankChangesByUserAndGameTypeBetweenHalfOpen(userId int64, gameType int, start, endExclusive time.Time) ([]RankChangeLog, error) {
+	return m.ListRankChangesByUserAndGameTypeBetweenHalfOpenWithTx(nil, userId, gameType, start, endExclusive)
+}
+
+func (m *RankingModel) ListRankChangesByUserAndGameTypeBetweenHalfOpenWithTx(tx *gorm.DB, userId int64, gameType int, start, endExclusive time.Time) ([]RankChangeLog, error) {
+	db, err := m.resolveDB(tx)
+	if err != nil {
+		return nil, err
+	}
+	supportsGameType, err := m.rankChangeLogSupportsGameType(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	var logs []RankChangeLog
+	err = applyRankChangeLogGameTypeFilter(
+		db.Where("user_id = ? AND change_type = ? AND effective_at >= ? AND effective_at < ?", userId, rankChangeTypeMatchResult, start, endExclusive),
 		supportsGameType,
 		gameType,
 	).

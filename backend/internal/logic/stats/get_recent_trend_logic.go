@@ -23,7 +23,7 @@ func NewGetRecentTrendLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Ge
 	return &GetRecentTrendLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -34,29 +34,24 @@ func (l *GetRecentTrendLogic) GetRecentTrend(req *types.GetRecentTrendReq) (resp
 		return &types.GetRecentTrendResp{Success: false}, nil
 	}
 
+	if l.svcCtx == nil || l.svcCtx.DB == nil {
+		return &types.GetRecentTrendResp{Success: false}, nil
+	}
+	if !l.svcCtx.CompetitiveReadModelsEnabled() {
+		return l.getLegacyRecentTrend(userIdInt, req)
+	}
+	if l.svcCtx.CompetitiveReadModel == nil {
+		return &types.GetRecentTrendResp{Success: false}, nil
+	}
 	limit := 30
-	if req != nil && req.Limit > 0 {
-		limit = req.Limit
+	gameType := 0
+	if req != nil {
+		gameType = req.GameType
+		if req.Limit > 0 {
+			limit = req.Limit
+		}
 	}
-
-	type trendMatchRow struct {
-		Id        int64
-		UserId    int64
-		MatchTime time.Time
-		Result    *int
-	}
-
-	query := l.svcCtx.DB.Table("matches").
-		Select("id, user_id, match_time, result").
-		Where("(user_id = ? OR opponent_id = ?) AND status = 2", userIdInt, userIdInt)
-	query = query.Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", model.MatchModeRanked)
-
-	if req != nil && req.GameType > 0 {
-		query = query.Where("game_type = ?", req.GameType)
-	}
-
-	var rows []trendMatchRow
-	err = query.Order("match_time DESC").Limit(limit).Scan(&rows).Error
+	rows, err := l.svcCtx.CompetitiveReadModel.ListRecentParticipantResults(userIdInt, gameType, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -64,10 +59,58 @@ func (l *GetRecentTrendLogic) GetRecentTrend(req *types.GetRecentTrendReq) (resp
 	list := make([]types.TrendPoint, 0, len(rows))
 	wins := 0
 	for i, row := range rows {
+		if row.Result == 1 {
+			wins++
+		}
+		list = append(list, types.TrendPoint{
+			MatchId: row.MatchId,
+			Date:    row.CompletedAt.Format("2006-01-02"),
+			WinRate: float64(wins) / float64(i+1),
+			Result:  row.Result,
+		})
+	}
+
+	return &types.GetRecentTrendResp{
+		Success: true,
+		List:    list,
+	}, nil
+}
+
+func (l *GetRecentTrendLogic) getLegacyRecentTrend(userID int64, req *types.GetRecentTrendReq) (*types.GetRecentTrendResp, error) {
+	limit, gameType := 30, 0
+	if req != nil {
+		gameType = req.GameType
+		if req.Limit > 0 {
+			limit = req.Limit
+		}
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	type row struct {
+		Id        int64
+		UserId    int64
+		MatchTime time.Time
+		Result    *int
+	}
+	query := l.svcCtx.DB.WithContext(l.ctx).Table("matches").
+		Select("id, user_id, match_time, result").
+		Where("(user_id = ? OR opponent_id = ?) AND status = ?", userID, userID, 2).
+		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", model.MatchModeRanked)
+	if gameType > 0 {
+		query = query.Where("game_type = ?", gameType)
+	}
+	var rows []row
+	if err := query.Order("match_time DESC, id DESC").Limit(limit).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	list := make([]types.TrendPoint, 0, len(rows))
+	wins := 0
+	for index, item := range rows {
 		result := 0
-		if row.Result != nil {
-			result = *row.Result
-			if row.UserId != userIdInt {
+		if item.Result != nil {
+			result = *item.Result
+			if item.UserId != userID {
 				if result == 1 {
 					result = 2
 				} else if result == 2 {
@@ -78,18 +121,12 @@ func (l *GetRecentTrendLogic) GetRecentTrend(req *types.GetRecentTrendReq) (resp
 		if result == 1 {
 			wins++
 		}
-
-		winRate := float64(wins) / float64(i+1)
 		list = append(list, types.TrendPoint{
-			MatchId: row.Id,
-			Date:    row.MatchTime.Format("2006-01-02"),
-			WinRate: winRate,
+			MatchId: item.Id,
+			Date:    item.MatchTime.Format("2006-01-02"),
+			WinRate: float64(wins) / float64(index+1),
 			Result:  result,
 		})
 	}
-
-	return &types.GetRecentTrendResp{
-		Success: true,
-		List:    list,
-	}, nil
+	return &types.GetRecentTrendResp{Success: true, List: list}, nil
 }

@@ -31,6 +31,7 @@ func TestHonorWallAndRewardSummaryAPIContract(t *testing.T) {
 		"SpecialtyUnlocked int `json:\"specialty_unlocked\"`",
 		"SpecialtyTotal    int `json:\"specialty_total\"`",
 		"type GetHonorWallResp",
+		"SeasonState        string               `json:\"season_state\"`",
 		"ViewerScope",
 		"RecentHonors",
 		"CareerAchievements",
@@ -44,7 +45,13 @@ func TestHonorWallAndRewardSummaryAPIContract(t *testing.T) {
 		"get /reward-summary (GetMatchRewardSummaryReq) returns (GetMatchRewardSummaryResp)",
 		"get /list (GetAchievementListReq) returns (GetAchievementListResp)",
 		"get /titles returns (GetUserTitlesResp)",
+		"type GetCurrentSeasonResp",
+		"SeasonState string      `json:\"season_state\"`",
+		"type SeasonInfo",
+		"StartAt        string  `json:\"start_at\"`",
+		"EndAtExclusive string  `json:\"end_at_exclusive\"`",
 	}
+
 	for _, snippet := range requiredSnippets {
 		if !strings.Contains(text, snippet) {
 			t.Fatalf("expected api contract to contain %q", snippet)
@@ -73,6 +80,15 @@ func TestGeneratedAchievementPayloadContract(t *testing.T) {
 	assertJSONTag(achievement, "GameType", "game_type")
 	assertJSONTag(achievement, "RewardTitleName", "reward_title_name,optional")
 
+	honorWall := types.GetHonorWallResp{}
+	assertJSONTag(honorWall, "SeasonState", "season_state")
+
+	currentSeason := types.GetCurrentSeasonResp{}
+	assertJSONTag(currentSeason, "SeasonState", "season_state")
+	seasonInfo := types.SeasonInfo{}
+	assertJSONTag(seasonInfo, "StartAt", "start_at")
+	assertJSONTag(seasonInfo, "EndAtExclusive", "end_at_exclusive")
+
 	summary := types.HonorWallSummary{}
 	assertJSONTag(summary, "CareerUnlocked", "career_unlocked")
 	assertJSONTag(summary, "CareerTotal", "career_total")
@@ -81,6 +97,43 @@ func TestGeneratedAchievementPayloadContract(t *testing.T) {
 	assertJSONTag(summary, "SpecialtyGameType", "specialty_game_type")
 	assertJSONTag(summary, "SpecialtyUnlocked", "specialty_unlocked")
 	assertJSONTag(summary, "SpecialtyTotal", "specialty_total")
+}
+
+func TestPerformanceReadAPIContract(t *testing.T) {
+	apiContent, err := os.ReadFile("chasing_points.api")
+	if err != nil {
+		t.Fatalf("read api contract: %v", err)
+	}
+	text := string(apiContent)
+	for _, snippet := range []string{
+		"type GetUserBootstrapResp",
+		"get /bootstrap returns (GetUserBootstrapResp)",
+		"type GetUserOverviewResp",
+		"get /overview returns (GetUserOverviewResp)",
+		"type H2HOverviewResp",
+		"get /h2h/overview (H2HOverviewReq) returns (H2HOverviewResp)",
+		"type GetOpponentCandidatesResp",
+		"get /candidates (GetOpponentCandidatesReq) returns (GetOpponentCandidatesResp)",
+		"type GetSeasonOverviewResp",
+		"type GetStatsOverviewResp",
+		"get /rank/leaderboard-summary (GetLeaderboardSummaryReq) returns (GetLeaderboardSummaryResp)",
+		"get /rank/configs returns (GetRankConfigsResp)",
+		"get /detail (GetAchievementDetailReq) returns (GetAchievementDetailResp)",
+		"UnreadCount int                `json:\"unread_count\"`",
+		"Availability",
+		"PartialErrors",
+		"CompetitiveRevision",
+	} {
+		if !strings.Contains(text, snippet) {
+			t.Fatalf("expected performance read contract to contain %q", snippet)
+		}
+	}
+
+	assertFieldJSONTag(t, types.GetUserBootstrapResp{}, "CompetitiveRevision", "competitive_revision")
+	assertFieldJSONTag(t, types.GetUserOverviewResp{}, "Availability", "availability")
+	assertFieldJSONTag(t, types.GetStatsOverviewResp{}, "PartialErrors", "partial_errors")
+	assertFieldJSONTag(t, types.H2HOverviewResp{}, "HasMore", "has_more")
+	assertFieldJSONTag(t, types.GetNotificationListResp{}, "UnreadCount", "unread_count")
 }
 
 func TestBindPhoneRespAdditiveSessionContract(t *testing.T) {

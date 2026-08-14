@@ -22,6 +22,7 @@ export const WS_MESSAGE_TYPES = {
   MATCH_FINISH_EXPIRED: 'match_finish_expired',
   NOTIFICATION_UPDATE: 'notification_update',
   RANK_INFO_UPDATED: 'rank_info_updated',
+  USER_DATA_UPDATED: 'user_data_updated',
   SYNC: 'sync',
   PING: 'ping',
   PONG: 'pong'

@@ -20,7 +20,7 @@ func NewDisputeFinishMatchLogic(ctx context.Context, svcCtx *svc.ServiceContext)
 	return &DisputeFinishMatchLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

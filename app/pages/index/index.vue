@@ -10,7 +10,7 @@
         </view>
         <!-- #ifndef MP-WEIXIN -->
         <view class="header-right" @tap="goNotification">
-          <uni-icons type="chat" size="22" :color="isDarkMode ? '#e2e8f0' : '#1e293b'"></uni-icons>
+          <uni-icons type="chat" size="22" :color="isDarkMode ? '#3A2E16' : '#231C0B'"></uni-icons>
           <view v-if="notificationStore.unreadCount > 0" class="header-badge">
             <text>{{ notificationStore.unreadCount > 99 ? '99+' : notificationStore.unreadCount }}</text>
           </view>
@@ -63,7 +63,7 @@
           <view class="summary-card" @tap="handleSummaryAction('match')">
             <view class="summary-head">
               <text class="summary-label">最近状态</text>
-              <uni-icons type="right" size="14" :color="isDarkMode ? '#94a3b8' : '#64748b'"></uni-icons>
+              <uni-icons type="right" size="14" :color="isDarkMode ? '#9F926E' : '#6E6242'"></uni-icons>
             </view>
             <text class="summary-value">{{ recentMatchSummary.value }}</text>
             <text class="summary-desc">{{ recentMatchSummary.desc }}</text>
@@ -73,7 +73,7 @@
           <view class="summary-card" @tap="handleSummaryAction('ranking')">
             <view class="summary-head">
               <text class="summary-label">当前排名</text>
-              <uni-icons type="right" size="14" :color="isDarkMode ? '#94a3b8' : '#64748b'"></uni-icons>
+              <uni-icons type="right" size="14" :color="isDarkMode ? '#9F926E' : '#6E6242'"></uni-icons>
             </view>
             <text class="summary-value">{{ rankingSummary.value }}</text>
             <text class="summary-desc">{{ rankingSummary.desc }}</text>
@@ -86,7 +86,7 @@
             <text class="section-title">赛事情报</text>
             <view class="section-more" @tap="goTo('/subPages/tournament/index')">
               <text>全部情报</text>
-              <uni-icons type="right" size="14" :color="isDarkMode ? '#94a3b8' : '#94a3b8'"></uni-icons>
+              <uni-icons type="right" size="14" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
             </view>
           </view>
 
@@ -113,7 +113,7 @@
             <text class="section-title">排行焦点</text>
             <view class="section-more" @tap="goTo('/pages/ranking/index')">
               <text>完整榜单</text>
-              <uni-icons type="right" size="14" :color="isDarkMode ? '#94a3b8' : '#94a3b8'"></uni-icons>
+              <uni-icons type="right" size="14" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
             </view>
           </view>
 
@@ -141,7 +141,7 @@
             <text class="section-title">附近球房</text>
             <view class="section-more" @tap="goTo('/subPages/venue/index')">
               <text>查看球房</text>
-              <uni-icons type="right" size="14" :color="isDarkMode ? '#94a3b8' : '#94a3b8'"></uni-icons>
+              <uni-icons type="right" size="14" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
             </view>
           </view>
 
@@ -167,7 +167,7 @@
                   <text v-if="item.checkin_count" class="venue-preview-tag">{{ item.checkin_count }}人签到</text>
                 </view>
               </view>
-              <uni-icons type="right" size="18" :color="isDarkMode ? '#8b7a50' : '#cbd5e1'"></uni-icons>
+              <uni-icons type="right" size="18" :color="isDarkMode ? '#8b7a50' : '#9A8C67'"></uni-icons>
             </view>
           </view>
 
@@ -194,13 +194,12 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { useUserStore } from '@/store/user.js'
+import { useActivityStore } from '@/store/activity.js'
 import { useNotificationStore } from '@/store/notification.js'
-import { getEventNewsList } from '@/api/event-news.js'
-import { getCurrentMatch, startMatch } from '@/api/match.js'
-import { getLeaderboard } from '@/api/rank.js'
-import { getFavoriteVenueRewardStatus } from '@/api/user.js'
-import { getNearbyVenues } from '@/api/venue.js'
+import { usePublicReadStore } from '@/store/publicRead.js'
+import { useUserOverviewStore } from '@/store/userOverview.js'
+import { useUserStore } from '@/store/user.js'
+import { startMatch } from '@/api/match.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { getGameTypeLabel } from '@/utils/game-types.js'
 import { normalizeSaiXunCard } from '@/utils/saixun.js'
@@ -215,6 +214,9 @@ import { chooseSnookerStartFormat } from '@/utils/snooker-start-format.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const userStore = useUserStore()
+const activityStore = useActivityStore()
+const publicReadStore = usePublicReadStore()
+const userOverviewStore = useUserOverviewStore()
 const { isDarkMode } = usePageTheme()
 const notificationStore = useNotificationStore()
 
@@ -224,11 +226,11 @@ const userId = computed(() => userStore.userId)
 const userName = computed(() => userStore.nickname || '球友')
 
 const refreshing = ref(false)
-const homeLoading = ref(true)
+const homeLoading = ref(false)
 const showGameTypeModal = ref(false)
 const selectedGameType = ref(null)
 const selectedSnookerFormat = ref(null)
-const currentMatch = ref(null)
+const currentMatch = computed(() => (isLoggedIn.value ? activityStore.currentMatch : null))
 const leaderboardTopThree = ref([])
 const myRanking = ref(null)
 const topEventNews = ref(null)
@@ -352,19 +354,28 @@ const rankingSummary = computed(() => {
   }
 })
 
-const loadData = async () => {
+const getActivityIdentity = () => ({
+  userId: userStore.userId,
+  authGeneration: userStore.authGeneration
+})
+
+const loadData = async ({ force = false } = {}) => {
+  if (homeLoading.value) return
   homeLoading.value = true
 
   try {
-    const nearbyVenueRequest = loadNearbyVenues()
+    const nearbyVenueRequest = loadNearbyVenues({ force })
     const requests = [
-      getLeaderboard({ page: 1, page_size: 3 }).catch(() => ({ success: false })),
-      getEventNewsList({ page: 1, page_size: 1 }).catch(() => ({ success: false, list: [] }))
+      publicReadStore.loadLeaderboardSummary({ game_type: 3 }, {
+        force,
+        identity: isLoggedIn.value ? getActivityIdentity() : undefined
+      }).catch(() => ({ success: false })),
+      publicReadStore.loadEventNews({ page: 1, page_size: 1 }, { force }).catch(() => ({ success: false, list: [] }))
     ]
 
     if (isLoggedIn.value) {
-      requests.unshift(getCurrentMatch({ silent: true }).catch(() => ({ success: false })))
-      requests.push(loadFavoriteVenueRewardStatus())
+      requests.unshift(activityStore.fetch(getActivityIdentity(), { force, silent: true }).catch(() => activityStore.snapshot()))
+      requests.push(userOverviewStore.fetch(getActivityIdentity(), { force, silent: true }).catch(() => userOverviewStore.snapshot()))
     } else {
       favoriteVenueRewardStatus.value = null
     }
@@ -373,10 +384,7 @@ const loadData = async () => {
     let resultIndex = 0
 
     if (isLoggedIn.value) {
-      const currentMatchRes = results[resultIndex++]
-      currentMatch.value = currentMatchRes.success && currentMatchRes.match ? currentMatchRes.match : null
-    } else {
-      currentMatch.value = null
+      resultIndex++
     }
 
     const leaderboardRes = results[resultIndex++]
@@ -389,22 +397,21 @@ const loadData = async () => {
     }
 
     const eventNewsRes = results[resultIndex++]
-    const topItem = eventNewsRes.success && Array.isArray(eventNewsRes.list) ? eventNewsRes.list[0] : null
-    topEventNews.value = topItem ? normalizeSaiXunCard(topItem) : null
+    if (eventNewsRes.success && Array.isArray(eventNewsRes.list)) {
+      const topItem = eventNewsRes.list[0] || null
+      topEventNews.value = topItem ? normalizeSaiXunCard(topItem) : null
+    }
+    if (isLoggedIn.value) {
+      const overview = results[resultIndex]
+      favoriteVenueRewardStatus.value = overview?.favoriteVenueRewardStatus?.success
+        ? overview.favoriteVenueRewardStatus
+        : null
+    }
     await nearbyVenueRequest
   } catch (error) {
     console.error('加载首页数据失败', error)
   } finally {
     homeLoading.value = false
-  }
-}
-
-const loadFavoriteVenueRewardStatus = async () => {
-  try {
-    const res = await getFavoriteVenueRewardStatus({ silent: true })
-    favoriteVenueRewardStatus.value = res.success ? res : null
-  } catch (error) {
-    favoriteVenueRewardStatus.value = null
   }
 }
 
@@ -419,7 +426,7 @@ const getHomeLocation = () => new Promise((resolve) => {
   })
 })
 
-const loadNearbyVenues = async () => {
+const loadNearbyVenues = async ({ force = false } = {}) => {
   if (nearbyVenueLoading.value) return
 
   nearbyVenueLoading.value = true
@@ -431,11 +438,12 @@ const loadNearbyVenues = async () => {
       return
     }
 
-    const res = await getNearbyVenues(params)
-    nearbyVenues.value = res.success && Array.isArray(res.list) ? res.list.slice(0, params.limit) : []
+    const res = await publicReadStore.loadNearbyVenues(params, { force })
+    if (res.success && Array.isArray(res.list)) {
+      nearbyVenues.value = res.list.slice(0, params.limit)
+    }
   } catch (error) {
     console.error('加载首页附近球房失败', error)
-    nearbyVenues.value = []
   } finally {
     nearbyVenueLoading.value = false
   }
@@ -443,7 +451,7 @@ const loadNearbyVenues = async () => {
 
 const onRefresh = async () => {
   refreshing.value = true
-  await Promise.all([loadData(), notificationStore.fetchUnreadCount()])
+  await loadData({ force: true })
   refreshing.value = false
 }
 
@@ -684,7 +692,6 @@ const handleContinueMatch = (match) => {
 }
 
 onShow(() => {
-  notificationStore.fetchUnreadCount()
   loadData()
 })
 </script>

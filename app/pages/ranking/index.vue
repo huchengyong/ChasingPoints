@@ -2,7 +2,7 @@
 	<view class="ranking-container" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 加载状态 -->
 		<view class="loading-wrapper" v-if="isLoading">
-			<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+			<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
@@ -21,7 +21,7 @@
 
 			<!-- 空数据状态 -->
 			<view class="empty-state" v-if="isEmpty">
-			    <uni-icons type="medal" size="128" :color="isDarkMode ? '#475569' : '#cbd5e1'" class="empty-icon"></uni-icons>
+			    <uni-icons type="medal" size="128" :color="isDarkMode ? '#9F926E' : '#9A8C67'" class="empty-icon"></uni-icons>
 			    <text class="empty-title">暂无排行数据</text>
 			    <text class="empty-subtitle">快去对战提升排名吧！</text>
 			    <button class="start-button" @click="handleStartMatch">
@@ -144,11 +144,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
+import { usePublicReadStore } from '@/store/publicRead.js'
 import { usePageTheme } from '@/utils/page-theme.js'
-import { getLeaderboard } from '@/api/rank.js'
 import { startMatch } from '@/api/match.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
@@ -161,6 +161,7 @@ const { isDarkMode } = usePageTheme()
 
 // ========== 响应式数据 ==========
 const userStore = useUserStore()
+const publicReadStore = usePublicReadStore()
 const isEmpty = computed(() => !isLoading.value && topThree.value.length === 0 && rankList.value.length === 0)
 const isLoading = ref(false)
 const isRefreshing = ref(false)
@@ -188,13 +189,8 @@ onLoad((options) => {
 })
 
 // ========== 生命周期 ==========
-onMounted(() => {
-	fetchLeaderboard()
-})
-
 onShow(() => {
-	// 页面显示时刷新数据
-	fetchLeaderboard(true, false)
+	fetchLeaderboard()
 })
 
 // ========== 方法 ==========
@@ -218,10 +214,16 @@ const fetchLeaderboard = async (isRefresh = false, isLoadMore = false) => {
 	}
 	
 	try {
-		const res = await getLeaderboard({
+		const res = await publicReadStore.loadLeaderboard({
 			game_type: currentGameType.value,
 			page: currentPage.value,
 			page_size: pageSize
+		}, {
+			force: isRefresh,
+			identity: {
+				userId: userStore.userId,
+				authGeneration: userStore.authGeneration
+			}
 		})
 		
 		if (res.success) {

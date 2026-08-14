@@ -170,22 +170,22 @@ func eventNewsDateWindowOverlaps(window eventNewsDateWindow, startDate, endDate 
 
 func mapEventNewsInfo(item model.EventNews, tournament *model.Tournament, matches []model.TournamentMatch) types.EventNewsInfo {
 	resp := types.EventNewsInfo{
-		Id:         item.Id,
-		Title:      item.Title,
-		GameType:   item.GameType,
-		SourceType: item.SourceType,
-		SourceName: item.SourceName,
-		SourceUrl:  item.SourceUrl,
-		CoverImage: sanitizePublicImageURL(item.CoverImage),
-		Summary:    item.Summary,
-		Content:    item.Content,
+		Id:          item.Id,
+		Title:       item.Title,
+		GameType:    item.GameType,
+		SourceType:  item.SourceType,
+		SourceName:  item.SourceName,
+		SourceUrl:   item.SourceUrl,
+		CoverImage:  sanitizePublicImageURL(item.CoverImage),
+		Summary:     item.Summary,
+		Content:     item.Content,
 		Description: "",
-		Country:    item.Country,
-		City:       item.City,
-		Venue:      item.Venue,
-		Status:     item.Status,
-		Published:  item.Published,
-		MatchCount: len(matches),
+		Country:     item.Country,
+		City:        item.City,
+		Venue:       item.Venue,
+		Status:      item.Status,
+		Published:   item.Published,
+		MatchCount:  len(matches),
 	}
 	if item.StartDate != nil {
 		resp.StartDate = item.StartDate.Format(eventNewsDateLayout)

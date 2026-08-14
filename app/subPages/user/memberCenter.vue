@@ -159,7 +159,10 @@
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 
-import { getMemberPlans, getMemberStatus, createMemberSubscriptionOrder, getMemberSubscriptionOrderStatus } from '@/api/member.js'
+import { getMemberPlans, createMemberSubscriptionOrder, getMemberSubscriptionOrderStatus } from '@/api/member.js'
+import { usePublicReadStore } from '@/store/publicRead.js'
+import { useUserOverviewStore } from '@/store/userOverview.js'
+import { useUserStore } from '@/store/user.js'
 import { APP_COMPLIANCE_MODE } from '@/utils/compliance-mode.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import {
@@ -173,6 +176,9 @@ import {
 import { resolveMemberRankingRightsCard } from '@/utils/member-ranking-rights.js'
 
 const { isDarkMode } = usePageTheme()
+const publicReadStore = usePublicReadStore()
+const userOverviewStore = useUserOverviewStore()
+const userStore = useUserStore()
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -194,32 +200,40 @@ onShow(() => {
 	loadData()
 })
 
-const loadData = async () => {
+const getReadIdentity = () => ({
+	userId: userStore.userId,
+	authGeneration: userStore.authGeneration
+})
+
+const loadData = async ({ force = false } = {}) => {
 	if (loading.value) return
 
 	loading.value = true
 	try {
-		const requests = [getMemberStatus()]
-		if (!isComplianceMode) {
-			requests.unshift(getMemberPlans())
+		const [overview, plansRes] = await Promise.all([
+			userOverviewStore.fetch(getReadIdentity(), { force, silent: true }),
+			isComplianceMode
+				? Promise.resolve(null)
+				: publicReadStore.loadStatic('member-plans', getMemberPlans)
+		])
+		if (overview?.memberStatus?.success) {
+			memberStatus.value = overview.memberStatus
 		}
-
-		const responses = await Promise.all(requests)
-		const plansRes = isComplianceMode ? null : responses[0]
-		const statusRes = isComplianceMode ? responses[0] : responses[1]
-
-		plans.value = plansRes?.success ? plansRes.plans || [] : []
-		memberStatus.value = statusRes.success ? statusRes : null
+		if (plansRes?.success) {
+			plans.value = plansRes.plans || []
+		}
 
 		if (plans.value.length > 0 && !plans.value.some(item => item.plan_code === selectedPlanCode.value)) {
 			selectedPlanCode.value = plans.value[0].plan_code
 		}
 	} catch (error) {
 		console.error('加载会员中心失败:', error)
-		uni.showToast({
-			title: '加载会员中心失败',
-			icon: 'none'
-		})
+		if (!memberStatus.value && !plans.value.length) {
+			uni.showToast({
+				title: '加载会员中心失败',
+				icon: 'none'
+			})
+		}
 	} finally {
 		loading.value = false
 	}
@@ -335,7 +349,8 @@ const handleSubmit = async () => {
 		uni.hideLoading()
 
 		if (shouldTreatMemberOrderAsPaid(finalStatus || {})) {
-			await loadData()
+			userOverviewStore.markDirty()
+			await loadData({ force: true })
 			uni.showToast({
 				title: '会员已开通',
 				icon: 'success'

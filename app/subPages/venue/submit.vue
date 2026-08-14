@@ -75,6 +75,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { createVenue, getVenueAreaOptions } from '@/api/venue.js'
+import { usePublicReadStore } from '@/store/publicRead.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import {
 	buildVenueRegionSelection,
@@ -83,6 +84,7 @@ import {
 } from '@/utils/venue-submit.js'
 
 const { isDarkMode } = usePageTheme()
+const publicReadStore = usePublicReadStore()
 
 const createAreaPlaceholderOption = (name = '暂无数据') => ({
 	area_id: 0,
@@ -176,7 +178,7 @@ const fetchAreaOptions = async (parentId = 0) => {
 		return areaOptionsCache.get(cacheKey)
 	}
 
-	const res = await getVenueAreaOptions({ parent_id: parentId })
+	const res = await publicReadStore.loadStatic(`areas:${parentId}`, () => getVenueAreaOptions({ parent_id: parentId }))
 	const list = normalizeAreaOptions(res?.list, parentId === 0 ? '暂无地区数据' : '暂无下级地区')
 	areaOptionsCache.set(cacheKey, list)
 	return list

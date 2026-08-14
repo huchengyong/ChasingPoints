@@ -16,6 +16,7 @@ import {
   resolveUnauthorizedAction
 } from './request-errors.js'
 import { NETWORK_CONFIG } from './runtime-config.js'
+import { recordRequest } from './request-metrics.js'
 
 const BASE_URL = NETWORK_CONFIG.httpBaseUrl
 const authRefreshPromises = new Map()
@@ -57,6 +58,7 @@ const refreshAuthToken = () => {
   }
 
   const refreshPromise = new Promise((resolve, reject) => {
+    recordRequest('POST', '/api/auth/refresh-token')
     uni.request({
       url: BASE_URL + '/api/auth/refresh-token',
       method: 'POST',
@@ -179,6 +181,7 @@ const request = (options) => {
   }, requestToken)
 
   return new Promise((resolve, reject) => {
+    recordRequest(config.method, options.url)
     uni.request({
       ...config,
       success: (res) => {

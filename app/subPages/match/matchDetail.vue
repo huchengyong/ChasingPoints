@@ -113,7 +113,7 @@
 								{{ getRoundResultText(round) }}
 							</text>
 						</view>
-						<uni-icons type="right" size="16" color="#64748b"></uni-icons>
+						<uni-icons type="right" size="16" color="#6E6242"></uni-icons>
 					</view>
 				</view>
 			</view>

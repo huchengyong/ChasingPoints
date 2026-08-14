@@ -27,7 +27,7 @@
 							</view>
 						</view>
 						<view class="delete-btn" @tap="handleDelete(item)">
-							<uni-icons type="trash" size="18" color="#94a3b8"></uni-icons>
+							<uni-icons type="trash" size="18" color="#9A8C67"></uni-icons>
 						</view>
 					</view>
 
@@ -87,27 +87,30 @@ const loading = ref(true)
 const refreshing = ref(false)
 const postList = ref([])
 const pageHint = ref('')
+const hasLoadedOnce = ref(false)
 
 onLoad((options) => {
 	pageHint.value = options.hint ? decodeURIComponent(options.hint) : ''
 })
 
 onShow(() => {
-	loadPosts()
+	if (!hasLoadedOnce.value) loadPosts()
 })
 
 onPullDownRefresh(() => {
 	refreshList()
 })
 
-const loadPosts = async () => {
+const loadPosts = async ({ force = false } = {}) => {
+	if (hasLoadedOnce.value && !force) return
 	try {
-		loading.value = true
+		loading.value = postList.value.length === 0
 		const res = await getMyPosts({ page: 1, page_size: 50 })
 		postList.value = (res.list || []).map((item) => ({
 			...item,
 			images: Array.isArray(item.images) ? item.images : []
 		}))
+		hasLoadedOnce.value = true
 	} catch (error) {
 		console.error('加载我的动态失败:', error)
 		uni.showToast({ title: '加载失败', icon: 'none' })
@@ -120,7 +123,7 @@ const loadPosts = async () => {
 
 const refreshList = async () => {
 	refreshing.value = true
-	await loadPosts()
+	await loadPosts({ force: true })
 }
 
 const previewImage = (images, current) => {
@@ -167,8 +170,8 @@ const handleDelete = (item) => {
 <style lang="scss" scoped>
 .my-posts-page {
 	min-height: 100vh;
-	background: #f8fafc;
-	color: #0f172a;
+	background: #FAF8F2;
+	color: #231C0B;
 	padding: 24rpx;
 	box-sizing: border-box;
 
@@ -222,7 +225,7 @@ const handleDelete = (item) => {
 .loading-text,
 .empty-desc {
 	font-size: 24rpx;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .empty-icon {
@@ -263,7 +266,7 @@ const handleDelete = (item) => {
 
 .post-card {
 	background: #ffffff;
-	border: 1px solid #e2e8f0;
+	border: 1px solid #E9E2CF;
 	border-radius: 24rpx;
 	padding: 24rpx;
 }
@@ -284,7 +287,7 @@ const handleDelete = (item) => {
 
 .post-time {
 	font-size: 22rpx;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .status-tag {
@@ -327,7 +330,7 @@ const handleDelete = (item) => {
 	width: calc((100% - 24rpx) / 3);
 	height: 200rpx;
 	border-radius: 18rpx;
-	background: #e2e8f0;
+	background: #E9E2CF;
 
 	&.single {
 		width: 100%;
@@ -362,6 +365,6 @@ const handleDelete = (item) => {
 	display: flex;
 	gap: 20rpx;
 	font-size: 22rpx;
-	color: #64748b;
+	color: #6E6242;
 }
 </style>

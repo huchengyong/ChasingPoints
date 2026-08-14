@@ -1,14 +1,18 @@
 package svc
 
 import (
+	"context"
+	"strings"
+	"time"
+
 	"chasing_points/internal/config"
 	"chasing_points/internal/model"
+	"chasing_points/internal/observability"
 	"chasing_points/internal/pkg/geocode"
 	"chasing_points/internal/pkg/push"
 	qiniuupload "chasing_points/internal/pkg/qiniu"
 	"chasing_points/internal/pkg/wechatmini"
 	"chasing_points/internal/sms"
-	"time"
 
 	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/mysql"
@@ -34,6 +38,7 @@ type ServiceContext struct {
 	UserModel                       *model.UserModel
 	OauthModel                      *model.UserOauthModel
 	MatchModel                      *model.MatchModel
+	CompetitiveReadModel            *model.CompetitiveReadModel
 	RankingModel                    *model.RankingModel
 	AchievementModel                *model.AchievementModel
 	UserAchievementModel            *model.UserAchievementModel
@@ -98,6 +103,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		UserModel:                       models.UserModel,
 		OauthModel:                      models.OauthModel,
 		MatchModel:                      models.MatchModel,
+		CompetitiveReadModel:            models.CompetitiveReadModel,
 		RankingModel:                    models.RankingModel,
 		AchievementModel:                models.AchievementModel,
 		UserAchievementModel:            models.UserAchievementModel,
@@ -156,6 +162,7 @@ type serviceModels struct {
 	UserModel                       *model.UserModel
 	OauthModel                      *model.UserOauthModel
 	MatchModel                      *model.MatchModel
+	CompetitiveReadModel            *model.CompetitiveReadModel
 	RankingModel                    *model.RankingModel
 	AchievementModel                *model.AchievementModel
 	UserAchievementModel            *model.UserAchievementModel
@@ -200,8 +207,82 @@ type geocodeDependencies struct {
 	Worker *geocode.Worker
 }
 
+func (s *ServiceContext) DBWithContext(ctx context.Context) *gorm.DB {
+	if s == nil || s.DB == nil {
+		return nil
+	}
+	return s.DB.WithContext(ctx)
+}
+
+// WithContext returns a shallow, request-scoped service context whose Gorm
+// models carry the HTTP context. It leaves worker and test contexts untouched.
+func (s *ServiceContext) WithContext(ctx context.Context) *ServiceContext {
+	if s == nil || s.DB == nil || observability.RequestMetricsFromContext(ctx) == nil {
+		return s
+	}
+	if s.DB.Statement != nil && observability.RequestMetricsFromContext(s.DB.Statement.Context) != nil {
+		return s
+	}
+	scoped := *s
+	scoped.DB = s.DB.WithContext(ctx)
+	models := newServiceModels(scoped.DB)
+	scoped.AreaModel = models.AreaModel
+	scoped.UserModel = models.UserModel
+	scoped.OauthModel = models.OauthModel
+	scoped.MatchModel = models.MatchModel
+	scoped.CompetitiveReadModel = models.CompetitiveReadModel
+	scoped.RankingModel = s.RankingModel.WithDB(scoped.DB)
+	scoped.AchievementModel = models.AchievementModel
+	scoped.UserAchievementModel = models.UserAchievementModel
+	scoped.UserTitleModel = models.UserTitleModel
+	scoped.AchievementProgressEventModel = models.AchievementProgressEventModel
+	scoped.FriendModel = models.FriendModel
+	scoped.FollowModel = models.FollowModel
+	scoped.SocialPostModel = models.SocialPostModel
+	scoped.NotificationModel = models.NotificationModel
+	scoped.UserNotificationPreferenceModel = models.UserNotificationPreferenceModel
+	scoped.ChallengeModel = models.ChallengeModel
+	scoped.TournamentModel = models.TournamentModel
+	scoped.TournamentParticipantModel = models.TournamentParticipantModel
+	scoped.EventNewsModel = models.EventNewsModel
+	scoped.PlayerModel = models.PlayerModel
+	scoped.RulesContentModel = models.RulesContentModel
+	scoped.SeasonModel = models.SeasonModel
+	scoped.SeasonRecordModel = models.SeasonRecordModel
+	scoped.SeasonChallengeSnapshotModel = models.SeasonChallengeSnapshotModel
+	scoped.SeasonSettlementModel = models.SeasonSettlementModel
+	scoped.VenueModel = models.VenueModel
+	scoped.VenueCheckinModel = models.VenueCheckinModel
+	scoped.VenueGeocodeTaskModel = models.VenueGeocodeTaskModel
+	scoped.GeocodeAccountModel = models.GeocodeAccountModel
+	scoped.FavoriteVenueRewardConfigModel = models.FavoriteVenueRewardConfigModel
+	scoped.FavoriteVenueRewardRecordModel = models.FavoriteVenueRewardRecordModel
+	scoped.MemberSubscriptionOrderModel = models.MemberSubscriptionOrderModel
+	scoped.MemberGrowthProfileModel = models.MemberGrowthProfileModel
+	scoped.MemberGrowthLogModel = models.MemberGrowthLogModel
+	scoped.MemberRightsConfigModel = models.MemberRightsConfigModel
+	scoped.ReputationConfigModel = models.ReputationConfigModel
+	scoped.UserReputationProfileModel = models.UserReputationProfileModel
+	scoped.UserReputationLogModel = models.UserReputationLogModel
+	scoped.FeedbackTicketModel = models.FeedbackTicketModel
+	scoped.TournamentMatchModel = models.TournamentMatchModel
+	scoped.AdminModel = models.AdminModel
+	scoped.AdminLoginLogModel = models.AdminLoginLogModel
+	return &scoped
+}
+
+func (s *ServiceContext) CompetitiveReadModelsEnabled() bool {
+	if s == nil || s.CompetitiveReadModel == nil {
+		return false
+	}
+	mode := strings.ToLower(strings.TrimSpace(s.Config.CompetitiveReadModel.ReadMode))
+	return mode == "enabled"
+}
+
 func mustOpenDB(c config.Config) *gorm.DB {
-	db, err := gorm.Open(mysql.Open(c.MySQL.DataSource), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(c.MySQL.DataSource), &gorm.Config{
+		Logger: observability.NewGormLogger(time.Duration(c.Observability.SlowSQLThresholdMs) * time.Millisecond),
+	})
 	if err != nil {
 		panic("连接数据库失败: " + err.Error())
 	}
@@ -262,6 +343,7 @@ func newServiceModels(db *gorm.DB) serviceModels {
 		UserModel:                       model.NewUserModel(db),
 		OauthModel:                      model.NewUserOauthModel(db),
 		MatchModel:                      model.NewMatchModel(db),
+		CompetitiveReadModel:            model.NewCompetitiveReadModel(db),
 		RankingModel:                    model.NewRankingModel(db),
 		AchievementModel:                model.NewAchievementModel(db),
 		UserAchievementModel:            model.NewUserAchievementModel(db),

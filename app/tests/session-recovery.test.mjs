@@ -24,7 +24,8 @@ test('valid session returns server profile without applying it inside the shared
   assert.deepEqual(result, {
     valid: true,
     retryable: false,
-    userInfo: { id: 1, nickname: '球手' }
+    userInfo: { id: 1, nickname: '球手' },
+    bootstrap: { success: true, user_info: { id: 1, nickname: '球手' } }
   })
 })
 
@@ -93,8 +94,8 @@ test('concurrent validations share one request only within the same auth generat
   resolveFirst()
   const results = await Promise.all([first, second])
   assert.deepEqual(results, [
-    { valid: true, retryable: false, userInfo: { id: 1 } },
-    { valid: true, retryable: false, userInfo: { id: 1 } }
+    { valid: true, retryable: false, userInfo: { id: 1 }, bootstrap: { success: true, user_info: { id: 1 } } },
+    { valid: true, retryable: false, userInfo: { id: 1 }, bootstrap: { success: true, user_info: { id: 1 } } }
   ])
 })
 
@@ -118,12 +119,14 @@ test('different auth generations never share a stale recovery promise', async ()
   assert.deepEqual(await userA, {
     valid: true,
     retryable: false,
-    userInfo: { id: 'A' }
+    userInfo: { id: 'A' },
+    bootstrap: { success: true, user_info: { id: 'A' } }
   })
   assert.deepEqual(await userB, {
     valid: true,
     retryable: false,
-    userInfo: { id: 'B' }
+    userInfo: { id: 'B' },
+    bootstrap: { success: true, user_info: { id: 'B' } }
   })
 })
 
