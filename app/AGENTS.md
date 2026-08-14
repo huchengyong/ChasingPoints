@@ -61,6 +61,14 @@ app/
 - 对局写操作、登录漏斗、球房提交等规则，优先提炼为 `utils/*.js` 纯函数并补测试，而不是把规则散在页面里。
 - Push、主题、前台对局提醒属于 app 级行为，优先改 `App.vue`，不要把相同逻辑复制到页面。
 
+## CLIENT READ GUARDRAILS
+- 页面只能通过 `api/*.js` 请求数据；首屏优先使用聚合接口，避免 `onLoad`、`onMounted`、`onShow` 和子组件重复读取同一资源。
+- 禁止在 `utils/request.js` 增加通用 GET 缓存；single-flight、TTL/SWR、loaded/dirty 和失效逻辑必须属于具体领域 Store 或 helper。
+- 用户级缓存和 in-flight 必须绑定 `userId + authGeneration`；退出、切号或认证代次变化后，旧响应不得回写当前状态。
+- 公共缓存只能保存与访问者无关的数据；排行榜等 viewer 个性化字段必须按当前身份单独组装。
+- 写操作成功后必须精确失效相关资源 scope，不得用所有页面无条件强制刷新代替一致性管理。
+- 新增首屏读取逻辑时，应测试首次进入、重复 `onShow`、并发请求、退出/切号和旧 in-flight 返回等关键请求图。
+
 ## THEME AND UI CONSTRAINTS
 - 主题变量必须同时兼容 `theme.json`、`App.vue` 中的 CSS 变量和 `store/theme.js` 的运行时切换。
 - 主题色背景按钮文字统一使用白色 `#ffffff`。

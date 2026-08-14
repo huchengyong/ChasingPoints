@@ -52,6 +52,16 @@ backend/
 - 修改业务表结构后，要同步补齐 Gorm 模型、json 标签和必要的 model 方法。
 - 新增测试如果依赖 migration 管理的表，必须显式建 schema；不要默认指望 model 构造函数帮你建表。
 
+## READ API GUARDRAILS
+- GET/读取接口必须保持业务纯读，不得隐式补数据、创建默认记录或执行全局状态收敛。
+- 列表查询必须使用数据库分页、稳定排序和有界 `page_size`；禁止在线 `ListAll`、无界历史扫描、Go 内存分页和 N+1。
+- 高频首屏优先提供聚合接口并保持固定、有界的 SQL 数量；可选区块失败时使用 availability/partial error，不得伪装成成功零值。
+- 请求中的数据库与缓存操作必须继承真实 HTTP Context，确保 SQL、耗时和缓存结果进入请求完成观测。
+- 缓存必须由具体领域维护，明确 key scope、TTL 和失效时机；公共缓存不得包含 viewer 个性化数据，Redis 异常必须回源权威数据。
+- 新增或修改热点读取必须补 query-count 测试；涉及索引时还要用代表性 MySQL EXPLAIN 验证。
+- 可公开且可个性化的接口必须使用统一 optional JWT；无效 Bearer Token 返回 `401`，不得降级为匿名身份。
+- 受开关控制的新读模型只有精确 `enabled` 才可启用；快照缺失时必须有界回退或明确 partial，默认不得直接切读。
+
 ## ANTI-PATTERNS
 - 不要把 `.api` 当“参考文档”，它是实际契约源；改接口先改它。
 - 不要忽略 `chasing_points.go` 里手工注册的 WebSocket 路由。
