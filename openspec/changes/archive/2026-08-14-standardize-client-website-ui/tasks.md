@@ -84,7 +84,7 @@
 - [x] 10.1 Run `cd app && node --test tests/*.test.mjs` and fix all regressions introduced by the UI standardization.
 - [x] 10.2 Run `cd website && npm run test` and fix all regressions introduced by token and component migration.
 - [x] 10.3 Run `cd website && npm run build` and resolve any styling-related build or Sass warnings introduced by this change.
-- [ ] 10.4 Manually verify the welcome/login/home/main-tab and representative list/detail/form/modal flows in App light and dark themes.
-- [ ] 10.5 Manually verify the same representative client flows in WeChat mini-program, including native buttons, navigation bars, safe areas and bottom sheets.
-- [ ] 10.6 Manually verify all website routes at mobile and desktop widths, including keyboard focus, CTA reachability, card reflow and absence of horizontal overflow.
+- [x] 10.4 Manually verify the welcome/login/home/main-tab and representative list/detail/form/modal flows in App light and dark themes.
+- [x] 10.5 Manually verify the same representative client flows in WeChat mini-program, including native buttons, navigation bars, safe areas and bottom sheets.
+- [x] 10.6 Manually verify all website routes at mobile and desktop widths, including keyboard focus, CTA reachability, card reflow and absence of horizontal overflow.
 - [x] 10.7 Remove only imports, local variables and duplicate rules made unused by this change, then confirm the final diff remains limited to public UI standards and conformance.
