@@ -1,15 +1,15 @@
 .pk-report-page {
   min-height: 100vh;
-  background: #f6f7f8;
+  background: #FAF8F2;
   box-sizing: border-box;
 
   &.dark-mode {
-    background: #101922;
+    background: #141109;
 
     .hero-card,
     .section-card {
-      background: #1e293b;
-      border-color: #334155;
+      background: #1E180D;
+      border-color: #3A2E16;
     }
 
     .hero-kicker,
@@ -20,7 +20,7 @@
     .loading-text,
     .empty-state text,
     .evidence-index {
-      color: #94a3b8;
+      color: #9F926E;
     }
 
     .hero-title,
@@ -30,17 +30,17 @@
     .summary-title,
     .summary-text,
     .evidence-text {
-      color: #f8fafc;
+      color: #FFF7E1;
     }
 
     .summary-card,
     .evidence-item,
     .retry-btn {
-      background: #334155;
+      background: #3A2E16;
     }
 
     .retry-btn text {
-      color: #f8fafc;
+      color: #FFF7E1;
     }
   }
 }
@@ -63,7 +63,7 @@
 
   .loading-text {
     font-size: 26rpx;
-    color: #64748b;
+    color: #6E6242;
   }
 }
 
@@ -80,7 +80,7 @@
 .hero-card,
 .section-card {
   background: #ffffff;
-  border: 1rpx solid #e2e8f0;
+  border: 1rpx solid #E9E2CF;
   border-radius: 28rpx;
   padding: 28rpx 24rpx;
   box-sizing: border-box;
@@ -102,7 +102,7 @@
   font-size: 40rpx;
   font-weight: 700;
   line-height: 1.4;
-  color: #0f172a;
+  color: #231C0B;
 }
 
 .hero-meta {
@@ -110,7 +110,7 @@
   margin-top: 10rpx;
   font-size: 24rpx;
   line-height: 1.7;
-  color: #64748b;
+  color: #6E6242;
 }
 
 .player-row {
@@ -148,7 +148,7 @@
   margin-top: 16rpx;
   font-size: 28rpx;
   font-weight: 600;
-  color: #0f172a;
+  color: #231C0B;
   text-align: center;
 }
 
@@ -161,7 +161,7 @@
 .vs-sub {
   margin-top: 8rpx;
   font-size: 22rpx;
-  color: #64748b;
+  color: #6E6242;
 }
 
 .score-row {
@@ -172,14 +172,14 @@
 .score-text {
   font-size: 72rpx;
   font-weight: 800;
-  color: #0f172a;
+  color: #231C0B;
 }
 
 .score-desc {
   display: block;
   margin-top: 8rpx;
   font-size: 24rpx;
-  color: #64748b;
+  color: #6E6242;
 }
 
 .summary-card {
@@ -204,7 +204,7 @@
   margin-top: 12rpx;
   font-size: 26rpx;
   line-height: 1.7;
-  color: #1e293b;
+  color: #1E180D;
 }
 
 .section-header {
@@ -217,12 +217,12 @@
 .section-title {
   font-size: 30rpx;
   font-weight: 700;
-  color: #0f172a;
+  color: #231C0B;
 }
 
 .section-tip {
   font-size: 22rpx;
-  color: #64748b;
+  color: #6E6242;
 }
 
 .evidence-list {
@@ -236,7 +236,7 @@
   display: flex;
   align-items: center;
   gap: 18rpx;
-  background: #f8fafc;
+  background: #FFF7E1;
   border-radius: 20rpx;
   padding: 22rpx 20rpx;
 }
@@ -245,14 +245,14 @@
   width: 60rpx;
   font-size: 22rpx;
   font-weight: 600;
-  color: #64748b;
+  color: #6E6242;
 }
 
 .evidence-text {
   flex: 1;
   font-size: 28rpx;
   line-height: 1.6;
-  color: #0f172a;
+  color: #231C0B;
 }
 
 .actions-card {
@@ -305,7 +305,7 @@
 
   text {
     font-size: 24rpx;
-    color: #64748b;
+    color: #6E6242;
   }
 }
 

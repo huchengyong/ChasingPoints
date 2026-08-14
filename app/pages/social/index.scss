@@ -4,7 +4,7 @@
   min-height: 100vh;
   height: 100vh;
   background: #ffffff;
-  color: #0f172a;
+  color: #231C0B;
   box-sizing: border-box;
   padding: 20rpx 24rpx 0;
   overflow: hidden;
@@ -66,7 +66,7 @@
 
 .hero-card {
   background: linear-gradient(135deg, #fffdf5 0%, #fff7dc 100%);
-  border: 1rpx solid #e5e7eb;
+  border: 1rpx solid #E9E2CF;
   border-radius: 28rpx;
   padding: 28rpx;
   box-sizing: border-box;
@@ -100,7 +100,7 @@
 .filter-chip-value {
   font-size: 24rpx;
   font-weight: 700;
-  color: #0f172a;
+  color: #231C0B;
 }
 
 .custom-date-card {
@@ -132,7 +132,7 @@
 .custom-date-value {
   font-size: 24rpx;
   font-weight: 600;
-  color: #0f172a;
+  color: #231C0B;
 }
 
 .hero-copy {
@@ -151,13 +151,13 @@
   font-size: 36rpx;
   line-height: 1.35;
   font-weight: 700;
-  color: #0f172a;
+  color: #231C0B;
 }
 
 .hero-desc {
   font-size: 24rpx;
   line-height: 1.6;
-  color: #64748b;
+  color: #6E6242;
 }
 
 .post-cover {
@@ -165,7 +165,7 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  background: #f8fafc;
+  background: #FAF8F2;
 }
 
 .post-overlay {
@@ -259,11 +259,11 @@
     width: 12rpx;
     height: 12rpx;
     border-radius: 50%;
-    background: #94a3b8;
+    background: #9A8C67;
   }
 
   text {
-    color: #94a3b8;
+    color: #9A8C67;
   }
 }
 
@@ -314,7 +314,7 @@
 
 .post-card {
   position: relative;
-  background: #0f172a;
+  background: #1e180d;
   border: 1rpx solid rgba(255, 255, 255, 0.12);
   border-radius: 24rpx;
   padding: 24rpx;
@@ -388,14 +388,14 @@
   margin-top: 16rpx;
   font-size: 30rpx;
   font-weight: 600;
-  color: #0f172a;
+  color: #231C0B;
 }
 
 .state-text {
   margin-top: 10rpx;
   font-size: 24rpx;
   line-height: 1.6;
-  color: #64748b;
+  color: #6E6242;
 }
 
 .state-cta {
@@ -416,6 +416,6 @@
 
   text {
     font-size: 22rpx;
-    color: #94a3b8;
+    color: #9A8C67;
   }
 }

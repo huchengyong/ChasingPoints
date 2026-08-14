@@ -10,7 +10,7 @@
         </view>
         <!-- #ifndef MP-WEIXIN -->
         <view class="header-right" @tap="goNotification">
-          <uni-icons type="chat" size="22" :color="isDarkMode ? '#e2e8f0' : '#1e293b'"></uni-icons>
+          <uni-icons type="chat" size="22" :color="isDarkMode ? '#3A2E16' : '#231C0B'"></uni-icons>
           <view v-if="notificationStore.unreadCount > 0" class="header-badge">
             <text>{{ notificationStore.unreadCount > 99 ? '99+' : notificationStore.unreadCount }}</text>
           </view>
@@ -63,7 +63,7 @@
           <view class="summary-card" @tap="handleSummaryAction('match')">
             <view class="summary-head">
               <text class="summary-label">最近状态</text>
-              <uni-icons type="right" size="14" :color="isDarkMode ? '#94a3b8' : '#64748b'"></uni-icons>
+              <uni-icons type="right" size="14" :color="isDarkMode ? '#9F926E' : '#6E6242'"></uni-icons>
             </view>
             <text class="summary-value">{{ recentMatchSummary.value }}</text>
             <text class="summary-desc">{{ recentMatchSummary.desc }}</text>
@@ -73,7 +73,7 @@
           <view class="summary-card" @tap="handleSummaryAction('ranking')">
             <view class="summary-head">
               <text class="summary-label">当前排名</text>
-              <uni-icons type="right" size="14" :color="isDarkMode ? '#94a3b8' : '#64748b'"></uni-icons>
+              <uni-icons type="right" size="14" :color="isDarkMode ? '#9F926E' : '#6E6242'"></uni-icons>
             </view>
             <text class="summary-value">{{ rankingSummary.value }}</text>
             <text class="summary-desc">{{ rankingSummary.desc }}</text>
@@ -86,7 +86,7 @@
             <text class="section-title">赛事情报</text>
             <view class="section-more" @tap="goTo('/subPages/tournament/index')">
               <text>全部情报</text>
-              <uni-icons type="right" size="14" :color="isDarkMode ? '#94a3b8' : '#94a3b8'"></uni-icons>
+              <uni-icons type="right" size="14" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
             </view>
           </view>
 
@@ -113,7 +113,7 @@
             <text class="section-title">排行焦点</text>
             <view class="section-more" @tap="goTo('/pages/ranking/index')">
               <text>完整榜单</text>
-              <uni-icons type="right" size="14" :color="isDarkMode ? '#94a3b8' : '#94a3b8'"></uni-icons>
+              <uni-icons type="right" size="14" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
             </view>
           </view>
 
@@ -141,7 +141,7 @@
             <text class="section-title">附近球房</text>
             <view class="section-more" @tap="goTo('/subPages/venue/index')">
               <text>查看球房</text>
-              <uni-icons type="right" size="14" :color="isDarkMode ? '#94a3b8' : '#94a3b8'"></uni-icons>
+              <uni-icons type="right" size="14" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
             </view>
           </view>
 
@@ -167,7 +167,7 @@
                   <text v-if="item.checkin_count" class="venue-preview-tag">{{ item.checkin_count }}人签到</text>
                 </view>
               </view>
-              <uni-icons type="right" size="18" :color="isDarkMode ? '#8b7a50' : '#cbd5e1'"></uni-icons>
+              <uni-icons type="right" size="18" :color="isDarkMode ? '#8b7a50' : '#9A8C67'"></uni-icons>
             </view>
           </view>
 

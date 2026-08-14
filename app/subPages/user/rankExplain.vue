@@ -18,7 +18,7 @@
 
 			<!-- 首次加载 -->
 			<view class="loading-wrapper" v-if="isInitialLoading">
-				<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+				<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 				<text class="loading-text">加载中...</text>
 			</view>
 

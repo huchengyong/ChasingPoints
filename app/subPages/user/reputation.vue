@@ -45,12 +45,12 @@
 				</view>
 
 				<view v-else-if="logsLoading && reputationLogs.length === 0" class="state-card">
-					<uni-icons type="spinner-cycle" size="32" :color="isDarkMode ? '#94a3b8' : '#64748b'"></uni-icons>
+					<uni-icons type="spinner-cycle" size="32" :color="isDarkMode ? '#9F926E' : '#6E6242'"></uni-icons>
 					<text class="state-title">正在加载信誉记录</text>
 				</view>
 
 				<view v-else-if="!logsLoading && reputationLogs.length === 0" class="state-card">
-					<uni-icons type="list" size="32" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+					<uni-icons type="list" size="32" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 					<text class="state-title">暂时还没有信誉变更记录</text>
 				</view>
 

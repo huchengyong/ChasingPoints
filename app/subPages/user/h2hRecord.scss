@@ -5,22 +5,22 @@ $primary-color: #4CAF50;
 $loss-red: #E57373;
 
 // 浅色模式变量
-$bg-light: #f6f7f8;
+$bg-light: #FAF8F2;
 $card-bg-light: #ffffff;
 $stats-bg-light: #f3f4f6;
 $text-primary-light: #111827;
-$text-secondary-light: #6b7280;
-$text-tertiary-light: #9ca3af;
-$border-color-light: #e5e7eb;
+$text-secondary-light: #6E6242;
+$text-tertiary-light: #9A8C67;
+$border-color-light: #E9E2CF;
 
 // 深色模式变量
 $bg-dark: #1E2A3A;
 $card-bg-dark: #2C3E50;
 $stats-bg-dark: rgba(30, 42, 58, 0.6);
 $text-primary-dark: #F5F5F5;
-$text-secondary-dark: #9ca3af;
-$text-tertiary-dark: #6b7280;
-$border-color-dark: #334155;
+$text-secondary-dark: #9A8C67;
+$text-tertiary-dark: #6E6242;
+$border-color-dark: #3A2E16;
 
 // 页面容器
 .h2h-record-container {
@@ -372,7 +372,7 @@ $border-color-dark: #334155;
     min-height: 78rpx;
     padding: 6rpx;
     border-radius: 10rpx;
-    background-color: #f8fafc;
+    background-color: #FAF8F2;
     box-sizing: border-box;
     transition: background-color 0.3s ease, opacity 0.3s ease;
 
@@ -426,7 +426,7 @@ $border-color-dark: #334155;
     font-size: 18rpx;
     font-weight: 400;
     line-height: 20rpx;
-    color: #475569;
+    color: #6E6242;
     transition: color 0.3s ease;
 }
 

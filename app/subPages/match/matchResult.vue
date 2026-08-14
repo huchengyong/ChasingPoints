@@ -200,7 +200,7 @@
 						</view>
 					</view>
 					<view v-else class="empty-state">
-						<uni-icons type="info" size="18" :color="isDarkMode ? '#94a3b8' : '#64748b'"></uni-icons>
+						<uni-icons type="info" size="18" :color="isDarkMode ? '#9F926E' : '#6E6242'"></uni-icons>
 						<text class="empty-state-text">暂无特殊战绩，本场战绩已正常计入记录。</text>
 					</view>
 					<view :class="['ranking-rights-card', rankingRightsSummary.tone]">
@@ -302,7 +302,7 @@ const matchData = ref({
 
 const statusBarHeight = ref(0)
 const { isDarkMode } = usePageTheme()
-const headerIconColor = computed(() => (isDarkMode.value ? '#f8fafc' : '#1f2937'))
+const headerIconColor = computed(() => (isDarkMode.value ? '#FFF7E1' : '#231C0B'))
 
 const refereeCard = computed(() => resolveRefereeIdentityCard({
 	refereeBound: matchData.value.referee_bound,
@@ -559,7 +559,7 @@ const getToneColor = (tone) => {
 			return '#06b6d4'
 		case 'slate':
 		default:
-			return '#64748b'
+			return '#6E6242'
 	}
 }
 

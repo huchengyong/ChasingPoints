@@ -1,7 +1,7 @@
 <template>
   <view class="opponent-record-container" :class="{ 'dark-mode': isDarkMode }">
     <view class="login-required" v-if="needLogin">
-      <uni-icons type="locked" size="64" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+      <uni-icons type="locked" size="64" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
       <text class="hint-text">{{ viewModel.loginHint }}</text>
       <button class="login-btn" @click="goLogin">去登录</button>
     </view>
@@ -9,7 +9,7 @@
     <template v-else>
       <view class="search-section">
         <view class="search-box">
-          <uni-icons type="search" size="20" color="#9ca3af"></uni-icons>
+          <uni-icons type="search" size="20" color="#9A8C67"></uni-icons>
           <input
             v-model="searchKeyword"
             type="text"
@@ -48,12 +48,12 @@
         @scrolltolower="onLoadMore"
       >
         <view class="loading-wrapper" v-if="isLoading && cardViewModels.length === 0">
-          <uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+          <uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
           <text class="loading-text">加载中...</text>
         </view>
 
         <view class="error-wrapper" v-else-if="loadFailed && cardViewModels.length === 0">
-          <uni-icons type="info-filled" size="52" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+          <uni-icons type="info-filled" size="52" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
           <text class="error-text">{{ loadErrorMessage || '过往对手加载失败' }}</text>
           <button class="retry-btn" @click="fetchOpponentList">
             <text>重新加载</text>
@@ -61,7 +61,7 @@
         </view>
 
         <view class="empty-wrapper" v-else-if="!isLoading && cardViewModels.length === 0">
-          <uni-icons type="contact" size="64" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+          <uni-icons type="contact" size="64" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
           <text class="empty-text">{{ emptyState.text }}</text>
           <text class="empty-hint">{{ emptyState.hint }}</text>
         </view>

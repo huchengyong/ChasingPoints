@@ -2,7 +2,7 @@
 	<view class="ranking-container" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 加载状态 -->
 		<view class="loading-wrapper" v-if="isLoading">
-			<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+			<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
@@ -21,7 +21,7 @@
 
 			<!-- 空数据状态 -->
 			<view class="empty-state" v-if="isEmpty">
-			    <uni-icons type="medal" size="128" :color="isDarkMode ? '#475569' : '#cbd5e1'" class="empty-icon"></uni-icons>
+			    <uni-icons type="medal" size="128" :color="isDarkMode ? '#9F926E' : '#9A8C67'" class="empty-icon"></uni-icons>
 			    <text class="empty-title">暂无排行数据</text>
 			    <text class="empty-subtitle">快去对战提升排名吧！</text>
 			    <button class="start-button" @click="handleStartMatch">

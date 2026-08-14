@@ -255,7 +255,7 @@ onShow(() => {
 <style lang="scss" scoped>
 .season-page {
 	min-height: 100vh;
-	background: #f1f5f9;
+	background: #FAF8F2;
 }
 .loading-state {
 	display: flex;
@@ -263,7 +263,7 @@ onShow(() => {
 	justify-content: center;
 	align-items: center;
 	min-height: 60vh;
-	.loading-text { font-size: 28rpx; color: #94a3b8; margin-top: 16rpx; }
+	.loading-text { font-size: 28rpx; color: #9A8C67; margin-top: 16rpx; }
 }
 .season-content {
 	padding: 20rpx 24rpx;
@@ -286,7 +286,7 @@ onShow(() => {
 	text {
 		font-size: 24rpx;
 		font-weight: 600;
-		color: #475569;
+		color: #6E6242;
 	}
 	&.active {
 		background: #fff7dc;
@@ -339,8 +339,8 @@ onShow(() => {
 	flex-direction: column;
 	align-items: center;
 	.no-season-icon { font-size: 64rpx; margin-bottom: 16rpx; }
-	.no-season-text { font-size: 28rpx; color: #94a3b8; }
-	.no-season-description { margin-top: 12rpx; font-size: 24rpx; color: #94a3b8; text-align: center; line-height: 1.6; }
+	.no-season-text { font-size: 28rpx; color: #9A8C67; }
+	.no-season-description { margin-top: 12rpx; font-size: 24rpx; color: #9A8C67; text-align: center; line-height: 1.6; }
 }
 .my-record-card {
 	background: #fff;
@@ -353,8 +353,8 @@ onShow(() => {
 		margin-top: 20rpx;
 		.stat-item {
 			text-align: center;
-			.stat-value { font-size: 40rpx; font-weight: 700; color: #1e293b; display: block; }
-			.stat-label { font-size: 22rpx; color: #94a3b8; }
+			.stat-value { font-size: 40rpx; font-weight: 700; color: #231C0B; display: block; }
+			.stat-label { font-size: 22rpx; color: #9A8C67; }
 		}
 	}
 		.record-rank {
@@ -386,7 +386,7 @@ onShow(() => {
 .card-title {
 	font-size: 30rpx;
 	font-weight: 600;
-	color: #1e293b;
+	color: #231C0B;
 }
 .leaderboard-list {
 	display: flex;
@@ -396,7 +396,7 @@ onShow(() => {
 	display: flex;
 	align-items: center;
 	padding: 16rpx 0;
-	border-bottom: 1rpx solid #f1f5f9;
+	border-bottom: 1rpx solid #FAF8F2;
 	&:last-child { border-bottom: none; }
 	.rank-num {
 		width: 48rpx;
@@ -407,11 +407,11 @@ onShow(() => {
 		justify-content: center;
 		font-size: 24rpx;
 		font-weight: 600;
-		color: #94a3b8;
-		background: #f1f5f9;
+		color: #9A8C67;
+		background: #FAF8F2;
 		margin-right: 16rpx;
 		&.top-1 { background: #fef3c7; color: #d97706; }
-		&.top-2 { background: #f1f5f9; color: #475569; }
+		&.top-2 { background: #FAF8F2; color: #6E6242; }
 		&.top-3 { background: #fed7aa; color: #c2410c; }
 	}
 	.rank-avatar {
@@ -419,14 +419,14 @@ onShow(() => {
 		height: 72rpx;
 		border-radius: 50%;
 		margin-right: 16rpx;
-		background: #e2e8f0;
+		background: #E9E2CF;
 	}
 	.rank-info {
 		flex: 1;
 		display: flex;
 		flex-direction: column;
-		.rank-name { font-size: 28rpx; color: #1e293b; font-weight: 500; }
-		.rank-score { font-size: 22rpx; color: #94a3b8; margin-top: 4rpx; }
+		.rank-name { font-size: 28rpx; color: #231C0B; font-weight: 500; }
+		.rank-score { font-size: 22rpx; color: #9A8C67; margin-top: 4rpx; }
 	}
 		.rank-stats {
 			.rank-wins { font-size: 24rpx; color: #c69200; font-weight: 500; }
@@ -436,7 +436,7 @@ onShow(() => {
 	text-align: center;
 	padding: 40rpx;
 	font-size: 28rpx;
-	color: #94a3b8;
+	color: #9A8C67;
 }
 	.load-more {
 		text-align: center;
@@ -448,7 +448,7 @@ onShow(() => {
 	text-align: center;
 	padding: 24rpx;
 	font-size: 24rpx;
-	color: #cbd5e1;
+	color: #9A8C67;
 }
 
 .season-page.dark-mode {

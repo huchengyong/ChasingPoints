@@ -197,7 +197,7 @@ onPullDownRefresh(() => {
 <style lang="scss" scoped>
 .requests-page {
 	min-height: 100vh;
-	background: #f1f5f9;
+	background: #FAF8F2;
 }
 
 .loading-state {
@@ -208,7 +208,7 @@ onPullDownRefresh(() => {
 	.loading-text {
 		margin-top: 16rpx;
 		font-size: 28rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 	}
 }
 
@@ -239,7 +239,7 @@ onPullDownRefresh(() => {
 			height: 96rpx;
 			border-radius: 50%;
 			border: 2rpx solid rgba(224, 174, 18, 0.16);
-			background: #f8fafc;
+			background: #FAF8F2;
 			flex-shrink: 0;
 		}
 
@@ -261,7 +261,7 @@ onPullDownRefresh(() => {
 			min-width: 0;
 			font-size: 30rpx;
 			font-weight: 600;
-			color: #1e293b;
+			color: #231C0B;
 			white-space: nowrap;
 			overflow: hidden;
 			text-overflow: ellipsis;
@@ -269,7 +269,7 @@ onPullDownRefresh(() => {
 
 		.request-time {
 			font-size: 22rpx;
-			color: #94a3b8;
+			color: #9A8C67;
 			white-space: nowrap;
 			flex-shrink: 0;
 		}
@@ -283,13 +283,13 @@ onPullDownRefresh(() => {
 			display: block;
 			font-size: 24rpx;
 			line-height: 1.5;
-			color: #64748b;
+			color: #6E6242;
 			overflow: hidden;
 			text-overflow: ellipsis;
 			white-space: nowrap;
 
 			&.is-muted {
-				color: #94a3b8;
+				color: #9A8C67;
 			}
 		}
 
@@ -318,8 +318,8 @@ onPullDownRefresh(() => {
 			}
 
 			.action-reject {
-				background: #f8fafc;
-				color: #64748b;
+				background: #FAF8F2;
+				color: #6E6242;
 				border: 1rpx solid rgba(148, 163, 184, 0.24);
 			}
 
@@ -347,7 +347,7 @@ onPullDownRefresh(() => {
 				}
 
 				&.rejected {
-					color: #94a3b8;
+					color: #9A8C67;
 				}
 			}
 		}
@@ -359,7 +359,7 @@ onPullDownRefresh(() => {
 		padding: 24rpx;
 		.load-more-text {
 			font-size: 26rpx;
-			color: #64748b;
+			color: #6E6242;
 		}
 	}
 }
@@ -376,7 +376,7 @@ onPullDownRefresh(() => {
 	}
 	.empty-text {
 		font-size: 28rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 	}
 }
 

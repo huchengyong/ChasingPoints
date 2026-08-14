@@ -24,7 +24,7 @@
 						</button>
 					</view>
 					<button class="filter-button" :class="{ active: isSpectatorFilterActive }" @click="openFilterPanel">
-						<uni-icons type="tune-filled" size="20" :color="isSpectatorFilterActive ? '#ffffff' : (isDarkMode ? '#d7c89b' : '#64748b')"></uni-icons>
+						<uni-icons type="tune-filled" size="20" :color="isSpectatorFilterActive ? '#ffffff' : (isDarkMode ? '#d7c89b' : '#6E6242')"></uni-icons>
 					</button>
 				</view>
 			</view>
@@ -37,7 +37,7 @@
 
 			<!-- 空数据状态 -->
 			<view v-else-if="!visibleCurrentMatch && spectatorMatches.length === 0" class="empty-state">
-				<uni-icons type="medal" size="128" color="#6b7280" class="empty-icon"></uni-icons>
+				<uni-icons type="medal" size="128" color="#6E6242" class="empty-icon"></uni-icons>
 				<text class="empty-title">{{ emptyState.title }}</text>
 				<text class="empty-subtitle">{{ emptyState.subtitle }}</text>
 				<button class="start-button" @click="handleStartMatch">
@@ -141,7 +141,7 @@
 							{{ match.game_type_name }}
 						</view>
 						<view class="match-status" :class="{ finished: match.status === 2 }">
-							<uni-icons type="circle" size="14" :color="match.status === 2 ? '#94a3b8' : '#22c55e'"></uni-icons>
+							<uni-icons type="circle" size="14" :color="match.status === 2 ? '#9A8C67' : '#22c55e'"></uni-icons>
 							<text>{{ getStatusText(match) }}</text>
 						</view>
 					</view>
@@ -160,7 +160,7 @@
 				<view class="filter-panel-header">
 					<text class="filter-panel-title">筛选对局</text>
 					<button class="filter-close" @click="closeFilterPanel">
-						<uni-icons type="closeempty" size="20" :color="isDarkMode ? '#d7c89b' : '#64748b'"></uni-icons>
+						<uni-icons type="closeempty" size="20" :color="isDarkMode ? '#d7c89b' : '#6E6242'"></uni-icons>
 					</button>
 				</view>
 
@@ -219,7 +219,7 @@
 						<text class="match-qr-subtitle">请让对手使用发起对局扫码入口识别</text>
 					</view>
 					<button class="match-qr-close" @click="closeMatchQrModal">
-						<uni-icons type="closeempty" size="22" color="#64748b"></uni-icons>
+						<uni-icons type="closeempty" size="22" color="#6E6242"></uni-icons>
 					</button>
 				</view>
 				<view class="match-qr-body">

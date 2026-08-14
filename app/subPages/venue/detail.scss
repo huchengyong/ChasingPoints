@@ -2,7 +2,7 @@
 	min-height: 100vh;
 	box-sizing: border-box;
 	padding: 24rpx 24rpx 180rpx;
-	background: linear-gradient(180deg, #ffffff 0%, #f8fafc 46%, #f8fafc 100%);
+	background: linear-gradient(180deg, #ffffff 0%, #FAF8F2 46%, #FAF8F2 100%);
 }
 
 .loading-state,
@@ -23,7 +23,7 @@
 .loading-text,
 .empty-state {
 	font-size: 28rpx;
-	color: #94a3b8;
+	color: #9A8C67;
 }
 
 .loading-text {
@@ -149,14 +149,14 @@
 	margin-top: 16rpx;
 	font-size: 32rpx;
 	font-weight: 700;
-	color: #0f172a;
+	color: #231C0B;
 }
 
 .placeholder-text {
 	margin-top: 12rpx;
 	font-size: 24rpx;
 	line-height: 1.6;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .info-card,
@@ -173,12 +173,12 @@
 .section-title {
 	font-size: 30rpx;
 	font-weight: 700;
-	color: #0f172a;
+	color: #231C0B;
 }
 
 .section-tip {
 	font-size: 22rpx;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .info-row {
@@ -186,7 +186,7 @@
 	align-items: flex-start;
 	gap: 14rpx;
 	padding: 16rpx 0;
-	border-bottom: 1rpx solid #e2e8f0;
+	border-bottom: 1rpx solid #E9E2CF;
 
 	&:last-of-type {
 		border-bottom: none;
@@ -201,7 +201,7 @@
 .info-label {
 	display: block;
 	font-size: 20rpx;
-	color: #94a3b8;
+	color: #9A8C67;
 }
 
 .info-text {
@@ -209,7 +209,7 @@
 	margin-top: 8rpx;
 	font-size: 26rpx;
 	line-height: 1.5;
-	color: #0f172a;
+	color: #231C0B;
 }
 
 .info-tags {
@@ -235,14 +235,14 @@
 	width: 60rpx;
 	height: 60rpx;
 	border-radius: 50%;
-	background: #e2e8f0;
+	background: #E9E2CF;
 }
 
 .empty-checkin {
 	display: block;
 	font-size: 24rpx;
 	line-height: 1.6;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .action-bar {

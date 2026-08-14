@@ -3,7 +3,7 @@
 	padding: 24rpx 24rpx 220rpx;
 	box-sizing: border-box;
 	background:
-		linear-gradient(180deg, #ffffff 0%, #f8fafc 46%, #f8fafc 100%);
+		linear-gradient(180deg, #ffffff 0%, #FAF8F2 46%, #FAF8F2 100%);
 }
 
 .page-intro,
@@ -17,7 +17,7 @@
 	margin-bottom: 20rpx;
 	padding: 32rpx 28rpx;
 	border-radius: 28rpx;
-	background: linear-gradient(135deg, #0f172a 0%, #7c5b12 60%, #38bdf8 100%);
+	background: linear-gradient(135deg, #3c2b08 0%, #7c5b12 60%, #c69200 100%);
 	box-shadow: 0 18rpx 40rpx rgba(37, 99, 235, 0.14);
 }
 
@@ -139,7 +139,7 @@
 	display: block;
 	font-size: 32rpx;
 	font-weight: 700;
-	color: #0f172a;
+	color: #231C0B;
 }
 
 .section-tip {
@@ -147,12 +147,12 @@
 	margin-top: 10rpx;
 	font-size: 22rpx;
 	line-height: 1.5;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .form-group {
 	padding: 24rpx 0 28rpx;
-	border-bottom: 1rpx solid #e2e8f0;
+	border-bottom: 1rpx solid #E9E2CF;
 
 	&:last-child {
 		border-bottom: none;
@@ -169,7 +169,7 @@
 .form-label {
 	font-size: 28rpx;
 	font-weight: 600;
-	color: #1e293b;
+	color: #231C0B;
 }
 
 .label-required,
@@ -185,7 +185,7 @@
 }
 
 .label-optional {
-	color: #64748b;
+	color: #6E6242;
 }
 
 .label-complete {
@@ -197,9 +197,9 @@
 	width: 100%;
 	border-radius: 20rpx;
 	box-sizing: border-box;
-	background: #f8fafc;
-	color: #0f172a;
-	border: 1rpx solid #e2e8f0;
+	background: #FAF8F2;
+	color: #231C0B;
+	border: 1rpx solid #E9E2CF;
 }
 
 .form-input {
@@ -222,18 +222,18 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	color: #0f172a;
+	color: #231C0B;
 }
 
 .form-picker.is-placeholder .picker-value {
-	color: #94a3b8;
+	color: #9A8C67;
 }
 
 .picker-arrow {
 	flex-shrink: 0;
 	font-size: 34rpx;
 	line-height: 1;
-	color: #94a3b8;
+	color: #9A8C67;
 }
 
 .form-textarea {
@@ -249,7 +249,7 @@
 	margin-top: 12rpx;
 	font-size: 22rpx;
 	line-height: 1.5;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .field-meta {
@@ -268,7 +268,7 @@
 .field-count {
 	flex-shrink: 0;
 	font-size: 22rpx;
-	color: #94a3b8;
+	color: #9A8C67;
 }
 
 .form-group.is-missing {
@@ -303,7 +303,7 @@
 	display: block;
 	font-size: 28rpx;
 	font-weight: 600;
-	color: #0f172a;
+	color: #231C0B;
 }
 
 .location-placeholder {
@@ -315,7 +315,7 @@
 	margin-top: 8rpx;
 	font-size: 22rpx;
 	line-height: 1.5;
-	color: #64748b;
+	color: #6E6242;
 	word-break: break-all;
 }
 
@@ -369,7 +369,7 @@
 	display: block;
 	font-size: 26rpx;
 	font-weight: 600;
-	color: #0f172a;
+	color: #231C0B;
 }
 
 .submit-tip {
@@ -377,7 +377,7 @@
 	margin-top: 8rpx;
 	font-size: 22rpx;
 	line-height: 1.5;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .submit-btn {

@@ -1,11 +1,11 @@
 $primary-color: #e0ae12;
 $primary-strong: #c69200;
-$bg-light: #f6f7f8;
+$bg-light: #FAF8F2;
 $card-bg-light: #ffffff;
-$card-soft-light: #f8fafc;
-$text-primary-light: #0f172a;
-$text-secondary-light: #64748b;
-$text-muted-light: #94a3b8;
+$card-soft-light: #FAF8F2;
+$text-primary-light: #231C0B;
+$text-secondary-light: #6E6242;
+$text-muted-light: #9A8C67;
 $border-light: rgba(148, 163, 184, 0.16);
 $bg-dark: #141109;
 $card-bg-dark: #1e180d;
@@ -326,7 +326,7 @@ $border-dark: rgba(247, 231, 168, 0.12);
 		font-weight: 500;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		color: #475569;
+		color: #6E6242;
 	}
 }
 
@@ -615,7 +615,7 @@ $border-dark: rgba(247, 231, 168, 0.12);
 	height: 78rpx;
 	flex-shrink: 0;
 	border-radius: 50%;
-	background: #f1f5f9;
+	background: #FAF8F2;
 }
 
 .match-player-name {
@@ -942,7 +942,7 @@ $border-dark: rgba(247, 231, 168, 0.12);
 		font-weight: 700;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		color: #475569;
+		color: #6E6242;
 	}
 }
 
@@ -977,7 +977,7 @@ $border-dark: rgba(247, 231, 168, 0.12);
 .status-card .skeleton-score,
 .status-card .skeleton-button,
 .status-card .skeleton-circle {
-	background: linear-gradient(90deg, #eef2f7, #f8fafc, #eef2f7);
+	background: linear-gradient(90deg, #eef2f7, #FAF8F2, #eef2f7);
 	background-size: 200% 100%;
 }
 

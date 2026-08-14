@@ -3,7 +3,7 @@
 		<!-- 搜索框 -->
 		<view class="search-bar">
 			<view class="search-input-wrap">
-				<uni-icons type="search" size="18" color="#94a3b8"></uni-icons>
+				<uni-icons type="search" size="18" color="#9A8C67"></uni-icons>
 				<input
 					class="search-input"
 					v-model="keyword"
@@ -12,7 +12,7 @@
 					@confirm="doSearch"
 				/>
 				<view v-if="keyword" class="clear-btn" @tap="clearSearch">
-					<uni-icons type="clear" size="18" color="#94a3b8"></uni-icons>
+					<uni-icons type="clear" size="18" color="#9A8C67"></uni-icons>
 				</view>
 			</view>
 			<view class="search-btn" @tap="doSearch">
@@ -133,7 +133,7 @@ const handleAdd = async (item) => {
 <style lang="scss" scoped>
 .add-friend-page {
 	min-height: 100vh;
-	background: #f1f5f9;
+	background: #FAF8F2;
 }
 
 .search-bar {
@@ -147,7 +147,7 @@ const handleAdd = async (item) => {
 		flex: 1;
 		display: flex;
 		align-items: center;
-		background: #f1f5f9;
+		background: #FAF8F2;
 		border-radius: 36rpx;
 		padding: 14rpx 20rpx;
 		gap: 12rpx;
@@ -155,7 +155,7 @@ const handleAdd = async (item) => {
 		.search-input {
 			flex: 1;
 			font-size: 28rpx;
-			color: #1e293b;
+			color: #231C0B;
 		}
 		.clear-btn {
 			padding: 4rpx;
@@ -181,7 +181,7 @@ const handleAdd = async (item) => {
 	.loading-text {
 		margin-top: 16rpx;
 		font-size: 28rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 	}
 }
 
@@ -194,7 +194,7 @@ const handleAdd = async (item) => {
 		padding-top: 120rpx;
 		.empty-text {
 			font-size: 28rpx;
-			color: #94a3b8;
+			color: #9A8C67;
 		}
 	}
 
@@ -221,11 +221,11 @@ const handleAdd = async (item) => {
 		.user-name {
 			font-size: 30rpx;
 			font-weight: 500;
-			color: #1e293b;
+			color: #231C0B;
 		}
 		.user-id {
 			font-size: 24rpx;
-			color: #94a3b8;
+			color: #9A8C67;
 			margin-top: 4rpx;
 		}
 	}
@@ -244,8 +244,8 @@ const handleAdd = async (item) => {
 				color: #ffffff;
 			}
 			&.pending {
-				background: #e2e8f0;
-				color: #94a3b8;
+				background: #E9E2CF;
+				color: #9A8C67;
 			}
 			&.friend {
 				background: #f0fdf4;
@@ -267,7 +267,7 @@ const handleAdd = async (item) => {
 	}
 	.guide-text {
 		font-size: 28rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 	}
 }
 

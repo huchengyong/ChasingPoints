@@ -5,7 +5,7 @@ $text-primary-light: #18222d;
 $text-secondary-light: #667687;
 $shadow-light: 0 24rpx 48rpx rgba(17, 41, 69, 0.08);
 
-$bg-dark: #101922;
+$bg-dark: #141109;
 $surface-dark: #223241;
 $line-dark: rgba(255, 255, 255, 0.08);
 $text-primary-dark: #f4f7fb;
@@ -1121,12 +1121,12 @@ $success: #1bb56b;
 
 .dark-mode {
 	background:
-		radial-gradient(circle at top, rgba(11, 122, 255, 0.18), transparent 32%),
-		linear-gradient(180deg, #0f1720 0%, #101922 50%, #0c141d 100%);
+		radial-gradient(circle at top, rgba(224, 174, 18, 0.16), transparent 32%),
+		linear-gradient(180deg, #241d10 0%, #141109 50%, #0c0a06 100%);
 	color: $text-primary-dark;
 
 	.header {
-		background: rgba(16, 25, 34, 0.86);
+		background: rgba(20, 17, 9, 0.86);
 		border-bottom-color: rgba(255, 255, 255, 0.06);
 
 		.game-title {

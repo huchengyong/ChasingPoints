@@ -120,15 +120,15 @@ onLoad((options) => {
 <style lang="scss" scoped>
 .share-page {
 	min-height: 100vh;
-	background: #f8fafc;
+	background: #FAF8F2;
 	padding-bottom: 140rpx;
 
 	&.dark-mode {
-		background: #0f172a;
+		background: #231C0B;
 
 		.loading-text,
 		.error-state {
-			color: #94a3b8;
+			color: #9F926E;
 		}
 
 		.poster-image {
@@ -136,7 +136,7 @@ onLoad((options) => {
 		}
 
 		.action-bar {
-			background: #1e293b;
+			background: #231C0B;
 			border-top-color: transparent;
 		}
 	}
@@ -147,7 +147,7 @@ onLoad((options) => {
 	align-items: center;
 	justify-content: center;
 	min-height: 60vh;
-	.loading-text { font-size: 28rpx; color: #64748b; margin-top: 16rpx; }
+	.loading-text { font-size: 28rpx; color: #6E6242; margin-top: 16rpx; }
 }
 .poster-preview {
 	padding: 40rpx 48rpx;
@@ -163,7 +163,7 @@ onLoad((options) => {
 	justify-content: center;
 	min-height: 50vh;
 	font-size: 28rpx;
-	color: #64748b;
+	color: #6E6242;
 }
 .action-bar {
 	position: fixed;
@@ -173,7 +173,7 @@ onLoad((options) => {
 	padding: 20rpx 48rpx;
 	padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
 	background: #ffffff;
-	border-top: 1rpx solid #e2e8f0;
+	border-top: 1rpx solid #E9E2CF;
 	.save-btn {
 		display: flex;
 		align-items: center;

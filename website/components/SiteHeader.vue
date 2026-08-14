@@ -75,7 +75,7 @@ defineProps<{
 
 .site-header__link:hover,
 .site-header__link:focus-visible {
-  color: #1f1a10;
+  color: var(--ui-text-primary);
 }
 
 .site-header__cta {
@@ -86,10 +86,10 @@ defineProps<{
   height: 44px;
   padding: 0 18px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #d9a617, #bb8400);
+  background: linear-gradient(135deg, var(--ui-brand-gradient-start), var(--ui-brand-gradient-end));
   color: #fff;
   font-weight: 600;
-  box-shadow: 0 12px 30px rgba(187, 132, 0, 0.22);
+  box-shadow: var(--ui-shadow-primary);
 }
 
 @media (max-width: 860px) {

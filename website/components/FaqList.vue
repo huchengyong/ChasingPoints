@@ -36,7 +36,7 @@ defineProps<{
 
 .section-heading__eyebrow {
   margin: 0 0 12px;
-  color: #9f6c00;
+  color: var(--ui-brand-strong);
   font-weight: 600;
 }
 

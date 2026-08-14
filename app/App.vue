@@ -440,40 +440,83 @@
 
 	/* 全局 CSS 变量定义 - 亮色主题（默认） */
 	page {
-		/* 主色调 */
-		--primary-color: #e0ae12;
-		--primary-color-light: rgba(224, 174, 18, 0.14);
+		/* 品牌色 */
+		--ui-brand-primary: #E0AE12;
+		--ui-brand-strong: #C69200;
+		--ui-brand-gradient-start: #D9A617;
+		--ui-brand-gradient-end: #BB8400;
+		--ui-brand-tint: rgba(224, 174, 18, 0.14);
 
-		/* 背景色 */
-		--bg-color: #ffffff;
-		--card-bg: #ffffff;
-		--input-bg: #ffffff;
+		/* 表面色 */
+		--ui-surface-page: #F7F4EC;
+		--ui-surface-card: #FFFFFF;
+		--ui-surface-subtle: #FAF8F2;
 
-		/* 文字颜色 */
-		--text-primary: #0f172a;
-		--text-secondary: #64748b;
-		--text-tertiary: #94a3b8;
+		/* 文字色 */
+		--ui-text-primary: #231C0B;
+		--ui-text-secondary: #6E6242;
+		--ui-text-muted: #9A8C67;
 
-		/* 边框颜色 */
-		--border-color: #e5e7eb;
+		/* 边框 */
+		--ui-border-default: #E9E2CF;
 
-		/* 其他 */
-		--divider-color: #e5e7eb;
-		--danger-color: #ef4444;
+		/* 语义色 */
+		--ui-success: #18B05B;
+		--ui-warning: #F97316;
+		--ui-danger: #EF4444;
+		--ui-info: #3B82F6;
+
+		/* 圆角 */
+		--ui-radius-sm: 12rpx;
+		--ui-radius-md: 18rpx;
+		--ui-radius-lg: 24rpx;
+		--ui-radius-xl: 32rpx;
+		--ui-radius-pill: 999rpx;
+
+		/* 阴影 */
+		--ui-shadow-soft: 0 2rpx 8rpx rgba(31, 26, 16, 0.05);
+		--ui-shadow-primary: 0 8rpx 32rpx rgba(224, 174, 18, 0.22);
+		--ui-shadow-card: 0 16rpx 40rpx rgba(31, 26, 16, 0.08);
+
+		/* 兼容别名：迁移期保留，指向语义 Token */
+		--primary-color: var(--ui-brand-primary);
+		--primary-color-light: var(--ui-brand-tint);
+		--bg-color: var(--ui-surface-page);
+		--card-bg: var(--ui-surface-card);
+		--input-bg: var(--ui-surface-card);
+		--text-primary: var(--ui-text-primary);
+		--text-secondary: var(--ui-text-secondary);
+		--text-tertiary: var(--ui-text-muted);
+		--border-color: var(--ui-border-default);
+		--divider-color: var(--ui-border-default);
+		--danger-color: var(--ui-danger);
 	}
 
 	/* 暗色变量由应用最终计算出的主题控制，避免手动浅色与系统暗色互相覆盖。 */
 	.dark-mode {
-		--primary-color: #e0ae12;
-		--primary-color-light: rgba(224, 174, 18, 0.2);
-		--bg-color: #141109;
-		--card-bg: #1e180d;
-		--input-bg: #1e180d;
-		--text-primary: #fff7e1;
-		--text-secondary: #d7c89b;
-		--text-tertiary: #9f926e;
-		--border-color: #3a2e16;
-		--divider-color: #241d0f;
-		--danger-color: #ef4444;
+		--ui-brand-primary: #E0AE12;
+		--ui-brand-strong: #F0C542;
+		--ui-brand-gradient-start: #E0AE12;
+		--ui-brand-gradient-end: #A97500;
+		--ui-brand-tint: rgba(224, 174, 18, 0.20);
+
+		--ui-surface-page: #141109;
+		--ui-surface-card: #1E180D;
+		--ui-surface-subtle: #241D10;
+
+		--ui-text-primary: #FFF7E1;
+		--ui-text-secondary: #D7C89B;
+		--ui-text-muted: #9F926E;
+
+		--ui-border-default: #3A2E16;
+
+		--ui-success: #22C55E;
+		--ui-warning: #F97316;
+		--ui-danger: #EF4444;
+		--ui-info: #60A5FA;
+
+		--ui-shadow-soft: 0 2rpx 8rpx rgba(0, 0, 0, 0.20);
+		--ui-shadow-primary: 0 8rpx 32rpx rgba(0, 0, 0, 0.28);
+		--ui-shadow-card: 0 16rpx 40rpx rgba(0, 0, 0, 0.24);
 	}
 	</style>

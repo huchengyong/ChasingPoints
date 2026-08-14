@@ -70,6 +70,7 @@ app/
 - 新增首屏读取逻辑时，应测试首次进入、重复 `onShow`、并发请求、退出/切号和旧 in-flight 返回等关键请求图。
 
 ## THEME AND UI CONSTRAINTS
+- 公开用户界面的品牌、颜色、间距、圆角、组件与可访问性规范统一遵循仓库根级 [DESIGN.md](/Users/wisesearch/Projects/ChasingPoints/DESIGN.md)。
 - 主题变量必须同时兼容 `theme.json`、`App.vue` 中的 CSS 变量和 `store/theme.js` 的运行时切换。
 - 主题色背景按钮文字统一使用白色 `#ffffff`。
 - 微信小程序 WXSS 不支持 `*` 通配选择器。任何会编译到 MP-WEIXIN 的 `.vue` / `.scss` 都禁止使用 `*`、`*::before`、`*::after`，包括 scoped 样式中的 `.container *`（会生成 `.container *.data-v-*` 并导致真机编译失败）；改用明确的类选择器或 `view`、`text`、`button`、`image`、`scroll-view` 等组件选择器。仅供其他端使用的规则必须通过 `#ifndef MP-WEIXIN` 排除。

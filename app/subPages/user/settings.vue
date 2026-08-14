@@ -12,7 +12,7 @@
 					</view>
 					<view class="menu-right">
 						<text class="menu-value">点击编辑</text>
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#9A8C67'"></uni-icons>
 					</view>
 				</view>
 				<view class="menu-item" @click="openEditProfile">
@@ -24,7 +24,7 @@
 					</view>
 					<view class="menu-right">
 						<text class="menu-value">{{ userNickname }}</text>
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#9A8C67'"></uni-icons>
 					</view>
 				</view>
 				<view class="menu-item" @click="handlePhoneRow">
@@ -36,7 +36,7 @@
 					</view>
 					<view class="menu-right">
 						<text class="menu-value">{{ displayPhoneText }}</text>
-						<uni-icons v-if="canBindPhone" type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
+						<uni-icons v-if="canBindPhone" type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#9A8C67'"></uni-icons>
 					</view>
 				</view>
 				<view class="menu-item theme-menu-item">
@@ -66,7 +66,7 @@
 						<text class="menu-text">通知管理</text>
 					</view>
 					<view class="menu-right">
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#9A8C67'"></uni-icons>
 					</view>
 				</view>
 				<view class="menu-item" @click="toggleHideMatch">
@@ -91,7 +91,7 @@
 						<text class="menu-text">隐私政策</text>
 					</view>
 					<view class="menu-right">
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#9A8C67'"></uni-icons>
 					</view>
 				</view>
 				<view class="menu-item" @click="handleAgreement">
@@ -102,7 +102,7 @@
 						<text class="menu-text">用户协议</text>
 					</view>
 					<view class="menu-right">
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#9A8C67'"></uni-icons>
 					</view>
 				</view>
 				<view class="menu-item" @click="handleHelp">
@@ -116,7 +116,7 @@
 						</view>
 					</view>
 					<view class="menu-right">
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#9A8C67'"></uni-icons>
 					</view>
 				</view>
 			</view>

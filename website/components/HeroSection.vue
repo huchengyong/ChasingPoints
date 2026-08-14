@@ -74,8 +74,8 @@ defineProps<{
   margin: 0 0 18px;
   padding: 8px 14px;
   border-radius: 999px;
-  background: rgba(217, 166, 23, 0.12);
-  color: #9f6c00;
+  background: var(--ui-brand-tint);
+  color: var(--ui-brand-strong);
   font-size: 0.92rem;
   font-weight: 600;
 }
@@ -115,9 +115,9 @@ defineProps<{
 }
 
 .hero__primary {
-  background: linear-gradient(135deg, #d9a617, #bb8400);
+  background: linear-gradient(135deg, var(--ui-brand-gradient-start), var(--ui-brand-gradient-end));
   color: #fff;
-  box-shadow: 0 18px 34px rgba(187, 132, 0, 0.24);
+  box-shadow: var(--ui-shadow-primary);
 }
 
 .hero__secondary {
@@ -174,7 +174,7 @@ defineProps<{
   border: 1px solid rgba(255, 247, 225, 0.08);
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.04);
-  color: #fff7e1;
+  color: var(--ui-text-on-accent);
 }
 
 .hero__stat-title,

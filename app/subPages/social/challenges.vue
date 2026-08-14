@@ -344,7 +344,7 @@ onUnmounted(() => {
 <style lang="scss" scoped>
 .challenges-page {
 	min-height: 100vh;
-	background: #f1f5f9;
+	background: #FAF8F2;
 	padding-bottom: 32rpx;
 }
 .page-tip {
@@ -386,7 +386,7 @@ onUnmounted(() => {
 		display: block;
 		margin-top: 8rpx;
 		font-size: 22rpx;
-		color: #64748b;
+		color: #6E6242;
 	}
 }
 .tab-bar {
@@ -399,7 +399,7 @@ onUnmounted(() => {
 		text-align: center;
 		padding: 24rpx 0;
 		font-size: 28rpx;
-		color: #64748b;
+		color: #6E6242;
 		position: relative;
 		&.active {
 			color: #C69200;
@@ -438,7 +438,7 @@ onUnmounted(() => {
 	align-items: center;
 	justify-content: center;
 	min-height: 50vh;
-	.loading-text { font-size: 28rpx; color: #94a3b8; margin-top: 16rpx; }
+	.loading-text { font-size: 28rpx; color: #9A8C67; margin-top: 16rpx; }
 }
 .challenge-list {
 	padding: 20rpx 24rpx;
@@ -456,13 +456,13 @@ onUnmounted(() => {
 			height: 80rpx;
 			border-radius: 50%;
 			margin-right: 16rpx;
-			background: #e2e8f0;
+			background: #E9E2CF;
 		}
 		.challenge-info {
 			flex: 1;
-			.challenge-name { font-size: 30rpx; font-weight: 500; color: #1e293b; display: block; }
-			.challenge-game { font-size: 24rpx; color: #94a3b8; margin-top: 4rpx; }
-			.challenge-direction { font-size: 22rpx; color: #cbd5e1; margin-top: 4rpx; display: block; }
+			.challenge-name { font-size: 30rpx; font-weight: 500; color: #231C0B; display: block; }
+			.challenge-game { font-size: 24rpx; color: #9A8C67; margin-top: 4rpx; }
+			.challenge-direction { font-size: 22rpx; color: #9A8C67; margin-top: 4rpx; display: block; }
 		}
 		.challenge-status {
 			padding: 6rpx 16rpx;
@@ -471,22 +471,22 @@ onUnmounted(() => {
 			&.status-0 { background: #fef3c7; color: #d97706; }
 			&.status-1 { background: #dcfce7; color: #16a34a; }
 			&.status-2 { background: #fee2e2; color: #dc2626; }
-			&.status-3 { background: #f1f5f9; color: #94a3b8; }
+			&.status-3 { background: #FAF8F2; color: #9A8C67; }
 		}
 	}
 	.challenge-message {
 		margin-top: 12rpx;
 		padding: 12rpx 16rpx;
-		background: #f8fafc;
+		background: #FAF8F2;
 		border-radius: 8rpx;
 		font-size: 26rpx;
-		color: #475569;
+		color: #6E6242;
 		font-style: italic;
 	}
 	.card-time {
 		margin-top: 12rpx;
 		font-size: 22rpx;
-		color: #cbd5e1;
+		color: #9A8C67;
 	}
 	.card-link {
 		margin-top: 16rpx;
@@ -509,10 +509,10 @@ onUnmounted(() => {
 			border-radius: 10rpx;
 			font-size: 28rpx;
 		}
-		.reject-btn { background: #f1f5f9; color: #64748b; }
-		.accept-btn { background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%); color: #1f2937; font-weight: 600; }
+		.reject-btn { background: #FAF8F2; color: #6E6242; }
+		.accept-btn { background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%); color: #231C0B; font-weight: 600; }
 		.ghost-btn { background: rgba(224, 174, 18, 0.12); color: #C69200; }
-		.linked-btn { background: #1f2937; color: #ffffff; font-weight: 600; }
+		.linked-btn { background: #1E180D; color: #ffffff; font-weight: 600; }
 	}
 }
 .empty-state {
@@ -522,7 +522,7 @@ onUnmounted(() => {
 	justify-content: center;
 	min-height: 50vh;
 	.empty-icon { font-size: 80rpx; margin-bottom: 16rpx; }
-	.empty-text { font-size: 28rpx; color: #94a3b8; }
+	.empty-text { font-size: 28rpx; color: #9A8C67; }
 }
 .modal-overlay {
 	position: fixed;
@@ -538,8 +538,8 @@ onUnmounted(() => {
 	background: #fff;
 	border-radius: 24rpx;
 	padding: 40rpx;
-	.modal-title { font-size: 34rpx; font-weight: 700; color: #1e293b; display: block; text-align: center; }
-	.modal-subtitle { font-size: 26rpx; color: #94a3b8; display: block; text-align: center; margin: 12rpx 0 24rpx; }
+	.modal-title { font-size: 34rpx; font-weight: 700; color: #231C0B; display: block; text-align: center; }
+	.modal-subtitle { font-size: 26rpx; color: #9A8C67; display: block; text-align: center; margin: 12rpx 0 24rpx; }
 	.game-type-options {
 		display: flex;
 		gap: 12rpx;
@@ -549,16 +549,16 @@ onUnmounted(() => {
 			text-align: center;
 			padding: 16rpx;
 			border-radius: 10rpx;
-			background: #f1f5f9;
+			background: #FAF8F2;
 			font-size: 26rpx;
-			color: #475569;
-			&.selected { background: #E0AE12; color: #1f2937; }
+			color: #6E6242;
+			&.selected { background: #E0AE12; color: #231C0B; }
 		}
 	}
 	.message-input {
 		width: 100%;
 		padding: 16rpx;
-		border: 2rpx solid #e2e8f0;
+		border: 2rpx solid #E9E2CF;
 		border-radius: 10rpx;
 		font-size: 28rpx;
 		margin-bottom: 24rpx;
@@ -573,8 +573,8 @@ onUnmounted(() => {
 			border-radius: 12rpx;
 			font-size: 28rpx;
 		}
-		.cancel-btn { background: #f1f5f9; color: #64748b; }
-		.confirm-btn { background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%); color: #1f2937; font-weight: 600; }
+		.cancel-btn { background: #FAF8F2; color: #6E6242; }
+		.confirm-btn { background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%); color: #231C0B; font-weight: 600; }
 	}
 }
 

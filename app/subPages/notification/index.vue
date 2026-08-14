@@ -27,7 +27,7 @@
 					<text class="item-time">{{ item.created_at }}</text>
 				</view>
 				<view class="item-delete" @tap.stop="handleDelete(item.id)">
-					<uni-icons type="trash" size="18" color="#94a3b8"></uni-icons>
+					<uni-icons type="trash" size="18" color="#9A8C67"></uni-icons>
 				</view>
 			</view>
 		</view>
@@ -254,7 +254,7 @@ onPullDownRefresh(() => {
 <style lang="scss" scoped>
 .notification-page {
 	min-height: 100vh;
-	background: #f1f5f9;
+	background: #FAF8F2;
 }
 
 .top-bar {
@@ -263,11 +263,11 @@ onPullDownRefresh(() => {
 	align-items: center;
 	padding: 24rpx 32rpx;
 	background: #fff;
-	border-bottom: 1rpx solid #f1f5f9;
+	border-bottom: 1rpx solid #FAF8F2;
 
 	.page-subtitle {
 		font-size: 28rpx;
-		color: #64748b;
+		color: #6E6242;
 	}
 		.read-all-btn {
 			font-size: 26rpx;
@@ -288,7 +288,7 @@ onPullDownRefresh(() => {
 		gap: 16rpx;
 
 			&.unread {
-				background: #f8fafc;
+				background: #FAF8F2;
 				border-left: 6rpx solid #e0ae12;
 			}
 
@@ -307,7 +307,7 @@ onPullDownRefresh(() => {
 			&.type-match_result { background: rgba(14, 165, 233, 0.12); }
 			&.type-rank_change { background: rgba(59, 130, 246, 0.12); }
 			&.type-friend_request { background: #f3e8ff; }
-			&.type-system { background: #f1f5f9; }
+			&.type-system { background: #FAF8F2; }
 
 			.icon-text {
 				font-size: 28rpx;
@@ -327,7 +327,7 @@ onPullDownRefresh(() => {
 				.item-title {
 					font-size: 28rpx;
 					font-weight: 600;
-					color: #1e293b;
+					color: #231C0B;
 				}
 					.unread-dot {
 						width: 12rpx;
@@ -340,7 +340,7 @@ onPullDownRefresh(() => {
 
 			.item-body {
 				font-size: 26rpx;
-				color: #64748b;
+				color: #6E6242;
 				display: block;
 				margin-bottom: 8rpx;
 				overflow: hidden;
@@ -350,7 +350,7 @@ onPullDownRefresh(() => {
 
 			.item-time {
 				font-size: 22rpx;
-				color: #94a3b8;
+				color: #9A8C67;
 			}
 		}
 
@@ -373,12 +373,12 @@ onPullDownRefresh(() => {
 	}
 	.empty-text {
 		font-size: 30rpx;
-		color: #64748b;
+		color: #6E6242;
 		margin-bottom: 8rpx;
 	}
 	.empty-hint {
 		font-size: 24rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 	}
 }
 

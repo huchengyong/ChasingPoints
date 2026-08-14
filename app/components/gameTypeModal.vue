@@ -235,7 +235,7 @@ $dark-cancel-bg: #27272a;
 						color: #ffffff;
 					}
 
-				&:disabled {
+				&[disabled] {
 					opacity: 0.5;
 				}
 			}

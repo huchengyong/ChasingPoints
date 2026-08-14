@@ -49,21 +49,21 @@
 					<text class="section-tip">{{ venue.city || '未标注城市' }}</text>
 				</view>
 				<view class="info-row">
-					<uni-icons type="location" size="16" color="#94a3b8"></uni-icons>
+					<uni-icons type="location" size="16" color="#9A8C67"></uni-icons>
 					<view class="info-copy">
 						<text class="info-label">详细地址</text>
 						<text class="info-text">{{ venue.address || '暂无地址' }}</text>
 					</view>
 				</view>
 				<view class="info-row" v-if="venue.phone">
-					<uni-icons type="phone" size="16" color="#94a3b8"></uni-icons>
+					<uni-icons type="phone" size="16" color="#9A8C67"></uni-icons>
 					<view class="info-copy">
 						<text class="info-label">联系电话</text>
 						<text class="info-text">{{ venue.phone }}</text>
 					</view>
 				</view>
 				<view class="info-row" v-if="venue.business_hours">
-					<uni-icons type="calendar" size="16" color="#94a3b8"></uni-icons>
+					<uni-icons type="calendar" size="16" color="#9A8C67"></uni-icons>
 					<view class="info-copy">
 						<text class="info-label">营业时间</text>
 						<text class="info-text">{{ venue.business_hours }}</text>

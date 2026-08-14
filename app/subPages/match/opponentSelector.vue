@@ -31,7 +31,7 @@
 				<uni-icons
 					:type="selectedUserId === item.user_id ? 'checkbox-filled' : 'circle'"
 					size="22"
-					:color="selectedUserId === item.user_id ? '#E0AE12' : '#cbd5e1'"
+					:color="selectedUserId === item.user_id ? '#E0AE12' : '#9A8C67'"
 				></uni-icons>
 			</view>
 		</view>

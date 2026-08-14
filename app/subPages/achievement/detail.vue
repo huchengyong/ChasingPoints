@@ -136,7 +136,7 @@ onLoad((options) => {
 <style lang="scss" scoped>
 .detail-page {
 	min-height: 100vh;
-	background: #f1f5f9;
+	background: #FAF8F2;
 	padding-bottom: 60rpx;
 }
 
@@ -148,7 +148,7 @@ onLoad((options) => {
 	.loading-text {
 		margin-top: 16rpx;
 		font-size: 28rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 	}
 }
 
@@ -157,10 +157,10 @@ onLoad((options) => {
 	flex-direction: column;
 	align-items: center;
 	padding: 60rpx 32rpx 40rpx;
-	background: linear-gradient(180deg, #e2e8f0, #f1f5f9);
+	background: linear-gradient(180deg, #E9E2CF, #FAF8F2);
 
 	&.unlocked {
-		background: linear-gradient(180deg, rgba(224, 174, 18, 0.18), #f1f5f9);
+		background: linear-gradient(180deg, rgba(224, 174, 18, 0.18), #FAF8F2);
 	}
 
 	.hero-icon {
@@ -187,7 +187,7 @@ onLoad((options) => {
 	.hero-name {
 		font-size: 36rpx;
 		font-weight: 700;
-		color: #1e293b;
+		color: #231C0B;
 		margin-bottom: 12rpx;
 	}
 
@@ -214,7 +214,7 @@ onLoad((options) => {
 		justify-content: space-between;
 		align-items: center;
 		padding: 24rpx 32rpx;
-		border-bottom: 1rpx solid #f1f5f9;
+		border-bottom: 1rpx solid #FAF8F2;
 
 		&:last-child {
 			border-bottom: none;
@@ -222,12 +222,12 @@ onLoad((options) => {
 
 		.info-label {
 			font-size: 28rpx;
-			color: #64748b;
+			color: #6E6242;
 		}
 		.info-value {
 			font-size: 28rpx;
 			line-height: 1.6;
-			color: #1e293b;
+			color: #231C0B;
 			text-align: right;
 			flex: 1;
 			margin-left: 32rpx;
@@ -250,21 +250,21 @@ onLoad((options) => {
 	.progress-title {
 		font-size: 28rpx;
 		font-weight: 600;
-		color: #1e293b;
+		color: #231C0B;
 		margin-bottom: 20rpx;
 	}
 
 	.progress-bar-large {
 		width: 100%;
 		height: 20rpx;
-		background: #e2e8f0;
+		background: #E9E2CF;
 		border-radius: 10rpx;
 		overflow: hidden;
 		margin-bottom: 16rpx;
 
 		.progress-fill {
 			height: 100%;
-			background: #94a3b8;
+			background: #9A8C67;
 			border-radius: 10rpx;
 			transition: width 0.3s;
 
@@ -279,7 +279,7 @@ onLoad((options) => {
 		justify-content: space-between;
 		.progress-current, .progress-percent {
 			font-size: 24rpx;
-			color: #64748b;
+			color: #6E6242;
 		}
 	}
 }
@@ -305,7 +305,7 @@ onLoad((options) => {
 	padding-top: 300rpx;
 	.empty-text {
 		font-size: 28rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 	}
 }
 

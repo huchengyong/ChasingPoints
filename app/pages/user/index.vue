@@ -36,28 +36,28 @@
 							<text class="guest-link-title">排行榜</text>
 							<text class="guest-link-desc">查看平台高手的段位与积分</text>
 						</view>
-						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
 					</view>
 					<view class="guest-link" @click="openRoute('/pages/match/index', true)">
 						<view class="guest-link-copy">
 							<text class="guest-link-title">正在进行的对局</text>
 							<text class="guest-link-desc">围观实时比赛与比分进展</text>
 						</view>
-						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
 					</view>
 					<view class="guest-link" @click="openRoute('/pages/social/index', true)">
 						<view class="guest-link-copy">
 							<text class="guest-link-title">赛讯</text>
 							<text class="guest-link-desc">查看赛事资讯和赛程更新</text>
 						</view>
-						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
 					</view>
 					<view class="guest-link guest-support-link" @click="handleHelp">
 						<view class="guest-link-copy">
 							<text class="guest-link-title">帮助、投诉与举报</text>
 							<text class="guest-link-desc">无需登录即可提交问题与反馈</text>
 						</view>
-						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
 					</view>
 				</view>
 			</template>
@@ -81,13 +81,13 @@
 					</view>
 					<view class="profile-actions">
 						<button class="icon-btn" @click="handleNotificationCenter">
-							<uni-icons type="notification-filled" size="20" :color="isDarkMode ? '#f7e7a8' : '#475569'"></uni-icons>
+							<uni-icons type="notification-filled" size="20" :color="isDarkMode ? '#f7e7a8' : '#6E6242'"></uni-icons>
 							<view v-if="pendingTotal > 0" class="icon-btn-badge">
 								<text>{{ pendingBadgeText }}</text>
 							</view>
 						</button>
 						<button class="icon-btn" @click="handleSettings">
-							<uni-icons type="gear" size="21" :color="isDarkMode ? '#f7e7a8' : '#475569'"></uni-icons>
+							<uni-icons type="gear" size="21" :color="isDarkMode ? '#f7e7a8' : '#6E6242'"></uni-icons>
 						</button>
 					</view>
 				</view>
@@ -256,7 +256,7 @@
 				<view class="float-reward-action">
 					<text>{{ compactRewardEntry.actionText }}</text>
 					<view class="float-reward-close" @click.stop="handleFloatRewardClose">
-						<uni-icons type="closeempty" size="14" :color="isDarkMode ? '#9f926e' : '#94a3b8'"></uni-icons>
+						<uni-icons type="closeempty" size="14" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
 					</view>
 				</view>
 			</view>
@@ -267,7 +267,7 @@
 				<view class="qrcode-modal-header">
 					<text class="qrcode-modal-title">{{ qrCodeModalCopy.title }}</text>
 					<view class="qrcode-modal-close" @click="closeQrCodeModal">
-						<uni-icons type="closeempty" size="24" :color="isDarkMode ? '#9f926e' : '#64748b'"></uni-icons>
+						<uni-icons type="closeempty" size="24" :color="isDarkMode ? '#9f926e' : '#6E6242'"></uni-icons>
 					</view>
 				</view>
 				<view class="qrcode-modal-body">

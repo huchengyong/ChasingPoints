@@ -4,11 +4,11 @@
 $primary-color: #E0AE12;
 
 // 浅色模式变量
-$bg-light: #f6f7f8;
+$bg-light: #FAF8F2;
 $card-bg-light: #ffffff;
-$text-primary-light: #0f172a;
-$text-secondary-light: #64748b;
-$border-color-light: #e2e8f0;
+$text-primary-light: #231C0B;
+$text-secondary-light: #6E6242;
+$border-color-light: #E9E2CF;
 
 // 深色模式变量
 $bg-dark: #141109;
@@ -138,7 +138,7 @@ $border-color-dark: rgba(247, 231, 168, 0.12);
 	height: 48rpx;
 	flex-shrink: 0;
 	border-radius: 999rpx;
-	background: #cbd5e1;
+	background: #E9E2CF;
 	transition: background-color 0.2s ease;
 
 	&.active {
@@ -197,7 +197,7 @@ $border-color-dark: rgba(247, 231, 168, 0.12);
 	align-items: center;
 	justify-content: center;
 	border-radius: 999rpx;
-	background: #f8fafc;
+	background: #FAF8F2;
 	border: 1rpx solid $border-color-light;
 	box-sizing: border-box;
 

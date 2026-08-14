@@ -463,7 +463,7 @@ const goLogin = () => {
 <style lang="scss" scoped>
 .stats-page {
 	min-height: 100vh;
-	background: #f1f5f9;
+	background: #FAF8F2;
 	padding-bottom: 60rpx;
 	padding-top: 24rpx;
 	box-sizing: border-box;
@@ -544,7 +544,7 @@ const goLogin = () => {
 	.loading-text {
 		margin-top: 16rpx;
 		font-size: 28rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 	}
 }
 
@@ -557,7 +557,7 @@ const goLogin = () => {
 	.section-title {
 		font-size: 30rpx;
 		font-weight: 700;
-		color: #1e293b;
+		color: #231C0B;
 		margin-bottom: 20rpx;
 		display: block;
 	}
@@ -587,8 +587,8 @@ const goLogin = () => {
 		line-height: 40rpx;
 		text-align: center;
 		border-radius: 22rpx;
-		background: #f1f5f9;
-		color: #64748b;
+		background: #FAF8F2;
+		color: #6E6242;
 		font-size: 30rpx;
 		font-weight: 700;
 	}
@@ -597,7 +597,7 @@ const goLogin = () => {
 		min-width: 132rpx;
 		text-align: center;
 		font-size: 24rpx;
-		color: #64748b;
+		color: #6E6242;
 	}
 }
 
@@ -613,9 +613,9 @@ const goLogin = () => {
 		position: relative;
 		padding: 12rpx 0;
 		border-radius: 10rpx;
-		background: #f1f5f9;
+		background: #FAF8F2;
 		font-size: 26rpx;
-		color: #64748b;
+		color: #6E6242;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -656,7 +656,7 @@ const goLogin = () => {
 		.stat-value {
 			font-size: 40rpx;
 			font-weight: 700;
-			color: #1e293b;
+			color: #231C0B;
 
 			&.highlight { color: #C69200; }
 			&.green { color: #22c55e; }
@@ -664,7 +664,7 @@ const goLogin = () => {
 		}
 		.stat-label {
 			font-size: 24rpx;
-			color: #94a3b8;
+			color: #9A8C67;
 			margin-top: 4rpx;
 		}
 	}
@@ -688,7 +688,7 @@ const goLogin = () => {
 	margin-bottom: 16rpx;
 	.trend-rate {
 		font-size: 26rpx;
-		color: #64748b;
+		color: #6E6242;
 	}
 }
 
@@ -698,7 +698,7 @@ const goLogin = () => {
 		grid-template-columns: repeat(7, 1fr);
 		margin-bottom: 8rpx;
 		font-size: 22rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 		text-align: center;
 	}
 
@@ -711,7 +711,7 @@ const goLogin = () => {
 	.calendar-cell {
 		min-height: 78rpx;
 		border-radius: 10rpx;
-		background: #f8fafc;
+		background: #FAF8F2;
 		padding: 6rpx;
 		box-sizing: border-box;
 		opacity: 1;
@@ -728,7 +728,7 @@ const goLogin = () => {
 			display: block;
 			font-size: 20rpx;
 			line-height: 22rpx;
-			color: #64748b;
+			color: #6E6242;
 		}
 
 		.calendar-results {
@@ -744,7 +744,7 @@ const goLogin = () => {
 			gap: 3rpx;
 			font-size: 18rpx;
 			line-height: 20rpx;
-			color: #475569;
+			color: #6E6242;
 		}
 
 		.calendar-dot {
@@ -769,7 +769,7 @@ const goLogin = () => {
 		align-items: center;
 		gap: 8rpx;
 		font-size: 22rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 
 		.dot-sample {
 			width: 16rpx;
@@ -799,7 +799,7 @@ const goLogin = () => {
 		}
 		.rank-label {
 			font-size: 24rpx;
-			color: #94a3b8;
+			color: #9A8C67;
 		}
 	}
 
@@ -816,14 +816,14 @@ const goLogin = () => {
 			.meta-value {
 				font-size: 32rpx;
 				font-weight: 600;
-				color: #1e293b;
+				color: #231C0B;
 
 				&.up { color: #22c55e; }
 				&.down { color: #ef4444; }
 			}
 			.meta-label {
 				font-size: 22rpx;
-				color: #94a3b8;
+				color: #9A8C67;
 			}
 		}
 	}
@@ -835,7 +835,7 @@ const goLogin = () => {
 		height: 220rpx;
 		display: flex;
 		align-items: stretch;
-		background: #f8fafc;
+		background: #FAF8F2;
 		border-radius: 12rpx;
 		padding: 12rpx 8rpx;
 		box-sizing: border-box;
@@ -848,7 +848,7 @@ const goLogin = () => {
 		right: 8rpx;
 		top: 50%;
 		height: 1rpx;
-		background: #e2e8f0;
+		background: #E9E2CF;
 	}
 
 	.rank-chart-day {
@@ -896,7 +896,7 @@ const goLogin = () => {
 			color: transparent;
 
 			&.visible {
-				color: #94a3b8;
+				color: #9A8C67;
 			}
 		}
 	}
@@ -919,13 +919,13 @@ const goLogin = () => {
 		}
 		.score-label {
 			font-size: 24rpx;
-			color: #94a3b8;
+			color: #9A8C67;
 		}
 	}
 	.score-sub {
 		.score-month {
 			font-size: 26rpx;
-			color: #64748b;
+			color: #6E6242;
 		}
 	}
 }
@@ -942,14 +942,14 @@ const goLogin = () => {
 		.duration-value {
 			font-size: 36rpx;
 			font-weight: 700;
-			color: #1e293b;
+			color: #231C0B;
 
 			&.green { color: #22c55e; }
 			&.amber { color: #f59e0b; }
 		}
 		.duration-label {
 			font-size: 24rpx;
-			color: #94a3b8;
+			color: #9A8C67;
 			margin-top: 4rpx;
 		}
 	}
@@ -965,14 +965,14 @@ const goLogin = () => {
 		.tier-name {
 			width: 120rpx;
 			font-size: 24rpx;
-			color: #64748b;
+			color: #6E6242;
 			flex-shrink: 0;
 		}
 
 		.tier-bar {
 			flex: 1;
 			height: 20rpx;
-			background: #f1f5f9;
+			background: #FAF8F2;
 			border-radius: 10rpx;
 			overflow: hidden;
 
@@ -1000,6 +1000,6 @@ const goLogin = () => {
 	text-align: center;
 	padding: 32rpx 0;
 	font-size: 26rpx;
-	color: #94a3b8;
+	color: #9A8C67;
 }
 </style>

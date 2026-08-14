@@ -2,7 +2,7 @@
 	<view class="match-history-container" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 需要登录状态 -->
 		<view class="login-required" v-if="needLogin">
-			<uni-icons type="locked" size="64" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+			<uni-icons type="locked" size="64" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 			<text class="hint-text">请登录后查看对局记录</text>
 			<button class="login-btn" @click="goLogin">去登录</button>
 		</view>
@@ -36,12 +36,12 @@
 			@scrolltolower="onLoadMore"
 		>
 			<view class="loading-wrapper" v-if="isLoading && matchList.length === 0">
-				<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+				<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 				<text class="loading-text">加载中...</text>
 			</view>
 
 			<view class="empty-wrapper" v-else-if="!isLoading && matchList.length === 0">
-				<uni-icons type="list" size="64" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+				<uni-icons type="list" size="64" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 				<text class="empty-text">暂无对局记录</text>
 				<text class="empty-hint">快去发起一场PK吧！</text>
 			</view>
@@ -67,7 +67,7 @@
 						<text class="score">{{ match.my_score }} - {{ match.opponent_score }}</text>
 					</view>
 					<view class="arrow-wrapper">
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="20" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 					</view>
 				</view>
 			</view>
@@ -89,7 +89,7 @@
 			@scrolltolower="onRefereeLoadMore"
 		>
 			<view class="loading-wrapper" v-if="isRefereeLoading && refereeList.length === 0">
-				<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+				<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 				<text class="loading-text">加载中...</text>
 			</view>
 
@@ -107,7 +107,7 @@
 
 			<!-- 空状态 -->
 			<view class="empty-wrapper" v-else-if="!isRefereeLoading && refereeList.length === 0 && !ongoingRefereeMatch">
-				<uni-icons type="person" size="64" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+				<uni-icons type="person" size="64" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 				<text class="empty-text">暂无执裁记录</text>
 				<text class="empty-hint">去对局首页扫码担任裁判</text>
 				<button class="go-match-btn" @click="goMatchHall">前往对局大厅</button>

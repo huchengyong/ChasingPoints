@@ -2,7 +2,7 @@
 	<view class="glossary-page" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 搜索栏 -->
 		<view class="search-bar">
-			<uni-icons type="search" size="18" color="#94a3b8"></uni-icons>
+			<uni-icons type="search" size="18" color="#9A8C67"></uni-icons>
 			<input
 				class="search-input"
 				v-model="filterText"
@@ -79,7 +79,7 @@ onLoad(() => {
 <style lang="scss" scoped>
 .glossary-page {
 	min-height: 100vh;
-	background: #f1f5f9;
+	background: #FAF8F2;
 	padding: 24rpx;
 }
 
@@ -95,7 +95,7 @@ onLoad(() => {
 	.search-input {
 		flex: 1;
 		font-size: 28rpx;
-		color: #1e293b;
+		color: #231C0B;
 	}
 }
 
@@ -115,14 +115,14 @@ onLoad(() => {
 		.term-title {
 			font-size: 30rpx;
 			font-weight: 600;
-			color: #1e293b;
+			color: #231C0B;
 			display: block;
 			margin-bottom: 12rpx;
 		}
 
 		.term-content {
 			font-size: 26rpx;
-			color: #64748b;
+			color: #6E6242;
 			line-height: 1.7;
 			display: block;
 			margin-bottom: 12rpx;
@@ -143,7 +143,7 @@ onLoad(() => {
 	padding-top: 200rpx;
 	.empty-text {
 		font-size: 28rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 	}
 }
 

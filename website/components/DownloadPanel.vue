@@ -30,9 +30,9 @@ defineProps<{
   padding: 32px;
   border-radius: 28px;
   background:
-    radial-gradient(circle at top right, rgba(224, 174, 18, 0.24), transparent 34%),
+    radial-gradient(circle at top right, var(--ui-brand-tint), transparent 34%),
     linear-gradient(135deg, #1d170b, #2a2110);
-  color: #fff7e1;
+  color: var(--ui-text-on-accent);
 }
 
 .download-panel__eyebrow {
@@ -55,7 +55,7 @@ defineProps<{
   height: 52px;
   padding: 0 22px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #d9a617, #bb8400);
+  background: linear-gradient(135deg, var(--ui-brand-gradient-start), var(--ui-brand-gradient-end));
   color: #fff;
   font-weight: 700;
   white-space: nowrap;

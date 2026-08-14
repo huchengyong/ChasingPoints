@@ -10,7 +10,7 @@
 				<picker mode="selector" :range="categoryLabels" :value="categoryIndex" @change="handleCategoryChange">
 					<view class="category-picker">
 						<text>{{ selectedCategory.label }}</text>
-						<uni-icons type="right" size="16" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+						<uni-icons type="right" size="16" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 					</view>
 				</picker>
 			</view>

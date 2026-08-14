@@ -27,7 +27,7 @@
 							</view>
 						</view>
 						<view class="delete-btn" @tap="handleDelete(item)">
-							<uni-icons type="trash" size="18" color="#94a3b8"></uni-icons>
+							<uni-icons type="trash" size="18" color="#9A8C67"></uni-icons>
 						</view>
 					</view>
 
@@ -170,8 +170,8 @@ const handleDelete = (item) => {
 <style lang="scss" scoped>
 .my-posts-page {
 	min-height: 100vh;
-	background: #f8fafc;
-	color: #0f172a;
+	background: #FAF8F2;
+	color: #231C0B;
 	padding: 24rpx;
 	box-sizing: border-box;
 
@@ -225,7 +225,7 @@ const handleDelete = (item) => {
 .loading-text,
 .empty-desc {
 	font-size: 24rpx;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .empty-icon {
@@ -266,7 +266,7 @@ const handleDelete = (item) => {
 
 .post-card {
 	background: #ffffff;
-	border: 1px solid #e2e8f0;
+	border: 1px solid #E9E2CF;
 	border-radius: 24rpx;
 	padding: 24rpx;
 }
@@ -287,7 +287,7 @@ const handleDelete = (item) => {
 
 .post-time {
 	font-size: 22rpx;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .status-tag {
@@ -330,7 +330,7 @@ const handleDelete = (item) => {
 	width: calc((100% - 24rpx) / 3);
 	height: 200rpx;
 	border-radius: 18rpx;
-	background: #e2e8f0;
+	background: #E9E2CF;
 
 	&.single {
 		width: 100%;
@@ -365,6 +365,6 @@ const handleDelete = (item) => {
 	display: flex;
 	gap: 20rpx;
 	font-size: 22rpx;
-	color: #64748b;
+	color: #6E6242;
 }
 </style>

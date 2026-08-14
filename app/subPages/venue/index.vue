@@ -5,7 +5,7 @@
 			<view class="location-info" @tap="getLocation">
 					<uni-icons type="location" size="18" color="#E0AE12"></uni-icons>
 				<text class="location-text">{{ currentCity || '定位中...' }}</text>
-				<uni-icons type="refreshempty" size="14" color="#94a3b8"></uni-icons>
+				<uni-icons type="refreshempty" size="14" color="#9A8C67"></uni-icons>
 			</view>
 			<view class="submit-btn" @tap="goSubmit">
 				<uni-icons type="plusempty" size="16" color="#fff"></uni-icons>
@@ -211,7 +211,7 @@ onMounted(() => {
 <style lang="scss" scoped>
 .venue-page {
 	min-height: 100vh;
-	background: #f1f5f9;
+	background: #FAF8F2;
 }
 .location-bar {
 	display: flex;
@@ -223,7 +223,7 @@ onMounted(() => {
 		display: flex;
 		align-items: center;
 		gap: 8rpx;
-		.location-text { font-size: 28rpx; color: #1e293b; font-weight: 500; }
+		.location-text { font-size: 28rpx; color: #231C0B; font-weight: 500; }
 	}
 	.submit-btn {
 		display: flex;
@@ -243,9 +243,9 @@ onMounted(() => {
 	.tab-item {
 		padding: 12rpx 32rpx;
 		border-radius: 20rpx;
-		background: #f1f5f9;
+		background: #FAF8F2;
 		font-size: 26rpx;
-		color: #64748b;
+		color: #6E6242;
 			&.active {
 				background: #fff7dc;
 				border: 1rpx solid rgba(224, 174, 18, 0.22);
@@ -260,7 +260,7 @@ onMounted(() => {
 	justify-content: center;
 	align-items: center;
 	min-height: 50vh;
-	.loading-text { font-size: 28rpx; color: #94a3b8; margin-top: 16rpx; }
+	.loading-text { font-size: 28rpx; color: #9A8C67; margin-top: 16rpx; }
 }
 .venue-scroll {
 	height: calc(100vh - 200rpx);
@@ -285,7 +285,7 @@ onMounted(() => {
 			.venue-img-placeholder {
 				width: 100%;
 				height: 100%;
-				background: #f1f5f9;
+				background: #FAF8F2;
 				display: flex;
 				align-items: center;
 				justify-content: center;
@@ -298,17 +298,17 @@ onMounted(() => {
 		display: flex;
 		flex-direction: column;
 		justify-content: space-between;
-		.venue-name { font-size: 30rpx; font-weight: 600; color: #1e293b; margin-bottom: 6rpx; }
-		.venue-address { font-size: 24rpx; color: #94a3b8; margin-bottom: 8rpx; }
+		.venue-name { font-size: 30rpx; font-weight: 600; color: #231C0B; margin-bottom: 6rpx; }
+		.venue-address { font-size: 24rpx; color: #9A8C67; margin-bottom: 8rpx; }
 		.venue-meta {
 			display: flex;
 			gap: 16rpx;
 			margin-bottom: 8rpx;
 			.meta-item {
 				font-size: 22rpx;
-				color: #64748b;
+				color: #6E6242;
 				padding: 4rpx 12rpx;
-				background: #f1f5f9;
+				background: #FAF8F2;
 				border-radius: 6rpx;
 			}
 		}
@@ -316,7 +316,7 @@ onMounted(() => {
 			display: flex;
 			gap: 20rpx;
 				.venue-distance { font-size: 24rpx; color: #c69200; }
-				.venue-checkins { font-size: 24rpx; color: #94a3b8; }
+				.venue-checkins { font-size: 24rpx; color: #9A8C67; }
 			}
 		}
 }
@@ -327,7 +327,7 @@ onMounted(() => {
 	justify-content: center;
 	min-height: 50vh;
 	.empty-icon { font-size: 80rpx; margin-bottom: 16rpx; }
-	.empty-text { font-size: 28rpx; color: #94a3b8; margin-bottom: 24rpx; }
+	.empty-text { font-size: 28rpx; color: #9A8C67; margin-bottom: 24rpx; }
 		.empty-btn {
 			padding: 16rpx 40rpx;
 			background: #e0ae12;
@@ -340,7 +340,7 @@ onMounted(() => {
 	text-align: center;
 	padding: 32rpx;
 	font-size: 24rpx;
-	color: #cbd5e1;
+	color: #9A8C67;
 }
 
 .venue-page.dark-mode {

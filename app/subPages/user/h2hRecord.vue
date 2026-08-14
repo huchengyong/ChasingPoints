@@ -66,12 +66,12 @@
 		</view>
 
 		<view class="loading-wrapper" v-if="pageStatus === 'loading'">
-			<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+			<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
 
 		<view class="error-wrapper" v-else-if="pageStatus === 'error'">
-			<uni-icons type="info-filled" size="52" :color="isDarkMode ? '#64748b' : '#94a3b8'"></uni-icons>
+			<uni-icons type="info-filled" size="52" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 			<text class="error-text">{{ loadErrorMessage || '交锋数据加载失败' }}</text>
 			<button class="retry-btn" @click="fetchData">
 				<text>重新加载</text>
@@ -83,11 +83,11 @@
 				<text class="history-section-title">比赛历史</text>
 				<view class="history-month-row">
 					<button class="history-month-button" @click="shiftHistoryMonth(-1)">
-						<uni-icons type="left" size="18" :color="isDarkMode ? '#cbd5e1' : '#6b7280'"></uni-icons>
+						<uni-icons type="left" size="18" :color="isDarkMode ? '#D7C89B' : '#6E6242'"></uni-icons>
 					</button>
 					<text class="history-month-text">{{ calendarViewModel.title }}</text>
 					<button class="history-month-button" @click="shiftHistoryMonth(1)">
-						<uni-icons type="right" size="18" :color="isDarkMode ? '#cbd5e1' : '#6b7280'"></uni-icons>
+						<uni-icons type="right" size="18" :color="isDarkMode ? '#D7C89B' : '#6E6242'"></uni-icons>
 					</button>
 				</view>
 				<view class="history-view-switch">
@@ -174,7 +174,7 @@
 								<text class="result-text" :class="getResultClass(item.result)">{{ item.resultText }}</text>
 								<text class="diff-text">{{ item.diffText }}</text>
 							</view>
-							<uni-icons type="right" size="20" :color="isDarkMode ? '#64748b' : '#9ca3af'"></uni-icons>
+							<uni-icons type="right" size="20" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 						</view>
 					</view>
 

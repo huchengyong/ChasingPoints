@@ -1,10 +1,10 @@
 .friend-homepage-page {
 	min-height: 100vh;
-	background: #f6f7f8;
+	background: #FAF8F2;
 	box-sizing: border-box;
 
 	&.dark-mode {
-		background: #101922;
+		background: #141109;
 
 		.hero-card,
 		.section-card,
@@ -12,8 +12,8 @@
 		.fact-chip,
 		.battle-item,
 		.battle-empty-card {
-			background: #1e293b;
-			border-color: #334155;
+			background: #1E180D;
+			border-color: #3A2E16;
 		}
 
 		.friend-name,
@@ -26,7 +26,7 @@
 		.battle-meta,
 		.battle-sample,
 		.battle-link {
-			color: #f8fafc;
+			color: #FFF7E1;
 		}
 
 		.status-desc,
@@ -36,11 +36,11 @@
 		.hero-kicker,
 		.insight-label,
 		.insight-desc {
-			color: #94a3b8;
+			color: #9F926E;
 		}
 
 		.error-title {
-			color: #f8fafc;
+			color: #FFF7E1;
 		}
 
 		.status-chip,
@@ -48,22 +48,22 @@
 		.battle-avatar-placeholder,
 		.battle-badge.waiting,
 		.secondary-btn {
-			background: #334155;
-			border-color: #475569;
+			background: #3A2E16;
+			border-color: #3A2E16;
 		}
 
 		.retry-btn,
 		.retry-btn text,
 		.secondary-btn,
 		.secondary-btn text {
-			color: #f8fafc;
+			color: #FFF7E1;
 		}
 
 		.battle-desc,
 		.battle-empty-desc,
 		.battle-empty-title,
 		.battle-badge text {
-			color: #cbd5e1;
+			color: #D7C89B;
 		}
 	}
 }
@@ -81,21 +81,21 @@
 
 	.loading-text {
 		font-size: 26rpx;
-		color: #64748b;
+		color: #6E6242;
 	}
 }
 
 .error-title {
 	font-size: 34rpx;
 	font-weight: 700;
-	color: #0f172a;
+	color: #231C0B;
 }
 
 .error-text {
 	font-size: 26rpx;
 	line-height: 1.7;
 	text-align: center;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .retry-btn {
@@ -107,7 +107,7 @@
 	border: 1rpx solid #d7dee7;
 	font-size: 28rpx;
 	font-weight: 600;
-	color: #334155;
+	color: #3A2E16;
 
 	text {
 		font-size: 28rpx;
@@ -131,7 +131,7 @@
 .hero-insight,
 .fact-chip {
 	background: #ffffff;
-	border: 1rpx solid #e2e8f0;
+	border: 1rpx solid #E9E2CF;
 	border-radius: 28rpx;
 	box-sizing: border-box;
 }
@@ -196,7 +196,7 @@
 .friend-name {
 	font-size: 34rpx;
 	font-weight: 700;
-	color: #0f172a;
+	color: #231C0B;
 }
 
 .friend-rank {
@@ -209,7 +209,7 @@
 	display: block;
 	margin-top: 12rpx;
 	font-size: 24rpx;
-	color: #475569;
+	color: #3A2E16;
 }
 
 .status-row {
@@ -231,7 +231,7 @@
 .status-desc {
 	font-size: 24rpx;
 	line-height: 1.6;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .hero-insight {
@@ -244,7 +244,7 @@
 .insight-label {
 	display: block;
 	font-size: 22rpx;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .insight-title {
@@ -253,7 +253,7 @@
 	font-size: 40rpx;
 	font-weight: 700;
 	line-height: 1.25;
-	color: #0f172a;
+	color: #231C0B;
 }
 
 .insight-desc {
@@ -261,7 +261,7 @@
 	margin-top: 12rpx;
 	font-size: 25rpx;
 	line-height: 1.7;
-	color: #475569;
+	color: #3A2E16;
 }
 
 .hero-facts {
@@ -286,7 +286,7 @@
 	text {
 		font-size: 22rpx;
 		font-weight: 500;
-		color: #1e293b;
+		color: #1E180D;
 	}
 }
 
@@ -300,12 +300,12 @@
 .section-title {
 	font-size: 30rpx;
 	font-weight: 700;
-	color: #0f172a;
+	color: #231C0B;
 }
 
 .section-tip {
 	font-size: 22rpx;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .primary-btn {
@@ -370,15 +370,15 @@
 	margin-top: 20rpx;
 	padding: 28rpx 24rpx;
 	border-radius: 24rpx;
-	background: #f8fafc;
-	border: 1rpx solid #e2e8f0;
+	background: #FFF7E1;
+	border: 1rpx solid #E9E2CF;
 }
 
 .battle-empty-title {
 	display: block;
 	font-size: 30rpx;
 	font-weight: 700;
-	color: #0f172a;
+	color: #231C0B;
 }
 
 .battle-empty-desc {
@@ -386,7 +386,7 @@
 	margin-top: 12rpx;
 	font-size: 24rpx;
 	line-height: 1.7;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .battle-item {
@@ -397,7 +397,7 @@
 	padding: 24rpx;
 	border-radius: 28rpx;
 	background: #ffffff;
-	border: 1rpx solid #e2e8f0;
+	border: 1rpx solid #E9E2CF;
 	box-sizing: border-box;
 }
 
@@ -452,7 +452,7 @@
 .battle-name {
 	font-size: 30rpx;
 	font-weight: 700;
-	color: #0f172a;
+	color: #231C0B;
 }
 
 .me-badge {
@@ -503,7 +503,7 @@
 
 .battle-badge.waiting {
 	text {
-		color: #64748b;
+		color: #6E6242;
 	}
 }
 
@@ -511,7 +511,7 @@
 	display: block;
 	margin-top: 10rpx;
 	font-size: 24rpx;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .battle-meta-row {
@@ -523,7 +523,7 @@
 
 .battle-meta {
 	font-size: 22rpx;
-	color: #475569;
+	color: #3A2E16;
 }
 
 .battle-right {
@@ -537,7 +537,7 @@
 .battle-win-rate {
 	font-size: 34rpx;
 	font-weight: 700;
-	color: #0f172a;
+	color: #231C0B;
 }
 
 .battle-win-rate.lead {
@@ -554,7 +554,7 @@
 
 .battle-sample {
 	font-size: 22rpx;
-	color: #64748b;
+	color: #6E6242;
 }
 
 .battle-link {

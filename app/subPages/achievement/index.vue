@@ -126,7 +126,7 @@
 								</view>
 								<text class="progress-note">{{ item.progressText }} · {{ item.remainingText }}</text>
 							</view>
-							<uni-icons type="right" size="16" :color="isDarkMode ? '#9f926e' : '#94a3b8'"></uni-icons>
+							<uni-icons type="right" size="16" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
 						</view>
 					</view>
 					<view v-else class="inline-empty upcoming-complete">
@@ -172,7 +172,7 @@
 								</view>
 								<text class="progress-note">{{ getCareerProgressText(item) }}</text>
 							</view>
-							<uni-icons v-if="isSelf" type="right" size="16" :color="isDarkMode ? '#9f926e' : '#94a3b8'"></uni-icons>
+							<uni-icons v-if="isSelf" type="right" size="16" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
 						</view>
 					</view>
 				</view>
@@ -229,7 +229,7 @@
 							</view>
 							<text class="progress-note">{{ getCareerProgressText(item) }}</text>
 						</view>
-						<uni-icons v-if="isSelf" type="right" size="16" :color="isDarkMode ? '#9f926e' : '#94a3b8'"></uni-icons>
+						<uni-icons v-if="isSelf" type="right" size="16" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
 					</view>
 				</view>
 				<view v-else class="content-card state-panel compact-state">
@@ -382,7 +382,7 @@
 							<text class="title-selector-description">选择后立即生效，仅改变对外展示</text>
 						</view>
 						<view class="title-selector-close" @tap="closeTitleSelector">
-							<uni-icons type="closeempty" size="20" :color="isDarkMode ? '#b9aa83' : '#64748b'"></uni-icons>
+							<uni-icons type="closeempty" size="20" :color="isDarkMode ? '#b9aa83' : '#6E6242'"></uni-icons>
 						</view>
 					</view>
 

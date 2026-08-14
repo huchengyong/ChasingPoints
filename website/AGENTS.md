@@ -28,6 +28,7 @@ website/
 
 ## CONVENTIONS
 - 用简体中文沟通。
+- 公开页面视觉遵循仓库根级 [DESIGN.md](/Users/wisesearch/Projects/ChasingPoints/DESIGN.md)，品牌、颜色、圆角、间距与组件状态从 `assets/styles/main.css` 的语义 Token 消费。
 - 不要把下载链接、联系方式或协议正文直接散写在页面组件里，优先维护 `data/*.ts`。
 - 静态 SEO 资产放在 `public/`，包含 `robots.txt`、`sitemap.xml` 和分享图。
 - 页面路由保持短路径：`/`、`/download`、`/privacy`、`/agreement`、`/contact`。

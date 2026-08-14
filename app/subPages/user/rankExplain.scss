@@ -1,6 +1,6 @@
 .rank-explain-container {
     min-height: 100vh;
-    background: #f6f7f8;
+    background: #FAF8F2;
     box-sizing: border-box;
 }
 
@@ -17,7 +17,7 @@
     top: 0;
     margin: 0 -24rpx 20rpx;
     padding: 24rpx 24rpx 18rpx;
-    background: linear-gradient(180deg, #f6f7f8 82%, rgba(246, 247, 248, 0));
+    background: linear-gradient(180deg, #FAF8F2 82%, rgba(246, 247, 248, 0));
 }
 
 .game-tabs {
@@ -58,7 +58,7 @@
 
 .game-tab-text {
     overflow: hidden;
-    color: #64748b;
+    color: #6E6242;
     font-size: 20rpx;
     font-weight: 600;
     text-overflow: ellipsis;
@@ -80,7 +80,7 @@
 }
 
 .loading-text {
-    color: #94a3b8;
+    color: #9A8C67;
     font-size: 26rpx;
 }
 
@@ -96,14 +96,14 @@
 
 .error-title {
     margin-top: 28rpx;
-    color: #0f172a;
+    color: #231C0B;
     font-size: 32rpx;
     font-weight: 700;
 }
 
 .error-desc {
     margin-top: 12rpx;
-    color: #64748b;
+    color: #6E6242;
     font-size: 24rpx;
 }
 
@@ -342,14 +342,14 @@
 }
 
 .section-title {
-    color: #0f172a;
+    color: #231C0B;
     font-size: 30rpx;
     font-weight: 700;
 }
 
 .section-subtitle {
     margin-top: 6rpx;
-    color: #94a3b8;
+    color: #9A8C67;
     font-size: 20rpx;
 }
 
@@ -387,7 +387,7 @@
     left: 28rpx;
     width: 4rpx;
     border-radius: 999rpx;
-    background: #e2e8f0;
+    background: #E9E2CF;
 }
 
 .rank-step {
@@ -447,7 +447,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 4rpx solid #cbd5e1;
+    border: 4rpx solid #E9E2CF;
     border-radius: 50%;
     background: #ffffff;
     box-sizing: border-box;
@@ -472,20 +472,20 @@
 }
 
 .step-name {
-    color: #334155;
+    color: #6E6242;
     font-size: 24rpx;
     font-weight: 700;
 }
 
 .step-range {
     margin-top: 6rpx;
-    color: #94a3b8;
+    color: #9A8C67;
     font-size: 20rpx;
 }
 
 .step-state {
     min-width: 80rpx;
-    color: #94a3b8;
+    color: #9A8C67;
     font-size: 19rpx;
     font-weight: 600;
     text-align: right;
@@ -502,7 +502,7 @@
     padding: 20rpx 8rpx;
     flex: 1;
     border-radius: 22rpx;
-    background: #f8fafc;
+    background: #FAF8F2;
     text-align: center;
 }
 
@@ -519,7 +519,7 @@
 
 .rule-stat-label {
     margin-top: 6rpx;
-    color: #64748b;
+    color: #6E6242;
     font-size: 18rpx;
 }
 
@@ -570,13 +570,13 @@
     display: flex;
     gap: 20rpx;
     padding: 18rpx 0;
-    border-bottom: 1rpx dashed #e2e8f0;
+    border-bottom: 1rpx dashed #E9E2CF;
 }
 
 .rule-row-title {
     width: 142rpx;
     flex-shrink: 0;
-    color: #334155;
+    color: #6E6242;
     font-size: 21rpx;
     font-weight: 700;
 }
@@ -584,7 +584,7 @@
 .rule-row-desc {
     min-width: 0;
     flex: 1;
-    color: #64748b;
+    color: #6E6242;
     font-size: 21rpx;
     line-height: 1.6;
 }
@@ -615,15 +615,15 @@
 }
 
 .dark-mode {
-    background: #101922;
+    background: #141109;
 
     .game-tabs-wrap {
-        background: linear-gradient(180deg, #101922 82%, rgba(16, 25, 34, 0));
+        background: linear-gradient(180deg, #141109 82%, rgba(20, 17, 9, 0));
     }
 
     .game-tabs {
         border-color: rgba(159, 146, 110, 0.2);
-        background: rgba(30, 41, 59, 0.92);
+        background: rgba(30, 24, 13, 0.92);
         box-shadow: 0 12rpx 32rpx rgba(0, 0, 0, 0.16);
     }
 
@@ -642,7 +642,7 @@
     .step-state,
     .rule-stat-label,
     .rule-row-desc {
-        color: #94a3b8;
+        color: #9F926E;
     }
 
     .error-icon {
@@ -653,12 +653,12 @@
     .section-title,
     .step-name,
     .rule-row-title {
-        color: #f8fafc;
+        color: #FFF7E1;
     }
 
     .section {
         border-color: rgba(159, 146, 110, 0.18);
-        background: rgba(30, 41, 59, 0.72);
+        background: rgba(30, 24, 13, 0.72);
     }
 
     .current-legend-text,
@@ -669,12 +669,12 @@
     }
 
     .rank-path::before {
-        background: #334155;
+        background: #3A2E16;
     }
 
     .rank-node {
-        border-color: #64748b;
-        background: #1e293b;
+        border-color: #3A2E16;
+        background: #1E180D;
     }
 
     .rank-step.is-current {
@@ -685,7 +685,7 @@
     }
 
     .rule-stat {
-        background: rgba(15, 23, 42, 0.5);
+        background: rgba(20, 15, 7, 0.5);
     }
 
     .rule-note {
@@ -698,15 +698,15 @@
 
     .rule-toggle {
         border-color: rgba(224, 174, 18, 0.3);
-        background: rgba(15, 23, 42, 0.22);
+        background: rgba(20, 15, 7, 0.22);
         color: #e8c469;
     }
 
     .rule-details {
-        border-top-color: #334155;
+        border-top-color: #3A2E16;
     }
 
     .rule-row {
-        border-bottom-color: #334155;
+        border-bottom-color: #3A2E16;
     }
 }

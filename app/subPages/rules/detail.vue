@@ -37,7 +37,7 @@
 					<uni-icons
 						:type="expandedIndex === index ? 'up' : 'down'"
 						size="16"
-						color="#94a3b8"
+						color="#9A8C67"
 					></uni-icons>
 				</view>
 				<view v-if="expandedIndex === index" class="item-content">
@@ -129,7 +129,7 @@ onLoad((options) => {
 <style lang="scss" scoped>
 .detail-page {
 	min-height: 100vh;
-	background: #f1f5f9;
+	background: #FAF8F2;
 }
 
 .category-header {
@@ -144,7 +144,7 @@ onLoad((options) => {
 	.category-name {
 		font-size: 36rpx;
 		font-weight: 700;
-		color: #1e293b;
+		color: #231C0B;
 	}
 }
 
@@ -160,11 +160,11 @@ onLoad((options) => {
 		border-radius: 12rpx;
 		background: #fff;
 		font-size: 28rpx;
-		color: #64748b;
+		color: #6E6242;
 
 		&.active {
 			background: #E0AE12;
-			color: #1f2937;
+			color: #231C0B;
 		}
 	}
 }
@@ -208,14 +208,14 @@ onLoad((options) => {
 				flex: 1;
 				font-size: 28rpx;
 				font-weight: 500;
-				color: #1e293b;
+				color: #231C0B;
 			}
 		}
 
 		.item-content {
 			padding: 0 28rpx 28rpx 92rpx;
 			font-size: 26rpx;
-			color: #64748b;
+			color: #6E6242;
 			line-height: 1.8;
 		}
 	}
@@ -226,7 +226,7 @@ onLoad((options) => {
 	padding-top: 120rpx;
 	.empty-text {
 		font-size: 28rpx;
-		color: #94a3b8;
+		color: #9A8C67;
 	}
 }
 

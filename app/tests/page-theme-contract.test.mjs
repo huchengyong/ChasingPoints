@@ -90,11 +90,11 @@ test('page-specific light navigation backgrounds do not bypass runtime theme', (
 test('custom fixed-visual pages expose light defaults and dark overrides', () => {
   const shareResultSource = getRouteSource('subPages/match/shareResult')
   assert.match(shareResultSource, /class="share-page" :class="\{ 'dark-mode': isDarkMode \}"/)
-  assert.match(shareResultSource, /\.share-page\s*\{[\s\S]*background:\s*#f8fafc;/)
-  assert.match(shareResultSource, /&\.dark-mode\s*\{[\s\S]*background:\s*#0f172a;/)
+  assert.match(shareResultSource, /\.share-page\s*\{[\s\S]*background:\s*#FAF8F2;/)
+  assert.match(shareResultSource, /&\.dark-mode\s*\{[\s\S]*background:\s*#231C0B;/)
 
   const seasonReportSource = getRouteSource('subPages/season/report')
   assert.match(seasonReportSource, /class="report-page" :class="\{ 'dark-mode': isDarkMode \}"/)
-  assert.match(seasonReportSource, /\.report-page\s*\{[\s\S]*background:\s*linear-gradient\(180deg,\s*#f8fafc 0%,\s*#e2e8f0 100%\);/)
-  assert.match(seasonReportSource, /&\.dark-mode\s*\{[\s\S]*background:\s*linear-gradient\(180deg,\s*#1e293b 0%,\s*#0f172a 100%\);/)
+  assert.match(seasonReportSource, /\.report-page\s*\{[\s\S]*background:\s*linear-gradient\(180deg,\s*#FAF8F2 0%,\s*#E9E2CF 100%\);/)
+  assert.match(seasonReportSource, /&\.dark-mode\s*\{[\s\S]*background:\s*linear-gradient\(180deg,\s*#241d10 0%,\s*#141109 100%\);/)
 })

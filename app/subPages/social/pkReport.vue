@@ -8,7 +8,7 @@
     </view>
 
     <view v-else-if="pageStatus === 'error'" class="loading-state error-state">
-      <uni-icons type="info-filled" size="40" color="#94a3b8"></uni-icons>
+      <uni-icons type="info-filled" size="40" color="#9A8C67"></uni-icons>
       <text class="loading-text">{{ loadErrorMessage || 'PK 报表加载失败' }}</text>
       <button class="retry-btn" @tap="loadData">
         <text>重新加载</text>
