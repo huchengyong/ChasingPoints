@@ -7,6 +7,8 @@ import (
 
 	logicx "chasing_points/internal/logic"
 	achievementx "chasing_points/internal/logic/achievement"
+	publiclogic "chasing_points/internal/logic/public"
+	seasonlogic "chasing_points/internal/logic/season"
 	"chasing_points/internal/model"
 	"chasing_points/internal/pkg/ws"
 	"chasing_points/internal/svc"
@@ -28,7 +30,7 @@ func NewFinishMatchLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Finis
 	return &FinishMatchLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -231,10 +233,10 @@ func (l *FinishMatchLogic) finishMatchImmediately(req *types.FinishMatchReq, for
 		return &types.FinishMatchResp{Success: false}, nil
 	}
 	result := settlement.Result
-	return l.finishMatchPostCommit(req, userId, match, result)
+	return l.finishMatchPostCommit(req, userId, match, result, settlement.CompetitiveRevisions, settlement.SeasonID)
 }
 
-func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, userId int64, match *model.Match, result int) (*types.FinishMatchResp, error) {
+func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, userId int64, match *model.Match, result int, competitiveRevisions map[int64]int64, seasonID int64) (*types.FinishMatchResp, error) {
 	if model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked {
 		l.applyMatchReputation(match)
 	}
@@ -251,6 +253,8 @@ func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, user
 	l.Logger.Infof("用户 %d 结束对局 %d，比分: %d:%d，结果: %d",
 		userId, match.Id, match.MyScore, match.OpponentScore, result)
 	broadcastRankInfoUpdated(match, result)
+	broadcastUserDataUpdated(match, result, competitiveRevisions)
+	l.invalidateCompetitiveSharedReads(match, result, seasonID)
 	if result != 3 {
 		resultText := "胜利"
 		if result == 2 {
@@ -330,6 +334,56 @@ func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, user
 	}, nil
 }
 
+func broadcastUserDataUpdated(match *model.Match, result int, competitiveRevisions map[int64]int64) {
+	if match == nil {
+		return
+	}
+	scopes := []string{"history", "h2h", "opponents"}
+	if result != 3 && model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked {
+		scopes = append(scopes, "rank", "stats", "honor", "season", "leaderboard")
+	}
+	userIDs := []int64{match.UserId}
+	if match.OpponentId != nil && *match.OpponentId > 0 && *match.OpponentId != match.UserId {
+		userIDs = append(userIDs, *match.OpponentId)
+	}
+	for _, targetUserID := range userIDs {
+		logicx.SendUserDataUpdated(targetUserID, logicx.UserDataUpdatedEvent{
+			Scopes:              scopes,
+			CompetitiveRevision: competitiveRevisions[targetUserID],
+			MatchID:             match.Id,
+			GameType:            match.GameType,
+		})
+	}
+}
+
+func (l *FinishMatchLogic) invalidateCompetitiveSharedReads(match *model.Match, result int, seasonID int64) {
+	if l == nil || l.svcCtx == nil || l.svcCtx.Redis == nil || match == nil || result == 3 || model.NormalizeMatchMode(match.MatchMode) != model.MatchModeRanked {
+		return
+	}
+	if err := publiclogic.BumpLeaderboardCacheVersion(l.ctx, l.svcCtx, match.GameType); err != nil {
+		l.Logger.Errorf("失效公共排行榜缓存失败: matchId=%d gameType=%d err=%v", match.Id, match.GameType, err)
+	}
+	if seasonID <= 0 && l.svcCtx.SeasonModel != nil {
+		completedAt := match.MatchTime
+		if match.CompletedAt != nil {
+			completedAt = *match.CompletedAt
+		} else if match.EndTime != nil {
+			completedAt = *match.EndTime
+		}
+		season, err := l.svcCtx.SeasonModel.FindByEffectiveTime(completedAt)
+		if err != nil {
+			l.Logger.Errorf("解析赛季排行榜缓存版本失败: matchId=%d err=%v", match.Id, err)
+		} else if season != nil {
+			seasonID = season.Id
+		}
+	}
+	if seasonID > 0 {
+		if err := seasonlogic.BumpSeasonLeaderboardCacheVersion(l.ctx, l.svcCtx, seasonID, match.GameType); err != nil {
+			l.Logger.Errorf("失效赛季排行榜缓存失败: matchId=%d seasonId=%d gameType=%d err=%v", match.Id, seasonID, match.GameType, err)
+		}
+	}
+}
+
 func broadcastRankInfoUpdated(match *model.Match, result int) {
 	if ws.GlobalHub == nil || match == nil || result == 3 || model.NormalizeMatchMode(match.MatchMode) != model.MatchModeRanked {
 		return
@@ -368,8 +422,10 @@ func resolveCompletionSource(match *model.Match) string {
 }
 
 type finishMatchSettlement struct {
-	Result         int
-	ServerRevision int64
+	Result               int
+	ServerRevision       int64
+	CompetitiveRevisions map[int64]int64
+	SeasonID             int64
 }
 
 func (l *FinishMatchLogic) settleMatchWithTx(tx *gorm.DB, match *model.Match, userId int64, req *types.FinishMatchReq) (finishMatchSettlement, error) {
@@ -391,6 +447,7 @@ func (l *FinishMatchLogic) settleMatchWithCompletionSourceTx(tx *gorm.DB, match 
 	match.Status = 2
 	match.Result = &result
 	match.EndTime = &now
+	match.CompletedAt = &now
 	clearFinishRequest(match)
 
 	// 写入完成归因
@@ -490,7 +547,16 @@ func (l *FinishMatchLogic) settleMatchWithCompletionSourceTx(tx *gorm.DB, match 
 	}
 
 	if result == 3 || model.NormalizeMatchMode(match.MatchMode) == model.MatchModePractice {
-		return finishMatchSettlement{Result: result, ServerRevision: serverRevision}, nil
+		projection, err := projectCompetitiveReadModelWithTx(tx, l.svcCtx, logicx.CompetitiveProjectionInput{Match: match})
+		if err != nil {
+			return finishMatchSettlement{}, err
+		}
+		return finishMatchSettlement{
+			Result:               result,
+			ServerRevision:       serverRevision,
+			CompetitiveRevisions: projection.CompetitiveRevisions,
+			SeasonID:             projection.SeasonID,
+		}, nil
 	}
 
 	settlementService := NewRankSettlementService(l.svcCtx.RankingModel)
@@ -537,6 +603,15 @@ func (l *FinishMatchLogic) settleMatchWithCompletionSourceTx(tx *gorm.DB, match 
 		return finishMatchSettlement{}, err
 	}
 
+	player1BeforeProjection := &model.UserRanking{
+		UserId: match.UserId, GameType: match.GameType,
+		RankScore: player1Settlement.BeforeScore, RankLevel: player1Settlement.BeforeLevel,
+	}
+	player1AfterProjection := &model.UserRanking{
+		UserId: match.UserId, GameType: match.GameType,
+		RankScore: player1Settlement.AfterScore, RankLevel: player1Settlement.AfterLevel,
+	}
+	var player2BeforeProjection, player2AfterProjection *model.UserRanking
 	changeLogs := []model.RankChangeLog{
 		buildRankChangeLog(match.Id, match.UserId, match.GameType, resultLabel(player1Win, false), effectiveAt, player1Settlement),
 	}
@@ -562,6 +637,14 @@ func (l *FinishMatchLogic) settleMatchWithCompletionSourceTx(tx *gorm.DB, match 
 			player2AchievementScore = player2RawAchievementScore
 		}
 		player2Settlement := settlementService.SettleWithPolicy(player2Ranking, !player1Win, player2AchievementScore, player2Policy)
+		player2BeforeProjection = &model.UserRanking{
+			UserId: *match.OpponentId, GameType: match.GameType,
+			RankScore: player2Settlement.BeforeScore, RankLevel: player2Settlement.BeforeLevel,
+		}
+		player2AfterProjection = &model.UserRanking{
+			UserId: *match.OpponentId, GameType: match.GameType,
+			RankScore: player2Settlement.AfterScore, RankLevel: player2Settlement.AfterLevel,
+		}
 		applySettlementToRanking(player2Ranking, player2Settlement)
 		if err := l.svcCtx.RankingModel.UpdateRankingSnapshot(tx, player2Ranking); err != nil {
 			return finishMatchSettlement{}, err
@@ -571,7 +654,32 @@ func (l *FinishMatchLogic) settleMatchWithCompletionSourceTx(tx *gorm.DB, match 
 	if err := l.svcCtx.RankingModel.CreateRankChangeLogs(tx, changeLogs); err != nil {
 		return finishMatchSettlement{}, err
 	}
-	return finishMatchSettlement{Result: result, ServerRevision: serverRevision}, nil
+	projection, err := projectCompetitiveReadModelWithTx(tx, l.svcCtx, logicx.CompetitiveProjectionInput{
+		Match:         match,
+		Player1Before: player1BeforeProjection,
+		Player1After:  player1AfterProjection,
+		Player2Before: player2BeforeProjection,
+		Player2After:  player2AfterProjection,
+	})
+	if err != nil {
+		return finishMatchSettlement{}, err
+	}
+	return finishMatchSettlement{
+		Result:               result,
+		ServerRevision:       serverRevision,
+		CompetitiveRevisions: projection.CompetitiveRevisions,
+		SeasonID:             projection.SeasonID,
+	}, nil
+}
+
+func projectCompetitiveReadModelWithTx(tx *gorm.DB, svcCtx *svc.ServiceContext, input logicx.CompetitiveProjectionInput) (logicx.CompetitiveProjectionResult, error) {
+	if svcCtx == nil || svcCtx.CompetitiveReadModel == nil {
+		return logicx.CompetitiveProjectionResult{
+			AppliedUsers:         map[int64]bool{},
+			CompetitiveRevisions: map[int64]int64{},
+		}, nil
+	}
+	return logicx.NewCompetitiveProjector(svcCtx).ProjectWithTx(tx, input)
 }
 
 func (l *FinishMatchLogic) getAchievementRewardMap(gameType int) (map[string]int, error) {

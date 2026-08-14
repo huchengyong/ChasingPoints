@@ -21,7 +21,7 @@ func NewCancelTournamentLogic(ctx context.Context, svcCtx *svc.ServiceContext) *
 	return &CancelTournamentLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

@@ -15,8 +15,25 @@ export const hasCompleteRankInfoMap = (rankInfoMap = {}) => {
   return SUPPORTED_RANK_GAME_TYPES.every((gameType) => rankInfoMap[gameType])
 }
 
+const normalizeIdentity = (identity = {}) => {
+  if (typeof identity === 'object' && identity !== null) {
+    return {
+      userId: Number(identity.userId) || 0,
+      authGeneration: Number.isFinite(Number(identity.authGeneration))
+        ? Number(identity.authGeneration)
+        : -1
+    }
+  }
+  return { userId: Number(identity) || 0, authGeneration: -1 }
+}
+
+const sameIdentity = (left, right) => (
+  left.userId === right.userId && left.authGeneration === right.authGeneration
+)
+
 export const createRankCacheState = () => ({
   ownerUserId: 0,
+  authGeneration: -1,
   rankInfoMap: {},
   loaded: false,
   dirty: false,
@@ -26,54 +43,57 @@ export const createRankCacheState = () => ({
 })
 
 export const createRankCacheActions = ({ requestRankInfos, normalizeRankInfos = normalizeUserRankInfos }) => ({
-  ensureOwner(userId) {
-    const normalizedUserId = Number(userId) || 0
-    if (this.ownerUserId !== normalizedUserId) {
+  ensureOwner(identity) {
+    const expected = normalizeIdentity(identity)
+    if (!sameIdentity({ userId: this.ownerUserId, authGeneration: this.authGeneration }, expected)) {
       this.clear()
-      this.ownerUserId = normalizedUserId
+      this.ownerUserId = expected.userId
+      this.authGeneration = expected.authGeneration
     }
-    return normalizedUserId
+    return expected
   },
 
-  ensureFresh(userId) {
-    const normalizedUserId = this.ensureOwner(userId)
-    if (!normalizedUserId) return Promise.resolve(null)
+  ensureFresh(identity) {
+    const expected = this.ensureOwner(identity)
+    if (!expected.userId) return Promise.resolve(null)
     if (this.loaded && !this.dirty) return Promise.resolve(this.rankInfoMap)
-    return this.refresh(normalizedUserId)
+    return this.refresh(expected)
   },
 
-  forceRefresh(userId) {
-    const normalizedUserId = this.ensureOwner(userId)
-    if (!normalizedUserId) return Promise.resolve(null)
-    this.invalidate(normalizedUserId)
-    return this.refresh(normalizedUserId)
+  forceRefresh(identity) {
+    const expected = this.ensureOwner(identity)
+    if (!expected.userId) return Promise.resolve(null)
+    this.invalidate(expected)
+    return this.refresh(expected)
   },
 
-  refresh(userId) {
-    const normalizedUserId = Number(userId) || 0
-    if (!normalizedUserId || this.ownerUserId !== normalizedUserId) return Promise.resolve(null)
+  refresh(identity) {
+    const expected = normalizeIdentity(identity)
+    if (!expected.userId || !sameIdentity({ userId: this.ownerUserId, authGeneration: this.authGeneration }, expected)) {
+      return Promise.resolve(null)
+    }
     if (this.inFlight) return this.inFlight
 
     this.loading = true
     const request = (async () => {
       try {
-        while (this.ownerUserId === normalizedUserId) {
+        while (sameIdentity({ userId: this.ownerUserId, authGeneration: this.authGeneration }, expected)) {
           const requestGeneration = this.generation
           let response
           try {
             response = await requestRankInfos()
           } catch (error) {
-            if (this.ownerUserId === normalizedUserId && this.generation !== requestGeneration) continue
+            if (sameIdentity({ userId: this.ownerUserId, authGeneration: this.authGeneration }, expected) && this.generation !== requestGeneration) continue
             throw error
           }
 
-          if (this.ownerUserId !== normalizedUserId) return null
+          if (!sameIdentity({ userId: this.ownerUserId, authGeneration: this.authGeneration }, expected)) return null
           if (this.generation !== requestGeneration) continue
           if (!response?.success) throw new Error(response?.message || '获取段位信息失败')
 
           const nextMap = normalizeRankInfos(response)
           if (!hasCompleteRankInfoMap(nextMap)) throw new Error('段位信息不完整')
-          if (this.ownerUserId !== normalizedUserId || this.generation !== requestGeneration) continue
+          if (!sameIdentity({ userId: this.ownerUserId, authGeneration: this.authGeneration }, expected) || this.generation !== requestGeneration) continue
 
           this.rankInfoMap = nextMap
           this.loaded = true
@@ -83,7 +103,7 @@ export const createRankCacheActions = ({ requestRankInfos, normalizeRankInfos = 
         return null
       } finally {
         if (this.inFlight === request) this.inFlight = null
-        if (this.ownerUserId === normalizedUserId) this.loading = false
+        if (sameIdentity({ userId: this.ownerUserId, authGeneration: this.authGeneration }, expected)) this.loading = false
       }
     })()
 
@@ -91,14 +111,16 @@ export const createRankCacheActions = ({ requestRankInfos, normalizeRankInfos = 
     return request
   },
 
-  invalidate(userId = this.ownerUserId) {
-    if (Number(userId) !== this.ownerUserId) return
+  invalidate(identity = { userId: this.ownerUserId, authGeneration: this.authGeneration }) {
+    const expected = normalizeIdentity(identity)
+    if (!sameIdentity({ userId: this.ownerUserId, authGeneration: this.authGeneration }, expected)) return
     this.generation += 1
     this.dirty = true
   },
 
   clear() {
     this.ownerUserId = 0
+    this.authGeneration = -1
     this.rankInfoMap = {}
     this.loaded = false
     this.dirty = false

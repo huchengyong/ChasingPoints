@@ -22,7 +22,7 @@ func NewGetOngoingMatchesLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 	return &GetOngoingMatchesLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

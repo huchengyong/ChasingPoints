@@ -21,7 +21,7 @@ func NewGetEventNewsListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *
 	return &GetEventNewsListLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -38,6 +38,7 @@ func (l *GetEventNewsListLogic) GetEventNewsList(req *types.GetEventNewsListReq)
 	if cached, ok := loadCachedEventNewsListResp(l.ctx, l.svcCtx, req, dateWindow); ok {
 		return cached, nil
 	}
+	eventNewsCacheMetrics.Fallback(l.ctx)
 
 	items, err := l.svcCtx.EventNewsModel.FindPublishedMatching(req.GameType, req.Status, req.City)
 	if err != nil {

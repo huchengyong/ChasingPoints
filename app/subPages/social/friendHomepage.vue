@@ -141,6 +141,7 @@ import { computed, reactive, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { useUserStore } from '@/store/user.js'
+import { useUserDataInvalidationStore } from '@/store/userDataInvalidation.js'
 import { getOpponentList } from '@/api/match.js'
 import { buildFriendPkReportUrl } from '@/utils/friend-entry.js'
 import { buildHonorWallUrl } from '@/utils/honor-wall.js'
@@ -156,6 +157,7 @@ import {
 
 const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
+const userDataInvalidationStore = useUserDataInvalidationStore()
 
 const loading = ref(true)
 const loadFailed = ref(false)
@@ -163,6 +165,20 @@ const loadErrorText = ref('加载好友主页失败，请稍后再试。')
 const lastMatchAt = ref('')
 const battleListHidden = ref(false)
 const battleOpponents = ref([])
+const hasLoadedOnce = ref(false)
+const latestRequestId = ref(0)
+const loadedIdentityKey = ref('')
+const loadedOpponentScopeVersion = ref(0)
+
+const currentReadIdentity = () => ({
+	userId: userStore.userId,
+	authGeneration: userStore.authGeneration
+})
+
+const currentIdentityKey = () => {
+	const identity = currentReadIdentity()
+	return `${identity.userId}:${identity.authGeneration}`
+}
 
 const friendProfile = reactive({
 	id: 0,
@@ -205,7 +221,19 @@ const getBattleAvatarText = (name = '') => {
 	return String(name).slice(0, 1).toUpperCase()
 }
 
-const loadData = async () => {
+const loadData = async ({ force = false } = {}) => {
+	const requestId = latestRequestId.value + 1
+	const requestIdentityKey = currentIdentityKey()
+	const requestScopeVersion = userDataInvalidationStore.versionOf('opponents')
+	if (hasLoadedOnce.value && !force && loadedIdentityKey.value === requestIdentityKey && loadedOpponentScopeVersion.value === requestScopeVersion) return
+	latestRequestId.value = requestId
+	if (loadedIdentityKey.value && loadedIdentityKey.value !== requestIdentityKey) {
+		battleOpponents.value = []
+		lastMatchAt.value = ''
+		stats.total_matches = 0
+		stats.total_wins = 0
+		hasLoadedOnce.value = false
+	}
 	if (!friendProfile.id) {
 		loadFailed.value = true
 		loadErrorText.value = '好友信息异常，请返回好友列表后重试。'
@@ -224,17 +252,23 @@ const loadData = async () => {
 			pageSize: 100,
 			targetUserId: friendProfile.id
 		}))
+		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
 		const list = Array.isArray(response.list) ? response.list : []
 		battleListHidden.value = Boolean(response.hidden || response.is_hidden || response.message === '对方已隐藏战绩')
 		battleOpponents.value = battleListHidden.value ? [] : list
-		stats.total_matches = list.reduce((sum, item = {}) => sum + Number(item.total_matches || 0), 0)
+		stats.total_matches = Number(response.total_matches) || list.reduce((sum, item = {}) => sum + Number(item.total_matches || 0), 0)
 		stats.total_wins = Number(response.total_wins || 0)
 		lastMatchAt.value = list[0]?.last_match_at || ''
+		hasLoadedOnce.value = true
+		loadedIdentityKey.value = requestIdentityKey
+		loadedOpponentScopeVersion.value = requestScopeVersion
 	} catch (error) {
+		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
 		loadFailed.value = true
 		console.error('加载好友主页失败:', error)
 		uni.showToast({ title: '加载好友主页失败', icon: 'none' })
 	} finally {
+		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
 		loading.value = false
 	}
 }
@@ -269,7 +303,9 @@ onLoad((options) => {
 })
 
 onShow(() => {
-	loadData()
+	if (!hasLoadedOnce.value || loadedIdentityKey.value !== currentIdentityKey() || loadedOpponentScopeVersion.value !== userDataInvalidationStore.versionOf('opponents')) {
+		loadData()
+	}
 })
 </script>
 

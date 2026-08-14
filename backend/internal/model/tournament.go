@@ -159,6 +159,24 @@ func (m *TournamentModel) HasOfficialTournamentsNeedingHotSync(now time.Time, lo
 	return count > 0, nil
 }
 
+func (m *TournamentModel) ListActiveWithoutBracket(limit int) ([]int64, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	var ids []int64
+	err := m.db.Model(&Tournament{}).
+		Where("status = ?", 1).
+		Where("(SELECT COUNT(*) FROM tournament_participants AS tp WHERE tp.tournament_id = tournaments.id) > 1").
+		Where("NOT EXISTS (SELECT 1 FROM tournament_matches AS tm WHERE tm.tournament_id = tournaments.id AND tm.deleted_at IS NULL)").
+		Order("start_time ASC, id ASC").
+		Limit(limit).
+		Pluck("id", &ids).Error
+	return ids, err
+}
+
 func (m *TournamentModel) FindList(page, pageSize int, city string, gameType, status int, useStatusFilter bool) ([]Tournament, int64, error) {
 	page, pageSize = normalizePage(page, pageSize)
 	offset := (page - 1) * pageSize

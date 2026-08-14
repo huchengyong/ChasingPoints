@@ -3,6 +3,8 @@ package share
 import (
 	"context"
 
+	logicx "chasing_points/internal/logic"
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -21,7 +23,7 @@ func NewGetMatchShareDataLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 	return &GetMatchShareDataLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -45,10 +47,16 @@ func (l *GetMatchShareDataLogic) GetMatchShareData(req *types.GetMatchShareDataR
 		return &types.GetMatchShareDataResp{Success: false}, nil
 	}
 
-	player1, _ := l.svcCtx.UserModel.FindById(match.UserId)
+	var completedCore *logicx.CompletedMatchCoreSummary
+	if match.Status == 2 {
+		completedCore, _ = logicx.BuildCompletedMatchCoreSummary(l.ctx, l.svcCtx, match)
+	}
 	player1Name := "玩家1"
 	player1Avatar := ""
-	if player1 != nil {
+	if completedCore != nil && completedCore.Player1 != nil {
+		player1Name = completedCore.Player1.Nickname
+		player1Avatar = completedCore.Player1.Avatar
+	} else if player1, _ := l.svcCtx.UserModel.FindById(match.UserId); player1 != nil {
 		player1Name = player1.Nickname
 		player1Avatar = player1.Avatar
 	}
@@ -56,10 +64,17 @@ func (l *GetMatchShareDataLogic) GetMatchShareData(req *types.GetMatchShareDataR
 	player2Name := match.OpponentName
 	player2Avatar := ""
 	if match.OpponentId != nil {
-		player2, _ := l.svcCtx.UserModel.FindById(*match.OpponentId)
-		if player2 != nil {
-			player2Name = player2.Nickname
-			player2Avatar = player2.Avatar
+		var player2NameOverride, player2AvatarOverride string
+		if completedCore != nil && completedCore.Player2 != nil {
+			player2NameOverride = completedCore.Player2.Nickname
+			player2AvatarOverride = completedCore.Player2.Avatar
+		} else if player2, _ := l.svcCtx.UserModel.FindById(*match.OpponentId); player2 != nil {
+			player2NameOverride = player2.Nickname
+			player2AvatarOverride = player2.Avatar
+		}
+		if player2NameOverride != "" {
+			player2Name = player2NameOverride
+			player2Avatar = player2AvatarOverride
 		}
 	}
 
@@ -80,6 +95,12 @@ func (l *GetMatchShareDataLogic) GetMatchShareData(req *types.GetMatchShareDataR
 		myScore = match.OpponentScore
 		opponentScore = match.MyScore
 	}
+	if completedCore != nil {
+		viewer := completedCore.ViewerPerspective(userId)
+		myName, myAvatar = viewer.MyName, viewer.MyAvatar
+		opponentName, opponentAvatar = viewer.OpponentName, viewer.OpponentAvatar
+		myScore, opponentScore = viewer.MyScore, viewer.OpponentScore
+	}
 
 	result := "战平"
 	rankChange := 0
@@ -90,7 +111,14 @@ func (l *GetMatchShareDataLogic) GetMatchShareData(req *types.GetMatchShareDataR
 	}
 
 	if match.Status == 2 {
-		if myRankLog, logErr := l.svcCtx.RankingModel.FindMatchRankChangeByUserAndGameType(match.Id, userId, match.GameType); logErr != nil {
+		if completedCore != nil {
+			for _, rankLog := range completedCore.RankChanges {
+				if rankLog.UserId == userId {
+					rankChange = rankLog.FinalChange
+					break
+				}
+			}
+		} else if myRankLog, logErr := l.svcCtx.RankingModel.FindMatchRankChangeByUserAndGameType(match.Id, userId, match.GameType); logErr != nil {
 			l.Logger.Errorf("获取分享段位明细失败: matchId=%d userId=%d err=%v", match.Id, userId, logErr)
 		} else if myRankLog != nil {
 			rankChange = myRankLog.FinalChange
@@ -98,26 +126,19 @@ func (l *GetMatchShareDataLogic) GetMatchShareData(req *types.GetMatchShareDataR
 	}
 
 	achievements := types.MatchAchievement{}
-	if achList, achErr := l.svcCtx.MatchModel.GetAchievements(match.Id); achErr == nil {
+	if completedCore != nil {
+		achievements = completedCore.Achievements
+	} else if achList, achErr := l.svcCtx.MatchModel.GetAchievements(match.Id); achErr == nil {
 		achievements = buildMatchAchievementPayload(achList)
 	}
 
-	var player1WinRate, player2WinRate float64
-	var player1MaxScore, player2MaxScore int
-	if stats1, statsErr := l.svcCtx.MatchModel.GetUserStats(match.UserId); statsErr == nil && stats1 != nil && stats1.TotalMatches > 0 {
-		player1WinRate = float64(stats1.Wins) / float64(stats1.TotalMatches) * 100
-	}
-	if maxScore1, maxErr := loadUserMaxSingleScore(l.svcCtx, match.UserId, match.GameType); maxErr == nil {
-		player1MaxScore = maxScore1
-	}
+	player1Profile, _ := logicx.LoadCurrentCompetitiveProfile(l.svcCtx, match.UserId, match.GameType)
+	player2Profile := logicx.CurrentCompetitiveProfile{}
 	if match.OpponentId != nil {
-		if stats2, statsErr := l.svcCtx.MatchModel.GetUserStats(*match.OpponentId); statsErr == nil && stats2 != nil && stats2.TotalMatches > 0 {
-			player2WinRate = float64(stats2.Wins) / float64(stats2.TotalMatches) * 100
-		}
-		if maxScore2, maxErr := loadUserMaxSingleScore(l.svcCtx, *match.OpponentId, match.GameType); maxErr == nil {
-			player2MaxScore = maxScore2
-		}
+		player2Profile, _ = logicx.LoadCurrentCompetitiveProfile(l.svcCtx, *match.OpponentId, match.GameType)
 	}
+	player1WinRate, player1MaxScore := player1Profile.WinRate, player1Profile.MaxScore
+	player2WinRate, player2MaxScore := player2Profile.WinRate, player2Profile.MaxScore
 
 	myWinRate := player1WinRate
 	opponentWinRate := player2WinRate
@@ -132,7 +153,12 @@ func (l *GetMatchShareDataLogic) GetMatchShareData(req *types.GetMatchShareDataR
 		myActor = 2
 	}
 
-	roundCount, _ := l.svcCtx.MatchModel.GetRoundCount(match.Id)
+	var roundCount int64
+	if completedCore != nil {
+		roundCount = int64(len(completedCore.Rounds))
+	} else {
+		roundCount, _ = l.svcCtx.MatchModel.GetRoundCount(match.Id)
+	}
 	currentRound := int(roundCount) + 1
 	redBallCount := 0
 	if match.GameType == 1 {
@@ -141,14 +167,20 @@ func (l *GetMatchShareDataLogic) GetMatchShareData(req *types.GetMatchShareDataR
 		}
 	}
 
-	completedRounds, _ := l.svcCtx.MatchModel.ListCompletedRounds(match.Id)
-	actions, _ := l.svcCtx.MatchModel.ListActiveActions(match.Id)
+	var completedRounds []model.MatchRound
+	var actions []model.MatchAction
+	if completedCore != nil {
+		completedRounds = completedCore.Rounds
+		actions = completedCore.Actions
+	} else {
+		completedRounds, _ = l.svcCtx.MatchModel.ListCompletedRounds(match.Id)
+		actions, _ = l.svcCtx.MatchModel.ListActiveActions(match.Id)
+	}
 	actionsForSummary := actions
 	if match.GameType == 1 {
 		if !match.CurrentFrameStarted {
 			actionsForSummary = filterSnookerActionsToCompletedRounds(actions, completedRounds)
 		}
-		myMaxScore, opponentMaxScore = calculateSnookerHighestBreaks(actionsForSummary, myActor)
 	}
 	summaryHighlights, summaryStats := buildMatchSummary(
 		match.GameType,

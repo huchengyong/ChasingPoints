@@ -14,16 +14,16 @@ const (
 )
 
 type SocialPost struct {
-	Id            int64     `gorm:"primarykey"`
-	UserId        int64     `gorm:"not null;index"`
-	Content       string    `gorm:"size:2000;not null"`
-	Images        *string   `gorm:"type:json"`
-	PostType      int       `gorm:"not null;default:3"`
-	MatchId       *int64    `gorm:"index"`
-	LikesCount    int       `gorm:"not null;default:0"`
-	CommentsCount int       `gorm:"not null;default:0"`
-	Status        int       `gorm:"not null;default:2;index"`
-	RejectReason  string    `gorm:"size:255;not null;default:''"`
+	Id            int64   `gorm:"primarykey"`
+	UserId        int64   `gorm:"not null;index"`
+	Content       string  `gorm:"size:2000;not null"`
+	Images        *string `gorm:"type:json"`
+	PostType      int     `gorm:"not null;default:3"`
+	MatchId       *int64  `gorm:"index"`
+	LikesCount    int     `gorm:"not null;default:0"`
+	CommentsCount int     `gorm:"not null;default:0"`
+	Status        int     `gorm:"not null;default:2;index"`
+	RejectReason  string  `gorm:"size:255;not null;default:''"`
 	ReviewedAt    *time.Time
 	ReviewedBy    *int64
 	CreatedAt     time.Time `gorm:"autoCreateTime"`

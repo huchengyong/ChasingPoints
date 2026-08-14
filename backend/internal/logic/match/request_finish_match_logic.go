@@ -20,7 +20,7 @@ func NewRequestFinishMatchLogic(ctx context.Context, svcCtx *svc.ServiceContext)
 	return &RequestFinishMatchLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

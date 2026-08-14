@@ -22,7 +22,7 @@ func NewSnookerFrameActionLogic(ctx context.Context, svcCtx *svc.ServiceContext)
 	return &SnookerFrameActionLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

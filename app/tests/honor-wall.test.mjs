@@ -250,7 +250,7 @@ test('honor wall page keeps private season progress out of friend tabs and opens
   assert.match(honorWallSource, /buildCareerSummaryItems/)
   assert.match(honorWallSource, /buildUpcomingAchievementSection/)
   assert.match(honorWallSource, /createLatestRequestGuard/)
-  assert.match(honorWallSource, /if \(!wallRequestGuard\.isLatest\(requestId\)\) return/)
+  assert.match(honorWallSource, /if \(!wallRequestGuard\.isLatest\(requestId\) \|\| currentIdentityKey\(\) !== requestIdentityKey\) return/)
   assert.match(honorWallSource, /通用里程碑/)
   assert.match(honorWallSource, /球种绝技/)
   assert.match(honorWallSource, /buildHonorWallTabs\(wall\.value\.viewer_scope\)/)

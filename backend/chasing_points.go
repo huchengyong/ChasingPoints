@@ -9,6 +9,8 @@ import (
 	"chasing_points/internal/config"
 	"chasing_points/internal/handler"
 	logicx "chasing_points/internal/logic"
+	matchlogic "chasing_points/internal/logic/match"
+	tournamentlogic "chasing_points/internal/logic/tournament"
 	"chasing_points/internal/logic/wstsync"
 	"chasing_points/internal/middleware"
 	"chasing_points/internal/pkg/httperror"
@@ -38,10 +40,15 @@ func main() {
 	defer server.Stop()
 
 	svcCtx := svc.NewServiceContext(c)
+	if err := logicx.EnsureDefaultRulesContent(svcCtx); err != nil {
+		log.Fatalf("初始化规则内容失败: %v", err)
+	}
 	handler.RegisterHandlers(server, svcCtx)
 
 	// 注册全局中间件
 	server.Use(middleware.RequestContextMiddleware)
+	server.Use(middleware.RequestObservabilityMiddleware)
+	server.Use(middleware.NewOptionalPublicJWTMiddleware(c.Auth.AccessSecret).Handle)
 	server.Use(middleware.NewActiveUserSessionMiddleware(svcCtx.UserModel).Handle)
 
 	// 初始化 WebSocket Hub
@@ -71,6 +78,10 @@ func main() {
 		}
 	}
 	go logicx.NewSeasonRolloverWorker(svcCtx).Start(context.Background())
+	go logicx.NewChallengeExpiryWorker(svcCtx).Start(context.Background())
+	go matchlogic.NewFinishRequestExpiryWorker(svcCtx).Start(context.Background())
+	go matchlogic.NewAchievementSyncWorker(svcCtx).Start(context.Background())
+	go tournamentlogic.NewTournamentBracketGenerationWorker(svcCtx).Start(context.Background())
 
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
 	server.StartWithOpts(withWechatMessagePushRoute(c))

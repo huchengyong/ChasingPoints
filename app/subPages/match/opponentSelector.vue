@@ -58,12 +58,10 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { getFriendList } from '@/api/friend.js'
-import { getMatchList } from '@/api/match.js'
+import { getOpponentCandidates } from '@/api/opponent.js'
 import { sendChallenge } from '@/api/challenge.js'
 import { buildChallengePayload } from '@/utils/challenge-entry.js'
 import { GAME_TYPE_OPTIONS } from '@/utils/game-types.js'
-import { buildOpponentSelectionList } from '@/utils/opponent-selector.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
@@ -79,14 +77,13 @@ const selectedOpponent = computed(() => opponents.value.find(item => item.user_i
 const loadOpponents = async () => {
 	loading.value = true
 	try {
-		const [friendRes, matchRes] = await Promise.all([
-			getFriendList({ page: 1, page_size: 100 }),
-			getMatchList({ page: 1, page_size: 100 })
-		])
-		opponents.value = buildOpponentSelectionList({
-			friends: friendRes.list || friendRes || [],
-			matches: matchRes.list || []
-		})
+		const response = await getOpponentCandidates({ limit: 30 })
+		opponents.value = response?.success
+			? (response.list || []).map((item) => ({
+				...item,
+				nickname: item.name || item.nickname || ''
+			}))
+			: []
 	} catch (error) {
 		console.error('加载PK对手失败', error)
 		uni.showToast({ title: '加载球友失败', icon: 'none' })

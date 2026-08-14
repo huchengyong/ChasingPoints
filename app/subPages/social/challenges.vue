@@ -152,11 +152,17 @@ const gameTypes = GAME_TYPE_OPTIONS
 const userStore = useUserStore()
 
 const tab = ref('received')
-const list = ref([])
+const allChallenges = ref([])
 const loading = ref(true)
-const receivedCount = ref(0)
-const sentCount = ref(0)
-const respondedCount = ref(0)
+const challengesDirty = ref(true)
+const receivedCount = computed(() => allChallenges.value.filter(item => item.direction === 'received' && item.status === 0).length)
+const sentCount = computed(() => allChallenges.value.filter(item => item.direction === 'sent' && item.status === 0).length)
+const respondedCount = computed(() => allChallenges.value.filter(item => item.status !== 0).length)
+const list = computed(() => {
+	if (tab.value === 'received') return allChallenges.value.filter(item => item.direction === 'received' && item.status === 0)
+	if (tab.value === 'sent') return allChallenges.value.filter(item => item.direction === 'sent' && item.status === 0)
+	return allChallenges.value.filter(item => item.status !== 0)
+})
 
 // 挑战弹窗
 const showChallengeModal = ref(false)
@@ -164,26 +170,17 @@ const targetFriend = ref({})
 const selectedGameType = ref(GAME_TYPE_OPTIONS[0].value)
 const challengeMessage = ref('')
 
-const fetchList = async () => {
-	loading.value = true
+const fetchList = async ({ force = false } = {}) => {
+	if (!force && !challengesDirty.value) return
+	loading.value = allChallenges.value.length === 0
 	try {
 		const res = await getPendingChallenges({ page: 1, page_size: 50 })
 		if (res.success) {
-			const all = (res.list || []).map(item => ({
+			allChallenges.value = (res.list || []).map(item => ({
 				...normalizeChallengeListItem(item, userStore.userId),
 				relativeTime: formatRelativeTime(item.created_at)
 			}))
-			receivedCount.value = all.filter(item => item.direction === 'received' && item.status === 0).length
-			sentCount.value = all.filter(item => item.direction === 'sent' && item.status === 0).length
-			respondedCount.value = all.filter(item => item.status !== 0).length
-
-			if (tab.value === 'received') {
-				list.value = all.filter(item => item.direction === 'received' && item.status === 0)
-			} else if (tab.value === 'sent') {
-				list.value = all.filter(item => item.direction === 'sent' && item.status === 0)
-			} else {
-				list.value = all.filter(item => item.status !== 0)
-			}
+			challengesDirty.value = false
 		}
 	} catch (e) {
 		console.error('获取挑战列表失败', e)
@@ -192,9 +189,13 @@ const fetchList = async () => {
 	}
 }
 
+const refreshChallenges = () => {
+	challengesDirty.value = true
+	return fetchList()
+}
+
 const switchTab = (newTab) => {
 	tab.value = newTab
-	fetchList()
 }
 
 const getDirectionText = (item) => {
@@ -249,7 +250,7 @@ const handleAccept = async (item) => {
 					if (confirm) openOfflineStart({ ...item, status: 1 })
 				}
 			})
-			fetchList()
+			refreshChallenges()
 		} else {
 			uni.showToast({ title: res.msg || '接受失败', icon: 'none' })
 		}
@@ -279,7 +280,7 @@ const handleReject = async (item) => {
 		const res = await rejectChallenge({ challenge_id: item.id })
 		if (res.success) {
 			uni.showToast({ title: '已拒绝', icon: 'success' })
-			fetchList()
+			refreshChallenges()
 		}
 	} catch (e) {
 		uni.showToast({ title: '操作失败', icon: 'none' })
@@ -319,7 +320,7 @@ const submitChallenge = async () => {
 		if (res.success) {
 			uni.showToast({ title: 'PK邀约已发送', icon: 'success' })
 			closeChallengeModal()
-			fetchList()
+			refreshChallenges()
 		} else {
 			uni.showToast({ title: res.msg || '发送失败', icon: 'none' })
 		}

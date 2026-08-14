@@ -1,11 +1,25 @@
 package main
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"chasing_points/internal/logic"
 )
+
+func TestRepairCheckpointRoundTrip(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "season-repair.checkpoint")
+	if cursor, err := readRepairCheckpoint(path); err != nil || cursor != "" {
+		t.Fatalf("missing checkpoint must start empty: cursor=%q err=%v", cursor, err)
+	}
+	if err := writeRepairCheckpoint(path, "2026-08-01"); err != nil {
+		t.Fatalf("write checkpoint: %v", err)
+	}
+	if cursor, err := readRepairCheckpoint(path); err != nil || cursor != "2026-08-01" {
+		t.Fatalf("read checkpoint: cursor=%q err=%v", cursor, err)
+	}
+}
 
 func TestFormatRepairSummaryIncludesPlanAndActualResults(t *testing.T) {
 	output := formatRepairSummary(true, &logic.SeasonLifecycleRepairSummary{

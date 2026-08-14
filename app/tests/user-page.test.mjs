@@ -43,7 +43,7 @@ test('active members use the current rank avatar frame without replacing profile
 test('user page aggregates core loading and renders neutral rank and status skeletons', () => {
   assert.match(source, /const coreDataLoading = ref\(false\)/)
   assert.match(source, /resolveUserHomepageModel\(\{/)
-  assert.match(source, /Promise\.allSettled\(\[\s*loadUserStats\(\),\s*loadRankInfo\(\),\s*loadCurrentMatch\(\)/)
+  assert.match(source, /Promise\.allSettled\(\[\s*activityStore\.fetch\(identity, \{ force, silent: true \}\),\s*userOverviewStore\.fetch\(identity, \{ force, silent: true \}\),\s*rankStore\.ensureFresh\(identity\)/)
   assert.match(source, /v-if="!hasRankCache && \(coreDataLoading \|\| rankLoading\)" class="rank-skeleton"/)
   assert.match(source, /<template v-if="statusCard\.loading">/)
   assert.match(styleSource, /@keyframes skeleton-shimmer/)

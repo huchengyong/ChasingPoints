@@ -107,7 +107,8 @@ import { computed, reactive, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { useUserStore } from '@/store/user.js'
-import { getH2HHistory, getH2HStats } from '@/api/match.js'
+import { useUserDataInvalidationStore } from '@/store/userDataInvalidation.js'
+import { getH2HOverview } from '@/api/match.js'
 import { formatRelativeTime } from '@/utils/format.js'
 import { generatePkReportPoster, savePosterToAlbum } from '@/utils/posterGenerator.js'
 import {
@@ -119,6 +120,7 @@ import {
 
 const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
+const userDataInvalidationStore = useUserDataInvalidationStore()
 
 const posterLoading = ref(false)
 const posterPath = ref('')
@@ -129,6 +131,19 @@ const historyLoaded = ref(false)
 const loadErrorMessage = ref('')
 const hasCoreError = ref(false)
 const historyList = ref([])
+const hasLoadedOnce = ref(false)
+const loadedIdentityKey = ref('')
+const loadedH2HScopeVersion = ref(0)
+
+const currentReadIdentity = () => ({
+  userId: userStore.userId,
+  authGeneration: userStore.authGeneration
+})
+
+const currentIdentityKey = () => {
+  const identity = currentReadIdentity()
+  return `${identity.userId}:${identity.authGeneration}`
+}
 
 const opponent = reactive({
   id: 0,
@@ -225,43 +240,55 @@ const generatePoster = async () => {
   }
 }
 
-const loadData = async () => {
+const loadData = async ({ force = false } = {}) => {
+  const requestIdentityKey = currentIdentityKey()
+  const requestScopeVersion = userDataInvalidationStore.versionOf('h2h')
+  if (hasLoadedOnce.value && !force && loadedIdentityKey.value === requestIdentityKey && loadedH2HScopeVersion.value === requestScopeVersion) return
+  if (loadedIdentityKey.value && loadedIdentityKey.value !== requestIdentityKey) {
+    applyStats()
+    historyList.value = []
+    hasLoadedOnce.value = false
+  }
   statsLoaded.value = false
   historyLoaded.value = false
   hasCoreError.value = false
   loadErrorMessage.value = ''
   posterPath.value = ''
 
-  const params = buildRequestParams()
-  const [statsResult, historyResult] = await Promise.allSettled([
-    getH2HStats(params),
-    getH2HHistory({ ...params, page: 1, page_size: 5 })
-  ])
-
-  if (statsResult.status === 'fulfilled' && statsResult.value?.stats) {
-    statsLoaded.value = true
-    const response = statsResult.value
+  try {
+    const response = await getH2HOverview({ ...buildRequestParams(), page_size: 5 })
+    if (currentIdentityKey() !== requestIdentityKey) return
+    if (!response?.success) {
+      throw new Error(response?.message || 'PK 报表加载失败')
+    }
     if (response.opponent) {
       opponent.id = Number(response.opponent.id || opponentId.value)
       opponent.name = response.opponent.name || opponent.name
       opponent.avatar = response.opponent.avatar || opponent.avatar
     }
-    applyStats(response.stats)
-  } else {
+    if (response.availability?.stats !== false) {
+      applyStats(response.stats)
+      statsLoaded.value = true
+    }
+    if (response.availability?.history !== false) {
+      historyLoaded.value = true
+      historyList.value = Array.isArray(response.list) ? response.list : []
+    }
+    if (!statsLoaded.value || !historyLoaded.value) {
+      hasCoreError.value = true
+      loadErrorMessage.value = 'PK 报表部分数据加载失败，请稍后重试'
+    }
+    loadedIdentityKey.value = requestIdentityKey
+    loadedH2HScopeVersion.value = requestScopeVersion
+  } catch (error) {
+    if (currentIdentityKey() !== requestIdentityKey) return
     hasCoreError.value = true
-    loadErrorMessage.value = '交锋统计加载失败，请稍后重试'
-  }
-
-  if (historyResult.status === 'fulfilled') {
-    historyLoaded.value = true
-    historyList.value = Array.isArray(historyResult.value?.list) ? historyResult.value.list : []
-  } else {
-    hasCoreError.value = true
-    loadErrorMessage.value = loadErrorMessage.value || '最近交锋加载失败，请稍后重试'
+    loadErrorMessage.value = error?.message || 'PK 报表加载失败，请稍后重试'
     historyList.value = []
   }
 
-  if (pageStatus.value === 'ready') {
+  if (currentIdentityKey() === requestIdentityKey && pageStatus.value === 'ready') {
+    hasLoadedOnce.value = true
     await generatePoster()
   }
 }
@@ -350,7 +377,9 @@ onLoad((options) => {
 })
 
 onShow(() => {
-  loadData()
+  if (!hasLoadedOnce.value || loadedIdentityKey.value !== currentIdentityKey() || loadedH2HScopeVersion.value !== userDataInvalidationStore.versionOf('h2h')) {
+    loadData()
+  }
 })
 </script>
 

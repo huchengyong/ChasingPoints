@@ -20,7 +20,7 @@ func NewGetTournamentListLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 	return &GetTournamentListLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

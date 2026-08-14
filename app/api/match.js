@@ -138,6 +138,10 @@ export const getH2HHistory = (params) => {
   return get('/api/match/h2h/history', params)
 }
 
+export const getH2HOverview = (params = {}) => {
+  return get('/api/match/h2h/overview', params)
+}
+
 /**
  * 获取匹配二维码
  * @returns {Promise}

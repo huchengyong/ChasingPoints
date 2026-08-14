@@ -8,8 +8,7 @@ import (
 	"chasing_points/internal/model"
 )
 
-const (
-)
+const ()
 
 type EventNewsProjector struct {
 	eventNewsModel *model.EventNewsModel

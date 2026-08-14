@@ -53,21 +53,35 @@
 
 <script setup>
 import { ref } from 'vue'
-import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
+import { onLoad, onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { getNotificationList, markAsRead, markAllAsRead, deleteNotification } from '@/api/notification.js'
 import { useNotificationStore } from '@/store/notification.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
+import { useUserStore } from '@/store/user.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 
 const { isDarkMode } = usePageTheme()
 
 const notificationStore = useNotificationStore()
 const friendRequestStore = useFriendRequestStore()
+const userStore = useUserStore()
+const getReadIdentity = () => ({
+	userId: userStore.userId,
+	authGeneration: userStore.authGeneration
+})
 const notificationList = ref([])
 const loading = ref(false)
 const hasMore = ref(true)
 const page = ref(1)
 const pageSize = 20
+const latestRequestId = ref(0)
+const requestedIdentityKey = ref('')
+const loadedIdentityKey = ref('')
+
+const currentIdentityKey = () => {
+	const identity = getReadIdentity()
+	return `${identity.userId}:${identity.authGeneration}`
+}
 
 const getTypeIcon = (type) => {
 	const map = {
@@ -118,13 +132,15 @@ const navigateByNotification = (item) => {
 }
 
 const handleTapNotification = async (item) => {
+	const requestIdentityKey = currentIdentityKey()
 	if (!item.is_read) {
 		try {
 			await markAsRead({ notification_id: item.id })
+			if (currentIdentityKey() !== requestIdentityKey) return
 			item.is_read = true
-			notificationStore.decrementUnread()
+			notificationStore.decrementUnread(getReadIdentity())
 			if (item.type === 'friend_request' && item.title === '收到好友申请') {
-				friendRequestStore.fetchPendingCount()
+				friendRequestStore.fetchPendingCount(getReadIdentity())
 			}
 		} catch (e) {
 			console.error('标记已读失败:', e)
@@ -135,12 +151,14 @@ const handleTapNotification = async (item) => {
 }
 
 const handleReadAll = async () => {
+	const requestIdentityKey = currentIdentityKey()
 	try {
 		await markAllAsRead()
+		if (currentIdentityKey() !== requestIdentityKey) return
 		notificationList.value.forEach(item => {
 			item.is_read = true
 		})
-		notificationStore.clearUnread()
+		notificationStore.clearUnread(getReadIdentity())
 		uni.showToast({ title: '已全部标记为已读', icon: 'success' })
 	} catch (e) {
 		console.error('全部已读失败:', e)
@@ -149,13 +167,15 @@ const handleReadAll = async () => {
 }
 
 const handleDelete = async (id) => {
+	const requestIdentityKey = currentIdentityKey()
 	try {
 		await deleteNotification({ notification_id: id })
+		if (currentIdentityKey() !== requestIdentityKey) return
 		const idx = notificationList.value.findIndex(n => n.id === id)
 		if (idx >= 0) {
 			const item = notificationList.value[idx]
 			if (!item.is_read) {
-				notificationStore.decrementUnread()
+				notificationStore.decrementUnread(getReadIdentity())
 			}
 			notificationList.value.splice(idx, 1)
 		}
@@ -168,6 +188,10 @@ const handleDelete = async (id) => {
 
 const loadNotifications = async (isRefresh = false) => {
 	if (loading.value) return
+	const requestId = latestRequestId.value + 1
+	const requestIdentityKey = currentIdentityKey()
+	latestRequestId.value = requestId
+	requestedIdentityKey.value = requestIdentityKey
 	loading.value = true
 
 	if (isRefresh) {
@@ -177,7 +201,11 @@ const loadNotifications = async (isRefresh = false) => {
 
 	try {
 		const res = await getNotificationList({ page: page.value, page_size: pageSize })
-		const list = res.list || res || []
+		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
+		const list = res.list || []
+		if (Object.prototype.hasOwnProperty.call(res || {}, 'unread_count')) {
+			notificationStore.setUnreadCount(res.unread_count, getReadIdentity())
+		}
 
 		if (isRefresh) {
 			notificationList.value = list
@@ -186,9 +214,13 @@ const loadNotifications = async (isRefresh = false) => {
 		}
 
 		hasMore.value = list.length >= pageSize
+		loadedIdentityKey.value = requestIdentityKey
 	} catch (e) {
+		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
+		requestedIdentityKey.value = ''
 		console.error('加载通知失败:', e)
 	} finally {
+		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
 		loading.value = false
 		if (isRefresh) {
 			uni.stopPullDownRefresh()
@@ -203,7 +235,15 @@ const loadMore = () => {
 
 onLoad(() => {
 	loadNotifications(true)
-	notificationStore.fetchUnreadCount()
+})
+
+onShow(() => {
+	if (loadedIdentityKey.value !== currentIdentityKey() && requestedIdentityKey.value !== currentIdentityKey()) {
+		notificationList.value = []
+		page.value = 1
+		loading.value = false
+		loadNotifications(true)
+	}
 })
 
 onPullDownRefresh(() => {

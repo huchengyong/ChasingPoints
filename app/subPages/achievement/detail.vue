@@ -73,7 +73,9 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { getAchievementList } from '@/api/achievement.js'
+import { getAchievementDetail } from '@/api/achievement.js'
+import { useUserStore } from '@/store/user.js'
+import { getCachedAchievementDetail } from '@/utils/achievement-detail-cache.js'
 import {
 	getAchievementCategoryLabel,
 	getAchievementFallbackEmoji,
@@ -82,6 +84,7 @@ import {
 import { usePageTheme } from '@/utils/page-theme.js'
 
 const { isDarkMode } = usePageTheme()
+const userStore = useUserStore()
 
 const loading = ref(true)
 const achievement = ref(null)
@@ -104,9 +107,18 @@ const handleDetailIconError = () => {
 const loadDetail = async () => {
 	loading.value = true
 	try {
-		const res = await getAchievementList()
-		const list = res.list || res || []
-		achievement.value = list.find(a => String(a.id) === String(achievementId.value)) || null
+		const identity = {
+			userId: userStore.userId,
+			authGeneration: userStore.authGeneration
+		}
+		const cached = getCachedAchievementDetail(identity, achievementId.value)
+		if (cached) {
+			achievement.value = cached
+			iconFailed.value = false
+			return
+		}
+		const res = await getAchievementDetail({ achievement_id: achievementId.value })
+		achievement.value = res?.success ? res.achievement || null : null
 		iconFailed.value = false
 	} catch (e) {
 		console.error('加载成就详情失败:', e)

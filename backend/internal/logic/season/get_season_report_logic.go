@@ -25,7 +25,7 @@ func NewGetSeasonReportLogic(ctx context.Context, svcCtx *svc.ServiceContext) *G
 	return &GetSeasonReportLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -79,7 +79,7 @@ func (l *GetSeasonReportLogic) GetSeasonReport(req *types.GetSeasonReportReq) (r
 	rankTrend := buildSeasonRankTrendFromLogs(seasonLogs)
 	recordInfo = applyHistoricalMatchSeasonSnapshot(recordInfo, season, startScore, endScore, peakScore, len(seasonLogs) > 0)
 
-	winRateByType, err := l.svcCtx.SeasonRecordModel.FindUserWinByTypeInSeasonHalfOpen(userIdInt, startAt, endExclusive)
+	winRateByType, err := l.svcCtx.SeasonRecordModel.FindUserWinsBySeason(season.Id, userIdInt)
 	if err != nil {
 		return nil, err
 	}

@@ -21,7 +21,7 @@ func NewGetUserTitlesLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Get
 	return &GetUserTitlesLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

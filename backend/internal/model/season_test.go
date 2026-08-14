@@ -48,55 +48,117 @@ func TestSeasonModelFindsAndCreatesDeterministicWindows(t *testing.T) {
 	}
 }
 
-func TestSeasonReportWinQueryUsesCompletedRankedMatchesForBothPlayers(t *testing.T) {
+func TestSeasonModelUsesBusinessTimezoneForEffectiveDate(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&Match{}, &MatchRound{}); err != nil {
-		t.Fatalf("migrate report matches: %v", err)
+	if err := db.AutoMigrate(&Season{}); err != nil {
+		t.Fatalf("migrate seasons: %v", err)
 	}
-
-	userID := int64(1)
-	opponentID := int64(2)
-	start := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
-	resultWin := 1
-	resultLoss := 2
-	matches := []Match{
-		{Id: 1, UserId: userID, OpponentId: &opponentID, OpponentName: "对手", GameType: 3, MatchMode: MatchModeRanked, Status: 2, Result: &resultWin, MatchTime: start.Add(time.Hour)},
-		{Id: 2, UserId: opponentID, OpponentId: &userID, OpponentName: "本人", GameType: 3, MatchMode: MatchModeRanked, Status: 2, Result: &resultLoss, MatchTime: start.Add(2 * time.Hour)},
-		{Id: 3, UserId: userID, OpponentId: &opponentID, OpponentName: "练习对手", GameType: 3, MatchMode: MatchModePractice, Status: 2, Result: &resultWin, MatchTime: start.Add(3 * time.Hour)},
-		{Id: 4, UserId: userID, OpponentId: &opponentID, OpponentName: "删除对手", GameType: 3, MatchMode: MatchModeRanked, Status: 2, Result: &resultWin, MatchTime: start.Add(4 * time.Hour)},
-		{Id: 5, UserId: userID, OpponentId: &opponentID, OpponentName: "未完成对手", GameType: 3, MatchMode: MatchModeRanked, Status: 2, Result: &resultWin, MatchTime: start.Add(5 * time.Hour)},
-		{Id: 6, UserId: userID, OpponentId: &opponentID, OpponentName: "历史对手", GameType: 3, MatchMode: MatchModeRanked, Status: 2, Result: &resultWin, MatchTime: start.Add(6 * time.Hour)},
+	if err := db.Create(&[]Season{
+		{Name: "July", StartDate: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC), EndDate: time.Date(2026, 7, 31, 0, 0, 0, 0, time.UTC)},
+		{Name: "August", StartDate: time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC), EndDate: time.Date(2026, 8, 31, 0, 0, 0, 0, time.UTC)},
+	}).Error; err != nil {
+		t.Fatalf("seed seasons: %v", err)
 	}
-	if err := db.Create(&matches).Error; err != nil {
-		t.Fatalf("seed report matches: %v", err)
-	}
-	winner := 1
-	rounds := []MatchRound{
-		{MatchId: 1, RoundNo: 1, Winner: &winner, WinType: "normal"},
-		{MatchId: 2, RoundNo: 1, Winner: &winner, WinType: "normal"},
-		{MatchId: 3, RoundNo: 1, Winner: &winner, WinType: "normal"},
-		{MatchId: 4, RoundNo: 1, Winner: &winner, WinType: "normal"},
-		{MatchId: 5, RoundNo: 1, Winner: &winner, WinType: "start"},
-		{MatchId: 6, RoundNo: 1, Winner: &winner, WinType: "normal"},
-	}
-	if err := db.Create(&rounds).Error; err != nil {
-		t.Fatalf("seed report rounds: %v", err)
-	}
-	if err := db.Model(&MatchRound{}).Where("match_id = ?", 6).Update("win_type", nil).Error; err != nil {
-		t.Fatalf("seed nullable historical round: %v", err)
-	}
-	if err := db.Delete(&Match{}, 4).Error; err != nil {
-		t.Fatalf("soft delete report match: %v", err)
-	}
-
-	wins, err := NewSeasonRecordModel(db).FindUserWinByTypeInSeasonHalfOpen(userID, start, start.AddDate(0, 1, 0))
+	shanghai, err := time.LoadLocation("Asia/Shanghai")
 	if err != nil {
-		t.Fatalf("query report wins: %v", err)
+		t.Fatalf("load timezone: %v", err)
 	}
-	if wins["3"] != 3 {
-		t.Fatalf("expected creator, opponent, and nullable-history wins only, got %+v", wins)
+	season, err := NewSeasonModel(db).FindByEffectiveTimeInLocationWithTx(nil, time.Date(2026, 7, 31, 16, 30, 0, 0, time.UTC), shanghai)
+	if err != nil || season == nil || season.Name != "August" {
+		t.Fatalf("Shanghai Aug 1 match must belong to August: season=%+v err=%v", season, err)
+	}
+}
+
+func TestSeasonModelFindsDueUnsettledWindowsByBoundedPage(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&Season{}, &SeasonSettlement{}); err != nil {
+		t.Fatalf("migrate seasons: %v", err)
+	}
+	utc := time.UTC
+	july := Season{Name: "S1", StartDate: time.Date(2026, 7, 1, 0, 0, 0, 0, utc), EndDate: time.Date(2026, 7, 31, 0, 0, 0, 0, utc), Status: 1}
+	august := Season{Name: "S2", StartDate: time.Date(2026, 8, 1, 0, 0, 0, 0, utc), EndDate: time.Date(2026, 8, 31, 0, 0, 0, 0, utc), Status: 0}
+	if err := db.Create(&[]Season{july, august}).Error; err != nil {
+		t.Fatalf("seed seasons: %v", err)
+	}
+	if err := db.Create(&SeasonSettlement{SeasonId: 2, Status: SeasonSettlementStatusCompleted}).Error; err != nil {
+		t.Fatalf("seed completed settlement: %v", err)
+	}
+	location, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		t.Fatalf("load location: %v", err)
+	}
+	model := NewSeasonModel(db)
+	items, err := model.FindDueUnsettledBatch(
+		time.Date(2026, 7, 1, 0, 0, 0, 0, location),
+		time.Date(2026, 9, 1, 0, 0, 0, 0, location),
+		time.Time{},
+		0,
+		1,
+	)
+	if err != nil || len(items) != 1 || items[0].Name != "S1" {
+		t.Fatalf("find first due page: items=%+v err=%v", items, err)
+	}
+	next, err := model.FindDueUnsettledBatch(
+		time.Date(2026, 7, 1, 0, 0, 0, 0, location),
+		time.Date(2026, 9, 1, 0, 0, 0, 0, location),
+		items[0].EndDate,
+		items[0].Id,
+		1,
+	)
+	if err != nil || len(next) != 0 {
+		t.Fatalf("completed and consumed windows must not repeat: items=%+v err=%v", next, err)
+	}
+}
+
+func TestSeasonRecordCompetitiveInsertLeavesRewardsNull(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&SeasonRecord{}); err != nil {
+		t.Fatalf("migrate season records: %v", err)
+	}
+	seasonRecords := NewSeasonRecordModel(db)
+	if err := seasonRecords.ApplyCompetitiveMatchWithTx(nil, SeasonRecordMatchDelta{
+		SeasonId:       1,
+		UserId:         7,
+		GameType:       3,
+		StartRankScore: 100,
+		EndRankScore:   110,
+		Won:            true,
+	}); err != nil {
+		t.Fatalf("apply competitive match: %v", err)
+	}
+	record, err := seasonRecords.FindBySeasonAndUserAndGameType(1, 7, 3)
+	if err != nil || record == nil || record.Rewards != nil {
+		t.Fatalf("new season record must leave JSON rewards null: record=%+v err=%v", record, err)
+	}
+}
+
+func TestSeasonReportWinQueryUsesIncrementalSeasonRecords(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&SeasonRecord{}); err != nil {
+		t.Fatalf("migrate season records: %v", err)
+	}
+	if err := db.Create(&[]SeasonRecord{
+		{SeasonId: 7, UserId: 1, GameType: 2, Wins: 2},
+		{SeasonId: 7, UserId: 1, GameType: 3, Wins: 3},
+		{SeasonId: 7, UserId: 2, GameType: 3, Wins: 9},
+		{SeasonId: 8, UserId: 1, GameType: 3, Wins: 10},
+	}).Error; err != nil {
+		t.Fatalf("seed season records: %v", err)
+	}
+	wins, err := NewSeasonRecordModel(db).FindUserWinsBySeason(7, 1)
+	if err != nil || wins["2"] != 2 || wins["3"] != 3 || len(wins) != 2 {
+		t.Fatalf("season report must read incremental wins only: wins=%+v err=%v", wins, err)
 	}
 }

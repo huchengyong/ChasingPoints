@@ -26,6 +26,10 @@ export const getMySeasonRecord = (params) => {
   return get('/api/season/my-record', params)
 }
 
+export const getSeasonOverview = (params = {}) => {
+  return get('/api/season/overview', params)
+}
+
 /**
  * 获取赛季报告
  * @param {Object} params { season_id }

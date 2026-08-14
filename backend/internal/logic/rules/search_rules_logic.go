@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 
-	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -22,18 +21,13 @@ func NewSearchRulesLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Searc
 	return &SearchRulesLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
 func (l *SearchRulesLogic) SearchRules(req *types.SearchRulesReq) (resp *types.SearchRulesResp, err error) {
 	if strings.TrimSpace(req.Keyword) == "" {
 		return &types.SearchRulesResp{Success: true, List: []types.RuleContentItem{}}, nil
-	}
-
-	if err = l.svcCtx.RulesContentModel.SeedData(model.GetDefaultRulesContent()); err != nil {
-		l.Logger.Errorf("初始化规则搜索数据失败: %v", err)
-		return &types.SearchRulesResp{Success: false, List: []types.RuleContentItem{}}, nil
 	}
 
 	rows, err := l.svcCtx.RulesContentModel.Search(req.Keyword)

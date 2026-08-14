@@ -22,11 +22,11 @@ func buildRankSettlementPolicy(
 	opponentCurrentRankScore int,
 ) (RankSettlementPolicy, error) {
 	policy := RankSettlementPolicy{
-		DailyPositiveCap:         defaultDailyPositiveCap,
+		DailyPositiveCap:          defaultDailyPositiveCap,
 		DailyMemberAchievementCap: logicx.DefaultMemberAchievementDailyCap,
-		MemberMultiplierPercent:  100,
-		CompletedRounds:          completedRounds,
-		OpponentCurrentRankScore: opponentCurrentRankScore,
+		MemberMultiplierPercent:   100,
+		CompletedRounds:           completedRounds,
+		OpponentCurrentRankScore:  opponentCurrentRankScore,
 	}
 	if svcCtx == nil || userId <= 0 {
 		return policy, nil

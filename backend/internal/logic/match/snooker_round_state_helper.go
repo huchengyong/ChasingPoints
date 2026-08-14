@@ -18,12 +18,20 @@ func loadSnookerRoundState(svcCtx *svc.ServiceContext, matchId int64, roundNo in
 	return model.BuildSnookerRoundState(actions, roundNo), nil
 }
 
-func loadSnookerStateForMatch(svcCtx *svc.ServiceContext, match *model.Match, roundNo int) (model.SnookerRoundState, error) {
+func buildSnookerStateForMatchFromActions(match *model.Match, actions []model.MatchAction, roundNo int) (model.SnookerRoundState, error) {
 	if match == nil || match.GameType != 1 || roundNo <= 0 {
 		return model.SnookerRoundState{ClearedColors: make([]int, 0, 6)}, nil
 	}
 	if match.SnookerRulesVersion != model.SnookerRulesVersionWPBSA {
-		return loadSnookerRoundState(svcCtx, match.Id, roundNo)
+		return model.BuildSnookerRoundState(actions, roundNo), nil
+	}
+	starter := model.SnookerStartingActor(match.StartingActor, roundNo)
+	return model.ReplaySnookerRoundV2(actions, roundNo, starter)
+}
+
+func loadSnookerStateForMatch(svcCtx *svc.ServiceContext, match *model.Match, roundNo int) (model.SnookerRoundState, error) {
+	if match == nil || match.GameType != 1 || roundNo <= 0 {
+		return model.SnookerRoundState{ClearedColors: make([]int, 0, 6)}, nil
 	}
 	if svcCtx == nil || svcCtx.MatchModel == nil {
 		return model.SnookerRoundState{}, nil
@@ -32,6 +40,5 @@ func loadSnookerStateForMatch(svcCtx *svc.ServiceContext, match *model.Match, ro
 	if err != nil {
 		return model.SnookerRoundState{}, err
 	}
-	starter := model.SnookerStartingActor(match.StartingActor, roundNo)
-	return model.ReplaySnookerRoundV2(actions, roundNo, starter)
+	return buildSnookerStateForMatchFromActions(match, actions, roundNo)
 }

@@ -22,7 +22,7 @@ func NewCheckinVenueLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Chec
 	return &CheckinVenueLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

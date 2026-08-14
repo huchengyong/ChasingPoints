@@ -26,13 +26,15 @@ func isSnookerV2Match(match *model.Match) bool {
 }
 
 type snookerActionWriteResult struct {
-	Match       *model.Match
-	State       model.SnookerRoundState
-	RoundEnded  bool
-	FinishedNow bool
-	Replayed    bool
-	FinishReq   *types.FinishMatchReq
-	Result      int
+	Match                *model.Match
+	State                model.SnookerRoundState
+	RoundEnded           bool
+	FinishedNow          bool
+	Replayed             bool
+	FinishReq            *types.FinishMatchReq
+	Result               int
+	CompetitiveRevisions map[int64]int64
+	SeasonID             int64
 }
 
 func executeSnookerAction(ctx context.Context, svcCtx *svc.ServiceContext, userID int64, input snookerActionWriteInput) (*types.SnookerActionResp, error) {
@@ -226,6 +228,8 @@ func executeSnookerAction(ctx context.Context, svcCtx *svc.ServiceContext, userI
 				result.FinishedNow = true
 				result.FinishReq = finishReq
 				result.Result = settlement.Result
+				result.CompetitiveRevisions = settlement.CompetitiveRevisions
+				result.SeasonID = settlement.SeasonID
 			}
 		}
 		result.Match = locked
@@ -259,7 +263,7 @@ func executeSnookerAction(ctx context.Context, svcCtx *svc.ServiceContext, userI
 	}
 	if result.FinishedNow && result.FinishReq != nil {
 		finishLogic := NewFinishMatchLogic(ctx, svcCtx)
-		if _, err := finishLogic.finishMatchPostCommit(result.FinishReq, userID, fresh, result.Result); err != nil {
+		if _, err := finishLogic.finishMatchPostCommit(result.FinishReq, userID, fresh, result.Result, result.CompetitiveRevisions, result.SeasonID); err != nil {
 			finishLogic.Logger.Errorf("斯诺克自动结束后处理失败: matchId=%d err=%v", fresh.Id, err)
 		}
 	}
@@ -307,7 +311,7 @@ func reconcileCompletedSnookerAction(ctx context.Context, svcCtx *svc.ServiceCon
 		MatchId:        match.Id,
 		ClientActionId: input.ClientActionID,
 		BaseRevision:   input.BaseRevision,
-	}, userID, match, *match.Result); err != nil {
+	}, userID, match, *match.Result, nil, 0); err != nil {
 		finishLogic.Logger.Errorf("斯诺克幂等重放补偿失败: matchId=%d err=%v", match.Id, err)
 	}
 }

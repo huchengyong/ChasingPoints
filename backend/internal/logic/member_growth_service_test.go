@@ -22,10 +22,10 @@ func newMemberGrowthServiceTestSvc(t *testing.T) *svc.ServiceContext {
 		t.Fatalf("prepare member growth service schema: %v", err)
 	}
 	return &svc.ServiceContext{
-		DB:                     db,
-		UserModel:              model.NewUserModel(db),
+		DB:                       db,
+		UserModel:                model.NewUserModel(db),
 		MemberGrowthProfileModel: model.NewMemberGrowthProfileModel(db),
-		MemberGrowthLogModel:   model.NewMemberGrowthLogModel(db),
+		MemberGrowthLogModel:     model.NewMemberGrowthLogModel(db),
 	}
 }
 

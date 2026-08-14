@@ -12,6 +12,10 @@ export const getStatsByGameType = (params = {}) => {
   return get('/api/stats/by-game-type', params)
 }
 
+export const getStatsOverview = (params = {}) => {
+  return get('/api/stats/overview', params)
+}
+
 /**
  * 近期趋势（近N场胜率）
  * @param {Object} params { limit }

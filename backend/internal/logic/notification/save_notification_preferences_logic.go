@@ -22,7 +22,7 @@ func NewSaveNotificationPreferencesLogic(ctx context.Context, svcCtx *svc.Servic
 	return &SaveNotificationPreferencesLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

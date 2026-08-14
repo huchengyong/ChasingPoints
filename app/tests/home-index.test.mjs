@@ -410,8 +410,8 @@ test('home nearby venue empty action mentions member reward only when activity i
 })
 
 test('home page exposes nearby venues preview and configurable add venue CTA', () => {
-  assert.match(homeIndexVueSource, /getNearbyVenues/)
-  assert.match(homeIndexVueSource, /getFavoriteVenueRewardStatus/)
+  assert.match(homeIndexVueSource, /publicReadStore\.loadNearbyVenues/)
+  assert.match(homeIndexVueSource, /userOverviewStore\.fetch/)
   assert.match(homeIndexVueSource, /nearby-venue-section/)
   assert.match(homeIndexVueSource, /查看球房/)
   assert.match(homeIndexVueSource, /\/subPages\/venue\/index/)

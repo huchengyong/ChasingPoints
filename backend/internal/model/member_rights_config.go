@@ -18,30 +18,30 @@ var (
 
 type MemberGrowthRulesConfig struct {
 	PointsPerCompletedMatch int    `json:"points_per_completed_match"`
-	DailyCap               int    `json:"daily_cap"`
-	LevelThresholdLv2      int    `json:"level_threshold_lv2"`
-	LevelThresholdLv3      int    `json:"level_threshold_lv3"`
-	LevelThresholdLv4      int    `json:"level_threshold_lv4"`
-	LevelThresholdLv5      int    `json:"level_threshold_lv5"`
-	ExpireStrategy         string `json:"expire_strategy"`
+	DailyCap                int    `json:"daily_cap"`
+	LevelThresholdLv2       int    `json:"level_threshold_lv2"`
+	LevelThresholdLv3       int    `json:"level_threshold_lv3"`
+	LevelThresholdLv4       int    `json:"level_threshold_lv4"`
+	LevelThresholdLv5       int    `json:"level_threshold_lv5"`
+	ExpireStrategy          string `json:"expire_strategy"`
 }
 
 type MemberRankingRightsRulesConfig struct {
 	OrdinaryUserAchievementEnabled bool `json:"ordinary_user_achievement_enabled"`
-	DailyCap                      int  `json:"daily_cap"`
-	DailyPositiveCap              int  `json:"daily_positive_cap"`
-	Break50Score                  int  `json:"break_50_score"`
-	GoldenBreakScore              int  `json:"golden_break_score"`
-	BreakAndRunScore              int  `json:"break_and_run_score"`
-	RunOutScore                   int  `json:"run_out_score"`
-	Break100Score                 int  `json:"break_100_score"`
-	NineOnBreakScore              int  `json:"nine_on_break_score"`
-	Break147Score                 int  `json:"break_147_score"`
-	Level1Multiplier              int  `json:"level1_multiplier"`
-	Level2Multiplier              int  `json:"level2_multiplier"`
-	Level3Multiplier              int  `json:"level3_multiplier"`
-	Level4Multiplier              int  `json:"level4_multiplier"`
-	Level5Multiplier              int  `json:"level5_multiplier"`
+	DailyCap                       int  `json:"daily_cap"`
+	DailyPositiveCap               int  `json:"daily_positive_cap"`
+	Break50Score                   int  `json:"break_50_score"`
+	GoldenBreakScore               int  `json:"golden_break_score"`
+	BreakAndRunScore               int  `json:"break_and_run_score"`
+	RunOutScore                    int  `json:"run_out_score"`
+	Break100Score                  int  `json:"break_100_score"`
+	NineOnBreakScore               int  `json:"nine_on_break_score"`
+	Break147Score                  int  `json:"break_147_score"`
+	Level1Multiplier               int  `json:"level1_multiplier"`
+	Level2Multiplier               int  `json:"level2_multiplier"`
+	Level3Multiplier               int  `json:"level3_multiplier"`
+	Level4Multiplier               int  `json:"level4_multiplier"`
+	Level5Multiplier               int  `json:"level5_multiplier"`
 }
 
 type MemberRightsConfig struct {
@@ -61,32 +61,32 @@ func (MemberRightsConfig) TableName() string {
 func DefaultMemberGrowthRulesConfig() MemberGrowthRulesConfig {
 	return MemberGrowthRulesConfig{
 		PointsPerCompletedMatch: 1,
-		DailyCap:               5,
-		LevelThresholdLv2:      10,
-		LevelThresholdLv3:      60,
-		LevelThresholdLv4:      260,
-		LevelThresholdLv5:      760,
-		ExpireStrategy:         "freeze_preserve",
+		DailyCap:                5,
+		LevelThresholdLv2:       10,
+		LevelThresholdLv3:       60,
+		LevelThresholdLv4:       260,
+		LevelThresholdLv5:       760,
+		ExpireStrategy:          "freeze_preserve",
 	}
 }
 
 func DefaultMemberRankingRightsRulesConfig() MemberRankingRightsRulesConfig {
 	return MemberRankingRightsRulesConfig{
 		OrdinaryUserAchievementEnabled: false,
-		DailyCap:                      200,
-		DailyPositiveCap:              500,
-		Break50Score:                  8,
-		GoldenBreakScore:              4,
-		BreakAndRunScore:              6,
-		RunOutScore:                   4,
-		Break100Score:                 16,
-		NineOnBreakScore:              6,
-		Break147Score:                 30,
-		Level1Multiplier:              100,
-		Level2Multiplier:              110,
-		Level3Multiplier:              120,
-		Level4Multiplier:              130,
-		Level5Multiplier:              140,
+		DailyCap:                       200,
+		DailyPositiveCap:               500,
+		Break50Score:                   8,
+		GoldenBreakScore:               4,
+		BreakAndRunScore:               6,
+		RunOutScore:                    4,
+		Break100Score:                  16,
+		NineOnBreakScore:               6,
+		Break147Score:                  30,
+		Level1Multiplier:               100,
+		Level2Multiplier:               110,
+		Level3Multiplier:               120,
+		Level4Multiplier:               130,
+		Level5Multiplier:               140,
 	}
 }
 

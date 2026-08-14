@@ -110,7 +110,7 @@
 							v-for="item in upcomingSection.items"
 							:key="item.id"
 							class="achievement-row upcoming-row interactive"
-							@tap="goToDetail(item.id)"
+							@tap="goToDetail(item)"
 						>
 							<view class="achievement-icon locked">
 								<image v-if="hasAchievementIcon(item)" :src="item.icon" mode="aspectFit" @error="handleAchievementIconError(item)"></image>
@@ -155,7 +155,7 @@
 							:key="item.id"
 							class="achievement-row"
 							:class="{ unlocked: item.unlocked, interactive: isSelf }"
-							@tap="goToDetail(item.id)"
+							@tap="goToDetail(item)"
 						>
 							<view class="achievement-icon" :class="{ locked: !item.unlocked }">
 								<image v-if="hasAchievementIcon(item)" :src="item.icon" mode="aspectFit" @error="handleAchievementIconError(item)"></image>
@@ -212,7 +212,7 @@
 						:key="item.id"
 						class="achievement-row"
 						:class="{ unlocked: item.unlocked, interactive: isSelf }"
-						@tap="goToDetail(item.id)"
+						@tap="goToDetail(item)"
 					>
 						<view class="achievement-icon" :class="{ locked: !item.unlocked }">
 							<image v-if="hasAchievementIcon(item)" :src="item.icon" mode="aspectFit" @error="handleAchievementIconError(item)"></image>
@@ -470,6 +470,9 @@ import { onBackPress, onLoad, onPullDownRefresh, onReachBottom, onShow } from '@
 import { equipTitle, getHonorWall, getUserTitles } from '@/api/achievement.js'
 import { getNotificationList, markAsRead } from '@/api/notification.js'
 import { useNotificationStore } from '@/store/notification.js'
+import { useUserStore } from '@/store/user.js'
+import { useUserDataInvalidationStore } from '@/store/userDataInvalidation.js'
+import { cacheAchievementDetail } from '@/utils/achievement-detail-cache.js'
 import {
 	filterSpecialtyAchievements,
 	getAchievementCategoryEmoji,
@@ -501,6 +504,8 @@ import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const { isDarkMode } = usePageTheme()
 const notificationStore = useNotificationStore()
+const userStore = useUserStore()
+const userDataInvalidationStore = useUserDataInvalidationStore()
 
 const createEmptyWall = () => ({
 	viewer_scope: 'self',
@@ -566,6 +571,20 @@ const titleListFailed = ref(false)
 const titleSubmitting = ref(false)
 const brokenAchievementIcons = ref({})
 const wallRequestGuard = createLatestRequestGuard()
+const requestedIdentityKey = ref('')
+const requestedHonorScopeVersion = ref(0)
+const loadedIdentityKey = ref('')
+const loadedHonorScopeVersion = ref(0)
+
+const currentReadIdentity = () => ({
+	userId: userStore.userId,
+	authGeneration: userStore.authGeneration
+})
+
+const currentIdentityKey = () => {
+	const identity = currentReadIdentity()
+	return `${identity.userId}:${identity.authGeneration}`
+}
 
 const isSelf = computed(() => wall.value.viewer_scope !== 'friend')
 const tabs = computed(() => buildHonorWallTabs(wall.value.viewer_scope))
@@ -664,6 +683,17 @@ const buildRequestParams = () => {
 const loadData = async ({ appendHistory = false } = {}) => {
 	if (appendHistory && (historyLoading.value || loading.value || refreshing.value)) return
 	const requestId = wallRequestGuard.next()
+	const requestIdentityKey = currentIdentityKey()
+	const requestScopeVersion = userDataInvalidationStore.versionOf('honor')
+	requestedIdentityKey.value = requestIdentityKey
+	requestedHonorScopeVersion.value = requestScopeVersion
+	if (!appendHistory && loadedIdentityKey.value && loadedIdentityKey.value !== requestIdentityKey) {
+		wall.value = createEmptyWall()
+		titleList.value = []
+		titleListLoaded.value = false
+		titleListLoading.value = false
+		loaded.value = false
+	}
 	const requestParams = buildRequestParams()
 	if (appendHistory) {
 		historyLoading.value = true
@@ -679,7 +709,7 @@ const loadData = async ({ appendHistory = false } = {}) => {
 	try {
 		const response = await getHonorWall(requestParams)
 		if (!response?.success) throw new Error(response?.message || '荣誉墙加载失败')
-		if (!wallRequestGuard.isLatest(requestId)) return
+		if (!wallRequestGuard.isLatest(requestId) || currentIdentityKey() !== requestIdentityKey) return
 		const normalized = normalizeWall(response)
 		if (appendHistory) {
 			normalized.history.honors = [...historyHonors.value, ...normalized.history.honors]
@@ -689,8 +719,10 @@ const loadData = async ({ appendHistory = false } = {}) => {
 		const allowedTabs = tabs.value.map(item => item.key)
 		if (!allowedTabs.includes(activeTab.value)) activeTab.value = 'career'
 		if (isSelf.value && !appendHistory) showLatestRollover()
+		loadedIdentityKey.value = requestIdentityKey
+		loadedHonorScopeVersion.value = requestScopeVersion
 	} catch (error) {
-		if (!wallRequestGuard.isLatest(requestId)) return
+		if (!wallRequestGuard.isLatest(requestId) || currentIdentityKey() !== requestIdentityKey) return
 		console.error('加载荣誉墙失败:', error)
 		const loadError = resolveHonorWallLoadError({ error })
 		if (loadError.kind === 'superseded') {
@@ -711,7 +743,7 @@ const loadData = async ({ appendHistory = false } = {}) => {
 			uni.showToast({ title: error.message || '荣誉墙更新失败', icon: 'none' })
 		}
 	} finally {
-		if (!wallRequestGuard.isLatest(requestId)) return
+		if (!wallRequestGuard.isLatest(requestId) || currentIdentityKey() !== requestIdentityKey) return
 		loading.value = false
 		refreshing.value = false
 		historyLoading.value = false
@@ -724,7 +756,10 @@ const showLatestRollover = () => {
 		getNotificationList,
 		markAsRead,
 		showModal: options => uni.showModal(options),
-		onRead: () => notificationStore.fetchUnreadCount()
+		onRead: () => notificationStore.fetchUnreadCount({
+			userId: userStore.userId,
+			authGeneration: userStore.authGeneration
+		})
 	}).catch(error => console.error('展示换季结果失败:', error))
 }
 
@@ -753,8 +788,13 @@ const loadMoreHistory = () => {
 	loadData({ appendHistory: true })
 }
 
-const goToDetail = (id) => {
+const goToDetail = (achievement) => {
+	const id = Number(achievement?.id || 0)
 	if (!isSelf.value || !id) return
+	cacheAchievementDetail({
+		userId: userStore.userId,
+		authGeneration: userStore.authGeneration
+	}, achievement)
 	uni.navigateTo({ url: `/subPages/achievement/detail?id=${id}` })
 }
 
@@ -765,20 +805,23 @@ const syncEquippedTitleFromList = () => {
 
 const loadTitles = async () => {
 	if (titleListLoading.value) return
+	const requestIdentityKey = currentIdentityKey()
 	titleListLoading.value = true
 	titleListFailed.value = false
 
 	try {
 		const response = await getUserTitles()
+		if (currentIdentityKey() !== requestIdentityKey) return
 		const list = Array.isArray(response?.list) ? response.list : Array.isArray(response) ? response : []
 		titleList.value = list
 		titleListLoaded.value = true
 		syncEquippedTitleFromList()
 	} catch (error) {
+		if (currentIdentityKey() !== requestIdentityKey) return
 		console.error('加载称号列表失败:', error)
 		titleListFailed.value = true
 	} finally {
-		titleListLoading.value = false
+		if (currentIdentityKey() === requestIdentityKey) titleListLoading.value = false
 	}
 }
 
@@ -849,6 +892,10 @@ onLoad((options) => {
 })
 
 onShow(() => {
+	const identityKey = currentIdentityKey()
+	const scopeVersion = userDataInvalidationStore.versionOf('honor')
+	if (requestedIdentityKey.value === identityKey && requestedHonorScopeVersion.value === scopeVersion && (loading.value || refreshing.value)) return
+	if (loaded.value && requestedIdentityKey.value === identityKey && requestedHonorScopeVersion.value === scopeVersion && loadedIdentityKey.value === identityKey && loadedHonorScopeVersion.value === scopeVersion) return
 	historyPage.value = 1
 	loadData()
 })

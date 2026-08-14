@@ -144,11 +144,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
+import { usePublicReadStore } from '@/store/publicRead.js'
 import { usePageTheme } from '@/utils/page-theme.js'
-import { getLeaderboard } from '@/api/rank.js'
 import { startMatch } from '@/api/match.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
@@ -161,6 +161,7 @@ const { isDarkMode } = usePageTheme()
 
 // ========== 响应式数据 ==========
 const userStore = useUserStore()
+const publicReadStore = usePublicReadStore()
 const isEmpty = computed(() => !isLoading.value && topThree.value.length === 0 && rankList.value.length === 0)
 const isLoading = ref(false)
 const isRefreshing = ref(false)
@@ -188,13 +189,8 @@ onLoad((options) => {
 })
 
 // ========== 生命周期 ==========
-onMounted(() => {
-	fetchLeaderboard()
-})
-
 onShow(() => {
-	// 页面显示时刷新数据
-	fetchLeaderboard(true, false)
+	fetchLeaderboard()
 })
 
 // ========== 方法 ==========
@@ -218,10 +214,16 @@ const fetchLeaderboard = async (isRefresh = false, isLoadMore = false) => {
 	}
 	
 	try {
-		const res = await getLeaderboard({
+		const res = await publicReadStore.loadLeaderboard({
 			game_type: currentGameType.value,
 			page: currentPage.value,
 			page_size: pageSize
+		}, {
+			force: isRefresh,
+			identity: {
+				userId: userStore.userId,
+				authGeneration: userStore.authGeneration
+			}
 		})
 		
 		if (res.success) {

@@ -21,7 +21,7 @@ func NewRefereePreviewLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Re
 	return &RefereePreviewLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

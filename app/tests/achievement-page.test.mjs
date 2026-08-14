@@ -1,6 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import {
+  cacheAchievementDetail,
+  clearAchievementDetailCache,
+  getCachedAchievementDetail
+} from '../utils/achievement-detail-cache.js'
 
 import {
   ACHIEVEMENT_CATEGORY_GROUPS,
@@ -159,6 +164,21 @@ test('achievement pages use shared mapping and refresh the honor wall on show', 
   assert.match(achievementDetailSource, /achievement\.reward_title_name/)
   assert.match(achievementDetailSource, /achievement\.description/)
   assert.doesNotMatch(achievementDetailSource, /累计达成/)
+})
+
+test('achievement detail reuses an honor-wall entity and deep links to one direct detail request', () => {
+  assert.match(achievementIndexSource, /cacheAchievementDetail\(/)
+  assert.match(achievementIndexSource, /@tap="goToDetail\(item\)"/)
+  assert.match(achievementDetailSource, /getCachedAchievementDetail/)
+  assert.match(achievementDetailSource, /getAchievementDetail\(\{ achievement_id: achievementId\.value \}\)/)
+  assert.doesNotMatch(achievementDetailSource, /getAchievementList\(/)
+})
+
+test('achievement detail cache is isolated when the authenticated identity changes', () => {
+  clearAchievementDetailCache()
+  cacheAchievementDetail({ userId: 7, authGeneration: 2 }, { id: 9, name: '九连胜' })
+  assert.equal(getCachedAchievementDetail({ userId: 7, authGeneration: 2 }, 9)?.name, '九连胜')
+  assert.equal(getCachedAchievementDetail({ userId: 8, authGeneration: 3 }, 9), null)
 })
 
 test('achievement list and detail fall back when an icon cannot load', () => {

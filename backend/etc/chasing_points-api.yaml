@@ -4,6 +4,9 @@ Port: ${APP_PORT}
 Env: ${APP_ENV}
 Timeout: 10000
 
+Middlewares:
+  Prometheus: true
+
 # JWT配置
 Auth:
   AccessSecret: ${JWT_ACCESS_SECRET}
@@ -104,6 +107,13 @@ SeasonLifecycle:
   CycleMonths: 1
   Timezone: Asia/Shanghai
 
+Observability:
+  SlowSQLThresholdMs: 500
+
+# 读模型表创建后先保持双写和历史回建；仅在审计 differences=0 后切换为 enabled。
+CompetitiveReadModel:
+  ReadMode: disabled
+
 Log:
   ServiceName: chasing_points-api
   Encoding: json
@@ -111,4 +121,4 @@ Log:
   Level: debug
   Path: tmp/logs
   KeepDays: 3
-  Stat: false
+  Stat: true

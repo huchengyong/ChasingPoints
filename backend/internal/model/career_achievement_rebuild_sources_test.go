@@ -168,10 +168,6 @@ func TestCareerAchievementRebuildSourceQueriesReturnOnlyAuthoritativeHistory(t *
 	if err != nil || len(seasonMatches) != 2 || seasonMatches[0].Id != 1 || seasonMatches[1].Id != 6 {
 		t.Fatalf("season records must use the same authoritative matches: matches=%+v err=%v", seasonMatches, err)
 	}
-	windowMatches, err := matchModel.ListCompletedRankedBetweenWithTx(nil, base.Add(-time.Hour), base.AddDate(0, 0, 1))
-	if err != nil || len(windowMatches) != 2 || windowMatches[0].Id != 1 || windowMatches[1].Id != 6 {
-		t.Fatalf("season settlement must include nullable historical win type: matches=%+v err=%v", windowMatches, err)
-	}
 	bulkRounds, err := matchModel.ListCompletedRoundsByMatchIDs([]int64{1, 6})
 	if err != nil || len(bulkRounds) != 2 || bulkRounds[0].WinType != "break_clear" || bulkRounds[1].MatchId != 6 {
 		t.Fatalf("unexpected bulk rounds: rounds=%+v err=%v", bulkRounds, err)

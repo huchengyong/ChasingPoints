@@ -24,7 +24,7 @@ func NewStartNextRoundLogic(ctx context.Context, svcCtx *svc.ServiceContext) *St
 	return &StartNextRoundLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

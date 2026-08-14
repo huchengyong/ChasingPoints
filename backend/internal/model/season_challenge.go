@@ -61,7 +61,17 @@ func (m *SeasonChallengeSnapshotModel) UpsertBatchWithTx(tx *gorm.DB, snapshots 
 			"completed",
 			"archived_at",
 		}),
-	}).Create(&snapshots).Error
+	}).CreateInBatches(&snapshots, 500).Error
+}
+
+func (m *SeasonChallengeSnapshotModel) ListBySeasonWithTx(tx *gorm.DB, seasonId int64) ([]SeasonChallengeSnapshot, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	var list []SeasonChallengeSnapshot
+	err := db.Where("season_id = ?", seasonId).Order("id ASC").Find(&list).Error
+	return list, err
 }
 
 func (m *SeasonChallengeSnapshotModel) FindByUserSeasonAndGameType(userId, seasonId int64, gameType int) ([]SeasonChallengeSnapshot, error) {
@@ -73,16 +83,20 @@ func (m *SeasonChallengeSnapshotModel) FindByUserSeasonAndGameType(userId, seaso
 }
 
 type SeasonSettlement struct {
-	Id           int64  `gorm:"primarykey"`
-	SeasonId     int64  `gorm:"not null;uniqueIndex:uk_season_settlements_season"`
-	NextSeasonId *int64 `gorm:"type:bigint unsigned"`
-	Status       string `gorm:"size:16;not null;default:'running';index:idx_season_settlements_status,priority:1"`
-	Attempts     int    `gorm:"not null;default:0"`
-	StartedAt    *time.Time
-	CompletedAt  *time.Time
-	LastError    string    `gorm:"size:512;not null;default:''"`
-	CreatedAt    time.Time `gorm:"autoCreateTime"`
-	UpdatedAt    time.Time `gorm:"autoUpdateTime;index:idx_season_settlements_status,priority:2"`
+	Id                       int64  `gorm:"primarykey"`
+	SeasonId                 int64  `gorm:"not null;uniqueIndex:uk_season_settlements_season"`
+	NextSeasonId             *int64 `gorm:"type:bigint unsigned"`
+	Status                   string `gorm:"size:16;not null;default:'running';index:idx_season_settlements_status,priority:1"`
+	Attempts                 int    `gorm:"not null;default:0"`
+	StartedAt                *time.Time
+	RecordsCompletedAt       *time.Time
+	ChallengesCompletedAt    *time.Time
+	TitlesCompletedAt        *time.Time
+	NotificationsCompletedAt *time.Time
+	CompletedAt              *time.Time
+	LastError                string    `gorm:"size:512;not null;default:''"`
+	CreatedAt                time.Time `gorm:"autoCreateTime"`
+	UpdatedAt                time.Time `gorm:"autoUpdateTime;index:idx_season_settlements_status,priority:2"`
 }
 
 func (SeasonSettlement) TableName() string {

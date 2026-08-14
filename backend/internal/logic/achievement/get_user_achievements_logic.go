@@ -22,7 +22,7 @@ func NewGetUserAchievementsLogic(ctx context.Context, svcCtx *svc.ServiceContext
 	return &GetUserAchievementsLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

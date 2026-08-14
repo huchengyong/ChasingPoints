@@ -75,10 +75,9 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { useUserStore } from '@/store/user.js'
-import { getQiniuUploadToken, getUserInfo, updateUserProfile } from '@/api/user.js'
+import { getQiniuUploadToken, updateUserProfile } from '@/api/user.js'
 import bindPhone from '@/components/bindPhone.vue'
 import {
 	prepareAvatarForUpload,
@@ -103,21 +102,6 @@ const showBindPhoneModal = ref(false)
 const newNickname = ref('')
 const isSaving = ref(false)
 const isUploadingAvatar = ref(false)
-
-onShow(() => {
-	fetchLatestUserInfo()
-})
-
-const fetchLatestUserInfo = async () => {
-	try {
-		const res = await getUserInfo()
-		if (res?.success && res.user_info) {
-			userStore.updateUserInfo(res.user_info)
-		}
-	} catch (error) {
-		console.error('获取用户信息失败:', error)
-	}
-}
 
 const chooseAvatarSource = () => {
 	if (isUploadingAvatar.value) return

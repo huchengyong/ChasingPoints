@@ -21,7 +21,7 @@ func NewAdminGetMemberRightsConfigLogic(ctx context.Context, svcCtx *svc.Service
 	return &AdminGetMemberRightsConfigLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

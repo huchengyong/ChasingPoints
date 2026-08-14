@@ -23,7 +23,7 @@ func NewGetMySeasonRecordLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 	return &GetMySeasonRecordLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -41,7 +41,7 @@ func (l *GetMySeasonRecordLogic) GetMySeasonRecord(req *types.GetMySeasonRecordR
 	var season *model.Season
 
 	if seasonId == 0 {
-		season, _, err = resolveCurrentSeasonLifecycle(l.svcCtx, time.Now())
+		season, _, err = ResolveCurrentSeasonLifecycle(l.svcCtx, time.Now())
 		if err != nil {
 			l.Logger.Errorf("解析当前赛季失败: err=%v", err)
 			return &types.GetMySeasonRecordResp{Success: false}, nil

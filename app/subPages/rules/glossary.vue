@@ -39,10 +39,12 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getGlossary } from '@/api/rules.js'
+import { usePublicReadStore } from '@/store/publicRead.js'
 import { getRuleCategoryLabel } from '@/utils/game-types.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 
 const { isDarkMode } = usePageTheme()
+const publicReadStore = usePublicReadStore()
 
 const loading = ref(true)
 const glossaryList = ref([])
@@ -60,7 +62,7 @@ const filteredList = computed(() => {
 const loadGlossary = async () => {
 	loading.value = true
 	try {
-		const res = await getGlossary()
+		const res = await publicReadStore.loadStatic('rules:glossary', () => getGlossary())
 		glossaryList.value = res.list || res || []
 	} catch (e) {
 		console.error('加载术语失败:', e)

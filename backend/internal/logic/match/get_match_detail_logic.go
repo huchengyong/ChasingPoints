@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	logicx "chasing_points/internal/logic"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -23,7 +24,7 @@ func NewGetMatchDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Ge
 	return &GetMatchDetailLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -41,9 +42,7 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 		l.Logger.Errorf("对局不存在: %v", err)
 		return &types.GetMatchDetailResp{Success: false}, nil
 	}
-	if refreshed, expireErr := expireStaleFinishRequest(l.svcCtx, match); expireErr == nil && refreshed != nil {
-		match = refreshed
-	}
+	match = effectiveMatchForRead(match, time.Now())
 
 	// 验证用户权限（对局双方和裁判都可以查看）
 	capabilities := resolveMatchViewerCapabilities(match, userId)
@@ -53,27 +52,33 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 		return &types.GetMatchDetailResp{Success: false}, nil
 	}
 	isPlayer1 := capabilities.ViewerRole != matchViewerRolePlayer2
+	var completedCore *logicx.CompletedMatchCoreSummary
+	if match.Status == 2 {
+		completedCore, _ = logicx.BuildCompletedMatchCoreSummary(l.ctx, l.svcCtx, match)
+	}
 
 	// 根据视角获取分数和玩家信息
 	var myScore, opponentScore int
 	var currentFrameMyScore, currentFrameOpponentScore int
 	var myName, opponentName, myAvatar, opponentAvatar string
 
-	// 查询创建者(player1)信息
-	player1, _ := l.svcCtx.UserModel.FindById(match.UserId)
 	player1Name := "玩家1"
 	player1Avatar := ""
-	if player1 != nil {
+	if completedCore != nil && completedCore.Player1 != nil {
+		player1Name = completedCore.Player1.Nickname
+		player1Avatar = completedCore.Player1.Avatar
+	} else if player1, _ := l.svcCtx.UserModel.FindById(match.UserId); player1 != nil {
 		player1Name = player1.Nickname
 		player1Avatar = player1.Avatar
 	}
 
-	// 查询对手(player2)信息
 	player2Name := match.OpponentName
 	player2Avatar := ""
-	if match.OpponentId != nil {
-		player2, _ := l.svcCtx.UserModel.FindById(*match.OpponentId)
-		if player2 != nil {
+	if completedCore != nil && completedCore.Player2 != nil {
+		player2Name = completedCore.Player2.Nickname
+		player2Avatar = completedCore.Player2.Avatar
+	} else if match.OpponentId != nil {
+		if player2, _ := l.svcCtx.UserModel.FindById(*match.OpponentId); player2 != nil {
 			player2Name = player2.Nickname
 			player2Avatar = player2.Avatar
 		}
@@ -81,7 +86,10 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 	refereeName := ""
 	refereeAvatar := ""
 	refereeJoinedAt := ""
-	if capabilities.RefereeBound && capabilities.RefereeUserId > 0 {
+	if completedCore != nil && completedCore.Referee != nil {
+		refereeName = completedCore.Referee.Nickname
+		refereeAvatar = completedCore.Referee.Avatar
+	} else if capabilities.RefereeBound && capabilities.RefereeUserId > 0 {
 		if referee, err := l.svcCtx.UserModel.FindById(capabilities.RefereeUserId); err == nil && referee != nil {
 			refereeName = referee.Nickname
 			refereeAvatar = referee.Avatar
@@ -127,6 +135,12 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 		opponentName = player1Name
 		opponentAvatar = player1Avatar
 	}
+	if completedCore != nil {
+		viewer := completedCore.ViewerPerspective(userId)
+		myScore, opponentScore = viewer.MyScore, viewer.OpponentScore
+		myName, myAvatar = viewer.MyName, viewer.MyAvatar
+		opponentName, opponentAvatar = viewer.OpponentName, viewer.OpponentAvatar
+	}
 	player2Id := int64(0)
 	if match.OpponentId != nil {
 		player2Id = *match.OpponentId
@@ -138,37 +152,20 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 		opponentId = match.UserId
 	}
 
-	// 查询成绩数据
 	achievements := types.MatchAchievement{}
-	if achList, err := l.svcCtx.MatchModel.GetAchievements(match.Id); err == nil {
+	if completedCore != nil {
+		achievements = completedCore.Achievements
+	} else if achList, err := l.svcCtx.MatchModel.GetAchievements(match.Id); err == nil {
 		achievements = buildMatchAchievementPayload(achList)
 	}
 
-	// 获取双方的胜率和单杆最高分
-	var player1WinRate, player2WinRate float64
-	var player1MaxScore, player2MaxScore int
-
-	// 获取 player1(创建者) 的统计数据
-	if stats1, err := l.svcCtx.MatchModel.GetUserStats(match.UserId); err == nil && stats1 != nil {
-		if stats1.TotalMatches > 0 {
-			player1WinRate = float64(stats1.Wins) / float64(stats1.TotalMatches) * 100
-		}
-	}
-	if maxScore1, err := loadUserMaxSingleScore(l.svcCtx, match.UserId, match.GameType); err == nil {
-		player1MaxScore = maxScore1
-	}
-
-	// 获取 player2(对手) 的统计数据（需要对手是注册用户）
+	player1Profile, _ := logicx.LoadCurrentCompetitiveProfile(l.svcCtx, match.UserId, match.GameType)
+	player2Profile := logicx.CurrentCompetitiveProfile{}
 	if match.OpponentId != nil {
-		if stats2, err := l.svcCtx.MatchModel.GetUserStats(*match.OpponentId); err == nil && stats2 != nil {
-			if stats2.TotalMatches > 0 {
-				player2WinRate = float64(stats2.Wins) / float64(stats2.TotalMatches) * 100
-			}
-		}
-		if maxScore2, err := loadUserMaxSingleScore(l.svcCtx, *match.OpponentId, match.GameType); err == nil {
-			player2MaxScore = maxScore2
-		}
+		player2Profile, _ = logicx.LoadCurrentCompetitiveProfile(l.svcCtx, *match.OpponentId, match.GameType)
 	}
+	player1WinRate, player1MaxScore := player1Profile.WinRate, player1Profile.MaxScore
+	player2WinRate, player2MaxScore := player2Profile.WinRate, player2Profile.MaxScore
 
 	// 根据视角设置我方和对手的统计数据
 	var myWinRate, opponentWinRate float64
@@ -190,39 +187,76 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 	myRankDetails := []types.RankDetail{}
 
 	if match.Status == 2 {
-		myRankLog, logErr := l.svcCtx.RankingModel.FindMatchRankChangeByUserAndGameType(match.Id, userId, match.GameType)
-		if logErr != nil {
-			l.Logger.Errorf("获取我的段位明细失败: matchId=%d userId=%d err=%v", match.Id, userId, logErr)
-		} else if myRankLog != nil {
-			myRankChange = myRankLog.FinalChange
-			myRankDetails = rankLogToDetails(myRankLog)
-		}
+		if completedCore != nil {
+			for index := range completedCore.RankChanges {
+				rankLog := &completedCore.RankChanges[index]
+				if rankLog.UserId == userId {
+					myRankChange = rankLog.FinalChange
+					myRankDetails = rankLogToDetails(rankLog)
+				} else {
+					opponentRankChange = rankLog.FinalChange
+				}
+			}
+		} else {
+			myRankLog, logErr := l.svcCtx.RankingModel.FindMatchRankChangeByUserAndGameType(match.Id, userId, match.GameType)
+			if logErr != nil {
+				l.Logger.Errorf("获取我的段位明细失败: matchId=%d userId=%d err=%v", match.Id, userId, logErr)
+			} else if myRankLog != nil {
+				myRankChange = myRankLog.FinalChange
+				myRankDetails = rankLogToDetails(myRankLog)
+			}
 
-		allLogs, logsErr := l.svcCtx.RankingModel.ListRankChangesByMatchAndGameType(match.Id, match.GameType)
-		if logsErr != nil {
-			l.Logger.Errorf("获取对局段位明细失败: matchId=%d err=%v", match.Id, logsErr)
-		} else if opponentLog := findOpponentRankLog(allLogs, userId); opponentLog != nil {
-			opponentRankChange = opponentLog.FinalChange
+			allLogs, logsErr := l.svcCtx.RankingModel.ListRankChangesByMatchAndGameType(match.Id, match.GameType)
+			if logsErr != nil {
+				l.Logger.Errorf("获取对局段位明细失败: matchId=%d err=%v", match.Id, logsErr)
+			} else if opponentLog := findOpponentRankLog(allLogs, userId); opponentLog != nil {
+				opponentRankChange = opponentLog.FinalChange
+			}
 		}
 	}
 
-	roundCount, _ := l.svcCtx.MatchModel.GetRoundCount(match.Id)
+	var roundCount int64
+	if completedCore != nil {
+		roundCount = int64(len(completedCore.Rounds))
+	} else {
+		roundCount, _ = l.svcCtx.MatchModel.GetRoundCount(match.Id)
+	}
 	currentRound := int(roundCount) + 1
 	redBallCount := 0
 	snookerClearanceStarted := false
 	snookerClearedColors := make([]int, 0, 6)
 	snookerExpectedClearanceScore := 0
 	snookerClearanceCompleted := false
-	completedRounds, _ := l.svcCtx.MatchModel.ListCompletedRounds(match.Id)
-	actions, _ := l.svcCtx.MatchModel.ListActiveActions(match.Id)
+	var completedRounds []model.MatchRound
+	var actions []model.MatchAction
+	if completedCore != nil {
+		completedRounds = completedCore.Rounds
+		actions = completedCore.Actions
+	} else {
+		completedRounds, _ = l.svcCtx.MatchModel.ListCompletedRounds(match.Id)
+		actions, _ = l.svcCtx.MatchModel.ListActiveActions(match.Id)
+	}
 	actionsForSummary := actions
+	var lastAction *types.MatchLastAction
+	if completedCore != nil && len(actions) > 0 {
+		lastAction = buildMatchLastActionFromAction(userId, match, &actions[len(actions)-1])
+	} else {
+		lastAction = buildMatchLastAction(l.svcCtx, userId, match)
+	}
 	snookerState := model.SnookerRoundState{ClearedColors: make([]int, 0, 6)}
 	if match.GameType == 1 {
 		stateRound := currentRound
 		if !match.CurrentFrameStarted && roundCount > 0 {
 			stateRound = int(roundCount)
 		}
-		if state, stateErr := loadSnookerStateForMatch(l.svcCtx, match, stateRound); stateErr == nil {
+		var state model.SnookerRoundState
+		var stateErr error
+		if completedCore != nil {
+			state, stateErr = buildSnookerStateForMatchFromActions(match, actions, stateRound)
+		} else {
+			state, stateErr = loadSnookerStateForMatch(l.svcCtx, match, stateRound)
+		}
+		if stateErr == nil {
 			snookerState = state
 		}
 		redBallCount = snookerState.RedBallCount
@@ -245,9 +279,6 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 	myActor := 1
 	if !isPlayer1 {
 		myActor = 2
-	}
-	if match.GameType == 1 {
-		myMaxScore, opponentMaxScore = calculateSnookerHighestBreaks(actionsForSummary, myActor)
 	}
 	summaryHighlights, summaryStats := buildMatchSummary(
 		match.GameType,
@@ -298,7 +329,7 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			CanConfirmFinish:              capabilities.CanConfirmFinish && !isSnookerV2Match(match),
 			CanDisputeFinish:              capabilities.CanDisputeFinish && !isSnookerV2Match(match),
 			CanWithdrawFinish:             capabilities.CanWithdrawFinish && !isSnookerV2Match(match),
-			LastAction:                    buildMatchLastAction(l.svcCtx, userId, match),
+			LastAction:                    lastAction,
 			MyScore:                       myScore,
 			OpponentScore:                 opponentScore,
 			MyName:                        myName,

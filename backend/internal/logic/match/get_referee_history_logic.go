@@ -22,7 +22,7 @@ func NewGetRefereeHistoryLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 	return &GetRefereeHistoryLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -42,34 +42,30 @@ func (l *GetRefereeHistoryLogic) GetRefereeHistory(req *types.RefereeHistoryReq)
 	}
 	offset := (page - 1) * pageSize
 
-	matches, total, err := l.svcCtx.MatchModel.ListByRefereeUserId(userId, offset, pageSize)
+	matches, total, err := l.svcCtx.MatchModel.ListByRefereeUserIdWithProfiles(userId, offset, pageSize)
 	if err != nil {
 		l.Errorf("查询裁判历史失败: userId=%d err=%v", userId, err)
 		return &types.RefereeHistoryResp{Success: false, Total: 0, List: []types.RefereeHistoryItem{}}, nil
 	}
 
 	list := make([]types.RefereeHistoryItem, 0, len(matches))
-	for _, m := range matches {
-		player1Name := "玩家1"
-		player1Avatar := ""
-		if p1, _ := l.svcCtx.UserModel.FindById(m.UserId); p1 != nil {
-			if p1.Nickname != "" {
-				player1Name = p1.Nickname
-			}
-			player1Avatar = p1.Avatar
+	for _, row := range matches {
+		m := row.Match
+		player1Name := row.Player1Name
+		if player1Name == "" {
+			player1Name = "玩家1"
 		}
+		player1Avatar := row.Player1Avatar
 
 		player2Id := int64(0)
 		player2Name := "玩家2"
 		player2Avatar := ""
 		if m.OpponentId != nil {
 			player2Id = *m.OpponentId
-			if p2, _ := l.svcCtx.UserModel.FindById(*m.OpponentId); p2 != nil {
-				if p2.Nickname != "" {
-					player2Name = p2.Nickname
-				}
-				player2Avatar = p2.Avatar
+			if row.Player2Name != "" {
+				player2Name = row.Player2Name
 			}
+			player2Avatar = row.Player2Avatar
 		}
 
 		refereeDuration := calculateRefereeDurationSeconds(m.RefereeJoinedAt, m.EndTime)

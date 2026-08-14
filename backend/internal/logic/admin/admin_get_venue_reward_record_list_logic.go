@@ -21,7 +21,7 @@ func NewAdminGetVenueRewardRecordListLogic(ctx context.Context, svcCtx *svc.Serv
 	return &AdminGetVenueRewardRecordListLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

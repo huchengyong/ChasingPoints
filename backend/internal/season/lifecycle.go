@@ -155,6 +155,51 @@ func (p Policy) WindowsThrough(now time.Time, futureWindows int) []Window {
 	return windows
 }
 
+type CurrentSeasonFinder interface {
+	FindCurrent() (*model.Season, error)
+	FindByStartDateCandidates(time.Time) ([]model.Season, error)
+}
+
+// ResolveCurrentLifecycle is the shared bounded resolver for online reads.
+// Schedule-wide validation and creation use BuildPlan in workers.
+func ResolveCurrentLifecycle(cfg config.SeasonLifecycleConfig, now time.Time, finder CurrentSeasonFinder) (*model.Season, string, error) {
+	policy, err := NewPolicy(cfg)
+	if err != nil {
+		return nil, StateUnavailable, nil
+	}
+	return resolvePersistedCurrent(policy, now, finder)
+}
+
+func resolvePersistedCurrent(policy Policy, now time.Time, finder CurrentSeasonFinder) (*model.Season, string, error) {
+	if finder == nil {
+		return nil, StateUnavailable, nil
+	}
+	if !policy.Enabled {
+		current, err := finder.FindCurrent()
+		if err != nil {
+			return nil, StateUnavailable, err
+		}
+		if current == nil {
+			return nil, StateNotStarted, nil
+		}
+		return current, StateActive, nil
+	}
+	window, started := policy.WindowAt(now)
+	if !started {
+		return nil, StateNotStarted, nil
+	}
+	candidates, err := finder.FindByStartDateCandidates(window.StartDate)
+	if err != nil {
+		return nil, StateUnavailable, err
+	}
+	if len(candidates) != 1 || !MatchesWindow(candidates[0], window, policy.Location) {
+		return nil, StateUnavailable, nil
+	}
+	resolved := candidates[0]
+	resolved.Status = 1
+	return &resolved, StateActive, nil
+}
+
 func Resolve(policy Policy, now time.Time, existing []model.Season) Resolution {
 	plan := BuildPlan(policy, now, existing)
 	result := Resolution{State: plan.State, Plan: plan}

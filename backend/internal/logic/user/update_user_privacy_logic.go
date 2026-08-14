@@ -21,7 +21,7 @@ func NewUpdateUserPrivacyLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 	return &UpdateUserPrivacyLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

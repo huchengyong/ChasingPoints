@@ -143,7 +143,7 @@ import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { useUserStore } from '@/store/user.js'
-import { getUserInfo, getUserPrivacy, updateUserPrivacy } from '@/api/user.js'
+import { getUserPrivacy, updateUserPrivacy } from '@/api/user.js'
 import bindPhone from '@/components/bindPhone.vue'
 import { formatSettingsPhone } from '@/utils/settings-profile.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
@@ -166,31 +166,24 @@ const displayPhoneText = computed(() => formatSettingsPhone(userPhone.value) || 
 const showBindPhoneModal = ref(false)
 const isHideMatch = ref(false)
 const hideMatchLoading = ref(false)
+const privacyLoadedAt = ref(0)
+const privacyDirty = ref(true)
+const PRIVACY_CACHE_TTL = 5 * 60 * 1000
 
 // ========== 生命周期 ==========
 onShow(() => {
-	fetchLatestUserInfo()
 	loadUserPrivacy()
 })
 
-const fetchLatestUserInfo = async () => {
-	try {
-		const res = await getUserInfo()
-		if (res?.success && res.user_info) {
-			userStore.updateUserInfo(res.user_info)
-		}
-	} catch (error) {
-		console.error('获取用户信息失败:', error)
-	}
-}
-
-const loadUserPrivacy = async () => {
+const loadUserPrivacy = async ({ force = false } = {}) => {
+	if (!force && !privacyDirty.value && Date.now() - privacyLoadedAt.value < PRIVACY_CACHE_TTL) return
 	try {
 		const res = await getUserPrivacy()
 		isHideMatch.value = Boolean(res?.success && res.hide_match_record)
+		privacyLoadedAt.value = Date.now()
+		privacyDirty.value = false
 	} catch (error) {
 		console.error('获取用户隐私设置失败:', error)
-		isHideMatch.value = false
 	}
 }
 
@@ -259,6 +252,8 @@ const toggleHideMatch = async () => {
 		}
 
 		isHideMatch.value = Boolean(res.hide_match_record)
+		privacyLoadedAt.value = Date.now()
+		privacyDirty.value = false
 		uni.showToast({
 			title: res.hide_match_record ? '已隐藏战绩' : '已公开战绩',
 			icon: 'none'

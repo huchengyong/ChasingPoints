@@ -28,7 +28,7 @@ func (l *GetUserRankInfosLogic) GetUserRankInfos() (*types.GetUserRankInfosResp,
 		return &types.GetUserRankInfosResp{Success: false}, nil
 	}
 
-	rankings, err := l.svcCtx.RankingModel.FindOrCreateByGameTypes(userId)
+	rankings, err := l.svcCtx.RankingModel.ListByUserId(userId)
 	if err != nil {
 		l.Logger.Errorf("获取用户全部段位失败: %v", err)
 		return &types.GetUserRankInfosResp{Success: false}, nil
@@ -54,7 +54,10 @@ func (l *GetUserRankInfosLogic) GetUserRankInfos() (*types.GetUserRankInfosResp,
 	for _, gameType := range gameTypes {
 		info := byGameType[gameType]
 		if info == nil {
-			l.Logger.Errorf("用户段位快照不完整: userId=%d gameType=%d", userId, gameType)
+			info = buildRankInfo(&model.UserRanking{UserId: userId, GameType: gameType, RankLevel: 1}, configByLevel)
+		}
+		if info == nil {
+			l.Logger.Errorf("段位配置不完整: userId=%d gameType=%d", userId, gameType)
 			return &types.GetUserRankInfosResp{Success: false}, nil
 		}
 		rankInfos = append(rankInfos, types.UserRankInfoItem{GameType: gameType, RankInfo: info})

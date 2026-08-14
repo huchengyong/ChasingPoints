@@ -25,7 +25,7 @@ func NewAdminCreateEventNewsLogic(ctx context.Context, svcCtx *svc.ServiceContex
 	return &AdminCreateEventNewsLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

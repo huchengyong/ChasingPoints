@@ -100,6 +100,16 @@ func (FavoriteVenueRewardRecord) TableName() string {
 	return "favorite_venue_reward_records"
 }
 
+type FavoriteVenueRewardStatusSnapshot struct {
+	RecordId                   *int64     `gorm:"column:record_id"`
+	RecordVenueId              *int64     `gorm:"column:record_venue_id"`
+	RecordMemberExpiresAtAfter *time.Time `gorm:"column:record_member_expires_at_after"`
+	VenueId                    *int64     `gorm:"column:venue_id"`
+	VenueName                  string     `gorm:"column:venue_name"`
+	VenueStatus                *int       `gorm:"column:venue_status"`
+	VenueRejectReason          string     `gorm:"column:venue_reject_reason"`
+}
+
 type FavoriteVenueRewardRecordAdminItem struct {
 	Id                    int64      `json:"id"`
 	UserId                int64      `json:"user_id"`
@@ -220,6 +230,34 @@ func (m *FavoriteVenueRewardRecordModel) FindByActivityAndUser(activityKey strin
 		return nil, nil
 	}
 	return &record, nil
+}
+
+func (m *FavoriteVenueRewardRecordModel) FindStatusByUser(activityKey string, userId int64) (*FavoriteVenueRewardStatusSnapshot, error) {
+	if m == nil || m.db == nil {
+		return nil, errors.New("favorite venue reward record db is nil")
+	}
+
+	var snapshot FavoriteVenueRewardStatusSnapshot
+	err := m.db.Raw(`
+		SELECT records.id AS record_id,
+			records.venue_id AS record_venue_id,
+			records.member_expires_at_after AS record_member_expires_at_after,
+			venues.id AS venue_id,
+			COALESCE(venues.name, '') AS venue_name,
+			venues.status AS venue_status,
+			COALESCE(venues.reject_reason, '') AS venue_reject_reason
+		FROM (SELECT 1 AS seed) AS base
+		LEFT JOIN favorite_venue_reward_records AS records
+			ON records.activity_key = ? AND records.user_id = ?
+		LEFT JOIN venues
+			ON venues.id = (
+				SELECT id FROM venues WHERE owner_user_id = ? ORDER BY id DESC LIMIT 1
+			)
+		LIMIT 1`, strings.TrimSpace(activityKey), userId, userId).Scan(&snapshot).Error
+	if err != nil {
+		return nil, err
+	}
+	return &snapshot, nil
 }
 
 func (m *FavoriteVenueRewardRecordModel) FindByActivityAndVenue(activityKey string, venueId int64) (*FavoriteVenueRewardRecord, error) {

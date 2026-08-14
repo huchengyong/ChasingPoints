@@ -121,7 +121,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { getCurrentSeason, getSeasonLeaderboard, getMySeasonRecord } from '@/api/season.js'
+import { onShow } from '@dcloudio/uni-app'
+import { getSeasonLeaderboard, getSeasonOverview } from '@/api/season.js'
+import { useUserDataInvalidationStore } from '@/store/userDataInvalidation.js'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { resolveCurrentSeasonState } from '@/utils/honor-wall.js'
 import { resolveSeasonTimeline } from '@/utils/season-lifecycle.js'
@@ -129,6 +131,7 @@ import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const { isDarkMode } = usePageTheme()
+const userDataInvalidationStore = useUserDataInvalidationStore()
 
 const statusMap = { 0: '未开始', 1: '进行中', 2: '已结束' }
 const gameTypeTabs = GAME_TYPE_TABS
@@ -137,10 +140,12 @@ const season = ref(null)
 const seasonState = ref('not_started')
 const myRecord = ref(null)
 const leaderboard = ref([])
-const loading = ref(true)
+const loading = ref(false)
 const page = ref(1)
 const hasMore = ref(true)
 const currentGameType = ref(3)
+const hasLoadedOnce = ref(false)
+const loadedSeasonScopeVersion = ref(0)
 
 const seasonEmptyState = computed(() => resolveCurrentSeasonState(season.value, seasonState.value))
 const hasActiveSeason = computed(() => seasonState.value === 'active' && Boolean(season.value))
@@ -154,9 +159,13 @@ const winRate = computed(() => {
 const remainDays = computed(() => seasonTimeline.value.remainDays)
 const progressPercent = computed(() => seasonTimeline.value.progressPercent)
 
-const fetchSeason = async () => {
+const currentSeasonScopeVersion = () => userDataInvalidationStore.versionOf('season')
+
+const loadSeasonOverview = async () => {
+	if (loading.value) return
+	loading.value = true
 	try {
-		const res = await getCurrentSeason()
+		const res = await getSeasonOverview({ game_type: currentGameType.value })
 		if (!res?.success) {
 			season.value = null
 			seasonState.value = 'unavailable'
@@ -164,24 +173,28 @@ const fetchSeason = async () => {
 		}
 		season.value = res.season || null
 		seasonState.value = res.season_state || (season.value ? 'active' : 'not_started')
-	} catch (e) {
-		console.error('获取赛季失败', e)
-		season.value = null
-		seasonState.value = 'unavailable'
-	}
-}
-
-const fetchMyRecord = async () => {
-	if (!hasActiveSeason.value) return
-	try {
-		const res = await getMySeasonRecord({ season_id: season.value.id, game_type: currentGameType.value })
-		if (res.success && res.record) {
-			myRecord.value = res.record
-		} else {
+		if (!hasActiveSeason.value) {
 			myRecord.value = null
+			leaderboard.value = []
+			hasMore.value = false
+			return
+		}
+		if (res.availability?.record !== false) {
+			myRecord.value = res.record || null
+		}
+		if (res.availability?.leaderboard !== false) {
+			leaderboard.value = res.leaderboard || []
+			page.value = 1
+			hasMore.value = leaderboard.value.length >= 20
 		}
 	} catch (e) {
-		console.error('获取赛季记录失败', e)
+		console.error('获取赛季概览失败', e)
+		season.value = null
+		seasonState.value = 'unavailable'
+	} finally {
+		hasLoadedOnce.value = true
+		loadedSeasonScopeVersion.value = currentSeasonScopeVersion()
+		loading.value = false
 	}
 }
 
@@ -221,21 +234,21 @@ const goReport = () => {
 }
 
 const handleGameTypeChange = async (gameType) => {
-	if (!hasActiveSeason.value || currentGameType.value === gameType) return
+	if (currentGameType.value === gameType) return
 	currentGameType.value = gameType
 	page.value = 1
 	hasMore.value = true
-	leaderboard.value = []
-	await Promise.all([fetchMyRecord(), fetchLeaderboard(true)])
+	await loadSeasonOverview()
 }
 
-onMounted(async () => {
-	loading.value = true
-	await fetchSeason()
-	if (hasActiveSeason.value) {
-		await Promise.all([fetchMyRecord(), fetchLeaderboard(true)])
+onMounted(() => {
+	loadSeasonOverview()
+})
+
+onShow(() => {
+	if (!hasLoadedOnce.value || loadedSeasonScopeVersion.value !== currentSeasonScopeVersion()) {
+		loadSeasonOverview()
 	}
-	loading.value = false
 })
 </script>
 

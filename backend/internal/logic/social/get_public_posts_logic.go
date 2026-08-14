@@ -21,7 +21,7 @@ func NewGetPublicPostsLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Ge
 	return &GetPublicPostsLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

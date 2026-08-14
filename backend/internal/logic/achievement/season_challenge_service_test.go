@@ -1,10 +1,13 @@
 package achievement
 
 import (
+	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"chasing_points/internal/model"
+	"chasing_points/internal/observability"
 	"chasing_points/internal/svc"
 
 	"gorm.io/driver/sqlite"
@@ -124,6 +127,40 @@ func TestSeasonChallengeServiceUsesEndExclusiveBoundary(t *testing.T) {
 	}
 	if progress[0].Progress != 1 {
 		t.Fatalf("only end-date event before the next boundary may count: %+v", progress)
+	}
+}
+
+func TestSeasonChallengeArchiveUsesBoundedGroupedQueries(t *testing.T) {
+	for _, testCase := range []struct {
+		pairs       int
+		wantQueries int64
+	}{{pairs: 1, wantQueries: 2}, {pairs: 100, wantQueries: 2}, {pairs: 1200, wantQueries: 6}} {
+		t.Run(fmt.Sprintf("pairs_%d", testCase.pairs), func(t *testing.T) {
+			_, _, db := newSeasonChallengeTestService(t)
+			season := testSeason(3)
+			events := make([]model.AchievementProgressEvent, 0, testCase.pairs)
+			for index := 1; index <= testCase.pairs; index++ {
+				events = append(events, *model.NewAchievementProgressEvent(int64(index), SourceTypeMatch, int64(index), 3, MetricMatchesTotal, 1, season.StartDate.Add(time.Hour)))
+			}
+			if err := db.CreateInBatches(&events, 200).Error; err != nil {
+				t.Fatalf("seed archive events: %v", err)
+			}
+			metrics := observability.NewRequestMetrics(time.Now())
+			requestDB := db.Session(&gorm.Session{Logger: observability.NewGormLogger(time.Hour)}).
+				WithContext(observability.WithRequestMetrics(context.Background(), metrics))
+			requestSvc := &svc.ServiceContext{
+				DB:                            requestDB,
+				AchievementProgressEventModel: model.NewAchievementProgressEventModel(requestDB),
+				SeasonChallengeSnapshotModel:  model.NewSeasonChallengeSnapshotModel(requestDB),
+			}
+			snapshots, err := NewSeasonChallengeService(requestSvc).BuildSnapshotsWithTx(nil, &season, season.EndDate.AddDate(0, 0, 1))
+			if err != nil || len(snapshots) != testCase.pairs*3 {
+				t.Fatalf("build grouped snapshots: count=%d err=%v", len(snapshots), err)
+			}
+			if sqlCount := metrics.Snapshot().SQLCount; sqlCount != testCase.wantQueries {
+				t.Fatalf("unexpected grouped archive query count: got=%d want=%d", sqlCount, testCase.wantQueries)
+			}
+		})
 	}
 }
 

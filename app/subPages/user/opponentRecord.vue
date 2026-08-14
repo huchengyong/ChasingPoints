@@ -123,6 +123,8 @@
 import { computed, reactive, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { useUserStore } from '@/store/user.js'
+import { useUserDataInvalidationStore } from '@/store/userDataInvalidation.js'
 import { getOpponentList } from '@/api/match.js'
 import {
   buildOpponentCardViewModels,
@@ -134,6 +136,18 @@ import {
 } from '@/utils/opponent-record.js'
 
 const { isDarkMode } = usePageTheme()
+const userStore = useUserStore()
+const userDataInvalidationStore = useUserDataInvalidationStore()
+
+const currentReadIdentity = () => ({
+  userId: userStore.userId,
+  authGeneration: userStore.authGeneration
+})
+
+const currentIdentityKey = () => {
+  const identity = currentReadIdentity()
+  return `${identity.userId}:${identity.authGeneration}`
+}
 
 const isLoading = ref(false)
 const isRefreshing = ref(false)
@@ -151,6 +165,9 @@ const opponentList = ref([])
 const currentPage = ref(1)
 const pageSize = 20
 const total = ref(0)
+const latestRequestId = ref(0)
+const loadedIdentityKey = ref('')
+const loadedOpponentScopeVersion = ref(0)
 
 const statsData = reactive({
   totalOpponents: 0,
@@ -204,20 +221,34 @@ onLoad((options) => {
 
 onShow(() => {
 
-  const token = uni.getStorageSync('token')
-  if (!token) {
+  if (!userStore.isLoggedIn || !userStore.userId) {
     needLogin.value = true
     return
   }
 
   needLogin.value = false
-  if (opponentList.value.length === 0 || loadFailed.value) {
+  const identityKey = currentIdentityKey()
+  const scopeVersion = userDataInvalidationStore.versionOf('opponents')
+  if (loadedIdentityKey.value !== identityKey) {
+    opponentList.value = []
+    currentPage.value = 1
+    total.value = 0
+    statsData.totalOpponents = 0
+    statsData.totalWins = 0
+    isLoading.value = false
+    isLoadingMore.value = false
+  }
+  if (opponentList.value.length === 0 || loadFailed.value || loadedOpponentScopeVersion.value !== scopeVersion) {
     fetchOpponentList()
   }
 })
 
 const fetchOpponentList = async (isRefresh = false, isLoadMore = false) => {
   if (isLoading.value || isLoadingMore.value) return
+  const requestId = latestRequestId.value + 1
+  const requestIdentityKey = currentIdentityKey()
+  const requestScopeVersion = userDataInvalidationStore.versionOf('opponents')
+  latestRequestId.value = requestId
 
   if (isRefresh) {
     isRefreshing.value = true
@@ -242,6 +273,7 @@ const fetchOpponentList = async (isRefresh = false, isLoadMore = false) => {
       targetUserId: targetUserId.value
     }))
 
+    if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
     const list = Array.isArray(res.list) ? res.list : []
     total.value = Number(res.total || 0)
     statsData.totalOpponents = Number(res.total_opponents || 0)
@@ -256,7 +288,10 @@ const fetchOpponentList = async (isRefresh = false, isLoadMore = false) => {
     }
 
     hasMore.value = opponentList.value.length < total.value
+    loadedIdentityKey.value = requestIdentityKey
+    loadedOpponentScopeVersion.value = requestScopeVersion
   } catch (error) {
+    if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
     if (isLoadMore) {
       currentPage.value = Math.max(currentPage.value - 1, 1)
     }
@@ -267,6 +302,7 @@ const fetchOpponentList = async (isRefresh = false, isLoadMore = false) => {
       icon: 'none'
     })
   } finally {
+    if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
     isLoading.value = false
     isRefreshing.value = false
     isLoadingMore.value = false

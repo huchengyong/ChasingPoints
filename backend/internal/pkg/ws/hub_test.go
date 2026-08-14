@@ -62,7 +62,7 @@ func TestResolveMatchSyncCapabilitiesCoversLegacyRankedConfirmedRankedAndReferee
 	}
 }
 
-func TestSendMatchSyncBroadcastsExpiredFinishOnceForAllViewers(t *testing.T) {
+func TestSendMatchSyncReturnsEffectiveExpiredFinishViewWithoutWriting(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite db: %v", err)
@@ -89,39 +89,36 @@ func TestSendMatchSyncBroadcastsExpiredFinishOnceForAllViewers(t *testing.T) {
 	second := &Client{Hub: hub, SvcCtx: svcCtx, MatchId: 199, UserId: opponentID, Send: make(chan []byte, 4)}
 	first.sendMatchSync()
 
-	var broadcast *BroadcastMessage
+	var syncMessage Message
 	select {
-	case broadcast = <-hub.Broadcast:
+	case payload := <-first.Send:
+		if err := json.Unmarshal(payload, &syncMessage); err != nil {
+			t.Fatalf("decode effective sync: %v", err)
+		}
 	case <-time.After(time.Second):
-		t.Fatal("timed out waiting for expiry broadcast")
+		t.Fatal("timed out waiting for sync message")
 	}
-	if len(broadcast.ViewerMessages) < 3 {
-		t.Fatalf("expected anonymous and both player snapshots, got %d", len(broadcast.ViewerMessages))
-	}
-	var opponentMessage Message
-	if err := json.Unmarshal(broadcast.ViewerMessages[opponentID], &opponentMessage); err != nil {
-		t.Fatalf("decode opponent expiry broadcast: %v", err)
-	}
-	if opponentMessage.Type != "match_finish_expired" {
-		t.Fatalf("unexpected expiry message: %#v", opponentMessage)
-	}
-	snapshot := opponentMessage.Data.(map[string]interface{})["snapshot"].(map[string]interface{})
-	if snapshot["finish_state"] != model.FinishStateNone || snapshot["server_revision"].(float64) != 5 || snapshot["can_score"].(bool) != true {
-		t.Fatalf("unexpected restored snapshot: %#v", snapshot)
+	snapshot := syncMessage.Data.(map[string]interface{})
+	if syncMessage.Type != "sync" || snapshot["finish_state"] != model.FinishStateNone || snapshot["server_revision"].(float64) != 4 || snapshot["can_score"].(bool) != true {
+		t.Fatalf("unexpected effective sync snapshot: %#v", syncMessage)
 	}
 
 	second.sendMatchSync()
 	select {
-	case duplicate := <-hub.Broadcast:
-		t.Fatalf("unexpected duplicate expiry broadcast: %#v", duplicate)
+	case unexpected := <-hub.Broadcast:
+		t.Fatalf("sync must not persist or broadcast expiration: %#v", unexpected)
 	case <-time.After(30 * time.Millisecond):
 	}
 	var actionCount int64
 	if err := db.Model(&model.MatchAction{}).Where("match_id = ? AND action_type = ?", 199, "finish_expired").Count(&actionCount).Error; err != nil {
 		t.Fatalf("count expiry actions: %v", err)
 	}
-	if actionCount != 1 {
-		t.Fatalf("expected one finish_expired action, got %d", actionCount)
+	if actionCount != 0 {
+		t.Fatalf("sync must not create expiry actions, got %d", actionCount)
+	}
+	stored, err := svcCtx.MatchModel.FindById(199)
+	if err != nil || stored == nil || stored.FinishState != model.FinishStatePendingConfirmation || stored.SyncRevision != 4 {
+		t.Fatalf("sync must leave stored finish request unchanged: %+v err=%v", stored, err)
 	}
 }
 

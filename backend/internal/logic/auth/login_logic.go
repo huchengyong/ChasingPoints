@@ -23,7 +23,7 @@ func NewLoginLogic(ctx context.Context, svcCtx *svc.ServiceContext) *LoginLogic 
 	return &LoginLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -74,6 +74,10 @@ func (l *LoginLogic) Login(req *types.LoginReq) (resp *types.LoginResp, err erro
 	}
 	if user.Status != 1 {
 		return &types.LoginResp{Success: false}, fmt.Errorf("%s", loginUnavailableMessage)
+	}
+	if err := ensureUserRankingProfiles(l.svcCtx, user.Id); err != nil {
+		l.Logger.Errorf("初始化用户段位失败: %v", err)
+		return &types.LoginResp{Success: false}, fmt.Errorf("系统错误")
 	}
 
 	tokenPair, err := issueAuthTokenPair(user.Id, l.svcCtx)

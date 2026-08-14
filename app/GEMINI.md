@@ -78,12 +78,12 @@ app/
 # 安装依赖
 npm install
 
-# 运行当前纯逻辑测试
+# 运行纯逻辑测试与真实 Vue SFC/jsdom 挂载测试
 node --test tests/*.test.mjs
 ```
 
 ## KNOWN FACTS
-- `package.json` 当前只有 `dependencies`，没有 `scripts`；默认不要假设可以直接 `npm test`。
+- `package.json` 没有 `scripts`；默认不要假设可以直接 `npm test`。测试开发依赖包含 `vue`、`@vue/compiler-sfc`、`@vue/test-utils` 和 `jsdom`，用于直接编译并挂载关键 SFC。
 - 当前 HTTP 与 WebSocket 基地址由 `utils/runtime-config.js` 统一管理：开发环境默认走 tunnel，生产环境默认走正式域名。
 - `App.vue` 里会直接调用 `post('/api/user/push-token')`，这是 app 级基础设施调用，不是页面层越界。
 

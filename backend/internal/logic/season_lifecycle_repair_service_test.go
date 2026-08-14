@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -142,6 +143,67 @@ func TestSeasonLifecycleRepairReturnsCompletedSummaryWhenSettlementFails(t *test
 		t.Fatalf("failed repair must retain completed plan and failure details: %+v", summary)
 	}
 	assertSeasonStatus(t, svcCtx, season.Id, 1)
+}
+
+func TestSeasonLifecycleRepairBatchCheckpointResumesAfterInterruption(t *testing.T) {
+	svcCtx := newSeasonSettlementTestSvc(t)
+	_, _, _ = seedSeasonSettlementScenario(t, svcCtx, false)
+	svcCtx.Config.SeasonLifecycle = config.SeasonLifecycleConfig{
+		Enabled: true, AnchorDate: "2026-07-01", InitialNumber: 3, CycleMonths: 1, Timezone: "Asia/Shanghai",
+	}
+	repair := NewSeasonLifecycleRepairService(svcCtx)
+	now := time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC)
+	dryRun, err := repair.RunBatchAt(context.Background(), now, SeasonLifecycleRepairOptions{DryRun: true, BatchSize: 2})
+	if err != nil || len(dryRun.Windows) != 2 || !dryRun.HasMore || dryRun.NextCursor != "2026-08-01" {
+		t.Fatalf("unexpected bounded dry run: summary=%+v err=%v", dryRun, err)
+	}
+	assertSeasonCount(t, svcCtx, 1)
+
+	checkpoint := ""
+	checkpointCalls := 0
+	first, err := repair.RunBatchAt(context.Background(), now, SeasonLifecycleRepairOptions{
+		BatchSize: 2,
+		Checkpoint: func(cursor string) error {
+			checkpointCalls++
+			if checkpointCalls == 2 {
+				return errors.New("checkpoint storage unavailable")
+			}
+			checkpoint = cursor
+			return nil
+		},
+	})
+	if err == nil || first == nil || checkpoint != "2026-07-01" || len(first.Failures) != 1 {
+		t.Fatalf("expected resumable checkpoint interruption: summary=%+v checkpoint=%q err=%v", first, checkpoint, err)
+	}
+
+	cursor := checkpoint
+	for {
+		summary, runErr := repair.RunBatchAt(context.Background(), now, SeasonLifecycleRepairOptions{
+			BatchSize: 2, AfterStartDate: cursor,
+			Checkpoint: func(next string) error {
+				cursor = next
+				return nil
+			},
+		})
+		if runErr != nil {
+			t.Fatalf("resume repair from %s: %v", cursor, runErr)
+		}
+		if !summary.HasMore {
+			break
+		}
+	}
+	if cursor != "2026-11-01" {
+		t.Fatalf("unexpected final repair cursor: %s", cursor)
+	}
+	assertSeasonCount(t, svcCtx, 5)
+	var completedSettlements int64
+	if err := svcCtx.DB.Model(&model.SeasonSettlement{}).Where("status = ?", model.SeasonSettlementStatusCompleted).Count(&completedSettlements).Error; err != nil || completedSettlements != 3 {
+		t.Fatalf("expected three idempotently settled historical windows: count=%d err=%v", completedSettlements, err)
+	}
+	var titles int64
+	if err := svcCtx.DB.Model(&model.UserTitle{}).Where("source_type = ?", achievementx.SourceTypeSeason).Count(&titles).Error; err != nil || titles != 3 {
+		t.Fatalf("interruption recovery must not duplicate season titles: count=%d err=%v", titles, err)
+	}
 }
 
 func TestSeasonLifecycleRepairStopsOnScheduleConflict(t *testing.T) {

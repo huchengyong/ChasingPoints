@@ -20,7 +20,7 @@ func NewAdminGetDashboardStatsLogic(ctx context.Context, svcCtx *svc.ServiceCont
 	return &AdminGetDashboardStatsLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

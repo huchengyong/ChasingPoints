@@ -68,6 +68,22 @@ func TestActiveUserSessionMiddlewareAllowsValidUser(t *testing.T) {
 	}
 }
 
+func TestActiveUserSessionMiddlewareAddsValidatedUserToRequestContext(t *testing.T) {
+	userModel, db := newActiveUserSessionTestSvc(t)
+	seedActiveUserSessionUser(t, db, 1004, 1)
+	var activeUserID int64
+	handler := NewActiveUserSessionMiddleware(userModel).Handle(func(_ http.ResponseWriter, r *http.Request) {
+		if user := ActiveUserFromContext(r.Context()); user != nil {
+			activeUserID = user.Id
+		}
+	})
+	req := httptest.NewRequest(http.MethodGet, "/", nil).WithContext(withUserID(1004))
+	handler(httptest.NewRecorder(), req)
+	if activeUserID != 1004 {
+		t.Fatalf("validated user must be available to downstream logic, got %d", activeUserID)
+	}
+}
+
 func TestActiveUserSessionMiddlewareRejectsMissingUser(t *testing.T) {
 	userModel, _ := newActiveUserSessionTestSvc(t)
 

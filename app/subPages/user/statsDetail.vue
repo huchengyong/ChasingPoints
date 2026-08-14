@@ -224,17 +224,12 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import {
-	getStatsByGameType,
-	getRecentTrend,
-	getRankScoreTrend,
-	getSingleHighScore,
-	getMatchDurationStats,
-	getOpponentStrengthAnalysis
-} from '@/api/stats.js'
+import { getStatsOverview } from '@/api/stats.js'
 import { GAME_TYPE_KEY_MAP, GAME_TYPE_STATS_TABS, GAME_TYPE_VALUE_MAP } from '@/utils/game-types.js'
 import { formatMonthKey } from '@/utils/format.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { useUserDataInvalidationStore } from '@/store/userDataInvalidation.js'
+import { useUserStore } from '@/store/user.js'
 import {
 	buildRankDeltaChartViewModel,
 	buildStatsTrendCalendarViewModel,
@@ -246,10 +241,14 @@ import {
 } from '@/utils/stats-detail.js'
 
 const { isDarkMode } = usePageTheme()
+const userStore = useUserStore()
+const userDataInvalidationStore = useUserDataInvalidationStore()
 
 const isStatsFetching = ref(true)
 const hasLoadedOnce = ref(false)
 const latestStatsRequestId = ref(0)
+const loadedIdentityKey = ref('')
+const loadedStatsScopeVersion = ref(0)
 const currentGame = ref('chinese_eight')
 const selectedStatsMonthKey = ref(formatMonthKey(new Date()))
 
@@ -269,6 +268,16 @@ const loadingMode = computed(() => resolveStatsDetailLoadingMode({
 }))
 const isInitialLoading = computed(() => loadingMode.value === 'initial')
 const isStatsRefreshing = computed(() => loadingMode.value === 'refreshing')
+
+const currentReadIdentity = () => ({
+	userId: userStore.userId,
+	authGeneration: userStore.authGeneration
+})
+
+const currentIdentityKey = () => {
+	const identity = currentReadIdentity()
+	return `${identity.userId}:${identity.authGeneration}`
+}
 
 const currentGameStats = computed(() => {
 	return gameTypeStats.value[currentGame.value] || {}
@@ -365,54 +374,54 @@ const normalizeHighScoreStats = (payload) => {
 
 const loadAllStats = async () => {
 	const requestId = latestStatsRequestId.value + 1
+	const requestIdentityKey = currentIdentityKey()
+	const requestScopeVersion = userDataInvalidationStore.versionOf('stats')
 	latestStatsRequestId.value = requestId
+	if (loadedIdentityKey.value && loadedIdentityKey.value !== requestIdentityKey) {
+		gameTypeStats.value = {}
+		trendData.value = []
+		rankData.value = []
+		highScore.value = {}
+		durationData.value = {}
+		opponentData.value = []
+		hasLoadedOnce.value = false
+	}
 	isStatsFetching.value = true
 	const gameType = gameTypeValueMap[currentGame.value] || 3
 	try {
-		const results = await Promise.allSettled([
-			getStatsByGameType(),
-			getRecentTrend({ limit: 300, game_type: gameType }),
-			getRankScoreTrend({ limit: 300, game_type: gameType }),
-			getSingleHighScore({ game_type: gameType }),
-			getMatchDurationStats({ game_type: gameType }),
-			getOpponentStrengthAnalysis({ game_type: gameType })
-		])
-
-		if (!shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value })) {
+		const data = await getStatsOverview({ game_type: gameType, trend_limit: 100 })
+		if (!shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value }) || currentIdentityKey() !== requestIdentityKey || !data?.success) {
 			return
 		}
 
-		if (results[0].status === 'fulfilled') {
-			const data = results[0].value
-			gameTypeStats.value = normalizeGameTypeStats(data)
+		const availability = data.availability || {}
+		if (availability.by_game_type !== false) {
+			gameTypeStats.value = normalizeGameTypeStats(data.by_game_type)
 		}
-		if (results[1].status === 'fulfilled') {
-			const data = results[1].value
-			trendData.value = data.list || data.matches || data || []
+		if (availability.recent_trend !== false) {
+			trendData.value = data.recent_trend || []
 		}
-		if (results[2].status === 'fulfilled') {
-			const data = results[2].value
-			rankData.value = data?.list ? data : (Array.isArray(data) ? data : [])
+		if (availability.rank_score_trend !== false) {
+			rankData.value = data.rank_score_trend || []
 		}
-		if (results[3].status === 'fulfilled') {
-			highScore.value = normalizeHighScoreStats(results[3].value)
+		if (availability.single_high_scores !== false) {
+			highScore.value = normalizeHighScoreStats({ list: data.single_high_scores })
 		}
-		if (results[4].status === 'fulfilled') {
-			durationData.value = normalizeDurationStats(results[4].value)
+		if (availability.duration !== false) {
+			durationData.value = normalizeDurationStats(data.duration)
 		}
-		if (results[5].status === 'fulfilled') {
-			opponentData.value = normalizeOpponentStrengthStats(results[5].value)
+		if (availability.opponent_strength !== false) {
+			opponentData.value = normalizeOpponentStrengthStats(data.opponent_strength)
 		}
-
 		hasLoadedOnce.value = true
+		loadedIdentityKey.value = requestIdentityKey
+		loadedStatsScopeVersion.value = requestScopeVersion
 	} catch (e) {
-		if (!shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value })) {
-			return
+		if (shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value }) && currentIdentityKey() === requestIdentityKey) {
+			console.error('加载统计数据失败:', e)
 		}
-
-		console.error('加载统计数据失败:', e)
 	} finally {
-		if (shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value })) {
+		if (shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value }) && currentIdentityKey() === requestIdentityKey) {
 			isStatsFetching.value = false
 		}
 	}
@@ -426,13 +435,14 @@ onLoad((options) => {
 })
 
 onShow(() => {
-	const token = uni.getStorageSync('token')
-	if (!token) {
+	if (!userStore.isLoggedIn || !userStore.userId) {
 		goLogin()
 		return
 	}
 
-	loadAllStats()
+	if (!hasLoadedOnce.value || loadedIdentityKey.value !== currentIdentityKey() || loadedStatsScopeVersion.value !== userDataInvalidationStore.versionOf('stats')) {
+		loadAllStats()
+	}
 })
 
 const handleGameChange = (gameKey) => {

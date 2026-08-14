@@ -1,10 +1,13 @@
 <script>
 	import { useThemeStore, THEME_CHANGE_EVENT } from '@/store/theme.js'
+	import { useActivityStore } from '@/store/activity.js'
 	import { useUserStore } from '@/store/user.js'
 	import { useRankStore } from '@/store/rank.js'
+	import { useUserOverviewStore } from '@/store/userOverview.js'
+	import { useUserDataInvalidationStore } from '@/store/userDataInvalidation.js'
+	import { usePublicReadStore } from '@/store/publicRead.js'
 	import { userWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
-	import { getCurrentMatch } from '@/api/match.js'
-	import { getUserInfo } from '@/api/user.js'
+	import { getUserBootstrap } from '@/api/user.js'
 	import { post } from '@/utils/request.js'
 	import { buildPlayingRoute, shouldPromptOngoingMatch } from '@/utils/ongoing-match-guard.js'
 	import { applyRuntimeTheme } from '@/utils/theme-application.js'
@@ -16,12 +19,14 @@
 
 	// 网络/5xx 静默保留凭证；SESSION_INVALID 仍由请求层统一清理并引导重新登录。
 	const sessionRecovery = createSessionRecovery({
-		getUserInfo: () => getUserInfo({ silent: true }),
+		getUserInfo: () => getUserBootstrap({ silent: true }),
 		onSessionInvalid: () => {}
 	})
 
 	export default {
 		themeChangeCallback: null, // 保存主题变化回调函数引用
+		userSessionReadyCallback: null,
+		bootstrapActivityReservation: null,
 		ongoingMatchReminderShown: false,
 		ongoingMatchReminderPending: false,
 		ongoingMatchReminderPendingKey: '',
@@ -39,7 +44,18 @@
 			const themeStore = useThemeStore()
 			themeStore.initializeTheme(this.getSystemThemeInfo())
 			userWS.off(WS_MESSAGE_TYPES.RANK_INFO_UPDATED, this.handleRankInfoUpdated)
+			userWS.off(WS_MESSAGE_TYPES.USER_DATA_UPDATED, this.handleUserDataUpdated)
+			userWS.off(WS_MESSAGE_TYPES.NOTIFICATION_UPDATE, this.handleNotificationUpdate)
 			userWS.on(WS_MESSAGE_TYPES.RANK_INFO_UPDATED, this.handleRankInfoUpdated)
+			userWS.on(WS_MESSAGE_TYPES.USER_DATA_UPDATED, this.handleUserDataUpdated)
+			userWS.on(WS_MESSAGE_TYPES.NOTIFICATION_UPDATE, this.handleNotificationUpdate)
+			if (this.userSessionReadyCallback && typeof uni.$off === 'function') {
+				uni.$off('user-session-ready', this.userSessionReadyCallback)
+			}
+			this.userSessionReadyCallback = () => this.handleUserSessionReady()
+			if (typeof uni.$on === 'function') {
+				uni.$on('user-session-ready', this.userSessionReadyCallback)
+			}
 			// 推送注册
 			// #ifdef APP-PLUS
 			try {
@@ -81,7 +97,7 @@
 			const userStore = useUserStore()
 			const rankStore = useRankStore()
 			if (userStore.isLoggedIn) {
-				this.restoreUserSession(rankStore)
+				this.restoreUserSession()
 			} else {
 				this.validatedAuthGeneration = -1
 				rankStore.clear()
@@ -104,6 +120,8 @@
 		},
 		onHide: function() {
 			this.appIsForeground = false
+			this.bootstrapActivityReservation?.release()
+			this.bootstrapActivityReservation = null
 			this.sessionRecoveryLifecycle += 1
 			this.validatedAuthGeneration = -1
 			userWS.disconnect()
@@ -125,15 +143,24 @@
 		methods: {
 			// 恢复持久化会话：helper 只返回服务端资料；应用前再次校验
 			// auth generation、App 前台状态和当前生命周期，拒绝旧账号/后台延迟结果。
-			restoreUserSession(rankStore) {
+			restoreUserSession() {
 				const userStore = useUserStore()
-				const targetRankStore = rankStore || useRankStore()
 				const expectedGeneration = userStore.authGeneration
 				const expectedLifecycleGeneration = this.sessionRecoveryLifecycle
+				const bootstrapReservation = useActivityStore().reserveBootstrap({
+					userId: userStore.userId,
+					authGeneration: expectedGeneration
+				})
+				if (bootstrapReservation) {
+					this.bootstrapActivityReservation = bootstrapReservation
+				}
 
 				sessionRecovery.validate(expectedGeneration)
 					.then((result) => {
-						if (!result?.valid) return
+						if (!result?.valid) {
+							bootstrapReservation?.release()
+							return
+						}
 						const currentUserStore = useUserStore()
 						if (!canApplySessionRecoveryResult({
 							expectedGeneration,
@@ -142,16 +169,54 @@
 							currentLifecycleGeneration: this.sessionRecoveryLifecycle,
 							isLoggedIn: currentUserStore.isLoggedIn,
 							isForeground: this.appIsForeground
-						})) return
+						})) {
+							bootstrapReservation?.release()
+							return
+						}
 
 						currentUserStore.updateUserInfo(result.userInfo)
+						const identity = {
+							userId: currentUserStore.userId,
+							authGeneration: currentUserStore.authGeneration
+						}
+						if (bootstrapReservation?.matches(identity)) {
+							bootstrapReservation.apply(result.bootstrap)
+						} else {
+							bootstrapReservation?.release()
+							useActivityStore().applyBootstrap(identity, result.bootstrap)
+						}
+						if (this.bootstrapActivityReservation === bootstrapReservation) {
+							this.bootstrapActivityReservation = null
+						}
+						this.applyBootstrapCompetitiveRevision(identity, result.bootstrap)
 						this.validatedAuthGeneration = expectedGeneration
-						targetRankStore.invalidate(currentUserStore.userId)
 						this.connectUserWS()
 						this.uploadPushTokenIfValidated()
 						this.checkOngoingMatchReminder()
 					})
-					.catch(() => {})
+					.catch(() => {
+						bootstrapReservation?.release()
+						if (this.bootstrapActivityReservation === bootstrapReservation) {
+							this.bootstrapActivityReservation = null
+						}
+					})
+			},
+			handleUserSessionReady() {
+				if (this.appIsForeground && useUserStore().isLoggedIn) {
+					this.restoreUserSession()
+				}
+			},
+			applyBootstrapCompetitiveRevision(identity, bootstrap = {}) {
+				if (bootstrap?.availability?.competitive_revision === false) return
+				const invalidationStore = useUserDataInvalidationStore()
+				const previousRevision = invalidationStore.matchesIdentity(identity)
+					? invalidationStore.competitiveRevision
+					: 0
+				const revision = Number(bootstrap?.competitive_revision) || 0
+				const scopes = previousRevision > 0 && revision > previousRevision
+					? ['rank', 'stats', 'h2h', 'opponents', 'history', 'honor', 'season', 'leaderboard']
+					: []
+				invalidationStore.invalidate(identity, scopes, revision)
 			},
 			hasValidatedAppSession() {
 				const userStore = useUserStore()
@@ -188,10 +253,46 @@
 					console.error('[App] 用户WS连接失败:', error)
 				})
 			},
-			handleRankInfoUpdated() {
+			handleRankInfoUpdated(data = {}) {
+				this.handleUserDataUpdated({ ...data, scopes: ['rank'] })
+			},
+			handleUserDataUpdated(data = {}) {
 				const userStore = useUserStore()
-				if (userStore.isLoggedIn) {
-					useRankStore().invalidate(userStore.userId)
+				if (!userStore.isLoggedIn || !userStore.userId) return
+
+				const scopes = Array.isArray(data.scopes) ? data.scopes : []
+				const identity = {
+					userId: userStore.userId,
+					authGeneration: userStore.authGeneration
+				}
+				useUserDataInvalidationStore().invalidate(identity, scopes, data.competitive_revision)
+
+				if (scopes.includes('rank')) {
+					useRankStore().invalidate(identity)
+				}
+				if (scopes.some((scope) => ['stats', 'member', 'reputation'].includes(scope))) {
+					useUserOverviewStore().markDirty()
+				}
+				if (scopes.includes('leaderboard')) {
+					usePublicReadStore().invalidate('leaderboard')
+				}
+				if (Object.prototype.hasOwnProperty.call(data, 'pending_friend_request_count')) {
+					useActivityStore().setPendingFriendRequestCount(data.pending_friend_request_count, identity)
+				}
+			},
+			handleNotificationUpdate(data = {}) {
+				const userStore = useUserStore()
+				if (!userStore.isLoggedIn) return
+				const identity = {
+					userId: userStore.userId,
+					authGeneration: userStore.authGeneration
+				}
+				useUserDataInvalidationStore().invalidate(identity, ['notification'])
+				if (Object.prototype.hasOwnProperty.call(data, 'unread_count')) {
+					useActivityStore().setUnreadCount(data.unread_count, identity)
+				}
+				if (data.category === 'season_rollover') {
+					useActivityStore().markDirty()
 				}
 			},
 			getSystemThemeInfo() {
@@ -260,8 +361,11 @@
 				this.ongoingMatchReminderPending = true
 				this.ongoingMatchReminderPendingKey = pendingKey
 
-				getCurrentMatch({ silent: true })
-					.then((res) => {
+				useActivityStore().fetch({
+					userId: userStore.userId,
+					authGeneration: userStore.authGeneration
+				}, { silent: true })
+					.then((activity) => {
 						const currentUserStore = useUserStore()
 						if (!this.hasValidatedAppSession() || !canApplySessionRecoveryResult({
 							expectedGeneration,
@@ -271,7 +375,7 @@
 							isLoggedIn: currentUserStore.isLoggedIn,
 							isForeground: this.appIsForeground
 						})) return
-						const currentMatch = res?.success ? res.match : null
+						const currentMatch = activity?.currentMatch || null
 						if (!shouldPromptOngoingMatch({
 							isLoggedIn: currentUserStore.isLoggedIn,
 							currentRoute,

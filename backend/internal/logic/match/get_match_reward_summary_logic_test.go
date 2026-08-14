@@ -1,13 +1,17 @@
 package match
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	achievementx "chasing_points/internal/logic/achievement"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
+	"chasing_points/internal/testsupport"
 	"chasing_points/internal/types"
+
+	"gorm.io/gorm"
 )
 
 func TestGetMatchRewardSummaryReturnsParticipantSpecificRewards(t *testing.T) {
@@ -88,7 +92,28 @@ func TestGetMatchRewardSummaryReturnsReadyEmptyList(t *testing.T) {
 	}
 }
 
-func TestGetMatchRewardSummaryRetriesPendingSyncAndStaysIdempotent(t *testing.T) {
+func TestGetMatchRewardSummaryDoesNotWriteBusinessRows(t *testing.T) {
+	svcCtx := newMatchAchievementClosedLoopTestSvc(t)
+	opponentID := int64(2002)
+	seedMatchAchievementUsers(t, svcCtx, 1001, opponentID)
+	syncedAt := time.Now()
+	seedRewardSummaryCompletedMatch(t, svcCtx, 8005, 1001, opponentID, &syncedAt)
+	recorder := testsupport.NewSQLWriteRecorder()
+	readDB := svcCtx.DB.Session(&gorm.Session{Logger: recorder})
+	svcCtx.MatchModel = model.NewMatchModel(readDB)
+	svcCtx.UserAchievementModel = model.NewUserAchievementModel(readDB)
+
+	resp, err := NewGetMatchRewardSummaryLogic(matchAchievementCtx(1001), svcCtx).
+		GetMatchRewardSummary(&types.GetMatchRewardSummaryReq{MatchId: 8005})
+	if err != nil || !resp.Success || resp.Status != "ready" || len(resp.List) != 0 {
+		t.Fatalf("get ready empty reward summary: resp=%+v err=%v", resp, err)
+	}
+	if writes := recorder.Writes(); len(writes) != 0 {
+		t.Fatalf("reward summary GET must not issue writes: %q", writes)
+	}
+}
+
+func TestGetMatchRewardSummaryStaysPendingUntilWorkerSyncsAndRemainsIdempotent(t *testing.T) {
 	svcCtx := newMatchAchievementClosedLoopTestSvc(t)
 	opponentID := int64(2002)
 	seedMatchAchievementUsers(t, svcCtx, 1001, opponentID)
@@ -113,16 +138,24 @@ func TestGetMatchRewardSummaryRetriesPendingSyncAndStaysIdempotent(t *testing.T)
 	assertMatchAchievementSynced(t, svcCtx, 8004, false)
 
 	svcCtx.AchievementProgressEventModel = eventModel
+	stillPendingResp, err := NewGetMatchRewardSummaryLogic(matchAchievementCtx(1001), svcCtx).
+		GetMatchRewardSummary(&types.GetMatchRewardSummaryReq{MatchId: 8004})
+	if err != nil || !stillPendingResp.Success || stillPendingResp.Status != "pending" {
+		t.Fatalf("GET must stay pending until worker syncs: resp=%+v err=%v", stillPendingResp, err)
+	}
+	if err := NewAchievementSyncWorker(svcCtx).RunOnce(context.Background()); err != nil {
+		t.Fatalf("run achievement sync worker: %v", err)
+	}
 	readyResp, err := NewGetMatchRewardSummaryLogic(matchAchievementCtx(1001), svcCtx).
 		GetMatchRewardSummary(&types.GetMatchRewardSummaryReq{MatchId: 8004})
 	if err != nil {
-		t.Fatalf("retry reward summary: %v", err)
+		t.Fatalf("read worker-synced reward summary: %v", err)
 	}
 	if !readyResp.Success || readyResp.Status != "ready" || len(readyResp.List) != 1 {
-		t.Fatalf("expected compensated ready response, got %+v", readyResp)
+		t.Fatalf("expected worker-synced ready response, got %+v", readyResp)
 	}
 	if readyResp.List[0].AchievementId != 103 || readyResp.List[0].RewardTitleName != "初次登场" {
-		t.Fatalf("unexpected compensated reward: %+v", readyResp.List[0])
+		t.Fatalf("unexpected worker-synced reward: %+v", readyResp.List[0])
 	}
 	assertMatchAchievementSynced(t, svcCtx, 8004, true)
 

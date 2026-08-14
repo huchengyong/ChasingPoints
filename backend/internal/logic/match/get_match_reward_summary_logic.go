@@ -23,7 +23,7 @@ func NewGetMatchRewardSummaryLogic(ctx context.Context, svcCtx *svc.ServiceConte
 	return &GetMatchRewardSummaryLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -53,16 +53,7 @@ func (l *GetMatchRewardSummaryLogic) GetMatchRewardSummary(req *types.GetMatchRe
 	}
 
 	if match.AchievementSyncedAt == nil {
-		if syncErr := NewFinishMatchLogic(l.ctx, l.svcCtx).syncAchievementProgressForCompletedMatchWithError(match); syncErr != nil {
-			l.Logger.Errorf("补偿同步对局成就失败: matchId=%d, err=%v", match.Id, syncErr)
-		}
-		match, err = l.svcCtx.MatchModel.FindById(req.MatchId)
-		if err != nil {
-			return nil, err
-		}
-		if match == nil || match.AchievementSyncedAt == nil {
-			return pendingMatchRewardSummary(emptyList), nil
-		}
+		return pendingMatchRewardSummary(emptyList), nil
 	}
 
 	if l.svcCtx.UserAchievementModel == nil || l.svcCtx.AchievementModel == nil || l.svcCtx.UserTitleModel == nil {

@@ -85,7 +85,7 @@
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 
-import { getEventNewsList } from '@/api/event-news.js'
+import { usePublicReadStore } from '@/store/publicRead.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { normalizeSaiXunCard } from '@/utils/saixun.js'
 import {
@@ -99,6 +99,7 @@ import {
 } from '@/utils/saixun-filter.js'
 
 const { isDarkMode } = usePageTheme()
+const publicReadStore = usePublicReadStore()
 
 const loading = ref(true)
 const loadingMore = ref(false)
@@ -108,7 +109,7 @@ const page = ref(1)
 const pageSize = 10
 const total = ref(0)
 const hasMore = ref(false)
-const shouldRefreshOnShow = ref(true)
+const hasLoadedOnce = ref(false)
 const filter = ref(buildCurrentYearFilter(Date.now()))
 const customDateDraft = ref({
   from: filter.value.from,
@@ -119,14 +120,20 @@ const filterDateLabel = computed(() => formatSaiXunFilterLabel(filter.value))
 const yearOptions = computed(() => buildYearOptions(filter.value.year))
 const showCustomDateEditor = computed(() => filter.value.preset === 'custom')
 
-const fetchData = async ({ replace = false } = {}) => {
+const fetchData = async ({ replace = false, force = false } = {}) => {
   try {
-    const listRes = await getEventNewsList(buildEventNewsListParams(filter.value, page.value, pageSize))
-      .catch(() => ({ success: false, list: [], total: 0 }))
+    const listRes = await publicReadStore.loadEventNews(
+      buildEventNewsListParams(filter.value, page.value, pageSize),
+      { force }
+    )
+    if (!listRes?.success) return
     const nextList = Array.isArray(listRes.list) ? listRes.list.map((item) => normalizeSaiXunCard(item)) : []
     list.value = replace ? nextList : [...list.value, ...nextList]
     total.value = Number(listRes.total || 0)
     hasMore.value = list.value.length < total.value
+    hasLoadedOnce.value = true
+  } catch (error) {
+    console.error('加载赛讯失败:', error)
   } finally {
     loading.value = false
     loadingMore.value = false
@@ -148,20 +155,20 @@ const applyFilter = async (nextFilter, { syncDraft = true } = {}) => {
   list.value = []
   total.value = 0
   hasMore.value = false
-  loading.value = true
+  loading.value = list.value.length === 0
   await fetchData({ replace: true })
 }
 
-const refreshData = async () => {
+const refreshData = async ({ force = false } = {}) => {
   page.value = 1
-  loading.value = true
-  await fetchData({ replace: true })
+  loading.value = list.value.length === 0
+  await fetchData({ replace: true, force })
 }
 
 const onRefresh = async () => {
   if (loading.value) return
   refreshing.value = true
-  await refreshData()
+  await refreshData({ force: true })
 }
 
 const loadMore = async () => {
@@ -241,14 +248,7 @@ const onCustomToChange = async (event) => {
 }
 
 onShow(() => {
-
-	if (!shouldRefreshOnShow.value) {
-    shouldRefreshOnShow.value = true
-    return
-  }
-
-  // 合规收口：原动态 tab 现只保留官方赛讯展示，用户发布和互动入口暂不开放。
-  refreshData()
+  if (!hasLoadedOnce.value) refreshData()
 })
 </script>
 

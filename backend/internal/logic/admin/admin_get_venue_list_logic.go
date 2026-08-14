@@ -20,7 +20,7 @@ func NewAdminGetVenueListLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 	return &AdminGetVenueListLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

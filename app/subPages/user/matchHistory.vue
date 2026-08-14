@@ -162,8 +162,22 @@ import { getMatchList, getCurrentMatch, getRefereeHistory } from '@/api/match.js
 import { formatRelativeTime } from '@/utils/format.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import { formatDuration } from '@/utils/match-referee-view.js'
+import { useUserStore } from '@/store/user.js'
+import { useUserDataInvalidationStore } from '@/store/userDataInvalidation.js'
 
 const { isDarkMode } = usePageTheme()
+const userStore = useUserStore()
+const userDataInvalidationStore = useUserDataInvalidationStore()
+
+const currentReadIdentity = () => ({
+	userId: userStore.userId,
+	authGeneration: userStore.authGeneration
+})
+
+const currentIdentityKey = () => {
+	const identity = currentReadIdentity()
+	return `${identity.userId}:${identity.authGeneration}`
+}
 
 // Tab
 const activeTab = ref('player')
@@ -188,17 +202,40 @@ const refereeList = ref([])
 const refereePage = ref(1)
 const refereeTotal = ref(0)
 const ongoingRefereeMatch = ref(null)
+const latestMatchRequestId = ref(0)
+const latestRefereeRequestId = ref(0)
+const latestCurrentMatchRequestId = ref(0)
+const loadedIdentityKey = ref('')
+const loadedHistoryScopeVersion = ref(0)
+
+const resetHistoryForIdentity = () => {
+	matchList.value = []
+	currentPage.value = 1
+	total.value = 0
+	hasMore.value = true
+	refereeList.value = []
+	refereePage.value = 1
+	refereeTotal.value = 0
+	hasRefereeMore.value = true
+	ongoingRefereeMatch.value = null
+	isLoading.value = false
+	isLoadingMore.value = false
+	isRefereeLoading.value = false
+	isRefereeLoadingMore.value = false
+}
 
 onShow(() => {
-	const token = uni.getStorageSync('token')
-	if (!token) {
+	if (!userStore.isLoggedIn || !userStore.userId) {
 		needLogin.value = true
 		return
 	}
 	needLogin.value = false
-	if (activeTab.value === 'player' && matchList.value.length === 0 && !isLoading.value) {
+	const identityKey = currentIdentityKey()
+	const scopeVersion = userDataInvalidationStore.versionOf('history')
+	if (loadedIdentityKey.value !== identityKey) resetHistoryForIdentity()
+	if (activeTab.value === 'player' && (matchList.value.length === 0 || loadedHistoryScopeVersion.value !== scopeVersion) && !isLoading.value) {
 		fetchMatchList()
-	} else if (activeTab.value === 'referee' && refereeList.value.length === 0 && !isRefereeLoading.value) {
+	} else if (activeTab.value === 'referee' && (refereeList.value.length === 0 || loadedHistoryScopeVersion.value !== scopeVersion) && !isRefereeLoading.value) {
 		fetchRefereeList()
 	}
 	// Always check for ongoing referee match
@@ -217,6 +254,10 @@ const switchTab = (tab) => {
 
 const fetchMatchList = async (isRefresh = false, isLoadMore = false) => {
 	if (isLoading.value || isLoadingMore.value) return
+	const requestId = latestMatchRequestId.value + 1
+	const requestIdentityKey = currentIdentityKey()
+	const requestScopeVersion = userDataInvalidationStore.versionOf('history')
+	latestMatchRequestId.value = requestId
 	if (isRefresh) {
 		isRefreshing.value = true
 		currentPage.value = 1
@@ -230,15 +271,20 @@ const fetchMatchList = async (isRefresh = false, isLoadMore = false) => {
 	}
 	try {
 		const res = await getMatchList({ page: currentPage.value, page_size: pageSize })
+		if (requestId !== latestMatchRequestId.value || currentIdentityKey() !== requestIdentityKey) return
 		const list = res.list || []
 		total.value = res.total || 0
 		if (isRefresh) { matchList.value = list }
 		else if (isLoadMore) { matchList.value = [...matchList.value, ...list] }
 		else { matchList.value = list }
 		hasMore.value = matchList.value.length < total.value
+		loadedIdentityKey.value = requestIdentityKey
+		loadedHistoryScopeVersion.value = requestScopeVersion
 	} catch (error) {
+		if (requestId !== latestMatchRequestId.value || currentIdentityKey() !== requestIdentityKey) return
 		console.error('获取对局列表失败:', error)
 	} finally {
+		if (requestId !== latestMatchRequestId.value || currentIdentityKey() !== requestIdentityKey) return
 		isLoading.value = false
 		isRefreshing.value = false
 		isLoadingMore.value = false
@@ -251,6 +297,10 @@ const onLoadMore = () => fetchMatchList(false, true)
 // Referee history
 const fetchRefereeList = async (isRefresh = false, isLoadMore = false) => {
 	if (isRefereeLoading.value || isRefereeLoadingMore.value) return
+	const requestId = latestRefereeRequestId.value + 1
+	const requestIdentityKey = currentIdentityKey()
+	const requestScopeVersion = userDataInvalidationStore.versionOf('history')
+	latestRefereeRequestId.value = requestId
 	if (isRefresh) {
 		isRefereeRefreshing.value = true
 		refereePage.value = 1
@@ -264,15 +314,20 @@ const fetchRefereeList = async (isRefresh = false, isLoadMore = false) => {
 	}
 	try {
 		const res = await getRefereeHistory({ page: refereePage.value, page_size: pageSize })
+		if (requestId !== latestRefereeRequestId.value || currentIdentityKey() !== requestIdentityKey) return
 		const list = res.list || []
 		refereeTotal.value = res.total || 0
 		if (isRefresh) { refereeList.value = list }
 		else if (isLoadMore) { refereeList.value = [...refereeList.value, ...list] }
 		else { refereeList.value = list }
 		hasRefereeMore.value = refereeList.value.length < refereeTotal.value
+		loadedIdentityKey.value = requestIdentityKey
+		loadedHistoryScopeVersion.value = requestScopeVersion
 	} catch (error) {
+		if (requestId !== latestRefereeRequestId.value || currentIdentityKey() !== requestIdentityKey) return
 		console.error('获取执裁历史失败:', error)
 	} finally {
+		if (requestId !== latestRefereeRequestId.value || currentIdentityKey() !== requestIdentityKey) return
 		isRefereeLoading.value = false
 		isRefereeRefreshing.value = false
 		isRefereeLoadingMore.value = false
@@ -284,8 +339,12 @@ const onRefereeLoadMore = () => fetchRefereeList(false, true)
 
 // Check for ongoing referee match
 const checkOngoingRefereeMatch = async () => {
+	const requestId = latestCurrentMatchRequestId.value + 1
+	const requestIdentityKey = currentIdentityKey()
+	latestCurrentMatchRequestId.value = requestId
 	try {
 		const res = await getCurrentMatch({ silent: true })
+		if (requestId !== latestCurrentMatchRequestId.value || currentIdentityKey() !== requestIdentityKey) return
 		if (res?.match?.viewer_role === 'referee') {
 			ongoingRefereeMatch.value = {
 				match_id: res.match.id,
@@ -299,6 +358,7 @@ const checkOngoingRefereeMatch = async () => {
 			}
 		}
 	} catch (error) {
+		if (requestId !== latestCurrentMatchRequestId.value || currentIdentityKey() !== requestIdentityKey) return
 		// 静默处理，无进行中裁判对局
 	}
 }

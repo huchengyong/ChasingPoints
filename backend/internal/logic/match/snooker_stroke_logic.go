@@ -22,7 +22,7 @@ func NewSnookerStrokeLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Sno
 	return &SnookerStrokeLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

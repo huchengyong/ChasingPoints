@@ -57,10 +57,12 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getRuleContent } from '@/api/rules.js'
+import { usePublicReadStore } from '@/store/publicRead.js'
 import { getRuleCategoryLabel } from '@/utils/game-types.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 
 const { isDarkMode } = usePageTheme()
+const publicReadStore = usePublicReadStore()
 
 const category = ref('snooker')
 const currentType = ref('rule')
@@ -100,10 +102,11 @@ const toggleItem = (index) => {
 const loadContent = async () => {
 	loading.value = true
 	try {
-		const res = await getRuleContent({
-			category: resolveRuleCategory(category.value),
-			content_type: currentType.value
-		})
+		const resolvedCategory = resolveRuleCategory(category.value)
+		const res = await publicReadStore.loadStatic(
+			`rules:content:${resolvedCategory}:${currentType.value}`,
+			() => getRuleContent({ category: resolvedCategory, content_type: currentType.value })
+		)
 		contentList.value = res.list || res || []
 	} catch (e) {
 		console.error('加载规则内容失败:', e)

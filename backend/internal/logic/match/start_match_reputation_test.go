@@ -73,9 +73,9 @@ func TestStartMatchBlocksWhenUserIsInReputationBan(t *testing.T) {
 	}
 
 	resp, err := NewStartMatchLogic(startReputationCtx(1001), svcCtx).StartMatch(&types.StartMatchReq{
-		GameType:      3,
-		OpponentId:    2002,
-		OpponentName:  "对手",
+		GameType:       3,
+		OpponentId:     2002,
+		OpponentName:   "对手",
 		OpponentAvatar: "",
 	})
 	if err != nil {
@@ -118,9 +118,9 @@ func TestStartMatchRecoversScoreButStillBlocksBeforeBanEnds(t *testing.T) {
 	}
 
 	resp, err := NewStartMatchLogic(startReputationCtx(1001), svcCtx).StartMatch(&types.StartMatchReq{
-		GameType:      3,
-		OpponentId:    2002,
-		OpponentName:  "对手",
+		GameType:       3,
+		OpponentId:     2002,
+		OpponentName:   "对手",
 		OpponentAvatar: "",
 	})
 	if err != nil {
@@ -168,9 +168,9 @@ func TestStartMatchAllowsWhenBanExpired(t *testing.T) {
 	}
 
 	resp, err := NewStartMatchLogic(startReputationCtx(1001), svcCtx).StartMatch(&types.StartMatchReq{
-		GameType:      3,
-		OpponentId:    2002,
-		OpponentName:  "对手",
+		GameType:       3,
+		OpponentId:     2002,
+		OpponentName:   "对手",
 		OpponentAvatar: "",
 	})
 	if err != nil {

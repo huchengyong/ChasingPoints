@@ -24,7 +24,7 @@ func NewSendChallengeLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Sen
 	return &SendChallengeLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

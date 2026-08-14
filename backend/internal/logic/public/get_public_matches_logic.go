@@ -24,7 +24,7 @@ func NewGetPublicMatchesLogic(ctx context.Context, svcCtx *svc.ServiceContext) *
 	return &GetPublicMatchesLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -59,7 +59,10 @@ func (l *GetPublicMatchesLogic) GetPublicMatches(req *types.PublicMatchListReq) 
 		pageSize = 50
 	}
 
-	matchModel := model.NewMatchModel(l.svcCtx.DB)
+	matchModel := l.svcCtx.MatchModel
+	if matchModel == nil {
+		matchModel = model.NewMatchModel(l.svcCtx.DB)
+	}
 	rows, total, listErr := matchModel.ListPublicMatches(model.PublicMatchListOptions{
 		Scope:        scope,
 		ViewerUserId: viewerUserId,
@@ -80,8 +83,6 @@ func (l *GetPublicMatchesLogic) GetPublicMatches(req *types.PublicMatchListReq) 
 
 	list := make([]types.PublicMatchListItem, 0, len(rows))
 	for _, row := range rows {
-		roundCount, _ := matchModel.GetRoundCount(row.Id)
-
 		var player2Id int64
 		if row.OpponentId != nil {
 			player2Id = *row.OpponentId
@@ -114,7 +115,7 @@ func (l *GetPublicMatchesLogic) GetPublicMatches(req *types.PublicMatchListReq) 
 			Player2Avatar:   row.Player2Avatar,
 			Player1Score:    row.MyScore,
 			Player2Score:    row.OpponentScore,
-			CurrentRound:    resolvePublicMatchCurrentRound(row.Status, roundCount),
+			CurrentRound:    resolvePublicMatchCurrentRound(row.Status, row.RoundCount),
 			Result:          result,
 			MatchTime:       row.MatchTime.Format("2006-01-02T15:04:05+08:00"),
 			EndTime:         endTime,

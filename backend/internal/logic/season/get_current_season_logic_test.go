@@ -2,11 +2,13 @@ package season
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 
 	"chasing_points/internal/config"
 	"chasing_points/internal/model"
+	"chasing_points/internal/observability"
 	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -127,6 +129,96 @@ func TestGetCurrentSeasonLifecycleStates(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCurrentSeasonLifecycleRejectsMalformedCurrentWindow(t *testing.T) {
+	location, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		t.Fatalf("load timezone: %v", err)
+	}
+	now := time.Now()
+	anchor := time.Date(now.In(location).Year(), now.In(location).Month(), 1, 0, 0, 0, 0, location)
+	lifecycle := config.SeasonLifecycleConfig{Enabled: true, AnchorDate: anchor.Format(time.DateOnly)}
+	svcCtx := newCurrentSeasonLogicTestSvc(t, lifecycle)
+	policy, err := seasonx.NewPolicy(lifecycle)
+	if err != nil {
+		t.Fatalf("new policy: %v", err)
+	}
+	window, ok := policy.WindowAt(now)
+	if !ok {
+		t.Fatal("expected current window")
+	}
+	malformed := seasonx.WindowSeason(window)
+	malformed.Name = "手工赛季"
+	if err := svcCtx.SeasonModel.Create(&malformed); err != nil {
+		t.Fatalf("seed malformed current window: %v", err)
+	}
+	resp, err := NewGetCurrentSeasonLogic(context.Background(), svcCtx).GetCurrentSeason()
+	if err != nil || !resp.Success || resp.SeasonState != seasonx.StateUnavailable || resp.Season != nil {
+		t.Fatalf("malformed current window must be unavailable: resp=%+v err=%v", resp, err)
+	}
+}
+
+func TestCurrentSeasonLifecycleLookupDoesNotGrowWithSeasonHistory(t *testing.T) {
+	one := currentSeasonLifecycleQueryCount(t, 1)
+	hundred := currentSeasonLifecycleQueryCount(t, 100)
+	if one != 1 || hundred != one {
+		t.Fatalf("current season lookup must stay a single indexed query: one=%d hundred=%d", one, hundred)
+	}
+}
+
+func currentSeasonLifecycleQueryCount(t *testing.T, historicCount int) int64 {
+	t.Helper()
+	location, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		t.Fatalf("load timezone: %v", err)
+	}
+	now := time.Now()
+	anchor := time.Date(now.In(location).Year(), now.In(location).Month(), 1, 0, 0, 0, 0, location).AddDate(0, -120, 0)
+	lifecycle := config.SeasonLifecycleConfig{Enabled: true, AnchorDate: anchor.Format(time.DateOnly)}
+	policy, err := seasonx.NewPolicy(lifecycle)
+	if err != nil {
+		t.Fatalf("new policy: %v", err)
+	}
+	window, ok := policy.WindowAt(now)
+	if !ok {
+		t.Fatal("expected current window")
+	}
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"-"+strconv.Itoa(historicCount)+"?mode=memory&cache=shared"), &gorm.Config{Logger: observability.NewGormLogger(time.Hour)})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&model.Season{}); err != nil {
+		t.Fatalf("migrate seasons: %v", err)
+	}
+	current := seasonx.WindowSeason(window)
+	if err := db.Create(&current).Error; err != nil {
+		t.Fatalf("seed current season: %v", err)
+	}
+	history := make([]model.Season, 0, historicCount)
+	for index := 1; index <= historicCount; index++ {
+		start := window.StartDate.AddDate(0, -index, 0)
+		history = append(history, model.Season{
+			Name:      "历史赛季",
+			StartDate: start,
+			EndDate:   start.AddDate(0, 1, -1),
+			Status:    2,
+		})
+	}
+	if err := db.Create(&history).Error; err != nil {
+		t.Fatalf("seed historic seasons: %v", err)
+	}
+	metrics := observability.NewRequestMetrics(time.Now())
+	ctx := observability.WithRequestMetrics(context.Background(), metrics)
+	svcCtx := &svc.ServiceContext{
+		Config:      config.Config{SeasonLifecycle: lifecycle},
+		SeasonModel: model.NewSeasonModel(db.WithContext(ctx)),
+	}
+	season, state, err := ResolveCurrentSeasonLifecycle(svcCtx, now)
+	if err != nil || state != seasonx.StateActive || season == nil || season.Id != current.Id {
+		t.Fatalf("resolve current lifecycle season: season=%+v state=%s err=%v", season, state, err)
+	}
+	return metrics.Snapshot().SQLCount
 }
 
 func TestBuildSeasonInfoUsesConfiguredBusinessBounds(t *testing.T) {

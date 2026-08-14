@@ -1,7 +1,11 @@
 import { defineStore } from 'pinia'
+import { useActivityStore } from './activity.js'
 import { useRankStore } from './rank.js'
 import { useNotificationStore } from './notification.js'
 import { useFriendRequestStore } from './friendRequest.js'
+import { useUserOverviewStore } from './userOverview.js'
+import { useUserDataInvalidationStore } from './userDataInvalidation.js'
+import { usePublicReadStore } from './publicRead.js'
 import { userWS } from '@/utils/websocket.js'
 import {
   clearStoredSession,
@@ -14,6 +18,10 @@ const clearCurrentUserRuntimeState = () => {
     rankStore: useRankStore(),
     notificationStore: useNotificationStore(),
     friendRequestStore: useFriendRequestStore(),
+    activityStore: useActivityStore(),
+    userOverviewStore: useUserOverviewStore(),
+    userDataInvalidationStore: useUserDataInvalidationStore(),
+    publicReadStore: usePublicReadStore(),
     userSocket: userWS
   })
 }
@@ -65,6 +73,9 @@ export const useUserStore = defineStore('user', {
       userWS.connect().catch((error) => {
         console.error('[UserStore] 用户WS连接失败:', error)
       })
+      if (typeof uni.$emit === 'function') {
+        uni.$emit('user-session-ready')
+      }
     },
 
     // 刷新登录态，只更新令牌，不覆盖用户资料

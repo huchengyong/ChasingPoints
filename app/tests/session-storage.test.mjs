@@ -55,16 +55,18 @@ test('clearStoredSession removes every persisted identity key', () => {
   }
 })
 
-test('user-scoped runtime cleanup clears rank, unread badges and user WebSocket together', () => {
+test('user-scoped runtime cleanup clears rank, unread badges, invalidation state and user WebSocket together', () => {
   const calls = []
   clearUserScopedRuntimeState({
     rankStore: { clear: () => calls.push('rank') },
     notificationStore: { clearUnread: () => calls.push('notification') },
     friendRequestStore: { clearPendingCount: () => calls.push('friend-request') },
+    userDataInvalidationStore: { clear: () => calls.push('invalidation') },
+    publicReadStore: { clearLeaderboard: () => calls.push('leaderboard') },
     userSocket: { disconnect: () => calls.push('websocket') }
   })
 
-  assert.deepEqual(calls, ['rank', 'notification', 'friend-request', 'websocket'])
+  assert.deepEqual(calls, ['rank', 'notification', 'friend-request', 'invalidation', 'leaderboard', 'websocket'])
 })
 
 test('logout then init cannot restore a stale identity', () => {

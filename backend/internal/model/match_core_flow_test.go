@@ -14,7 +14,7 @@ func newMatchCoreFlowTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("open sqlite db: %v", err)
 	}
-	if err := db.AutoMigrate(&User{}, &Friend{}, &Match{}); err != nil {
+	if err := db.AutoMigrate(&User{}, &Friend{}, &Match{}, &MatchRound{}); err != nil {
 		t.Fatalf("prepare match schema: %v", err)
 	}
 	return db

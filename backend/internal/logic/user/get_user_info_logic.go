@@ -21,7 +21,7 @@ func NewGetUserInfoLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetUs
 	return &GetUserInfoLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -36,7 +36,7 @@ func (l *GetUserInfoLogic) GetUserInfo() (resp *types.GetUserInfoResp, err error
 	}
 
 	// 查询用户信息
-	user, err := l.svcCtx.UserModel.FindById(userId)
+	user, err := currentUserFromRequest(l.ctx, l.svcCtx, userId)
 	if err != nil {
 		l.Logger.Errorf("查询用户失败: %v", err)
 		return &types.GetUserInfoResp{
@@ -51,7 +51,7 @@ func (l *GetUserInfoLogic) GetUserInfo() (resp *types.GetUserInfoResp, err error
 	}
 
 	return &types.GetUserInfoResp{
-		Success: true,
+		Success:  true,
 		UserInfo: buildUserInfoPayload(user),
 	}, nil
 }

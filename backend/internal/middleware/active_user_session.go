@@ -1,10 +1,12 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 
 	"chasing_points/internal/model"
 	"chasing_points/internal/pkg"
+	"chasing_points/internal/requestctx"
 	"chasing_points/internal/utils"
 
 	"github.com/zeromicro/go-zero/core/logx"
@@ -25,6 +27,10 @@ type sessionInvalidPayload struct {
 	Success bool   `json:"success"`
 	Reason  string `json:"reason"`
 	Message string `json:"message"`
+}
+
+func ActiveUserFromContext(ctx context.Context) *model.User {
+	return requestctx.ActiveUser(ctx)
 }
 
 // ActiveUserSessionMiddleware rejects REST requests whose JWT identifies a
@@ -71,7 +77,7 @@ func (m *ActiveUserSessionMiddleware) Handle(next http.HandlerFunc) http.Handler
 			return
 		}
 
-		user, err := m.userModel.FindById(userID)
+		user, err := m.userModel.FindByIdWithContext(r.Context(), userID)
 		if err != nil {
 			logx.WithContext(r.Context()).Errorf("校验用户 %d 失败: %v", userID, err)
 			http.Error(w, "内部服务错误", http.StatusInternalServerError)
@@ -86,6 +92,6 @@ func (m *ActiveUserSessionMiddleware) Handle(next http.HandlerFunc) http.Handler
 			return
 		}
 
-		next(w, r)
+		next(w, r.WithContext(requestctx.WithActiveUser(r.Context(), user)))
 	}
 }

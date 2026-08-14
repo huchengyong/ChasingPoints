@@ -12,7 +12,10 @@ import (
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
-const defaultSeasonRolloverInterval = time.Minute
+const (
+	defaultSeasonRolloverInterval = time.Minute
+	seasonRolloverBatchSize       = 20
+)
 
 type seasonRolloverRunner interface {
 	SettleSeasonAt(ctx context.Context, seasonId int64, now time.Time) (*SeasonSettlementSummary, error)
@@ -76,7 +79,7 @@ func (w *SeasonRolloverWorker) RunOnce(ctx context.Context) error {
 		if err := w.settleContinuousSeasons(ctx, now); err != nil {
 			return err
 		}
-		_, err = w.lifecycle.ConvergeStatusesAt(ctx, now)
+		_, err = w.runner.ActivateReadySeasonAt(ctx, now)
 		return err
 	}
 	return w.runLegacyRollover(ctx, now)
@@ -115,27 +118,41 @@ func (w *SeasonRolloverWorker) settleContinuousSeasons(ctx context.Context, now 
 	if err != nil {
 		return err
 	}
-	seasons, err := w.svcCtx.SeasonModel.ListAll()
-	if err != nil {
-		return err
+	current, started := policy.WindowAt(now)
+	if !started {
+		return nil
 	}
-	for _, item := range seasons {
-		startAt, endExclusive := seasonx.Bounds(&item, policy.Location)
-		if startAt.Before(policy.Anchor) || now.Before(endExclusive) {
-			continue
-		}
-		settlement, err := w.svcCtx.SeasonSettlementModel.FindBySeasonId(item.Id)
-		if err != nil {
+
+	var afterEndDate time.Time
+	var afterID int64
+	for {
+		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if settlement != nil && settlement.Status == model.SeasonSettlementStatusCompleted {
-			continue
+		seasons, findErr := w.svcCtx.SeasonModel.FindDueUnsettledBatch(
+			policy.Anchor,
+			current.StartDate,
+			afterEndDate,
+			afterID,
+			seasonRolloverBatchSize,
+		)
+		if findErr != nil {
+			return findErr
 		}
-		if _, err := w.runner.SettleSeasonAt(ctx, item.Id, now); err != nil {
-			return err
+		if len(seasons) == 0 {
+			return nil
+		}
+		for _, item := range seasons {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if _, err := w.runner.SettleSeasonAt(ctx, item.Id, now); err != nil {
+				return err
+			}
+			afterEndDate = item.EndDate
+			afterID = item.Id
 		}
 	}
-	return nil
 }
 
 func (w *SeasonRolloverWorker) Start(ctx context.Context) {

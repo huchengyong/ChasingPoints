@@ -4,15 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
 
 	achievementx "chasing_points/internal/logic/achievement"
 	"chasing_points/internal/model"
+	"chasing_points/internal/observability"
 	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 
+	miniredis "github.com/alicebob/miniredis/v2"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -32,6 +36,9 @@ func TestSeasonSettlementServiceSettlesOneSeasonAndIsIdempotent(t *testing.T) {
 	if err := svcCtx.DB.Create(&model.UserTitle{UserId: 10, TitleKey: "title_match_100", TitleName: "资深球手", Source: achievementx.SourceTypeAchievement, SourceType: achievementx.SourceTypeAchievement, SourceRefId: careerAchievement.Id, SourceRefName: careerAchievement.Name, Equipped: 1, EquippedAt: &equippedAt, GrantedAt: &unlockedAt}).Error; err != nil {
 		t.Fatalf("seed career title: %v", err)
 	}
+	miniRedis := miniredis.RunT(t)
+	svcCtx.Redis = redis.NewClient(&redis.Options{Addr: miniRedis.Addr()})
+	t.Cleanup(func() { _ = svcCtx.Redis.Close() })
 	service := NewSeasonSettlementService(svcCtx)
 	service.sendRealtime = func(seasonRolloverRealtimeNotice) error { return nil }
 
@@ -44,6 +51,9 @@ func TestSeasonSettlementServiceSettlesOneSeasonAndIsIdempotent(t *testing.T) {
 	}
 	if summary.NextSeasonId == nil || *summary.NextSeasonId != nextSeason.Id {
 		t.Fatalf("expected next season %d, got %+v", nextSeason.Id, summary.NextSeasonId)
+	}
+	if version, err := miniRedis.Get("season:info:version"); err != nil || version != "1" {
+		t.Fatalf("season rollover must invalidate public season info: version=%q err=%v", version, err)
 	}
 
 	assertSeasonStatus(t, svcCtx, season.Id, 2)
@@ -85,7 +95,92 @@ func TestSeasonSettlementServiceSettlesOneSeasonAndIsIdempotent(t *testing.T) {
 	}
 }
 
-func TestSeasonSettlementServiceCountsMatchesThroughEndDateOnly(t *testing.T) {
+func TestSeasonSettlementUsesIncrementalRecordsWithoutMatchOrRankHistoryModels(t *testing.T) {
+	svcCtx := newSeasonSettlementTestSvc(t)
+	season, _, now := seedSeasonSettlementScenario(t, svcCtx, false)
+	svcCtx.MatchModel = nil
+	svcCtx.RankingModel = nil
+	service := NewSeasonSettlementService(svcCtx)
+	service.sendRealtime = func(seasonRolloverRealtimeNotice) error { return nil }
+	summary, err := service.SettleSeasonWithOptionsAt(context.Background(), season.Id, now, SeasonSettlementOptions{Notify: false})
+	if err != nil || summary.SeasonRecords != 3 {
+		t.Fatalf("settlement must consume incremental records without match/rank history models: summary=%+v err=%v", summary, err)
+	}
+	assertSeasonSettlementRecords(t, svcCtx, season.Id)
+}
+
+func TestSeasonSettlementRecordReadQueryCountDoesNotGrowWithParticipants(t *testing.T) {
+	for _, count := range []int{1, 1000} {
+		t.Run(fmt.Sprintf("records_%d", count), func(t *testing.T) {
+			svcCtx := newSeasonSettlementTestSvc(t)
+			records := make([]model.SeasonRecord, 0, count)
+			for index := 1; index <= count; index++ {
+				records = append(records, model.SeasonRecord{SeasonId: 88, UserId: int64(index), GameType: 3, EndRankScore: 2000 - index, PeakRankScore: 2000, MatchesPlayed: 1, Wins: index % 2})
+			}
+			if err := svcCtx.SeasonRecordModel.CreateBatch(records); err != nil {
+				t.Fatalf("seed incremental records: %v", err)
+			}
+			metrics := observability.NewRequestMetrics(time.Now())
+			requestDB := svcCtx.DB.Session(&gorm.Session{Logger: observability.NewGormLogger(time.Hour)}).WithContext(observability.WithRequestMetrics(context.Background(), metrics))
+			requestSvc := *svcCtx
+			requestSvc.SeasonRecordModel = model.NewSeasonRecordModel(requestDB)
+			loaded, err := NewSeasonSettlementService(&requestSvc).buildSeasonRecordsWithTx(nil, &model.Season{Id: 88})
+			if err != nil || len(loaded) != count {
+				t.Fatalf("load settlement records: count=%d err=%v", len(loaded), err)
+			}
+			if sqlCount := metrics.Snapshot().SQLCount; sqlCount != 1 {
+				t.Fatalf("settlement record query count must stay fixed, got %d", sqlCount)
+			}
+		})
+	}
+}
+
+func TestSeasonSettlementLargeSeasonUsesBatchedWritesWithoutNPlusOne(t *testing.T) {
+	queryCounts := make(map[int]int64)
+	for _, recordCount := range []int{10, 2000} {
+		t.Run(fmt.Sprintf("records_%d", recordCount), func(t *testing.T) {
+			svcCtx := newSeasonSettlementTestSvc(t)
+			season := model.Season{Id: 70, Name: "大赛季", StartDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), EndDate: time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC), Status: 1}
+			if err := svcCtx.SeasonModel.Create(&season); err != nil {
+				t.Fatalf("create large season: %v", err)
+			}
+			records := make([]model.SeasonRecord, 0, recordCount)
+			for index := 1; index <= recordCount; index++ {
+				records = append(records, model.SeasonRecord{SeasonId: season.Id, UserId: int64(index), GameType: 3, StartRankScore: 1000, EndRankScore: 3000 - index, PeakRankScore: 3000, MatchesPlayed: 1, Wins: index % 2})
+			}
+			if err := svcCtx.SeasonRecordModel.CreateBatch(records); err != nil {
+				t.Fatalf("seed large season records: %v", err)
+			}
+			metrics := observability.NewRequestMetrics(time.Now())
+			requestDB := svcCtx.DB.Session(&gorm.Session{Logger: observability.NewGormLogger(time.Hour)}).
+				WithContext(observability.WithRequestMetrics(context.Background(), metrics))
+			requestSvc := *svcCtx
+			requestSvc.DB = requestDB
+			requestSvc.UserModel = model.NewUserModel(requestDB)
+			requestSvc.MatchModel = model.NewMatchModel(requestDB)
+			requestSvc.RankingModel = model.NewRankingModel(requestDB)
+			requestSvc.UserTitleModel = model.NewUserTitleModel(requestDB)
+			requestSvc.AchievementProgressEventModel = model.NewAchievementProgressEventModel(requestDB)
+			requestSvc.NotificationModel = model.NewNotificationModel(requestDB)
+			requestSvc.SeasonModel = model.NewSeasonModel(requestDB)
+			requestSvc.SeasonRecordModel = model.NewSeasonRecordModel(requestDB)
+			requestSvc.SeasonChallengeSnapshotModel = model.NewSeasonChallengeSnapshotModel(requestDB)
+			requestSvc.SeasonSettlementModel = model.NewSeasonSettlementModel(requestDB)
+			service := NewSeasonSettlementService(&requestSvc)
+			service.sendRealtime = func(seasonRolloverRealtimeNotice) error { return nil }
+			summary, err := service.SettleSeasonWithOptionsAt(context.Background(), season.Id, time.Date(2026, 2, 1, 12, 0, 0, 0, time.UTC), SeasonSettlementOptions{Notify: false})
+			if err != nil || summary.SeasonRecords != recordCount || summary.SeasonTitles != minInt(recordCount, 10) {
+				t.Fatalf("settle large season: summary=%+v err=%v", summary, err)
+			}
+			queryCounts[recordCount] = metrics.Snapshot().SQLCount
+		})
+	}
+	if queryCounts[2000] > queryCounts[10]+10 {
+		t.Fatalf("large season SQL count must grow only by fixed write batches: small=%d large=%d", queryCounts[10], queryCounts[2000])
+	}
+}
+
+func TestSeasonSettlementServiceUsesIncrementalRecordsThroughEndDateOnly(t *testing.T) {
 	svcCtx := newSeasonSettlementTestSvc(t)
 	season := model.Season{
 		Id:        30,
@@ -109,6 +204,12 @@ func TestSeasonSettlementServiceCountsMatchesThroughEndDateOnly(t *testing.T) {
 	endExclusive := time.Date(2026, 8, 1, 0, 0, 0, 0, location)
 	seedSeasonSettlementMatch(t, svcCtx, 3001, 10, 20, 1, endExclusive.Add(-time.Second))
 	seedSeasonSettlementMatch(t, svcCtx, 3002, 10, 20, 1, endExclusive)
+	if err := svcCtx.SeasonRecordModel.CreateBatch([]model.SeasonRecord{
+		{SeasonId: season.Id, UserId: 10, GameType: 3, StartRankScore: 1000, EndRankScore: 1020, PeakRankScore: 1020, MatchesPlayed: 1, Wins: 1},
+		{SeasonId: season.Id, UserId: 20, GameType: 3, StartRankScore: 1000, EndRankScore: 980, PeakRankScore: 1000, MatchesPlayed: 1, Wins: 0},
+	}); err != nil {
+		t.Fatalf("seed boundary season records: %v", err)
+	}
 	service := NewSeasonSettlementService(svcCtx)
 	service.sendRealtime = func(seasonRolloverRealtimeNotice) error { return nil }
 	if _, err := service.SettleSeasonAt(context.Background(), season.Id, endExclusive.Add(time.Hour)); err != nil {
@@ -232,6 +333,47 @@ func TestSeasonSettlementServiceUsesSeasonBoundaryForHistoricalTitleGrantTime(t 
 	}
 }
 
+func TestSeasonRolloverNotificationsUseBoundedBatchQueries(t *testing.T) {
+	for _, testCase := range []struct {
+		users       int
+		wantQueries int64
+	}{{users: 1, wantQueries: 2}, {users: 100, wantQueries: 2}, {users: 1200, wantQueries: 7}} {
+		t.Run(fmt.Sprintf("users_%d", testCase.users), func(t *testing.T) {
+			svcCtx := newSeasonSettlementTestSvc(t)
+			users := make([]model.User, 0, testCase.users)
+			records := make([]model.SeasonRecord, 0, testCase.users)
+			for index := 1; index <= testCase.users; index++ {
+				userID := int64(index)
+				users = append(users, model.User{Id: userID, Nickname: fmt.Sprintf("用户%d", index), PushToken: fmt.Sprintf("token-%d", index)})
+				records = append(records, model.SeasonRecord{SeasonId: 9, UserId: userID, GameType: 3, FinalRank: index})
+			}
+			if err := svcCtx.DB.CreateInBatches(&users, 200).Error; err != nil {
+				t.Fatalf("seed notification users: %v", err)
+			}
+			metrics := observability.NewRequestMetrics(time.Now())
+			requestDB := svcCtx.DB.Session(&gorm.Session{Logger: observability.NewGormLogger(time.Hour)}).
+				WithContext(observability.WithRequestMetrics(context.Background(), metrics))
+			requestSvc := *svcCtx
+			requestSvc.DB = requestDB
+			requestSvc.UserModel = model.NewUserModel(requestDB)
+			requestSvc.NotificationModel = model.NewNotificationModel(requestDB)
+			service := NewSeasonSettlementService(&requestSvc)
+			var notices []seasonRolloverRealtimeNotice
+			err := requestDB.Transaction(func(tx *gorm.DB) error {
+				var err error
+				notices, err = service.persistRolloverNotificationsWithTx(tx, model.Season{Id: 9, Name: "S9"}, nil, records, nil)
+				return err
+			})
+			if err != nil || len(notices) != testCase.users {
+				t.Fatalf("persist batched notifications: notices=%d err=%v", len(notices), err)
+			}
+			if sqlCount := metrics.Snapshot().SQLCount; sqlCount != testCase.wantQueries {
+				t.Fatalf("unexpected notification batch query count: got=%d want=%d", sqlCount, testCase.wantQueries)
+			}
+		})
+	}
+}
+
 func TestSeasonSettlementRealtimeFailureDoesNotRollbackOrDuplicate(t *testing.T) {
 	svcCtx := newSeasonSettlementTestSvc(t)
 	season, _, now := seedSeasonSettlementScenario(t, svcCtx, false)
@@ -239,6 +381,11 @@ func TestSeasonSettlementRealtimeFailureDoesNotRollbackOrDuplicate(t *testing.T)
 	notifyCalls := 0
 	service.sendRealtime = func(seasonRolloverRealtimeNotice) error {
 		notifyCalls++
+		settlement, err := svcCtx.SeasonSettlementModel.FindBySeasonId(season.Id)
+		storedSeason, seasonErr := svcCtx.SeasonModel.FindById(season.Id)
+		if err != nil || settlement == nil || settlement.Status != model.SeasonSettlementStatusCompleted || seasonErr != nil || storedSeason == nil || storedSeason.Status != 2 {
+			t.Errorf("realtime delivery must run after final commit: settlement=%+v err=%v season=%+v seasonErr=%v", settlement, err, storedSeason, seasonErr)
+		}
 		return errors.New("push unavailable")
 	}
 
@@ -275,19 +422,16 @@ func TestSeasonSettlementNotificationPersistenceFailureRollsBackAndRetriesCleanl
 		t.Fatal("expected notification persistence failure")
 	}
 	assertSeasonStatus(t, svcCtx, season.Id, 1)
-	assertSeasonSettlementTitles(t, svcCtx, season.Id, 0)
-	assertSeasonSettlementSnapshots(t, svcCtx, season.Id, 0)
-	var recordCount int64
-	if err := svcCtx.DB.Model(&model.SeasonRecord{}).Where("season_id = ?", season.Id).Count(&recordCount).Error; err != nil {
-		t.Fatalf("count rolled back season records: %v", err)
-	}
-	if recordCount != 0 {
-		t.Fatalf("expected season records rolled back, got %d", recordCount)
-	}
+	assertSeasonSettlementRecords(t, svcCtx, season.Id)
+	assertSeasonSettlementTitles(t, svcCtx, season.Id, 3)
+	assertSeasonSettlementSnapshots(t, svcCtx, season.Id, 3)
 
 	failed, err := svcCtx.SeasonSettlementModel.FindBySeasonId(season.Id)
 	if err != nil || failed == nil || failed.Status != model.SeasonSettlementStatusFailed || failed.Attempts != 1 {
 		t.Fatalf("unexpected failed settlement state: settlement=%+v err=%v", failed, err)
+	}
+	if failed.RecordsCompletedAt == nil || failed.ChallengesCompletedAt == nil || failed.TitlesCompletedAt == nil || failed.NotificationsCompletedAt != nil {
+		t.Fatalf("completed phases must survive notification failure: %+v", failed)
 	}
 	if err := svcCtx.DB.AutoMigrate(&model.Notification{}); err != nil {
 		t.Fatalf("restore notifications table: %v", err)
@@ -303,6 +447,68 @@ func TestSeasonSettlementNotificationPersistenceFailureRollsBackAndRetriesCleanl
 	completed, err := svcCtx.SeasonSettlementModel.FindBySeasonId(season.Id)
 	if err != nil || completed == nil || completed.Status != model.SeasonSettlementStatusCompleted || completed.Attempts != 2 {
 		t.Fatalf("unexpected recovered settlement state: settlement=%+v err=%v", completed, err)
+	}
+}
+
+func TestSeasonSettlementResumesCommittedPhasesAndPublishesAtomically(t *testing.T) {
+	phases := []string{
+		seasonSettlementPhaseRecords,
+		seasonSettlementPhaseChallenges,
+		seasonSettlementPhaseTitles,
+		seasonSettlementPhaseNotifications,
+		seasonSettlementPhasePublish,
+	}
+	for _, interruptedPhase := range phases {
+		t.Run(interruptedPhase, func(t *testing.T) {
+			svcCtx := newSeasonSettlementTestSvc(t)
+			season, next, now := seedSeasonSettlementScenario(t, svcCtx, true)
+			service := NewSeasonSettlementService(svcCtx)
+			service.sendRealtime = func(seasonRolloverRealtimeNotice) error { return nil }
+			interrupted := false
+			service.phaseHook = func(phase string) error {
+				if phase == interruptedPhase && !interrupted {
+					interrupted = true
+					return errors.New("simulated interruption after " + phase)
+				}
+				return nil
+			}
+			if _, err := service.SettleSeasonAt(context.Background(), season.Id, now); err == nil {
+				t.Fatalf("expected interruption after %s", interruptedPhase)
+			}
+			assertSeasonStatus(t, svcCtx, season.Id, 1)
+			assertSeasonStatus(t, svcCtx, next.Id, 0)
+			failed, err := svcCtx.SeasonSettlementModel.FindBySeasonId(season.Id)
+			if err != nil || failed == nil || failed.Status != model.SeasonSettlementStatusFailed || failed.Attempts != 1 {
+				t.Fatalf("unexpected interrupted settlement: %+v err=%v", failed, err)
+			}
+			wantRecords := true
+			wantChallenges := interruptedPhase != seasonSettlementPhaseRecords
+			wantTitles := interruptedPhase == seasonSettlementPhaseTitles || interruptedPhase == seasonSettlementPhaseNotifications || interruptedPhase == seasonSettlementPhasePublish
+			wantNotifications := interruptedPhase == seasonSettlementPhaseNotifications || interruptedPhase == seasonSettlementPhasePublish
+			if (failed.RecordsCompletedAt != nil) != wantRecords ||
+				(failed.ChallengesCompletedAt != nil) != wantChallenges ||
+				(failed.TitlesCompletedAt != nil) != wantTitles ||
+				(failed.NotificationsCompletedAt != nil) != wantNotifications {
+				t.Fatalf("unexpected phase checkpoints after %s: %+v", interruptedPhase, failed)
+			}
+
+			retry := NewSeasonSettlementService(svcCtx)
+			retry.sendRealtime = func(seasonRolloverRealtimeNotice) error { return nil }
+			summary, err := retry.SettleSeasonAt(context.Background(), season.Id, now.Add(time.Minute))
+			if err != nil || summary.Skipped || summary.SeasonRecords != 3 || summary.SeasonTitles != 3 || summary.ChallengeSnapshots != 3 || summary.Notifications != 3 {
+				t.Fatalf("resume settlement after %s: summary=%+v err=%v", interruptedPhase, summary, err)
+			}
+			completed, err := svcCtx.SeasonSettlementModel.FindBySeasonId(season.Id)
+			if err != nil || completed == nil || completed.Status != model.SeasonSettlementStatusCompleted || completed.Attempts != 2 || completed.CompletedAt == nil {
+				t.Fatalf("unexpected completed settlement after resume: %+v err=%v", completed, err)
+			}
+			assertSeasonStatus(t, svcCtx, season.Id, 2)
+			assertSeasonStatus(t, svcCtx, next.Id, 1)
+			assertSeasonSettlementRecords(t, svcCtx, season.Id)
+			assertSeasonSettlementTitles(t, svcCtx, season.Id, 3)
+			assertSeasonSettlementSnapshots(t, svcCtx, season.Id, 3)
+			assertSeasonRolloverNotifications(t, svcCtx, season, &next, 3)
+		})
 	}
 }
 
@@ -431,6 +637,13 @@ func seedSeasonSettlementScenario(t *testing.T, svcCtx *svc.ServiceContext, with
 	seedSeasonRankLog(t, svcCtx, 30, 301, 1500, 1450, time.Date(2026, 7, 10, 20, 0, 0, 0, time.UTC))
 	seedSeasonRankLog(t, svcCtx, 20, 302, 1400, 1500, time.Date(2026, 7, 20, 20, 0, 0, 0, time.UTC))
 	seedSeasonRankLog(t, svcCtx, 30, 302, 1450, 1400, time.Date(2026, 7, 20, 20, 0, 0, 0, time.UTC))
+	if err := svcCtx.SeasonRecordModel.CreateBatch([]model.SeasonRecord{
+		{Id: 3, SeasonId: season.Id, UserId: 10, GameType: 3, StartRankScore: 1400, EndRankScore: 1500, PeakRankScore: 1500, MatchesPlayed: 1, Wins: 1},
+		{Id: 2, SeasonId: season.Id, UserId: 20, GameType: 3, StartRankScore: 1400, EndRankScore: 1500, PeakRankScore: 1500, MatchesPlayed: 1, Wins: 1},
+		{Id: 1, SeasonId: season.Id, UserId: 30, GameType: 3, StartRankScore: 1500, EndRankScore: 1400, PeakRankScore: 1500, MatchesPlayed: 2, Wins: 0},
+	}); err != nil {
+		t.Fatalf("seed incremental season records: %v", err)
+	}
 
 	events := []*model.AchievementProgressEvent{
 		model.NewAchievementProgressEvent(10, achievementx.SourceTypeMatch, 301, 3, achievementx.MetricMatchesTotal, 20, time.Date(2026, 7, 10, 20, 0, 0, 0, time.UTC)),

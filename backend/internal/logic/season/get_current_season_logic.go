@@ -23,25 +23,30 @@ func NewGetCurrentSeasonLogic(ctx context.Context, svcCtx *svc.ServiceContext) *
 	return &GetCurrentSeasonLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
 func (l *GetCurrentSeasonLogic) GetCurrentSeason() (resp *types.GetCurrentSeasonResp, err error) {
-	season, state, resolveErr := resolveCurrentSeasonLifecycle(l.svcCtx, time.Now())
-	if resolveErr != nil {
-		l.Logger.Errorf("解析当前赛季失败: err=%v", resolveErr)
-		state = "unavailable"
+	result, err := cachedCurrentSeasonResponse(l.ctx, l.svcCtx, time.Now())
+	if err != nil {
+		l.Logger.Errorf("解析当前赛季失败: err=%v", err)
+		return &types.GetCurrentSeasonResp{Success: true, SeasonState: "unavailable", Season: nil}, nil
 	}
-	if season == nil {
-		return &types.GetCurrentSeasonResp{Success: true, SeasonState: state, Season: nil}, nil
-	}
+	return &result, nil
+}
 
-	return &types.GetCurrentSeasonResp{
-		Success:     true,
-		SeasonState: state,
-		Season:      buildSeasonInfo(l.svcCtx, season),
-	}, nil
+func cachedCurrentSeasonResponse(ctx context.Context, svcCtx *svc.ServiceContext, now time.Time) (types.GetCurrentSeasonResp, error) {
+	return loadCurrentSeasonResponse(ctx, svcCtx, now, func() (types.GetCurrentSeasonResp, error) {
+		season, state, err := ResolveCurrentSeasonLifecycle(svcCtx, now)
+		if err != nil {
+			return types.GetCurrentSeasonResp{}, err
+		}
+		if season == nil {
+			return types.GetCurrentSeasonResp{Success: true, SeasonState: state, Season: nil}, nil
+		}
+		return types.GetCurrentSeasonResp{Success: true, SeasonState: state, Season: buildSeasonInfo(svcCtx, season)}, nil
+	})
 }
 
 func buildSeasonInfo(svcCtx *svc.ServiceContext, season *model.Season) *types.SeasonInfo {

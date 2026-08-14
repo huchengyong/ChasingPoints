@@ -95,6 +95,15 @@ func (m *AchievementModel) FindByCategory(category string) ([]Achievement, error
 	return list, err
 }
 
+func (m *AchievementModel) FindById(id int64) (*Achievement, error) {
+	var achievement Achievement
+	err := m.db.Where("id = ? AND status = ?", id, 1).First(&achievement).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &achievement, err
+}
+
 func (m *AchievementModel) FindByIds(ids []int64) ([]Achievement, error) {
 	var list []Achievement
 	if len(ids) == 0 {
@@ -111,6 +120,15 @@ type UserAchievementModel struct {
 
 func NewUserAchievementModel(db *gorm.DB) *UserAchievementModel {
 	return &UserAchievementModel{db: db}
+}
+
+func (m *UserAchievementModel) FindByUserAndAchievement(userId, achievementId int64) (*UserAchievement, error) {
+	var achievement UserAchievement
+	err := m.db.Where("user_id = ? AND achievement_id = ?", userId, achievementId).First(&achievement).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &achievement, err
 }
 
 func (m *UserAchievementModel) FindByUserId(userId int64) ([]UserAchievement, error) {
@@ -355,13 +373,13 @@ func (m *UserTitleModel) EquipTitle(userId int64, titleId int64, equip bool) err
 
 type AchievementProgressEvent struct {
 	Id          int64     `gorm:"primarykey"`
-	UserId      int64     `gorm:"not null;index:idx_achievement_progress_events_user_id;index:idx_achievement_progress_events_season_scope,priority:1;uniqueIndex:uk_user_source_metric,priority:1"`
+	UserId      int64     `gorm:"not null;index:idx_achievement_progress_events_user_id;index:idx_achievement_progress_events_season_scope,priority:1;index:idx_achievement_events_season_archive,priority:3;uniqueIndex:uk_user_source_metric,priority:1"`
 	SourceType  string    `gorm:"size:32;not null;default:'';uniqueIndex:uk_user_source_metric,priority:2"`
 	SourceId    int64     `gorm:"type:bigint unsigned;not null;default:0;uniqueIndex:uk_user_source_metric,priority:3"`
-	GameType    int       `gorm:"not null;default:0;index:idx_achievement_progress_events_game_type;index:idx_achievement_progress_events_season_scope,priority:2"`
-	MetricKey   string    `gorm:"size:64;not null;default:'';index:idx_achievement_progress_events_season_scope,priority:3;uniqueIndex:uk_user_source_metric,priority:4"`
+	GameType    int       `gorm:"not null;default:0;index:idx_achievement_progress_events_game_type;index:idx_achievement_progress_events_season_scope,priority:2;index:idx_achievement_events_season_archive,priority:4"`
+	MetricKey   string    `gorm:"size:64;not null;default:'';index:idx_achievement_progress_events_season_scope,priority:3;index:idx_achievement_events_season_archive,priority:2;uniqueIndex:uk_user_source_metric,priority:4"`
 	MetricValue int       `gorm:"not null;default:0"`
-	OccurredAt  time.Time `gorm:"not null;index:idx_achievement_progress_events_season_scope,priority:4"`
+	OccurredAt  time.Time `gorm:"not null;index:idx_achievement_progress_events_season_scope,priority:4;index:idx_achievement_events_season_archive,priority:1"`
 	CreatedAt   time.Time `gorm:"autoCreateTime"`
 }
 
@@ -498,11 +516,27 @@ type AchievementProgressUserGame struct {
 	GameType int
 }
 
+func (m *AchievementProgressEventModel) CountUserGamesBetween(metricKeys []string, startAt, endAt time.Time) (int64, error) {
+	if len(metricKeys) == 0 {
+		return 0, nil
+	}
+	pairs := achievementSeasonArchiveScope(m.db, metricKeys, startAt, endAt).
+		Select("user_id, game_type").
+		Group("user_id, game_type")
+	var count int64
+	err := m.db.Table("(?) AS achievement_user_games", pairs).Count(&count).Error
+	return count, err
+}
+
 func (m *AchievementProgressEventModel) ListUserGamesBetween(metricKeys []string, startAt, endAt time.Time) ([]AchievementProgressUserGame, error) {
 	return m.ListUserGamesBetweenWithTx(nil, metricKeys, startAt, endAt)
 }
 
 func (m *AchievementProgressEventModel) ListUserGamesBetweenWithTx(tx *gorm.DB, metricKeys []string, startAt, endAt time.Time) ([]AchievementProgressUserGame, error) {
+	return m.ListUserGamesBatchBetweenWithTx(tx, metricKeys, startAt, endAt, 0, 0, 0)
+}
+
+func (m *AchievementProgressEventModel) ListUserGamesBatchBetweenWithTx(tx *gorm.DB, metricKeys []string, startAt, endAt time.Time, afterUserId int64, afterGameType, limit int) ([]AchievementProgressUserGame, error) {
 	var list []AchievementProgressUserGame
 	if len(metricKeys) == 0 {
 		return list, nil
@@ -511,10 +545,53 @@ func (m *AchievementProgressEventModel) ListUserGamesBetweenWithTx(tx *gorm.DB, 
 	if tx != nil {
 		db = tx
 	}
-	err := db.Model(&AchievementProgressEvent{}).
-		Select("DISTINCT user_id, game_type").
-		Where("metric_key IN ? AND occurred_at >= ? AND occurred_at < ?", metricKeys, startAt, endAt).
-		Order("user_id ASC, game_type ASC").
-		Scan(&list).Error
+	query := achievementSeasonArchiveScope(db, metricKeys, startAt, endAt).
+		Select("user_id, game_type").
+		Group("user_id, game_type")
+	if afterUserId > 0 {
+		query = query.Where("user_id > ? OR (user_id = ? AND game_type > ?)", afterUserId, afterUserId, afterGameType)
+	}
+	query = query.Order("user_id ASC, game_type ASC")
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	err := query.Scan(&list).Error
 	return list, err
+}
+
+type AchievementProgressMetricTotal struct {
+	UserId    int64
+	GameType  int
+	MetricKey string
+	Total     int
+}
+
+func (m *AchievementProgressEventModel) SumMetricsForUserGamesBetweenWithTx(tx *gorm.DB, pairs []AchievementProgressUserGame, metricKeys []string, startAt, endAt time.Time) ([]AchievementProgressMetricTotal, error) {
+	var rows []AchievementProgressMetricTotal
+	if len(pairs) == 0 || len(metricKeys) == 0 {
+		return rows, nil
+	}
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	tuples := make([][]interface{}, 0, len(pairs))
+	for _, pair := range pairs {
+		tuples = append(tuples, []interface{}{pair.UserId, pair.GameType})
+	}
+	err := achievementSeasonArchiveScope(db, metricKeys, startAt, endAt).
+		Select("user_id, game_type, metric_key, COALESCE(SUM(metric_value), 0) AS total").
+		Where("(user_id, game_type) IN ?", tuples).
+		Group("user_id, game_type, metric_key").
+		Order("user_id ASC, game_type ASC, metric_key ASC").
+		Scan(&rows).Error
+	return rows, err
+}
+
+func achievementSeasonArchiveScope(db *gorm.DB, metricKeys []string, startAt, endAt time.Time) *gorm.DB {
+	table := "achievement_progress_events"
+	if db.Dialector.Name() == "mysql" {
+		table += " FORCE INDEX (idx_achievement_events_season_archive)"
+	}
+	return db.Table(table).Where("metric_key IN ? AND occurred_at >= ? AND occurred_at < ?", metricKeys, startAt, endAt)
 }

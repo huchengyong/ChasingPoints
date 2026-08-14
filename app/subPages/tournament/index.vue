@@ -128,11 +128,12 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { getEventNewsList } from '@/api/event-news.js'
+import { usePublicReadStore } from '@/store/publicRead.js'
 import { normalizeSaiXunCard } from '@/utils/saixun.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 
 const { isDarkMode } = usePageTheme()
+const publicReadStore = usePublicReadStore()
 
 const gameTypes = ref([
 	{ label: '全部球种', value: 0 },
@@ -177,12 +178,16 @@ const fetchList = async ({
 	gameTypeValue = selectedGameType.value.value,
 	statusValue = selectedStatus.value.value,
 	replace = false,
-	commitSelection = null
+	commitSelection = null,
+	force = false
 } = {}) => {
 	if (loading.value) return
 	loading.value = true
 	try {
-		const res = await getEventNewsList(buildQueryParams(pageValue, gameTypeValue, statusValue))
+		const res = await publicReadStore.loadEventNews(
+			buildQueryParams(pageValue, gameTypeValue, statusValue),
+			{ force }
+		)
 		// 显式检查API返回值
 		if (!res.success) {
 			console.error('获取赛事情报列表失败:', res.message)
@@ -220,7 +225,8 @@ const onRefresh = async () => {
 	refreshing.value = true
 	await fetchList({
 		pageValue: 1,
-		replace: true
+		replace: true,
+		force: true
 	})
 }
 

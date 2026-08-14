@@ -24,7 +24,7 @@ func NewEndRoundLogic(ctx context.Context, svcCtx *svc.ServiceContext) *EndRound
 	return &EndRoundLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

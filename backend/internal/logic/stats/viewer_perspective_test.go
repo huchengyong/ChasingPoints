@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"chasing_points/internal/config"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -20,7 +21,7 @@ func newStatsLogicTestSvc(t *testing.T) *svc.ServiceContext {
 	if err != nil {
 		t.Fatalf("open sqlite db: %v", err)
 	}
-	if err := db.AutoMigrate(&model.Match{}); err != nil {
+	if err := db.AutoMigrate(&model.Match{}, &model.UserCompetitiveStats{}, &model.MatchParticipantResult{}, &model.UserOpponentStrengthBucket{}); err != nil {
 		t.Fatalf("prepare stats match schema: %v", err)
 	}
 	if err := db.Exec(`
@@ -43,9 +44,11 @@ func newStatsLogicTestSvc(t *testing.T) *svc.ServiceContext {
 	}
 
 	return &svc.ServiceContext{
-		DB:           db,
-		MatchModel:   model.NewMatchModel(db),
-		RankingModel: model.NewRankingModel(db),
+		DB:                   db,
+		MatchModel:           model.NewMatchModel(db),
+		CompetitiveReadModel: model.NewCompetitiveReadModel(db),
+		RankingModel:         model.NewRankingModel(db),
+		Config:               config.Config{CompetitiveReadModel: config.CompetitiveReadModelConfig{ReadMode: "enabled"}},
 	}
 }
 
@@ -132,6 +135,25 @@ func seedStatsViewerPerspectiveFixtures(t *testing.T, svcCtx *svc.ServiceContext
 	seedStatsRanking(t, svcCtx, &model.UserRanking{UserId: strongOpponentID, GameType: 2, RankScore: 1800, RankLevel: 3})
 	seedStatsRanking(t, svcCtx, &model.UserRanking{UserId: weakOpponentID, GameType: 2, RankScore: 800, RankLevel: 1})
 	seedStatsRanking(t, svcCtx, &model.UserRanking{UserId: ignoredOpponentID, GameType: 4, RankScore: 2600, RankLevel: 6})
+	if err := svcCtx.DB.Create(&[]model.UserCompetitiveStats{
+		{UserId: viewerID, GameType: 2, TotalMatches: 2, Wins: 1, Losses: 1, HighestScore: 9},
+		{UserId: viewerID, GameType: 3, TotalMatches: 1, Wins: 1, HighestScore: 7},
+		{UserId: viewerID, GameType: 4, TotalMatches: 1, Wins: 1, HighestScore: 9},
+	}).Error; err != nil {
+		t.Fatalf("seed competitive snapshots: %v", err)
+	}
+	if err := svcCtx.DB.Create(&[]model.UserOpponentStrengthBucket{
+		{UserId: viewerID, GameType: 2, RankBucket: "score_1001_2000", Matches: 1, Wins: 1},
+		{UserId: viewerID, GameType: 2, RankBucket: "score_0_1000", Matches: 1, Wins: 0},
+	}).Error; err != nil {
+		t.Fatalf("seed opponent strength buckets: %v", err)
+	}
+	if err := svcCtx.DB.Create(&[]model.MatchParticipantResult{
+		{MatchId: 2, UserId: viewerID, GameType: 2, MatchMode: model.MatchModeRanked, Result: 1, CompletedAt: baseTime.Add(time.Hour)},
+		{MatchId: 3, UserId: viewerID, GameType: 2, MatchMode: model.MatchModeRanked, Result: 2, CompletedAt: baseTime.Add(2 * time.Hour)},
+	}).Error; err != nil {
+		t.Fatalf("seed recent participant projections: %v", err)
+	}
 }
 
 func TestStatsByGameTypeUsesViewerPerspectiveForOpponentMatches(t *testing.T) {
@@ -207,6 +229,12 @@ func TestMatchDurationStatsIncludesOpponentCreatedMatches(t *testing.T) {
 		MatchTime:     start,
 		EndTime:       &end,
 	})
+	if err := svcCtx.DB.Create(&model.UserCompetitiveStats{
+		UserId: viewerID, GameType: 3, TotalMatches: 1,
+		DurationCount: 1, DurationSumSeconds: 120, DurationMinSeconds: 120, DurationMaxSeconds: 120,
+	}).Error; err != nil {
+		t.Fatalf("seed duration snapshot: %v", err)
+	}
 
 	resp, err := NewGetMatchDurationStatsLogic(statsLogicCtx(viewerID), svcCtx).GetMatchDurationStats(&types.GetMatchDurationStatsReq{
 		GameType: 3,
@@ -271,6 +299,11 @@ func TestCompetitiveStatsExcludePracticeMatches(t *testing.T) {
 		seedStatsMatch(t, svcCtx, match)
 	}
 
+	if err := svcCtx.DB.Create(&model.UserCompetitiveStats{
+		UserId: viewerID, GameType: 3, TotalMatches: 1, Wins: 1, HighestScore: 7,
+	}).Error; err != nil {
+		t.Fatalf("seed competitive snapshot: %v", err)
+	}
 	resp, err := NewGetStatsByGameTypeLogic(statsLogicCtx(viewerID), svcCtx).GetStatsByGameType()
 	if err != nil {
 		t.Fatalf("get competitive stats: %v", err)

@@ -24,7 +24,7 @@ func NewGetMemberSubscriptionOrderStatusLogic(ctx context.Context, svcCtx *svc.S
 	return &GetMemberSubscriptionOrderStatusLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

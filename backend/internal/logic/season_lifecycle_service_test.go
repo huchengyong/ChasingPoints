@@ -8,6 +8,7 @@ import (
 
 	"chasing_points/internal/config"
 	"chasing_points/internal/model"
+	"chasing_points/internal/observability"
 	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 
@@ -62,21 +63,20 @@ func TestSeasonLifecycleServiceCreatesContinuousCurrentAndFutureWindows(t *testi
 	if err != nil {
 		t.Fatalf("ensure lifecycle: %v", err)
 	}
-	if result.State != seasonx.StateActive || result.Created != 3 || result.Season == nil || result.Season.Name != "S4" {
+	if result.State != seasonx.StateActive || result.Created != 2 || result.Season == nil || result.Season.Name != "S4" {
 		t.Fatalf("unexpected ensure result: %+v", result)
 	}
 	seasons, err := svcCtx.SeasonModel.ListAll()
 	if err != nil {
 		t.Fatalf("list seasons: %v", err)
 	}
-	if len(seasons) != 3 || seasons[0].Name != "S3" || seasons[1].Name != "S4" || seasons[2].Name != "S5" {
+	if len(seasons) != 2 || seasons[0].Name != "S4" || seasons[1].Name != "S5" {
 		t.Fatalf("unexpected generated seasons: %+v", seasons)
 	}
-	if seasons[0].Status != 0 || seasons[1].Status != 0 || seasons[2].Status != 0 {
+	if seasons[0].Status != 0 || seasons[1].Status != 0 {
 		t.Fatalf("schedule creation must not advance lifecycle statuses: %+v", seasons)
 	}
-	if seasons[0].EndDate.AddDate(0, 0, 1).Format(time.DateOnly) != seasons[1].StartDate.Format(time.DateOnly) ||
-		seasons[1].EndDate.AddDate(0, 0, 1).Format(time.DateOnly) != seasons[2].StartDate.Format(time.DateOnly) {
+	if seasons[0].EndDate.AddDate(0, 0, 1).Format(time.DateOnly) != seasons[1].StartDate.Format(time.DateOnly) {
 		t.Fatalf("seasons must be contiguous: %+v", seasons)
 	}
 
@@ -84,7 +84,75 @@ func TestSeasonLifecycleServiceCreatesContinuousCurrentAndFutureWindows(t *testi
 	if err != nil || retry.State != seasonx.StateActive || retry.Created != 0 {
 		t.Fatalf("unexpected repeat ensure: %+v err=%v", retry, err)
 	}
-	assertSeasonCount(t, svcCtx, 3)
+	assertSeasonCount(t, svcCtx, 2)
+}
+
+func TestSeasonLifecycleFastPathDoesNotGrowWithHistory(t *testing.T) {
+	one := seasonLifecycleFastPathQueryCount(t, 1)
+	hundred := seasonLifecycleFastPathQueryCount(t, 100)
+	if one != 2 || hundred != one {
+		t.Fatalf("stable lifecycle tick must read only current and next windows: one=%d hundred=%d", one, hundred)
+	}
+}
+
+func seasonLifecycleFastPathQueryCount(t *testing.T, historyCount int) int64 {
+	t.Helper()
+	location, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		t.Fatalf("load timezone: %v", err)
+	}
+	now := time.Now()
+	anchor := time.Date(now.In(location).Year(), now.In(location).Month(), 1, 0, 0, 0, 0, location).AddDate(0, -120, 0)
+	lifecycle := config.SeasonLifecycleConfig{Enabled: true, AnchorDate: anchor.Format(time.DateOnly)}
+	policy, err := seasonx.NewPolicy(lifecycle)
+	if err != nil {
+		t.Fatalf("new policy: %v", err)
+	}
+	currentWindow, ok := policy.WindowAt(now)
+	if !ok {
+		t.Fatal("expected current window")
+	}
+	nextWindow, ok := policy.WindowAt(now.AddDate(0, policy.CycleMonths, 0))
+	if !ok {
+		t.Fatal("expected next window")
+	}
+	db, err := gorm.Open(sqlite.Open(t.TempDir()+"/season_fast_path.db"), &gorm.Config{Logger: observability.NewGormLogger(time.Hour)})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&model.Season{}); err != nil {
+		t.Fatalf("migrate seasons: %v", err)
+	}
+	current := seasonx.WindowSeason(currentWindow)
+	next := seasonx.WindowSeason(nextWindow)
+	if err := db.Create(&[]model.Season{current, next}).Error; err != nil {
+		t.Fatalf("seed expected windows: %v", err)
+	}
+	history := make([]model.Season, 0, historyCount)
+	for index := 1; index <= historyCount; index++ {
+		start := currentWindow.StartDate.AddDate(0, -index, 0)
+		history = append(history, model.Season{
+			Name:      "历史赛季",
+			StartDate: start,
+			EndDate:   start.AddDate(0, 1, -1),
+			Status:    2,
+		})
+	}
+	if err := db.Create(&history).Error; err != nil {
+		t.Fatalf("seed historic seasons: %v", err)
+	}
+	metrics := observability.NewRequestMetrics(time.Now())
+	ctx := observability.WithRequestMetrics(context.Background(), metrics)
+	metricDB := db.WithContext(ctx)
+	result, err := NewSeasonLifecycleService(&svc.ServiceContext{
+		Config:      config.Config{SeasonLifecycle: lifecycle},
+		DB:          metricDB,
+		SeasonModel: model.NewSeasonModel(metricDB),
+	}).EnsureAt(ctx, now)
+	if err != nil || result.State != seasonx.StateActive || result.Created != 0 {
+		t.Fatalf("ensure fast path: result=%+v err=%v", result, err)
+	}
+	return metrics.Snapshot().SQLCount
 }
 
 func TestSeasonLifecycleServicesConvergeAcrossInstances(t *testing.T) {
@@ -108,7 +176,7 @@ func TestSeasonLifecycleServicesConvergeAcrossInstances(t *testing.T) {
 			t.Fatalf("concurrent ensure failed: %v", err)
 		}
 	}
-	assertSeasonCount(t, svcCtx, 3)
+	assertSeasonCount(t, svcCtx, 2)
 	seasons, err := svcCtx.SeasonModel.ListAll()
 	if err != nil {
 		t.Fatalf("list concurrent schedules: %v", err)
@@ -121,13 +189,19 @@ func TestSeasonLifecycleServicesConvergeAcrossInstances(t *testing.T) {
 }
 
 func TestSeasonLifecycleServiceReportsConflictsWithoutOverwritingRows(t *testing.T) {
-	svcCtx := newSeasonLifecycleTestSvc(t, config.SeasonLifecycleConfig{Enabled: true, AnchorDate: "2026-07-01"})
-	wrong := model.Season{
-		Name:      "手工赛季",
-		StartDate: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC),
-		EndDate:   time.Date(2026, 7, 31, 0, 0, 0, 0, time.UTC),
-		Status:    1,
+	lifecycle := config.SeasonLifecycleConfig{Enabled: true, AnchorDate: "2026-07-01"}
+	svcCtx := newSeasonLifecycleTestSvc(t, lifecycle)
+	policy, err := seasonx.NewPolicy(lifecycle)
+	if err != nil {
+		t.Fatalf("new policy: %v", err)
 	}
+	window, ok := policy.WindowAt(time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC))
+	if !ok {
+		t.Fatal("expected current window")
+	}
+	wrong := seasonx.WindowSeason(window)
+	wrong.Name = "手工赛季"
+	wrong.Status = 1
 	if err := svcCtx.SeasonModel.Create(&wrong); err != nil {
 		t.Fatalf("seed conflicting season: %v", err)
 	}

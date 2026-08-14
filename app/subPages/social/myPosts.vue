@@ -87,27 +87,30 @@ const loading = ref(true)
 const refreshing = ref(false)
 const postList = ref([])
 const pageHint = ref('')
+const hasLoadedOnce = ref(false)
 
 onLoad((options) => {
 	pageHint.value = options.hint ? decodeURIComponent(options.hint) : ''
 })
 
 onShow(() => {
-	loadPosts()
+	if (!hasLoadedOnce.value) loadPosts()
 })
 
 onPullDownRefresh(() => {
 	refreshList()
 })
 
-const loadPosts = async () => {
+const loadPosts = async ({ force = false } = {}) => {
+	if (hasLoadedOnce.value && !force) return
 	try {
-		loading.value = true
+		loading.value = postList.value.length === 0
 		const res = await getMyPosts({ page: 1, page_size: 50 })
 		postList.value = (res.list || []).map((item) => ({
 			...item,
 			images: Array.isArray(item.images) ? item.images : []
 		}))
+		hasLoadedOnce.value = true
 	} catch (error) {
 		console.error('加载我的动态失败:', error)
 		uni.showToast({ title: '加载失败', icon: 'none' })
@@ -120,7 +123,7 @@ const loadPosts = async () => {
 
 const refreshList = async () => {
 	refreshing.value = true
-	await loadPosts()
+	await loadPosts({ force: true })
 }
 
 const previewImage = (images, current) => {

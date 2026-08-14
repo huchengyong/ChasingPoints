@@ -16,6 +16,41 @@ const seasonLifecycleConfigYAML = `SeasonLifecycle:
   Timezone: Asia/Shanghai
 `
 
+func TestCompetitiveReadModelDefaultsToDisabled(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(path, []byte("CompetitiveReadModel: {}\n"), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	var cfg struct {
+		CompetitiveReadModel CompetitiveReadModelConfig
+	}
+	if err := conf.Load(path, &cfg); err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+	if cfg.CompetitiveReadModel.ReadMode != "disabled" {
+		t.Fatalf("competitive read mode default = %q, want disabled", cfg.CompetitiveReadModel.ReadMode)
+	}
+}
+
+func TestObservabilityConfigLoadsEnvironmentValue(t *testing.T) {
+	t.Setenv("OBSERVABILITY_SLOW_SQL_THRESHOLD_MS", "750")
+
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(path, []byte("Observability:\n  SlowSQLThresholdMs: 500\n"), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	var cfg struct {
+		Observability ObservabilityConfig
+	}
+	if err := conf.Load(path, &cfg, conf.UseEnv()); err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+	if cfg.Observability.SlowSQLThresholdMs != 750 {
+		t.Fatalf("slow SQL threshold = %d", cfg.Observability.SlowSQLThresholdMs)
+	}
+}
+
 func TestSeasonLifecycleConfigLoadsEnvironmentValues(t *testing.T) {
 	t.Setenv("SEASON_LIFECYCLE_ENABLED", "true")
 	t.Setenv("SEASON_LIFECYCLE_ANCHOR_DATE", "2026-08-01")

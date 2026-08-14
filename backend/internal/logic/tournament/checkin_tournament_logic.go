@@ -22,7 +22,7 @@ func NewCheckinTournamentLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 	return &CheckinTournamentLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

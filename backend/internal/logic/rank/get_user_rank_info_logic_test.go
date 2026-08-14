@@ -6,6 +6,7 @@ import (
 
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
+	"chasing_points/internal/testsupport"
 	"chasing_points/internal/types"
 
 	"gorm.io/driver/sqlite"
@@ -123,9 +124,11 @@ func TestGetRankListReturnsSixConfigsInAscendingOrder(t *testing.T) {
 	}
 }
 
-func TestGetUserRankInfosReturnsFourOrderedGameTypesAndInitializesMissingRows(t *testing.T) {
+func TestGetUserRankInfosReturnsFourOrderedGameTypesWithoutWritingMissingRows(t *testing.T) {
 	svcCtx := newRankLogicTestSvc(t)
 	seedRankLogicRanking(t, svcCtx, &model.UserRanking{UserId: 1004, GameType: 2, RankScore: 2500, RankLevel: 6})
+	recorder := testsupport.NewSQLWriteRecorder()
+	svcCtx.RankingModel = model.NewRankingModel(svcCtx.DB.Session(&gorm.Session{Logger: recorder}))
 
 	resp, err := NewGetUserRankInfosLogic(rankLogicCtx(1004), svcCtx).GetUserRankInfos()
 	if err != nil || !resp.Success {
@@ -144,10 +147,13 @@ func TestGetUserRankInfosReturnsFourOrderedGameTypesAndInitializesMissingRows(t 
 	}
 	var count int64
 	if err := svcCtx.DB.Model(&model.UserRanking{}).Where("user_id = ?", 1004).Count(&count).Error; err != nil {
-		t.Fatalf("count initialized rankings: %v", err)
+		t.Fatalf("count rank snapshots: %v", err)
 	}
-	if count != 4 {
-		t.Fatalf("expected four initialized rankings, got %d", count)
+	if count != 1 {
+		t.Fatalf("rank GET must not create missing rows, got %d", count)
+	}
+	if writes := recorder.Writes(); len(writes) != 0 {
+		t.Fatalf("rank GET must not issue writes: %q", writes)
 	}
 }
 

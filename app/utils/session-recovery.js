@@ -51,7 +51,8 @@ export const createSessionRecovery = ({ getUserInfo, onSessionInvalid } = {}) =>
         return {
           valid: true,
           retryable: false,
-          userInfo: response.user_info
+          userInfo: response.user_info,
+          bootstrap: response
         }
       } catch (error) {
         if (isRetryableSessionCheckError(error)) {

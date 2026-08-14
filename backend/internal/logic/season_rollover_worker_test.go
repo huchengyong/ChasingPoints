@@ -10,6 +10,7 @@ import (
 	"chasing_points/internal/config"
 	achievementx "chasing_points/internal/logic/achievement"
 	"chasing_points/internal/model"
+	seasonx "chasing_points/internal/season"
 )
 
 type fakeSeasonRolloverRunner struct {
@@ -140,21 +141,73 @@ func TestSeasonRolloverWorkerEnsuresAndCatchesUpContinuousSchedule(t *testing.T)
 	svcCtx.Config.SeasonLifecycle.CycleMonths = 1
 	svcCtx.Config.SeasonLifecycle.Timezone = "Asia/Shanghai"
 	now := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
+	policy, err := seasonx.NewPolicy(svcCtx.Config.SeasonLifecycle)
+	if err != nil {
+		t.Fatalf("new lifecycle policy: %v", err)
+	}
+	for _, at := range []time.Time{
+		time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, 8, 9, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC),
+	} {
+		window, ok := policy.WindowAt(at)
+		if !ok {
+			t.Fatal("expected historic lifecycle window")
+		}
+		season := seasonx.WindowSeason(window)
+		if err := svcCtx.SeasonModel.Create(&season); err != nil {
+			t.Fatalf("seed historic season %s: %v", season.Name, err)
+		}
+	}
 	runner := &fakeSeasonRolloverRunner{}
 	worker := newSeasonRolloverWorkerWithDeps(svcCtx, runner, func() time.Time { return now }, time.Minute)
 
 	if err := worker.RunOnce(context.Background()); err != nil {
 		t.Fatalf("run continuous worker: %v", err)
 	}
-	if runner.settlementCalls != 3 || runner.activationCalls != 0 {
-		t.Fatalf("continuous worker must settle July through September without legacy activation: settlements=%d activations=%d", runner.settlementCalls, runner.activationCalls)
+	if runner.settlementCalls != 3 || runner.activationCalls != 1 {
+		t.Fatalf("continuous worker must settle July through September then activate the ready window: settlements=%d activations=%d", runner.settlementCalls, runner.activationCalls)
 	}
 	seasons, err := svcCtx.SeasonModel.ListAll()
 	if err != nil {
 		t.Fatalf("list continuous seasons: %v", err)
 	}
-	if len(seasons) != 5 || seasons[3].Name != "S4" || seasons[3].Status != 1 || seasons[4].Status != 0 {
+	if len(seasons) != 5 || seasons[3].Name != "S4" || seasons[3].Status != 0 || seasons[4].Status != 0 {
 		t.Fatalf("unexpected continuous schedule: %+v", seasons)
+	}
+}
+
+func TestSeasonRolloverWorkerPaginatesDueContinuousSeasons(t *testing.T) {
+	svcCtx := newSeasonSettlementTestSvc(t)
+	svcCtx.Config.SeasonLifecycle = config.SeasonLifecycleConfig{
+		Enabled:       true,
+		AnchorDate:    "2026-01-01",
+		InitialNumber: 1,
+		CycleMonths:   1,
+		Timezone:      "Asia/Shanghai",
+	}
+	policy, err := seasonx.NewPolicy(svcCtx.Config.SeasonLifecycle)
+	if err != nil {
+		t.Fatalf("new lifecycle policy: %v", err)
+	}
+	for index := 0; index < seasonRolloverBatchSize+5; index++ {
+		window, ok := policy.WindowAt(time.Date(2026, time.Month(index+1), 15, 12, 0, 0, 0, time.UTC))
+		if !ok {
+			t.Fatal("expected due lifecycle window")
+		}
+		season := seasonx.WindowSeason(window)
+		if err := svcCtx.SeasonModel.Create(&season); err != nil {
+			t.Fatalf("seed due season %d: %v", index, err)
+		}
+	}
+	runner := &fakeSeasonRolloverRunner{}
+	now := time.Date(2028, 4, 1, 12, 0, 0, 0, time.UTC)
+	worker := newSeasonRolloverWorkerWithDeps(svcCtx, runner, func() time.Time { return now }, time.Minute)
+	if err := worker.RunOnce(context.Background()); err != nil {
+		t.Fatalf("run paged continuous worker: %v", err)
+	}
+	if runner.settlementCalls != seasonRolloverBatchSize+5 || runner.activationCalls != 1 {
+		t.Fatalf("due seasons must be processed in bounded pages then activate once: settlements=%d activations=%d", runner.settlementCalls, runner.activationCalls)
 	}
 }
 

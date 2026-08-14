@@ -23,7 +23,7 @@ func NewUnlikePostLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Unlike
 	return &UnlikePostLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

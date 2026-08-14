@@ -269,23 +269,30 @@ export const buildSeasonRolloverModal = (notification = {}) => {
 let rolloverPresentationPromise = null
 
 export const presentLatestSeasonRollover = ({
+  notification: cachedNotification = null,
   getNotificationList,
   markAsRead,
   showModal,
   onRead
 } = {}) => {
   if (rolloverPresentationPromise) return rolloverPresentationPromise
-  if (typeof getNotificationList !== 'function' || typeof markAsRead !== 'function' || typeof showModal !== 'function') {
+  if (typeof markAsRead !== 'function' || typeof showModal !== 'function') {
+    return Promise.resolve(null)
+  }
+  if (!cachedNotification && typeof getNotificationList !== 'function') {
     return Promise.resolve(null)
   }
 
   rolloverPresentationPromise = (async () => {
-    const response = await getNotificationList({
-      page: 1,
-      page_size: 10,
-      type: 'season_rollover'
-    })
-    const notification = findLatestUnreadSeasonRollover(response?.list || response || [])
+    let notification = cachedNotification
+    if (!notification) {
+      const response = await getNotificationList({
+        page: 1,
+        page_size: 10,
+        type: 'season_rollover'
+      })
+      notification = findLatestUnreadSeasonRollover(response?.list || response || [])
+    }
     if (!notification) return null
 
     const modal = buildSeasonRolloverModal(notification)

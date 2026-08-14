@@ -22,7 +22,7 @@ func NewBlacklistFriendLogic(ctx context.Context, svcCtx *svc.ServiceContext) *B
 	return &BlacklistFriendLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

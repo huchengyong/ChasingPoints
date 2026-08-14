@@ -136,7 +136,7 @@
 <script setup>
 import { ref } from 'vue'
 import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
-import { getEventNewsView } from '@/api/event-news.js'
+import { usePublicReadStore } from '@/store/publicRead.js'
 import { pickEventNewsViewPayload } from '@/utils/event-news-response.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import {
@@ -149,6 +149,7 @@ import {
 } from '@/utils/saixun.js'
 
 const { isDarkMode } = usePageTheme()
+const publicReadStore = usePublicReadStore()
 
 const loading = ref(true)
 const errorMessage = ref('')
@@ -221,7 +222,7 @@ const fetchDetail = async () => {
 	loading.value = true
 	errorMessage.value = ''
 	try {
-		const res = await getEventNewsView({ event_id: eventNewsId.value })
+		const res = await publicReadStore.loadEventNewsView({ event_id: eventNewsId.value })
 		if (!res.success) {
 			throw new Error(res.message || '获取赛事详情失败')
 		}

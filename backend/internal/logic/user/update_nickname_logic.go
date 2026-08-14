@@ -5,6 +5,8 @@ import (
 	"errors"
 	"unicode/utf8"
 
+	publiclogic "chasing_points/internal/logic/public"
+	seasonlogic "chasing_points/internal/logic/season"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -23,7 +25,7 @@ func NewUpdateNicknameLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Up
 	return &UpdateNicknameLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -73,12 +75,18 @@ func (l *UpdateNicknameLogic) UpdateNickname(req *types.UpdateNicknameReq) (resp
 			Message: "更新失败",
 		}, nil
 	}
+	if err := publiclogic.BumpAllLeaderboardCacheVersions(l.ctx, l.svcCtx); err != nil {
+		l.Logger.Errorf("失效排行榜资料缓存失败: userId=%d err=%v", userId, err)
+	}
+	if err := seasonlogic.BumpSeasonLeaderboardProfileVersion(l.ctx, l.svcCtx); err != nil {
+		l.Logger.Errorf("失效赛季榜单资料缓存失败: userId=%d err=%v", userId, err)
+	}
 
 	l.Logger.Infof("用户 %d 更新昵称为 %s", userId, req.Nickname)
 
 	return &types.UpdateNicknameResp{
-		Success: true,
-		Message: "更新成功",
+		Success:  true,
+		Message:  "更新成功",
 		UserInfo: buildUserInfoPayload(user),
 	}, nil
 }

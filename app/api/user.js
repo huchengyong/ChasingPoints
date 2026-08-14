@@ -8,6 +8,14 @@ export const getUserInfo = (options = {}) => {
   return get('/api/user/info', {}, options)
 }
 
+export const getUserBootstrap = (options = {}) => {
+  return get('/api/user/bootstrap', {}, options)
+}
+
+export const getUserOverview = (options = {}) => {
+  return get('/api/user/overview', {}, options)
+}
+
 export const getUserReputation = () => {
   return get('/api/user/reputation')
 }
@@ -72,7 +80,9 @@ export const updateUserProfile = (data) => {
 export default {
   getFavoriteVenueRewardStatus,
   getQiniuUploadToken,
+  getUserBootstrap,
   getUserInfo,
+  getUserOverview,
   getUserReputation,
   getUserReputationLogs,
   getUserPrivacy,
