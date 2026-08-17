@@ -151,7 +151,7 @@
 - [x] 13.1 运行 `cd app && node --test tests/*.test.mjs`，修复所有客户端缓存、生命周期、页面请求图和 API 契约回归
 - [x] 13.2 运行 `cd backend && go test ./...`，修复所有读模型、比赛结算、查询次数、缓存、Worker、迁移和连续赛季回归
 - [x] 13.3 在代表性数据量上执行 completed_at 回填和 read-model rebuild dry-run/正式重建，验证 checkpoint 恢复、重复执行零重复和审计差异归零
-- [ ] 13.4 使用阶段 0 相同场景复测请求数、SQL 次数、P50/P95/P99、响应大小、Redis 命中率和冷 miss 性能，并记录每阶段收益（生产流量与网络指标须在发布后补采）
+- [x] 13.4 使用阶段 0 相同场景复测请求数、SQL 次数、P50/P95/P99、响应大小、Redis 命中率和冷 miss 性能，并记录每阶段收益（生产流量与网络指标须在发布后补采）
 - [x] 13.5 使用静态搜索和 query-count 测试确认在线路径不再存在已识别的 `ListAll` 热调用、全历史 `Find` 后内存分页、逐条关联查询、GET `SeedData/ExpireOld/FindOrCreate` 和 `COALESCE` 完成时间热查询
 - [x] 13.6 删除已被新投影/聚合替代的旧全量扫描 helper、重复结果 builder、无用 imports 和已确认未使用的配置文件，仅清理本变更产生的 orphan
 - [x] 13.7 编写运维运行手册，说明日志位置、指标、Redis 回源、缓存版本、读模型 dry-run/rebuild/audit、赛季 repair、回滚和异常恢复步骤
