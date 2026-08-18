@@ -138,6 +138,7 @@
 		<!-- 选择比赛类型弹框（用于开始对战） -->
 		<gameTypeModal
 			v-model:visible="showGameTypeModal"
+			:default-type="defaultGameType"
 			@confirm="handleGameTypeConfirm"
 		/>
 	</view>
@@ -154,7 +155,7 @@ import gameTypeModal from '@/components/gameTypeModal.vue'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
 import { buildLeaderboardPodiumSlots } from '@/utils/ranking-podium.js'
-import { chooseSnookerStartFormat } from '@/utils/snooker-start-format.js'
+import { readDefaultGameType, saveDefaultGameType } from '@/utils/game-type-preference.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const { isDarkMode } = usePageTheme()
@@ -176,7 +177,7 @@ const pageSize = 20
 const total = ref(0)
 const showGameTypeModal = ref(false)
 const selectedGameType = ref(null)
-const selectedSnookerFormat = ref(null)
+const defaultGameType = ref(0)
 const currentGameType = ref(3)
 const gameTypeTabs = GAME_TYPE_TABS
 const podiumSlots = computed(() => buildLeaderboardPodiumSlots(topThree.value))
@@ -311,19 +312,18 @@ const handleStartMatch = () => {
 		}, 1500)
 		return
 	}
+	defaultGameType.value = readDefaultGameType(uni, userStore.userId)
 	showGameTypeModal.value = true
 }
 
 /**
  * 处理比赛类型确认
  */
-const handleGameTypeConfirm = async (gameType) => {
-	selectedGameType.value = gameType
-	selectedSnookerFormat.value = null
-	if (Number(gameType) === 1) {
-		selectedSnookerFormat.value = await chooseSnookerStartFormat(uni)
-		if (!selectedSnookerFormat.value) return
+const handleGameTypeConfirm = ({ gameType, setAsDefault } = {}) => {
+	if (setAsDefault) {
+		defaultGameType.value = saveDefaultGameType(uni, userStore.userId, gameType)
 	}
+	selectedGameType.value = gameType
 	// 开始扫码
 	handleScanCode()
 }
@@ -366,8 +366,7 @@ const handleMatchResult = async (scanResult) => {
 		const res = await startMatch({
 			game_type: selectedGameType.value,
 			opponent_id: opponentData.user_id,
-			opponent_name: opponentData.nickname || '对手',
-			...(selectedSnookerFormat.value || {})
+			opponent_name: opponentData.nickname || '对手'
 		})
 
 		// 隐藏加载

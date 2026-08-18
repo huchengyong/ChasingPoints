@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"chasing_points/internal/model"
 	"chasing_points/internal/pkg/ws"
@@ -30,6 +31,7 @@ type snookerActionWriteResult struct {
 	State                model.SnookerRoundState
 	RoundEnded           bool
 	FinishedNow          bool
+	FinishRequested      bool
 	Replayed             bool
 	FinishReq            *types.FinishMatchReq
 	Result               int
@@ -160,7 +162,8 @@ func executeSnookerAction(ctx context.Context, svcCtx *svc.ServiceContext, userI
 
 		locked.CurrentFrameMyScore = transition.State.Player1Score
 		locked.CurrentFrameOpponentScore = transition.State.Player2Score
-		neededWins := 0
+		format, targetWins, _ := model.NormalizeSnookerFormat(locked.SnookerFormat, locked.SnookerTargetWins, locked.BestOfFrames)
+		matchConceded := false
 		if transition.State.FrameEnded {
 			winner := transition.State.FrameWinner
 			round := &model.MatchRound{
@@ -183,14 +186,13 @@ func executeSnookerAction(ctx context.Context, svcCtx *svc.ServiceContext, userI
 			locked.CurrentFrameMyScore = 0
 			locked.CurrentFrameOpponentScore = 0
 			result.RoundEnded = true
-			neededWins = locked.BestOfFrames/2 + 1
-			matchConceded := transition.State.FrameEndReason == model.SnookerFrameEndMatchConcession ||
+			matchConceded = transition.State.FrameEndReason == model.SnookerFrameEndMatchConcession ||
 				(event.FrameAction == model.SnookerFrameActionAwardFrame && event.Scope == model.SnookerConcessionScopeMatch)
-			if matchConceded {
+			if matchConceded && targetWins > 0 {
 				if transition.State.FrameWinner == 1 {
-					locked.MyScore = neededWins
+					locked.MyScore = targetWins
 				} else {
-					locked.OpponentScore = neededWins
+					locked.OpponentScore = targetWins
 				}
 			}
 		}
@@ -214,7 +216,32 @@ func executeSnookerAction(ctx context.Context, svcCtx *svc.ServiceContext, userI
 		}
 
 		if transition.State.FrameEnded {
-			if locked.MyScore >= neededWins || locked.OpponentScore >= neededWins {
+			normalEndReached := matchConceded ||
+				format == model.SnookerFormatRaceTo && targetWins > 0 && (locked.MyScore >= targetWins || locked.OpponentScore >= targetWins) ||
+				format == model.SnookerFormatFree && locked.MyScore+locked.OpponentScore >= model.SnookerMaxCompletedFrames
+			if normalEndReached && !matchConceded && locked.FinishConfirmationRequired && model.NormalizeMatchMode(locked.MatchMode) == model.MatchModeRanked && locked.RefereeUserId == nil {
+				requestRevision := locked.SyncRevision
+				locked.FinishState = model.FinishStatePendingConfirmation
+				locked.FinishRequestedBy = &userID
+				now := time.Now()
+				locked.FinishRequestedAt = &now
+				locked.FinishRequestRevision = requestRevision + 1
+				revision, err := svcCtx.MatchModel.BumpMatchRevisionWithTx(tx, locked)
+				if err != nil {
+					return err
+				}
+				if err := svcCtx.MatchModel.CreateActionWithRevisionWithTx(tx, &model.MatchAction{
+					MatchId:        locked.Id,
+					RoundNo:        0,
+					ActionType:     "finish_request",
+					Actor:          resolveFinishActionActor(locked, userID),
+					ClientActionId: stringPointer(autoSnookerFinishRequestActionID(input.ClientActionID)),
+					BaseRevision:   requestRevision,
+				}, revision); err != nil {
+					return err
+				}
+				result.FinishRequested = true
+			} else if normalEndReached {
 				finishReq := &types.FinishMatchReq{
 					MatchId:        locked.Id,
 					ClientActionId: autoSnookerFinishActionID(input.ClientActionID),
@@ -266,6 +293,9 @@ func executeSnookerAction(ctx context.Context, svcCtx *svc.ServiceContext, userI
 		if _, err := finishLogic.finishMatchPostCommit(result.FinishReq, userID, fresh, result.Result, result.CompetitiveRevisions, result.SeasonID); err != nil {
 			finishLogic.Logger.Errorf("斯诺克自动结束后处理失败: matchId=%d err=%v", fresh.Id, err)
 		}
+	}
+	if result.FinishRequested {
+		broadcastFinishActionState(svcCtx, fresh, "match_finish_request")
 	}
 	return &types.SnookerActionResp{
 		Accepted:       true,
@@ -342,6 +372,15 @@ func autoSnookerFinishActionID(clientActionID string) string {
 	return clientActionID + suffix
 }
 
+func autoSnookerFinishRequestActionID(clientActionID string) string {
+	const suffix = ":request"
+	maxPrefix := 64 - len(suffix)
+	if len(clientActionID) > maxPrefix {
+		clientActionID = clientActionID[:maxPrefix]
+	}
+	return clientActionID + suffix
+}
+
 func broadcastSnookerAction(match *model.Match, state model.SnookerRoundState, actionType string, roundEnded bool) {
 	if ws.GlobalHub == nil || match == nil {
 		return
@@ -383,6 +422,8 @@ func broadcastSnookerAction(match *model.Match, state model.SnookerRoundState, a
 			SnookerClearanceCompleted:     state.ClearanceCompleted,
 			SnookerRulesVersion:           match.SnookerRulesVersion,
 			BestOfFrames:                  match.BestOfFrames,
+			SnookerFormat:                 match.SnookerFormat,
+			SnookerTargetWins:             match.SnookerTargetWins,
 			StartingActor:                 match.StartingActor,
 			SnookerPhase:                  state.Phase,
 			SnookerBallOn:                 state.BallOn,

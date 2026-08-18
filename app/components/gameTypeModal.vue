@@ -17,7 +17,20 @@
 					@click="selectType(item.value)"
 				>
 					<text>{{ item.label }}</text>
+					<text v-if="defaultType === item.value" class="default-badge">默认</text>
 				</button>
+			</view>
+
+			<view
+				v-if="selectedType && selectedType !== defaultType"
+				class="default-choice"
+				:class="{ active: saveAsDefault }"
+				@click="saveAsDefault = !saveAsDefault"
+			>
+				<view class="default-choice-box">
+					<uni-icons v-if="saveAsDefault" type="checkmarkempty" size="14" color="#ffffff"></uni-icons>
+				</view>
+				<text>将当前选择设为默认对局类型</text>
 			</view>
 
 			<!-- 按钮组 -->
@@ -47,6 +60,10 @@ const props = defineProps({
 	visible: {
 		type: Boolean,
 		default: false
+	},
+	defaultType: {
+		type: Number,
+		default: 0
 	}
 })
 
@@ -58,6 +75,7 @@ const themeStore = useThemeStore()
 
 // ========== 响应式数据 ==========
 const selectedType = ref(null)
+const saveAsDefault = ref(false)
 const isDarkMode = computed(() => themeStore.isDarkMode)
 
 // 比赛类型列表
@@ -66,9 +84,10 @@ const gameTypes = GAME_TYPE_OPTIONS
 // ========== 监听器 ==========
 // 弹框关闭时重置选择
 watch(() => props.visible, (newVal) => {
-	if (!newVal) {
-		selectedType.value = null
-	}
+	selectedType.value = newVal && gameTypes.some((item) => item.value === props.defaultType)
+		? props.defaultType
+		: null
+	saveAsDefault.value = false
 })
 
 // ========== 方法 ==========
@@ -78,6 +97,7 @@ watch(() => props.visible, (newVal) => {
  */
 const selectType = (type) => {
 	selectedType.value = type
+	saveAsDefault.value = false
 }
 
 /**
@@ -94,7 +114,10 @@ const handleCancel = () => {
 const handleConfirm = () => {
 	if (!selectedType.value) return
 	
-	emit('confirm', selectedType.value)
+	emit('confirm', {
+		gameType: selectedType.value,
+		setAsDefault: saveAsDefault.value
+	})
 	emit('update:visible', false)
 }
 </script>
@@ -176,6 +199,9 @@ $dark-cancel-bg: #27272a;
 	// 比赛类型选项
 	.game-type-option {
 		width: 100%;
+		height: 88rpx;
+		line-height: 88rpx;
+		margin: 0;
 		padding: 0 32rpx;
 		background-color: $light-option-bg;
 		border-radius: 16rpx;
@@ -196,6 +222,37 @@ $dark-cancel-bg: #27272a;
 			font-size: 32rpx;
 			font-weight: 500;
 			color: $light-text-primary;
+		}
+
+		.default-badge {
+			float: right;
+			font-size: 22rpx;
+			color: #8a6510;
+		}
+	}
+
+	.default-choice {
+		display: flex;
+		align-items: center;
+		gap: 16rpx;
+		padding: 4rpx 8rpx;
+		color: $light-text-secondary;
+		font-size: 24rpx;
+
+		.default-choice-box {
+			width: 36rpx;
+			height: 36rpx;
+			border-radius: 10rpx;
+			border: 2rpx solid rgba(113, 113, 122, 0.45);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			box-sizing: border-box;
+		}
+
+		&.active .default-choice-box {
+			background: $primary-color;
+			border-color: $primary-color;
 		}
 	}
 
@@ -265,6 +322,10 @@ $dark-cancel-bg: #27272a;
 			text {
 				color: $dark-text-primary;
 			}
+		}
+
+		.default-choice {
+			color: $dark-text-secondary;
 		}
 
 		.modal-buttons {

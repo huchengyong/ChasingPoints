@@ -545,8 +545,105 @@ $success: #1bb56b;
 }
 
 .snooker-v2-status__format {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
 	font-size: 20rpx;
 	color: $text-secondary-light;
+
+	&.editable {
+		padding: 8rpx 12rpx;
+		margin: -8rpx -12rpx -8rpx 0;
+		border-radius: 999rpx;
+		background: rgba(224, 174, 18, 0.14);
+		color: #8a6510;
+	}
+}
+
+.snooker-format-hint,
+.snooker-format-preview,
+.snooker-format-error {
+	display: block;
+	margin-top: 12rpx;
+	font-size: 20rpx;
+	line-height: 1.45;
+	color: $text-secondary-light;
+}
+
+.snooker-format-error {
+	color: #b91c1c;
+}
+
+.snooker-format-editor {
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+	margin-top: 18rpx;
+	padding: 20rpx;
+	border-radius: 20rpx;
+	background: rgba(255, 255, 255, 0.72);
+	border: 2rpx solid rgba(110, 98, 66, 0.12);
+}
+
+.snooker-format-modes {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12rpx;
+}
+
+.snooker-format-mode,
+.snooker-format-save {
+	height: 72rpx;
+	line-height: 72rpx;
+	margin: 0;
+	padding: 0 16rpx;
+	border-radius: 18rpx;
+	box-sizing: border-box;
+	font-size: 22rpx;
+
+	&::after {
+		display: none;
+	}
+}
+
+.snooker-format-mode {
+	background: rgba(110, 98, 66, 0.08);
+	color: $text-secondary-light;
+
+	&.active {
+		background: #e0ae12;
+		color: #ffffff;
+	}
+}
+
+.snooker-target-picker {
+	height: 220rpx;
+	border-radius: 18rpx;
+	background: rgba(224, 174, 18, 0.08);
+	overflow: hidden;
+}
+
+.snooker-target-picker__item {
+	height: 72rpx;
+	line-height: 72rpx;
+	text-align: center;
+	font-size: 28rpx;
+	font-weight: 700;
+	color: $text-primary-light;
+}
+
+.snooker-target-picker__indicator {
+	height: 72rpx;
+}
+
+.snooker-format-save {
+	background: #e0ae12;
+	color: #ffffff;
+	font-weight: 700;
+
+	&[disabled] {
+		opacity: 0.55;
+	}
 }
 
 .snooker-v2-alert {
@@ -1245,6 +1342,43 @@ $success: #1bb56b;
 	.snooker-v2-status__format,
 	.snooker-v2-pot__score {
 		color: $text-secondary-dark;
+	}
+
+	.snooker-v2-status__format.editable {
+		background: rgba(224, 174, 18, 0.2);
+		color: #f0c542;
+	}
+
+	.snooker-format-hint,
+	.snooker-format-preview {
+		color: $text-secondary-dark;
+	}
+
+	.snooker-format-error {
+		color: #fca5a5;
+	}
+
+	.snooker-format-editor {
+		background: rgba(255, 247, 225, 0.06);
+		border-color: rgba(255, 247, 225, 0.1);
+	}
+
+	.snooker-format-mode,
+	.snooker-target-picker {
+		background: rgba(255, 247, 225, 0.08);
+	}
+
+	.snooker-format-mode {
+		color: $text-secondary-dark;
+
+		&.active {
+			background: #e0ae12;
+			color: #ffffff;
+		}
+	}
+
+	.snooker-target-picker__item {
+		color: $text-primary-dark;
 	}
 
 	.snooker-v2-pot {

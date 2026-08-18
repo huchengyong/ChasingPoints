@@ -297,6 +297,7 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 	)
 
 	l.Logger.Infof("用户 %d 获取对局 %d 详情, isPlayer1=%v", userId, match.Id, isPlayer1)
+	snookerFormat, snookerTargetWins := normalizedSnookerFormat(match)
 
 	return &types.GetMatchDetailResp{
 		Success: true,
@@ -324,11 +325,11 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			CompletionSource:              resolveCompletionSource(match),
 			CanScore:                      capabilities.CanScore,
 			CanUndo:                       capabilities.CanUndo,
-			CanFinish:                     capabilities.CanFinish && !isSnookerV2Match(match),
-			CanRequestFinish:              capabilities.CanRequestFinish && !isSnookerV2Match(match),
-			CanConfirmFinish:              capabilities.CanConfirmFinish && !isSnookerV2Match(match),
-			CanDisputeFinish:              capabilities.CanDisputeFinish && !isSnookerV2Match(match),
-			CanWithdrawFinish:             capabilities.CanWithdrawFinish && !isSnookerV2Match(match),
+			CanFinish:                     capabilities.CanFinish,
+			CanRequestFinish:              capabilities.CanRequestFinish,
+			CanConfirmFinish:              capabilities.CanConfirmFinish,
+			CanDisputeFinish:              capabilities.CanDisputeFinish,
+			CanWithdrawFinish:             capabilities.CanWithdrawFinish,
 			LastAction:                    lastAction,
 			MyScore:                       myScore,
 			OpponentScore:                 opponentScore,
@@ -353,6 +354,9 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			SnookerClearanceCompleted:     snookerClearanceCompleted,
 			SnookerRulesVersion:           match.SnookerRulesVersion,
 			BestOfFrames:                  match.BestOfFrames,
+			SnookerFormat:                 snookerFormat,
+			SnookerTargetWins:             snookerTargetWins,
+			CanChangeSnookerFormat:        canChangeSnookerFormat(l.svcCtx, userId, match),
 			StartingActor:                 match.StartingActor,
 			SnookerPhase:                  snookerState.Phase,
 			SnookerBallOn:                 snookerState.BallOn,

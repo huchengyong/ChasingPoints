@@ -260,6 +260,9 @@ type PublicMatchDetailData {
 	CurrentFrameStarted           bool          `json:"current_frame_started,optional"`
 	SnookerRulesVersion           int           `json:"snooker_rules_version,optional"`
 	BestOfFrames                  int           `json:"best_of_frames,optional"`
+	SnookerFormat                 string        `json:"snooker_format,optional"`
+	SnookerTargetWins             int           `json:"snooker_target_wins,optional"`
+	CanChangeSnookerFormat        bool          `json:"can_change_snooker_format,optional"`
 	StartingActor                 int           `json:"starting_actor,optional"`
 	SnookerPhase                  string        `json:"snooker_phase,optional"`
 	SnookerBallOn                 string        `json:"snooker_ball_on,optional"`
@@ -759,6 +762,9 @@ type MatchSyncSnapshot {
 	SnookerClearanceCompleted     bool             `json:"snooker_clearance_completed,optional"`
 	SnookerRulesVersion           int              `json:"snooker_rules_version,optional"`
 	BestOfFrames                  int              `json:"best_of_frames,optional"`
+	SnookerFormat                 string           `json:"snooker_format,optional"`
+	SnookerTargetWins             int              `json:"snooker_target_wins,optional"`
+	CanChangeSnookerFormat        bool             `json:"can_change_snooker_format,optional"`
 	StartingActor                 int              `json:"starting_actor,optional"`
 	SnookerPhase                  string           `json:"snooker_phase,optional"`
 	SnookerBallOn                 string           `json:"snooker_ball_on,optional"`
@@ -787,6 +793,8 @@ type StartMatchReq {
 	ChallengeId         int64  `json:"challenge_id,optional"` // 已接受邀约 ID
 	SnookerRulesVersion int    `json:"snooker_rules_version,optional"` // 斯诺克规则版本：旧客户端缺省为1，新客户端显式提交2
 	BestOfFrames        int    `json:"best_of_frames,optional"` // 版本2斯诺克总局数，必须为正奇数
+	SnookerFormat       string `json:"snooker_format,optional"` // legacy/free/race_to
+	SnookerTargetWins   int    `json:"snooker_target_wins,optional"` // 抢 N 局目标胜局，自由局数为0
 	StartingActor       int    `json:"starting_actor,optional"` // 版本2斯诺克首局开球方：1/2
 }
 
@@ -927,6 +935,21 @@ type SnookerActionResp {
 	Snapshot       MatchSyncSnapshot `json:"snapshot"`
 }
 
+type UpdateSnookerFormatReq {
+	MatchId           int64  `json:"match_id"`
+	SnookerFormat     string `json:"snooker_format"`
+	SnookerTargetWins int    `json:"snooker_target_wins,optional"`
+	BaseRevision      int64  `json:"base_revision"`
+}
+
+type UpdateSnookerFormatResp {
+	Accepted       bool              `json:"accepted"`
+	Success        bool              `json:"success"`
+	Message        string            `json:"message,optional"`
+	ServerRevision int64             `json:"server_revision"`
+	Snapshot       MatchSyncSnapshot `json:"snapshot"`
+}
+
 // 撤销
 type MatchUndoReq {
 	MatchId        int64  `json:"match_id"`
@@ -1039,6 +1062,9 @@ type CurrentMatchInfo {
 	CurrentRound                  int              `json:"current_round"`
 	SnookerRulesVersion           int              `json:"snooker_rules_version,optional"`
 	BestOfFrames                  int              `json:"best_of_frames,optional"`
+	SnookerFormat                 string           `json:"snooker_format,optional"`
+	SnookerTargetWins             int              `json:"snooker_target_wins,optional"`
+	CanChangeSnookerFormat        bool             `json:"can_change_snooker_format,optional"`
 	StartingActor                 int              `json:"starting_actor,optional"`
 	SnookerPhase                  string           `json:"snooker_phase,optional"`
 	SnookerBallOn                 string           `json:"snooker_ball_on,optional"`
@@ -1359,6 +1385,9 @@ type MatchDetailData {
 	SnookerClearanceCompleted     bool               `json:"snooker_clearance_completed,optional"`
 	SnookerRulesVersion           int                `json:"snooker_rules_version,optional"`
 	BestOfFrames                  int                `json:"best_of_frames,optional"`
+	SnookerFormat                 string             `json:"snooker_format,optional"`
+	SnookerTargetWins             int                `json:"snooker_target_wins,optional"`
+	CanChangeSnookerFormat        bool               `json:"can_change_snooker_format,optional"`
 	StartingActor                 int                `json:"starting_actor,optional"`
 	SnookerPhase                  string             `json:"snooker_phase,optional"`
 	SnookerBallOn                 string             `json:"snooker_ball_on,optional"`
@@ -1434,6 +1463,10 @@ service chasing_points-api {
 	@doc "记录斯诺克局级动作"
 	@handler SnookerFrameAction
 	post /snooker/frame-action (SnookerFrameActionReq) returns (SnookerActionResp)
+
+	@doc "更新未记分斯诺克对局赛制"
+	@handler UpdateSnookerFormat
+	post /snooker/format (UpdateSnookerFormatReq) returns (UpdateSnookerFormatResp)
 
 	@doc "撤销操作"
 	@handler MatchUndo

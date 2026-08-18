@@ -128,18 +128,7 @@ func buildCurrentMatchInfoWithKnownUser(svcCtx *svc.ServiceContext, userId int64
 	}
 
 	completedByUserId := resolveCompletedByUserId(match)
-	canFinish := capabilities.CanFinish
-	canRequestFinish := capabilities.CanRequestFinish
-	canConfirmFinish := capabilities.CanConfirmFinish
-	canDisputeFinish := capabilities.CanDisputeFinish
-	canWithdrawFinish := capabilities.CanWithdrawFinish
-	if match.GameType == 1 && match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA {
-		canFinish = false
-		canRequestFinish = false
-		canConfirmFinish = false
-		canDisputeFinish = false
-		canWithdrawFinish = false
-	}
+	snookerFormat, snookerTargetWins := normalizedSnookerFormat(match)
 
 	return &types.CurrentMatchInfo{
 		Id:                            match.Id,
@@ -161,11 +150,11 @@ func buildCurrentMatchInfoWithKnownUser(svcCtx *svc.ServiceContext, userId int64
 		CompletionSource:              resolveCompletionSource(match),
 		CanScore:                      capabilities.CanScore,
 		CanUndo:                       capabilities.CanUndo,
-		CanFinish:                     canFinish,
-		CanRequestFinish:              canRequestFinish,
-		CanConfirmFinish:              canConfirmFinish,
-		CanDisputeFinish:              canDisputeFinish,
-		CanWithdrawFinish:             canWithdrawFinish,
+		CanFinish:                     capabilities.CanFinish,
+		CanRequestFinish:              capabilities.CanRequestFinish,
+		CanConfirmFinish:              capabilities.CanConfirmFinish,
+		CanDisputeFinish:              capabilities.CanDisputeFinish,
+		CanWithdrawFinish:             capabilities.CanWithdrawFinish,
 		LastAction:                    buildMatchLastAction(svcCtx, userId, match),
 		Player1Id:                     match.UserId,
 		Player1Name:                   player1Name,
@@ -184,6 +173,9 @@ func buildCurrentMatchInfoWithKnownUser(svcCtx *svc.ServiceContext, userId int64
 		CurrentRound:                  int(roundCount) + 1,
 		SnookerRulesVersion:           match.SnookerRulesVersion,
 		BestOfFrames:                  match.BestOfFrames,
+		SnookerFormat:                 snookerFormat,
+		SnookerTargetWins:             snookerTargetWins,
+		CanChangeSnookerFormat:        canChangeSnookerFormat(svcCtx, userId, match),
 		StartingActor:                 match.StartingActor,
 		SnookerPhase:                  snookerState.Phase,
 		SnookerBallOn:                 snookerState.BallOn,

@@ -137,6 +137,10 @@ func (l *StartNextRoundLogic) StartNextRound(req *types.StartNextRoundReq) (resp
 	newRoundNo := int(roundCount) + 1
 
 	if match.GameType == 1 {
+		if snookerFormatLimitReached(match) {
+			l.Logger.Errorf("斯诺克赛制已达到结束条件: matchId=%d", match.Id)
+			return &types.StartNextRoundResp{Success: false, Accepted: false}, nil
+		}
 		if match.CurrentFrameStarted {
 			l.Logger.Errorf("斯诺克当前局尚未结束: matchId=%d, roundNo=%d", match.Id, newRoundNo)
 			return &types.StartNextRoundResp{Success: false}, nil
@@ -243,6 +247,8 @@ func (l *StartNextRoundLogic) StartNextRound(req *types.StartNextRoundReq) (resp
 				SnookerClearanceCompleted:     view.SnookerState.ClearanceCompleted,
 				SnookerRulesVersion:           match.SnookerRulesVersion,
 				BestOfFrames:                  match.BestOfFrames,
+				SnookerFormat:                 match.SnookerFormat,
+				SnookerTargetWins:             match.SnookerTargetWins,
 				StartingActor:                 match.StartingActor,
 				SnookerPhase:                  view.SnookerState.Phase,
 				SnookerBallOn:                 view.SnookerState.BallOn,

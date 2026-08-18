@@ -794,6 +794,9 @@ type CurrentMatchInfo struct {
 	CurrentRound                  int              `json:"current_round"`
 	SnookerRulesVersion           int              `json:"snooker_rules_version,optional"`
 	BestOfFrames                  int              `json:"best_of_frames,optional"`
+	SnookerFormat                 string           `json:"snooker_format,optional"`
+	SnookerTargetWins             int              `json:"snooker_target_wins,optional"`
+	CanChangeSnookerFormat        bool             `json:"can_change_snooker_format,optional"`
 	StartingActor                 int              `json:"starting_actor,optional"`
 	SnookerPhase                  string           `json:"snooker_phase,optional"`
 	SnookerBallOn                 string           `json:"snooker_ball_on,optional"`
@@ -1919,6 +1922,9 @@ type MatchDetailData struct {
 	SnookerClearanceCompleted     bool               `json:"snooker_clearance_completed,optional"`
 	SnookerRulesVersion           int                `json:"snooker_rules_version,optional"`
 	BestOfFrames                  int                `json:"best_of_frames,optional"`
+	SnookerFormat                 string             `json:"snooker_format,optional"`
+	SnookerTargetWins             int                `json:"snooker_target_wins,optional"`
+	CanChangeSnookerFormat        bool               `json:"can_change_snooker_format,optional"`
 	StartingActor                 int                `json:"starting_actor,optional"`
 	SnookerPhase                  string             `json:"snooker_phase,optional"`
 	SnookerBallOn                 string             `json:"snooker_ball_on,optional"`
@@ -2086,6 +2092,9 @@ type MatchSyncSnapshot struct {
 	SnookerClearanceCompleted     bool             `json:"snooker_clearance_completed,optional"`
 	SnookerRulesVersion           int              `json:"snooker_rules_version,optional"`
 	BestOfFrames                  int              `json:"best_of_frames,optional"`
+	SnookerFormat                 string           `json:"snooker_format,optional"`
+	SnookerTargetWins             int              `json:"snooker_target_wins,optional"`
+	CanChangeSnookerFormat        bool             `json:"can_change_snooker_format,optional"`
 	StartingActor                 int              `json:"starting_actor,optional"`
 	SnookerPhase                  string           `json:"snooker_phase,optional"`
 	SnookerBallOn                 string           `json:"snooker_ball_on,optional"`
@@ -2252,6 +2261,9 @@ type PublicMatchDetailData struct {
 	CurrentFrameStarted           bool          `json:"current_frame_started,optional"`
 	SnookerRulesVersion           int           `json:"snooker_rules_version,optional"`
 	BestOfFrames                  int           `json:"best_of_frames,optional"`
+	SnookerFormat                 string        `json:"snooker_format,optional"`
+	SnookerTargetWins             int           `json:"snooker_target_wins,optional"`
+	CanChangeSnookerFormat        bool          `json:"can_change_snooker_format,optional"`
 	StartingActor                 int           `json:"starting_actor,optional"`
 	SnookerPhase                  string        `json:"snooker_phase,optional"`
 	SnookerBallOn                 string        `json:"snooker_ball_on,optional"`
@@ -2647,6 +2659,8 @@ type StartMatchReq struct {
 	ChallengeId         int64  `json:"challenge_id,optional"`          // 已接受邀约 ID
 	SnookerRulesVersion int    `json:"snooker_rules_version,optional"` // 斯诺克规则版本：旧客户端缺省为1，新客户端显式提交2
 	BestOfFrames        int    `json:"best_of_frames,optional"`        // 版本2斯诺克总局数，必须为正奇数
+	SnookerFormat       string `json:"snooker_format,optional"`        // legacy/free/race_to
+	SnookerTargetWins   int    `json:"snooker_target_wins,optional"`   // 抢 N 局目标胜局，自由局数为0
 	StartingActor       int    `json:"starting_actor,optional"`        // 版本2斯诺克首局开球方：1/2
 }
 
@@ -2769,6 +2783,21 @@ type UpdateNicknameResp struct {
 
 type UpdatePushTokenReq struct {
 	PushClientId string `json:"push_client_id"`
+}
+
+type UpdateSnookerFormatReq struct {
+	MatchId           int64  `json:"match_id"`
+	SnookerFormat     string `json:"snooker_format"`
+	SnookerTargetWins int    `json:"snooker_target_wins,optional"`
+	BaseRevision      int64  `json:"base_revision"`
+}
+
+type UpdateSnookerFormatResp struct {
+	Accepted       bool              `json:"accepted"`
+	Success        bool              `json:"success"`
+	Message        string            `json:"message,optional"`
+	ServerRevision int64             `json:"server_revision"`
+	Snapshot       MatchSyncSnapshot `json:"snapshot"`
 }
 
 type UpdateTournamentMatchReq struct {

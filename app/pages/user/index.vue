@@ -301,7 +301,7 @@
 			</view>
 		</view>
 
-		<gameTypeModal v-model:visible="showGameTypeModal" @confirm="handleGameTypeConfirm" />
+		<gameTypeModal v-model:visible="showGameTypeModal" :default-type="defaultGameType" @confirm="handleGameTypeConfirm" />
 	</view>
 </template>
 
@@ -330,7 +330,7 @@ import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { markAsRead } from '@/api/notification.js'
 import { buildHonorWallUrl, presentLatestSeasonRollover } from '@/utils/honor-wall.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
-import { chooseSnookerStartFormat } from '@/utils/snooker-start-format.js'
+import { readDefaultGameType, saveDefaultGameType } from '@/utils/game-type-preference.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import {
 	POST_LOGIN_ACTIONS,
@@ -370,7 +370,7 @@ const showQrCodeModal = ref(false)
 const qrcodeLoading = ref(false)
 const qrcodeUrl = ref('')
 const selectedGameType = ref(null)
-const selectedSnookerFormat = ref(null)
+const defaultGameType = ref(0)
 const currentRankGameType = ref(3)
 const currentMatch = computed(() => (isLoggedIn.value ? activityStore.currentMatch : null))
 const rankInfo = computed(() => rankStore.rankInfoMap[currentRankGameType.value] || null)
@@ -693,16 +693,15 @@ const handleStartPK = () => {
 		handleGoLogin()
 		return
 	}
+	defaultGameType.value = readDefaultGameType(uni, userStore.userId)
 	showGameTypeModal.value = true
 }
 
-const handleGameTypeConfirm = async (gameType) => {
-	selectedGameType.value = gameType
-	selectedSnookerFormat.value = null
-	if (Number(gameType) === 1) {
-		selectedSnookerFormat.value = await chooseSnookerStartFormat(uni)
-		if (!selectedSnookerFormat.value) return
+const handleGameTypeConfirm = ({ gameType, setAsDefault } = {}) => {
+	if (setAsDefault) {
+		defaultGameType.value = saveDefaultGameType(uni, userStore.userId, gameType)
 	}
+	selectedGameType.value = gameType
 	handleScanCode()
 }
 
@@ -729,8 +728,7 @@ const handleMatchResult = async (scanResult) => {
 		const res = await startMatch({
 			game_type: selectedGameType.value,
 			opponent_id: opponentData.user_id,
-			opponent_name: opponentData.nickname || '对手',
-			...(selectedSnookerFormat.value || {})
+			opponent_name: opponentData.nickname || '对手'
 		})
 		uni.hideLoading()
 

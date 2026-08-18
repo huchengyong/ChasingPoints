@@ -40,6 +40,52 @@ $border-color-dark: rgba(247, 231, 168, 0.12);
     transition: background-color 0.3s ease;
 }
 
+.section-label {
+	display: block;
+	margin: 28rpx 8rpx 12rpx;
+	font-size: 24rpx;
+	font-weight: 700;
+	color: $text-secondary-light;
+}
+
+.preference-menu-item {
+	align-items: flex-start;
+	flex-direction: column;
+}
+
+.preference-options {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12rpx;
+	width: 100%;
+	padding-left: 96rpx;
+	box-sizing: border-box;
+}
+
+.preference-option {
+	height: 64rpx;
+	line-height: 64rpx;
+	margin: 0;
+	padding: 0 12rpx;
+	border-radius: 999rpx;
+	background: #FAF8F2;
+	border: 1rpx solid $border-color-light;
+	box-sizing: border-box;
+	color: $text-secondary-light;
+	font-size: 23rpx;
+
+	&::after {
+		display: none;
+	}
+
+	&.active {
+		background: rgba(224, 174, 18, 0.14);
+		border-color: rgba(224, 174, 18, 0.42);
+		color: #8a6510;
+		font-weight: 600;
+	}
+}
+
 // 菜单项
 .menu-item {
     display: flex;
@@ -252,6 +298,22 @@ $border-color-dark: rgba(247, 231, 168, 0.12);
     .menu-group {
         background-color: $card-bg-dark;
     }
+
+	.section-label {
+		color: $text-secondary-dark;
+	}
+
+	.preference-option {
+		background: rgba(255, 255, 255, 0.04);
+		border-color: $border-color-dark;
+		color: $text-secondary-dark;
+
+		&.active {
+			background: rgba(224, 174, 18, 0.18);
+			border-color: rgba(224, 174, 18, 0.45);
+			color: #f3d77c;
+		}
+	}
 
     .menu-item {
         .menu-left {

@@ -152,6 +152,7 @@
 		<!-- 选择比赛类型弹框（用于开始对战） -->
 		<gameTypeModal
 			v-model:visible="showGameTypeModal"
+			:default-type="defaultGameType"
 			@confirm="handleGameTypeConfirm"
 		/>
 
@@ -314,7 +315,7 @@ import {
 	normalizePendingMatchContext,
 	validateScannedOpponentForContext
 } from '@/utils/start-match.js'
-import { chooseSnookerStartFormat } from '@/utils/snooker-start-format.js'
+import { readDefaultGameType, saveDefaultGameType } from '@/utils/game-type-preference.js'
 
 // ========== 状态管理 ==========
 const userStore = useUserStore()
@@ -328,10 +329,9 @@ const currentMatch = computed(() => (userStore.isLoggedIn ? activityStore.curren
 const spectatorMatches = ref([])
 const showGameTypeModal = ref(false)
 const selectedGameType = ref(null)
+const defaultGameType = ref(0)
 const startMatchMode = ref('practice')
 const startMatchVisibility = ref('private')
-const snookerBestOfFrames = ref(3)
-const snookerStartingActor = ref(1)
 const pendingStartContext = ref(null)
 const scanIntent = ref('start')
 const showMatchQrModal = ref(false)
@@ -460,14 +460,8 @@ const consumePendingChallengeContext = () => {
 		selectedGameType.value = result.context.game_type
 		startMatchMode.value = result.context.match_mode
 		startMatchVisibility.value = result.context.visibility
-		snookerBestOfFrames.value = Number(result.context.best_of_frames) || 3
-		snookerStartingActor.value = Number(result.context.starting_actor) === 2 ? 2 : 1
 		scanIntent.value = 'start'
 		setTimeout(() => {
-			if (Number(result.context.game_type) === 1) {
-				chooseSnookerFormatThenScan()
-				return
-			}
 			handleScanCode()
 		}, 80)
 		return
@@ -601,6 +595,7 @@ const handleStartMatch = () => {
 		success: ({ tapIndex }) => {
 			if (tapIndex === 0) {
 				scanIntent.value = 'start'
+				defaultGameType.value = readDefaultGameType(uni, userStore.userId)
 				showGameTypeModal.value = true
 				return
 			}
@@ -745,29 +740,20 @@ const handleScanAsReferee = () => {
 /**
  * 处理比赛类型确认
  */
-const handleGameTypeConfirm = (gameType) => {
+const handleGameTypeConfirm = ({ gameType, setAsDefault } = {}) => {
 	scanIntent.value = 'start'
+	if (setAsDefault) {
+		defaultGameType.value = saveDefaultGameType(uni, userStore.userId, gameType)
+	}
 	selectedGameType.value = gameType
 	uni.showActionSheet({
 		itemList: ['练习赛（默认私密，不影响竞技权益）', '练习赛（公开展示，不影响竞技权益）', '排位赛（公开展示，需结束确认）'],
 		success: ({ tapIndex }) => {
 			startMatchMode.value = tapIndex === 2 ? 'ranked' : 'practice'
 			startMatchVisibility.value = tapIndex === 1 || tapIndex === 2 ? 'public' : 'private'
-			if (Number(gameType) === 1) {
-				chooseSnookerFormatThenScan()
-				return
-			}
 			handleScanCode()
 		}
 	})
-}
-
-const chooseSnookerFormatThenScan = async () => {
-	const format = await chooseSnookerStartFormat(uni)
-	if (!format) return
-	snookerBestOfFrames.value = format.best_of_frames
-	snookerStartingActor.value = format.starting_actor
-	handleScanCode()
 }
 
 /**
@@ -825,9 +811,7 @@ const handleMatchResult = async (scanResult) => {
 			opponent: opponentData,
 			matchMode: startMatchMode.value,
 			visibility: startMatchVisibility.value,
-			challengeId: pendingStartContext.value?.challenge_id || 0,
-			bestOfFrames: snookerBestOfFrames.value,
-			startingActor: snookerStartingActor.value
+			challengeId: pendingStartContext.value?.challenge_id || 0
 		}))
 
 		// 隐藏加载

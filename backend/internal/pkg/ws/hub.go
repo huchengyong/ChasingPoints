@@ -56,6 +56,9 @@ type ScoreUpdateData struct {
 	SnookerClearanceCompleted     bool   `json:"snooker_clearance_completed,omitempty"`
 	SnookerRulesVersion           int    `json:"snooker_rules_version,omitempty"`
 	BestOfFrames                  int    `json:"best_of_frames,omitempty"`
+	SnookerFormat                 string `json:"snooker_format,omitempty"`
+	SnookerTargetWins             int    `json:"snooker_target_wins,omitempty"`
+	CanChangeSnookerFormat        bool   `json:"can_change_snooker_format"`
 	StartingActor                 int    `json:"starting_actor,omitempty"`
 	SnookerPhase                  string `json:"snooker_phase,omitempty"`
 	SnookerBallOn                 string `json:"snooker_ball_on,omitempty"`
@@ -96,6 +99,9 @@ type MatchSyncData struct {
 	SnookerClearanceCompleted     bool                   `json:"snooker_clearance_completed,omitempty"`
 	SnookerRulesVersion           int                    `json:"snooker_rules_version,omitempty"`
 	BestOfFrames                  int                    `json:"best_of_frames,omitempty"`
+	SnookerFormat                 string                 `json:"snooker_format,omitempty"`
+	SnookerTargetWins             int                    `json:"snooker_target_wins,omitempty"`
+	CanChangeSnookerFormat        bool                   `json:"can_change_snooker_format"`
 	StartingActor                 int                    `json:"starting_actor,omitempty"`
 	SnookerPhase                  string                 `json:"snooker_phase,omitempty"`
 	SnookerBallOn                 string                 `json:"snooker_ball_on,omitempty"`
@@ -500,6 +506,7 @@ func buildMatchSyncDataForViewer(match *model.Match, userId int64, completedRoun
 			completionSource = match.CompletionSource
 		}
 	}
+	snookerFormat, snookerTargetWins, _ := model.NormalizeSnookerFormat(match.SnookerFormat, match.SnookerTargetWins, match.BestOfFrames)
 	return MatchSyncData{
 		MatchId:                       match.Id,
 		Status:                        match.Status,
@@ -516,6 +523,8 @@ func buildMatchSyncDataForViewer(match *model.Match, userId int64, completedRoun
 		SnookerClearanceCompleted:     snookerState.ClearanceCompleted,
 		SnookerRulesVersion:           match.SnookerRulesVersion,
 		BestOfFrames:                  match.BestOfFrames,
+		SnookerFormat:                 snookerFormat,
+		SnookerTargetWins:             snookerTargetWins,
 		StartingActor:                 match.StartingActor,
 		SnookerPhase:                  snookerState.Phase,
 		SnookerBallOn:                 snookerState.BallOn,
@@ -590,7 +599,10 @@ func resolveMatchSyncCapabilities(match *model.Match, userId int64) (string, boo
 		return "", refereeBound, refereeUserId, false, false, false, false, false, false, false
 	}
 	if viewerRole == "referee" {
-		canFinish := !(match.GameType == 1 && match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA)
+		canFinish := true
+		if match.GameType == 1 && match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA {
+			canFinish = snookerNormalFinishEligibleForSync(match)
+		}
 		return viewerRole, refereeBound, refereeUserId, true, true, canFinish, false, false, false, false
 	}
 	mode := model.NormalizeMatchMode(match.MatchMode)
@@ -603,14 +615,25 @@ func resolveMatchSyncCapabilities(match *model.Match, userId int64) (string, boo
 	canConfirmFinish := !refereeBound && pending && requestedBy > 0 && requestedBy != userId
 	canDisputeFinish := canConfirmFinish
 	canWithdrawFinish := !refereeBound && pending && requestedBy == userId
-	if match.GameType == 1 && match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA {
+	if match.GameType == 1 && match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA && !pending && !snookerNormalFinishEligibleForSync(match) {
 		canFinish = false
 		canRequestFinish = false
-		canConfirmFinish = false
-		canDisputeFinish = false
-		canWithdrawFinish = false
 	}
 	return viewerRole, refereeBound, refereeUserId, canScore, canUndo, canFinish, canRequestFinish, canConfirmFinish, canDisputeFinish, canWithdrawFinish
+}
+
+func snookerNormalFinishEligibleForSync(match *model.Match) bool {
+	if match == nil || match.Status != 1 || match.CurrentFrameStarted {
+		return false
+	}
+	format, targetWins, ok := model.NormalizeSnookerFormat(match.SnookerFormat, match.SnookerTargetWins, match.BestOfFrames)
+	if !ok {
+		return false
+	}
+	if format == model.SnookerFormatFree {
+		return match.MyScore+match.OpponentScore >= 1
+	}
+	return format == model.SnookerFormatRaceTo && targetWins > 0 && (match.MyScore >= targetWins || match.OpponentScore >= targetWins)
 }
 
 func resolveFinishRequestedBy(match *model.Match) int64 {
@@ -753,6 +776,10 @@ func (c *Client) sendMatchSync() {
 		Type: "sync",
 		Data: func() MatchSyncData {
 			data := buildMatchSyncDataForViewer(match, c.UserId, roundCount, snookerState, rounds)
+			actionCount, _ := c.SvcCtx.MatchModel.CountActionsWithTx(nil, match.Id)
+			data.CanChangeSnookerFormat = match.GameType == 1 && match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA &&
+				match.UserId == c.UserId && match.Status == 1 && model.NormalizeFinishState(match.FinishState) == model.FinishStateNone &&
+				match.RefereeUserId == nil && roundCount == 0 && actionCount == 0
 			hydrateMatchSyncRefereeProfile(c.SvcCtx, &data)
 			data.LastAction = buildMatchSyncLastAction(c.SvcCtx, match, c.UserId)
 			return data

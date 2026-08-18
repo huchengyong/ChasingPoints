@@ -42,18 +42,7 @@ func buildMatchSyncSnapshotForUser(userId int64, match *model.Match, completedRo
 		}
 	}
 
-	canFinish := capabilities.CanFinish
-	canRequestFinish := capabilities.CanRequestFinish
-	canConfirmFinish := capabilities.CanConfirmFinish
-	canDisputeFinish := capabilities.CanDisputeFinish
-	canWithdrawFinish := capabilities.CanWithdrawFinish
-	if match.GameType == 1 && match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA {
-		canFinish = false
-		canRequestFinish = false
-		canConfirmFinish = false
-		canDisputeFinish = false
-		canWithdrawFinish = false
-	}
+	snookerFormat, snookerTargetWins := normalizedSnookerFormat(match)
 
 	return types.MatchSyncSnapshot{
 		MatchId:                       match.Id,
@@ -71,11 +60,11 @@ func buildMatchSyncSnapshotForUser(userId int64, match *model.Match, completedRo
 		RefereeDurationSeconds:        refereeDurationSeconds,
 		CanScore:                      capabilities.CanScore,
 		CanUndo:                       capabilities.CanUndo,
-		CanFinish:                     canFinish,
-		CanRequestFinish:              canRequestFinish,
-		CanConfirmFinish:              canConfirmFinish,
-		CanDisputeFinish:              canDisputeFinish,
-		CanWithdrawFinish:             canWithdrawFinish,
+		CanFinish:                     capabilities.CanFinish,
+		CanRequestFinish:              capabilities.CanRequestFinish,
+		CanConfirmFinish:              capabilities.CanConfirmFinish,
+		CanDisputeFinish:              capabilities.CanDisputeFinish,
+		CanWithdrawFinish:             capabilities.CanWithdrawFinish,
 		MyScore:                       myScore,
 		OpponentScore:                 opponentScore,
 		CurrentFrameStarted:           match.CurrentFrameStarted,
@@ -90,6 +79,8 @@ func buildMatchSyncSnapshotForUser(userId int64, match *model.Match, completedRo
 		SnookerClearanceCompleted:     snookerState.ClearanceCompleted,
 		SnookerRulesVersion:           match.SnookerRulesVersion,
 		BestOfFrames:                  match.BestOfFrames,
+		SnookerFormat:                 snookerFormat,
+		SnookerTargetWins:             snookerTargetWins,
 		StartingActor:                 match.StartingActor,
 		SnookerPhase:                  snookerState.Phase,
 		SnookerBallOn:                 snookerState.BallOn,

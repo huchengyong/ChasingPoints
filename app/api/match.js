@@ -78,12 +78,20 @@ export const getPublicMatchDetail = (params) => {
 
 /**
  * 开始对局
- * @param {Object} data 对局信息；斯诺克需包含 best_of_frames、starting_actor
+ * @param {Object} data 对局信息；新斯诺克对局默认使用自由局数
  * @returns {Promise}
  */
 export const startMatch = (data = {}) => {
-  const payload = Number(data.game_type || data.gameType || 0) === 1
-    ? { ...data, snooker_rules_version: Number(data.snooker_rules_version || data.snookerRulesVersion || 2) }
+  const isSnooker = Number(data.game_type || data.gameType || 0) === 1
+  const hasLegacyFormat = Number(data.best_of_frames || data.bestOfFrames || 0) > 0
+  const payload = isSnooker
+    ? {
+        ...data,
+        snooker_rules_version: Number(data.snooker_rules_version || data.snookerRulesVersion || 2),
+        ...(!data.snooker_format && !data.snookerFormat && !hasLegacyFormat
+          ? { snooker_format: 'free', snooker_target_wins: 0 }
+          : {})
+      }
     : data
   const message = validateStartMatchPayload(payload)
   if (message) {
@@ -213,6 +221,10 @@ export const endRound = (data) => {
  */
 export const startNextRound = (data) => {
   return post('/api/match/round/start', data)
+}
+
+export const updateSnookerFormat = (data) => {
+  return post('/api/match/snooker/format', data)
 }
 
 /**

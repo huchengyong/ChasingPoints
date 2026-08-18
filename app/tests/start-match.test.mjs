@@ -31,8 +31,11 @@ test('validateStartMatchPayload accepts positive opponent id', () => {
   )
 })
 
-test('validateStartMatchPayload requires snooker best-of and starting actor', () => {
-  assert.equal(validateStartMatchPayload({ game_type: 1, opponent_id: 2001 }), '斯诺克总局数必须为正奇数')
+test('validateStartMatchPayload supports flexible snooker formats and legacy requests', () => {
+  assert.equal(validateStartMatchPayload({ game_type: 1, opponent_id: 2001, snooker_format: 'free', snooker_target_wins: 0 }), '')
+  assert.equal(validateStartMatchPayload({ game_type: 1, opponent_id: 2001, snooker_format: 'free', snooker_target_wins: 1 }), '自由局数不能设置目标胜局')
+  assert.equal(validateStartMatchPayload({ game_type: 1, opponent_id: 2001, snooker_format: 'race_to', snooker_target_wins: 10 }), '')
+  assert.equal(validateStartMatchPayload({ game_type: 1, opponent_id: 2001, snooker_format: 'race_to', snooker_target_wins: 26 }), '抢N局目标必须在1至25之间')
   assert.equal(validateStartMatchPayload({ game_type: 1, opponent_id: 2001, best_of_frames: 4, starting_actor: 1 }), '斯诺克总局数必须为正奇数')
   assert.equal(validateStartMatchPayload({ game_type: 1, opponent_id: 2001, best_of_frames: 3, starting_actor: 0 }), '请选择首局开球方')
   assert.equal(validateStartMatchPayload({ game_type: 1, opponent_id: 2001, best_of_frames: 7, starting_actor: 2 }), '')
@@ -72,12 +75,10 @@ test('buildStartMatchPayload carries challenge and mode context without bypassin
   )
 })
 
-test('buildStartMatchPayload carries snooker format only for snooker', () => {
+test('buildStartMatchPayload defaults new snooker matches to free format', () => {
   assert.deepEqual(buildStartMatchPayload({
     gameType: 1,
-    opponent: { id: 2001, nickname: '球友A' },
-    bestOfFrames: 7,
-    startingActor: 2
+    opponent: { id: 2001, nickname: '球友A' }
   }), {
     game_type: 1,
     opponent_id: 2001,
@@ -86,8 +87,8 @@ test('buildStartMatchPayload carries snooker format only for snooker', () => {
     match_mode: 'ranked',
     visibility: 'public',
     snooker_rules_version: 2,
-    best_of_frames: 7,
-    starting_actor: 2
+    snooker_format: 'free',
+    snooker_target_wins: 0
   })
 })
 
@@ -117,8 +118,8 @@ test('pending challenge and rematch contexts use independent required fields', (
   assert.deepEqual(normalizePendingMatchContext('pending_match_rematch', JSON.stringify({
     opponent_id: 2001,
     game_type: 1,
-    best_of_frames: 5,
-    starting_actor: 2
+    snooker_format: 'race_to',
+    snooker_target_wins: 5
   })).context, {
     context_type: 'rematch',
     challenge_id: 0,
@@ -127,8 +128,8 @@ test('pending challenge and rematch contexts use independent required fields', (
     match_mode: 'practice',
     visibility: 'private',
     snooker_rules_version: 2,
-    best_of_frames: 5,
-    starting_actor: 2
+    snooker_format: 'race_to',
+    snooker_target_wins: 5
   })
 })
 
