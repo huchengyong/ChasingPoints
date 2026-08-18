@@ -139,10 +139,10 @@ test('playing page contains version split and all referee-assisted v2 actions', 
   assert.doesNotMatch(page, /Array\.from\(\{ length: (?:maxReds|state\.redsRemaining \+ 1)/)
 })
 
-test('match page asks for snooker best-of and first-frame starter', () => {
+test('match page starts new snooker matches with free format without pre-scan format prompts', () => {
   const page = readFileSync(new URL('../pages/match/index.vue', import.meta.url), 'utf8')
-  assert.match(page, /chooseSnookerFormatThenScan/)
-  assert.match(page, /chooseSnookerStartFormat\(uni\)/)
-  assert.match(page, /bestOfFrames: snookerBestOfFrames\.value/)
-  assert.match(page, /startingActor: snookerStartingActor\.value/)
+  const helper = readFileSync(new URL('../utils/start-match.js', import.meta.url), 'utf8')
+  assert.doesNotMatch(page, /chooseSnookerFormatThenScan|chooseSnookerStartFormat|snookerBestOfFrames|snookerStartingActor/)
+  assert.match(helper, /snooker_format = 'free'/)
+  assert.match(helper, /snooker_target_wins = 0/)
 })

@@ -101,6 +101,41 @@
 				</view>
 			</view>
 
+			<view v-if="gameType === 1 && isSnookerV2" class="snooker-v2-status snooker-format-overview">
+				<view class="snooker-v2-status__row">
+					<text class="snooker-v2-status__phase">对局赛制</text>
+					<view
+						class="snooker-v2-status__format"
+						:class="{ editable: canChangeSnookerFormat }"
+						@click="toggleSnookerFormatEditor"
+					>
+						<text>{{ snookerFormatLabel }}</text>
+						<uni-icons v-if="canChangeSnookerFormat" type="right" size="14" color="#667687"></uni-icons>
+					</view>
+				</view>
+				<text class="snooker-format-hint">{{ snookerFormatHint }}</text>
+				<view v-if="showSnookerFormatEditor && canChangeSnookerFormat" class="snooker-format-editor">
+					<view class="snooker-format-modes">
+						<button :class="['snooker-format-mode', { active: draftSnookerFormat === SNOOKER_FORMAT_FREE }]" @click="selectSnookerFormatMode(SNOOKER_FORMAT_FREE)">自由局数</button>
+						<button :class="['snooker-format-mode', { active: draftSnookerFormat === SNOOKER_FORMAT_RACE_TO }]" @click="selectSnookerFormatMode(SNOOKER_FORMAT_RACE_TO)">抢 N 局制</button>
+					</view>
+					<picker-view
+						v-if="draftSnookerFormat === SNOOKER_FORMAT_RACE_TO"
+						class="snooker-target-picker"
+						:value="[draftSnookerTargetWins - 1]"
+						indicator-class="snooker-target-picker__indicator"
+						@change="handleSnookerTargetChange"
+					>
+						<picker-view-column>
+							<view v-for="target in snookerTargetOptions" :key="target" class="snooker-target-picker__item">抢 {{ target }} 局制</view>
+						</picker-view-column>
+					</picker-view>
+					<text class="snooker-format-preview">{{ draftSnookerFormatHint }}</text>
+					<text v-if="snookerFormatError" class="snooker-format-error">{{ snookerFormatError }}</text>
+					<button class="snooker-format-save" :disabled="snookerFormatSaving" @click="saveSnookerFormat">{{ snookerFormatSaving ? '保存中...' : '保存赛制' }}</button>
+				</view>
+			</view>
+
 			<view v-if="viewerUi.showActionPanel" class="action-panel">
 					<view class="panel-header">
 						<text class="panel-title">记分操作</text>
@@ -139,7 +174,6 @@
 					<view class="snooker-v2-status">
 						<view class="snooker-v2-status__row">
 							<text class="snooker-v2-status__phase">{{ snookerV2PhaseLabel }}</text>
-							<text class="snooker-v2-status__format">{{ snookerBestOfFrames ? `${snookerBestOfFrames} 局制` : '标准15红球' }}</text>
 						</view>
 						<view class="snooker-v2-status__target">
 							<text>当前击球：{{ snookerV2StrikerLabel }}</text>
@@ -435,14 +469,14 @@
 		<view class="footer">
 			<view class="footer-buttons">
 				<button
-					v-if="gameType === 1 && viewerUi.showActionPanel && (!isSnookerV2 || !currentFrameStarted)"
+					v-if="gameType === 1 && viewerUi.showActionPanel && (!isSnookerV2 || (!currentFrameStarted && canStartNextSnookerFrameValue))"
 					class="footer-btn btn-secondary full-width"
 					@click="handleNextRound"
 				>
 					开始下一局
 				</button>
-				<button v-if="viewerUi.showFinishButton" class="footer-btn btn-primary full-width" @click="handleFinishMatch">结束本场对局</button>
-				<button v-if="viewerUi.showFinishRequestButton" class="footer-btn btn-primary full-width" @click="handleRequestFinish">发起结束确认</button>
+				<button v-if="viewerUi.showFinishButton" class="footer-btn btn-primary full-width" @click="handleFinishMatch">{{ isSnookerV2 && snookerFormat === SNOOKER_FORMAT_FREE ? '结束整场对局' : '结束本场对局' }}</button>
+				<button v-if="viewerUi.showFinishRequestButton" class="footer-btn btn-primary full-width" @click="handleRequestFinish">{{ isSnookerV2 && snookerFormat === SNOOKER_FORMAT_FREE ? '结束整场对局' : '发起结束确认' }}</button>
 			</view>
 			<button v-if="viewerUi.showUndoButton" class="undo-btn" @click="handleUndo">撤销</button>
 		</view>
@@ -473,7 +507,7 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { useRankStore } from '@/store/rank.js'
 import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
-import { matchScore, endRound, startNextRound, matchFoul, matchUndo, finishMatch, requestFinishMatch, confirmFinishMatch, disputeFinishMatch, withdrawFinishMatch, getMatchDetail, getCurrentMatch, getMatchRefereeQRCode, snookerStroke, snookerFrameAction } from '@/api/match.js'
+import { matchScore, endRound, startNextRound, matchFoul, matchUndo, finishMatch, requestFinishMatch, confirmFinishMatch, disputeFinishMatch, withdrawFinishMatch, getMatchDetail, getCurrentMatch, getMatchRefereeQRCode, snookerStroke, snookerFrameAction, updateSnookerFormat } from '@/api/match.js'
 import { consumeResultNavigationGuard, getMatchHistoryPageUrl, getMatchHistoryTabUrl, shouldLeavePlayingPage } from '@/utils/match-navigation.js'
 import { buildMatchActionPayload } from '@/utils/match-action.js'
 import { usePageTheme } from '@/utils/page-theme.js'
@@ -505,6 +539,16 @@ import {
 } from '@/utils/snooker-v2.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import { shouldInvalidateRankAfterSettlement } from '@/utils/rank-cache.js'
+import {
+	SNOOKER_FORMAT_FREE,
+	SNOOKER_FORMAT_RACE_TO,
+	SNOOKER_TARGET_OPTIONS,
+	canFinishFreeSnookerMatch,
+	canStartNextSnookerFrame,
+	getSnookerFormatHint,
+	getSnookerFormatLabel,
+	normalizeSnookerMatchFormat
+} from '@/utils/snooker-match-format.js'
 
 // ========== 状态管理 ==========
 const userStore = useUserStore()
@@ -527,8 +571,14 @@ const snookerClearedColors = ref([])
 const snookerExpectedClearanceScore = ref(0)
 const snookerClearanceCompleted = ref(false)
 const snookerRulesVersion = ref(0)
-const snookerBestOfFrames = ref(0)
-const snookerStartingActor = ref(0)
+const snookerFormat = ref(SNOOKER_FORMAT_FREE)
+const snookerTargetWins = ref(0)
+const canChangeSnookerFormat = ref(false)
+const showSnookerFormatEditor = ref(false)
+const draftSnookerFormat = ref(SNOOKER_FORMAT_FREE)
+const draftSnookerTargetWins = ref(3)
+const snookerFormatSaving = ref(false)
+const snookerFormatError = ref('')
 const snookerV2State = ref(normalizeSnookerV2State())
 const showSnookerFoulEditor = ref(false)
 const snookerFoulPenalty = ref(4)
@@ -668,6 +718,22 @@ const currentRoundText = computed(() => {
 	}
 	return `第 ${currentRound.value} 局`
 })
+const snookerTargetOptions = SNOOKER_TARGET_OPTIONS
+const snookerFormatLabel = computed(() => getSnookerFormatLabel(snookerFormat.value, snookerTargetWins.value))
+const snookerFormatHint = computed(() => getSnookerFormatHint(snookerFormat.value, snookerTargetWins.value))
+const draftSnookerFormatHint = computed(() => getSnookerFormatHint(draftSnookerFormat.value, draftSnookerTargetWins.value))
+const canStartNextSnookerFrameValue = computed(() => canStartNextSnookerFrame({
+	format: snookerFormat.value,
+	targetWins: snookerTargetWins.value,
+	myScore: myScore.value,
+	opponentScore: opponentScore.value
+}))
+const canFinishCurrentFreeMatch = computed(() => canFinishFreeSnookerMatch({
+	format: snookerFormat.value,
+	currentFrameStarted: currentFrameStarted.value,
+	myScore: myScore.value,
+	opponentScore: opponentScore.value
+}))
 const snookerRedBallMax = 15
 const snookerRedBallText = computed(() => `红球 ${snookerRedBallCount.value}/${snookerRedBallMax}`)
 const snookerRedBallRemaining = computed(() => Math.max(snookerRedBallMax - snookerRedBallCount.value, 0))
@@ -952,6 +1018,10 @@ const applyViewerCapabilities = (payload = {}) => {
 	if (payload.last_action !== undefined) {
 		lastAction.value = payload.last_action || null
 	}
+	if (typeof payload.can_change_snooker_format === 'boolean') {
+		canChangeSnookerFormat.value = payload.can_change_snooker_format
+		if (!canChangeSnookerFormat.value) showSnookerFormatEditor.value = false
+	}
 }
 
 /**
@@ -1134,6 +1204,7 @@ const applyServerCurrentFrameScores = (player1Score, player2Score) => {
 }
 
 const applySnookerRoundState = (payload = {}) => {
+	updateServerRevision(payload.server_revision ?? payload.revision)
 	snookerRedBallCount.value = payload.red_ball_count || 0
 	snookerClearanceStarted.value = !!payload.snooker_clearance_started
 	snookerClearedColors.value = Array.isArray(payload.snooker_cleared_colors) ? payload.snooker_cleared_colors : []
@@ -1141,8 +1212,16 @@ const applySnookerRoundState = (payload = {}) => {
 	snookerClearanceCompleted.value = !!payload.snooker_clearance_completed
 	if (payload.snooker_rules_version !== undefined) {
 		snookerRulesVersion.value = isSnookerRulesV2(payload) ? 2 : Number(payload.snooker_rules_version || 0)
-		snookerBestOfFrames.value = Number(payload.best_of_frames || 0)
-		snookerStartingActor.value = Number(payload.starting_actor || 0)
+		const legacyBestOfFrames = Number(payload.best_of_frames || 0)
+		const normalizedFormat = normalizeSnookerMatchFormat({
+			snooker_format: payload.snooker_format || (legacyBestOfFrames > 0 ? SNOOKER_FORMAT_RACE_TO : SNOOKER_FORMAT_FREE),
+			snooker_target_wins: payload.snooker_target_wins || (legacyBestOfFrames > 0 ? Math.floor(legacyBestOfFrames / 2) + 1 : 0)
+		})
+		snookerFormat.value = normalizedFormat.format
+		snookerTargetWins.value = normalizedFormat.targetWins
+		if (typeof payload.can_change_snooker_format === 'boolean') {
+			canChangeSnookerFormat.value = payload.can_change_snooker_format
+		}
 		snookerV2State.value = normalizeSnookerV2State(payload)
 		if (snookerRulesVersion.value === 2) {
 			const target = snookerBallOnValue(snookerV2State.value)
@@ -1153,6 +1232,53 @@ const applySnookerRoundState = (payload = {}) => {
 				showSnookerFoulEditor.value = false
 			}
 		}
+	}
+}
+
+const toggleSnookerFormatEditor = () => {
+	if (!canChangeSnookerFormat.value || snookerFormatSaving.value) return
+	showSnookerFormatEditor.value = !showSnookerFormatEditor.value
+	if (!showSnookerFormatEditor.value) return
+	draftSnookerFormat.value = snookerFormat.value
+	draftSnookerTargetWins.value = snookerTargetWins.value || 3
+	snookerFormatError.value = ''
+}
+
+const selectSnookerFormatMode = (format) => {
+	draftSnookerFormat.value = format === SNOOKER_FORMAT_RACE_TO
+		? SNOOKER_FORMAT_RACE_TO
+		: SNOOKER_FORMAT_FREE
+	snookerFormatError.value = ''
+}
+
+const handleSnookerTargetChange = ({ detail }) => {
+	draftSnookerTargetWins.value = SNOOKER_TARGET_OPTIONS[Number(detail?.value?.[0]) || 0] || 1
+}
+
+const saveSnookerFormat = async () => {
+	if (!matchId.value || !canChangeSnookerFormat.value || snookerFormatSaving.value) return
+	snookerFormatSaving.value = true
+	snookerFormatError.value = ''
+	try {
+		const res = await updateSnookerFormat({
+			match_id: matchId.value,
+			snooker_format: draftSnookerFormat.value,
+			snooker_target_wins: draftSnookerFormat.value === SNOOKER_FORMAT_RACE_TO ? draftSnookerTargetWins.value : 0,
+			base_revision: serverRevision.value
+		})
+		if (res?.snapshot) applyMatchSnapshot(res.snapshot)
+		else if (!res?.success) await loadMatchInfo()
+		if (!res?.success) {
+			snookerFormatError.value = res?.message || '赛制保存失败，请重试'
+			return
+		}
+		showSnookerFormatEditor.value = false
+		uni.showToast({ title: '赛制已更新', icon: 'none' })
+	} catch (error) {
+		console.error('[MatchPlaying] 更新斯诺克赛制失败', { matchId: matchId.value, error })
+		snookerFormatError.value = '赛制保存失败，请重试'
+	} finally {
+		snookerFormatSaving.value = false
 	}
 }
 
@@ -1890,7 +2016,7 @@ const handleNextRound = async () => {
 		}
 		uni.showModal({
 			title: '开始下一局',
-			content: '新一局将按赛制自动轮换开球方。',
+			content: '确定开始新的一局吗？',
 			success: async ({ confirm }) => {
 				if (!confirm) return
 				showSyncLoading()
@@ -2137,10 +2263,7 @@ const handleWithdrawFinish = async () => {
 	}
 
 const handleFinishMatch = () => {
-		if (isSnookerV2.value) {
-			handleOfferSnookerConcession('match')
-			return
-		}
+		if (isSnookerV2.value && snookerFormat.value === SNOOKER_FORMAT_FREE && !canFinishCurrentFreeMatch.value) return
 		if (!ensureViewerCapability(canFinish.value, '当前只有裁判可以结束对局')) return
 		const finishAction = gameType.value === 1
 			? resolveSnookerFinishMatchAction({
@@ -2212,6 +2335,10 @@ const showMenu = () => {
 		itemList: ['对局设置', isSnookerV2.value ? '认输整场比赛' : '放弃对局'],
 		success: (res) => {
 			if (res.tapIndex === 1) {
+				if (isSnookerV2.value) {
+					handleOfferSnookerConcession('match')
+					return
+				}
 				handleFinishMatch()
 			}
 		}

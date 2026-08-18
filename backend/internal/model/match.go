@@ -66,6 +66,8 @@ type Match struct {
 	GameMode                   string         `gorm:"size:20" json:"game_mode"`  // 比赛模式
 	SnookerRulesVersion        int            `gorm:"not null;default:1" json:"snooker_rules_version"`
 	BestOfFrames               int            `gorm:"not null;default:0" json:"best_of_frames"`
+	SnookerFormat              string         `gorm:"size:20;not null;default:legacy" json:"snooker_format"`
+	SnookerTargetWins          int            `gorm:"not null;default:0" json:"snooker_target_wins"`
 	StartingActor              int            `gorm:"not null;default:0" json:"starting_actor"`
 	MatchMode                  string         `gorm:"size:20;not null;index" json:"match_mode"`
 	Visibility                 string         `gorm:"size:20;not null;index" json:"visibility"`
@@ -1150,6 +1152,16 @@ func (m *MatchModel) CountScoreActions(matchId int64, roundNo int, scoreChange i
 // ListActiveActions 获取对局未撤销的操作日志
 func (m *MatchModel) ListActiveActions(matchId int64) ([]MatchAction, error) {
 	return m.ListActiveActionsWithTx(nil, matchId)
+}
+
+func (m *MatchModel) CountActionsWithTx(tx *gorm.DB, matchId int64) (int64, error) {
+	var count int64
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	err := db.Model(&MatchAction{}).Where("match_id = ?", matchId).Count(&count).Error
+	return count, err
 }
 
 func (m *MatchModel) ListActiveActionsWithTx(tx *gorm.DB, matchId int64) ([]MatchAction, error) {

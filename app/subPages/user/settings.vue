@@ -120,6 +120,32 @@
 					</view>
 				</view>
 			</view>
+
+			<text class="section-label">对局偏好</text>
+			<view class="menu-group preference-group">
+				<view class="menu-item preference-menu-item">
+					<view class="menu-left">
+						<view class="icon-wrapper gold">
+							<uni-icons type="flag-filled" size="24" color="#E0AE12"></uni-icons>
+						</view>
+						<view class="menu-copy">
+							<text class="menu-text">默认对局类型</text>
+							<text class="menu-description">发起 PK 时自动预选，仍可临时切换</text>
+						</view>
+					</view>
+					<view class="preference-options">
+						<button
+							v-for="option in defaultGameTypeOptions"
+							:key="option.value"
+							class="preference-option"
+							:class="{ active: defaultGameType === option.value }"
+							@click="setDefaultGameType(option.value)"
+						>
+							{{ option.label }}
+						</button>
+					</view>
+				</view>
+			</view>
 			<view class="page-actions">
 				<button class="logout-btn" @click="handleLogout">
 					<text>退出登录</text>
@@ -147,6 +173,11 @@ import { getUserPrivacy, updateUserPrivacy } from '@/api/user.js'
 import bindPhone from '@/components/bindPhone.vue'
 import { formatSettingsPhone } from '@/utils/settings-profile.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import {
+	DEFAULT_GAME_TYPE_OPTIONS,
+	readDefaultGameType,
+	saveDefaultGameType
+} from '@/utils/game-type-preference.js'
 
 // ========== 状态管理 ==========
 const { isDarkMode, themeMode, setThemeMode } = usePageTheme()
@@ -156,6 +187,7 @@ const themeOptions = [
 	{ value: 'light', label: '浅色' },
 	{ value: 'dark', label: '深色' }
 ]
+const defaultGameTypeOptions = DEFAULT_GAME_TYPE_OPTIONS
 
 // ========== 响应式数据 ==========
 const userNickname = computed(() => userStore.userInfo?.nickname || '用户')
@@ -164,6 +196,7 @@ const userAvatar = computed(() => resolveAvatarUrl(userStore.userInfo?.avatar, u
 const canBindPhone = computed(() => Boolean(userStore.needBindPhone || !userPhone.value))
 const displayPhoneText = computed(() => formatSettingsPhone(userPhone.value) || '未绑定')
 const showBindPhoneModal = ref(false)
+const defaultGameType = ref(0)
 const isHideMatch = ref(false)
 const hideMatchLoading = ref(false)
 const privacyLoadedAt = ref(0)
@@ -172,6 +205,7 @@ const PRIVACY_CACHE_TTL = 5 * 60 * 1000
 
 // ========== 生命周期 ==========
 onShow(() => {
+	defaultGameType.value = readDefaultGameType(uni, userStore.userId)
 	loadUserPrivacy()
 })
 
@@ -234,6 +268,14 @@ const handleBindPhoneSuccess = (payload) => {
 const handleNotifications = () => {
 	uni.navigateTo({
 		url: '/subPages/user/notification'
+	})
+}
+
+const setDefaultGameType = (gameType) => {
+	defaultGameType.value = saveDefaultGameType(uni, userStore.userId, gameType)
+	uni.showToast({
+		title: defaultGameType.value > 0 ? '默认对局类型已更新' : '已改为每次询问',
+		icon: 'none'
 	})
 }
 

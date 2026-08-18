@@ -52,45 +52,6 @@ func (l *FinishMatchLogic) finishMatchImmediately(req *types.FinishMatchReq, for
 		l.Logger.Errorf("对局不存在: %v", err)
 		return &types.FinishMatchResp{Success: false}, nil
 	}
-	if isSnookerV2Match(match) {
-		if _, authorityErr := validateMatchWriteAuthority(match, userId); authorityErr != nil {
-			return &types.FinishMatchResp{Success: false, Accepted: false, Message: authorityErr.Error()}, nil
-		}
-		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
-		if stateErr != nil {
-			return &types.FinishMatchResp{Success: false, Accepted: false, Message: "加载对局快照失败"}, nil
-		}
-		scoreView := buildMatchWriteScoreView(userId, match)
-		return &types.FinishMatchResp{
-			Success:        false,
-			Accepted:       false,
-			Message:        "版本2斯诺克将按赛制自动结束，请使用认输或裁判判局",
-			ClientActionId: req.ClientActionId,
-			ServerRevision: view.Snapshot.ServerRevision,
-			Snapshot:       view.Snapshot,
-			MyScore:        scoreView.MyScore,
-			OpponentScore:  scoreView.OpponentScore,
-		}, nil
-	}
-	if !force && shouldRequestRankedFinish(match, userId) {
-		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
-		if stateErr != nil {
-			return &types.FinishMatchResp{Success: false, Accepted: false, Message: "加载对局快照失败"}, nil
-		}
-		scoreView := buildMatchWriteScoreView(userId, match)
-		return &types.FinishMatchResp{
-			Success:        false,
-			Accepted:       false,
-			Message:        "本场排位赛需要双方确认，请使用结束确认流程",
-			Result:         3,
-			ClientActionId: req.ClientActionId,
-			ServerRevision: view.Snapshot.ServerRevision,
-			Snapshot:       view.Snapshot,
-			MyScore:        scoreView.MyScore,
-			OpponentScore:  scoreView.OpponentScore,
-		}, nil
-	}
-
 	// 验证用户权限
 	_, authorityErr := validateMatchWriteAuthority(match, userId)
 	if authorityErr != nil {
@@ -149,6 +110,41 @@ func (l *FinishMatchLogic) finishMatchImmediately(req *types.FinishMatchReq, for
 			Accepted:       true,
 			Success:        true,
 			Result:         result,
+			ClientActionId: req.ClientActionId,
+			ServerRevision: view.Snapshot.ServerRevision,
+			Snapshot:       view.Snapshot,
+			MyScore:        scoreView.MyScore,
+			OpponentScore:  scoreView.OpponentScore,
+		}, nil
+	}
+	if isSnookerV2Match(match) && !snookerNormalFinishEligible(match) {
+		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
+		if stateErr != nil {
+			return &types.FinishMatchResp{Success: false, Accepted: false, Message: "加载对局快照失败"}, nil
+		}
+		scoreView := buildMatchWriteScoreView(userId, match)
+		return &types.FinishMatchResp{
+			Success:        false,
+			Accepted:       false,
+			Message:        "当前斯诺克赛制尚未满足正常结束条件",
+			ClientActionId: req.ClientActionId,
+			ServerRevision: view.Snapshot.ServerRevision,
+			Snapshot:       view.Snapshot,
+			MyScore:        scoreView.MyScore,
+			OpponentScore:  scoreView.OpponentScore,
+		}, nil
+	}
+	if !force && shouldRequestRankedFinish(match, userId) {
+		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
+		if stateErr != nil {
+			return &types.FinishMatchResp{Success: false, Accepted: false, Message: "加载对局快照失败"}, nil
+		}
+		scoreView := buildMatchWriteScoreView(userId, match)
+		return &types.FinishMatchResp{
+			Success:        false,
+			Accepted:       false,
+			Message:        "本场排位赛需要双方确认，请使用结束确认流程",
+			Result:         3,
 			ClientActionId: req.ClientActionId,
 			ServerRevision: view.Snapshot.ServerRevision,
 			Snapshot:       view.Snapshot,

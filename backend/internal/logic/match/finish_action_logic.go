@@ -72,9 +72,6 @@ func handleConfirmedFinishAction(ctx context.Context, svcCtx *svc.ServiceContext
 	if findErr != nil || current == nil {
 		return &types.FinishMatchActionResp{Success: false, Accepted: false, ClientActionId: req.ClientActionId, Message: "对局不存在"}, nil
 	}
-	if isSnookerV2Match(current) {
-		return buildFinishActionFailureResponse(svcCtx, userId, current, req.ClientActionId, "版本2斯诺克请使用认输或裁判判局"), nil
-	}
 	if isFinishRequestExpired(current, time.Now()) {
 		return buildFinishActionFailureResponse(svcCtx, userId, effectiveMatchForRead(current, time.Now()), req.ClientActionId, "结束请求已过期，对局已恢复进行中"), nil
 	}
@@ -222,8 +219,8 @@ func handleFinishAction(ctx context.Context, svcCtx *svc.ServiceContext, req *ty
 	if err != nil {
 		return &types.FinishMatchActionResp{Success: false, Accepted: false, Message: "获取用户信息失败"}, nil
 	}
-	if current, findErr := svcCtx.MatchModel.FindById(req.MatchId); findErr == nil && current != nil && isSnookerV2Match(current) {
-		return buildFinishActionFailureResponse(svcCtx, userId, current, req.ClientActionId, "版本2斯诺克请使用认输或裁判判局"), nil
+	if current, findErr := svcCtx.MatchModel.FindById(req.MatchId); findErr == nil && current != nil && isSnookerV2Match(current) && actionType == "request" && !snookerNormalFinishEligible(current) {
+		return buildFinishActionFailureResponse(svcCtx, userId, current, req.ClientActionId, "当前斯诺克赛制尚未满足正常结束条件"), nil
 	}
 
 	var match *model.Match

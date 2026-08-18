@@ -695,6 +695,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: match.MatchScoreHandler(serverCtx),
 			},
 			{
+				// 更新未记分斯诺克对局赛制
+				Method:  http.MethodPost,
+				Path:    "/snooker/format",
+				Handler: match.UpdateSnookerFormatHandler(serverCtx),
+			},
+			{
 				// 记录斯诺克局级动作
 				Method:  http.MethodPost,
 				Path:    "/snooker/frame-action",

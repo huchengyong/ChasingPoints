@@ -43,6 +43,7 @@ func loadMatchWriteState(svcCtx *svc.ServiceContext, userId int64, match *model.
 	state.CompletedRoundCount = roundCount
 	state.SnookerState = snookerState
 	state.Snapshot = buildMatchSyncSnapshotForUser(userId, match, roundCount, snookerState)
+	state.Snapshot.CanChangeSnookerFormat = canChangeSnookerFormat(svcCtx, userId, match)
 	state.Snapshot.LastAction = buildMatchLastAction(svcCtx, userId, match)
 
 	// 填充裁判资料

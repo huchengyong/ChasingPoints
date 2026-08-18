@@ -2,6 +2,7 @@ package ws
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -59,6 +60,49 @@ func TestResolveMatchSyncCapabilitiesCoversLegacyRankedConfirmedRankedAndReferee
 	_, _, _, _, _, canFinish, canRequest, canConfirm, canDispute, canWithdraw := resolveMatchSyncCapabilities(confirmed, opponentID)
 	if canFinish || canRequest || canConfirm || canDispute || canWithdraw {
 		t.Fatal("referee-bound pending match leaked player finish capabilities")
+	}
+}
+
+func TestResolveMatchSyncCapabilitiesAllowsEligibleSnookerRefereeFinish(t *testing.T) {
+	refereeID := int64(3003)
+	opponentID := int64(2002)
+	match := &model.Match{
+		UserId:              1001,
+		OpponentId:          &opponentID,
+		RefereeUserId:       &refereeID,
+		GameType:            1,
+		SnookerRulesVersion: model.SnookerRulesVersionWPBSA,
+		SnookerFormat:       model.SnookerFormatFree,
+		MyScore:             1,
+		Status:              1,
+	}
+
+	role, _, _, _, _, canFinish, _, _, _, _ := resolveMatchSyncCapabilities(match, refereeID)
+	if role != "referee" || !canFinish {
+		t.Fatalf("eligible snooker referee should be able to finish: role=%q canFinish=%v", role, canFinish)
+	}
+
+	match.CurrentFrameStarted = true
+	_, _, _, _, _, canFinish, _, _, _, _ = resolveMatchSyncCapabilities(match, refereeID)
+	if canFinish {
+		t.Fatal("snooker referee must not finish while the current frame is active")
+	}
+}
+
+func TestMatchWebSocketPayloadKeepsFalseCanChangeSnookerFormat(t *testing.T) {
+	for name, payload := range map[string]interface{}{
+		"score update": ScoreUpdateData{},
+		"sync":         MatchSyncData{},
+	} {
+		t.Run(name, func(t *testing.T) {
+			encoded, err := json.Marshal(payload)
+			if err != nil {
+				t.Fatalf("marshal payload: %v", err)
+			}
+			if !strings.Contains(string(encoded), `"can_change_snooker_format":false`) {
+				t.Fatalf("false format capability must be explicit: %s", encoded)
+			}
+		})
 	}
 }
 

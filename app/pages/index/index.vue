@@ -186,6 +186,7 @@
 
     <gameTypeModal
       v-model:visible="showGameTypeModal"
+      :default-type="defaultGameType"
       @confirm="handleGameTypeConfirm"
     />
   </view>
@@ -210,7 +211,7 @@ import {
   resolveHomeVenueEmptyAction
 } from '@/utils/home-index.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
-import { chooseSnookerStartFormat } from '@/utils/snooker-start-format.js'
+import { readDefaultGameType, saveDefaultGameType } from '@/utils/game-type-preference.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const userStore = useUserStore()
@@ -229,7 +230,7 @@ const refreshing = ref(false)
 const homeLoading = ref(false)
 const showGameTypeModal = ref(false)
 const selectedGameType = ref(null)
-const selectedSnookerFormat = ref(null)
+const defaultGameType = ref(0)
 const currentMatch = computed(() => (isLoggedIn.value ? activityStore.currentMatch : null))
 const leaderboardTopThree = ref([])
 const myRanking = ref(null)
@@ -584,16 +585,15 @@ const handleStartPK = () => {
     return
   }
 
+  defaultGameType.value = readDefaultGameType(uni, userId.value)
   showGameTypeModal.value = true
 }
 
-const handleGameTypeConfirm = async (gameType) => {
-  selectedGameType.value = gameType
-  selectedSnookerFormat.value = null
-  if (Number(gameType) === 1) {
-    selectedSnookerFormat.value = await chooseSnookerStartFormat(uni)
-    if (!selectedSnookerFormat.value) return
+const handleGameTypeConfirm = ({ gameType, setAsDefault } = {}) => {
+  if (setAsDefault) {
+    defaultGameType.value = saveDefaultGameType(uni, userId.value, gameType)
   }
+  selectedGameType.value = gameType
 
   let handledByScan = false
   // #ifdef APP-PLUS || APP-HARMONY
@@ -634,8 +634,7 @@ const handleMatchResult = async (scanResult) => {
     const res = await startMatch({
       game_type: selectedGameType.value,
       opponent_id: opponentData.user_id,
-      opponent_name: opponentData.nickname || '对手',
-      ...(selectedSnookerFormat.value || {})
+      opponent_name: opponentData.nickname || '对手'
     })
     uni.hideLoading()
     handleStartMatchOutcome(resolveStartMatchGuardAction({

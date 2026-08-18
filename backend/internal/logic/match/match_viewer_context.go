@@ -62,6 +62,10 @@ func resolveMatchViewerCapabilities(match *model.Match, userId int64) matchViewe
 		capabilities.CanDisputeFinish = capabilities.CanConfirmFinish
 		capabilities.CanWithdrawFinish = requestedBy == userId
 	}
+	if isSnookerV2Match(match) && match.FinishState != model.FinishStatePendingConfirmation && !snookerNormalFinishEligible(match) {
+		capabilities.CanFinish = false
+		capabilities.CanRequestFinish = false
+	}
 
 	return capabilities
 }
