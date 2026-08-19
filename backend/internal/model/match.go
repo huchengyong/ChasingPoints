@@ -68,6 +68,8 @@ type Match struct {
 	BestOfFrames               int            `gorm:"not null;default:0" json:"best_of_frames"`
 	SnookerFormat              string         `gorm:"size:20;not null;default:legacy" json:"snooker_format"`
 	SnookerTargetWins          int            `gorm:"not null;default:0" json:"snooker_target_wins"`
+	MatchFormat                string         `gorm:"size:20;not null;default:legacy" json:"match_format"`
+	TargetWins                 int            `gorm:"not null;default:0" json:"target_wins"`
 	StartingActor              int            `gorm:"not null;default:0" json:"starting_actor"`
 	MatchMode                  string         `gorm:"size:20;not null;index" json:"match_mode"`
 	Visibility                 string         `gorm:"size:20;not null;index" json:"visibility"`

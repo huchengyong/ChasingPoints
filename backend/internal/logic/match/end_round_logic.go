@@ -2,6 +2,7 @@ package match
 
 import (
 	"context"
+	"time"
 
 	"chasing_points/internal/model"
 	"chasing_points/internal/pkg/ws"
@@ -86,6 +87,9 @@ func (l *EndRoundLogic) EndRound(req *types.EndRoundReq) (resp *types.EndRoundRe
 			Success:  false,
 			Accepted: false,
 		}, nil
+	}
+	if model.IsFlexiblePoolMatch(match) {
+		return l.endFlexiblePoolRound(req, userId)
 	}
 	existingAction, err := l.svcCtx.MatchModel.FindActionByClientActionID(match.Id, req.ClientActionId)
 	if err != nil {
@@ -286,6 +290,9 @@ func (l *EndRoundLogic) EndRound(req *types.EndRoundReq) (resp *types.EndRoundRe
 				SnookerClearedColors:          []int{},
 				SnookerExpectedClearanceScore: 0,
 				SnookerClearanceCompleted:     false,
+				MatchFormat:                   view.Snapshot.MatchFormat,
+				TargetWins:                    view.Snapshot.TargetWins,
+				CanChangeMatchFormat:          view.Snapshot.CanChangeMatchFormat,
 				Status:                        match.Status,
 			},
 		})
@@ -307,4 +314,272 @@ func (l *EndRoundLogic) EndRound(req *types.EndRoundReq) (resp *types.EndRoundRe
 		MyScore:                   scoreView.MyScore,
 		OpponentScore:             scoreView.OpponentScore,
 	}, nil
+}
+
+type flexiblePoolRoundResult struct {
+	Match                *model.Match
+	Round                *model.MatchRound
+	ExistingAction       *model.MatchAction
+	FailureMessage       string
+	FinishReq            *types.FinishMatchReq
+	FinishedNow          bool
+	FinishRequested      bool
+	Result               int
+	CompetitiveRevisions map[int64]int64
+	SeasonID             int64
+}
+
+func (l *EndRoundLogic) endFlexiblePoolRound(req *types.EndRoundReq, userID int64) (*types.EndRoundResp, error) {
+	result := flexiblePoolRoundResult{}
+	err := l.svcCtx.DB.Transaction(func(tx *gorm.DB) error {
+		locked, findErr := l.svcCtx.MatchModel.FindByIdForUpdateWithTx(tx, req.MatchId)
+		if findErr != nil {
+			return findErr
+		}
+		result.Match = locked
+		if locked == nil {
+			result.FailureMessage = "对局不存在"
+			return nil
+		}
+		if _, authorityErr := validateMatchWriteAuthority(locked, userID); authorityErr != nil {
+			result.FailureMessage = authorityErr.Error()
+			return nil
+		}
+		if !model.IsFlexiblePoolMatch(locked) {
+			result.FailureMessage = "当前对局不支持逐局赛制"
+			return nil
+		}
+		if existing, findErr := l.svcCtx.MatchModel.FindActionByClientActionIDWithTx(tx, locked.Id, req.ClientActionId); findErr != nil {
+			return findErr
+		} else if existing != nil {
+			if existing.ActionType != "win" || existing.Actor != req.Winner || existing.BaseRevision != req.BaseRevision || existing.ScoreChange != 1 {
+				result.FailureMessage = "操作幂等键已被其他操作使用"
+				return nil
+			}
+			result.ExistingAction = existing
+			return nil
+		}
+		if err := validateMatchActionMeta(matchActionMeta{
+			ClientActionID: req.ClientActionId,
+			BaseRevision:   req.BaseRevision,
+		}, locked.SyncRevision); err != nil {
+			result.FailureMessage = err.Error()
+			return nil
+		}
+		if locked.Status != 1 || model.NormalizeFinishState(locked.FinishState) != model.FinishStateNone {
+			result.FailureMessage = "当前对局不可记分"
+			return nil
+		}
+		if req.Winner != 1 && req.Winner != 2 {
+			result.FailureMessage = "局胜方只能是选手1或选手2"
+			return nil
+		}
+		if req.Score != 1 {
+			result.FailureMessage = "灵活赛制每局只能计1胜"
+			return nil
+		}
+		roundCount, countErr := l.svcCtx.MatchModel.GetRoundCountWithTx(tx, locked.Id)
+		if countErr != nil {
+			return countErr
+		}
+		if poolMatchFormatLimitReached(locked) || roundCount >= model.PoolMatchMaxCompletedRounds {
+			result.FailureMessage = "当前赛制已达到结束条件"
+			return nil
+		}
+
+		if req.Winner == 1 {
+			locked.MyScore++
+		} else {
+			locked.OpponentScore++
+		}
+		newRoundNo := int(roundCount) + 1
+		round := &model.MatchRound{
+			MatchId:       locked.Id,
+			RoundNo:       newRoundNo,
+			MyScore:       locked.MyScore,
+			OpponentScore: locked.OpponentScore,
+			Winner:        &req.Winner,
+			WinType:       req.WinType,
+		}
+		extraData := `{"win_type":"` + req.WinType + `"}`
+		action := &model.MatchAction{
+			MatchId:        locked.Id,
+			RoundNo:        newRoundNo,
+			ActionType:     "win",
+			Actor:          req.Winner,
+			ScoreChange:    1,
+			ClientActionId: stringPointer(req.ClientActionId),
+			BaseRevision:   req.BaseRevision,
+			ExtraData:      &extraData,
+		}
+		revision, revisionErr := l.svcCtx.MatchModel.BumpMatchRevisionWithTx(tx, locked)
+		if revisionErr != nil {
+			return revisionErr
+		}
+		if err := l.svcCtx.MatchModel.CreateRoundWithTx(tx, round); err != nil {
+			return err
+		}
+		if achievementType := normalizeStoredAchievementType(req.WinType); achievementType != "" {
+			if err := l.svcCtx.MatchModel.SaveAchievementWithTx(tx, locked.Id, achievementType, 1, req.Winner); err != nil {
+				return err
+			}
+		}
+		if err := l.svcCtx.MatchModel.CreateActionWithRevisionWithTx(tx, action, revision); err != nil {
+			return err
+		}
+		result.Round = round
+
+		if poolMatchFormatLimitReached(locked) {
+			if locked.FinishConfirmationRequired && model.NormalizeMatchMode(locked.MatchMode) == model.MatchModeRanked && locked.RefereeUserId == nil {
+				requestRevision := locked.SyncRevision
+				locked.FinishState = model.FinishStatePendingConfirmation
+				locked.FinishRequestedBy = &userID
+				now := time.Now()
+				locked.FinishRequestedAt = &now
+				locked.FinishRequestRevision = requestRevision + 1
+				revision, err := l.svcCtx.MatchModel.BumpMatchRevisionWithTx(tx, locked)
+				if err != nil {
+					return err
+				}
+				if err := l.svcCtx.MatchModel.CreateActionWithRevisionWithTx(tx, &model.MatchAction{
+					MatchId:        locked.Id,
+					RoundNo:        0,
+					ActionType:     "finish_request",
+					Actor:          resolveFinishActionActor(locked, userID),
+					ClientActionId: stringPointer(autoPoolFinishRequestActionID(req.ClientActionId)),
+					BaseRevision:   requestRevision,
+				}, revision); err != nil {
+					return err
+				}
+				result.FinishRequested = true
+			} else {
+				finishReq := &types.FinishMatchReq{
+					MatchId:        locked.Id,
+					ClientActionId: autoPoolFinishActionID(req.ClientActionId),
+					BaseRevision:   locked.SyncRevision,
+				}
+				settlement, err := NewFinishMatchLogic(l.ctx, l.svcCtx).settleMatchWithTx(tx, locked, userID, finishReq)
+				if err != nil {
+					return err
+				}
+				result.FinishedNow = true
+				result.FinishReq = finishReq
+				result.Result = settlement.Result
+				result.CompetitiveRevisions = settlement.CompetitiveRevisions
+				result.SeasonID = settlement.SeasonID
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		l.Logger.Errorf("灵活赛制结束单局事务失败: matchId=%d err=%v", req.MatchId, err)
+		return &types.EndRoundResp{Success: false, Accepted: false}, nil
+	}
+
+	fresh, _ := l.svcCtx.MatchModel.FindById(req.MatchId)
+	if fresh == nil {
+		return &types.EndRoundResp{Success: false, Accepted: false}, nil
+	}
+	view, stateErr := loadMatchWriteState(l.svcCtx, userID, fresh)
+	if stateErr != nil {
+		return &types.EndRoundResp{Success: false, Accepted: false}, nil
+	}
+	scoreView := buildMatchWriteScoreView(userID, fresh)
+	if result.FailureMessage != "" {
+		return &types.EndRoundResp{
+			Accepted:                  false,
+			Success:                   false,
+			ClientActionId:            req.ClientActionId,
+			ServerRevision:            view.Snapshot.ServerRevision,
+			Snapshot:                  view.Snapshot,
+			RoundNo:                   int(view.CompletedRoundCount),
+			CurrentFrameStarted:       fresh.CurrentFrameStarted,
+			CurrentFrameMyScore:       scoreView.CurrentFrameMyScore,
+			CurrentFrameOpponentScore: scoreView.CurrentFrameOpponentScore,
+			MyScore:                   scoreView.MyScore,
+			OpponentScore:             scoreView.OpponentScore,
+		}, nil
+	}
+	roundNo := int(view.CompletedRoundCount)
+	if result.ExistingAction != nil {
+		roundNo = result.ExistingAction.RoundNo
+	}
+	if result.Round != nil {
+		roundNo = result.Round.RoundNo
+		broadcastFlexiblePoolRoundEnd(fresh, view, result.Round, req.Winner)
+	}
+	if result.ExistingAction != nil && fresh.Status == 2 && fresh.Result != nil {
+		finishLogic := NewFinishMatchLogic(l.ctx, l.svcCtx)
+		if _, err := finishLogic.finishMatchPostCommit(&types.FinishMatchReq{
+			MatchId:        fresh.Id,
+			ClientActionId: autoPoolFinishActionID(req.ClientActionId),
+			BaseRevision:   result.ExistingAction.ServerRevision,
+		}, userID, fresh, *fresh.Result, nil, 0); err != nil {
+			finishLogic.Logger.Errorf("灵活赛制幂等重放补偿失败: matchId=%d err=%v", fresh.Id, err)
+		}
+	}
+	if result.FinishedNow && result.FinishReq != nil {
+		finishLogic := NewFinishMatchLogic(l.ctx, l.svcCtx)
+		if _, err := finishLogic.finishMatchPostCommit(result.FinishReq, userID, fresh, result.Result, result.CompetitiveRevisions, result.SeasonID); err != nil {
+			finishLogic.Logger.Errorf("灵活赛制自动结束后处理失败: matchId=%d err=%v", fresh.Id, err)
+		}
+	}
+	if result.FinishRequested {
+		broadcastFinishActionState(l.svcCtx, fresh, "match_finish_request")
+	}
+	return &types.EndRoundResp{
+		Accepted:                  true,
+		Success:                   true,
+		ClientActionId:            req.ClientActionId,
+		ServerRevision:            view.Snapshot.ServerRevision,
+		Snapshot:                  view.Snapshot,
+		RoundNo:                   roundNo,
+		CurrentFrameStarted:       fresh.CurrentFrameStarted,
+		CurrentFrameMyScore:       scoreView.CurrentFrameMyScore,
+		CurrentFrameOpponentScore: scoreView.CurrentFrameOpponentScore,
+		MyScore:                   scoreView.MyScore,
+		OpponentScore:             scoreView.OpponentScore,
+	}, nil
+}
+
+func broadcastFlexiblePoolRoundEnd(match *model.Match, view matchWriteState, round *model.MatchRound, winner int) {
+	if ws.GlobalHub == nil || match == nil || round == nil {
+		return
+	}
+	actor := "me"
+	if winner == 2 {
+		actor = "opponent"
+	}
+	ws.GlobalHub.BroadcastToMatch(match.Id, &ws.Message{
+		Type: "round_end",
+		Data: ws.ScoreUpdateData{
+			MatchId:              match.Id,
+			ServerRevision:       view.Snapshot.ServerRevision,
+			MyScore:              match.MyScore,
+			OpponentScore:        match.OpponentScore,
+			Player1Score:         match.MyScore,
+			Player2Score:         match.OpponentScore,
+			CurrentFrameStarted:  match.CurrentFrameStarted,
+			CurrentRound:         view.Snapshot.CurrentRound,
+			TotalRounds:          view.Snapshot.TotalRounds,
+			RoundNumber:          round.RoundNo,
+			RoundPlayer1Score:    round.MyScore,
+			RoundPlayer2Score:    round.OpponentScore,
+			Winner:               winner,
+			ActionType:           "win",
+			Actor:                actor,
+			MatchFormat:          view.Snapshot.MatchFormat,
+			TargetWins:           view.Snapshot.TargetWins,
+			CanChangeMatchFormat: view.Snapshot.CanChangeMatchFormat,
+			Status:               match.Status,
+		},
+	})
+}
+
+func autoPoolFinishActionID(clientActionID string) string {
+	return clientActionID + ":pool_finish"
+}
+
+func autoPoolFinishRequestActionID(clientActionID string) string {
+	return clientActionID + ":pool_finish_request"
 }

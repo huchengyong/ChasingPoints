@@ -611,6 +611,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: match.WithdrawFinishMatchHandler(serverCtx),
 			},
 			{
+				// 更新未记分中八/美九对局赛制
+				Method:  http.MethodPost,
+				Path:    "/format",
+				Handler: match.UpdateMatchFormatHandler(serverCtx),
+			},
+			{
 				// 犯规
 				Method:  http.MethodPost,
 				Path:    "/foul",

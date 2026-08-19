@@ -43,6 +43,7 @@ func buildMatchSyncSnapshotForUser(userId int64, match *model.Match, completedRo
 	}
 
 	snookerFormat, snookerTargetWins := normalizedSnookerFormat(match)
+	matchFormat, targetWins := normalizedPoolMatchFormat(match)
 
 	return types.MatchSyncSnapshot{
 		MatchId:                       match.Id,
@@ -81,6 +82,8 @@ func buildMatchSyncSnapshotForUser(userId int64, match *model.Match, completedRo
 		BestOfFrames:                  match.BestOfFrames,
 		SnookerFormat:                 snookerFormat,
 		SnookerTargetWins:             snookerTargetWins,
+		MatchFormat:                   matchFormat,
+		TargetWins:                    targetWins,
 		StartingActor:                 match.StartingActor,
 		SnookerPhase:                  snookerState.Phase,
 		SnookerBallOn:                 snookerState.BallOn,

@@ -129,6 +129,7 @@ func buildCurrentMatchInfoWithKnownUser(svcCtx *svc.ServiceContext, userId int64
 
 	completedByUserId := resolveCompletedByUserId(match)
 	snookerFormat, snookerTargetWins := normalizedSnookerFormat(match)
+	matchFormat, targetWins := normalizedPoolMatchFormat(match)
 
 	return &types.CurrentMatchInfo{
 		Id:                            match.Id,
@@ -176,6 +177,9 @@ func buildCurrentMatchInfoWithKnownUser(svcCtx *svc.ServiceContext, userId int64
 		SnookerFormat:                 snookerFormat,
 		SnookerTargetWins:             snookerTargetWins,
 		CanChangeSnookerFormat:        canChangeSnookerFormat(svcCtx, userId, match),
+		MatchFormat:                   matchFormat,
+		TargetWins:                    targetWins,
+		CanChangeMatchFormat:          canChangeMatchFormat(svcCtx, userId, match),
 		StartingActor:                 match.StartingActor,
 		SnookerPhase:                  snookerState.Phase,
 		SnookerBallOn:                 snookerState.BallOn,

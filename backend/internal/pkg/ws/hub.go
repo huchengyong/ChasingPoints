@@ -59,6 +59,9 @@ type ScoreUpdateData struct {
 	SnookerFormat                 string `json:"snooker_format,omitempty"`
 	SnookerTargetWins             int    `json:"snooker_target_wins,omitempty"`
 	CanChangeSnookerFormat        bool   `json:"can_change_snooker_format"`
+	MatchFormat                   string `json:"match_format,omitempty"`
+	TargetWins                    int    `json:"target_wins,omitempty"`
+	CanChangeMatchFormat          bool   `json:"can_change_match_format"`
 	StartingActor                 int    `json:"starting_actor,omitempty"`
 	SnookerPhase                  string `json:"snooker_phase,omitempty"`
 	SnookerBallOn                 string `json:"snooker_ball_on,omitempty"`
@@ -102,6 +105,9 @@ type MatchSyncData struct {
 	SnookerFormat                 string                 `json:"snooker_format,omitempty"`
 	SnookerTargetWins             int                    `json:"snooker_target_wins,omitempty"`
 	CanChangeSnookerFormat        bool                   `json:"can_change_snooker_format"`
+	MatchFormat                   string                 `json:"match_format,omitempty"`
+	TargetWins                    int                    `json:"target_wins,omitempty"`
+	CanChangeMatchFormat          bool                   `json:"can_change_match_format"`
 	StartingActor                 int                    `json:"starting_actor,omitempty"`
 	SnookerPhase                  string                 `json:"snooker_phase,omitempty"`
 	SnookerBallOn                 string                 `json:"snooker_ball_on,omitempty"`
@@ -507,6 +513,10 @@ func buildMatchSyncDataForViewer(match *model.Match, userId int64, completedRoun
 		}
 	}
 	snookerFormat, snookerTargetWins, _ := model.NormalizeSnookerFormat(match.SnookerFormat, match.SnookerTargetWins, match.BestOfFrames)
+	matchFormat, targetWins := "", 0
+	if model.IsPoolMatchFormatGameType(match.GameType) {
+		matchFormat, targetWins, _ = model.NormalizePoolMatchFormat(match.GameType, match.MatchFormat, match.TargetWins)
+	}
 	return MatchSyncData{
 		MatchId:                       match.Id,
 		Status:                        match.Status,
@@ -525,6 +535,8 @@ func buildMatchSyncDataForViewer(match *model.Match, userId int64, completedRoun
 		BestOfFrames:                  match.BestOfFrames,
 		SnookerFormat:                 snookerFormat,
 		SnookerTargetWins:             snookerTargetWins,
+		MatchFormat:                   matchFormat,
+		TargetWins:                    targetWins,
 		StartingActor:                 match.StartingActor,
 		SnookerPhase:                  snookerState.Phase,
 		SnookerBallOn:                 snookerState.BallOn,
@@ -778,6 +790,9 @@ func (c *Client) sendMatchSync() {
 			data := buildMatchSyncDataForViewer(match, c.UserId, roundCount, snookerState, rounds)
 			actionCount, _ := c.SvcCtx.MatchModel.CountActionsWithTx(nil, match.Id)
 			data.CanChangeSnookerFormat = match.GameType == 1 && match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA &&
+				match.UserId == c.UserId && match.Status == 1 && model.NormalizeFinishState(match.FinishState) == model.FinishStateNone &&
+				match.RefereeUserId == nil && roundCount == 0 && actionCount == 0
+			data.CanChangeMatchFormat = model.IsFlexiblePoolMatch(match) &&
 				match.UserId == c.UserId && match.Status == 1 && model.NormalizeFinishState(match.FinishState) == model.FinishStateNone &&
 				match.RefereeUserId == nil && roundCount == 0 && actionCount == 0
 			hydrateMatchSyncRefereeProfile(c.SvcCtx, &data)
