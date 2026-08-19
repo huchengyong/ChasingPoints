@@ -324,6 +324,9 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 				SnookerClearedColors:          snookerState.ClearedColors,
 				SnookerExpectedClearanceScore: snookerState.ExpectedClearanceScore,
 				SnookerClearanceCompleted:     snookerState.ClearanceCompleted,
+				MatchFormat:                   view.Snapshot.MatchFormat,
+				TargetWins:                    view.Snapshot.TargetWins,
+				CanChangeMatchFormat:          view.Snapshot.CanChangeMatchFormat,
 				Status:                        match.Status,
 			},
 		})

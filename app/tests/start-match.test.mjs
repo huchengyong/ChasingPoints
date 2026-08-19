@@ -70,9 +70,18 @@ test('buildStartMatchPayload carries challenge and mode context without bypassin
       opponent_avatar: 'a.png',
       match_mode: 'practice',
       visibility: 'public',
-      challenge_id: 88
+      challenge_id: 88,
+      match_format: 'free',
+      target_wins: 0
     }
   )
+})
+
+test('validateStartMatchPayload supports pool free and race-to formats', () => {
+  assert.equal(validateStartMatchPayload({ game_type: 3, opponent_id: 2001, match_format: 'free', target_wins: 0 }), '')
+  assert.equal(validateStartMatchPayload({ game_type: 4, opponent_id: 2001, match_format: 'race_to', target_wins: 65 }), '')
+  assert.equal(validateStartMatchPayload({ game_type: 3, opponent_id: 2001, match_format: 'free', target_wins: 1 }), '自由局数不能设置目标胜局')
+  assert.equal(validateStartMatchPayload({ game_type: 4, opponent_id: 2001, match_format: 'race_to', target_wins: 66 }), '抢N局目标必须在1至65之间')
 })
 
 test('buildStartMatchPayload defaults new snooker matches to free format', () => {
@@ -117,6 +126,21 @@ test('pending challenge and rematch contexts use independent required fields', (
   })
   assert.deepEqual(normalizePendingMatchContext('pending_match_rematch', JSON.stringify({
     opponent_id: 2001,
+    game_type: 4,
+    match_format: 'race_to',
+    target_wins: 65
+  })).context, {
+    context_type: 'rematch',
+    challenge_id: 0,
+    opponent_id: 2001,
+    game_type: 4,
+    match_mode: 'practice',
+    visibility: 'private',
+    match_format: 'free',
+    target_wins: 0
+  })
+  assert.deepEqual(normalizePendingMatchContext('pending_match_rematch', JSON.stringify({
+    opponent_id: 2001,
     game_type: 1,
     snooker_format: 'race_to',
     snooker_target_wins: 5
@@ -150,6 +174,8 @@ test('accepted challenge scan must match the invited opponent while payload uses
     opponent_avatar: 'scan.png',
     match_mode: 'practice',
     visibility: 'private',
-    challenge_id: 88
+    challenge_id: 88,
+    match_format: 'free',
+    target_wins: 0
   })
 })

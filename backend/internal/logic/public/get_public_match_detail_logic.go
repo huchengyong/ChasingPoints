@@ -163,6 +163,10 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 
 	l.Logger.Infof("公开接口获取对局 %d 详情 (观战模式)", match.Id)
 	snookerFormat, snookerTargetWins, _ := model.NormalizeSnookerFormat(match.SnookerFormat, match.SnookerTargetWins, match.BestOfFrames)
+	matchFormat, targetWins := "", 0
+	if model.IsPoolMatchFormatGameType(match.GameType) {
+		matchFormat, targetWins, _ = model.NormalizePoolMatchFormat(match.GameType, match.MatchFormat, match.TargetWins)
+	}
 
 	return &types.GetPublicMatchDetailResp{
 		Success: true,
@@ -199,6 +203,9 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 			SnookerFormat:                 snookerFormat,
 			SnookerTargetWins:             snookerTargetWins,
 			CanChangeSnookerFormat:        false,
+			MatchFormat:                   matchFormat,
+			TargetWins:                    targetWins,
+			CanChangeMatchFormat:          false,
 			StartingActor:                 match.StartingActor,
 			SnookerPhase:                  snookerState.Phase,
 			SnookerBallOn:                 snookerState.BallOn,

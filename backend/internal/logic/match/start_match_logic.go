@@ -135,6 +135,8 @@ func (l *StartMatchLogic) StartMatch(req *types.StartMatchReq) (resp *types.Star
 			BestOfFrames:               req.BestOfFrames,
 			SnookerFormat:              req.SnookerFormat,
 			SnookerTargetWins:          req.SnookerTargetWins,
+			MatchFormat:                req.MatchFormat,
+			TargetWins:                 req.TargetWins,
 			StartingActor:              req.StartingActor,
 			MatchMode:                  req.MatchMode,
 			Visibility:                 req.Visibility,
@@ -329,6 +331,12 @@ func validateStartMatchReq(userId int64, req *types.StartMatchReq) string {
 		req.SnookerTargetWins = 0
 		req.StartingActor = 0
 	}
+	format, targetWins, valid := model.NormalizePoolMatchFormat(req.GameType, req.MatchFormat, req.TargetWins)
+	if !valid {
+		return "请选择有效的赛制"
+	}
+	req.MatchFormat = format
+	req.TargetWins = targetWins
 	return ""
 }
 

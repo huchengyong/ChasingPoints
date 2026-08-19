@@ -298,6 +298,7 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 
 	l.Logger.Infof("用户 %d 获取对局 %d 详情, isPlayer1=%v", userId, match.Id, isPlayer1)
 	snookerFormat, snookerTargetWins := normalizedSnookerFormat(match)
+	matchFormat, targetWins := normalizedPoolMatchFormat(match)
 
 	return &types.GetMatchDetailResp{
 		Success: true,
@@ -357,6 +358,9 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			SnookerFormat:                 snookerFormat,
 			SnookerTargetWins:             snookerTargetWins,
 			CanChangeSnookerFormat:        canChangeSnookerFormat(l.svcCtx, userId, match),
+			MatchFormat:                   matchFormat,
+			TargetWins:                    targetWins,
+			CanChangeMatchFormat:          canChangeMatchFormat(l.svcCtx, userId, match),
 			StartingActor:                 match.StartingActor,
 			SnookerPhase:                  snookerState.Phase,
 			SnookerBallOn:                 snookerState.BallOn,

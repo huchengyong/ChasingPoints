@@ -98,6 +98,25 @@ func (l *MatchFoulLogic) MatchFoul(req *types.MatchFoulReq) (resp *types.MatchSc
 			Snapshot:       view.Snapshot,
 		}, nil
 	}
+	if model.IsFlexiblePoolMatch(match) {
+		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
+		if stateErr != nil {
+			return &types.MatchScoreResp{Success: false, Accepted: false, Message: "加载对局快照失败"}, nil
+		}
+		scoreView := buildMatchWriteScoreView(userId, match)
+		return &types.MatchScoreResp{
+			Success:                   false,
+			Accepted:                  false,
+			Message:                   "灵活赛制请使用结束一局记录胜负",
+			ServerRevision:            view.Snapshot.ServerRevision,
+			Snapshot:                  view.Snapshot,
+			CurrentFrameStarted:       match.CurrentFrameStarted,
+			CurrentFrameMyScore:       scoreView.CurrentFrameMyScore,
+			CurrentFrameOpponentScore: scoreView.CurrentFrameOpponentScore,
+			MyScore:                   scoreView.MyScore,
+			OpponentScore:             scoreView.OpponentScore,
+		}, nil
+	}
 	if req.ClientActionId == "" {
 		return &types.MatchScoreResp{
 			Success:  false,
@@ -306,6 +325,9 @@ func (l *MatchFoulLogic) MatchFoul(req *types.MatchFoulReq) (resp *types.MatchSc
 				SnookerClearedColors:          snookerState.ClearedColors,
 				SnookerExpectedClearanceScore: snookerState.ExpectedClearanceScore,
 				SnookerClearanceCompleted:     snookerState.ClearanceCompleted,
+				MatchFormat:                   view.Snapshot.MatchFormat,
+				TargetWins:                    view.Snapshot.TargetWins,
+				CanChangeMatchFormat:          view.Snapshot.CanChangeMatchFormat,
 				Status:                        match.Status,
 			},
 		})

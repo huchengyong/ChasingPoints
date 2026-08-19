@@ -89,7 +89,7 @@ func TestResolveMatchSyncCapabilitiesAllowsEligibleSnookerRefereeFinish(t *testi
 	}
 }
 
-func TestMatchWebSocketPayloadKeepsFalseCanChangeSnookerFormat(t *testing.T) {
+func TestMatchWebSocketPayloadKeepsFalseFormatCapabilities(t *testing.T) {
 	for name, payload := range map[string]interface{}{
 		"score update": ScoreUpdateData{},
 		"sync":         MatchSyncData{},
@@ -101,6 +101,9 @@ func TestMatchWebSocketPayloadKeepsFalseCanChangeSnookerFormat(t *testing.T) {
 			}
 			if !strings.Contains(string(encoded), `"can_change_snooker_format":false`) {
 				t.Fatalf("false format capability must be explicit: %s", encoded)
+			}
+			if !strings.Contains(string(encoded), `"can_change_match_format":false`) {
+				t.Fatalf("false pool format capability must be explicit: %s", encoded)
 			}
 		})
 	}

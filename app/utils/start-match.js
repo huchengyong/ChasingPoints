@@ -1,4 +1,5 @@
 export const validateStartMatchPayload = (payload = {}) => {
+  const gameType = Number(payload.game_type || payload.gameType || 0)
   const opponentId = Number(payload.opponent_id || payload.opponentId || 0)
   if (!Number.isFinite(opponentId) || opponentId <= 0) {
     return '请选择有效的平台对手'
@@ -8,7 +9,7 @@ export const validateStartMatchPayload = (payload = {}) => {
   if (mode && !['practice', 'ranked'].includes(mode)) return '请选择有效的对局模式'
   if (visibility && !['private', 'public'].includes(visibility)) return '请选择有效的公开范围'
   if (mode === 'ranked' && visibility === 'private') return '排位赛必须公开展示'
-  if (Number(payload.game_type || payload.gameType || 0) === 1) {
+  if (gameType === 1) {
     const rulesVersion = Number(payload.snooker_rules_version || payload.snookerRulesVersion || 2)
     if (![1, 2].includes(rulesVersion)) return '不支持的斯诺克规则版本'
     if (rulesVersion === 2) {
@@ -24,6 +25,19 @@ export const validateStartMatchPayload = (payload = {}) => {
         if (!Number.isInteger(bestOfFrames) || bestOfFrames <= 0 || bestOfFrames % 2 === 0) return '斯诺克总局数必须为正奇数'
         if (![1, 2].includes(startingActor)) return '请选择首局开球方'
       }
+    }
+  }
+  if ([3, 4].includes(gameType)) {
+    const format = payload.match_format || payload.matchFormat || ''
+    const targetWins = Number(payload.target_wins ?? payload.targetWins ?? 0)
+    if (!format) {
+      if (targetWins !== 0) return '请选择有效的赛制'
+    } else if (format === 'free') {
+      if (targetWins !== 0) return '自由局数不能设置目标胜局'
+    } else if (format === 'race_to') {
+      if (!Number.isInteger(targetWins) || targetWins < 1 || targetWins > 65) return '抢N局目标必须在1至65之间'
+    } else if (format !== 'legacy') {
+      return '请选择有效的赛制'
     }
   }
   return ''
@@ -70,6 +84,10 @@ export const normalizePendingMatchContext = (storageKey = '', raw = '') => {
       ? Math.min(Math.max(Number(parsed?.snooker_target_wins) || 1, 1), 25)
       : 0
   }
+  if ([3, 4].includes(context.game_type)) {
+    context.match_format = 'free'
+    context.target_wins = 0
+  }
   const valid = context.opponent_id > 0 && context.game_type > 0 && (type !== 'challenge' || context.challenge_id > 0)
   return {
     valid,
@@ -106,6 +124,10 @@ export const buildStartMatchPayload = ({
     payload.snooker_rules_version = 2
     payload.snooker_format = 'free'
     payload.snooker_target_wins = 0
+  }
+  if ([3, 4].includes(payload.game_type)) {
+    payload.match_format = 'free'
+    payload.target_wins = 0
   }
   return payload
 }

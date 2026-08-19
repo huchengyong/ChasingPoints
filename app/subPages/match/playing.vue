@@ -136,6 +136,41 @@
 				</view>
 			</view>
 
+			<view v-if="isPoolMatchFormatVisible" class="snooker-v2-status snooker-format-overview pool-format-overview">
+				<view class="snooker-v2-status__row">
+					<text class="snooker-v2-status__phase">对局赛制</text>
+					<view
+						class="snooker-v2-status__format"
+						:class="{ editable: canChangeMatchFormat }"
+						@click="toggleMatchFormatEditor"
+					>
+						<text>{{ poolMatchFormatLabel }}</text>
+						<uni-icons v-if="canChangeMatchFormat" type="right" size="14" color="#667687"></uni-icons>
+					</view>
+				</view>
+				<text class="snooker-format-hint">{{ poolMatchFormatHint }}</text>
+				<view v-if="showMatchFormatEditor && canChangeMatchFormat" class="snooker-format-editor">
+					<view class="snooker-format-modes">
+						<button :class="['snooker-format-mode', { active: draftMatchFormat === POOL_MATCH_FORMAT_FREE }]" @click="selectMatchFormatMode(POOL_MATCH_FORMAT_FREE)">自由局数</button>
+						<button :class="['snooker-format-mode', { active: draftMatchFormat === POOL_MATCH_FORMAT_RACE_TO }]" @click="selectMatchFormatMode(POOL_MATCH_FORMAT_RACE_TO)">抢 N 局制</button>
+					</view>
+					<picker-view
+						v-if="draftMatchFormat === POOL_MATCH_FORMAT_RACE_TO"
+						class="snooker-target-picker"
+						:value="[draftTargetWins - 1]"
+						indicator-class="snooker-target-picker__indicator"
+						@change="handleMatchTargetChange"
+					>
+						<picker-view-column>
+							<view v-for="target in poolTargetOptions" :key="target" class="snooker-target-picker__item">抢 {{ target }} 局制</view>
+						</picker-view-column>
+					</picker-view>
+					<text class="snooker-format-preview">{{ draftPoolMatchFormatHint }}</text>
+					<text v-if="matchFormatError" class="snooker-format-error">{{ matchFormatError }}</text>
+					<button class="snooker-format-save" :disabled="matchFormatSaving" @click="saveMatchFormat">{{ matchFormatSaving ? '保存中...' : '保存赛制' }}</button>
+				</view>
+			</view>
+
 			<view v-if="viewerUi.showActionPanel" class="action-panel">
 					<view class="panel-header">
 						<text class="panel-title">记分操作</text>
@@ -475,8 +510,8 @@
 				>
 					开始下一局
 				</button>
-				<button v-if="viewerUi.showFinishButton" class="footer-btn btn-primary full-width" @click="handleFinishMatch">{{ isSnookerV2 && snookerFormat === SNOOKER_FORMAT_FREE ? '结束整场对局' : '结束本场对局' }}</button>
-				<button v-if="viewerUi.showFinishRequestButton" class="footer-btn btn-primary full-width" @click="handleRequestFinish">{{ isSnookerV2 && snookerFormat === SNOOKER_FORMAT_FREE ? '结束整场对局' : '发起结束确认' }}</button>
+				<button v-if="viewerUi.showFinishButton" class="footer-btn btn-primary full-width" @click="handleFinishMatch">{{ finishButtonLabel }}</button>
+				<button v-if="viewerUi.showFinishRequestButton" class="footer-btn btn-primary full-width" @click="handleRequestFinish">{{ finishRequestButtonLabel }}</button>
 			</view>
 			<button v-if="viewerUi.showUndoButton" class="undo-btn" @click="handleUndo">撤销</button>
 		</view>
@@ -507,7 +542,7 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { useRankStore } from '@/store/rank.js'
 import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
-import { matchScore, endRound, startNextRound, matchFoul, matchUndo, finishMatch, requestFinishMatch, confirmFinishMatch, disputeFinishMatch, withdrawFinishMatch, getMatchDetail, getCurrentMatch, getMatchRefereeQRCode, snookerStroke, snookerFrameAction, updateSnookerFormat } from '@/api/match.js'
+import { matchScore, endRound, startNextRound, matchFoul, matchUndo, finishMatch, requestFinishMatch, confirmFinishMatch, disputeFinishMatch, withdrawFinishMatch, getMatchDetail, getCurrentMatch, getMatchRefereeQRCode, snookerStroke, snookerFrameAction, updateSnookerFormat, updateMatchFormat } from '@/api/match.js'
 import { consumeResultNavigationGuard, getMatchHistoryPageUrl, getMatchHistoryTabUrl, shouldLeavePlayingPage } from '@/utils/match-navigation.js'
 import { buildMatchActionPayload } from '@/utils/match-action.js'
 import { usePageTheme } from '@/utils/page-theme.js'
@@ -549,6 +584,17 @@ import {
 	getSnookerFormatLabel,
 	normalizeSnookerMatchFormat
 } from '@/utils/snooker-match-format.js'
+import {
+	POOL_MATCH_FORMAT_FREE,
+	POOL_MATCH_FORMAT_LEGACY,
+	POOL_MATCH_FORMAT_RACE_TO,
+	POOL_TARGET_OPTIONS,
+	canFinishFreePoolMatch,
+	getPoolMatchFormatHint,
+	getPoolMatchFormatLabel,
+	isPoolMatchFormatGameType,
+	normalizePoolMatchFormat
+} from '@/utils/pool-match-format.js'
 
 // ========== 状态管理 ==========
 const userStore = useUserStore()
@@ -579,6 +625,14 @@ const draftSnookerFormat = ref(SNOOKER_FORMAT_FREE)
 const draftSnookerTargetWins = ref(3)
 const snookerFormatSaving = ref(false)
 const snookerFormatError = ref('')
+const matchFormat = ref('')
+const targetWins = ref(0)
+const canChangeMatchFormat = ref(false)
+const showMatchFormatEditor = ref(false)
+const draftMatchFormat = ref(POOL_MATCH_FORMAT_FREE)
+const draftTargetWins = ref(10)
+const matchFormatSaving = ref(false)
+const matchFormatError = ref('')
 const snookerV2State = ref(normalizeSnookerV2State())
 const showSnookerFoulEditor = ref(false)
 const snookerFoulPenalty = ref(4)
@@ -719,9 +773,26 @@ const currentRoundText = computed(() => {
 	return `第 ${currentRound.value} 局`
 })
 const snookerTargetOptions = SNOOKER_TARGET_OPTIONS
+const poolTargetOptions = POOL_TARGET_OPTIONS
 const snookerFormatLabel = computed(() => getSnookerFormatLabel(snookerFormat.value, snookerTargetWins.value))
 const snookerFormatHint = computed(() => getSnookerFormatHint(snookerFormat.value, snookerTargetWins.value))
 const draftSnookerFormatHint = computed(() => getSnookerFormatHint(draftSnookerFormat.value, draftSnookerTargetWins.value))
+const isPoolRoundWinGame = computed(() => isPoolMatchFormatGameType(gameType.value))
+const isPoolMatchFormatVisible = computed(() => isPoolRoundWinGame.value && matchFormat.value && matchFormat.value !== POOL_MATCH_FORMAT_LEGACY)
+const poolMatchFormatLabel = computed(() => getPoolMatchFormatLabel(matchFormat.value, targetWins.value))
+const poolMatchFormatHint = computed(() => getPoolMatchFormatHint(matchFormat.value, targetWins.value))
+const draftPoolMatchFormatHint = computed(() => getPoolMatchFormatHint(draftMatchFormat.value, draftTargetWins.value))
+const canFinishCurrentFreePoolMatch = computed(() => canFinishFreePoolMatch({
+	format: matchFormat.value,
+	myScore: myScore.value,
+	opponentScore: opponentScore.value
+}))
+const isFreeNormalFinish = computed(() => {
+	return (isSnookerV2.value && snookerFormat.value === SNOOKER_FORMAT_FREE) ||
+		(isPoolMatchFormatVisible.value && matchFormat.value === POOL_MATCH_FORMAT_FREE)
+})
+const finishButtonLabel = computed(() => isFreeNormalFinish.value ? '结束整场对局' : '结束本场对局')
+const finishRequestButtonLabel = computed(() => isFreeNormalFinish.value ? '结束整场对局' : '发起结束确认')
 const canStartNextSnookerFrameValue = computed(() => canStartNextSnookerFrame({
 	format: snookerFormat.value,
 	targetWins: snookerTargetWins.value,
@@ -1022,6 +1093,10 @@ const applyViewerCapabilities = (payload = {}) => {
 		canChangeSnookerFormat.value = payload.can_change_snooker_format
 		if (!canChangeSnookerFormat.value) showSnookerFormatEditor.value = false
 	}
+	if (typeof payload.can_change_match_format === 'boolean') {
+		canChangeMatchFormat.value = payload.can_change_match_format
+		if (!canChangeMatchFormat.value) showMatchFormatEditor.value = false
+	}
 }
 
 /**
@@ -1082,6 +1157,7 @@ const loadMatchInfo = async () => {
 			currentFrameMyScore.value = res.match.current_frame_my_score || 0
 			currentFrameOpponentScore.value = res.match.current_frame_opponent_score || 0
 			applySnookerRoundState(res.match)
+			applyPoolMatchFormatState(res.match)
 		}
 
 		const currentRes = await getCurrentMatch().catch(() => null)
@@ -1103,6 +1179,7 @@ const loadMatchInfo = async () => {
 			if (currentRes?.success && currentRes.match && currentRes.match.id === matchId.value) {
 				updateServerRevision(currentRes.match.server_revision)
 				currentRound.value = currentRes.match.current_round || currentRound.value
+				applyPoolMatchFormatState(currentRes.match)
 			}
 	} catch (error) {
 		console.error('[MatchPlaying] 加载对局信息失败', { matchId: matchId.value, error })
@@ -1235,6 +1312,25 @@ const applySnookerRoundState = (payload = {}) => {
 	}
 }
 
+const applyPoolMatchFormatState = (payload = {}) => {
+	if (!isPoolMatchFormatGameType(payload.game_type ?? gameType.value)) {
+		matchFormat.value = ''
+		targetWins.value = 0
+		canChangeMatchFormat.value = false
+		showMatchFormatEditor.value = false
+		return
+	}
+	if (payload.match_format !== undefined || payload.target_wins !== undefined) {
+		const normalizedFormat = normalizePoolMatchFormat(payload)
+		matchFormat.value = normalizedFormat.format
+		targetWins.value = normalizedFormat.targetWins
+	}
+	if (typeof payload.can_change_match_format === 'boolean') {
+		canChangeMatchFormat.value = payload.can_change_match_format
+		if (!canChangeMatchFormat.value) showMatchFormatEditor.value = false
+	}
+}
+
 const toggleSnookerFormatEditor = () => {
 	if (!canChangeSnookerFormat.value || snookerFormatSaving.value) return
 	showSnookerFormatEditor.value = !showSnookerFormatEditor.value
@@ -1282,6 +1378,55 @@ const saveSnookerFormat = async () => {
 	}
 }
 
+const toggleMatchFormatEditor = () => {
+	if (!canChangeMatchFormat.value || matchFormatSaving.value) return
+	showMatchFormatEditor.value = !showMatchFormatEditor.value
+	if (!showMatchFormatEditor.value) return
+	draftMatchFormat.value = matchFormat.value === POOL_MATCH_FORMAT_RACE_TO
+		? POOL_MATCH_FORMAT_RACE_TO
+		: POOL_MATCH_FORMAT_FREE
+	draftTargetWins.value = targetWins.value || 10
+	matchFormatError.value = ''
+}
+
+const selectMatchFormatMode = (format) => {
+	draftMatchFormat.value = format === POOL_MATCH_FORMAT_RACE_TO
+		? POOL_MATCH_FORMAT_RACE_TO
+		: POOL_MATCH_FORMAT_FREE
+	matchFormatError.value = ''
+}
+
+const handleMatchTargetChange = ({ detail }) => {
+	draftTargetWins.value = POOL_TARGET_OPTIONS[Number(detail?.value?.[0]) || 0] || 1
+}
+
+const saveMatchFormat = async () => {
+	if (!matchId.value || !canChangeMatchFormat.value || matchFormatSaving.value) return
+	matchFormatSaving.value = true
+	matchFormatError.value = ''
+	try {
+		const res = await updateMatchFormat({
+			match_id: matchId.value,
+			match_format: draftMatchFormat.value,
+			target_wins: draftMatchFormat.value === POOL_MATCH_FORMAT_RACE_TO ? draftTargetWins.value : 0,
+			base_revision: serverRevision.value
+		})
+		if (res?.snapshot) applyMatchSnapshot(res.snapshot)
+		else if (!res?.success) await loadMatchInfo()
+		if (!res?.success) {
+			matchFormatError.value = res?.message || '赛制保存失败，请重试'
+			return
+		}
+		showMatchFormatEditor.value = false
+		uni.showToast({ title: '赛制已更新', icon: 'none' })
+	} catch (error) {
+		console.error('[MatchPlaying] 更新逐局赛制失败', { matchId: matchId.value, error })
+		matchFormatError.value = '赛制保存失败，请重试'
+	} finally {
+		matchFormatSaving.value = false
+	}
+}
+
 const applyMatchSnapshot = (snapshot = {}) => {
 	if (!snapshot || typeof snapshot !== 'object') {
 		return
@@ -1308,6 +1453,7 @@ const applyMatchSnapshot = (snapshot = {}) => {
 		currentRound.value = snapshot.current_round
 	}
 	applySnookerRoundState(snapshot)
+	applyPoolMatchFormatState(snapshot)
 }
 
 const applyWriteResponse = (payload = {}) => {
@@ -1442,6 +1588,7 @@ const handleScoreUpdate = (data) => {
 	currentFrameStarted.value = data.current_frame_started !== false
 	currentRound.value = data.current_round
 	applySnookerRoundState(data)
+	applyPoolMatchFormatState(data)
 	pageLog('收到比分更新', {
 		matchId: data.match_id,
 		currentRound: data.current_round,
@@ -1472,6 +1619,7 @@ const handleRoundEnd = (data) => {
 	currentFrameStarted.value = data.current_frame_started !== false
 	currentRound.value = data.current_round
 	applySnookerRoundState(data)
+	applyPoolMatchFormatState(data)
 	pageLog('收到单局结束', {
 		matchId: data.match_id,
 		roundNumber: data.round_number,
@@ -1535,6 +1683,7 @@ const handleSync = (data) => {
 	currentFrameStarted.value = data.current_frame_started !== false
 	currentRound.value = data.current_round || 1
 	applySnookerRoundState(data)
+	applyPoolMatchFormatState(data)
 	hideSyncLoading()
 	pageLog('收到同步快照', {
 		matchId: data.match_id,
@@ -2142,6 +2291,7 @@ const handleFinishActionResponse = (res, successMessage) => {
 }
 
 const handleRequestFinish = () => {
+	if (isPoolMatchFormatVisible.value && matchFormat.value === POOL_MATCH_FORMAT_FREE && !canFinishCurrentFreePoolMatch.value) return
 	if (!ensureViewerCapability(canRequestFinish.value, '当前无法发起结束确认')) return
 	uni.showModal({
 		title: '发起结束确认',
@@ -2263,8 +2413,9 @@ const handleWithdrawFinish = async () => {
 	}
 
 const handleFinishMatch = () => {
-		if (isSnookerV2.value && snookerFormat.value === SNOOKER_FORMAT_FREE && !canFinishCurrentFreeMatch.value) return
-		if (!ensureViewerCapability(canFinish.value, '当前只有裁判可以结束对局')) return
+			if (isSnookerV2.value && snookerFormat.value === SNOOKER_FORMAT_FREE && !canFinishCurrentFreeMatch.value) return
+			if (isPoolMatchFormatVisible.value && matchFormat.value === POOL_MATCH_FORMAT_FREE && !canFinishCurrentFreePoolMatch.value) return
+			if (!ensureViewerCapability(canFinish.value, '当前只有裁判可以结束对局')) return
 		const finishAction = gameType.value === 1
 			? resolveSnookerFinishMatchAction({
 				currentFrameStarted: currentFrameStarted.value,

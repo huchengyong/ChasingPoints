@@ -134,6 +134,23 @@ func (l *FinishMatchLogic) finishMatchImmediately(req *types.FinishMatchReq, for
 			OpponentScore:  scoreView.OpponentScore,
 		}, nil
 	}
+	if model.IsFlexiblePoolMatch(match) && !poolNormalFinishEligible(match) {
+		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
+		if stateErr != nil {
+			return &types.FinishMatchResp{Success: false, Accepted: false, Message: "加载对局快照失败"}, nil
+		}
+		scoreView := buildMatchWriteScoreView(userId, match)
+		return &types.FinishMatchResp{
+			Success:        false,
+			Accepted:       false,
+			Message:        "当前赛制尚未满足正常结束条件",
+			ClientActionId: req.ClientActionId,
+			ServerRevision: view.Snapshot.ServerRevision,
+			Snapshot:       view.Snapshot,
+			MyScore:        scoreView.MyScore,
+			OpponentScore:  scoreView.OpponentScore,
+		}, nil
+	}
 	if !force && shouldRequestRankedFinish(match, userId) {
 		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
 		if stateErr != nil {
@@ -304,15 +321,18 @@ func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, user
 		ws.GlobalHub.BroadcastToMatch(match.Id, &ws.Message{
 			Type: "match_end",
 			Data: map[string]interface{}{
-				"match_id":        match.Id,
-				"server_revision": view.Snapshot.ServerRevision,
-				"my_score":        match.MyScore,
-				"opponent_score":  match.OpponentScore,
-				"player1_score":   match.MyScore,
-				"player2_score":   match.OpponentScore,
-				"status":          match.Status,
-				"result":          result,
-				"match_mode":      model.NormalizeMatchMode(match.MatchMode),
+				"match_id":                match.Id,
+				"server_revision":         view.Snapshot.ServerRevision,
+				"my_score":                match.MyScore,
+				"opponent_score":          match.OpponentScore,
+				"player1_score":           match.MyScore,
+				"player2_score":           match.OpponentScore,
+				"status":                  match.Status,
+				"result":                  result,
+				"match_mode":              model.NormalizeMatchMode(match.MatchMode),
+				"match_format":            view.Snapshot.MatchFormat,
+				"target_wins":             view.Snapshot.TargetWins,
+				"can_change_match_format": view.Snapshot.CanChangeMatchFormat,
 			},
 		})
 	}

@@ -222,6 +222,9 @@ func handleFinishAction(ctx context.Context, svcCtx *svc.ServiceContext, req *ty
 	if current, findErr := svcCtx.MatchModel.FindById(req.MatchId); findErr == nil && current != nil && isSnookerV2Match(current) && actionType == "request" && !snookerNormalFinishEligible(current) {
 		return buildFinishActionFailureResponse(svcCtx, userId, current, req.ClientActionId, "当前斯诺克赛制尚未满足正常结束条件"), nil
 	}
+	if current, findErr := svcCtx.MatchModel.FindById(req.MatchId); findErr == nil && current != nil && model.IsFlexiblePoolMatch(current) && actionType == "request" && !poolNormalFinishEligible(current) {
+		return buildFinishActionFailureResponse(svcCtx, userId, current, req.ClientActionId, "当前赛制尚未满足正常结束条件"), nil
+	}
 
 	var match *model.Match
 	var revision int64

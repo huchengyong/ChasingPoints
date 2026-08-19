@@ -66,6 +66,10 @@ func resolveMatchViewerCapabilities(match *model.Match, userId int64) matchViewe
 		capabilities.CanFinish = false
 		capabilities.CanRequestFinish = false
 	}
+	if model.IsFlexiblePoolMatch(match) && match.FinishState != model.FinishStatePendingConfirmation && !poolNormalFinishEligible(match) {
+		capabilities.CanFinish = false
+		capabilities.CanRequestFinish = false
+	}
 
 	return capabilities
 }
