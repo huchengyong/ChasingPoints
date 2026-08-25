@@ -150,9 +150,9 @@ test('fetchFriendHomepageData rejects when history request fails so callers can 
   )
 })
 
-test('friend homepage template keeps a dedicated loadFailed branch instead of falling through to empty stats', () => {
+test('friend homepage template keeps a dedicated error-state branch instead of falling through to empty stats', () => {
   const source = readFileSync(new URL('../subPages/social/friendHomepage.vue', import.meta.url), 'utf8')
 
-  assert.match(source, /v-else-if="loadFailed"/)
-  assert.match(source, /重新加载/)
+  assert.match(source, /v-else-if="friendHomePageError"/)
+  assert.match(source, /handleFriendHomeErrorAction/)
 })

@@ -4,6 +4,16 @@
 
 export const SESSION_INVALID_REASON = 'SESSION_INVALID'
 
+export const REQUEST_ERROR_CATEGORY = Object.freeze({
+  NETWORK: 'network',
+  SESSION: 'session',
+  PERMISSION: 'permission',
+  NOT_FOUND: 'not-found',
+  RATE_LIMIT: 'rate-limit',
+  SERVER: 'server',
+  BUSINESS: 'business'
+})
+
 export const isSessionInvalidResponse = (data = {}) => (
   Boolean(data && typeof data === 'object' && data.reason === SESSION_INVALID_REASON)
 )
@@ -24,13 +34,22 @@ export const resolveUnauthorizedAction = ({
 }
 
 export const classifyRequestError = ({ statusCode = 0, data = null, network = false } = {}) => {
-  if (network) return 'network'
-  if (statusCode === 401 && isSessionInvalidResponse(data)) return 'session'
-  if (statusCode === 403) return 'forbidden'
-  if (statusCode >= 500) return 'server'
-  if (statusCode >= 400) return 'business'
-  return 'business'
+  if (network) return REQUEST_ERROR_CATEGORY.NETWORK
+  if (statusCode === 401 || isSessionInvalidResponse(data)) return REQUEST_ERROR_CATEGORY.SESSION
+  if (statusCode === 403) return REQUEST_ERROR_CATEGORY.PERMISSION
+  if (statusCode === 404) return REQUEST_ERROR_CATEGORY.NOT_FOUND
+  if (statusCode === 429) return REQUEST_ERROR_CATEGORY.RATE_LIMIT
+  if (statusCode >= 500) return REQUEST_ERROR_CATEGORY.SERVER
+  return REQUEST_ERROR_CATEGORY.BUSINESS
 }
+
+export const isHandledRequestError = (error) => Boolean(error?._isHandled)
+
+export const isSupersededRequestError = (error) => Boolean(error?._isSuperseded)
+
+export const shouldIgnoreRequestError = (error) => (
+  isHandledRequestError(error) || isSupersededRequestError(error)
+)
 
 export const createRequestError = ({ statusCode = 0, data = null, message = '请求失败', category = 'business', handled = false, silent = false, superseded = false } = {}) => {
   const error = new Error(message)

@@ -8,6 +8,10 @@
 
 		<!-- 请求列表 -->
 		<view v-else-if="requestList.length > 0" class="request-list">
+			<view v-if="requestRefreshError" class="refresh-error-banner">
+				<text>{{ requestRefreshError.description }}</text>
+				<text class="refresh-error-action" @tap="retryRequests">重试</text>
+			</view>
 			<view
 				v-for="item in requestList"
 				:key="item.id"
@@ -52,8 +56,15 @@
 			</view>
 		</view>
 
+		<view v-else-if="requestPageError" class="empty-state error-state">
+			<uni-icons type="info" size="48" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+			<text class="empty-text">{{ requestPageError.title }}</text>
+			<text class="empty-hint">{{ requestPageError.description }}</text>
+			<button class="retry-btn" @tap="handleRequestErrorAction">{{ requestPageError.actionText }}</button>
+		</view>
+
 		<!-- 空状态 -->
-		<view v-else class="empty-state">
+		<view v-else-if="requestState.status === ASYNC_PAGE_STATUS.EMPTY" class="empty-state">
 			<text class="empty-icon">📬</text>
 			<text class="empty-text">暂无好友请求</text>
 		</view>
@@ -61,7 +72,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onLoad, onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { getFriendRequests, acceptFriendRequest, rejectFriendRequest } from '@/api/friend.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
@@ -69,6 +80,16 @@ import { useUserStore } from '@/store/user.js'
 import { formatRelativeTime } from '@/utils/format.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 
@@ -80,9 +101,23 @@ const total = ref(0)
 const hasMore = ref(false)
 const friendRequestStore = useFriendRequestStore()
 const userStore = useUserStore()
+const requestState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: []
+}))
 const latestRequestId = ref(0)
 const requestedIdentityKey = ref('')
 const loadedIdentityKey = ref('')
+const requestPageError = computed(() => (
+	requestState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(requestState.value.error, { resource: '好友申请' })
+		: null
+))
+const requestRefreshError = computed(() => (
+	requestState.value.refreshError
+		? resolveAsyncPageErrorFeedback(requestState.value.refreshError, { resource: '好友申请' })
+		: null
+))
 
 const getReadIdentity = () => ({
 	userId: userStore.userId,
@@ -104,15 +139,22 @@ const formatRequestTime = (dateTime) => {
 const loadData = async (isRefresh = false) => {
 	const requestId = latestRequestId.value + 1
 	const requestIdentityKey = currentIdentityKey()
+	const nextState = beginAsyncPageLoad(requestState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: []
+	})
+	const pageRequest = getAsyncPageRequest(nextState)
 	latestRequestId.value = requestId
 	requestedIdentityKey.value = requestIdentityKey
+	requestState.value = nextState
 	if (isRefresh) {
 		page.value = 1
-		loading.value = true
 	}
+	loading.value = nextState.status === ASYNC_PAGE_STATUS.LOADING
 	try {
 		const res = await getFriendRequests({ page: page.value, page_size: pageSize })
-		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
+		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey || requestState.value.requestId !== pageRequest.requestId || requestState.value.authGeneration !== pageRequest.authGeneration) return
+		if (!res?.success) throw createRequestError({ message: res?.message || '加载好友申请失败', category: 'business' })
 		const list = res.list || res || []
 		if (isRefresh) {
 			requestList.value = list
@@ -123,10 +165,11 @@ const loadData = async (isRefresh = false) => {
 		friendRequestStore.setPendingCount(total.value, getReadIdentity())
 		hasMore.value = requestList.value.length < total.value
 		loadedIdentityKey.value = requestIdentityKey
+		requestState.value = resolveAsyncPageLoad(requestState.value, pageRequest, { data: requestList.value })
 	} catch (e) {
 		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
 		requestedIdentityKey.value = ''
-		console.error('加载好友请求失败:', e)
+		requestState.value = rejectAsyncPageLoad(requestState.value, pageRequest, e)
 	} finally {
 		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
 		loading.value = false
@@ -138,6 +181,16 @@ const loadMore = () => {
 	if (!hasMore.value) return
 	page.value++
 	loadData(false)
+}
+
+const retryRequests = () => loadData(true)
+
+const handleRequestErrorAction = () => {
+	if (requestState.value.error?.category === 'permission' || requestState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryRequests()
 }
 
 const handleAccept = async (item) => {
@@ -185,6 +238,7 @@ onShow(() => {
 		requestList.value = []
 		page.value = 1
 		loading.value = false
+		requestState.value = createAsyncPageState({ authGeneration: userStore.authGeneration, data: [] })
 		loadData(true)
 	}
 })
@@ -378,6 +432,42 @@ onPullDownRefresh(() => {
 		font-size: 28rpx;
 		color: #9A8C67;
 	}
+}
+
+.retry-btn {
+	min-width: 200rpx;
+	height: 76rpx;
+	line-height: 76rpx;
+	margin: 16rpx 0 0;
+	padding: 0 32rpx;
+	border-radius: 38rpx;
+	background: #E0AE12;
+	color: #ffffff;
+	font-size: 28rpx;
+	font-weight: 600;
+}
+
+.retry-btn::after {
+	display: none;
+}
+
+.refresh-error-banner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20rpx;
+	margin-bottom: 20rpx;
+	padding: 18rpx 22rpx;
+	border-radius: 14rpx;
+	background: rgba(224, 174, 18, 0.12);
+	color: #8a5b00;
+	font-size: 24rpx;
+}
+
+.refresh-error-action {
+	flex-shrink: 0;
+	color: #a86f00;
+	font-weight: 600;
 }
 
 .requests-page.dark-mode {

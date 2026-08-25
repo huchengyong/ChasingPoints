@@ -302,9 +302,9 @@ test('honor wall load errors are classified by request error category', () => {
     category: classifyRequestError({ statusCode: 403, data: forbiddenPayload })
   })
   const forbidden = resolveHonorWallLoadError({ error: forbiddenError })
-  assert.equal(forbiddenError.category, 'forbidden')
+  assert.equal(forbiddenError.category, 'permission')
   assert.deepEqual(forbiddenError.responseData, forbiddenPayload)
-  assert.equal(forbidden.kind, 'forbidden')
+  assert.equal(forbidden.kind, 'permission')
   assert.equal(forbidden.showRetry, false)
   assert.doesNotMatch(forbidden.description, /网络/)
 

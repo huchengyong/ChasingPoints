@@ -115,6 +115,14 @@
   color: #6E6242;
 }
 
+.error-desc {
+  max-width: 560rpx;
+  color: #9A8C67;
+  font-size: 24rpx;
+  line-height: 1.6;
+  text-align: center;
+}
+
 .empty-hint {
   margin-top: 12rpx;
   font-size: 24rpx;
@@ -339,6 +347,25 @@
   padding: 32rpx 0;
 }
 
+.refresh-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin: 20rpx 24rpx;
+  padding: 18rpx 22rpx;
+  border-radius: 14rpx;
+  background: rgba(224, 174, 18, 0.12);
+  color: #8a5b00;
+  font-size: 24rpx;
+}
+
+.refresh-error-action {
+  flex-shrink: 0;
+  color: #a86f00;
+  font-weight: 600;
+}
+
 .load-more-text {
   font-size: 24rpx;
   color: #9F926E;
@@ -394,6 +421,7 @@
   .loading-text,
   .empty-text,
   .error-text,
+  .error-desc,
   .hint-text,
   .empty-hint,
   .load-more-text,

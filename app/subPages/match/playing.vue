@@ -523,12 +523,18 @@
 				<view v-if="refereeQrcodeLoading" class="referee-modal-loading">
 					<text>生成中...</text>
 				</view>
-				<image
-					v-else-if="refereeQrcodeUrl"
+				<canvas
+					v-else-if="refereeQrcodeContent"
+					canvas-id="match-referee-qrcode"
+					id="match-referee-qrcode"
 					class="referee-qrcode-image"
-					:src="refereeQrcodeUrl"
-					mode="aspectFit"
+					:width="240"
+					:height="240"
 				/>
+				<view v-else-if="refereeQrcodeError" class="referee-modal-loading">
+					<text>{{ refereeQrcodeError }}</text>
+					<button class="referee-modal-close" @click="openRefereeQrModal">刷新二维码</button>
+				</view>
 				<text class="referee-modal-hint">裁判加入后，选手端会自动切换为只读比分视图。</text>
 				<button class="referee-modal-close" @click="closeRefereeQrModal">关闭</button>
 			</view>
@@ -537,14 +543,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { onHide, onLoad, onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { useRankStore } from '@/store/rank.js'
 import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import { matchScore, endRound, startNextRound, matchFoul, matchUndo, finishMatch, requestFinishMatch, confirmFinishMatch, disputeFinishMatch, withdrawFinishMatch, getMatchDetail, getCurrentMatch, getMatchRefereeQRCode, snookerStroke, snookerFrameAction, updateSnookerFormat, updateMatchFormat } from '@/api/match.js'
 import { consumeResultNavigationGuard, getMatchHistoryPageUrl, getMatchHistoryTabUrl, shouldLeavePlayingPage } from '@/utils/match-navigation.js'
 import { buildMatchActionPayload } from '@/utils/match-action.js'
+import { renderLocalQRCode } from '@/utils/local-qrcode.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolvePlayingViewerUi } from '@/utils/match-role-view.js'
 import {
@@ -662,7 +669,8 @@ const finishRequestedBy = ref(0)
 const lastAction = ref(null)
 const showRefereeQrModal = ref(false)
 const refereeQrcodeLoading = ref(false)
-const refereeQrcodeUrl = ref('')
+const refereeQrcodeContent = ref('')
+const refereeQrcodeError = ref('')
 const statusBarHeight = ref(0)
 const isPlayer1 = ref(true) // 是否是对局创建者(用于视角判断)
 const isSyncing = ref(false) // 比分同步中状态
@@ -986,9 +994,14 @@ onMounted(async () => {
 })
 
 onShow(() => {
+	matchWS.setTargetActive(true)
 	if (wsHandlersReady && matchId.value) {
 		resumeMatchIfStillActive()
 	}
+})
+
+onHide(() => {
+	matchWS.setTargetActive(false)
 })
 
 const resumeMatchIfStillActive = async () => {
@@ -1232,15 +1245,28 @@ const openRefereeQrModal = async () => {
 
 	showRefereeQrModal.value = true
 	refereeQrcodeLoading.value = true
+	refereeQrcodeContent.value = ''
+	refereeQrcodeError.value = ''
 	try {
 		const res = await getMatchRefereeQRCode({ match_id: matchId.value })
 		if (res?.success && res.qrcode_data) {
-			refereeQrcodeUrl.value = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(res.qrcode_data)}`
+			refereeQrcodeContent.value = res.qrcode_data
+			refereeQrcodeLoading.value = false
+			await nextTick()
+			renderLocalQRCode({
+				canvasId: 'match-referee-qrcode',
+				content: refereeQrcodeContent.value,
+				size: 240,
+				uniApi: uni
+			})
 			return
 		}
+		refereeQrcodeError.value = res?.message || '生成裁判码失败'
 		uni.showToast({ title: res?.message || '生成裁判码失败', icon: 'none' })
 	} catch (error) {
-		console.error('[MatchPlaying] 生成裁判码失败', error)
+		console.error('[MatchPlaying] 生成本地裁判码失败', error)
+		refereeQrcodeContent.value = ''
+		refereeQrcodeError.value = '生成裁判码失败，请点击刷新'
 		uni.showToast({ title: '生成裁判码失败', icon: 'none' })
 	} finally {
 		refereeQrcodeLoading.value = false
@@ -1249,6 +1275,8 @@ const openRefereeQrModal = async () => {
 
 const closeRefereeQrModal = () => {
 	showRefereeQrModal.value = false
+	refereeQrcodeContent.value = ''
+	refereeQrcodeError.value = ''
 }
 
 const ensureViewerCapability = (allowed, message) => {

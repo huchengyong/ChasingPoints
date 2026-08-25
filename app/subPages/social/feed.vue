@@ -30,6 +30,10 @@
 			@refresherrefresh="onRefresh"
 		>
 			<view v-if="postList.length > 0" class="post-list">
+				<view v-if="feedRefreshError" class="refresh-error-banner">
+					<text>{{ feedRefreshError.description }}</text>
+					<text class="refresh-error-action" @tap="retryFeed">重试</text>
+				</view>
 				<view
 					v-for="item in postList"
 					:key="item.id"
@@ -136,8 +140,15 @@
 				</view>
 			</view>
 
+			<view v-else-if="feedPageError" class="empty-state error-state">
+				<uni-icons type="info" size="48" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+				<text class="empty-title">{{ feedPageError.title }}</text>
+				<text class="empty-sub">{{ feedPageError.description }}</text>
+				<button class="error-action" @tap="handleFeedErrorAction">{{ feedPageError.actionText }}</button>
+			</view>
+
 			<!-- 空状态 -->
-			<view v-else class="empty-state">
+			<view v-else-if="feedState.status === ASYNC_PAGE_STATUS.EMPTY" class="empty-state">
 				<text class="empty-icon">{{ emptyState.icon }}</text>
 				<text class="empty-title">{{ emptyState.title }}</text>
 				<text class="empty-sub">{{ emptyState.desc }}</text>
@@ -147,7 +158,7 @@
 			</view>
 
 			<!-- 加载更多指示 -->
-			<view v-if="loadingMore" class="loading-more">
+			<view v-if="feedState.status !== ASYNC_PAGE_STATUS.ERROR && loadingMore" class="loading-more">
 				<text class="loading-more-text">加载更多...</text>
 			</view>
 			<view v-if="!hasMore && postList.length > 0" class="no-more">
@@ -171,6 +182,16 @@ import { useUserStore } from '@/store/user.js'
 import { formatRelativeTime } from '@/utils/format.js'
 import { filterReportPosts, resolveFeedTab, resolveSocialEmptyState, SOCIAL_TABS } from '@/utils/social-entry.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const tabs = SOCIAL_TABS
 const { isDarkMode } = usePageTheme()
@@ -186,26 +207,71 @@ const pageSize = 10
 const total = ref(0)
 const hasMore = ref(false)
 const shouldRefreshOnShow = ref(false)
-
+const feedState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: []
+}))
 
 const emptyState = computed(() => resolveSocialEmptyState({
 	tab: currentTab.value,
 	isLoggedIn: userStore.isLoggedIn
 }))
+const feedPageError = computed(() => (
+	feedState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(feedState.value.error, { resource: '动态' })
+		: null
+))
+const feedRefreshError = computed(() => (
+	feedState.value.refreshError
+		? resolveAsyncPageErrorFeedback(feedState.value.refreshError, { resource: '动态' })
+		: null
+))
+
+const currentIdentityKey = () => `${userStore.userId}:${userStore.authGeneration}`
 
 const switchTab = (tab) => {
 	if (currentTab.value === tab) return
 	currentTab.value = tab
+	postList.value = []
+	page.value = 1
+	total.value = 0
+	hasMore.value = false
+	feedState.value = {
+		...feedState.value,
+		status: ASYNC_PAGE_STATUS.IDLE,
+		requestId: feedState.value.requestId + 1,
+		data: [],
+		hasData: false,
+		error: null,
+		refreshError: null
+	}
 	loadData(true)
 }
 
 const loadData = async (isRefresh = false) => {
+	if (feedState.value.status === ASYNC_PAGE_STATUS.LOADING || feedState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
+	const requestIdentityKey = currentIdentityKey()
+	const previousPage = page.value
+	if (feedState.value.authGeneration !== userStore.authGeneration) {
+		postList.value = []
+		page.value = 1
+		total.value = 0
+		hasMore.value = false
+		feedState.value = createAsyncPageState({ authGeneration: userStore.authGeneration, data: [] })
+	}
 	if (isRefresh) {
 		page.value = 1
-		loading.value = true
 	}
+	const nextState = beginAsyncPageLoad(feedState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: []
+	})
+	const pageRequest = getAsyncPageRequest(nextState)
+	feedState.value = nextState
+	loading.value = nextState.status === ASYNC_PAGE_STATUS.LOADING
 	try {
 		const { list, total: resolvedTotal } = await loadPostsByTab(currentTab.value)
+		if (currentIdentityKey() !== requestIdentityKey || feedState.value.requestId !== pageRequest.requestId || feedState.value.authGeneration !== pageRequest.authGeneration) return
 		if (isRefresh) {
 			postList.value = list
 		} else {
@@ -213,9 +279,15 @@ const loadData = async (isRefresh = false) => {
 		}
 		total.value = resolvedTotal
 		hasMore.value = postList.value.length < total.value
+		feedState.value = resolveAsyncPageLoad(feedState.value, pageRequest, { data: postList.value })
 	} catch (e) {
-		console.error('加载动态失败:', e)
+		if (currentIdentityKey() !== requestIdentityKey || feedState.value.requestId !== pageRequest.requestId || feedState.value.authGeneration !== pageRequest.authGeneration) return
+		if (!isRefresh && previousPage > 1) {
+			page.value = previousPage - 1
+		}
+		feedState.value = rejectAsyncPageLoad(feedState.value, pageRequest, e)
 	} finally {
+		if (currentIdentityKey() !== requestIdentityKey || feedState.value.requestId !== pageRequest.requestId || feedState.value.authGeneration !== pageRequest.authGeneration) return
 		loading.value = false
 		refreshing.value = false
 		loadingMore.value = false
@@ -233,19 +305,27 @@ const normalizePost = (item) => ({
 	commentLoading: false
 })
 
+const ensurePostListResponse = (res, message) => {
+	if (!res || res.success === false) {
+		throw createRequestError({ message: res?.message || message, category: 'business' })
+	}
+	return res
+}
+
 const loadPostsByTab = async (tab) => {
 	if (tab === 'reports') {
 		const requests = [
-			getPublicPosts({ page: page.value, page_size: pageSize }).catch(() => ({ list: [], total: 0 }))
+			getPublicPosts({ page: page.value, page_size: pageSize })
 		]
 
 		if (userStore.isLoggedIn) {
-			requests.push(getPostList({ page: page.value, page_size: pageSize }).catch(() => ({ list: [], total: 0 })))
+			requests.push(getPostList({ page: page.value, page_size: pageSize }))
 		}
 
 		const responses = await Promise.all(requests)
+		const verifiedResponses = responses.map((res) => ensurePostListResponse(res, '加载战报动态失败'))
 		const list = filterReportPosts(
-			responses.flatMap((res) => (res.list || res || []).map(normalizePost))
+			verifiedResponses.flatMap((res) => (res.list || []).map(normalizePost))
 		).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
 		return {
 			list,
@@ -262,10 +342,10 @@ const loadPostsByTab = async (tab) => {
 	}
 
 	const api = feedTab === 'following' ? getPostList : getPublicPosts
-	const res = await api({ page: page.value, page_size: pageSize })
+	const res = ensurePostListResponse(await api({ page: page.value, page_size: pageSize }), '加载动态失败')
 	return {
-		list: (res.list || res || []).map(normalizePost),
-		total: res.total || (res.list || res || []).length
+		list: (res.list || []).map(normalizePost),
+		total: res.total || (res.list || []).length
 	}
 }
 
@@ -276,15 +356,26 @@ const parseImages = (images) => {
 }
 
 const onRefresh = () => {
+	if (feedState.value.status === ASYNC_PAGE_STATUS.LOADING || feedState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
 	refreshing.value = true
 	loadData(true)
 }
 
 const loadMore = () => {
-	if (!hasMore.value || loadingMore.value || currentTab.value === 'reports') return
+	if (!hasMore.value || loadingMore.value || currentTab.value === 'reports' || feedState.value.status === ASYNC_PAGE_STATUS.LOADING || feedState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
 	loadingMore.value = true
 	page.value++
 	loadData(false)
+}
+
+const retryFeed = () => loadData(true)
+
+const handleFeedErrorAction = () => {
+	if (feedState.value.error?.category === 'permission' || feedState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryFeed()
 }
 
 const toggleLike = async (item) => {
@@ -490,6 +581,42 @@ onShow(() => {
 		font-size: 28rpx;
 		color: #9A8C67;
 	}
+}
+
+.refresh-error-banner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20rpx;
+	margin-bottom: 20rpx;
+	padding: 18rpx 22rpx;
+	border-radius: 14rpx;
+	background: rgba(224, 174, 18, 0.12);
+	color: #8a5b00;
+	font-size: 24rpx;
+}
+
+.refresh-error-action {
+	flex-shrink: 0;
+	color: #a86f00;
+	font-weight: 600;
+}
+
+.error-action {
+	min-width: 200rpx;
+	height: 76rpx;
+	line-height: 76rpx;
+	margin: 16rpx 0 0;
+	padding: 0 32rpx;
+	border-radius: 38rpx;
+	background: #E0AE12;
+	color: #ffffff;
+	font-size: 28rpx;
+	font-weight: 600;
+}
+
+.error-action::after {
+	display: none;
 }
 
 .feed-scroll {

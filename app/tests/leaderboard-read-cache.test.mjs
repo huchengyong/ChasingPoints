@@ -149,7 +149,7 @@ test('home and ranking pages use the cached aggregate leaderboard reads', () => 
   const eventListSource = readAppFile('subPages/tournament/index.vue')
   const eventDetailSource = readAppFile('subPages/tournament/detail.vue')
 
-  assert.match(homeSource, /const homeLoading = ref\(false\)/)
+  assert.match(homeSource, /const homeLoading = computed\(\(\) => homeState\.value\.status === ASYNC_PAGE_STATUS\.LOADING\)/)
   assert.match(homeSource, /publicReadStore\.loadLeaderboardSummary\(/)
   assert.doesNotMatch(homeSource, /getLeaderboard\(/)
   assert.match(rankingSource, /const publicReadStore = usePublicReadStore\(\)/)

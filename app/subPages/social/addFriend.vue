@@ -26,9 +26,16 @@
 			<text class="loading-text">搜索中...</text>
 		</view>
 
+		<view v-else-if="searchPageError" class="error-state">
+			<uni-icons type="info" size="48" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+			<text class="error-title">{{ searchPageError.title }}</text>
+			<text class="error-text">{{ searchPageError.description }}</text>
+			<button class="retry-btn" @tap="handleSearchErrorAction">{{ searchPageError.actionText }}</button>
+		</view>
+
 		<!-- 搜索结果 -->
 		<view v-else-if="hasSearched" class="result-list">
-			<view v-if="resultList.length === 0" class="empty-result">
+			<view v-if="searchState.status === ASYNC_PAGE_STATUS.EMPTY" class="empty-result">
 				<text class="empty-text">未找到相关用户</text>
 			</view>
 			<view
@@ -78,17 +85,40 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { searchUser, sendFriendRequest } from '@/api/friend.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { useUserStore } from '@/store/user.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
+const userStore = useUserStore()
 
 const keyword = ref('')
 const searching = ref(false)
 const hasSearched = ref(false)
 const resultList = ref([])
+const searchState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: []
+}))
+const searchPageError = computed(() => (
+	searchState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(searchState.value.error, { resource: '搜索结果' })
+		: null
+))
+
+const currentIdentityKey = () => `${userStore.userId}:${userStore.authGeneration}`
 
 const doSearch = async () => {
 	const kw = keyword.value.trim()
@@ -96,15 +126,30 @@ const doSearch = async () => {
 		uni.showToast({ title: '请输入搜索内容', icon: 'none' })
 		return
 	}
-	searching.value = true
 	hasSearched.value = true
+	const requestIdentityKey = currentIdentityKey()
+	if (searchState.value.authGeneration !== userStore.authGeneration) {
+		resultList.value = []
+		searchState.value = createAsyncPageState({ authGeneration: userStore.authGeneration, data: [] })
+	}
+	const nextState = beginAsyncPageLoad(searchState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: []
+	})
+	const pageRequest = getAsyncPageRequest(nextState)
+	searchState.value = nextState
+	searching.value = true
 	try {
 		const res = await searchUser({ keyword: kw, page: 1, page_size: 20 })
-		resultList.value = res.list || res || []
+		if (currentIdentityKey() !== requestIdentityKey || searchState.value.requestId !== pageRequest.requestId || searchState.value.authGeneration !== pageRequest.authGeneration) return
+		if (!res || res.success === false) throw createRequestError({ message: res?.message || '搜索用户失败', category: 'business' })
+		resultList.value = res.list || []
+		searchState.value = resolveAsyncPageLoad(searchState.value, pageRequest, { data: resultList.value })
 	} catch (e) {
-		console.error('搜索用户失败:', e)
-		resultList.value = []
+		if (currentIdentityKey() !== requestIdentityKey || searchState.value.requestId !== pageRequest.requestId || searchState.value.authGeneration !== pageRequest.authGeneration) return
+		searchState.value = rejectAsyncPageLoad(searchState.value, pageRequest, e)
 	} finally {
+		if (currentIdentityKey() !== requestIdentityKey || searchState.value.requestId !== pageRequest.requestId || searchState.value.authGeneration !== pageRequest.authGeneration) return
 		searching.value = false
 	}
 }
@@ -113,6 +158,25 @@ const clearSearch = () => {
 	keyword.value = ''
 	hasSearched.value = false
 	resultList.value = []
+	searchState.value = {
+		...searchState.value,
+		status: ASYNC_PAGE_STATUS.IDLE,
+		requestId: searchState.value.requestId + 1,
+		data: [],
+		hasData: false,
+		error: null,
+		refreshError: null
+	}
+}
+
+const retrySearch = () => doSearch()
+
+const handleSearchErrorAction = () => {
+	if (searchState.value.error?.category === 'permission' || searchState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retrySearch()
 }
 
 const handleAdd = async (item) => {
@@ -271,6 +335,45 @@ const handleAdd = async (item) => {
 	}
 }
 
+.error-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 180rpx 48rpx 0;
+	gap: 16rpx;
+	box-sizing: border-box;
+	text-align: center;
+}
+
+.error-title {
+	font-size: 32rpx;
+	font-weight: 600;
+	color: #231C0B;
+}
+
+.error-text {
+	font-size: 26rpx;
+	line-height: 1.7;
+	color: #6E6242;
+}
+
+.retry-btn {
+	min-width: 200rpx;
+	height: 76rpx;
+	line-height: 76rpx;
+	margin: 16rpx 0 0;
+	padding: 0 32rpx;
+	border-radius: 38rpx;
+	background: #E0AE12;
+	color: #ffffff;
+	font-size: 28rpx;
+	font-weight: 600;
+}
+
+.retry-btn::after {
+	display: none;
+}
+
 .add-friend-page.dark-mode {
 	background: #141109;
 
@@ -305,8 +408,13 @@ const handleAdd = async (item) => {
 	.loading-text,
 	.empty-text,
 	.user-id,
-	.guide-text {
+	.guide-text,
+	.error-text {
 		color: #9f926e;
+	}
+
+	.error-title {
+		color: #fff7e1;
 	}
 }
 </style>

@@ -27,7 +27,14 @@
       @refresherrefresh="onRefresh"
     >
       <view class="page-body">
-        <view v-if="homeLoading && !hasContent" class="hero-skeleton">
+        <view v-if="homePageError && !hasContent" class="home-load-error">
+          <uni-icons type="info" size="48" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+          <text class="home-load-error__title">{{ homePageError.title }}</text>
+          <text class="home-load-error__desc">{{ homePageError.description }}</text>
+          <button class="home-load-error__action" @tap="handleHomeErrorAction">{{ homePageError.actionText }}</button>
+        </view>
+
+        <view v-else-if="homeLoading && !hasContent" class="hero-skeleton">
           <view class="skeleton-line skeleton-title"></view>
           <view class="skeleton-line skeleton-subtitle"></view>
           <view class="skeleton-actions">
@@ -59,7 +66,12 @@
           </view>
         </view>
 
-        <view class="summary-grid">
+        <view v-if="homeRefreshError || (homePageError && hasContent)" class="home-refresh-error">
+          <text>{{ (homeRefreshError || homePageError).description }}</text>
+          <text class="home-refresh-error__action" @tap="retryHomeData">重试</text>
+        </view>
+
+        <view v-if="!homePageError || hasContent" class="summary-grid">
           <view class="summary-card" @tap="handleSummaryAction('match')">
             <view class="summary-head">
               <text class="summary-label">最近状态</text>
@@ -81,7 +93,7 @@
           </view>
         </view>
 
-        <view class="focus-section">
+        <view v-if="!homePageError || hasContent" class="focus-section">
           <view class="section-header">
             <text class="section-title">赛事情报</text>
             <view class="section-more" @tap="goTo('/subPages/tournament/index')">
@@ -90,7 +102,12 @@
             </view>
           </view>
 
-          <view v-if="topEventNews" class="focus-card" @tap="goTo(`/subPages/tournament/detail?id=${topEventNews.id}`)">
+          <view v-if="eventNewsError" class="section-empty section-error">
+            <text class="empty-title">{{ eventNewsError.title }}</text>
+            <text class="empty-desc">{{ eventNewsError.description }}</text>
+            <text class="section-error__action" @tap="retryHomeData">重试</text>
+          </view>
+          <view v-else-if="topEventNews" class="focus-card" @tap="goTo(`/subPages/tournament/detail?id=${topEventNews.id}`)">
             <view class="focus-card-top">
               <text class="focus-pill">{{ topEventNews.statusText }}</text>
               <text class="focus-aside">{{ topEventNews.showTime ? topEventNews.timeText : topEventNews.dateText }}</text>
@@ -108,7 +125,7 @@
           </view>
         </view>
 
-        <view class="focus-section">
+        <view v-if="!homePageError || hasContent" class="focus-section">
           <view class="section-header">
             <text class="section-title">排行焦点</text>
             <view class="section-more" @tap="goTo('/pages/ranking/index')">
@@ -117,7 +134,12 @@
             </view>
           </view>
 
-          <view v-if="leaderboardTopThree.length" class="ranking-card">
+          <view v-if="leaderboardError" class="section-empty section-error">
+            <text class="empty-title">{{ leaderboardError.title }}</text>
+            <text class="empty-desc">{{ leaderboardError.description }}</text>
+            <text class="section-error__action" @tap="retryHomeData">重试</text>
+          </view>
+          <view v-else-if="leaderboardTopThree.length" class="ranking-card">
             <view v-for="item in leaderboardTopThree" :key="item.user_id || item.rank" class="ranking-row">
               <view class="ranking-left">
                 <text class="ranking-rank">#{{ item.rank }}</text>
@@ -136,7 +158,7 @@
           </view>
         </view>
 
-        <view class="focus-section nearby-venue-section">
+        <view v-if="!homePageError || hasContent" class="focus-section nearby-venue-section">
           <view class="section-header">
             <text class="section-title">附近球房</text>
             <view class="section-more" @tap="goTo('/subPages/venue/index')">
@@ -145,7 +167,13 @@
             </view>
           </view>
 
-          <view v-if="nearbyVenueLoading && nearbyVenues.length === 0" class="section-empty">
+          <view v-if="nearbyVenueFeedback" class="section-empty section-error">
+            <text class="empty-title">{{ nearbyVenueFeedback.title }}</text>
+            <text class="empty-desc">{{ nearbyVenueFeedback.description }}</text>
+            <text class="section-error__action" @tap="retryNearbyVenues">重试</text>
+          </view>
+
+          <view v-else-if="nearbyVenueLoading && nearbyVenues.length === 0" class="section-empty">
             <text class="empty-title">正在寻找附近球房</text>
             <text class="empty-desc">定位成功后，会优先展示 5km 内最适合马上开局的球房。</text>
           </view>
@@ -200,7 +228,7 @@ import { useNotificationStore } from '@/store/notification.js'
 import { usePublicReadStore } from '@/store/publicRead.js'
 import { useUserOverviewStore } from '@/store/userOverview.js'
 import { useUserStore } from '@/store/user.js'
-import { startMatch } from '@/api/match.js'
+import { previewMatchInvite, startMatch } from '@/api/match.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { getGameTypeLabel } from '@/utils/game-types.js'
 import { normalizeSaiXunCard } from '@/utils/saixun.js'
@@ -211,8 +239,21 @@ import {
   resolveHomeVenueEmptyAction
 } from '@/utils/home-index.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
+import { buildStartMatchPayload } from '@/utils/start-match.js'
 import { readDefaultGameType, saveDefaultGameType } from '@/utils/game-type-preference.js'
+import { getCurrentLocation } from '@/utils/permission-helper.js'
+import { scanAndResolveMatchCode } from '@/utils/match-scan.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import {
+  ASYNC_PAGE_STATUS,
+  beginAsyncPageLoad,
+  createAsyncPageState,
+  getAsyncPageRequest,
+  rejectAsyncPageLoad,
+  resolveAsyncPageErrorFeedback,
+  resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const userStore = useUserStore()
 const activityStore = useActivityStore()
@@ -227,7 +268,20 @@ const userId = computed(() => userStore.userId)
 const userName = computed(() => userStore.nickname || '球友')
 
 const refreshing = ref(false)
-const homeLoading = ref(false)
+const homeState = ref(createAsyncPageState({
+  authGeneration: userStore.authGeneration,
+  data: []
+}))
+const homeLoading = computed(() => homeState.value.status === ASYNC_PAGE_STATUS.LOADING)
+const homePageError = computed(() => {
+  if (homeState.value.status !== ASYNC_PAGE_STATUS.ERROR) return null
+  return resolveAsyncPageErrorFeedback(homeState.value.error, { resource: '首页内容' })
+})
+const homeRefreshError = computed(() => (
+  homeState.value.refreshError
+    ? resolveAsyncPageErrorFeedback(homeState.value.refreshError, { resource: '首页内容' })
+    : null
+))
 const showGameTypeModal = ref(false)
 const selectedGameType = ref(null)
 const defaultGameType = ref(0)
@@ -237,7 +291,24 @@ const myRanking = ref(null)
 const topEventNews = ref(null)
 const nearbyVenues = ref([])
 const nearbyVenueLoading = ref(false)
+const nearbyVenueError = ref(null)
 const favoriteVenueRewardStatus = ref(null)
+const homeSectionErrors = ref({ leaderboard: null, eventNews: null })
+const leaderboardError = computed(() => (
+  homeSectionErrors.value.leaderboard
+    ? resolveAsyncPageErrorFeedback(homeSectionErrors.value.leaderboard, { resource: '排行榜' })
+    : null
+))
+const eventNewsError = computed(() => (
+  homeSectionErrors.value.eventNews
+    ? resolveAsyncPageErrorFeedback(homeSectionErrors.value.eventNews, { resource: '赛事情报' })
+    : null
+))
+const nearbyVenueFeedback = computed(() => (
+  nearbyVenueError.value
+    ? resolveAsyncPageErrorFeedback(nearbyVenueError.value, { resource: '附近球房' })
+    : null
+))
 
 const hasContent = computed(() => {
   return Boolean(currentMatch.value || topEventNews.value || leaderboardTopThree.value.length || nearbyVenues.value.length)
@@ -360,9 +431,32 @@ const getActivityIdentity = () => ({
   authGeneration: userStore.authGeneration
 })
 
+const resolveHomeResponseError = (result, fallbackMessage) => {
+  if (result?.status === 'rejected') return result.reason
+  if (result?.value?.success) return null
+  return createRequestError({
+    message: result?.value?.message || fallbackMessage,
+    category: 'business'
+  })
+}
+
 const loadData = async ({ force = false } = {}) => {
-  if (homeLoading.value) return
-  homeLoading.value = true
+  if (homeLoading.value || (homeState.value.status === ASYNC_PAGE_STATUS.REFRESHING && !force)) return
+  const currentGeneration = userStore.authGeneration
+  const nextState = beginAsyncPageLoad(homeState.value, {
+    authGeneration: currentGeneration,
+    emptyData: []
+  })
+  const request = getAsyncPageRequest(nextState)
+  const identityChanged = homeState.value.authGeneration !== currentGeneration
+  if (identityChanged) {
+    leaderboardTopThree.value = []
+    myRanking.value = null
+    topEventNews.value = null
+    favoriteVenueRewardStatus.value = null
+  }
+  homeState.value = nextState
+  homeSectionErrors.value = { leaderboard: null, eventNews: null }
 
   try {
     const nearbyVenueRequest = loadNearbyVenues({ force })
@@ -370,84 +464,129 @@ const loadData = async ({ force = false } = {}) => {
       publicReadStore.loadLeaderboardSummary({ game_type: 3 }, {
         force,
         identity: isLoggedIn.value ? getActivityIdentity() : undefined
-      }).catch(() => ({ success: false })),
-      publicReadStore.loadEventNews({ page: 1, page_size: 1 }, { force }).catch(() => ({ success: false, list: [] }))
+      }),
+      publicReadStore.loadEventNews({ page: 1, page_size: 1 }, { force })
     ]
 
     if (isLoggedIn.value) {
-      requests.unshift(activityStore.fetch(getActivityIdentity(), { force, silent: true }).catch(() => activityStore.snapshot()))
-      requests.push(userOverviewStore.fetch(getActivityIdentity(), { force, silent: true }).catch(() => userOverviewStore.snapshot()))
+      requests.unshift(activityStore.fetch(getActivityIdentity(), { force, silent: true }))
+      requests.push(userOverviewStore.fetch(getActivityIdentity(), { force, silent: true }))
     } else {
       favoriteVenueRewardStatus.value = null
     }
 
-    const results = await Promise.all(requests)
-    let resultIndex = 0
-
-    if (isLoggedIn.value) {
-      resultIndex++
+    const results = await Promise.allSettled(requests)
+    if (homeState.value.authGeneration !== request.authGeneration || homeState.value.requestId !== request.requestId) return
+    let resultIndex = isLoggedIn.value ? 1 : 0
+    const leaderboardResult = results[resultIndex++]
+    const eventNewsResult = results[resultIndex++]
+    const leaderboardLoadError = resolveHomeResponseError(leaderboardResult, '加载排行榜失败')
+    const eventNewsLoadError = resolveHomeResponseError(eventNewsResult, '加载赛事情报失败')
+    homeSectionErrors.value = {
+      leaderboard: leaderboardLoadError,
+      eventNews: eventNewsLoadError
     }
 
-    const leaderboardRes = results[resultIndex++]
-    if (leaderboardRes.success) {
+    if (!leaderboardLoadError) {
+      const leaderboardRes = leaderboardResult.value
       leaderboardTopThree.value = (leaderboardRes.top_three || []).slice(0, 3)
       myRanking.value = leaderboardRes.my_ranking || null
-    } else {
-      leaderboardTopThree.value = []
-      myRanking.value = null
     }
 
-    const eventNewsRes = results[resultIndex++]
-    if (eventNewsRes.success && Array.isArray(eventNewsRes.list)) {
-      const topItem = eventNewsRes.list[0] || null
+    if (!eventNewsLoadError && Array.isArray(eventNewsResult.value.list)) {
+      const topItem = eventNewsResult.value.list[0] || null
       topEventNews.value = topItem ? normalizeSaiXunCard(topItem) : null
     }
+
     if (isLoggedIn.value) {
-      const overview = results[resultIndex]
+      const overviewResult = results[resultIndex]
+      const overview = overviewResult?.status === 'fulfilled' ? overviewResult.value : null
       favoriteVenueRewardStatus.value = overview?.favoriteVenueRewardStatus?.success
         ? overview.favoriteVenueRewardStatus
         : null
     }
+
+    if (leaderboardLoadError && eventNewsLoadError) {
+      homeState.value = rejectAsyncPageLoad(homeState.value, request, leaderboardLoadError)
+      await nearbyVenueRequest
+      return
+    }
+
+    homeState.value = resolveAsyncPageLoad(homeState.value, request, {
+      data: {
+        leaderboard: leaderboardLoadError ? null : leaderboardResult.value,
+        eventNews: eventNewsLoadError ? null : eventNewsResult.value
+      },
+      isEmpty: () => false
+    })
     await nearbyVenueRequest
   } catch (error) {
-    console.error('加载首页数据失败', error)
-  } finally {
-    homeLoading.value = false
+    homeState.value = rejectAsyncPageLoad(homeState.value, request, error)
   }
 }
 
-const getHomeLocation = () => new Promise((resolve) => {
-  uni.getLocation({
-    type: 'gcj02',
-    success: (res) => resolve({
-      latitude: res.latitude,
-      longitude: res.longitude
-    }),
-    fail: () => resolve(null)
+const getHomeLocation = async () => {
+  const result = await getCurrentLocation({
+    uniApi: uni,
+    action: '查看附近球房',
+    onPermissionDenied: (permission) => {
+      if (permission.reason === 'denied') {
+        uni.showToast({
+          title: '定位权限未开启，请开启后重试',
+          icon: 'none'
+        })
+      } else {
+        uni.showToast({
+          title: '获取定位失败，请稍后重试',
+          icon: 'none'
+        })
+      }
+    }
   })
-})
+
+  return result
+}
 
 const loadNearbyVenues = async ({ force = false } = {}) => {
   if (nearbyVenueLoading.value) return
 
   nearbyVenueLoading.value = true
+  nearbyVenueError.value = null
   try {
-    const location = await getHomeLocation()
-    const params = buildHomeNearbyVenueParams(location || {})
+    const locationResult = await getHomeLocation()
+    if (!locationResult?.success) {
+      nearbyVenueError.value = createRequestError({
+        message: locationResult?.reason === 'denied' ? '请开启定位权限后查看附近球房' : '暂时无法获取当前位置',
+        category: locationResult?.reason === 'denied' ? 'permission' : 'network'
+      })
+      return
+    }
+    const params = buildHomeNearbyVenueParams(locationResult.location || {})
     if (!params) {
-      nearbyVenues.value = []
+      nearbyVenueError.value = createRequestError({ message: '暂时无法获取当前位置', category: 'network' })
       return
     }
 
     const res = await publicReadStore.loadNearbyVenues(params, { force })
-    if (res.success && Array.isArray(res.list)) {
-      nearbyVenues.value = res.list.slice(0, params.limit)
-    }
+    if (!res?.success) throw createRequestError({ message: res?.message || '加载附近球房失败', category: 'business' })
+    nearbyVenues.value = Array.isArray(res.list) ? res.list.slice(0, params.limit) : []
   } catch (error) {
-    console.error('加载首页附近球房失败', error)
+    nearbyVenueError.value = error
   } finally {
     nearbyVenueLoading.value = false
   }
+}
+
+const retryHomeData = () => loadData({ force: true })
+
+const retryNearbyVenues = () => loadNearbyVenues({ force: true })
+
+const handleHomeErrorAction = () => {
+  if (homeState.value.error?.category === 'permission' || homeState.value.error?.category === 'not-found') {
+    uni.navigateBack({ delta: 1 })
+    return
+  }
+  retryHomeData()
 }
 
 const onRefresh = async () => {
@@ -589,53 +728,38 @@ const handleStartPK = () => {
   showGameTypeModal.value = true
 }
 
-const handleGameTypeConfirm = ({ gameType, setAsDefault } = {}) => {
+const handleGameTypeConfirm = async ({ gameType, setAsDefault } = {}) => {
   if (setAsDefault) {
     defaultGameType.value = saveDefaultGameType(uni, userId.value, gameType)
   }
   selectedGameType.value = gameType
 
-  let handledByScan = false
-  // #ifdef APP-PLUS || APP-HARMONY
-  handledByScan = true
-  uni.scanCode({
-    scanType: ['qrCode'],
-    success: (res) => handleMatchResult(res.result),
-    fail: () => {}
+  const scanAction = await scanAndResolveMatchCode({
+    uniApi: uni,
+    previewMatchInvite
   })
-  // #endif
-
-  if (handledByScan) {
+  if (scanAction.type === 'cancelled') return
+  if (scanAction.type === 'error') {
+    uni.showToast({ title: scanAction.message || '扫码失败', icon: 'none' })
     return
   }
-
-  uni.showModal({
-    title: '当前端暂不支持扫码发起 PK',
-    content: '你可以先去查看 PK 记录，或者切换到 App 端发起扫码对局。',
-    confirmText: '去 PK 记录',
-    cancelText: '我知道了',
-    success: ({ confirm }) => {
-      if (confirm) {
-        goTo('/subPages/social/challenges')
-      }
-    }
-  })
+  if (scanAction.type !== 'start_match') {
+    uni.showToast({ title: '请扫描匹配二维码发起对局', icon: 'none' })
+    return
+  }
+  await handleMatchResult(scanAction)
 }
 
-const handleMatchResult = async (scanResult) => {
+const handleMatchResult = async (scanAction) => {
   try {
-    const opponentData = JSON.parse(scanResult)
-    if (!opponentData.user_id) {
-      uni.showToast({ title: '无效的二维码', icon: 'none' })
-      return
-    }
+    const opponentData = scanAction.opponent
 
     uni.showLoading({ title: '匹配中...', mask: true })
-    const res = await startMatch({
-      game_type: selectedGameType.value,
-      opponent_id: opponentData.user_id,
-      opponent_name: opponentData.nickname || '对手'
-    })
+    const res = await startMatch(buildStartMatchPayload({
+      gameType: selectedGameType.value,
+      opponent: opponentData,
+      inviteToken: scanAction.inviteToken
+    }))
     uni.hideLoading()
     handleStartMatchOutcome(resolveStartMatchGuardAction({
       response: res,

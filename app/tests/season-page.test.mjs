@@ -1,6 +1,16 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import {
+  ASYNC_PAGE_STATUS,
+  beginAsyncPageLoad,
+  createAsyncPageState,
+  getAsyncPageRequest,
+  rejectAsyncPageLoad,
+  resolveAsyncPageErrorFeedback,
+  resolveAsyncPageLoad
+} from '../utils/async-page-state.js'
+import { createRequestError } from '../utils/request-errors.js'
 
 const source = readFileSync(new URL('../subPages/season/index.vue', import.meta.url), 'utf8')
 
@@ -10,6 +20,7 @@ const mountSeasonPageSetup = ({ getSeasonOverview }) => {
   const setup = script.replace(/^import[\s\S]*?from\s+['"][^'"]+['"]\s*$/gm, '')
   const mounted = []
   const shown = []
+  const userStore = { userId: 1, authGeneration: 1 }
   const ref = (value) => ({ value })
   const computed = (getter) => ({
     get value() {
@@ -18,8 +29,10 @@ const mountSeasonPageSetup = ({ getSeasonOverview }) => {
   })
   const component = new Function(
     'ref', 'computed', 'onMounted', 'onShow', 'getSeasonOverview', 'getSeasonLeaderboard',
-    'useUserDataInvalidationStore', 'GAME_TYPE_TABS', 'resolveCurrentSeasonState',
+    'useUserDataInvalidationStore', 'useUserStore', 'GAME_TYPE_TABS', 'resolveCurrentSeasonState',
     'resolveSeasonTimeline', 'usePageTheme', 'resolveAvatarUrl',
+    'ASYNC_PAGE_STATUS', 'beginAsyncPageLoad', 'createAsyncPageState', 'getAsyncPageRequest',
+    'rejectAsyncPageLoad', 'resolveAsyncPageErrorFeedback', 'resolveAsyncPageLoad', 'createRequestError',
     `${setup}\nreturn { loading, hasLoadedOnce, loadSeasonOverview }`
   )(
     ref,
@@ -29,11 +42,20 @@ const mountSeasonPageSetup = ({ getSeasonOverview }) => {
     getSeasonOverview,
     async () => ({ success: true, list: [], total: 0 }),
     () => ({ versionOf: () => 0 }),
+    () => userStore,
     [],
     () => ({ title: '', description: '' }),
     () => ({ remainDays: 0, progressPercent: 0 }),
     () => ({ isDarkMode: ref(false) }),
-    () => ''
+    () => '',
+    ASYNC_PAGE_STATUS,
+    beginAsyncPageLoad,
+    createAsyncPageState,
+    getAsyncPageRequest,
+    rejectAsyncPageLoad,
+    resolveAsyncPageErrorFeedback,
+    resolveAsyncPageLoad,
+    createRequestError
   )
   return { component, mounted, shown }
 }
@@ -45,8 +67,11 @@ test('season page presents lifecycle state and keeps legacy active responses com
   assert.match(source, /<template v-if="hasActiveSeason">/)
   assert.match(source, /if \(!hasActiveSeason\.value\) return/)
   assert.match(source, /const seasonState = ref\('not_started'\)/)
-  assert.match(source, /seasonState\.value = res\.season_state \|\| \(season\.value \? 'active' : 'not_started'\)/)
-  assert.match(source, /seasonState\.value = 'unavailable'/)
+  assert.match(source, /const nextSeasonState = res\.season_state \|\| \(nextSeason \? 'active' : 'not_started'\)/)
+  assert.match(source, /seasonState\.value = nextSeasonState/)
+  assert.match(source, /seasonPageState\.value = rejectAsyncPageLoad/)
+  assert.match(source, /v-else-if="seasonPageError"/)
+  assert.doesNotMatch(source, /seasonState\.value = 'unavailable'/)
   assert.match(source, /seasonEmptyState\.title/)
   assert.match(source, /seasonEmptyState\.description/)
   assert.doesNotMatch(source, /暂无进行中的赛季/)

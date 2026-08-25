@@ -5,16 +5,20 @@
 			<text class="loading-text">加载好友主页中...</text>
 		</view>
 
-		<view v-else-if="loadFailed" class="error-state">
+		<view v-else-if="friendHomePageError" class="error-state">
 			<uni-icons type="info-filled" size="38" color="#E0AE12"></uni-icons>
-			<text class="error-title">好友主页暂时没加载出来</text>
-			<text class="error-text">{{ loadErrorText }}</text>
-			<button class="retry-btn" @tap="loadData">
-				<text>重新加载</text>
+			<text class="error-title">{{ friendHomePageError.title }}</text>
+			<text class="error-text">{{ friendHomePageError.description }}</text>
+			<button class="retry-btn" @tap="handleFriendHomeErrorAction">
+				<text>{{ friendHomePageError.actionText }}</text>
 			</button>
 		</view>
 
 		<scroll-view v-else scroll-y class="page-scroll">
+			<view v-if="friendHomeRefreshError" class="refresh-error-banner">
+				<text>{{ friendHomeRefreshError.description }}</text>
+				<text class="refresh-error-action" @tap="retryFriendHomepage">重试</text>
+			</view>
 			<view class="hero-card">
 				<text class="hero-kicker">好友名片</text>
 
@@ -154,14 +158,22 @@ import {
 	buildFriendHomepageSummary,
 	normalizeFriendHomepageOptions
 } from '@/utils/friend-homepage.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
 const userDataInvalidationStore = useUserDataInvalidationStore()
 
 const loading = ref(true)
-const loadFailed = ref(false)
-const loadErrorText = ref('加载好友主页失败，请稍后再试。')
 const lastMatchAt = ref('')
 const battleListHidden = ref(false)
 const battleOpponents = ref([])
@@ -169,6 +181,20 @@ const hasLoadedOnce = ref(false)
 const latestRequestId = ref(0)
 const loadedIdentityKey = ref('')
 const loadedOpponentScopeVersion = ref(0)
+const friendHomeState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: null
+}))
+const friendHomePageError = computed(() => (
+	friendHomeState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(friendHomeState.value.error, { resource: '好友主页' })
+		: null
+))
+const friendHomeRefreshError = computed(() => (
+	friendHomeState.value.refreshError
+		? resolveAsyncPageErrorFeedback(friendHomeState.value.refreshError, { resource: '好友主页' })
+		: null
+))
 
 const currentReadIdentity = () => ({
 	userId: userStore.userId,
@@ -227,24 +253,29 @@ const loadData = async ({ force = false } = {}) => {
 	const requestScopeVersion = userDataInvalidationStore.versionOf('opponents')
 	if (hasLoadedOnce.value && !force && loadedIdentityKey.value === requestIdentityKey && loadedOpponentScopeVersion.value === requestScopeVersion) return
 	latestRequestId.value = requestId
-	if (loadedIdentityKey.value && loadedIdentityKey.value !== requestIdentityKey) {
+	if (friendHomeState.value.authGeneration !== userStore.authGeneration) {
 		battleOpponents.value = []
 		lastMatchAt.value = ''
 		stats.total_matches = 0
 		stats.total_wins = 0
 		hasLoadedOnce.value = false
+		friendHomeState.value = createAsyncPageState({ authGeneration: userStore.authGeneration, data: null })
 	}
+	const nextState = beginAsyncPageLoad(friendHomeState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: null
+	})
+	const pageRequest = getAsyncPageRequest(nextState)
+	friendHomeState.value = nextState
+	loading.value = nextState.status === ASYNC_PAGE_STATUS.LOADING
 	if (!friendProfile.id) {
-		loadFailed.value = true
-		loadErrorText.value = '好友信息异常，请返回好友列表后重试。'
+		friendHomeState.value = rejectAsyncPageLoad(friendHomeState.value, pageRequest, createRequestError({
+			message: '好友信息异常，请返回好友列表后重试。',
+			category: 'not-found'
+		}))
 		loading.value = false
-		uni.showToast({ title: '好友信息异常', icon: 'none' })
 		return
 	}
-
-	loading.value = true
-	loadFailed.value = false
-	loadErrorText.value = '加载好友主页失败，请稍后再试。'
 
 	try {
 		const response = await getOpponentList(buildOpponentRecordRequestParams({
@@ -252,7 +283,8 @@ const loadData = async ({ force = false } = {}) => {
 			pageSize: 100,
 			targetUserId: friendProfile.id
 		}))
-		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
+		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey || friendHomeState.value.requestId !== pageRequest.requestId || friendHomeState.value.authGeneration !== pageRequest.authGeneration) return
+		if (!response?.success) throw createRequestError({ message: response?.message || '加载好友主页失败', category: 'business' })
 		const list = Array.isArray(response.list) ? response.list : []
 		battleListHidden.value = Boolean(response.hidden || response.is_hidden || response.message === '对方已隐藏战绩')
 		battleOpponents.value = battleListHidden.value ? [] : list
@@ -262,15 +294,27 @@ const loadData = async ({ force = false } = {}) => {
 		hasLoadedOnce.value = true
 		loadedIdentityKey.value = requestIdentityKey
 		loadedOpponentScopeVersion.value = requestScopeVersion
+		friendHomeState.value = resolveAsyncPageLoad(friendHomeState.value, pageRequest, {
+			data: response,
+			isEmpty: () => false
+		})
 	} catch (error) {
-		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
-		loadFailed.value = true
-		console.error('加载好友主页失败:', error)
-		uni.showToast({ title: '加载好友主页失败', icon: 'none' })
+		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey || friendHomeState.value.requestId !== pageRequest.requestId || friendHomeState.value.authGeneration !== pageRequest.authGeneration) return
+		friendHomeState.value = rejectAsyncPageLoad(friendHomeState.value, pageRequest, error)
 	} finally {
-		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
+		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey || friendHomeState.value.requestId !== pageRequest.requestId || friendHomeState.value.authGeneration !== pageRequest.authGeneration) return
 		loading.value = false
 	}
+}
+
+const retryFriendHomepage = () => loadData({ force: true })
+
+const handleFriendHomeErrorAction = () => {
+	if (friendHomeState.value.error?.category === 'permission' || friendHomeState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryFriendHomepage()
 }
 
 const goToBattleDetail = (item) => {

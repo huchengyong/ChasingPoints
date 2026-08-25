@@ -1,37 +1,33 @@
 package ws
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
 
 	"chasing_points/internal/model"
 	pkgx "chasing_points/internal/pkg"
+	"chasing_points/internal/pkg/wsticket"
 	"chasing_points/internal/svc"
 
 	jwt "github.com/golang-jwt/jwt/v5"
-	"github.com/gorilla/websocket"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true // 允许所有来源，生产环境应限制
-	},
-}
-
 // MatchWSHandler WebSocket处理器
-// 连接地址: ws://host:port/api/match/ws?match_id=xxx&token=xxx
+// 连接地址: ws://host:port/api/match/ws?match_id=xxx&ticket=xxx
 func MatchWSHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// 获取参数
 		matchIdStr := r.URL.Query().Get("match_id")
-		token := r.URL.Query().Get("token")
+		ticket := r.URL.Query().Get("ticket")
 
 		if matchIdStr == "" {
 			http.Error(w, "missing match_id", http.StatusBadRequest)
+			return
+		}
+		if rejectWebSocketQueryToken(w, r) {
 			return
 		}
 
@@ -42,14 +38,17 @@ func MatchWSHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 
 		var userId int64
-		if token != "" {
-			// 验证token
-			userId, err = parseAccessTokenUserID(token, svcCtx.Config.Auth.AccessSecret)
+		if ticket != "" {
+			claims, err := consumeWebSocketTicket(r.Context(), svcCtx, ticket, wsticket.ScopeMatch)
 			if err != nil {
-				logx.Errorf("WebSocket token验证失败: %v", err)
-				http.Error(w, "invalid token", http.StatusUnauthorized)
+				writeWebSocketTicketError(w, err)
 				return
 			}
+			if claims.MatchID != matchId {
+				http.Error(w, "invalid ticket", http.StatusUnauthorized)
+				return
+			}
+			userId = claims.UserID
 			active, err := isActiveWebSocketUser(svcCtx, userId)
 			if err != nil {
 				logx.Errorf("WebSocket用户状态校验失败: userId=%d err=%v", userId, err)
@@ -68,8 +67,8 @@ func MatchWSHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 		if model.NormalizeMatchVisibility(match.Visibility, match.MatchMode) == model.MatchVisibilityPrivate {
-			if token == "" {
-				http.Error(w, "missing token", http.StatusUnauthorized)
+			if ticket == "" {
+				http.Error(w, "missing ticket", http.StatusUnauthorized)
 				return
 			}
 			isParticipant := match.UserId == userId ||
@@ -82,7 +81,7 @@ func MatchWSHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 
 		// 升级为WebSocket连接
-		conn, err := upgrader.Upgrade(w, r, nil)
+		conn, err := newWebSocketUpgrader(svcCtx.Config).Upgrade(w, r, nil)
 		if err != nil {
 			logx.Errorf("WebSocket升级失败: %v", err)
 			return
@@ -108,6 +107,33 @@ func MatchWSHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 
 		logx.Infof("WebSocket连接建立: MatchId=%d, UserId=%d", matchId, userId)
 	}
+}
+
+func rejectWebSocketQueryToken(w http.ResponseWriter, r *http.Request) bool {
+	if r.URL.Query().Get("token") == "" {
+		return false
+	}
+	http.Error(w, "query token is not supported", http.StatusUnauthorized)
+	return true
+}
+
+func consumeWebSocketTicket(ctx context.Context, svcCtx *svc.ServiceContext, ticket string, scope string) (*wsticket.Claims, error) {
+	if svcCtx == nil || svcCtx.WSTicketStore == nil {
+		return nil, wsticket.ErrStoreMissing
+	}
+	return svcCtx.WSTicketStore.Consume(ctx, ticket, scope)
+}
+
+func writeWebSocketTicketError(w http.ResponseWriter, err error) {
+	if errors.Is(err, wsticket.ErrStoreMissing) {
+		http.Error(w, "ticket service unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	if errors.Is(err, wsticket.ErrTicketNotFound) || errors.Is(err, wsticket.ErrInvalidTicket) {
+		http.Error(w, "invalid ticket", http.StatusUnauthorized)
+		return
+	}
+	http.Error(w, "ticket service unavailable", http.StatusServiceUnavailable)
 }
 
 func parseAccessTokenUserID(tokenString string, secret string) (int64, error) {

@@ -275,24 +275,21 @@
 						<uni-icons type="spinner-cycle" size="48" color="#E0AE12"></uni-icons>
 						<text class="qrcode-loading-text">生成中...</text>
 					</view>
-					<view v-show="!qrcodeLoading" class="qrcode-display">
-						<image
-							v-if="qrcodeUrl"
-							:src="qrcodeUrl"
-							mode="aspectFit"
+					<view v-show="!qrcodeLoading && qrcodeError" class="qrcode-loading">
+						<text class="qrcode-loading-text">{{ qrcodeError }}</text>
+						<text class="qrcode-helper" @click="generateQRCode">点击刷新</text>
+					</view>
+					<view v-show="!qrcodeLoading && !qrcodeError" class="qrcode-display">
+						<canvas
+							v-if="qrcodeContent"
+							canvas-id="user-match-invite-qrcode"
+							id="user-match-invite-qrcode"
 							class="qrcode-image"
-							@load="onQRCodeLoad"
-							@error="onQRCodeError"
+							:width="240"
+							:height="240"
 						/>
 						<uni-icons v-else type="checkbox" size="160" color="#27272a"></uni-icons>
 					</view>
-					<image
-						v-if="qrcodeUrl && qrcodeLoading"
-						:src="qrcodeUrl"
-						class="qrcode-preload-image"
-						@load="onQRCodeLoad"
-						@error="onQRCodeError"
-					/>
 				</view>
 				<view class="qrcode-modal-footer">
 					<text class="qrcode-hint">{{ qrCodeModalCopy.hint }}</text>
@@ -306,13 +303,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onUnmounted } from 'vue'
+import { ref, reactive, computed, nextTick, onUnmounted } from 'vue'
 import { onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useActivityStore } from '@/store/activity.js'
 import { useUserOverviewStore } from '@/store/userOverview.js'
 import { useUserStore } from '@/store/user.js'
 import { usePageTheme } from '@/utils/page-theme.js'
-import { getMatchQRCode, startMatch } from '@/api/match.js'
+import { getMatchQRCode, previewMatchInvite, startMatch } from '@/api/match.js'
+import { renderLocalQRCode } from '@/utils/local-qrcode.js'
 import { useRankStore } from '@/store/rank.js'
 import { userWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import {
@@ -330,6 +328,7 @@ import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { markAsRead } from '@/api/notification.js'
 import { buildHonorWallUrl, presentLatestSeasonRollover } from '@/utils/honor-wall.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
+import { buildStartMatchPayload } from '@/utils/start-match.js'
 import { readDefaultGameType, saveDefaultGameType } from '@/utils/game-type-preference.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import {
@@ -345,6 +344,7 @@ import {
 	resolveFavoriteVenueRewardFloatSnoozeMigration
 } from '@/utils/favorite-venue-reward.js'
 import { resolveMemberGrowthCard } from '@/utils/member-center.js'
+import { scanAndResolveMatchCode } from '@/utils/match-scan.js'
 
 const userStore = useUserStore()
 const activityStore = useActivityStore()
@@ -368,7 +368,8 @@ const qrCodeModalCopy = resolveQrCodeModalCopy()
 const showGameTypeModal = ref(false)
 const showQrCodeModal = ref(false)
 const qrcodeLoading = ref(false)
-const qrcodeUrl = ref('')
+const qrcodeContent = ref('')
+const qrcodeError = ref('')
 const selectedGameType = ref(null)
 const defaultGameType = ref(0)
 const currentRankGameType = ref(3)
@@ -705,31 +706,33 @@ const handleGameTypeConfirm = ({ gameType, setAsDefault } = {}) => {
 	handleScanCode()
 }
 
-const handleScanCode = () => {
-	// #ifdef APP-PLUS || APP-HARMONY
-	uni.scanCode({
-		scanType: ['qrCode'],
-		success: (res) => handleMatchResult(res.result),
-		fail: (err) => console.error('扫码失败:', err)
+const handleScanCode = async () => {
+	const scanAction = await scanAndResolveMatchCode({
+		uniApi: uni,
+		previewMatchInvite
 	})
-	// #endif
+	if (scanAction.type === 'cancelled') return
+	if (scanAction.type === 'error') {
+		uni.showToast({ title: scanAction.message || '扫码失败', icon: 'none' })
+		return
+	}
+	if (scanAction.type !== 'start_match') {
+		uni.showToast({ title: '请扫描匹配二维码发起对局', icon: 'none' })
+		return
+	}
+	await handleMatchResult(scanAction)
 }
 
-const handleMatchResult = async (scanResult) => {
+const handleMatchResult = async (scanAction) => {
 	try {
-		const opponentData = JSON.parse(scanResult)
-
-		if (!opponentData.user_id) {
-			uni.showToast({ title: '无效的二维码', icon: 'none' })
-			return
-		}
+		const opponentData = scanAction.opponent
 
 		uni.showLoading({ title: '匹配中...', mask: true })
-		const res = await startMatch({
-			game_type: selectedGameType.value,
-			opponent_id: opponentData.user_id,
-			opponent_name: opponentData.nickname || '对手'
-		})
+		const res = await startMatch(buildStartMatchPayload({
+			gameType: selectedGameType.value,
+			opponent: opponentData,
+			inviteToken: scanAction.inviteToken
+		}))
 		uni.hideLoading()
 
 		handleStartMatchOutcome(resolveStartMatchGuardAction({
@@ -876,32 +879,37 @@ const handleQrCode = () => {
 
 const closeQrCodeModal = () => {
 	showQrCodeModal.value = false
+	qrcodeContent.value = ''
+	qrcodeError.value = ''
 }
 
 const generateQRCode = async () => {
 	if (!isLoggedIn.value) return
 
 	qrcodeLoading.value = true
+	qrcodeContent.value = ''
+	qrcodeError.value = ''
 	try {
 		const res = await getMatchQRCode()
 		if (res.success && res.qrcode_data) {
-			qrcodeUrl.value = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(res.qrcode_data)}`
+			qrcodeContent.value = res.qrcode_data
+			await nextTick()
+			renderLocalQRCode({
+				canvasId: 'user-match-invite-qrcode',
+				content: qrcodeContent.value,
+				size: 240,
+				uniApi: uni
+			})
+			qrcodeLoading.value = false
 		} else {
 			qrcodeLoading.value = false
+			qrcodeError.value = res?.message || '二维码生成失败，请点击刷新'
 		}
 	} catch (error) {
-		console.error('生成二维码失败:', error)
+		console.error('生成本地二维码失败:', error)
 		qrcodeLoading.value = false
+		qrcodeError.value = '二维码生成失败，请点击刷新'
 	}
-}
-
-const onQRCodeLoad = () => {
-	qrcodeLoading.value = false
-}
-
-const onQRCodeError = () => {
-	console.error('二维码图片加载失败')
-	qrcodeLoading.value = false
 }
 </script>
 

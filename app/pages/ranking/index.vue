@@ -6,7 +6,20 @@
 			<text class="loading-text">加载中...</text>
 		</view>
 
+		<view v-else-if="pageError" class="empty-state error-state">
+			<uni-icons type="info" size="72" :color="isDarkMode ? '#d7c89b' : '#9A8C67'" class="empty-icon"></uni-icons>
+			<text class="empty-title">{{ pageError.title }}</text>
+			<text class="empty-subtitle">{{ pageError.description }}</text>
+			<button class="start-button" @click="handlePageErrorAction">
+				<text>{{ pageError.actionText }}</text>
+			</button>
+		</view>
+
 			<template v-else>
+				<view v-if="refreshError" class="refresh-error-banner">
+					<text>{{ refreshError.description }}</text>
+					<text class="refresh-error-action" @tap="retryLeaderboard">重试</text>
+				</view>
 				<scroll-view class="game-type-tabs" scroll-x :show-scrollbar="false" enable-flex>
 					<view
 						v-for="item in gameTypeTabs"
@@ -150,22 +163,49 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { usePublicReadStore } from '@/store/publicRead.js'
 import { usePageTheme } from '@/utils/page-theme.js'
-import { startMatch } from '@/api/match.js'
+import { previewMatchInvite, startMatch } from '@/api/match.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
+import { buildStartMatchPayload } from '@/utils/start-match.js'
 import { buildLeaderboardPodiumSlots } from '@/utils/ranking-podium.js'
 import { readDefaultGameType, saveDefaultGameType } from '@/utils/game-type-preference.js'
+import { scanAndResolveMatchCode } from '@/utils/match-scan.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 
 // ========== 响应式数据 ==========
 const userStore = useUserStore()
 const publicReadStore = usePublicReadStore()
-const isEmpty = computed(() => !isLoading.value && topThree.value.length === 0 && rankList.value.length === 0)
-const isLoading = ref(false)
-const isRefreshing = ref(false)
+const leaderboardState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: []
+}))
+const isEmpty = computed(() => leaderboardState.value.status === ASYNC_PAGE_STATUS.EMPTY)
+const isLoading = computed(() => leaderboardState.value.status === ASYNC_PAGE_STATUS.LOADING)
+const isRefreshing = computed(() => (
+	leaderboardState.value.status === ASYNC_PAGE_STATUS.REFRESHING && !isLoadingMore.value
+))
+const pageError = computed(() => {
+	if (leaderboardState.value.status !== ASYNC_PAGE_STATUS.ERROR) return null
+	return resolveAsyncPageErrorFeedback(leaderboardState.value.error, { resource: '排行榜' })
+})
+const refreshError = computed(() => (
+	leaderboardState.value.refreshError
+		? resolveAsyncPageErrorFeedback(leaderboardState.value.refreshError, { resource: '排行榜' })
+		: null
+))
 const isLoadingMore = ref(false)
 const hasMore = ref(true)
 
@@ -200,18 +240,31 @@ onShow(() => {
  * 获取排行榜数据
  */
 const fetchLeaderboard = async (isRefresh = false, isLoadMore = false) => {
-	if (isLoading.value && !isRefresh || isLoadingMore.value) return
+	if ((isLoading.value && !isRefresh) || isLoadingMore.value || (isLoadMore && !hasMore.value)) return
+	const previousPage = currentPage.value
+	const previousHasMore = hasMore.value
+	const currentGeneration = userStore.authGeneration
+	const nextState = beginAsyncPageLoad(leaderboardState.value, {
+		authGeneration: currentGeneration,
+		emptyData: []
+	})
+	const request = getAsyncPageRequest(nextState)
+	const identityChanged = leaderboardState.value.authGeneration !== currentGeneration
+	if (identityChanged) {
+		topThree.value = []
+		myRanking.value = null
+		rankList.value = []
+		total.value = 0
+		hasMore.value = true
+	}
+	leaderboardState.value = nextState
 	
 	if (isRefresh) {
-		isRefreshing.value = true
 		currentPage.value = 1
 		hasMore.value = true
 	} else if (isLoadMore) {
-		if (!hasMore.value) return
 		isLoadingMore.value = true
 		currentPage.value++
-	} else {
-		isLoading.value = true
 	}
 	
 	try {
@@ -227,38 +280,56 @@ const fetchLeaderboard = async (isRefresh = false, isLoadMore = false) => {
 			}
 		})
 		
-		if (res.success) {
-			// 前三名只在第一页或刷新时更新
-			if (currentPage.value === 1 || isRefresh) {
-				topThree.value = res.top_three || []
-				myRanking.value = res.my_ranking
-			}
-			
-			total.value = res.total || 0
-			
-			const list = res.list || []
-			if (isRefresh || currentPage.value === 1) {
-				rankList.value = list
-			} else if (isLoadMore) {
-				rankList.value = [...rankList.value, ...list]
-			} else {
-				rankList.value = list
-			}
-			
-			// 判断是否还有更多
-			hasMore.value = (topThree.value.length + rankList.value.length) < total.value
+		if (!res?.success) {
+			throw createRequestError({
+				message: res?.message || '获取排行榜失败',
+				category: 'business'
+			})
 		}
-	} catch (error) {
-		console.error('获取排行榜失败:', error)
-		uni.showToast({
-			title: error.message || '获取数据失败',
-			icon: 'none'
+		if (leaderboardState.value.authGeneration !== request.authGeneration || leaderboardState.value.requestId !== request.requestId) return
+
+		// 前三名只在第一页或刷新时更新
+		if (currentPage.value === 1 || isRefresh) {
+			topThree.value = res.top_three || []
+			myRanking.value = res.my_ranking
+		}
+
+		total.value = res.total || 0
+
+		const list = res.list || []
+		if (isRefresh || currentPage.value === 1) {
+			rankList.value = list
+		} else if (isLoadMore) {
+			rankList.value = [...rankList.value, ...list]
+		} else {
+			rankList.value = list
+		}
+
+		// 判断是否还有更多
+		hasMore.value = (topThree.value.length + rankList.value.length) < total.value
+		leaderboardState.value = resolveAsyncPageLoad(leaderboardState.value, request, {
+			data: [...topThree.value, ...rankList.value]
 		})
+	} catch (error) {
+		const nextErrorState = rejectAsyncPageLoad(leaderboardState.value, request, error)
+		if (nextErrorState !== leaderboardState.value && isLoadMore) {
+			currentPage.value = previousPage
+			hasMore.value = previousHasMore
+		}
+		leaderboardState.value = nextErrorState
 	} finally {
-		isLoading.value = false
-		isRefreshing.value = false
 		isLoadingMore.value = false
 	}
+}
+
+const retryLeaderboard = () => fetchLeaderboard(true, false)
+
+const handlePageErrorAction = () => {
+	if (leaderboardState.value.error?.category === 'permission' || leaderboardState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryLeaderboard()
 }
 
 /**
@@ -331,43 +402,39 @@ const handleGameTypeConfirm = ({ gameType, setAsDefault } = {}) => {
 /**
  * 开始扫码
  */
-const handleScanCode = () => {
-	// #ifdef APP-PLUS || APP-HARMONY
-	uni.scanCode({
-		scanType: ['qrCode'],
-		success: (res) => {
-			console.log('扫码结果:', res.result)
-			handleMatchResult(res.result)
-		},
-		fail: (err) => {
-			console.error('扫码失败:', err)
-		}
+const handleScanCode = async () => {
+	const scanAction = await scanAndResolveMatchCode({
+		uniApi: uni,
+		previewMatchInvite
 	})
-	// #endif
+	if (scanAction.type === 'cancelled') return
+	if (scanAction.type === 'error') {
+		uni.showToast({ title: scanAction.message || '扫码失败', icon: 'none' })
+		return
+	}
+	if (scanAction.type !== 'start_match') {
+		uni.showToast({ title: '请扫描匹配二维码发起对局', icon: 'none' })
+		return
+	}
+	await handleMatchResult(scanAction)
 }
 
 /**
  * 处理匹配结果
  */
-const handleMatchResult = async (scanResult) => {
+const handleMatchResult = async (scanAction) => {
 	try {
-		// 解析扫码数据
-		const opponentData = JSON.parse(scanResult)
-
-		if (!opponentData.user_id) {
-			uni.showToast({ title: '无效的二维码', icon: 'none' })
-			return
-		}
+		const opponentData = scanAction.opponent
 
 		// 显示加载中
 		uni.showLoading({ title: '匹配中...', mask: true })
 
 		// 创建对局
-		const res = await startMatch({
-			game_type: selectedGameType.value,
-			opponent_id: opponentData.user_id,
-			opponent_name: opponentData.nickname || '对手'
-		})
+		const res = await startMatch(buildStartMatchPayload({
+			gameType: selectedGameType.value,
+			opponent: opponentData,
+			inviteToken: scanAction.inviteToken
+		}))
 
 		// 隐藏加载
 		uni.hideLoading()

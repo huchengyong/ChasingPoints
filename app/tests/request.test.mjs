@@ -5,10 +5,13 @@ import {
   classifyRequestError,
   createRequestError,
   createSessionInvalidHandler,
+  isHandledRequestError,
   isRefreshSessionCurrent,
   isSessionInvalidResponse,
+  isSupersededRequestError,
   resolveUnauthorizedAction,
-  SESSION_INVALID_REASON
+  SESSION_INVALID_REASON,
+  shouldIgnoreRequestError
 } from '../utils/request-errors.js'
 import {
   shouldResolveBusinessResponse,
@@ -104,8 +107,10 @@ test('ordinary 401 handling never refreshes or replays across auth generations',
 test('request errors are classified by status and payload', () => {
   assert.equal(classifyRequestError({ network: true }), 'network')
   assert.equal(classifyRequestError({ statusCode: 401, data: { reason: 'SESSION_INVALID' } }), 'session')
-  assert.equal(classifyRequestError({ statusCode: 401, data: { message: 'expired' } }), 'business')
-  assert.equal(classifyRequestError({ statusCode: 403 }), 'forbidden')
+  assert.equal(classifyRequestError({ statusCode: 401, data: { message: 'expired' } }), 'session')
+  assert.equal(classifyRequestError({ statusCode: 403 }), 'permission')
+  assert.equal(classifyRequestError({ statusCode: 404 }), 'not-found')
+  assert.equal(classifyRequestError({ statusCode: 429 }), 'rate-limit')
   assert.equal(classifyRequestError({ statusCode: 500 }), 'server')
   assert.equal(classifyRequestError({ statusCode: 400 }), 'business')
   assert.equal(classifyRequestError({ statusCode: 0 }), 'business')
@@ -134,6 +139,10 @@ test('created request errors preserve status, payload, category and actual silen
   const silentError = createRequestError({ handled: true, silent: true, superseded: true })
   assert.equal(silentError._isSilent, true)
   assert.equal(silentError._isSuperseded, true)
+  assert.equal(isHandledRequestError(silentError), true)
+  assert.equal(isSupersededRequestError(silentError), true)
+  assert.equal(shouldIgnoreRequestError(silentError), true)
+  assert.equal(shouldIgnoreRequestError(createRequestError()), false)
 })
 
 const createSessionHandlerHarness = ({ initialToken = 'old-token', initialGeneration = 1, delay = 1 } = {}) => {

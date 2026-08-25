@@ -641,6 +641,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: match.GetH2HStatsHandler(serverCtx),
 			},
 			{
+				// 匹配邀请预览
+				Method:  http.MethodPost,
+				Path:    "/invite/preview",
+				Handler: match.PreviewMatchInviteHandler(serverCtx),
+			},
+			{
 				// 获取对局列表
 				Method:  http.MethodGet,
 				Path:    "/list",
@@ -729,6 +735,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodPost,
 				Path:    "/undo",
 				Handler: match.MatchUndoHandler(serverCtx),
+			},
+			{
+				// 签发对局级 WebSocket 连接 ticket
+				Method:  http.MethodPost,
+				Path:    "/ws-ticket",
+				Handler: match.IssueMatchWSTicketHandler(serverCtx),
 			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
@@ -1215,10 +1227,22 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
+				// 注销账号
+				Method:  http.MethodPost,
+				Path:    "/account/delete",
+				Handler: user.DeleteAccountHandler(serverCtx),
+			},
+			{
 				// 获取应用前台恢复所需的用户活动快照
 				Method:  http.MethodGet,
 				Path:    "/bootstrap",
 				Handler: user.GetUserBootstrapHandler(serverCtx),
+			},
+			{
+				// 导出个人数据
+				Method:  http.MethodPost,
+				Path:    "/data/export",
+				Handler: user.ExportPersonalDataHandler(serverCtx),
 			},
 			{
 				// 获取常玩球馆奖励状态
@@ -1297,6 +1321,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodGet,
 				Path:    "/upload-token",
 				Handler: user.GetQiniuUploadTokenHandler(serverCtx),
+			},
+			{
+				// 签发用户级 WebSocket 连接 ticket
+				Method:  http.MethodPost,
+				Path:    "/ws-ticket",
+				Handler: user.IssueUserWSTicketHandler(serverCtx),
 			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),

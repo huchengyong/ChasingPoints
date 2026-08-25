@@ -6,6 +6,10 @@
 		</view>
 
 		<view v-else-if="venue" class="detail-content">
+			<view v-if="venueDetailRefreshError" class="refresh-error-banner">
+				<text>{{ venueDetailRefreshError.description }}</text>
+				<text class="refresh-error-action" @tap="retryVenueDetail">重试</text>
+			</view>
 			<view class="hero-card">
 				<view class="hero-copy">
 					<text class="hero-eyebrow">球馆档案</text>
@@ -114,41 +118,110 @@
 			</view>
 		</view>
 
-		<view v-else class="empty-state">
-			<text>球馆不存在</text>
+		<view v-else-if="venueDetailPageError" class="empty-state error-state">
+			<uni-icons type="info" size="48" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+			<text>{{ venueDetailPageError.title }}</text>
+			<text class="error-text">{{ venueDetailPageError.description }}</text>
+			<button class="retry-btn" @tap="handleVenueDetailErrorAction">{{ venueDetailPageError.actionText }}</button>
 		</view>
 	</view>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getVenueDetail, checkinVenue } from '@/api/venue.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { useUserStore } from '@/store/user.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
+const userStore = useUserStore()
 
 const venue = ref(null)
 const loading = ref(true)
 const venueId = ref(0)
 const hasCheckedIn = ref(false)
 const recentCheckins = ref([])
+const venueDetailState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: null
+}))
+const venueDetailPageError = computed(() => (
+	venueDetailState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(venueDetailState.value.error, { resource: '球馆详情' })
+		: null
+))
+const venueDetailRefreshError = computed(() => (
+	venueDetailState.value.refreshError
+		? resolveAsyncPageErrorFeedback(venueDetailState.value.refreshError, { resource: '球馆详情' })
+		: null
+))
+const currentIdentityKey = () => `${userStore.userId}:${userStore.authGeneration}`
 
 const fetchDetail = async () => {
-	loading.value = true
+	if (venueDetailState.value.status === ASYNC_PAGE_STATUS.LOADING || venueDetailState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
+	const requestIdentityKey = currentIdentityKey()
+	if (venueDetailState.value.authGeneration !== userStore.authGeneration) {
+		venue.value = null
+		recentCheckins.value = []
+		hasCheckedIn.value = false
+		venueDetailState.value = createAsyncPageState({ authGeneration: userStore.authGeneration, data: null })
+	}
+	const nextState = beginAsyncPageLoad(venueDetailState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: null
+	})
+	const pageRequest = getAsyncPageRequest(nextState)
+	venueDetailState.value = nextState
+	loading.value = nextState.status === ASYNC_PAGE_STATUS.LOADING
+	if (!venueId.value) {
+		venueDetailState.value = rejectAsyncPageLoad(venueDetailState.value, pageRequest, createRequestError({
+			message: '未找到球馆信息，请返回球馆列表后重试。',
+			category: 'not-found'
+		}))
+		loading.value = false
+		return
+	}
 	try {
 		const res = await getVenueDetail({ venue_id: venueId.value })
-		if (res.success) {
-			venue.value = res.venue || null
-			recentCheckins.value = res.recent_checkins || []
-			hasCheckedIn.value = res.has_checked_in || false
-		}
+		if (currentIdentityKey() !== requestIdentityKey || venueDetailState.value.requestId !== pageRequest.requestId || venueDetailState.value.authGeneration !== pageRequest.authGeneration) return
+		if (!res?.success) throw createRequestError({ message: res?.message || '获取球馆详情失败', category: 'business' })
+		if (!res.venue) throw createRequestError({ message: '球馆不存在或已下线', category: 'not-found' })
+		venue.value = res.venue
+		recentCheckins.value = res.recent_checkins || []
+		hasCheckedIn.value = res.has_checked_in || false
+		venueDetailState.value = resolveAsyncPageLoad(venueDetailState.value, pageRequest, {
+			data: venue.value,
+			isEmpty: () => false
+		})
 	} catch (e) {
-		console.error('获取球馆详情失败', e)
+		if (currentIdentityKey() !== requestIdentityKey || venueDetailState.value.requestId !== pageRequest.requestId || venueDetailState.value.authGeneration !== pageRequest.authGeneration) return
+		venueDetailState.value = rejectAsyncPageLoad(venueDetailState.value, pageRequest, e)
 	} finally {
+		if (currentIdentityKey() !== requestIdentityKey || venueDetailState.value.requestId !== pageRequest.requestId || venueDetailState.value.authGeneration !== pageRequest.authGeneration) return
 		loading.value = false
 	}
+}
+
+const retryVenueDetail = () => fetchDetail()
+
+const handleVenueDetailErrorAction = () => {
+	if (venueDetailState.value.error?.category === 'permission' || venueDetailState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryVenueDetail()
 }
 
 const doCheckin = async () => {
@@ -191,11 +264,7 @@ const callPhone = () => {
 
 onLoad((options) => {
 	venueId.value = Number.parseInt(options?.id || options?.venue_id || '0', 10) || 0
-	if (venueId.value > 0) {
-		fetchDetail()
-	} else {
-		loading.value = false
-	}
+	fetchDetail()
 })
 </script>
 

@@ -6,7 +6,18 @@
 			<text class="loading-text">加载中...</text>
 		</view>
 
+		<view v-else-if="seasonPageError" class="page-error-state">
+			<uni-icons type="info" size="48" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+			<text class="page-error-title">{{ seasonPageError.title }}</text>
+			<text class="page-error-text">{{ seasonPageError.description }}</text>
+			<button class="retry-btn" @tap="handleSeasonErrorAction">{{ seasonPageError.actionText }}</button>
+		</view>
+
 		<view v-else class="season-content">
+			<view v-if="seasonRefreshError" class="refresh-error-banner">
+				<text>{{ seasonRefreshError.description }}</text>
+				<text class="refresh-error-action" @tap="retrySeason">重试</text>
+			</view>
 			<!-- 赛季信息卡片 -->
 			<view class="season-card" v-if="hasActiveSeason">
 				<view class="season-header">
@@ -124,14 +135,26 @@ import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { getSeasonLeaderboard, getSeasonOverview } from '@/api/season.js'
 import { useUserDataInvalidationStore } from '@/store/userDataInvalidation.js'
+import { useUserStore } from '@/store/user.js'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { resolveCurrentSeasonState } from '@/utils/honor-wall.js'
 import { resolveSeasonTimeline } from '@/utils/season-lifecycle.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 const userDataInvalidationStore = useUserDataInvalidationStore()
+const userStore = useUserStore()
 
 const statusMap = { 0: '未开始', 1: '进行中', 2: '已结束' }
 const gameTypeTabs = GAME_TYPE_TABS
@@ -146,6 +169,11 @@ const hasMore = ref(true)
 const currentGameType = ref(3)
 const hasLoadedOnce = ref(false)
 const loadedSeasonScopeVersion = ref(0)
+const loadedIdentityKey = ref('')
+const seasonPageState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: null
+}))
 
 const seasonEmptyState = computed(() => resolveCurrentSeasonState(season.value, seasonState.value))
 const hasActiveSeason = computed(() => seasonState.value === 'active' && Boolean(season.value))
@@ -158,48 +186,96 @@ const winRate = computed(() => {
 
 const remainDays = computed(() => seasonTimeline.value.remainDays)
 const progressPercent = computed(() => seasonTimeline.value.progressPercent)
+const seasonPageError = computed(() => (
+	seasonPageState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(seasonPageState.value.error, { resource: '赛季信息' })
+		: null
+))
+const seasonRefreshError = computed(() => (
+	seasonPageState.value.refreshError
+		? resolveAsyncPageErrorFeedback(seasonPageState.value.refreshError, { resource: '赛季信息' })
+		: null
+))
 
 const currentSeasonScopeVersion = () => userDataInvalidationStore.versionOf('season')
+const currentIdentityKey = () => `${userStore.userId}:${userStore.authGeneration}`
 
 const loadSeasonOverview = async () => {
-	if (loading.value) return
-	loading.value = true
+	if (seasonPageState.value.status === ASYNC_PAGE_STATUS.LOADING || seasonPageState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
+	const requestIdentityKey = currentIdentityKey()
+	if (seasonPageState.value.authGeneration !== userStore.authGeneration) {
+		season.value = null
+		seasonState.value = 'not_started'
+		myRecord.value = null
+		leaderboard.value = []
+		page.value = 1
+		hasMore.value = false
+		hasLoadedOnce.value = false
+		seasonPageState.value = createAsyncPageState({ authGeneration: userStore.authGeneration, data: null })
+	}
+	const nextState = beginAsyncPageLoad(seasonPageState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: null
+	})
+	const pageRequest = getAsyncPageRequest(nextState)
+	seasonPageState.value = nextState
+	loading.value = nextState.status === ASYNC_PAGE_STATUS.LOADING
 	try {
 		const res = await getSeasonOverview({ game_type: currentGameType.value })
-		if (!res?.success) {
-			season.value = null
-			seasonState.value = 'unavailable'
-			return
+		if (currentIdentityKey() !== requestIdentityKey || seasonPageState.value.requestId !== pageRequest.requestId || seasonPageState.value.authGeneration !== pageRequest.authGeneration) return
+		if (!res?.success) throw createRequestError({ message: res?.message || '获取赛季概览失败', category: 'business' })
+		const nextSeason = res.season || null
+		const nextSeasonState = res.season_state || (nextSeason ? 'active' : 'not_started')
+		const hasNextActiveSeason = nextSeasonState === 'active' && Boolean(nextSeason)
+		if (hasNextActiveSeason && (res.availability?.record === false || res.availability?.leaderboard === false)) {
+			throw createRequestError({ message: '赛季数据暂时不完整，请稍后重试', category: 'business' })
 		}
-		season.value = res.season || null
-		seasonState.value = res.season_state || (season.value ? 'active' : 'not_started')
+		season.value = nextSeason
+		seasonState.value = nextSeasonState
 		if (!hasActiveSeason.value) {
 			myRecord.value = null
 			leaderboard.value = []
 			hasMore.value = false
+			hasLoadedOnce.value = true
+			loadedIdentityKey.value = requestIdentityKey
+			loadedSeasonScopeVersion.value = currentSeasonScopeVersion()
+			seasonPageState.value = resolveAsyncPageLoad(seasonPageState.value, pageRequest, {
+				data: res,
+				isEmpty: () => false
+			})
 			return
 		}
-		if (res.availability?.record !== false) {
-			myRecord.value = res.record || null
-		}
-		if (res.availability?.leaderboard !== false) {
-			leaderboard.value = res.leaderboard || []
-			page.value = 1
-			hasMore.value = leaderboard.value.length >= 20
-		}
-	} catch (e) {
-		console.error('获取赛季概览失败', e)
-		season.value = null
-		seasonState.value = 'unavailable'
-	} finally {
+		myRecord.value = res.record || null
+		leaderboard.value = res.leaderboard || []
+		page.value = 1
+		hasMore.value = leaderboard.value.length >= 20
 		hasLoadedOnce.value = true
+		loadedIdentityKey.value = requestIdentityKey
 		loadedSeasonScopeVersion.value = currentSeasonScopeVersion()
+		seasonPageState.value = resolveAsyncPageLoad(seasonPageState.value, pageRequest, {
+			data: res,
+			isEmpty: () => false
+		})
+	} catch (e) {
+		if (currentIdentityKey() !== requestIdentityKey || seasonPageState.value.requestId !== pageRequest.requestId || seasonPageState.value.authGeneration !== pageRequest.authGeneration) return
+		seasonPageState.value = rejectAsyncPageLoad(seasonPageState.value, pageRequest, e)
+	} finally {
+		if (currentIdentityKey() !== requestIdentityKey || seasonPageState.value.requestId !== pageRequest.requestId || seasonPageState.value.authGeneration !== pageRequest.authGeneration) return
 		loading.value = false
 	}
 }
 
-const fetchLeaderboard = async (isRefresh = false) => {
+const fetchLeaderboard = async (isRefresh = false, isLoadMore = false) => {
 	if (!hasActiveSeason.value) return
+	if (seasonPageState.value.status === ASYNC_PAGE_STATUS.LOADING || seasonPageState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
+	const requestIdentityKey = currentIdentityKey()
+	const requestedPage = page.value
+	const nextState = beginAsyncPageLoad(seasonPageState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: null
+	})
+	const pageRequest = getAsyncPageRequest(nextState)
+	seasonPageState.value = nextState
 	try {
 		const res = await getSeasonLeaderboard({
 			season_id: season.value.id,
@@ -207,24 +283,30 @@ const fetchLeaderboard = async (isRefresh = false) => {
 			page: page.value,
 			page_size: 20
 		})
-		if (res.success) {
-			const newList = res.list || []
-			if (isRefresh) {
-				leaderboard.value = newList
-			} else {
-				leaderboard.value = [...leaderboard.value, ...newList]
-			}
-			hasMore.value = leaderboard.value.length < (res.total || 0)
+		if (currentIdentityKey() !== requestIdentityKey || seasonPageState.value.requestId !== pageRequest.requestId || seasonPageState.value.authGeneration !== pageRequest.authGeneration) return
+		if (!res?.success) throw createRequestError({ message: res?.message || '获取赛季排行榜失败', category: 'business' })
+		const newList = res.list || []
+		if (isRefresh) {
+			leaderboard.value = newList
+		} else {
+			leaderboard.value = [...leaderboard.value, ...newList]
 		}
+		hasMore.value = leaderboard.value.length < (res.total || 0)
+		seasonPageState.value = resolveAsyncPageLoad(seasonPageState.value, pageRequest, {
+			data: { season: season.value, leaderboard: leaderboard.value },
+			isEmpty: () => false
+		})
 	} catch (e) {
-		console.error('获取排行榜失败', e)
+		if (currentIdentityKey() !== requestIdentityKey || seasonPageState.value.requestId !== pageRequest.requestId || seasonPageState.value.authGeneration !== pageRequest.authGeneration) return
+		if (isLoadMore && requestedPage > 1) page.value = requestedPage - 1
+		seasonPageState.value = rejectAsyncPageLoad(seasonPageState.value, pageRequest, e)
 	}
 }
 
 const loadMoreLeaderboard = () => {
-	if (!hasActiveSeason.value || !hasMore.value) return
+	if (!hasActiveSeason.value || !hasMore.value || seasonPageState.value.status === ASYNC_PAGE_STATUS.LOADING || seasonPageState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
 	page.value++
-	fetchLeaderboard()
+	fetchLeaderboard(false, true)
 }
 
 const goReport = () => {
@@ -236,9 +318,37 @@ const goReport = () => {
 const handleGameTypeChange = async (gameType) => {
 	if (currentGameType.value === gameType) return
 	currentGameType.value = gameType
+	resetSeasonData()
 	page.value = 1
 	hasMore.value = true
 	await loadSeasonOverview()
+}
+
+const resetSeasonData = () => {
+	season.value = null
+	seasonState.value = 'not_started'
+	myRecord.value = null
+	leaderboard.value = []
+	hasLoadedOnce.value = false
+	seasonPageState.value = {
+		...seasonPageState.value,
+		status: ASYNC_PAGE_STATUS.IDLE,
+		requestId: seasonPageState.value.requestId + 1,
+		data: null,
+		hasData: false,
+		error: null,
+		refreshError: null
+	}
+}
+
+const retrySeason = () => loadSeasonOverview()
+
+const handleSeasonErrorAction = () => {
+	if (seasonPageState.value.error?.category === 'permission' || seasonPageState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retrySeason()
 }
 
 onMounted(() => {
@@ -246,7 +356,7 @@ onMounted(() => {
 })
 
 onShow(() => {
-	if (!hasLoadedOnce.value || loadedSeasonScopeVersion.value !== currentSeasonScopeVersion()) {
+	if (!hasLoadedOnce.value || seasonPageState.value.authGeneration !== userStore.authGeneration || loadedIdentityKey.value !== currentIdentityKey() || loadedSeasonScopeVersion.value !== currentSeasonScopeVersion()) {
 		loadSeasonOverview()
 	}
 })
@@ -265,6 +375,13 @@ onShow(() => {
 	min-height: 60vh;
 	.loading-text { font-size: 28rpx; color: #9A8C67; margin-top: 16rpx; }
 }
+.page-error-state { min-height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16rpx; padding: 0 48rpx; text-align: center; }
+.page-error-title { font-size: 32rpx; font-weight: 600; color: #231C0B; }
+.page-error-text { font-size: 24rpx; line-height: 1.7; color: #6E6242; }
+.retry-btn { min-width: 200rpx; height: 76rpx; line-height: 76rpx; margin: 12rpx 0 0; padding: 0 32rpx; border-radius: 38rpx; background: #E0AE12; color: #ffffff; font-size: 28rpx; font-weight: 600; }
+.retry-btn::after { display: none; }
+.refresh-error-banner { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-bottom: 20rpx; padding: 18rpx 22rpx; border-radius: 14rpx; background: rgba(224, 174, 18, 0.12); color: #8a5b00; font-size: 24rpx; }
+.refresh-error-action { flex-shrink: 0; color: #a86f00; font-weight: 600; }
 .season-content {
 	padding: 20rpx 24rpx;
 }

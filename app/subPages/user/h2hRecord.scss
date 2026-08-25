@@ -570,6 +570,14 @@ $border-color-dark: #3A2E16;
         color: $text-secondary-light;
     }
 
+    .error-desc {
+        max-width: 560rpx;
+        color: $text-tertiary-light;
+        font-size: 24rpx;
+        line-height: 1.6;
+        text-align: center;
+    }
+
     .retry-btn {
         width: 280rpx;
         height: 80rpx;
@@ -830,6 +838,10 @@ $border-color-dark: #3A2E16;
     .error-wrapper {
         .error-text {
             color: $text-secondary-dark;
+        }
+
+        .error-desc {
+            color: $text-tertiary-dark;
         }
     }
 

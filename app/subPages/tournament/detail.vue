@@ -6,6 +6,10 @@
 		</view>
 
 			<view v-else-if="eventView" class="detail-content">
+				<view v-if="eventDetailRefreshError" class="refresh-error-banner">
+					<text>{{ eventDetailRefreshError.description }}</text>
+					<text class="refresh-error-action" @tap="retryEventDetail">重试</text>
+				</view>
 				<view class="hero-card">
 					<image class="hero-cover" :src="eventView.coverImage" mode="aspectFill"></image>
 					<view class="hero-overlay"></view>
@@ -115,15 +119,15 @@
 
 		</view>
 
-		<view v-else class="empty-state">
+		<view v-else-if="eventDetailPageError" class="empty-state error-state">
 			<view class="empty-icon">
 				<uni-icons type="calendar" size="36" color="#E0AE12"></uni-icons>
 			</view>
-			<text class="empty-title">{{ errorMessage || '未找到该赛讯' }}</text>
-			<text class="empty-text">可以返回上一页，或重试加载这场赛事的比赛结果。</text>
+			<text class="empty-title">{{ eventDetailPageError.title }}</text>
+			<text class="empty-text">{{ eventDetailPageError.description }}</text>
 			<view class="empty-actions">
-				<view class="empty-btn primary" @tap="fetchDetail">
-					<text>重试</text>
+				<view class="empty-btn primary" @tap="handleEventDetailErrorAction">
+					<text>{{ eventDetailPageError.actionText }}</text>
 				</view>
 				<view class="empty-btn secondary" @tap="goBack">
 					<text>返回上一页</text>
@@ -134,7 +138,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { usePublicReadStore } from '@/store/publicRead.js'
 import { pickEventNewsViewPayload } from '@/utils/event-news-response.js'
@@ -147,15 +151,35 @@ import {
 	formatEventTimeRange,
 	normalizeSaiXunCard
 } from '@/utils/saixun.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 const publicReadStore = usePublicReadStore()
 
 const loading = ref(true)
-const errorMessage = ref('')
 const eventNewsId = ref(0)
 const eventView = ref(null)
 const rawEventPayload = ref(null)
+const eventDetailState = ref(createAsyncPageState({ data: null }))
+const eventDetailPageError = computed(() => (
+	eventDetailState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(eventDetailState.value.error, { resource: '赛事详情' })
+		: null
+))
+const eventDetailRefreshError = computed(() => (
+	eventDetailState.value.refreshError
+		? resolveAsyncPageErrorFeedback(eventDetailState.value.refreshError, { resource: '赛事详情' })
+		: null
+))
 
 let eventViewRefreshTimer = null
 
@@ -211,37 +235,59 @@ const startEventViewRefreshTimer = () => {
 }
 
 const fetchDetail = async () => {
+	const nextState = beginAsyncPageLoad(eventDetailState.value, { emptyData: null })
+	const pageRequest = getAsyncPageRequest(nextState)
+	eventDetailState.value = nextState
+	loading.value = nextState.status === ASYNC_PAGE_STATUS.LOADING
 	if (!eventNewsId.value) {
-		errorMessage.value = '未找到该赛讯'
-		rawEventPayload.value = null
-		eventView.value = null
+		eventDetailState.value = rejectAsyncPageLoad(eventDetailState.value, pageRequest, createRequestError({
+			message: '未找到该赛讯，请返回赛事列表后重试。',
+			category: 'not-found'
+		}))
 		loading.value = false
 		return
 	}
 
-	loading.value = true
-	errorMessage.value = ''
+	if (!nextState.hasData) {
+		rawEventPayload.value = null
+		eventView.value = null
+		stopEventViewRefreshTimer()
+	}
 	try {
 		const res = await publicReadStore.loadEventNewsView({ event_id: eventNewsId.value })
+		if (eventDetailState.value.requestId !== pageRequest.requestId) return
 		if (!res.success) {
-			throw new Error(res.message || '获取赛事详情失败')
+			throw createRequestError({ message: res.message || '获取赛事详情失败', category: 'business' })
 		}
 		const payload = pickEventNewsViewPayload(res)
 		if (!payload) {
-			throw new Error('赛事数据不存在')
+			throw createRequestError({ message: '赛事数据不存在或已下线', category: 'not-found' })
 		}
 		rawEventPayload.value = payload
 		renderEventView(Date.now())
 		startEventViewRefreshTimer()
+		eventDetailState.value = resolveAsyncPageLoad(eventDetailState.value, pageRequest, {
+			data: payload,
+			isEmpty: () => false
+		})
 	} catch (e) {
-		console.error('获取赛事详情失败', e)
-		rawEventPayload.value = null
-		eventView.value = null
-		stopEventViewRefreshTimer()
-		errorMessage.value = e?.responseData?.message || e?.message || '加载失败，请稍后重试'
+		if (eventDetailState.value.requestId !== pageRequest.requestId) return
+		eventDetailState.value = rejectAsyncPageLoad(eventDetailState.value, pageRequest, e)
+		if (!eventDetailState.value.hasData) stopEventViewRefreshTimer()
 	} finally {
+		if (eventDetailState.value.requestId !== pageRequest.requestId) return
 		loading.value = false
 	}
+}
+
+const retryEventDetail = () => fetchDetail()
+
+const handleEventDetailErrorAction = () => {
+	if (eventDetailState.value.error?.category === 'permission' || eventDetailState.value.error?.category === 'not-found') {
+		goBack()
+		return
+	}
+	retryEventDetail()
 }
 
 const goBack = () => {

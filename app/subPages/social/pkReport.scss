@@ -71,6 +71,13 @@
   gap: 20rpx;
 }
 
+.error-description {
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: #6E6242;
+  text-align: center;
+}
+
 .report-scroll {
   min-height: 100vh;
   padding: 24rpx;
@@ -324,6 +331,8 @@
   min-width: 220rpx;
   height: 80rpx;
   line-height: 80rpx;
+  margin: 0;
+  padding: 0 32rpx;
   border-radius: 999rpx;
   background: rgba(224, 174, 18, 0.16);
 
@@ -336,4 +345,23 @@
     font-weight: 600;
     color: #C69200;
   }
+}
+
+.refresh-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-bottom: 20rpx;
+  padding: 18rpx 22rpx;
+  border-radius: 14rpx;
+  background: rgba(224, 174, 18, 0.12);
+  color: #8a5b00;
+  font-size: 24rpx;
+}
+
+.refresh-error-action {
+  flex-shrink: 0;
+  color: #a86f00;
+  font-weight: 600;
 }

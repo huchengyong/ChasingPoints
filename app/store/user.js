@@ -6,9 +6,10 @@ import { useFriendRequestStore } from './friendRequest.js'
 import { useUserOverviewStore } from './userOverview.js'
 import { useUserDataInvalidationStore } from './userDataInvalidation.js'
 import { usePublicReadStore } from './publicRead.js'
-import { userWS } from '@/utils/websocket.js'
+import { matchWS, userWS } from '@/utils/websocket.js'
 import {
   clearStoredSession,
+  clearPendingMatchStartContexts,
   clearUserScopedRuntimeState,
   readStoredSession
 } from '@/utils/session-storage.js'
@@ -22,7 +23,8 @@ const clearCurrentUserRuntimeState = () => {
     userOverviewStore: useUserOverviewStore(),
     userDataInvalidationStore: useUserDataInvalidationStore(),
     publicReadStore: usePublicReadStore(),
-    userSocket: userWS
+    userSocket: userWS,
+    matchSocket: matchWS
   })
 }
 
@@ -58,6 +60,7 @@ export const useUserStore = defineStore('user', {
       const nextUser = data.user || data.user_info
       this.authGeneration += 1
       clearCurrentUserRuntimeState()
+      clearPendingMatchStartContexts(uni)
       this.token = data.token || data.access_token
       this.refreshToken = data.refreshToken || data.refresh_token || ''
       this.userInfo = nextUser
@@ -70,7 +73,7 @@ export const useUserStore = defineStore('user', {
       if (this.refreshToken) {
         uni.setStorageSync('refreshToken', this.refreshToken)
       }
-      userWS.connect().catch((error) => {
+      userWS.connect({ authGeneration: this.authGeneration }).catch((error) => {
         console.error('[UserStore] 用户WS连接失败:', error)
       })
       if (typeof uni.$emit === 'function') {

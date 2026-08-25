@@ -6,6 +6,13 @@
 			<text class="loading-text">加载中...</text>
 		</view>
 
+		<view v-else-if="detailError" class="loading-state error-state">
+			<uni-icons type="info" size="48" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+			<text class="loading-text">{{ detailError.title }}</text>
+			<text class="error-desc">{{ detailError.description }}</text>
+			<button class="error-action" @tap="handleDetailErrorAction">{{ detailError.actionText }}</button>
+		</view>
+
 		<template v-else-if="achievement">
 			<!-- 成就图标 -->
 			<view class="hero-section" :class="{ unlocked: achievement.unlocked }">
@@ -82,6 +89,16 @@ import {
 	getAchievementGameTypeLabel
 } from '@/utils/achievement-page.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
@@ -90,6 +107,15 @@ const loading = ref(true)
 const achievement = ref(null)
 const achievementId = ref(0)
 const iconFailed = ref(false)
+const detailState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: null
+}))
+const detailError = computed(() => (
+	detailState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(detailState.value.error, { resource: '成就详情' })
+		: null
+))
 
 const progressPercent = computed(() => {
 	if (!achievement.value) return 0
@@ -105,6 +131,12 @@ const handleDetailIconError = () => {
 }
 
 const loadDetail = async () => {
+	const nextState = beginAsyncPageLoad(detailState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: null
+	})
+	const pageRequest = getAsyncPageRequest(nextState)
+	detailState.value = nextState
 	loading.value = true
 	try {
 		const identity = {
@@ -115,16 +147,33 @@ const loadDetail = async () => {
 		if (cached) {
 			achievement.value = cached
 			iconFailed.value = false
+			detailState.value = resolveAsyncPageLoad(detailState.value, pageRequest, { data: cached, isEmpty: () => false })
 			return
 		}
 		const res = await getAchievementDetail({ achievement_id: achievementId.value })
-		achievement.value = res?.success ? res.achievement || null : null
+		if (detailState.value.requestId !== pageRequest.requestId || detailState.value.authGeneration !== pageRequest.authGeneration) return
+		if (!res?.success) throw createRequestError({ message: res?.message || '加载成就详情失败', category: 'business' })
+		achievement.value = res.achievement || null
 		iconFailed.value = false
+		detailState.value = resolveAsyncPageLoad(detailState.value, pageRequest, {
+			data: achievement.value,
+			isEmpty: value => !value
+		})
 	} catch (e) {
-		console.error('加载成就详情失败:', e)
+		detailState.value = rejectAsyncPageLoad(detailState.value, pageRequest, e)
 	} finally {
-		loading.value = false
+		if (detailState.value.requestId === pageRequest.requestId && detailState.value.authGeneration === pageRequest.authGeneration) {
+			loading.value = false
+		}
 	}
+}
+
+const handleDetailErrorAction = () => {
+	if (detailState.value.error?.category === 'permission' || detailState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	loadDetail()
 }
 
 onLoad((options) => {
@@ -150,6 +199,31 @@ onLoad((options) => {
 		font-size: 28rpx;
 		color: #9A8C67;
 	}
+}
+
+.error-desc {
+	max-width: 560rpx;
+	color: #6E6242;
+	font-size: 24rpx;
+	line-height: 1.6;
+	text-align: center;
+}
+
+.error-action {
+	min-width: 200rpx;
+	height: 76rpx;
+	line-height: 76rpx;
+	margin: 16rpx 0 0;
+	padding: 0 32rpx;
+	border-radius: 38rpx;
+	background: #E0AE12;
+	color: #ffffff;
+	font-size: 28rpx;
+	font-weight: 600;
+}
+
+.error-action::after {
+	display: none;
 }
 
 .hero-section {

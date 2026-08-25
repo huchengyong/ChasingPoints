@@ -154,7 +154,7 @@ test('buildPlayingRoute encodes opponent info for navigation', () => {
   )
 })
 
-test('resolveMatchScanAction identifies regular opponent payloads', () => {
+test('resolveMatchScanAction rejects legacy mutable opponent payloads', () => {
   assert.deepEqual(
     resolveMatchScanAction(JSON.stringify({
       user_id: 202,
@@ -162,12 +162,8 @@ test('resolveMatchScanAction identifies regular opponent payloads', () => {
       avatar: 'avatar-h.png'
     })),
     {
-      type: 'start_match',
-      opponent: {
-        user_id: 202,
-        nickname: '球友H',
-        avatar: 'avatar-h.png'
-      }
+      type: 'error',
+      message: '该二维码已不再支持，请让对方刷新匹配二维码'
     }
   )
 })

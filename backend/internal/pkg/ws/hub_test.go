@@ -13,6 +13,52 @@ import (
 	"gorm.io/gorm"
 )
 
+func TestDisconnectUserClosesUserAndMatchChannelsWithSessionInvalid(t *testing.T) {
+	hub := NewHub()
+	matchClient := &Client{Hub: hub, MatchId: 99, UserId: 101, Send: make(chan []byte, 2)}
+	userClient := &Client{Hub: hub, UserId: 101, Send: make(chan []byte, 2)}
+	otherClient := &Client{Hub: hub, MatchId: 99, UserId: 202, Send: make(chan []byte, 2)}
+	hub.rooms[99] = map[*Client]bool{matchClient: true, otherClient: true}
+	hub.userRooms[101] = map[*Client]bool{userClient: true}
+
+	hub.DisconnectUser(101)
+
+	assertSessionInvalidThenClosed(t, matchClient.Send)
+	assertSessionInvalidThenClosed(t, userClient.Send)
+	if hub.GetRoomClientCount(99) != 1 {
+		t.Fatalf("deleted user's match channel was not removed")
+	}
+	if _, ok := hub.userRooms[101]; ok {
+		t.Fatal("deleted user's user channel was not removed")
+	}
+	select {
+	case _, ok := <-otherClient.Send:
+		if !ok {
+			t.Fatal("other user's match channel was closed")
+		}
+	default:
+	}
+}
+
+func assertSessionInvalidThenClosed(t *testing.T, messages <-chan []byte) {
+	t.Helper()
+	payload, ok := <-messages
+	if !ok {
+		t.Fatal("session invalid payload missing")
+	}
+	var message Message
+	if err := json.Unmarshal(payload, &message); err != nil {
+		t.Fatalf("decode session invalid payload: %v", err)
+	}
+	data, ok := message.Data.(map[string]interface{})
+	if !ok || message.Type != "session_invalid" || data["reason"] != "SESSION_INVALID" {
+		t.Fatalf("unexpected session invalid payload: %#v", message)
+	}
+	if _, ok := <-messages; ok {
+		t.Fatal("channel must close after session invalid payload")
+	}
+}
+
 func TestBuildMatchSyncDataForViewerIncludesFinishCapabilities(t *testing.T) {
 	requesterID := int64(1001)
 	match := &model.Match{

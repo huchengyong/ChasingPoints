@@ -18,6 +18,10 @@
 			@refresherrefresh="refreshList"
 		>
 			<view v-if="postList.length" class="post-list">
+				<view v-if="postRefreshError" class="refresh-error-banner">
+					<text>{{ postRefreshError.description }}</text>
+					<text class="refresh-error-action" @tap="retryPosts">重试</text>
+				</view>
 				<view v-for="item in postList" :key="item.id" class="post-card">
 					<view class="post-head">
 						<view class="post-head-copy">
@@ -61,7 +65,14 @@
 				</view>
 			</view>
 
-			<view v-else class="empty-state">
+			<view v-else-if="postPageError" class="empty-state error-state">
+				<uni-icons type="info" size="48" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+				<text class="empty-title">{{ postPageError.title }}</text>
+				<text class="empty-desc">{{ postPageError.description }}</text>
+				<button class="retry-btn" @tap="handlePostsErrorAction">{{ postPageError.actionText }}</button>
+			</view>
+
+			<view v-else-if="postState.status === ASYNC_PAGE_STATUS.EMPTY" class="empty-state">
 				<text class="empty-icon">📝</text>
 				<text class="empty-title">你还没有动态</text>
 				<text class="empty-desc">发布后会在这里显示审核进度和发布记录。</text>
@@ -78,23 +89,51 @@ import { computed, ref } from 'vue'
 import { onLoad, onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { deletePost, getMyPosts } from '@/api/social.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { useUserStore } from '@/store/user.js'
 import { formatRelativeTime } from '@/utils/format.js'
 import { resolveMyPostReviewMeta } from '@/utils/social-review.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
+const userStore = useUserStore()
 
 const loading = ref(true)
 const refreshing = ref(false)
 const postList = ref([])
 const pageHint = ref('')
 const hasLoadedOnce = ref(false)
+const postState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: []
+}))
+const postPageError = computed(() => (
+	postState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(postState.value.error, { resource: '我的动态' })
+		: null
+))
+const postRefreshError = computed(() => (
+	postState.value.refreshError
+		? resolveAsyncPageErrorFeedback(postState.value.refreshError, { resource: '我的动态' })
+		: null
+))
+
+const currentIdentityKey = () => `${userStore.userId}:${userStore.authGeneration}`
 
 onLoad((options) => {
 	pageHint.value = options.hint ? decodeURIComponent(options.hint) : ''
 })
 
 onShow(() => {
-	if (!hasLoadedOnce.value) loadPosts()
+	if (!hasLoadedOnce.value || postState.value.authGeneration !== userStore.authGeneration) loadPosts()
 })
 
 onPullDownRefresh(() => {
@@ -103,18 +142,34 @@ onPullDownRefresh(() => {
 
 const loadPosts = async ({ force = false } = {}) => {
 	if (hasLoadedOnce.value && !force) return
+	const requestIdentityKey = currentIdentityKey()
+	if (postState.value.authGeneration !== userStore.authGeneration) {
+		postList.value = []
+		hasLoadedOnce.value = false
+		postState.value = createAsyncPageState({ authGeneration: userStore.authGeneration, data: [] })
+	}
+	const nextState = beginAsyncPageLoad(postState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: []
+	})
+	const pageRequest = getAsyncPageRequest(nextState)
+	postState.value = nextState
+	loading.value = nextState.status === ASYNC_PAGE_STATUS.LOADING
 	try {
-		loading.value = postList.value.length === 0
 		const res = await getMyPosts({ page: 1, page_size: 50 })
+		if (currentIdentityKey() !== requestIdentityKey || postState.value.requestId !== pageRequest.requestId || postState.value.authGeneration !== pageRequest.authGeneration) return
+		if (!res || res.success === false) throw createRequestError({ message: res?.message || '加载我的动态失败', category: 'business' })
 		postList.value = (res.list || []).map((item) => ({
 			...item,
 			images: Array.isArray(item.images) ? item.images : []
 		}))
 		hasLoadedOnce.value = true
+		postState.value = resolveAsyncPageLoad(postState.value, pageRequest, { data: postList.value })
 	} catch (error) {
-		console.error('加载我的动态失败:', error)
-		uni.showToast({ title: '加载失败', icon: 'none' })
+		if (currentIdentityKey() !== requestIdentityKey || postState.value.requestId !== pageRequest.requestId || postState.value.authGeneration !== pageRequest.authGeneration) return
+		postState.value = rejectAsyncPageLoad(postState.value, pageRequest, error)
 	} finally {
+		if (currentIdentityKey() !== requestIdentityKey || postState.value.requestId !== pageRequest.requestId || postState.value.authGeneration !== pageRequest.authGeneration) return
 		loading.value = false
 		refreshing.value = false
 		uni.stopPullDownRefresh()
@@ -122,8 +177,19 @@ const loadPosts = async ({ force = false } = {}) => {
 }
 
 const refreshList = async () => {
+	if (postState.value.status === ASYNC_PAGE_STATUS.LOADING || postState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
 	refreshing.value = true
 	await loadPosts({ force: true })
+}
+
+const retryPosts = () => loadPosts({ force: true })
+
+const handlePostsErrorAction = () => {
+	if (postState.value.error?.category === 'permission' || postState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryPosts()
 }
 
 const previewImage = (images, current) => {
@@ -155,6 +221,13 @@ const handleDelete = (item) => {
 				if (res.success) {
 					uni.showToast({ title: '删除成功', icon: 'success' })
 					postList.value = postList.value.filter((post) => post.id !== item.id)
+					postState.value = {
+						...postState.value,
+						status: postList.value.length ? ASYNC_PAGE_STATUS.READY : ASYNC_PAGE_STATUS.EMPTY,
+						data: postList.value,
+						hasData: postList.value.length > 0,
+						refreshError: null
+					}
 				} else {
 					uni.showToast({ title: res.message || '删除失败', icon: 'none' })
 				}
@@ -226,6 +299,42 @@ const handleDelete = (item) => {
 .empty-desc {
 	font-size: 24rpx;
 	color: #6E6242;
+}
+
+.refresh-error-banner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20rpx;
+	margin-bottom: 20rpx;
+	padding: 18rpx 22rpx;
+	border-radius: 14rpx;
+	background: rgba(224, 174, 18, 0.12);
+	color: #8a5b00;
+	font-size: 24rpx;
+}
+
+.refresh-error-action {
+	flex-shrink: 0;
+	color: #a86f00;
+	font-weight: 600;
+}
+
+.retry-btn {
+	min-width: 200rpx;
+	height: 76rpx;
+	line-height: 76rpx;
+	margin: 16rpx 0 0;
+	padding: 0 32rpx;
+	border-radius: 38rpx;
+	background: #E0AE12;
+	color: #ffffff;
+	font-size: 28rpx;
+	font-weight: 600;
+}
+
+.retry-btn::after {
+	display: none;
 }
 
 .empty-icon {

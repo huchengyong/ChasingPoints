@@ -88,7 +88,7 @@ func TestSmsBindPhoneMergesIntoPhoneAccountAndReturnsTargetSession(t *testing.T)
 	if err := svcCtx.UserModel.Create(targetUser); err != nil {
 		t.Fatalf("create target user: %v", err)
 	}
-	if err := svcCtx.CodeManager.SaveCode(ctx, phone, "123456"); err != nil {
+	if err := svcCtx.CodeManager.SaveCodeForScene(ctx, phone, sms.SceneBind, "123456"); err != nil {
 		t.Fatalf("save sms code: %v", err)
 	}
 
@@ -164,7 +164,7 @@ func TestSmsBindPhoneRejectsDisabledMergeTargetWithoutChangingSource(t *testing.
 	if err := svcCtx.DB.Model(&model.User{}).Where("id = ?", targetUser.Id).Update("status", 0).Error; err != nil {
 		t.Fatalf("disable target user: %v", err)
 	}
-	if err := svcCtx.CodeManager.SaveCode(ctx, phone, "222222"); err != nil {
+	if err := svcCtx.CodeManager.SaveCodeForScene(ctx, phone, sms.SceneBind, "222222"); err != nil {
 		t.Fatalf("save sms code: %v", err)
 	}
 
@@ -202,7 +202,7 @@ func TestSmsBindPhoneWithoutMergeKeepsCurrentUserAndSession(t *testing.T) {
 	if err := svcCtx.UserModel.Create(user); err != nil {
 		t.Fatalf("create user: %v", err)
 	}
-	if err := svcCtx.CodeManager.SaveCode(ctx, phone, "654321"); err != nil {
+	if err := svcCtx.CodeManager.SaveCodeForScene(ctx, phone, sms.SceneBind, "654321"); err != nil {
 		t.Fatalf("save sms code: %v", err)
 	}
 
@@ -248,7 +248,7 @@ func TestSmsBindPhoneRollsBackMergeOnDeleteFailure(t *testing.T) {
 	if err := svcCtx.UserModel.Create(targetUser); err != nil {
 		t.Fatalf("create target user: %v", err)
 	}
-	if err := svcCtx.CodeManager.SaveCode(ctx, phone, "111111"); err != nil {
+	if err := svcCtx.CodeManager.SaveCodeForScene(ctx, phone, sms.SceneBind, "111111"); err != nil {
 		t.Fatalf("save sms code: %v", err)
 	}
 	if err := svcCtx.DB.Exec(`

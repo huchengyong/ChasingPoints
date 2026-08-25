@@ -41,14 +41,18 @@
       :refresher-triggered="refreshing"
       @refresherrefresh="onRefresh"
       @scrolltolower="loadMore"
-    >
-      <view v-if="loading" class="state-block">
+	  >
+	    <view v-if="loading" class="state-block">
         <uni-icons type="spinner-cycle" size="34" color="#E0AE12"></uni-icons>
         <text class="state-text">加载中...</text>
       </view>
 
-      <view v-else-if="list.length > 0" class="post-list">
-        <view v-for="item in list" :key="item.id" class="post-card" @tap="openDetail(item.id)">
+	    <view v-else-if="list.length > 0" class="post-list">
+	      <view v-if="eventNewsRefreshError" class="refresh-error-banner">
+	        <text>{{ eventNewsRefreshError.description }}</text>
+	        <text class="refresh-error-action" @tap="retryEventNews">重试</text>
+	      </view>
+	      <view v-for="item in list" :key="item.id" class="post-card" @tap="openDetail(item.id)">
           <image class="post-cover" :src="item.coverImage" mode="aspectFill"></image>
           <view class="post-overlay"></view>
           <view class="post-body">
@@ -65,7 +69,14 @@
         </view>
       </view>
 
-      <view v-else class="state-block">
+	    <view v-else-if="eventNewsPageError" class="state-block error-state">
+	      <uni-icons type="info" size="48" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+	      <text class="state-title">{{ eventNewsPageError.title }}</text>
+	      <text class="state-text">{{ eventNewsPageError.description }}</text>
+	      <button class="retry-btn" @tap="handleEventNewsErrorAction">{{ eventNewsPageError.actionText }}</button>
+	    </view>
+
+	    <view v-else-if="eventNewsState.status === ASYNC_PAGE_STATUS.EMPTY" class="state-block">
         <text class="state-icon">🗓️</text>
         <text class="state-title">暂时还没有可看的赛讯</text>
         <text class="state-text">官方赛事内容更新中，稍后再来刷新看看。</text>
@@ -97,6 +108,16 @@ import {
   buildYearOptions,
   formatSaiXunFilterLabel
 } from '@/utils/saixun-filter.js'
+import {
+  ASYNC_PAGE_STATUS,
+  beginAsyncPageLoad,
+  createAsyncPageState,
+  getAsyncPageRequest,
+  rejectAsyncPageLoad,
+  resolveAsyncPageErrorFeedback,
+  resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 const publicReadStore = usePublicReadStore()
@@ -110,6 +131,7 @@ const pageSize = 10
 const total = ref(0)
 const hasMore = ref(false)
 const hasLoadedOnce = ref(false)
+const eventNewsState = ref(createAsyncPageState({ data: [] }))
 const filter = ref(buildCurrentYearFilter(Date.now()))
 const customDateDraft = ref({
   from: filter.value.from,
@@ -119,22 +141,43 @@ const customDateDraft = ref({
 const filterDateLabel = computed(() => formatSaiXunFilterLabel(filter.value))
 const yearOptions = computed(() => buildYearOptions(filter.value.year))
 const showCustomDateEditor = computed(() => filter.value.preset === 'custom')
+const eventNewsPageError = computed(() => (
+  eventNewsState.value.status === ASYNC_PAGE_STATUS.ERROR
+    ? resolveAsyncPageErrorFeedback(eventNewsState.value.error, { resource: '赛讯' })
+    : null
+))
+const eventNewsRefreshError = computed(() => (
+  eventNewsState.value.refreshError
+    ? resolveAsyncPageErrorFeedback(eventNewsState.value.refreshError, { resource: '赛讯' })
+    : null
+))
 
 const fetchData = async ({ replace = false, force = false } = {}) => {
+	if (eventNewsState.value.status === ASYNC_PAGE_STATUS.LOADING || eventNewsState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
+	const requestedPage = page.value
+	const nextState = beginAsyncPageLoad(eventNewsState.value, { emptyData: [] })
+	const pageRequest = getAsyncPageRequest(nextState)
+	eventNewsState.value = nextState
+	loading.value = nextState.status === ASYNC_PAGE_STATUS.LOADING
   try {
     const listRes = await publicReadStore.loadEventNews(
       buildEventNewsListParams(filter.value, page.value, pageSize),
       { force }
     )
-    if (!listRes?.success) return
+		if (eventNewsState.value.requestId !== pageRequest.requestId) return
+    if (!listRes?.success) throw createRequestError({ message: listRes?.message || '加载赛讯失败', category: 'business' })
     const nextList = Array.isArray(listRes.list) ? listRes.list.map((item) => normalizeSaiXunCard(item)) : []
     list.value = replace ? nextList : [...list.value, ...nextList]
     total.value = Number(listRes.total || 0)
     hasMore.value = list.value.length < total.value
     hasLoadedOnce.value = true
+		eventNewsState.value = resolveAsyncPageLoad(eventNewsState.value, pageRequest, { data: list.value })
   } catch (error) {
-    console.error('加载赛讯失败:', error)
+		if (eventNewsState.value.requestId !== pageRequest.requestId) return
+		if (!replace && requestedPage > 1) page.value = requestedPage - 1
+		eventNewsState.value = rejectAsyncPageLoad(eventNewsState.value, pageRequest, error)
   } finally {
+		if (eventNewsState.value.requestId !== pageRequest.requestId) return
     loading.value = false
     loadingMore.value = false
     refreshing.value = false
@@ -152,30 +195,51 @@ const applyFilter = async (nextFilter, { syncDraft = true } = {}) => {
     }
   }
   page.value = 1
-  list.value = []
-  total.value = 0
-  hasMore.value = false
-  loading.value = list.value.length === 0
+	list.value = []
+	total.value = 0
+	hasMore.value = false
+	resetEventNewsList()
   await fetchData({ replace: true })
 }
 
 const refreshData = async ({ force = false } = {}) => {
   page.value = 1
-  loading.value = list.value.length === 0
   await fetchData({ replace: true, force })
 }
 
 const onRefresh = async () => {
-  if (loading.value) return
+	if (eventNewsState.value.status === ASYNC_PAGE_STATUS.LOADING || eventNewsState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
   refreshing.value = true
   await refreshData({ force: true })
 }
 
 const loadMore = async () => {
-  if (loading.value || loadingMore.value || !hasMore.value) return
+	if (eventNewsState.value.status === ASYNC_PAGE_STATUS.LOADING || eventNewsState.value.status === ASYNC_PAGE_STATUS.REFRESHING || loadingMore.value || !hasMore.value) return
   loadingMore.value = true
   page.value += 1
   await fetchData({ replace: false })
+}
+
+const resetEventNewsList = () => {
+	eventNewsState.value = {
+		...eventNewsState.value,
+		status: ASYNC_PAGE_STATUS.IDLE,
+		requestId: eventNewsState.value.requestId + 1,
+		data: [],
+		hasData: false,
+		error: null,
+		refreshError: null
+	}
+}
+
+const retryEventNews = () => refreshData({ force: true })
+
+const handleEventNewsErrorAction = () => {
+	if (eventNewsState.value.error?.category === 'permission' || eventNewsState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryEventNews()
 }
 
 const openDetail = (id) => {

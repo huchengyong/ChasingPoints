@@ -1,6 +1,8 @@
 package ws
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -9,7 +11,7 @@ import (
 
 	"chasing_points/internal/config"
 	"chasing_points/internal/model"
-	pkgx "chasing_points/internal/pkg"
+	"chasing_points/internal/pkg/wsticket"
 	"chasing_points/internal/svc"
 
 	"github.com/gorilla/websocket"
@@ -17,7 +19,9 @@ import (
 	"gorm.io/gorm"
 )
 
-func newMatchWSHandlerTestServer(t *testing.T) (*httptest.Server, *Hub, string) {
+const matchWSAllowedOrigin = "http://ws.test"
+
+func newMatchWSHandlerTestServer(t *testing.T) (*httptest.Server, *Hub, *fakeHandlerWSTicketStore) {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
@@ -50,31 +54,40 @@ func newMatchWSHandlerTestServer(t *testing.T) (*httptest.Server, *Hub, string) 
 			t.Fatalf("create match %d: %v", match.Id, err)
 		}
 	}
-	const secret = "match-ws-test-secret"
 	cfg := config.Config{}
-	cfg.Auth.AccessSecret = secret
+	cfg.Security.WebSocketAllowedOrigins = matchWSAllowedOrigin
 	hub := NewHub()
+	ticketStore := newFakeHandlerWSTicketStore()
 	previousHub := GlobalHub
 	GlobalHub = hub
 	t.Cleanup(func() { GlobalHub = previousHub })
 	server := httptest.NewServer(MatchWSHandler(&svc.ServiceContext{
-		Config:     cfg,
-		DB:         db,
-		MatchModel: model.NewMatchModel(db),
-		UserModel:  model.NewUserModel(db),
+		Config:        cfg,
+		DB:            db,
+		MatchModel:    model.NewMatchModel(db),
+		UserModel:     model.NewUserModel(db),
+		WSTicketStore: ticketStore,
 	}))
 	t.Cleanup(server.Close)
-	return server, hub, secret
+	return server, hub, ticketStore
 }
 
 func dialMatchWS(t *testing.T, server *httptest.Server, path string) (*websocket.Conn, *http.Response, error) {
+	return dialMatchWSWithOrigin(t, server, path, matchWSAllowedOrigin)
+}
+
+func dialMatchWSWithOrigin(t *testing.T, server *httptest.Server, path string, origin string) (*websocket.Conn, *http.Response, error) {
 	t.Helper()
 	url := "ws" + strings.TrimPrefix(server.URL, "http") + path
-	return websocket.DefaultDialer.Dial(url, nil)
+	header := http.Header{}
+	if origin != "" {
+		header.Set("Origin", origin)
+	}
+	return websocket.DefaultDialer.Dial(url, header)
 }
 
 func TestMatchWSHandlerAuthorizesBeforeRegistration(t *testing.T) {
-	server, hub, secret := newMatchWSHandlerTestServer(t)
+	server, hub, ticketStore := newMatchWSHandlerTestServer(t)
 	publicConn, response, err := dialMatchWS(t, server, "/?match_id=1")
 	if err != nil || response == nil || response.StatusCode != http.StatusSwitchingProtocols {
 		t.Fatalf("public anonymous connection failed: status=%v err=%v", response, err)
@@ -90,11 +103,9 @@ func TestMatchWSHandlerAuthorizesBeforeRegistration(t *testing.T) {
 	}
 
 	for _, userID := range []int64{1001, 2002, 3003} {
-		token, err := pkgx.GenerateToken(userID, secret, 60)
-		if err != nil {
-			t.Fatalf("generate token: %v", err)
-		}
-		conn, response, err := dialMatchWS(t, server, "/?match_id=2&token="+token)
+		ticket := fmt.Sprintf("private-ticket-%d", userID)
+		ticketStore.Add(ticket, wsticket.Claims{UserID: userID, Scope: wsticket.ScopeMatch, MatchID: 2})
+		conn, response, err := dialMatchWS(t, server, "/?match_id=2&ticket="+ticket)
 		if err != nil || response == nil || response.StatusCode != http.StatusSwitchingProtocols {
 			t.Fatalf("private participant %d connection failed: status=%v err=%v", userID, response, err)
 		}
@@ -107,27 +118,37 @@ func TestMatchWSHandlerAuthorizesBeforeRegistration(t *testing.T) {
 		case <-time.After(time.Second):
 			t.Fatalf("private participant %d was not registered", userID)
 		}
+
+		conn, response, err = dialMatchWS(t, server, "/?match_id=2&ticket="+ticket)
+		if conn != nil {
+			conn.Close()
+		}
+		if err == nil || response == nil || response.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("replayed private participant %d ticket should fail: status=%v err=%v", userID, response, err)
+		}
 	}
 }
 
 func TestMatchWSHandlerRejectsUnauthorizedHandshakesWithoutRegistration(t *testing.T) {
-	server, hub, secret := newMatchWSHandlerTestServer(t)
-	nonParticipantToken, _ := pkgx.GenerateToken(4004, secret, 60)
-	refreshToken, _ := pkgx.GenerateTypedToken(1001, secret, 60, pkgx.RefreshTokenType)
-	deletedUserToken, _ := pkgx.GenerateTypedToken(9999, secret, 60, pkgx.AccessTokenType)
-	disabledUserToken, _ := pkgx.GenerateTypedToken(6006, secret, 60, pkgx.AccessTokenType)
+	server, hub, ticketStore := newMatchWSHandlerTestServer(t)
+	ticketStore.Add("non-participant", wsticket.Claims{UserID: 4004, Scope: wsticket.ScopeMatch, MatchID: 2})
+	ticketStore.Add("deleted-user", wsticket.Claims{UserID: 9999, Scope: wsticket.ScopeMatch, MatchID: 1})
+	ticketStore.Add("disabled-user", wsticket.Claims{UserID: 6006, Scope: wsticket.ScopeMatch, MatchID: 1})
+	ticketStore.Add("wrong-match", wsticket.Claims{UserID: 1001, Scope: wsticket.ScopeMatch, MatchID: 1})
 	tests := []struct {
 		name       string
 		path       string
 		statusCode int
 	}{
 		{name: "match not found", path: "/?match_id=999", statusCode: http.StatusNotFound},
-		{name: "invalid token", path: "/?match_id=1&token=invalid", statusCode: http.StatusUnauthorized},
-		{name: "refresh token", path: "/?match_id=1&token=" + refreshToken, statusCode: http.StatusUnauthorized},
-		{name: "deleted user token", path: "/?match_id=1&token=" + deletedUserToken, statusCode: http.StatusUnauthorized},
-		{name: "disabled user token", path: "/?match_id=1&token=" + disabledUserToken, statusCode: http.StatusUnauthorized},
+		{name: "old query token", path: "/?match_id=1&token=old-access-token", statusCode: http.StatusUnauthorized},
+		{name: "invalid ticket", path: "/?match_id=1&ticket=missing", statusCode: http.StatusUnauthorized},
+		{name: "expired ticket", path: "/?match_id=1&ticket=expired-ticket", statusCode: http.StatusUnauthorized},
+		{name: "deleted logout user ticket", path: "/?match_id=1&ticket=deleted-user", statusCode: http.StatusUnauthorized},
+		{name: "disabled user ticket", path: "/?match_id=1&ticket=disabled-user", statusCode: http.StatusUnauthorized},
+		{name: "wrong match ticket", path: "/?match_id=2&ticket=wrong-match", statusCode: http.StatusUnauthorized},
 		{name: "private anonymous", path: "/?match_id=2", statusCode: http.StatusUnauthorized},
-		{name: "private non participant", path: "/?match_id=2&token=" + nonParticipantToken, statusCode: http.StatusForbidden},
+		{name: "private non participant", path: "/?match_id=2&ticket=non-participant", statusCode: http.StatusForbidden},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -145,4 +166,49 @@ func TestMatchWSHandlerRejectsUnauthorizedHandshakesWithoutRegistration(t *testi
 			}
 		})
 	}
+}
+
+func TestMatchWSHandlerRejectsDisallowedOriginBeforeRegistration(t *testing.T) {
+	server, hub, _ := newMatchWSHandlerTestServer(t)
+	conn, response, err := dialMatchWSWithOrigin(t, server, "/?match_id=1", "http://evil.test")
+	if conn != nil {
+		conn.Close()
+	}
+	if err == nil || response == nil || response.StatusCode != http.StatusForbidden {
+		t.Fatalf("expected origin rejection, response=%v err=%v", response, err)
+	}
+	select {
+	case client := <-hub.Register:
+		t.Fatalf("origin rejected connection registered client: %+v", client)
+	default:
+	}
+}
+
+type fakeHandlerWSTicketStore struct {
+	claims   map[string]wsticket.Claims
+	consumed map[string]bool
+}
+
+func newFakeHandlerWSTicketStore() *fakeHandlerWSTicketStore {
+	return &fakeHandlerWSTicketStore{
+		claims:   map[string]wsticket.Claims{},
+		consumed: map[string]bool{},
+	}
+}
+
+func (s *fakeHandlerWSTicketStore) Add(ticket string, claims wsticket.Claims) {
+	s.claims[ticket] = claims
+}
+
+func (s *fakeHandlerWSTicketStore) Issue(ctx context.Context, claims wsticket.Claims, ttl time.Duration) (string, time.Duration, error) {
+	return "", 0, wsticket.ErrStoreMissing
+}
+
+func (s *fakeHandlerWSTicketStore) Consume(ctx context.Context, ticket string, expectedScope string) (*wsticket.Claims, error) {
+	claims, ok := s.claims[ticket]
+	if !ok || s.consumed[ticket] || claims.Scope != expectedScope {
+		return nil, wsticket.ErrTicketNotFound
+	}
+	s.consumed[ticket] = true
+	return &claims, nil
 }

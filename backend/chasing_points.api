@@ -14,7 +14,7 @@ type UserInfo {
 // 发送短信验证码
 type SendSmsReq {
 	Phone string `json:"phone"`
-	Scene string `json:"scene,optional,default=login"` // login/bind
+	Scene string `json:"scene,optional,default=login"` // login/bind/delete_account
 }
 
 type SendSmsResp {
@@ -38,12 +38,12 @@ type LoginResp {
 
 // OAuth登录
 type LoginByOauthReq {
-	Provider  string `json:"provider"` // huawei
-	OpenId    string `json:"open_id"`
-	UnionId   string `json:"union_id,optional"`
-	NickName  string `json:"nick_name,optional"`
-	AvatarUrl string `json:"avatar_url,optional"`
-	Platform  string `json:"platform,optional"`
+	Provider       string `json:"provider"` // huawei
+	Credential     string `json:"credential"`
+	CredentialType string `json:"credential_type,optional"` // authorization_code/id_token/access_token
+	Platform       string `json:"platform,optional"`
+	NickName       string `json:"nick_name,optional"`
+	AvatarUrl      string `json:"avatar_url,optional"`
 }
 
 type LoginByOauthResp {
@@ -78,6 +78,7 @@ type RefreshTokenReq {
 type RefreshTokenResp {
 	Success      bool   `json:"success"`
 	Message      string `json:"message,optional"`
+	Reason       string `json:"reason,optional"`
 	AccessToken  string `json:"access_token,optional"`
 	RefreshToken string `json:"refresh_token,optional"`
 	ExpiresIn    int64  `json:"expires_in,optional"`
@@ -497,6 +498,44 @@ type GetUserOverviewResp {
 	PartialErrors       []ReadPartialError             `json:"partial_errors"`
 }
 
+type WSTicketResp {
+	Success          bool   `json:"success"`
+	Ticket           string `json:"ticket"`
+	Scope            string `json:"scope"`
+	ExpiresInSeconds int64  `json:"expires_in_seconds"`
+}
+
+type PersonalDataExportReq {
+	Cursor string `json:"cursor,optional"`
+}
+
+type PersonalDataExportItem {
+	Category string `json:"category"`
+	Id       string `json:"id"`
+	DataJson string `json:"data_json"`
+}
+
+type PersonalDataExportResp {
+	Success       bool                     `json:"success"`
+	Message       string                   `json:"message,optional"`
+	FormatVersion string                   `json:"format_version"`
+	SnapshotAt    string                   `json:"snapshot_at"`
+	Items         []PersonalDataExportItem `json:"items"`
+	NextCursor    string                   `json:"next_cursor,optional"`
+	Complete      bool                     `json:"complete"`
+	ItemCount     int                      `json:"item_count"`
+}
+
+type DeleteAccountReq {
+	ConfirmText    string `json:"confirm_text"`
+	VerifyType     string `json:"verify_type"` // sms/oauth
+	SmsCode        string `json:"sms_code,optional"`
+	Provider       string `json:"provider,optional"`
+	Credential     string `json:"credential,optional"`
+	CredentialType string `json:"credential_type,optional"`
+	Platform       string `json:"platform,optional"`
+}
+
 @server (
 	prefix: /api/user
 	group:  user
@@ -558,6 +597,18 @@ service chasing_points-api {
 	@doc "提交投诉举报与意见反馈"
 	@handler CreateUserFeedbackTicket
 	post /feedback/create (CreateFeedbackTicketReq) returns (CreateFeedbackTicketResp)
+
+	@doc "签发用户级 WebSocket 连接 ticket"
+	@handler IssueUserWSTicket
+	post /ws-ticket returns (WSTicketResp)
+
+	@doc "导出个人数据"
+	@handler ExportPersonalData
+	post /data/export (PersonalDataExportReq) returns (PersonalDataExportResp)
+
+	@doc "注销账号"
+	@handler DeleteAccount
+	post /account/delete (DeleteAccountReq) returns (CommonResp)
 }
 
 // ==================== 对局相关 ====================
@@ -793,9 +844,10 @@ type StartMatchReq {
 	GameMode            string `json:"game_mode,optional"` // 比赛模式
 	MatchMode           string `json:"match_mode,optional"` // practice/ranked，缺省按 ranked
 	Visibility          string `json:"visibility,optional"` // private/public，排位固定 public
-	OpponentId          int64  `json:"opponent_id"` // 对手ID（平台用户，必填）
-	OpponentName        string `json:"opponent_name"` // 对手昵称
+	OpponentId          int64  `json:"opponent_id,optional"` // 旧客户端展示字段；新开局以 invite_token 为准
+	OpponentName        string `json:"opponent_name,optional"` // 旧客户端展示字段；不得作为授权依据
 	OpponentAvatar      string `json:"opponent_avatar,optional"` // 对手头像
+	InviteToken         string `json:"invite_token,optional"` // 服务端签发的匹配邀请凭据
 	ChallengeId         int64  `json:"challenge_id,optional"` // 已接受邀约 ID
 	SnookerRulesVersion int    `json:"snooker_rules_version,optional"` // 斯诺克规则版本：旧客户端缺省为1，新客户端显式提交2
 	BestOfFrames        int    `json:"best_of_frames,optional"` // 版本2斯诺克总局数，必须为正奇数
@@ -1235,8 +1287,31 @@ type SearchOpponentResp {
 
 // 获取匹配二维码
 type GetMatchQRCodeResp {
-	Success    bool   `json:"success"`
-	QrcodeData string `json:"qrcode_data"` // 二维码内容JSON: {"user_id":xxx,"nickname":"xxx","avatar":"xxx","ts":xxx}
+	Success          bool   `json:"success"`
+	QrcodeData       string `json:"qrcode_data"` // 二维码正文，包含服务端可验证 invite_token
+	InviteToken      string `json:"invite_token,optional"`
+	ExpiresInSeconds int64  `json:"expires_in_seconds,optional"`
+}
+
+type MatchWSTicketReq {
+	MatchId int64 `json:"match_id"`
+}
+
+type MatchInvitePreviewReq {
+	InviteToken string `json:"invite_token"`
+}
+
+type MatchInvitePreviewInfo {
+	OpponentId     int64  `json:"opponent_id"`
+	OpponentName   string `json:"opponent_name"`
+	OpponentAvatar string `json:"opponent_avatar"`
+	ExpiresAt      string `json:"expires_at"`
+}
+
+type MatchInvitePreviewResp {
+	Success bool                    `json:"success"`
+	Message string                  `json:"message,optional"`
+	Preview *MatchInvitePreviewInfo `json:"preview,optional"`
 }
 
 type GetMatchRefereeQRCodeReq {
@@ -1556,6 +1631,14 @@ service chasing_points-api {
 	@doc "获取匹配二维码"
 	@handler GetMatchQRCode
 	get /qrcode returns (GetMatchQRCodeResp)
+
+	@doc "签发对局级 WebSocket 连接 ticket"
+	@handler IssueMatchWSTicket
+	post /ws-ticket (MatchWSTicketReq) returns (WSTicketResp)
+
+	@doc "匹配邀请预览"
+	@handler PreviewMatchInvite
+	post /invite/preview (MatchInvitePreviewReq) returns (MatchInvitePreviewResp)
 
 	@doc "获取本场裁判二维码"
 	@handler GetMatchRefereeQRCode

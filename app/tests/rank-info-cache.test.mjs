@@ -160,6 +160,6 @@ test('user page keeps cached rank visible, enables manual refresh, and invalidat
   assert.match(playingPageSource, /const handleMatchEnd[\s\S]*invalidateRankAfterSettlement\(data\)/)
   assert.match(appSource, /WS_MESSAGE_TYPES\.RANK_INFO_UPDATED/)
   assert.match(appSource, /userWS\.on\(WS_MESSAGE_TYPES\.RANK_INFO_UPDATED, this\.handleRankInfoUpdated\)/)
-  assert.match(appSource, /userWS\.connect\(\)/)
+  assert.match(appSource, /userWS\.connect\(\{\s*authGeneration:\s*userStore\.authGeneration\s*\}\)/)
   assert.doesNotMatch(userPageSource, /userWS\.disconnect\(\)/)
 })

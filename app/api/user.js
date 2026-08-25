@@ -24,6 +24,10 @@ export const getUserReputationLogs = (params = {}) => {
   return get('/api/user/reputation/logs', params)
 }
 
+export const issueUserWSTicket = () => {
+  return post('/api/user/ws-ticket')
+}
+
 /**
  * 获取用户统计数据
  * @returns {Promise} 返回 { total_matches, wins, losses, win_rate, max_win_streak }
@@ -77,6 +81,14 @@ export const updateUserProfile = (data) => {
   return post('/api/user/profile', data)
 }
 
+export const exportPersonalData = (cursor = '') => {
+  return post('/api/user/data/export', { cursor })
+}
+
+export const deleteAccount = (data) => {
+  return post('/api/user/account/delete', data)
+}
+
 export default {
   getFavoriteVenueRewardStatus,
   getQiniuUploadToken,
@@ -85,8 +97,11 @@ export default {
   getUserOverview,
   getUserReputation,
   getUserReputationLogs,
+  issueUserWSTicket,
   getUserPrivacy,
   getUserStats,
+  exportPersonalData,
+  deleteAccount,
   updateUserPrivacy,
   updateNickname,
   updateUserProfile

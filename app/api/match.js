@@ -67,6 +67,10 @@ export const getMatchRewardSummary = (params) => {
   return get('/api/match/reward-summary', params)
 }
 
+export const issueMatchWSTicket = (matchId) => {
+  return post('/api/match/ws-ticket', { match_id: Number(matchId) })
+}
+
 /**
  * 获取公开对局详情（观战模式，无需登录）
  * @param {Object} params { match_id }
@@ -168,6 +172,12 @@ export const getH2HOverview = (params = {}) => {
  */
 export const getMatchQRCode = () => {
   return get('/api/match/qrcode')
+}
+
+export const previewMatchInvite = (inviteToken) => {
+  return post('/api/match/invite/preview', {
+    invite_token: String(inviteToken || '').trim()
+  })
 }
 
 /**

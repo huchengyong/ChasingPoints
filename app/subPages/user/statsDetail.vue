@@ -6,7 +6,18 @@
 			<text class="loading-text">加载统计数据...</text>
 		</view>
 
+		<view v-else-if="statsPageError" class="loading-state error-state">
+			<uni-icons type="info" size="48" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+			<text class="loading-text">{{ statsPageError.title }}</text>
+			<text class="error-desc">{{ statsPageError.description }}</text>
+			<button class="error-action" @tap="handleStatsErrorAction">{{ statsPageError.actionText }}</button>
+		</view>
+
 		<template v-else>
+			<view v-if="statsRefreshError" class="refresh-error-banner">
+				<text>{{ statsRefreshError.description }}</text>
+				<text class="refresh-error-action" @tap="retryStats">重试</text>
+			</view>
 			<!-- 分球种统计 -->
 			<view class="section">
 				<text class="section-title">分球种统计</text>
@@ -239,6 +250,16 @@ import {
 	shiftMonthKey,
 	shouldApplyStatsDetailResponse
 } from '@/utils/stats-detail.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
@@ -246,6 +267,10 @@ const userDataInvalidationStore = useUserDataInvalidationStore()
 
 const isStatsFetching = ref(true)
 const hasLoadedOnce = ref(false)
+const statsState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: null
+}))
 const latestStatsRequestId = ref(0)
 const loadedIdentityKey = ref('')
 const loadedStatsScopeVersion = ref(0)
@@ -268,6 +293,16 @@ const loadingMode = computed(() => resolveStatsDetailLoadingMode({
 }))
 const isInitialLoading = computed(() => loadingMode.value === 'initial')
 const isStatsRefreshing = computed(() => loadingMode.value === 'refreshing')
+const statsPageError = computed(() => (
+	statsState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(statsState.value.error, { resource: '统计数据' })
+		: null
+))
+const statsRefreshError = computed(() => (
+	statsState.value.refreshError
+		? resolveAsyncPageErrorFeedback(statsState.value.refreshError, { resource: '统计数据' })
+		: null
+))
 
 const currentReadIdentity = () => ({
 	userId: userStore.userId,
@@ -376,6 +411,11 @@ const loadAllStats = async () => {
 	const requestId = latestStatsRequestId.value + 1
 	const requestIdentityKey = currentIdentityKey()
 	const requestScopeVersion = userDataInvalidationStore.versionOf('stats')
+	const nextState = beginAsyncPageLoad(statsState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: null
+	})
+	const pageRequest = getAsyncPageRequest(nextState)
 	latestStatsRequestId.value = requestId
 	if (loadedIdentityKey.value && loadedIdentityKey.value !== requestIdentityKey) {
 		gameTypeStats.value = {}
@@ -386,13 +426,15 @@ const loadAllStats = async () => {
 		opponentData.value = []
 		hasLoadedOnce.value = false
 	}
+	statsState.value = nextState
 	isStatsFetching.value = true
 	const gameType = gameTypeValueMap[currentGame.value] || 3
 	try {
 		const data = await getStatsOverview({ game_type: gameType, trend_limit: 100 })
-		if (!shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value }) || currentIdentityKey() !== requestIdentityKey || !data?.success) {
+		if (!shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value }) || currentIdentityKey() !== requestIdentityKey || statsState.value.requestId !== pageRequest.requestId || statsState.value.authGeneration !== pageRequest.authGeneration) {
 			return
 		}
+		if (!data?.success) throw createRequestError({ message: data?.message || '加载统计数据失败', category: 'business' })
 
 		const availability = data.availability || {}
 		if (availability.by_game_type !== false) {
@@ -416,15 +458,29 @@ const loadAllStats = async () => {
 		hasLoadedOnce.value = true
 		loadedIdentityKey.value = requestIdentityKey
 		loadedStatsScopeVersion.value = requestScopeVersion
+		statsState.value = resolveAsyncPageLoad(statsState.value, pageRequest, {
+			data,
+			isEmpty: () => false
+		})
 	} catch (e) {
 		if (shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value }) && currentIdentityKey() === requestIdentityKey) {
-			console.error('加载统计数据失败:', e)
+			statsState.value = rejectAsyncPageLoad(statsState.value, pageRequest, e)
 		}
 	} finally {
 		if (shouldApplyStatsDetailResponse({ requestId, latestRequestId: latestStatsRequestId.value }) && currentIdentityKey() === requestIdentityKey) {
 			isStatsFetching.value = false
 		}
 	}
+}
+
+const retryStats = () => loadAllStats()
+
+const handleStatsErrorAction = () => {
+	if (statsState.value.error?.category === 'permission' || statsState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryStats()
 }
 
 onLoad((options) => {
@@ -546,6 +602,49 @@ const goLogin = () => {
 		font-size: 28rpx;
 		color: #9A8C67;
 	}
+}
+
+.error-desc {
+	color: #6E6242;
+	font-size: 26rpx;
+	line-height: 1.6;
+	text-align: center;
+}
+
+.error-action {
+	min-width: 200rpx;
+	height: 76rpx;
+	line-height: 76rpx;
+	margin: 12rpx 0 0;
+	padding: 0 32rpx;
+	border-radius: 38rpx;
+	background: #E0AE12;
+	color: #ffffff;
+	font-size: 28rpx;
+	font-weight: 600;
+}
+
+.error-action::after {
+	display: none;
+}
+
+.refresh-error-banner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20rpx;
+	margin: 0 24rpx 20rpx;
+	padding: 18rpx 22rpx;
+	border-radius: 14rpx;
+	background: rgba(224, 174, 18, 0.12);
+	color: #8a5b00;
+	font-size: 24rpx;
+}
+
+.refresh-error-action {
+	flex-shrink: 0;
+	color: #a86f00;
+	font-weight: 600;
 }
 
 .section {

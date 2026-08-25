@@ -4,6 +4,7 @@ import (
 	"context"
 	"regexp"
 
+	"chasing_points/internal/sms"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -26,6 +27,13 @@ func NewSendSmsLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SendSmsLo
 }
 
 func (l *SendSmsLogic) SendSms(req *types.SendSmsReq) (resp *types.SendSmsResp, err error) {
+	if req == nil {
+		return &types.SendSmsResp{Success: false, Message: "请求参数错误"}, nil
+	}
+	scene, sceneErr := sms.NormalizeScene(req.Scene)
+	if sceneErr != nil {
+		return &types.SendSmsResp{Success: false, Message: sceneErr.Error()}, nil
+	}
 	// 验证手机号格式
 	if !regexp.MustCompile(`^1[3-9]\d{9}$`).MatchString(req.Phone) {
 		return &types.SendSmsResp{
@@ -46,7 +54,7 @@ func (l *SendSmsLogic) SendSms(req *types.SendSmsReq) (resp *types.SendSmsResp, 
 	code := l.svcCtx.CodeManager.GenerateCode()
 
 	// 保存验证码到Redis
-	if err := l.svcCtx.CodeManager.SaveCode(l.ctx, req.Phone, code); err != nil {
+	if err := l.svcCtx.CodeManager.SaveCodeForScene(l.ctx, req.Phone, scene, code); err != nil {
 		l.Logger.Errorf("保存验证码失败: %v", err)
 		return &types.SendSmsResp{
 			Success: false,

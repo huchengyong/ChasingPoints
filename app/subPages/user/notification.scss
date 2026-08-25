@@ -25,6 +25,66 @@ $border-color-dark: #3A2E16;
   padding: 32rpx;
 }
 
+.loading-state,
+.error-state {
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+  text-align: center;
+}
+
+.loading-state text,
+.error-text {
+  font-size: 26rpx;
+  line-height: 1.7;
+  color: $text-secondary-light;
+}
+
+.error-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: $text-primary-light;
+}
+
+.retry-btn {
+  min-width: 200rpx;
+  height: 76rpx;
+  line-height: 76rpx;
+  margin: 16rpx 0 0;
+  padding: 0 32rpx;
+  border-radius: 38rpx;
+  background: $primary-color;
+  color: #ffffff;
+  font-size: 28rpx;
+  font-weight: 600;
+
+  &::after {
+    display: none;
+  }
+}
+
+.refresh-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-bottom: 20rpx;
+  padding: 18rpx 22rpx;
+  border-radius: 14rpx;
+  background: rgba(224, 174, 18, 0.12);
+  color: #8a5b00;
+  font-size: 24rpx;
+}
+
+.refresh-error-action {
+  flex-shrink: 0;
+  color: #a86f00;
+  font-weight: 600;
+}
+
 // 设置列表
 .settings-list {
   background-color: $card-bg-light;
@@ -125,5 +185,14 @@ $border-color-dark: #3A2E16;
 
   .description-text {
     color: $text-secondary-dark;
+  }
+
+  .loading-state text,
+  .error-text {
+    color: $text-secondary-dark;
+  }
+
+  .error-title {
+    color: $text-primary-dark;
   }
 }

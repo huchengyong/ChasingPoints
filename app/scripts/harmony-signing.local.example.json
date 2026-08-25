@@ -1,0 +1,20 @@
+{
+  "default": {
+    "certpath": "",
+    "keyAlias": "",
+    "keyPassword": "",
+    "profile": "",
+    "signAlg": "SHA256withECDSA",
+    "storeFile": "",
+    "storePassword": ""
+  },
+  "release": {
+    "certpath": "",
+    "keyAlias": "",
+    "keyPassword": "",
+    "profile": "",
+    "signAlg": "SHA256withECDSA",
+    "storeFile": "",
+    "storePassword": ""
+  }
+}

@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { compileScript, parse } from '@vue/compiler-sfc'
 
 const settingsSource = readFileSync(
   new URL('../subPages/user/settings.vue', import.meta.url),
@@ -56,4 +57,28 @@ test('settings page exposes system, light and dark theme modes', () => {
   assert.match(settingsSource, /深色/)
   assert.match(settingsSource, /themeMode/)
   assert.match(settingsSource, /setThemeMode/)
+})
+
+test('settings page exposes data export and irreversible account deletion flows', () => {
+  assert.match(settingsSource, /导出个人数据/)
+  assert.match(settingsSource, /handleExportPersonalData/)
+  assert.match(settingsSource, /exportPersonalDataToWriter/)
+  assert.match(settingsSource, /getPersonalDataExportCapability/)
+  assert.match(settingsSource, /注销账号/)
+  assert.match(settingsSource, /我已知晓，继续/)
+  assert.match(settingsSource, /sendSms\(deletePhone\.value, 'delete_account'\)/)
+  assert.match(settingsSource, /verify_type: 'sms'/)
+  assert.match(settingsSource, /verify_type: 'oauth'/)
+  assert.match(settingsSource, /weixin_mini_program/)
+  assert.match(settingsSource, /userStore\.logout\(\)/)
+})
+
+test('settings page guards repeated lifecycle actions and remains a valid SFC', () => {
+  assert.match(settingsSource, /if \(exportInProgress\.value\) return/)
+  assert.match(settingsSource, /if \(deleteAccountSubmitting\.value\) return/)
+  assert.match(settingsSource, /closeDeleteAccountDialog\(\{ force: true \}\)/)
+
+  const { descriptor, errors } = parse(settingsSource, { filename: 'settings.vue' })
+  assert.deepEqual(errors, [])
+  assert.doesNotThrow(() => compileScript(descriptor, { id: 'settings-page-test' }))
 })

@@ -80,6 +80,20 @@ WechatMiniProgram:
   MessagePushToken: ${WECHAT_MINI_MESSAGE_PUSH_TOKEN}
   MessagePushEncodingAESKey: ${WECHAT_MINI_MESSAGE_PUSH_ENCODING_AES_KEY}
 
+Security:
+  HTTPAllowedOrigins: ${HTTP_ALLOWED_ORIGINS}
+  WebSocketAllowedOrigins: ${WEBSOCKET_ALLOWED_ORIGINS}
+  AllowNativeMissingOrigin: ${ALLOW_NATIVE_MISSING_ORIGIN}
+  HuaweiOAuth:
+    Enabled: ${HUAWEI_OAUTH_ENABLED}
+    ClientID: ${HUAWEI_OAUTH_CLIENT_ID}
+    ClientSecret: ${HUAWEI_OAUTH_CLIENT_SECRET}
+    VerifyURL: ${HUAWEI_OAUTH_VERIFY_URL}
+    RequestTimeoutMs: ${HUAWEI_OAUTH_REQUEST_TIMEOUT_MS}
+  MatchInvite:
+    SigningSecret: ${MATCH_INVITE_SIGNING_SECRET}
+    TTLSeconds: ${MATCH_INVITE_TTL_SECONDS}
+
 Geocode:
   WorkerEnabled: true
   PollIntervalMs: 3000

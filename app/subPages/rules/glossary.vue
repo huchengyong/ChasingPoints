@@ -16,7 +16,7 @@
 		</view>
 
 		<!-- 术语列表 -->
-		<view v-else class="term-list">
+		<view v-else-if="filteredList.length > 0" class="term-list">
 			<view
 				v-for="(item, index) in filteredList"
 				:key="item.id || index"
@@ -28,8 +28,15 @@
 			</view>
 		</view>
 
+		<view v-else-if="glossaryPageError" class="empty-state error-state">
+			<uni-icons type="info" size="48" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+			<text class="empty-text">{{ glossaryPageError.title }}</text>
+			<text class="error-text">{{ glossaryPageError.description }}</text>
+			<button class="retry-btn" @tap="handleGlossaryErrorAction">{{ glossaryPageError.actionText }}</button>
+		</view>
+
 		<!-- 空状态 -->
-		<view v-if="!loading && filteredList.length === 0" class="empty-state">
+		<view v-else-if="glossaryState.status === ASYNC_PAGE_STATUS.EMPTY || filterText" class="empty-state">
 			<text class="empty-text">{{ filterText ? '未找到匹配术语' : '暂无术语数据' }}</text>
 		</view>
 	</view>
@@ -42,6 +49,16 @@ import { getGlossary } from '@/api/rules.js'
 import { usePublicReadStore } from '@/store/publicRead.js'
 import { getRuleCategoryLabel } from '@/utils/game-types.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 const publicReadStore = usePublicReadStore()
@@ -49,6 +66,12 @@ const publicReadStore = usePublicReadStore()
 const loading = ref(true)
 const glossaryList = ref([])
 const filterText = ref('')
+const glossaryState = ref(createAsyncPageState({ data: [] }))
+const glossaryPageError = computed(() => (
+	glossaryState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(glossaryState.value.error, { resource: '术语词典' })
+		: null
+))
 
 const filteredList = computed(() => {
 	if (!filterText.value.trim()) return glossaryList.value
@@ -60,15 +83,33 @@ const filteredList = computed(() => {
 })
 
 const loadGlossary = async () => {
-	loading.value = true
+	const nextState = beginAsyncPageLoad(glossaryState.value, { emptyData: [] })
+	const pageRequest = getAsyncPageRequest(nextState)
+	glossaryState.value = nextState
+	loading.value = nextState.status === ASYNC_PAGE_STATUS.LOADING
 	try {
 		const res = await publicReadStore.loadStatic('rules:glossary', () => getGlossary())
-		glossaryList.value = res.list || res || []
+		if (glossaryState.value.requestId !== pageRequest.requestId) return
+		if (!res || res.success === false) throw createRequestError({ message: res?.message || '加载术语失败', category: 'business' })
+		glossaryList.value = res.list || []
+		glossaryState.value = resolveAsyncPageLoad(glossaryState.value, pageRequest, { data: glossaryList.value })
 	} catch (e) {
-		console.error('加载术语失败:', e)
+		if (glossaryState.value.requestId !== pageRequest.requestId) return
+		glossaryState.value = rejectAsyncPageLoad(glossaryState.value, pageRequest, e)
 	} finally {
+		if (glossaryState.value.requestId !== pageRequest.requestId) return
 		loading.value = false
 	}
+}
+
+const retryGlossary = () => loadGlossary()
+
+const handleGlossaryErrorAction = () => {
+	if (glossaryState.value.error?.category === 'permission' || glossaryState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryGlossary()
 }
 
 onLoad(() => {
@@ -147,6 +188,38 @@ onLoad(() => {
 	}
 }
 
+.error-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16rpx;
+	padding-left: 32rpx;
+	padding-right: 32rpx;
+}
+
+.error-text {
+	font-size: 24rpx;
+	line-height: 1.7;
+	color: #6E6242;
+}
+
+.retry-btn {
+	min-width: 200rpx;
+	height: 76rpx;
+	line-height: 76rpx;
+	margin: 12rpx 0 0;
+	padding: 0 32rpx;
+	border-radius: 38rpx;
+	background: #E0AE12;
+	color: #ffffff;
+	font-size: 28rpx;
+	font-weight: 600;
+}
+
+.retry-btn::after {
+	display: none;
+}
+
 .glossary-page.dark-mode {
 	background: #141109;
 
@@ -161,7 +234,8 @@ onLoad(() => {
 	}
 
 	.term-list .term-item .term-content,
-	.empty-text {
+	.empty-text,
+	.error-text {
 		color: #9f926e;
 	}
 

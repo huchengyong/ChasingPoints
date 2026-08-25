@@ -6,9 +6,9 @@
 	import { useUserOverviewStore } from '@/store/userOverview.js'
 	import { useUserDataInvalidationStore } from '@/store/userDataInvalidation.js'
 	import { usePublicReadStore } from '@/store/publicRead.js'
-	import { userWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
+	import { matchWS, userWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 	import { getUserBootstrap } from '@/api/user.js'
-	import { post } from '@/utils/request.js'
+	import { handleCurrentSessionInvalid, post } from '@/utils/request.js'
 	import { buildPlayingRoute, shouldPromptOngoingMatch } from '@/utils/ongoing-match-guard.js'
 	import { applyRuntimeTheme } from '@/utils/theme-application.js'
 	import { resolveSystemDarkMode } from '@/utils/theme-preference.js'
@@ -26,6 +26,7 @@
 	export default {
 		themeChangeCallback: null, // 保存主题变化回调函数引用
 		userSessionReadyCallback: null,
+		websocketSessionInvalidCallback: null,
 		bootstrapActivityReservation: null,
 		ongoingMatchReminderShown: false,
 		ongoingMatchReminderPending: false,
@@ -39,6 +40,7 @@
 		validatedAuthGeneration: -1,
 		pushTokenUploadPendingKey: '',
 		pushTokenUploadedKey: '',
+		networkStatusCallback: null,
 		onLaunch: function() {
 			console.log('App Launch')
 			const themeStore = useThemeStore()
@@ -56,6 +58,14 @@
 			if (typeof uni.$on === 'function') {
 				uni.$on('user-session-ready', this.userSessionReadyCallback)
 			}
+			if (this.websocketSessionInvalidCallback && typeof uni.$off === 'function') {
+				uni.$off('session-invalid', this.websocketSessionInvalidCallback)
+			}
+			this.websocketSessionInvalidCallback = (payload) => this.handleWebSocketSessionInvalid(payload)
+			if (typeof uni.$on === 'function') {
+				uni.$on('session-invalid', this.websocketSessionInvalidCallback)
+			}
+			this.bindNetworkStatusListener()
 			// 推送注册
 			// #ifdef APP-PLUS
 			try {
@@ -87,6 +97,8 @@
 			console.log('App Show')
 			this.appIsForeground = true
 			this.sessionRecoveryLifecycle += 1
+			userWS.setForeground(true)
+			matchWS.setForeground(true)
 			const themeStore = useThemeStore()
 			themeStore.setThemeFromSystem(resolveSystemDarkMode(
 				this.getSystemThemeInfo(),
@@ -124,6 +136,8 @@
 			this.bootstrapActivityReservation = null
 			this.sessionRecoveryLifecycle += 1
 			this.validatedAuthGeneration = -1
+			userWS.setForeground(false)
+			matchWS.setForeground(false)
 			userWS.disconnect()
 			// 取消监听时需要传入与注册时相同的回调函数引用
 			if (this.themeChangeCallback && typeof uni.offThemeChange === 'function') {
@@ -140,7 +154,45 @@
 			this.ongoingMatchPromptVisible = false
 			this.ongoingMatchReminderRetryCount = 0
 		},
+		onUnload: function() {
+			if (this.networkStatusCallback && typeof uni.offNetworkStatusChange === 'function') {
+				uni.offNetworkStatusChange(this.networkStatusCallback)
+			}
+			this.networkStatusCallback = null
+			if (this.websocketSessionInvalidCallback && typeof uni.$off === 'function') {
+				uni.$off('session-invalid', this.websocketSessionInvalidCallback)
+			}
+			this.websocketSessionInvalidCallback = null
+			userWS.disconnect()
+			matchWS.disconnect()
+		},
 		methods: {
+			handleWebSocketSessionInvalid(payload = {}) {
+				if (payload?.reason !== 'SESSION_INVALID') return
+				handleCurrentSessionInvalid({ data: payload, message: payload.message }).catch(() => {})
+			},
+			bindNetworkStatusListener() {
+				if (this.networkStatusCallback && typeof uni.offNetworkStatusChange === 'function') {
+					uni.offNetworkStatusChange(this.networkStatusCallback)
+				}
+				this.networkStatusCallback = (status = {}) => {
+					this.setRealtimeNetworkOnline(status.isConnected !== false)
+				}
+				if (typeof uni.onNetworkStatusChange === 'function') {
+					uni.onNetworkStatusChange(this.networkStatusCallback)
+				}
+				if (typeof uni.getNetworkType === 'function') {
+					uni.getNetworkType({
+						success: (status = {}) => {
+							this.setRealtimeNetworkOnline(status.networkType !== 'none')
+						}
+					})
+				}
+			},
+			setRealtimeNetworkOnline(online) {
+				userWS.setNetworkOnline(online)
+				matchWS.setNetworkOnline(online)
+			},
 			// 恢复持久化会话：helper 只返回服务端资料；应用前再次校验
 			// auth generation、App 前台状态和当前生命周期，拒绝旧账号/后台延迟结果。
 			restoreUserSession() {
@@ -249,7 +301,8 @@
 					})
 			},
 			connectUserWS() {
-				userWS.connect().catch((error) => {
+				const userStore = useUserStore()
+				userWS.connect({ authGeneration: userStore.authGeneration }).catch((error) => {
 					console.error('[App] 用户WS连接失败:', error)
 				})
 			},

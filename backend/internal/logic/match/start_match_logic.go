@@ -3,8 +3,10 @@ package match
 import (
 	"context"
 	"sort"
+	"strings"
 	"time"
 
+	"chasing_points/internal/config"
 	"chasing_points/internal/model"
 	"chasing_points/internal/pkg/ws"
 	"chasing_points/internal/svc"
@@ -53,6 +55,9 @@ func (l *StartMatchLogic) StartMatch(req *types.StartMatchReq) (resp *types.Star
 		l.Logger.Errorf("获取用户ID失败: %v", err)
 		return &types.StartMatchResp{Success: false, Message: "获取用户信息失败"}, nil
 	}
+	if message := l.applyInviteOpponent(userId, req); message != "" {
+		return &types.StartMatchResp{Success: false, Message: message}, nil
+	}
 	finishConfirmationRequired := req.MatchMode == model.MatchModeRanked
 	if message := normalizeStartMatchOptions(req); message != "" {
 		return &types.StartMatchResp{Success: false, Message: message}, nil
@@ -83,11 +88,14 @@ func (l *StartMatchLogic) StartMatch(req *types.StartMatchReq) (resp *types.Star
 		if err != nil || challenge == nil {
 			return &types.StartMatchResp{Success: false, Message: "邀约不存在或已失效"}, nil
 		}
-		if challenge.Status != 1 || challenge.MatchId != nil {
+		if challenge.Status != 1 {
 			return &types.StartMatchResp{Success: false, Message: "邀约已处理或已关联对局"}, nil
 		}
 		if challenge.GameType != req.GameType || !challengeMatchesUsers(challenge, userId, req.OpponentId) {
 			return &types.StartMatchResp{Success: false, Message: "邀约对手或球种不匹配"}, nil
+		}
+		if challenge.MatchId != nil {
+			return l.linkedChallengeResumeResponse(userId, *challenge.MatchId), nil
 		}
 	}
 
@@ -100,6 +108,28 @@ func (l *StartMatchLogic) StartMatch(req *types.StartMatchReq) (resp *types.Star
 		lockUserIDs := buildStartMatchLockUserIDs(userId, req.OpponentId)
 		if err := l.svcCtx.UserModel.LockUsersForUpdate(tx, lockUserIDs); err != nil {
 			return err
+		}
+		if req.ChallengeId > 0 {
+			lockedChallenge, findErr := l.svcCtx.ChallengeModel.FindByIdForUpdateWithTx(tx, req.ChallengeId)
+			if findErr != nil {
+				return findErr
+			}
+			if lockedChallenge == nil || lockedChallenge.Status != 1 ||
+				lockedChallenge.GameType != req.GameType || !challengeMatchesUsers(lockedChallenge, userId, req.OpponentId) {
+				return gorm.ErrRecordNotFound
+			}
+			challenge = lockedChallenge
+			if lockedChallenge.MatchId != nil {
+				linkedMatch, findErr := l.svcCtx.MatchModel.FindByIdForUpdateWithTx(tx, *lockedChallenge.MatchId)
+				if findErr != nil {
+					return findErr
+				}
+				if linkedMatch == nil {
+					return gorm.ErrRecordNotFound
+				}
+				decision = startMatchDecision{Action: startMatchActionResumeExisting, Match: linkedMatch}
+				return nil
+			}
 		}
 
 		existing, findErr := l.svcCtx.MatchModel.FindCurrentByUserIdWithTx(tx, userId)
@@ -231,6 +261,60 @@ func (l *StartMatchLogic) StartMatch(req *types.StartMatchReq) (resp *types.Star
 		MatchId: createdMatch.Id,
 		Match:   buildCurrentMatchInfo(l.svcCtx, userId, createdMatch),
 	}, nil
+}
+
+func (l *StartMatchLogic) applyInviteOpponent(userId int64, req *types.StartMatchReq) string {
+	if req == nil {
+		return "请选择有效的平台对手"
+	}
+	inviteToken := strings.TrimSpace(req.InviteToken)
+	if inviteToken == "" {
+		if config.IsProductionEnv(l.svcCtx.Config.AppEnv) {
+			return "请扫描有效的匹配二维码"
+		}
+		return ""
+	}
+	claims, message := verifyMatchInvite(l.svcCtx, inviteToken)
+	if message != "" {
+		return message
+	}
+	if claims.InviterUserID == userId {
+		return "不能和自己发起 PK"
+	}
+	if req.OpponentId > 0 && req.OpponentId != claims.InviterUserID {
+		return "匹配二维码对手不匹配"
+	}
+	inviter, err := l.svcCtx.UserModel.FindByIdWithContext(l.ctx, claims.InviterUserID)
+	if err != nil {
+		l.Logger.Errorf("读取匹配邀请发起人失败: userId=%d err=%v", claims.InviterUserID, err)
+		return "匹配二维码服务暂不可用"
+	}
+	if inviter == nil || inviter.Status != 1 {
+		return "匹配二维码已失效，请让对方刷新二维码"
+	}
+
+	req.OpponentId = inviter.Id
+	req.OpponentName = inviter.Nickname
+	req.OpponentAvatar = inviter.Avatar
+	req.InviteToken = inviteToken
+	return ""
+}
+
+func (l *StartMatchLogic) linkedChallengeResumeResponse(userId, matchID int64) *types.StartMatchResp {
+	linkedMatch, err := l.svcCtx.MatchModel.FindById(matchID)
+	if err != nil {
+		l.Logger.Errorf("查询已关联邀约对局失败: matchId=%d err=%v", matchID, err)
+		return &types.StartMatchResp{Success: false, Message: "查询已关联对局失败"}
+	}
+	if linkedMatch == nil {
+		return &types.StartMatchResp{Success: false, Message: "邀约已处理或已关联对局"}
+	}
+	return &types.StartMatchResp{
+		Success:      true,
+		Action:       startMatchActionResumeExisting,
+		MatchId:      linkedMatch.Id,
+		OngoingMatch: buildCurrentMatchInfo(l.svcCtx, userId, linkedMatch),
+	}
 }
 
 func challengeMatchesUsers(challenge *model.Challenge, userId, opponentId int64) bool {

@@ -5,7 +5,7 @@
 			<text>这里记录的是线上 PK 邀约，只用于社交互动，不会直接生成真实对局。</text>
 		</view>
 
-		<view class="summary-grid" v-if="!loading">
+		<view class="summary-grid" v-if="!loading && !challengePageError">
 			<view class="summary-card">
 				<text class="summary-value">{{ receivedCount }}</text>
 				<text class="summary-label">待我回应</text>
@@ -44,6 +44,10 @@
 
 		<!-- PK 列表 -->
 		<view v-else-if="list.length > 0" class="challenge-list">
+			<view v-if="challengeRefreshError" class="refresh-error-banner">
+				<text>{{ challengeRefreshError.description }}</text>
+				<text class="refresh-error-action" @tap="retryChallenges">重试</text>
+			</view>
 			<view v-for="item in list" :key="item.id" class="challenge-card" @tap="handleChallengeCardTap(item)">
 				<view class="card-top">
 					<image
@@ -94,8 +98,15 @@
 			</view>
 		</view>
 
+		<view v-else-if="challengePageError" class="empty-state error-state">
+			<uni-icons type="info" size="48" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+			<text class="empty-text">{{ challengePageError.title }}</text>
+			<text class="empty-hint">{{ challengePageError.description }}</text>
+			<button class="retry-btn" @tap="handleChallengeErrorAction">{{ challengePageError.actionText }}</button>
+		</view>
+
 		<!-- 空状态 -->
-		<view v-else class="empty-state">
+		<view v-else-if="challengeState.status === ASYNC_PAGE_STATUS.EMPTY" class="empty-state">
 			<text class="empty-icon">⚔️</text>
 			<text class="empty-text">{{ emptyText }}</text>
 		</view>
@@ -144,6 +155,16 @@ import { useUserStore } from '@/store/user.js'
 import { buildChallengePayload, buildChallengeStartContext, normalizeChallengeListItem } from '@/utils/challenge-entry.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 
@@ -155,6 +176,20 @@ const tab = ref('received')
 const allChallenges = ref([])
 const loading = ref(true)
 const challengesDirty = ref(true)
+const challengeState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: []
+}))
+const challengePageError = computed(() => (
+	challengeState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(challengeState.value.error, { resource: 'PK 邀约' })
+		: null
+))
+const challengeRefreshError = computed(() => (
+	challengeState.value.refreshError
+		? resolveAsyncPageErrorFeedback(challengeState.value.refreshError, { resource: 'PK 邀约' })
+		: null
+))
 const receivedCount = computed(() => allChallenges.value.filter(item => item.direction === 'received' && item.status === 0).length)
 const sentCount = computed(() => allChallenges.value.filter(item => item.direction === 'sent' && item.status === 0).length)
 const respondedCount = computed(() => allChallenges.value.filter(item => item.status !== 0).length)
@@ -172,18 +207,26 @@ const challengeMessage = ref('')
 
 const fetchList = async ({ force = false } = {}) => {
 	if (!force && !challengesDirty.value) return
-	loading.value = allChallenges.value.length === 0
+	const nextState = beginAsyncPageLoad(challengeState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: []
+	})
+	const pageRequest = getAsyncPageRequest(nextState)
+	if (challengeState.value.authGeneration !== userStore.authGeneration) allChallenges.value = []
+	challengeState.value = nextState
+	loading.value = nextState.status === ASYNC_PAGE_STATUS.LOADING
 	try {
 		const res = await getPendingChallenges({ page: 1, page_size: 50 })
-		if (res.success) {
-			allChallenges.value = (res.list || []).map(item => ({
-				...normalizeChallengeListItem(item, userStore.userId),
-				relativeTime: formatRelativeTime(item.created_at)
-			}))
-			challengesDirty.value = false
-		}
+		if (challengeState.value.requestId !== pageRequest.requestId || challengeState.value.authGeneration !== pageRequest.authGeneration) return
+		if (!res?.success) throw createRequestError({ message: res?.message || '加载 PK 邀约失败', category: 'business' })
+		allChallenges.value = (res.list || []).map(item => ({
+			...normalizeChallengeListItem(item, userStore.userId),
+			relativeTime: formatRelativeTime(item.created_at)
+		}))
+		challengesDirty.value = false
+		challengeState.value = resolveAsyncPageLoad(challengeState.value, pageRequest, { data: allChallenges.value })
 	} catch (e) {
-		console.error('获取挑战列表失败', e)
+		challengeState.value = rejectAsyncPageLoad(challengeState.value, pageRequest, e)
 	} finally {
 		loading.value = false
 	}
@@ -191,7 +234,17 @@ const fetchList = async ({ force = false } = {}) => {
 
 const refreshChallenges = () => {
 	challengesDirty.value = true
-	return fetchList()
+	return fetchList({ force: true })
+}
+
+const retryChallenges = () => refreshChallenges()
+
+const handleChallengeErrorAction = () => {
+	if (challengeState.value.error?.category === 'permission' || challengeState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryChallenges()
 }
 
 const switchTab = (newTab) => {
@@ -443,6 +496,25 @@ onUnmounted(() => {
 .challenge-list {
 	padding: 20rpx 24rpx;
 }
+
+.refresh-error-banner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20rpx;
+	margin-bottom: 20rpx;
+	padding: 18rpx 22rpx;
+	border-radius: 14rpx;
+	background: rgba(224, 174, 18, 0.12);
+	color: #8a5b00;
+	font-size: 24rpx;
+}
+
+.refresh-error-action {
+	flex-shrink: 0;
+	color: #a86f00;
+	font-weight: 600;
+}
 .challenge-card {
 	background: #fff;
 	border-radius: 16rpx;
@@ -523,6 +595,23 @@ onUnmounted(() => {
 	min-height: 50vh;
 	.empty-icon { font-size: 80rpx; margin-bottom: 16rpx; }
 	.empty-text { font-size: 28rpx; color: #9A8C67; }
+}
+
+.retry-btn {
+	min-width: 200rpx;
+	height: 76rpx;
+	line-height: 76rpx;
+	margin: 16rpx 0 0;
+	padding: 0 32rpx;
+	border-radius: 38rpx;
+	background: #E0AE12;
+	color: #ffffff;
+	font-size: 28rpx;
+	font-weight: 600;
+}
+
+.retry-btn::after {
+	display: none;
 }
 .modal-overlay {
 	position: fixed;

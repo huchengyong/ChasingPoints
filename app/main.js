@@ -14,6 +14,14 @@ app.$mount()
 // #ifdef VUE3
 import { createSSRApp } from 'vue'
 import pinia from './store'
+import { issueMatchWSTicket } from './api/match.js'
+import { issueUserWSTicket } from './api/user.js'
+import { configureWebSocketTickets } from './utils/websocket.js'
+
+configureWebSocketTickets({
+  issueMatchWSTicket,
+  issueUserWSTicket
+})
 
 export function createApp() {
   const app = createSSRApp(App)

@@ -145,9 +145,9 @@ export const resolveHonorWallLoadError = ({ error = {} } = {}) => {
       showRetry: true
     }
   }
-  if (category === 'forbidden') {
+  if (category === 'permission' || category === 'forbidden') {
     return {
-      kind: 'forbidden',
+      kind: 'permission',
       title: '暂无查看权限',
       description: '仅本人或好友可以查看该荣誉墙',
       showRetry: false

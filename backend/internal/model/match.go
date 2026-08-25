@@ -310,6 +310,55 @@ func (m *MatchModel) FindCurrentByUserIdWithTx(tx *gorm.DB, userId int64) (*Matc
 	return &match, err
 }
 
+// CancelActiveForAccountDeletionWithTx closes every active match involving the
+// deleted account so no participant is left in an unrecoverable active state.
+func (m *MatchModel) CancelActiveForAccountDeletionWithTx(tx *gorm.DB, userID int64, now time.Time) ([]Match, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	if db == nil {
+		return nil, errors.New("match db is nil")
+	}
+
+	var matches []Match
+	if err := db.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("(user_id = ? OR opponent_id = ? OR referee_user_id = ?) AND status = ?", userID, userID, userID, 1).
+		Order("id ASC").
+		Find(&matches).Error; err != nil {
+		return nil, err
+	}
+
+	for index := range matches {
+		match := &matches[index]
+		match.Status = 3
+		match.EndTime = &now
+		match.FinishState = FinishStateNone
+		match.FinishRequestedBy = nil
+		match.FinishRequestedAt = nil
+		match.FinishRequestRevision = 0
+		match.CompletedByUserId = nil
+		match.CompletionSource = CompletionSourceUnknown
+		match.Remark = "account_deleted"
+		match.SyncRevision++
+		if err := db.Model(&Match{}).Where("id = ?", match.Id).Updates(map[string]any{
+			"status":                  match.Status,
+			"end_time":                match.EndTime,
+			"finish_state":            match.FinishState,
+			"finish_requested_by":     nil,
+			"finish_requested_at":     nil,
+			"finish_request_revision": 0,
+			"completed_by_user_id":    nil,
+			"completion_source":       match.CompletionSource,
+			"remark":                  match.Remark,
+			"sync_revision":           match.SyncRevision,
+		}).Error; err != nil {
+			return nil, err
+		}
+	}
+	return matches, nil
+}
+
 // ListCompletedForRankingReplay 获取用于段位历史回放的有效排位对局。
 func (m *MatchModel) ListCompletedForRankingReplay() ([]Match, error) {
 	return m.ListCompletedForSeasonRecords()
