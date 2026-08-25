@@ -56,6 +56,19 @@ App Manifest SHALL 只声明当前发布功能确实需要的模块、系统权�
 - **WHEN** 用户没有进入依赖位置的球房能力
 - **THEN** 客户端 MUST NOT 因启动或无关页面提前请求位置权限
 
+### Requirement: 发布品牌资源必须可复现且不与签名材料混放
+Android/iOS 图标、Harmony 图标和 Harmony 启动页资源 MUST 作为受版本控制的构建输入存在于干净工作区；`manifest.json` 只引用稳定的相对资源路径。签名证书、profile 与密码 MUST NOT 与品牌资源混放，且仍 SHALL 仅通过本地或 CI 私密配置注入。
+
+#### Scenario: 干净工作区执行本地构建
+- **WHEN** 开发者在无预先生成 `unpackage` 产物的干净工作区中使用 HBuilderX 构建
+- **THEN** Manifest 引用的 Android/iOS 图标文件 SHALL 存在且尺寸与声明相符
+- **AND** Harmony 原生工程 SHALL 具备应用图标、启动页图标和启动背景资源
+
+#### Scenario: 更换品牌视觉
+- **WHEN** 维护者替换应用图标或 Harmony 启动页视觉
+- **THEN** 只需提交版本化资源文件
+- **AND** MUST NOT 修改或暴露本地签名材料
+
 ### Requirement: 二维码图像必须在受控环境生成
 匹配码和裁判码 SHALL 在客户端本地离线渲染，或由受控的一方服务生成；二维码正文 MUST NOT 发送给 `api.qrserver.com` 或其他未批准的第三方图像服务，也 MUST NOT 包含长期访问令牌或不必要的个人资料。
 
