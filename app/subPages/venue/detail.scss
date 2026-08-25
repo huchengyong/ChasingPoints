@@ -30,6 +30,54 @@
 	margin-top: 16rpx;
 }
 
+.refresh-error-banner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20rpx;
+	margin-bottom: 20rpx;
+	padding: 18rpx 22rpx;
+	border-radius: 14rpx;
+	background: rgba(224, 174, 18, 0.12);
+	color: #8a5b00;
+	font-size: 24rpx;
+}
+
+.refresh-error-action {
+	flex-shrink: 0;
+	color: #a86f00;
+	font-weight: 600;
+}
+
+.error-state {
+	gap: 16rpx;
+	padding-left: 32rpx;
+	padding-right: 32rpx;
+	text-align: center;
+}
+
+.error-text {
+	font-size: 24rpx;
+	line-height: 1.7;
+}
+
+.retry-btn {
+	min-width: 200rpx;
+	height: 76rpx;
+	line-height: 76rpx;
+	margin: 12rpx 0 0;
+	padding: 0 32rpx;
+	border-radius: 38rpx;
+	background: #E0AE12;
+	color: #ffffff;
+	font-size: 28rpx;
+	font-weight: 600;
+}
+
+.retry-btn::after {
+	display: none;
+}
+
 .hero-card,
 .image-section,
 .image-placeholder,

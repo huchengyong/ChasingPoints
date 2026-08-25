@@ -34,9 +34,12 @@ func main() {
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c, conf.UseEnv())
+	if err := c.ValidateProductionSecurity(); err != nil {
+		log.Fatalf("生产安全配置校验失败: %v", err)
+	}
 	httperror.Configure()
 
-	server := rest.MustNewServer(c.RestConf, rest.WithCors("*", "http://localhost:3000", "https://admin-bm.dianzaozao.com"))
+	server := newAPIServer(c)
 	defer server.Stop()
 
 	svcCtx := svc.NewServiceContext(c)
@@ -85,4 +88,8 @@ func main() {
 
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
 	server.StartWithOpts(withWechatMessagePushRoute(c))
+}
+
+func newAPIServer(c config.Config) *rest.Server {
+	return rest.MustNewServer(c.RestConf, rest.WithCors(c.Security.HTTPOriginList()...))
 }

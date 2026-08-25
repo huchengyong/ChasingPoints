@@ -375,6 +375,50 @@ func (h *Hub) SendToUser(userId int64, msg *Message) {
 	}
 }
 
+// DisconnectUser closes every user and match channel owned by an account after
+// its session becomes invalid (for example, after account deletion).
+func (h *Hub) DisconnectUser(userID int64) {
+	if h == nil || userID <= 0 {
+		return
+	}
+	payload, err := json.Marshal(&Message{
+		Type: "session_invalid",
+		Data: map[string]string{"reason": "SESSION_INVALID"},
+	})
+	if err != nil {
+		return
+	}
+
+	h.mu.Lock()
+	clients := make(map[*Client]struct{})
+	for matchID, room := range h.rooms {
+		for client := range room {
+			if client.UserId == userID {
+				delete(room, client)
+				clients[client] = struct{}{}
+			}
+		}
+		if len(room) == 0 {
+			delete(h.rooms, matchID)
+		}
+	}
+	if room, ok := h.userRooms[userID]; ok {
+		for client := range room {
+			delete(room, client)
+			clients[client] = struct{}{}
+		}
+		delete(h.userRooms, userID)
+	}
+	for client := range clients {
+		select {
+		case client.Send <- payload:
+		default:
+		}
+		close(client.Send)
+	}
+	h.mu.Unlock()
+}
+
 const (
 	// 写超时
 	writeWait = 10 * time.Second

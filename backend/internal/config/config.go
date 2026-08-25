@@ -25,6 +25,9 @@ type Config struct {
 	// 合规收口配置
 	Compliance ComplianceConfig
 
+	// 生产安全边界配置
+	Security SecurityConfig
+
 	// MySQL配置
 	MySQL struct {
 		DataSource string

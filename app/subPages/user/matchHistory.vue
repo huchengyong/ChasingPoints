@@ -40,13 +40,24 @@
 				<text class="loading-text">加载中...</text>
 			</view>
 
-			<view class="empty-wrapper" v-else-if="!isLoading && matchList.length === 0">
+			<view class="empty-wrapper" v-else-if="playerPageError">
+				<uni-icons type="info" size="64" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+				<text class="empty-text">{{ playerPageError.title }}</text>
+				<text class="empty-hint">{{ playerPageError.description }}</text>
+				<button class="go-match-btn" @click="handlePlayerErrorAction">{{ playerPageError.actionText }}</button>
+			</view>
+
+			<view class="empty-wrapper" v-else-if="playerState.status === ASYNC_PAGE_STATUS.EMPTY">
 				<uni-icons type="list" size="64" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 				<text class="empty-text">暂无对局记录</text>
 				<text class="empty-hint">快去发起一场PK吧！</text>
 			</view>
 
 			<view class="match-items" v-else>
+				<view v-if="playerRefreshError" class="refresh-error-banner">
+					<text>{{ playerRefreshError.description }}</text>
+					<text class="refresh-error-action" @click="retryPlayerHistory">重试</text>
+				</view>
 				<view class="match-item" v-for="match in matchList" :key="'p-'+match.id" @click="handleMatchDetail(match)">
 					<view class="avatar-wrapper">
 						<image class="avatar" :src="resolveAvatarUrl(match.opponent_avatar, match.opponent_id)" mode="aspectFill"/>
@@ -93,6 +104,18 @@
 				<text class="loading-text">加载中...</text>
 			</view>
 
+			<view class="empty-wrapper" v-else-if="refereePageError && !ongoingRefereeMatch">
+				<uni-icons type="info" size="64" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+				<text class="empty-text">{{ refereePageError.title }}</text>
+				<text class="empty-hint">{{ refereePageError.description }}</text>
+				<button class="go-match-btn" @click="handleRefereeErrorAction">{{ refereePageError.actionText }}</button>
+			</view>
+
+			<view v-if="refereeRefreshError" class="refresh-error-banner">
+				<text>{{ refereeRefreshError.description }}</text>
+				<text class="refresh-error-action" @click="retryRefereeHistory">重试</text>
+			</view>
+
 			<!-- 继续执裁卡片 -->
 			<view class="continue-referee-card" v-if="ongoingRefereeMatch" @click="handleContinueReferee">
 				<view class="continue-left">
@@ -106,7 +129,7 @@
 			</view>
 
 			<!-- 空状态 -->
-			<view class="empty-wrapper" v-else-if="!isRefereeLoading && refereeList.length === 0 && !ongoingRefereeMatch">
+			<view class="empty-wrapper" v-else-if="refereeState.status === ASYNC_PAGE_STATUS.EMPTY && !ongoingRefereeMatch">
 				<uni-icons type="person" size="64" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 				<text class="empty-text">暂无执裁记录</text>
 				<text class="empty-hint">去对局首页扫码担任裁判</text>
@@ -155,7 +178,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { getMatchList, getCurrentMatch, getRefereeHistory } from '@/api/match.js'
@@ -164,6 +187,16 @@ import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import { formatDuration } from '@/utils/match-referee-view.js'
 import { useUserStore } from '@/store/user.js'
 import { useUserDataInvalidationStore } from '@/store/userDataInvalidation.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
@@ -189,6 +222,10 @@ const isLoadingMore = ref(false)
 const hasMore = ref(true)
 const needLogin = ref(false)
 const matchList = ref([])
+const playerState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: []
+}))
 const currentPage = ref(1)
 const pageSize = 20
 const total = ref(0)
@@ -199,6 +236,10 @@ const isRefereeRefreshing = ref(false)
 const isRefereeLoadingMore = ref(false)
 const hasRefereeMore = ref(true)
 const refereeList = ref([])
+const refereeState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: []
+}))
 const refereePage = ref(1)
 const refereeTotal = ref(0)
 const ongoingRefereeMatch = ref(null)
@@ -207,6 +248,26 @@ const latestRefereeRequestId = ref(0)
 const latestCurrentMatchRequestId = ref(0)
 const loadedIdentityKey = ref('')
 const loadedHistoryScopeVersion = ref(0)
+const playerPageError = computed(() => (
+	playerState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(playerState.value.error, { resource: '对局记录' })
+		: null
+))
+const playerRefreshError = computed(() => (
+	playerState.value.refreshError
+		? resolveAsyncPageErrorFeedback(playerState.value.refreshError, { resource: '对局记录' })
+		: null
+))
+const refereePageError = computed(() => (
+	refereeState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(refereeState.value.error, { resource: '执裁记录' })
+		: null
+))
+const refereeRefreshError = computed(() => (
+	refereeState.value.refreshError
+		? resolveAsyncPageErrorFeedback(refereeState.value.refreshError, { resource: '执裁记录' })
+		: null
+))
 
 const resetHistoryForIdentity = () => {
 	matchList.value = []
@@ -222,6 +283,8 @@ const resetHistoryForIdentity = () => {
 	isLoadingMore.value = false
 	isRefereeLoading.value = false
 	isRefereeLoadingMore.value = false
+	playerState.value = createAsyncPageState({ authGeneration: userStore.authGeneration, data: [] })
+	refereeState.value = createAsyncPageState({ authGeneration: userStore.authGeneration, data: [] })
 }
 
 onShow(() => {
@@ -253,17 +316,22 @@ const switchTab = (tab) => {
 }
 
 const fetchMatchList = async (isRefresh = false, isLoadMore = false) => {
-	if (isLoading.value || isLoadingMore.value) return
+	if (isLoading.value || isLoadingMore.value || (isLoadMore && !hasMore.value)) return
 	const requestId = latestMatchRequestId.value + 1
 	const requestIdentityKey = currentIdentityKey()
 	const requestScopeVersion = userDataInvalidationStore.versionOf('history')
+	const nextState = beginAsyncPageLoad(playerState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: []
+	})
+	const pageRequest = getAsyncPageRequest(nextState)
 	latestMatchRequestId.value = requestId
+	playerState.value = nextState
 	if (isRefresh) {
 		isRefreshing.value = true
 		currentPage.value = 1
 		hasMore.value = true
 	} else if (isLoadMore) {
-		if (!hasMore.value) return
 		isLoadingMore.value = true
 		currentPage.value++
 	} else {
@@ -271,7 +339,8 @@ const fetchMatchList = async (isRefresh = false, isLoadMore = false) => {
 	}
 	try {
 		const res = await getMatchList({ page: currentPage.value, page_size: pageSize })
-		if (requestId !== latestMatchRequestId.value || currentIdentityKey() !== requestIdentityKey) return
+		if (requestId !== latestMatchRequestId.value || currentIdentityKey() !== requestIdentityKey || playerState.value.requestId !== pageRequest.requestId || playerState.value.authGeneration !== pageRequest.authGeneration) return
+		if (!res?.success) throw createRequestError({ message: res?.message || '获取对局记录失败', category: 'business' })
 		const list = res.list || []
 		total.value = res.total || 0
 		if (isRefresh) { matchList.value = list }
@@ -280,9 +349,11 @@ const fetchMatchList = async (isRefresh = false, isLoadMore = false) => {
 		hasMore.value = matchList.value.length < total.value
 		loadedIdentityKey.value = requestIdentityKey
 		loadedHistoryScopeVersion.value = requestScopeVersion
+		playerState.value = resolveAsyncPageLoad(playerState.value, pageRequest, { data: matchList.value })
 	} catch (error) {
 		if (requestId !== latestMatchRequestId.value || currentIdentityKey() !== requestIdentityKey) return
-		console.error('获取对局列表失败:', error)
+		if (isLoadMore) currentPage.value = Math.max(currentPage.value - 1, 1)
+		playerState.value = rejectAsyncPageLoad(playerState.value, pageRequest, error)
 	} finally {
 		if (requestId !== latestMatchRequestId.value || currentIdentityKey() !== requestIdentityKey) return
 		isLoading.value = false
@@ -293,20 +364,33 @@ const fetchMatchList = async (isRefresh = false, isLoadMore = false) => {
 
 const onRefresh = () => fetchMatchList(true, false)
 const onLoadMore = () => fetchMatchList(false, true)
+const retryPlayerHistory = () => fetchMatchList(true, false)
+const handlePlayerErrorAction = () => {
+	if (playerState.value.error?.category === 'permission' || playerState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryPlayerHistory()
+}
 
 // Referee history
 const fetchRefereeList = async (isRefresh = false, isLoadMore = false) => {
-	if (isRefereeLoading.value || isRefereeLoadingMore.value) return
+	if (isRefereeLoading.value || isRefereeLoadingMore.value || (isLoadMore && !hasRefereeMore.value)) return
 	const requestId = latestRefereeRequestId.value + 1
 	const requestIdentityKey = currentIdentityKey()
 	const requestScopeVersion = userDataInvalidationStore.versionOf('history')
+	const nextState = beginAsyncPageLoad(refereeState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: []
+	})
+	const pageRequest = getAsyncPageRequest(nextState)
 	latestRefereeRequestId.value = requestId
+	refereeState.value = nextState
 	if (isRefresh) {
 		isRefereeRefreshing.value = true
 		refereePage.value = 1
 		hasRefereeMore.value = true
 	} else if (isLoadMore) {
-		if (!hasRefereeMore.value) return
 		isRefereeLoadingMore.value = true
 		refereePage.value++
 	} else {
@@ -314,7 +398,8 @@ const fetchRefereeList = async (isRefresh = false, isLoadMore = false) => {
 	}
 	try {
 		const res = await getRefereeHistory({ page: refereePage.value, page_size: pageSize })
-		if (requestId !== latestRefereeRequestId.value || currentIdentityKey() !== requestIdentityKey) return
+		if (requestId !== latestRefereeRequestId.value || currentIdentityKey() !== requestIdentityKey || refereeState.value.requestId !== pageRequest.requestId || refereeState.value.authGeneration !== pageRequest.authGeneration) return
+		if (!res?.success) throw createRequestError({ message: res?.message || '获取执裁记录失败', category: 'business' })
 		const list = res.list || []
 		refereeTotal.value = res.total || 0
 		if (isRefresh) { refereeList.value = list }
@@ -323,9 +408,11 @@ const fetchRefereeList = async (isRefresh = false, isLoadMore = false) => {
 		hasRefereeMore.value = refereeList.value.length < refereeTotal.value
 		loadedIdentityKey.value = requestIdentityKey
 		loadedHistoryScopeVersion.value = requestScopeVersion
+		refereeState.value = resolveAsyncPageLoad(refereeState.value, pageRequest, { data: refereeList.value })
 	} catch (error) {
 		if (requestId !== latestRefereeRequestId.value || currentIdentityKey() !== requestIdentityKey) return
-		console.error('获取执裁历史失败:', error)
+		if (isLoadMore) refereePage.value = Math.max(refereePage.value - 1, 1)
+		refereeState.value = rejectAsyncPageLoad(refereeState.value, pageRequest, error)
 	} finally {
 		if (requestId !== latestRefereeRequestId.value || currentIdentityKey() !== requestIdentityKey) return
 		isRefereeLoading.value = false
@@ -336,6 +423,14 @@ const fetchRefereeList = async (isRefresh = false, isLoadMore = false) => {
 
 const onRefereeRefresh = () => fetchRefereeList(true, false)
 const onRefereeLoadMore = () => fetchRefereeList(false, true)
+const retryRefereeHistory = () => fetchRefereeList(true, false)
+const handleRefereeErrorAction = () => {
+	if (refereeState.value.error?.category === 'permission' || refereeState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryRefereeHistory()
+}
 
 // Check for ongoing referee match
 const checkOngoingRefereeMatch = async () => {

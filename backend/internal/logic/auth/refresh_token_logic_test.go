@@ -131,3 +131,22 @@ func TestRefreshTokenAcceptsLegacyUntypedRefreshToken(t *testing.T) {
 		t.Fatalf("expected legacy refresh token to be accepted once, got %#v", resp)
 	}
 }
+
+func TestRefreshTokenReturnsSessionInvalidForDeletedUser(t *testing.T) {
+	svcCtx := newRefreshTokenTestSvc(t)
+	if err := svcCtx.UserModel.Create(&model.User{Id: 1004, Nickname: "已注销用户", Status: 1}); err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	if err := svcCtx.UserModel.DeleteById(1004); err != nil {
+		t.Fatalf("delete user: %v", err)
+	}
+
+	refreshToken, err := pkg.GenerateTypedToken(1004, svcCtx.Config.Auth.AccessSecret, svcCtx.Config.Auth.RefreshExpire, pkg.RefreshTokenType)
+	if err != nil {
+		t.Fatalf("generate refresh token: %v", err)
+	}
+	resp, err := NewRefreshTokenLogic(context.Background(), svcCtx).RefreshToken(&types.RefreshTokenReq{RefreshToken: refreshToken})
+	if err != nil || resp.Success || resp.Reason != "SESSION_INVALID" {
+		t.Fatalf("deleted user refresh must be session invalid: resp=%#v err=%v", resp, err)
+	}
+}

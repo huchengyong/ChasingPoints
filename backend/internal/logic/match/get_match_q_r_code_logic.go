@@ -2,8 +2,6 @@ package match
 
 import (
 	"context"
-	"encoding/json"
-	"time"
 
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -27,14 +25,6 @@ func NewGetMatchQRCodeLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Ge
 	}
 }
 
-// QRCodeData 二维码数据结构
-type QRCodeData struct {
-	UserId   int64  `json:"user_id"`
-	Nickname string `json:"nickname"`
-	Avatar   string `json:"avatar"`
-	Ts       int64  `json:"ts"` // 时间戳，用于标识二维码有效期
-}
-
 func (l *GetMatchQRCodeLogic) GetMatchQRCode() (resp *types.GetMatchQRCodeResp, err error) {
 	// 获取用户ID
 	userId, err := utils.GetUserIDFromCtx(l.ctx)
@@ -50,25 +40,26 @@ func (l *GetMatchQRCodeLogic) GetMatchQRCode() (resp *types.GetMatchQRCodeResp, 
 		return &types.GetMatchQRCodeResp{Success: false}, nil
 	}
 
-	// 构建二维码数据
-	qrData := QRCodeData{
-		UserId:   user.Id,
-		Nickname: user.Nickname,
-		Avatar:   user.Avatar,
-		Ts:       time.Now().Unix(),
+	if user.Status != 1 {
+		return &types.GetMatchQRCodeResp{Success: false}, nil
 	}
-
-	// 序列化为JSON
-	jsonData, err := json.Marshal(qrData)
+	signer, err := newMatchInviteSigner(l.svcCtx)
 	if err != nil {
-		l.Logger.Errorf("序列化二维码数据失败: %v", err)
+		l.Logger.Errorf("初始化匹配邀请签名器失败: %v", err)
+		return &types.GetMatchQRCodeResp{Success: false}, nil
+	}
+	inviteToken, claims, err := signer.Issue(user.Id)
+	if err != nil {
+		l.Logger.Errorf("签发匹配邀请失败: userId=%d err=%v", userId, err)
 		return &types.GetMatchQRCodeResp{Success: false}, nil
 	}
 
 	l.Logger.Infof("用户 %d 获取匹配二维码", userId)
 
 	return &types.GetMatchQRCodeResp{
-		Success:    true,
-		QrcodeData: string(jsonData),
+		Success:          true,
+		QrcodeData:       inviteToken,
+		InviteToken:      inviteToken,
+		ExpiresInSeconds: claims.ExpiresAt - claims.IssuedAt,
 	}, nil
 }

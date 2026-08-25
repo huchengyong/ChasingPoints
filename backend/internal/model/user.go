@@ -23,6 +23,8 @@ type User struct {
 	DeletedAt       gorm.DeletedAt `gorm:"index"`
 }
 
+const DeletedUserDisplayName = "已注销用户"
+
 func (User) TableName() string {
 	return "users"
 }
@@ -121,6 +123,21 @@ func (m *UserModel) FindByIdForUpdateWithTx(tx *gorm.DB, id int64) (*User, error
 	return m.FindByIdWithTx(db.Clauses(clause.Locking{Strength: "UPDATE"}), id)
 }
 
+// FindByIdIncludingDeletedForUpdateWithTx is used by account deletion to make
+// concurrent deletion requests converge on the same terminal state.
+func (m *UserModel) FindByIdIncludingDeletedForUpdateWithTx(tx *gorm.DB, id int64) (*User, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	var user User
+	err := db.Unscoped().Clauses(clause.Locking{Strength: "UPDATE"}).First(&user, id).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &user, err
+}
+
 func (m *UserModel) ListIDsAfter(afterID int64, limit int) ([]int64, error) {
 	if limit <= 0 {
 		limit = 100
@@ -177,8 +194,55 @@ func (m *UserModel) DeleteByIdWithTx(tx *gorm.DB, userId int64) error {
 	return db.Delete(&User{}, userId).Error
 }
 
+func (m *UserModel) AnonymizeAndSoftDeleteWithTx(tx *gorm.DB, userID int64) error {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	if db == nil {
+		return errors.New("user db is nil")
+	}
+	updated := db.Model(&User{}).
+		Where("id = ? AND deleted_at IS NULL", userID).
+		Updates(map[string]any{
+			"phone":             nil,
+			"nickname":          DeletedUserDisplayName,
+			"avatar":            "",
+			"status":            0,
+			"push_token":        "",
+			"member_expires_at": nil,
+			"hide_match_record": true,
+		})
+	if updated.Error != nil {
+		return updated.Error
+	}
+	if updated.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
+	deleted := db.Where("id = ? AND deleted_at IS NULL", userID).Delete(&User{})
+	if deleted.Error != nil {
+		return deleted.Error
+	}
+	if deleted.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
 func (m *UserModel) Transaction(fn func(tx *gorm.DB) error) error {
 	return m.db.Transaction(fn)
+}
+
+func (m *UserModel) TransactionWithContext(ctx context.Context, fn func(tx *gorm.DB) error) error {
+	if m == nil || m.db == nil {
+		return errors.New("user db is nil")
+	}
+	db := m.db
+	if ctx != nil {
+		db = db.WithContext(ctx)
+	}
+	return db.Transaction(fn)
 }
 
 // UpdatePushToken 更新用户推送令牌

@@ -2,11 +2,13 @@ package auth
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
 	"chasing_points/internal/config"
 	"chasing_points/internal/model"
+	oauthverify "chasing_points/internal/pkg/oauth"
 	"chasing_points/internal/sms"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -43,6 +45,15 @@ func newAuthRewardTestSvc(t *testing.T) (*svc.ServiceContext, *miniredis.Minired
 		FavoriteVenueRewardConfigModel: model.NewFavoriteVenueRewardConfigModel(db),
 		CodeManager:                    sms.NewCodeManager(rdb),
 	}, mr
+}
+
+func setStaticOAuthIdentity(svcCtx *svc.ServiceContext, subject string) {
+	svcCtx.OAuthVerifier = oauthverify.StaticVerifier{
+		Identity: &oauthverify.Identity{
+			Provider: oauthverify.ProviderHuawei,
+			Subject:  subject,
+		},
+	}
 }
 
 func assertWelcomeRewardDisabled(t *testing.T, user *model.User) {
@@ -203,12 +214,13 @@ func TestLoginRejectsDisabledExistingUserWithoutTokens(t *testing.T) {
 func TestLoginByOauthCreatesNewUserWithoutWelcomeRewardByDefault(t *testing.T) {
 	svcCtx, _ := newAuthRewardTestSvc(t)
 	ctx := context.Background()
+	setStaticOAuthIdentity(svcCtx, "openid-1001")
 
 	logic := NewLoginByOauthLogic(ctx, svcCtx)
 	resp, err := logic.LoginByOauth(&types.LoginByOauthReq{
-		Provider: "huawei",
-		OpenId:   "openid-1001",
-		NickName: "华为新用户",
+		Provider:   "huawei",
+		Credential: "credential-1001",
+		NickName:   "华为新用户",
 	})
 	if err != nil {
 		t.Fatalf("oauth login new user: %v", err)
@@ -232,6 +244,79 @@ func TestLoginByOauthCreatesNewUserWithoutWelcomeRewardByDefault(t *testing.T) {
 	}
 }
 
+func TestLoginByOauthConcurrentFirstLoginReturnsSameUser(t *testing.T) {
+	svcCtx, _ := newAuthRewardTestSvc(t)
+	ctx := context.Background()
+	setStaticOAuthIdentity(svcCtx, "concurrent-openid")
+
+	const attempts = 2
+	responses := make([]*types.LoginByOauthResp, attempts)
+	errs := make([]error, attempts)
+	var wg sync.WaitGroup
+	for i := 0; i < attempts; i++ {
+		wg.Add(1)
+		go func(index int) {
+			defer wg.Done()
+			responses[index], errs[index] = NewLoginByOauthLogic(ctx, svcCtx).LoginByOauth(&types.LoginByOauthReq{
+				Provider:   "huawei",
+				Credential: "same-credential",
+			})
+		}(i)
+	}
+	wg.Wait()
+
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("concurrent oauth login %d failed: %v", i, err)
+		}
+		if responses[i] == nil || !responses[i].Success || responses[i].UserInfo == nil {
+			t.Fatalf("concurrent oauth login %d returned %#v", i, responses[i])
+		}
+	}
+	if responses[0].UserInfo.Id != responses[1].UserInfo.Id {
+		t.Fatalf("expected same user, got %d and %d", responses[0].UserInfo.Id, responses[1].UserInfo.Id)
+	}
+
+	var oauthCount int64
+	if err := svcCtx.DB.Model(&model.UserOauth{}).Where("provider = ? AND open_id = ?", "huawei", "concurrent-openid").Count(&oauthCount).Error; err != nil {
+		t.Fatalf("count oauth records: %v", err)
+	}
+	if oauthCount != 1 {
+		t.Fatalf("expected one oauth record, got %d", oauthCount)
+	}
+}
+
+func TestLoginByOauthUsesVerifierSubjectInsteadOfCredential(t *testing.T) {
+	svcCtx, _ := newAuthRewardTestSvc(t)
+	setStaticOAuthIdentity(svcCtx, "verified-openid")
+
+	resp, err := NewLoginByOauthLogic(context.Background(), svcCtx).LoginByOauth(&types.LoginByOauthReq{
+		Provider:   "huawei",
+		Credential: "forged-openid",
+		NickName:   "展示昵称",
+	})
+	if err != nil {
+		t.Fatalf("oauth login: %v", err)
+	}
+	if resp == nil || !resp.Success {
+		t.Fatalf("expected success, got %#v", resp)
+	}
+	forged, err := svcCtx.OauthModel.FindByProviderAndOpenId("huawei", "forged-openid")
+	if err != nil {
+		t.Fatalf("find forged oauth: %v", err)
+	}
+	if forged != nil {
+		t.Fatalf("credential was incorrectly trusted as subject: %#v", forged)
+	}
+	verified, err := svcCtx.OauthModel.FindByProviderAndOpenId("huawei", "verified-openid")
+	if err != nil {
+		t.Fatalf("find verified oauth: %v", err)
+	}
+	if verified == nil || verified.UserId != resp.UserInfo.Id {
+		t.Fatalf("expected verified oauth subject, got %#v", verified)
+	}
+}
+
 func TestLoginByOauthRejectsDisabledExistingUserWithoutTokens(t *testing.T) {
 	svcCtx, _ := newAuthRewardTestSvc(t)
 	user := &model.User{Nickname: "停用 OAuth 用户", Status: 1}
@@ -248,10 +333,11 @@ func TestLoginByOauthRejectsDisabledExistingUserWithoutTokens(t *testing.T) {
 	if err := svcCtx.DB.Model(&model.User{}).Where("id = ?", user.Id).Update("status", 0).Error; err != nil {
 		t.Fatalf("disable user: %v", err)
 	}
+	setStaticOAuthIdentity(svcCtx, "disabled-openid")
 
 	resp, err := NewLoginByOauthLogic(context.Background(), svcCtx).LoginByOauth(&types.LoginByOauthReq{
-		Provider: "huawei",
-		OpenId:   "disabled-openid",
+		Provider:   "huawei",
+		Credential: "disabled-credential",
 	})
 	if err == nil {
 		t.Fatal("expected disabled OAuth user login to fail")
@@ -261,9 +347,65 @@ func TestLoginByOauthRejectsDisabledExistingUserWithoutTokens(t *testing.T) {
 	}
 }
 
+func TestLoginByOauthRejectsUnsupportedProviderWithoutCreatingAccount(t *testing.T) {
+	svcCtx, _ := newAuthRewardTestSvc(t)
+	svcCtx.OAuthVerifier = oauthverify.ProviderVerifier{}
+
+	resp, err := NewLoginByOauthLogic(context.Background(), svcCtx).LoginByOauth(&types.LoginByOauthReq{
+		Provider:   "unknown",
+		Credential: "credential",
+	})
+	if err == nil {
+		t.Fatal("expected unsupported provider to fail")
+	}
+	if resp == nil || resp.Success {
+		t.Fatalf("expected failed response, got %#v", resp)
+	}
+	assertNoUsersCreated(t, svcCtx)
+}
+
+func TestLoginByOauthRejectsExpiredCredentialWithoutCreatingAccount(t *testing.T) {
+	svcCtx, _ := newAuthRewardTestSvc(t)
+	svcCtx.OAuthVerifier = oauthverify.StaticVerifier{
+		Err: oauthverify.NewVerifyError(oauthverify.ErrorRejected, "credential expired", nil),
+	}
+
+	resp, err := NewLoginByOauthLogic(context.Background(), svcCtx).LoginByOauth(&types.LoginByOauthReq{
+		Provider:   "huawei",
+		Credential: "expired-credential",
+	})
+	if oauthverify.CategoryOf(err) != oauthverify.ErrorRejected {
+		t.Fatalf("expected rejected credential, got resp=%#v err=%v", resp, err)
+	}
+	if resp == nil || resp.Success {
+		t.Fatalf("expected failed response, got %#v", resp)
+	}
+	assertNoUsersCreated(t, svcCtx)
+}
+
+func TestLoginByOauthReturnsProviderFailureWithoutCreatingAccount(t *testing.T) {
+	svcCtx, _ := newAuthRewardTestSvc(t)
+	svcCtx.OAuthVerifier = oauthverify.StaticVerifier{
+		Err: oauthverify.NewVerifyError(oauthverify.ErrorUnavailable, "provider unavailable", nil),
+	}
+
+	resp, err := NewLoginByOauthLogic(context.Background(), svcCtx).LoginByOauth(&types.LoginByOauthReq{
+		Provider:   "huawei",
+		Credential: "credential",
+	})
+	if oauthverify.CategoryOf(err) != oauthverify.ErrorUnavailable {
+		t.Fatalf("expected unavailable provider, got resp=%#v err=%v", resp, err)
+	}
+	if resp == nil || resp.Success {
+		t.Fatalf("expected failed response, got %#v", resp)
+	}
+	assertNoUsersCreated(t, svcCtx)
+}
+
 func TestLoginByOauthCreatesNewUserWithConfiguredWelcomeReward(t *testing.T) {
 	svcCtx, _ := newAuthRewardTestSvc(t)
 	ctx := context.Background()
+	setStaticOAuthIdentity(svcCtx, "openid-1001")
 
 	if err := svcCtx.FavoriteVenueRewardConfigModel.Upsert(&model.FavoriteVenueRewardConfig{
 		ActivityKey:       model.WelcomeMemberRewardActivityKey,
@@ -277,9 +419,9 @@ func TestLoginByOauthCreatesNewUserWithConfiguredWelcomeReward(t *testing.T) {
 
 	logic := NewLoginByOauthLogic(ctx, svcCtx)
 	resp, err := logic.LoginByOauth(&types.LoginByOauthReq{
-		Provider: "huawei",
-		OpenId:   "openid-1001",
-		NickName: "华为新用户",
+		Provider:   "huawei",
+		Credential: "credential-1001",
+		NickName:   "华为新用户",
 	})
 	if err != nil {
 		t.Fatalf("oauth login new user with explicit welcome reward: %v", err)
@@ -293,4 +435,22 @@ func TestLoginByOauthCreatesNewUserWithConfiguredWelcomeReward(t *testing.T) {
 		t.Fatalf("find oauth user: %v", err)
 	}
 	assertWelcomeRewardDuration(t, user, 14)
+}
+
+func assertNoUsersCreated(t *testing.T, svcCtx *svc.ServiceContext) {
+	t.Helper()
+	var userCount int64
+	if err := svcCtx.DB.Model(&model.User{}).Count(&userCount).Error; err != nil {
+		t.Fatalf("count users: %v", err)
+	}
+	if userCount != 0 {
+		t.Fatalf("expected no users created, got %d", userCount)
+	}
+	var oauthCount int64
+	if err := svcCtx.DB.Model(&model.UserOauth{}).Count(&oauthCount).Error; err != nil {
+		t.Fatalf("count oauth records: %v", err)
+	}
+	if oauthCount != 0 {
+		t.Fatalf("expected no oauth records created, got %d", oauthCount)
+	}
 }

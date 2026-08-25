@@ -9,7 +9,7 @@ import (
 
 	"chasing_points/internal/config"
 	"chasing_points/internal/model"
-	pkgx "chasing_points/internal/pkg"
+	"chasing_points/internal/pkg/wsticket"
 	"chasing_points/internal/svc"
 
 	"github.com/gorilla/websocket"
@@ -17,7 +17,9 @@ import (
 	"gorm.io/gorm"
 )
 
-func newUserWSHandlerTestServer(t *testing.T) (*httptest.Server, *Hub, string) {
+const userWSAllowedOrigin = "http://user-ws.test"
+
+func newUserWSHandlerTestServer(t *testing.T) (*httptest.Server, *Hub, *fakeHandlerWSTicketStore) {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
@@ -38,71 +40,96 @@ func newUserWSHandlerTestServer(t *testing.T) (*httptest.Server, *Hub, string) {
 		t.Fatalf("disable user: %v", err)
 	}
 
-	const secret = "user-ws-test-secret"
 	cfg := config.Config{}
-	cfg.Auth.AccessSecret = secret
+	cfg.Security.WebSocketAllowedOrigins = userWSAllowedOrigin
 	hub := NewHub()
+	ticketStore := newFakeHandlerWSTicketStore()
 	previousHub := GlobalHub
 	GlobalHub = hub
 	t.Cleanup(func() { GlobalHub = previousHub })
 	server := httptest.NewServer(UserWSHandler(&svc.ServiceContext{
-		Config:    cfg,
-		DB:        db,
-		UserModel: model.NewUserModel(db),
+		Config:        cfg,
+		DB:            db,
+		UserModel:     model.NewUserModel(db),
+		WSTicketStore: ticketStore,
 	}))
 	t.Cleanup(server.Close)
-	return server, hub, secret
+	return server, hub, ticketStore
 }
 
-func dialUserWS(t *testing.T, server *httptest.Server, token string) (*websocket.Conn, *http.Response, error) {
+func dialUserWS(t *testing.T, server *httptest.Server, ticket string) (*websocket.Conn, *http.Response, error) {
+	return dialUserWSPathWithOrigin(t, server, "/?ticket="+ticket, userWSAllowedOrigin)
+}
+
+func dialUserWSPathWithOrigin(t *testing.T, server *httptest.Server, path string, origin string) (*websocket.Conn, *http.Response, error) {
 	t.Helper()
-	url := "ws" + strings.TrimPrefix(server.URL, "http") + "/?token=" + token
-	return websocket.DefaultDialer.Dial(url, nil)
+	url := "ws" + strings.TrimPrefix(server.URL, "http") + path
+	header := http.Header{}
+	if origin != "" {
+		header.Set("Origin", origin)
+	}
+	return websocket.DefaultDialer.Dial(url, header)
 }
 
-func TestUserWSHandlerAllowsActiveAccessAndLegacyTokens(t *testing.T) {
-	server, hub, secret := newUserWSHandlerTestServer(t)
-	accessToken, err := pkgx.GenerateTypedToken(1001, secret, 60, pkgx.AccessTokenType)
-	if err != nil {
-		t.Fatalf("generate access token: %v", err)
+func TestUserWSHandlerAllowsActiveTicketOnce(t *testing.T) {
+	server, hub, ticketStore := newUserWSHandlerTestServer(t)
+	ticketStore.Add("user-ticket", wsticket.Claims{UserID: 1001, Scope: wsticket.ScopeUser})
+	conn, response, err := dialUserWS(t, server, "user-ticket")
+	if err != nil || response == nil || response.StatusCode != http.StatusSwitchingProtocols {
+		t.Fatalf("active user connection failed: response=%v err=%v", response, err)
 	}
-	legacyToken, err := pkgx.GenerateToken(1001, secret, 60)
-	if err != nil {
-		t.Fatalf("generate legacy token: %v", err)
+	conn.Close()
+	select {
+	case client := <-hub.RegisterUser:
+		if client.UserId != 1001 {
+			t.Fatalf("unexpected registered user: %+v", client)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("active user connection was not registered")
 	}
 
-	for _, token := range []string{accessToken, legacyToken} {
-		conn, response, err := dialUserWS(t, server, token)
-		if err != nil || response == nil || response.StatusCode != http.StatusSwitchingProtocols {
-			t.Fatalf("active user connection failed: response=%v err=%v", response, err)
-		}
+	conn, response, err = dialUserWS(t, server, "user-ticket")
+	if conn != nil {
 		conn.Close()
-		select {
-		case client := <-hub.RegisterUser:
-			if client.UserId != 1001 {
-				t.Fatalf("unexpected registered user: %+v", client)
-			}
-		case <-time.After(time.Second):
-			t.Fatal("active user connection was not registered")
-		}
+	}
+	if err == nil || response == nil || response.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("replayed ticket should be rejected, response=%v err=%v", response, err)
 	}
 }
 
-func TestUserWSHandlerRejectsRefreshDeletedDisabledAndAdminTokens(t *testing.T) {
-	server, hub, secret := newUserWSHandlerTestServer(t)
-	refreshToken, _ := pkgx.GenerateTypedToken(1001, secret, 60, pkgx.RefreshTokenType)
-	deletedUserToken, _ := pkgx.GenerateTypedToken(9999, secret, 60, pkgx.AccessTokenType)
-	disabledUserToken, _ := pkgx.GenerateTypedToken(1002, secret, 60, pkgx.AccessTokenType)
-	adminToken, _ := pkgx.GenerateToken(-1, secret, 60)
+func TestUserWSHandlerRejectsDisallowedOriginBeforeRegistration(t *testing.T) {
+	server, hub, ticketStore := newUserWSHandlerTestServer(t)
+	ticketStore.Add("origin-ticket", wsticket.Claims{UserID: 1001, Scope: wsticket.ScopeUser})
+	conn, response, err := dialUserWSPathWithOrigin(t, server, "/?ticket=origin-ticket", "http://evil.test")
+	if conn != nil {
+		conn.Close()
+	}
+	if err == nil || response == nil || response.StatusCode != http.StatusForbidden {
+		t.Fatalf("expected origin rejection, response=%v err=%v", response, err)
+	}
+	select {
+	case client := <-hub.RegisterUser:
+		t.Fatalf("origin rejected connection registered client: %+v", client)
+	default:
+	}
+}
 
-	for name, token := range map[string]string{
-		"refresh token":  refreshToken,
-		"deleted user":   deletedUserToken,
-		"disabled user":  disabledUserToken,
-		"admin identity": adminToken,
+func TestUserWSHandlerRejectsQueryTokenInvalidDeletedDisabledAndAdminTickets(t *testing.T) {
+	server, hub, ticketStore := newUserWSHandlerTestServer(t)
+	ticketStore.Add("deleted-user", wsticket.Claims{UserID: 9999, Scope: wsticket.ScopeUser})
+	ticketStore.Add("disabled-user", wsticket.Claims{UserID: 1002, Scope: wsticket.ScopeUser})
+	ticketStore.Add("admin-identity", wsticket.Claims{UserID: -1, Scope: wsticket.ScopeUser})
+
+	for name, path := range map[string]string{
+		"old query token": "/?token=old-access-token",
+		"invalid ticket":  "/?ticket=missing",
+		"expired ticket":  "/?ticket=expired-ticket",
+		"deleted user":    "/?ticket=deleted-user",
+		"disabled user":   "/?ticket=disabled-user",
+		"admin identity":  "/?ticket=admin-identity",
 	} {
 		t.Run(name, func(t *testing.T) {
-			conn, response, err := dialUserWS(t, server, token)
+			conn, response, err := dialUserWSPathWithOrigin(t, server, path, userWSAllowedOrigin)
 			if conn != nil {
 				conn.Close()
 			}

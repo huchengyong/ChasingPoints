@@ -51,6 +51,25 @@ bin/
 *.out
 coverage.out
 
+# Signing / certificate files (release keys should never enter repo)
+*.keystore
+*.jks
+*.pfx
+*.p12
+*.pem
+*.key
+*.csr
+*.crt
+*.cer
+*.der
+*.mobileprovision
+*.p8
+*.pem.enc
+signing.properties
+signing.gradle
+app/.harmony-signing.local.json
+app/harmony-configs/build-profile.json5
+
 # Project-specific local backend config overrides
 backend/etc/*.local.yaml
 backend/etc/*.override.yaml

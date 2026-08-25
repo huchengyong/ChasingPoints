@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"chasing_points/internal/model"
+	"chasing_points/internal/pkg/matchinvite"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -21,6 +22,12 @@ func newStartMatchChallengeTestSvc(t *testing.T) *svc.ServiceContext {
 	if err := db.AutoMigrate(&model.User{}, &model.Match{}, &model.Opponent{}, &model.Challenge{}, &model.MatchRound{}, &model.MatchAction{}); err != nil {
 		t.Fatalf("prepare challenge start schema: %v", err)
 	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("get challenge start sql db: %v", err)
+	}
+	sqlDB.SetMaxOpenConns(1)
+	t.Cleanup(func() { _ = sqlDB.Close() })
 	return &svc.ServiceContext{
 		DB:             db,
 		UserModel:      model.NewUserModel(db),
@@ -181,5 +188,88 @@ func TestStartMatchRejectsChallengeWithWrongIdentityOrGameTypeWithoutMutation(t 
 				t.Fatalf("rejected challenge must remain unlinked, stored=%+v err=%v", stored, err)
 			}
 		})
+	}
+}
+
+func TestStartMatchConvergesConcurrentAcceptedChallengeStarts(t *testing.T) {
+	svcCtx := newStartMatchChallengeTestSvc(t)
+	svcCtx.Config.AppEnv = "production"
+	svcCtx.Config.Security.MatchInvite.SigningSecret = "invite-test-secret"
+	for _, user := range []model.User{
+		{Id: 1001, Nickname: "发起人", Status: 1},
+		{Id: 2002, Nickname: "对手", Status: 1},
+	} {
+		if err := svcCtx.UserModel.Create(&user); err != nil {
+			t.Fatalf("create user %d: %v", user.Id, err)
+		}
+	}
+	if err := svcCtx.ChallengeModel.Create(&model.Challenge{
+		Id:         9103,
+		FromUserId: 1001,
+		ToUserId:   2002,
+		GameType:   3,
+		Status:     1,
+		ExpiresAt:  time.Now().Add(24 * time.Hour),
+	}); err != nil {
+		t.Fatalf("create accepted challenge: %v", err)
+	}
+
+	signer, err := matchinvite.NewSigner("invite-test-secret", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tokenFrom1001, _, err := signer.Issue(1001)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tokenFrom2002, _, err := signer.Issue(2002)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	type startResult struct {
+		resp *types.StartMatchResp
+		err  error
+	}
+	start := make(chan struct{})
+	results := make(chan startResult, 2)
+	for _, input := range []struct {
+		userID int64
+		token  string
+	}{
+		{userID: 1001, token: tokenFrom2002},
+		{userID: 2002, token: tokenFrom1001},
+	} {
+		input := input
+		go func() {
+			<-start
+			resp, startErr := NewStartMatchLogic(startReputationCtx(input.userID), svcCtx).StartMatch(&types.StartMatchReq{
+				GameType:    3,
+				InviteToken: input.token,
+				MatchMode:   model.MatchModePractice,
+				Visibility:  model.MatchVisibilityPrivate,
+				ChallengeId: 9103,
+			})
+			results <- startResult{resp: resp, err: startErr}
+		}()
+	}
+	close(start)
+
+	first, second := <-results, <-results
+	for _, result := range []startResult{first, second} {
+		if result.err != nil || result.resp == nil || !result.resp.Success || result.resp.MatchId <= 0 {
+			t.Fatalf("concurrent challenge start must converge: resp=%+v err=%v", result.resp, result.err)
+		}
+	}
+	if first.resp.MatchId != second.resp.MatchId {
+		t.Fatalf("concurrent challenge starts must return one match: first=%d second=%d", first.resp.MatchId, second.resp.MatchId)
+	}
+
+	var matchCount int64
+	if err := svcCtx.DB.Model(&model.Match{}).Count(&matchCount).Error; err != nil {
+		t.Fatalf("count matches: %v", err)
+	}
+	if matchCount != 1 {
+		t.Fatalf("accepted challenge must create only one match, got %d", matchCount)
 	}
 }

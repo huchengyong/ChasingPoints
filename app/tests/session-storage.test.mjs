@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import {
   clearStoredSession,
+  MATCH_START_CONTEXT_STORAGE_KEYS,
   clearUserScopedRuntimeState,
   readStoredSession,
   SESSION_STORAGE_KEYS
@@ -45,12 +46,17 @@ test('clearStoredSession removes every persisted identity key', () => {
     token: 'access-token',
     refreshToken: 'refresh-token',
     loginMethod: 'wechat-mini',
-    'user-store': JSON.stringify({ token: 'access-token', isLoggedIn: true })
+    'user-store': JSON.stringify({ token: 'access-token', isLoggedIn: true }),
+    pending_match_challenge: JSON.stringify({ challenge_id: 88 }),
+    pending_match_rematch: JSON.stringify({ opponent_id: 2 })
   })
 
   clearStoredSession(storage)
 
   for (const key of Object.values(SESSION_STORAGE_KEYS)) {
+    assert.equal(storage.data[key] === undefined, true, `expected ${key} cleared`)
+  }
+  for (const key of MATCH_START_CONTEXT_STORAGE_KEYS) {
     assert.equal(storage.data[key] === undefined, true, `expected ${key} cleared`)
   }
 })
@@ -63,10 +69,11 @@ test('user-scoped runtime cleanup clears rank, unread badges, invalidation state
     friendRequestStore: { clearPendingCount: () => calls.push('friend-request') },
     userDataInvalidationStore: { clear: () => calls.push('invalidation') },
     publicReadStore: { clearLeaderboard: () => calls.push('leaderboard') },
-    userSocket: { disconnect: () => calls.push('websocket') }
+    userSocket: { disconnect: () => calls.push('user-websocket') },
+    matchSocket: { disconnect: () => calls.push('match-websocket') }
   })
 
-  assert.deepEqual(calls, ['rank', 'notification', 'friend-request', 'invalidation', 'leaderboard', 'websocket'])
+  assert.deepEqual(calls, ['rank', 'notification', 'friend-request', 'invalidation', 'leaderboard', 'user-websocket', 'match-websocket'])
 })
 
 test('logout then init cannot restore a stale identity', () => {

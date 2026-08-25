@@ -72,9 +72,10 @@
 
 		<view class="error-wrapper" v-else-if="pageStatus === 'error'">
 			<uni-icons type="info-filled" size="52" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
-			<text class="error-text">{{ loadErrorMessage || '交锋数据加载失败' }}</text>
-			<button class="retry-btn" @click="fetchData">
-				<text>重新加载</text>
+			<text class="error-text">{{ h2hPageError?.title || '交锋数据加载失败' }}</text>
+			<text class="error-desc">{{ h2hPageError?.description || loadErrorMessage }}</text>
+			<button class="retry-btn" @click="handleH2HErrorAction">
+				<text>{{ h2hPageError?.actionText || '重新加载' }}</text>
 			</button>
 		</view>
 
@@ -219,6 +220,16 @@ import {
 	shiftH2HMonthKey,
 	shouldApplyH2HHistoryResponse
 } from '@/utils/h2h-record.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
@@ -231,6 +242,10 @@ const statsLoaded = ref(false)
 const historyLoaded = ref(false)
 const loadErrorMessage = ref('')
 const isOverviewLoading = ref(false)
+const h2hState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: []
+}))
 const latestHistoryRequestId = ref(0)
 const requestedIdentityKey = ref('')
 const requestedH2HScopeVersion = ref(0)
@@ -320,8 +335,13 @@ const pageStatus = computed(() => resolveH2HPageStatus({
 	historyLoaded: historyLoaded.value,
 	totalMatches: statsData.totalMatches,
 	historyLength: calendarHistory.value.length || historyList.value.length,
-	hasError: Boolean(loadErrorMessage.value)
+	hasError: h2hState.value.status === ASYNC_PAGE_STATUS.ERROR || Boolean(loadErrorMessage.value)
 }))
+const h2hPageError = computed(() => (
+	h2hState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(h2hState.value.error, { resource: '交锋数据' })
+		: null
+))
 const showSummaryCard = computed(() => shouldShowH2HSummaryCard({
 	pageStatus: pageStatus.value,
 	statsLoaded: statsLoaded.value
@@ -424,6 +444,11 @@ const fetchData = async () => {
 	const requestId = latestHistoryRequestId.value + 1
 	const requestIdentityKey = currentIdentityKey()
 	const requestScopeVersion = userDataInvalidationStore.versionOf('h2h')
+	const nextState = beginAsyncPageLoad(h2hState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: []
+	})
+	const pageRequest = getAsyncPageRequest(nextState)
 	latestHistoryRequestId.value = requestId
 	requestedIdentityKey.value = requestIdentityKey
 	requestedH2HScopeVersion.value = requestScopeVersion
@@ -435,6 +460,7 @@ const fetchData = async () => {
 		calendarHistory.value = []
 		total.value = 0
 	}
+	h2hState.value = nextState
 	statsLoaded.value = false
 	historyLoaded.value = false
 	loadErrorMessage.value = ''
@@ -442,9 +468,9 @@ const fetchData = async () => {
 	hasMore.value = true
 	try {
 		const res = await getH2HOverview(buildH2HParams(1))
-		if (!shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value }) || currentIdentityKey() !== requestIdentityKey) return
+		if (!shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value }) || currentIdentityKey() !== requestIdentityKey || h2hState.value.requestId !== pageRequest.requestId || h2hState.value.authGeneration !== pageRequest.authGeneration) return
 		if (!res?.success) {
-			throw new Error(res?.message || '交锋数据加载失败')
+			throw createRequestError({ message: res?.message || '交锋数据加载失败', category: 'business' })
 		}
 		if (res.opponent) {
 			opponentData.id = res.opponent.id || 0
@@ -471,9 +497,15 @@ const fetchData = async () => {
 		}
 		loadedIdentityKey.value = requestIdentityKey
 		loadedH2HScopeVersion.value = requestScopeVersion
+		h2hState.value = resolveAsyncPageLoad(h2hState.value, pageRequest, {
+			data: historyList.value,
+			isEmpty: () => false
+		})
 	} catch (error) {
 		if (!shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value }) || currentIdentityKey() !== requestIdentityKey) return
-		console.error('获取交锋概览失败:', error)
+		const previousState = h2hState.value
+		h2hState.value = rejectAsyncPageLoad(h2hState.value, pageRequest, error)
+		if (h2hState.value === previousState) return
 		opponentData.name = opponentName.value
 		loadErrorMessage.value = error?.message || '交锋数据加载失败'
 		handleTargetLoadFailure(error)
@@ -488,12 +520,19 @@ const fetchNextHistory = async () => {
 	if (isLoadingMore.value || !hasMore.value) return
 	const requestId = latestHistoryRequestId.value + 1
 	const requestIdentityKey = currentIdentityKey()
+	const nextState = beginAsyncPageLoad(h2hState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: []
+	})
+	const pageRequest = getAsyncPageRequest(nextState)
 	latestHistoryRequestId.value = requestId
+	h2hState.value = nextState
 	const nextPage = currentPage.value + 1
 	isLoadingMore.value = true
 	try {
 		const res = await getH2HHistory(buildH2HParams(nextPage))
-		if (!shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value }) || currentIdentityKey() !== requestIdentityKey) return
+		if (!shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value }) || currentIdentityKey() !== requestIdentityKey || h2hState.value.requestId !== pageRequest.requestId || h2hState.value.authGeneration !== pageRequest.authGeneration) return
+		if (!res?.success) throw createRequestError({ message: res?.message || '加载更多交锋历史失败', category: 'business' })
 		const list = res.list || []
 		currentPage.value = nextPage
 		total.value = res.total || total.value
@@ -502,15 +541,29 @@ const fetchNextHistory = async () => {
 		calendarHistory.value = historyList.value
 		hasMore.value = historyList.value.length < total.value
 		historyLoaded.value = true
+		h2hState.value = resolveAsyncPageLoad(h2hState.value, pageRequest, {
+			data: historyList.value,
+			isEmpty: () => false
+		})
 	} catch (error) {
 		if (!shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value }) || currentIdentityKey() !== requestIdentityKey) return
-		console.error('加载更多交锋历史失败:', error)
+		const previousState = h2hState.value
+		h2hState.value = rejectAsyncPageLoad(h2hState.value, pageRequest, error)
+		if (h2hState.value === previousState) return
 		loadErrorMessage.value = error?.message || '交锋历史加载失败'
 	} finally {
 		if (shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value }) && currentIdentityKey() === requestIdentityKey) {
 			isLoadingMore.value = false
 		}
 	}
+}
+
+const handleH2HErrorAction = () => {
+	if (h2hState.value.error?.category === 'permission' || h2hState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	fetchData()
 }
 
 const setHistoryViewMode = (mode) => {

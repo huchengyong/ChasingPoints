@@ -40,6 +40,10 @@
 			@refresherrefresh="onRefresh"
 		>
 			<view v-if="list.length > 0" class="venue-list">
+				<view v-if="venueRefreshError" class="refresh-error-banner">
+					<text>{{ venueRefreshError.description }}</text>
+					<text class="refresh-error-action" @tap="retryVenueList">重试</text>
+				</view>
 				<view
 					v-for="item in list"
 					:key="item.id"
@@ -74,8 +78,15 @@
 				</view>
 			</view>
 
+			<view v-else-if="venuePageError" class="empty-state error-state">
+				<uni-icons type="info" size="48" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+				<text class="empty-text">{{ venuePageError.title }}</text>
+				<text class="error-text">{{ venuePageError.description }}</text>
+				<button class="retry-btn" @tap="handleVenueErrorAction">{{ venuePageError.actionText }}</button>
+			</view>
+
 			<!-- 空状态 -->
-			<view v-else class="empty-state">
+			<view v-else-if="venueState.status === ASYNC_PAGE_STATUS.EMPTY" class="empty-state">
 				<text class="empty-icon">🎱</text>
 				<text class="empty-text">{{ mode === 'nearby' ? '附近暂无球馆' : '暂无球馆数据' }}</text>
 				<view class="empty-btn" @tap="goSubmit">
@@ -92,9 +103,20 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { getVenueList, getNearbyVenues } from '@/api/venue.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { getCurrentLocation } from '@/utils/permission-helper.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 
@@ -107,37 +129,68 @@ const hasMore = ref(true)
 const currentCity = ref('')
 const latitude = ref(0)
 const longitude = ref(0)
+const venueState = ref(createAsyncPageState({ data: [] }))
+const venuePageError = computed(() => (
+	venueState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(venueState.value.error, { resource: '球馆列表' })
+		: null
+))
+const venueRefreshError = computed(() => (
+	venueState.value.refreshError
+		? resolveAsyncPageErrorFeedback(venueState.value.refreshError, { resource: '球馆列表' })
+		: null
+))
 
 const formatDistance = (meters) => {
 	if (meters < 1000) return Math.round(meters) + 'm'
 	return (meters / 1000).toFixed(1) + 'km'
 }
 
-const getLocation = () => {
-	uni.getLocation({
-		type: 'gcj02',
-		success: (res) => {
-			latitude.value = res.latitude
-			longitude.value = res.longitude
-			currentCity.value = '已获取位置'
-			// 重新加载列表
-			page.value = 1
-			fetchList(true)
-		},
-		fail: () => {
-			uni.showToast({ title: '未获取定位，将展示全部球馆', icon: 'none' })
-			currentCity.value = '未授权定位'
-			mode.value = 'list'
-			page.value = 1
-			fetchList(true)
+const getLocation = async () => {
+	const result = await getCurrentLocation({
+		uniApi: uni,
+		action: '查看附近球房',
+		onPermissionDenied: (permission) => {
+			if (permission.reason === 'denied') {
+				uni.showToast({
+					title: '定位权限未开启，将仅展示全部球馆',
+					icon: 'none'
+				})
+			} else {
+				uni.showToast({
+					title: '定位失败，将仅展示全部球馆',
+					icon: 'none'
+				})
+			}
 		}
 	})
+
+	if (!result.success) {
+		currentCity.value = result.permission?.reason === 'denied' ? '未授权定位' : '定位失败'
+		if (mode.value === 'nearby') {
+			mode.value = 'list'
+		}
+		return false
+	}
+
+	latitude.value = result.location.latitude
+	longitude.value = result.location.longitude
+	currentCity.value = '已获取位置'
+	return true
 }
 
 const fetchList = async (isRefresh = false) => {
-	if (loading.value) return
-	loading.value = true
+	if (venueState.value.status === ASYNC_PAGE_STATUS.LOADING || venueState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
+	const requestedPage = page.value
+	const nextState = beginAsyncPageLoad(venueState.value, { emptyData: [] })
+	const pageRequest = getAsyncPageRequest(nextState)
+	venueState.value = nextState
+	loading.value = nextState.status === ASYNC_PAGE_STATUS.LOADING
 	try {
+		if (mode.value === 'nearby' && (!latitude.value || !longitude.value)) {
+			await getLocation()
+		}
+
 		let res
 		if (mode.value === 'nearby' && latitude.value && longitude.value) {
 			res = await getNearbyVenues({
@@ -154,35 +207,40 @@ const fetchList = async (isRefresh = false) => {
 			}
 			res = await getVenueList(params)
 		}
-		if (res.success) {
-			const newList = res.list || []
-			if (isRefresh) {
-				list.value = newList
-			} else {
-				list.value = [...list.value, ...newList]
-			}
-			if (mode.value === 'nearby') {
-				hasMore.value = false
-			} else {
-				hasMore.value = list.value.length < (res.total || 0)
-			}
+		if (venueState.value.requestId !== pageRequest.requestId) return
+		if (!res?.success) throw createRequestError({ message: res?.message || '获取球馆列表失败', category: 'business' })
+		const newList = res.list || []
+		if (isRefresh) {
+			list.value = newList
+		} else {
+			list.value = [...list.value, ...newList]
 		}
+		if (mode.value === 'nearby') {
+			hasMore.value = false
+		} else {
+			hasMore.value = list.value.length < (res.total || 0)
+		}
+		venueState.value = resolveAsyncPageLoad(venueState.value, pageRequest, { data: list.value })
 	} catch (e) {
-		console.error('获取球馆列表失败', e)
+		if (venueState.value.requestId !== pageRequest.requestId) return
+		if (!isRefresh && requestedPage > 1) page.value = requestedPage - 1
+		venueState.value = rejectAsyncPageLoad(venueState.value, pageRequest, e)
 	} finally {
+		if (venueState.value.requestId !== pageRequest.requestId) return
 		loading.value = false
 		refreshing.value = false
 	}
 }
 
 const onRefresh = () => {
+	if (venueState.value.status === ASYNC_PAGE_STATUS.LOADING || venueState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
 	refreshing.value = true
 	page.value = 1
 	fetchList(true)
 }
 
 const loadMore = () => {
-	if (!hasMore.value || loading.value) return
+	if (!hasMore.value || venueState.value.status === ASYNC_PAGE_STATUS.LOADING || venueState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
 	page.value++
 	fetchList()
 }
@@ -192,7 +250,31 @@ const switchMode = (newMode) => {
 	mode.value = newMode
 	page.value = 1
 	list.value = []
+	hasMore.value = false
+	resetVenueList()
 	fetchList(true)
+}
+
+const resetVenueList = () => {
+	venueState.value = {
+		...venueState.value,
+		status: ASYNC_PAGE_STATUS.IDLE,
+		requestId: venueState.value.requestId + 1,
+		data: [],
+		hasData: false,
+		error: null,
+		refreshError: null
+	}
+}
+
+const retryVenueList = () => fetchList(true)
+
+const handleVenueErrorAction = () => {
+	if (venueState.value.error?.category === 'permission' || venueState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryVenueList()
 }
 
 const goDetail = (id) => {
@@ -204,7 +286,7 @@ const goSubmit = () => {
 }
 
 onMounted(() => {
-	getLocation()
+	fetchList(true)
 })
 </script>
 
@@ -342,6 +424,13 @@ onMounted(() => {
 	font-size: 24rpx;
 	color: #9A8C67;
 }
+
+.refresh-error-banner { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-bottom: 20rpx; padding: 18rpx 22rpx; border-radius: 14rpx; background: rgba(224, 174, 18, 0.12); color: #8a5b00; font-size: 24rpx; }
+.refresh-error-action { flex-shrink: 0; color: #a86f00; font-weight: 600; }
+.error-state { gap: 16rpx; padding-left: 32rpx; padding-right: 32rpx; text-align: center; }
+.error-text { font-size: 24rpx; line-height: 1.7; color: #6E6242; }
+.retry-btn { min-width: 200rpx; height: 76rpx; line-height: 76rpx; margin: 12rpx 0 0; padding: 0 32rpx; border-radius: 38rpx; background: #E0AE12; color: #ffffff; font-size: 28rpx; font-weight: 600; }
+.retry-btn::after { display: none; }
 
 .venue-page.dark-mode {
 	background: #141109;

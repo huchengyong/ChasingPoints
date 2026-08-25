@@ -820,6 +820,16 @@ type CurrentMatchInfo struct {
 	RefereeDurationSeconds        int64            `json:"referee_duration_seconds,optional"` // 裁判执裁时长
 }
 
+type DeleteAccountReq struct {
+	ConfirmText    string `json:"confirm_text"`
+	VerifyType     string `json:"verify_type"` // sms/oauth
+	SmsCode        string `json:"sms_code,optional"`
+	Provider       string `json:"provider,optional"`
+	Credential     string `json:"credential,optional"`
+	CredentialType string `json:"credential_type,optional"`
+	Platform       string `json:"platform,optional"`
+}
+
 type DeleteFriendReq struct {
 	FriendUserId int64 `json:"friend_user_id"`
 }
@@ -1184,8 +1194,10 @@ type GetMatchDurationStatsResp struct {
 }
 
 type GetMatchQRCodeResp struct {
-	Success    bool   `json:"success"`
-	QrcodeData string `json:"qrcode_data"` // 二维码内容JSON: {"user_id":xxx,"nickname":"xxx","avatar":"xxx","ts":xxx}
+	Success          bool   `json:"success"`
+	QrcodeData       string `json:"qrcode_data"` // 二维码正文，包含服务端可验证 invite_token
+	InviteToken      string `json:"invite_token,optional"`
+	ExpiresInSeconds int64  `json:"expires_in_seconds,optional"`
 }
 
 type GetMatchRefereeQRCodeReq struct {
@@ -1832,12 +1844,12 @@ type LeaderboardItem struct {
 }
 
 type LoginByOauthReq struct {
-	Provider  string `json:"provider"` // huawei
-	OpenId    string `json:"open_id"`
-	UnionId   string `json:"union_id,optional"`
-	NickName  string `json:"nick_name,optional"`
-	AvatarUrl string `json:"avatar_url,optional"`
-	Platform  string `json:"platform,optional"`
+	Provider       string `json:"provider"` // huawei
+	Credential     string `json:"credential"`
+	CredentialType string `json:"credential_type,optional"` // authorization_code/id_token/access_token
+	Platform       string `json:"platform,optional"`
+	NickName       string `json:"nick_name,optional"`
+	AvatarUrl      string `json:"avatar_url,optional"`
 }
 
 type LoginByOauthResp struct {
@@ -1957,6 +1969,23 @@ type MatchFoulReq struct {
 	Score          int    `json:"score,optional"` // 斯诺克旧规则兼容；版本2只允许专用动作接口
 	ClientActionId string `json:"client_action_id"`
 	BaseRevision   int64  `json:"base_revision"`
+}
+
+type MatchInvitePreviewInfo struct {
+	OpponentId     int64  `json:"opponent_id"`
+	OpponentName   string `json:"opponent_name"`
+	OpponentAvatar string `json:"opponent_avatar"`
+	ExpiresAt      string `json:"expires_at"`
+}
+
+type MatchInvitePreviewReq struct {
+	InviteToken string `json:"invite_token"`
+}
+
+type MatchInvitePreviewResp struct {
+	Success bool                    `json:"success"`
+	Message string                  `json:"message,optional"`
+	Preview *MatchInvitePreviewInfo `json:"preview,optional"`
 }
 
 type MatchLastAction struct {
@@ -2140,6 +2169,10 @@ type MatchUndoResp struct {
 	Message                   string            `json:"message"`
 }
 
+type MatchWSTicketReq struct {
+	MatchId int64 `json:"match_id"`
+}
+
 type MemberPlanInfo struct {
 	PlanCode      string `json:"plan_code"`
 	PlanName      string `json:"plan_name"`
@@ -2226,6 +2259,27 @@ type OpponentStrengthItem struct {
 	Matches   int     `json:"matches"`
 	Wins      int     `json:"wins"`
 	WinRate   float64 `json:"win_rate"`
+}
+
+type PersonalDataExportItem struct {
+	Category string `json:"category"`
+	Id       string `json:"id"`
+	DataJson string `json:"data_json"`
+}
+
+type PersonalDataExportReq struct {
+	Cursor string `json:"cursor,optional"`
+}
+
+type PersonalDataExportResp struct {
+	Success       bool                     `json:"success"`
+	Message       string                   `json:"message,optional"`
+	FormatVersion string                   `json:"format_version"`
+	SnapshotAt    string                   `json:"snapshot_at"`
+	Items         []PersonalDataExportItem `json:"items"`
+	NextCursor    string                   `json:"next_cursor,optional"`
+	Complete      bool                     `json:"complete"`
+	ItemCount     int                      `json:"item_count"`
 }
 
 type PostCommentInfo struct {
@@ -2446,6 +2500,7 @@ type RefreshTokenReq struct {
 type RefreshTokenResp struct {
 	Success      bool   `json:"success"`
 	Message      string `json:"message,optional"`
+	Reason       string `json:"reason,optional"`
 	AccessToken  string `json:"access_token,optional"`
 	RefreshToken string `json:"refresh_token,optional"`
 	ExpiresIn    int64  `json:"expires_in,optional"`
@@ -2584,7 +2639,7 @@ type SendFriendRequestReq struct {
 
 type SendSmsReq struct {
 	Phone string `json:"phone"`
-	Scene string `json:"scene,optional,default=login"` // login/bind
+	Scene string `json:"scene,optional,default=login"` // login/bind/delete_account
 }
 
 type SendSmsResp struct {
@@ -2665,9 +2720,10 @@ type StartMatchReq struct {
 	GameMode            string `json:"game_mode,optional"`             // 比赛模式
 	MatchMode           string `json:"match_mode,optional"`            // practice/ranked，缺省按 ranked
 	Visibility          string `json:"visibility,optional"`            // private/public，排位固定 public
-	OpponentId          int64  `json:"opponent_id"`                    // 对手ID（平台用户，必填）
-	OpponentName        string `json:"opponent_name"`                  // 对手昵称
+	OpponentId          int64  `json:"opponent_id,optional"`           // 旧客户端展示字段；新开局以 invite_token 为准
+	OpponentName        string `json:"opponent_name,optional"`         // 旧客户端展示字段；不得作为授权依据
 	OpponentAvatar      string `json:"opponent_avatar,optional"`       // 对手头像
+	InviteToken         string `json:"invite_token,optional"`          // 服务端签发的匹配邀请凭据
 	ChallengeId         int64  `json:"challenge_id,optional"`          // 已接受邀约 ID
 	SnookerRulesVersion int    `json:"snooker_rules_version,optional"` // 斯诺克规则版本：旧客户端缺省为1，新客户端显式提交2
 	BestOfFrames        int    `json:"best_of_frames,optional"`        // 版本2斯诺克总局数，必须为正奇数
@@ -2937,6 +2993,13 @@ type VenueInfo struct {
 	Distance      float64  `json:"distance,omitempty"`
 	CheckinCount  int      `json:"checkin_count"`
 	Status        int      `json:"status"`
+}
+
+type WSTicketResp struct {
+	Success          bool   `json:"success"`
+	Ticket           string `json:"ticket"`
+	Scope            string `json:"scope"`
+	ExpiresInSeconds int64  `json:"expires_in_seconds"`
 }
 
 type WechatAppPayParams struct {

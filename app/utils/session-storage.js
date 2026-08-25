@@ -9,6 +9,11 @@ export const SESSION_STORAGE_KEYS = {
   userStore: 'user-store'
 }
 
+export const MATCH_START_CONTEXT_STORAGE_KEYS = [
+  'pending_match_challenge',
+  'pending_match_rematch'
+]
+
 export const readStoredSession = (storage = {}) => {
   const token = typeof storage.getStorageSync === 'function'
     ? storage.getStorageSync(SESSION_STORAGE_KEYS.token)
@@ -32,7 +37,8 @@ export const clearUserScopedRuntimeState = ({
   userOverviewStore,
   userDataInvalidationStore,
   publicReadStore,
-  userSocket
+  userSocket,
+  matchSocket
 } = {}) => {
   rankStore?.clear()
   if (typeof notificationStore?.clear === 'function') {
@@ -50,6 +56,7 @@ export const clearUserScopedRuntimeState = ({
   userDataInvalidationStore?.clear()
   publicReadStore?.clearLeaderboard()
   userSocket?.disconnect()
+  matchSocket?.disconnect()
 }
 
 /**
@@ -62,4 +69,10 @@ export const clearStoredSession = (storage = {}) => {
   storage.removeStorageSync(SESSION_STORAGE_KEYS.refreshToken)
   storage.removeStorageSync(SESSION_STORAGE_KEYS.loginMethod)
   storage.removeStorageSync(SESSION_STORAGE_KEYS.userStore)
+  clearPendingMatchStartContexts(storage)
+}
+
+export const clearPendingMatchStartContexts = (storage = {}) => {
+  if (typeof storage.removeStorageSync !== 'function') return
+  MATCH_START_CONTEXT_STORAGE_KEYS.forEach((key) => storage.removeStorageSync(key))
 }

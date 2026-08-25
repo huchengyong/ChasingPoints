@@ -9,9 +9,11 @@ import (
 	"chasing_points/internal/model"
 	"chasing_points/internal/observability"
 	"chasing_points/internal/pkg/geocode"
+	oauthverify "chasing_points/internal/pkg/oauth"
 	"chasing_points/internal/pkg/push"
 	qiniuupload "chasing_points/internal/pkg/qiniu"
 	"chasing_points/internal/pkg/wechatmini"
+	"chasing_points/internal/pkg/wsticket"
 	"chasing_points/internal/sms"
 
 	"github.com/redis/go-redis/v9"
@@ -36,6 +38,7 @@ type ServiceContext struct {
 	CodeManager                     *sms.CodeManager
 	AreaModel                       *model.AreaModel
 	UserModel                       *model.UserModel
+	UserDataLifecycleModel          *model.UserDataLifecycleModel
 	OauthModel                      *model.UserOauthModel
 	MatchModel                      *model.MatchModel
 	CompetitiveReadModel            *model.CompetitiveReadModel
@@ -81,6 +84,8 @@ type ServiceContext struct {
 	Geocoder                        geocode.Geocoder
 	GeocodeWorker                   *geocode.Worker
 	WechatMiniClient                wechatmini.Client
+	OAuthVerifier                   oauthverify.Verifier
+	WSTicketStore                   wsticket.Store
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -101,6 +106,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		CodeManager:                     codeManager,
 		AreaModel:                       models.AreaModel,
 		UserModel:                       models.UserModel,
+		UserDataLifecycleModel:          models.UserDataLifecycleModel,
 		OauthModel:                      models.OauthModel,
 		MatchModel:                      models.MatchModel,
 		CompetitiveReadModel:            models.CompetitiveReadModel,
@@ -146,6 +152,8 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		Geocoder:                        geocodeDeps.Client,
 		GeocodeWorker:                   geocodeDeps.Worker,
 		WechatMiniClient:                wechatMiniClient,
+		OAuthVerifier:                   oauthverify.NewProviderVerifier(c.Security),
+		WSTicketStore:                   wsticket.NewRedisStore(rdb),
 	}
 }
 
@@ -160,6 +168,7 @@ func newWechatMiniClient(c config.Config) wechatmini.Client {
 type serviceModels struct {
 	AreaModel                       *model.AreaModel
 	UserModel                       *model.UserModel
+	UserDataLifecycleModel          *model.UserDataLifecycleModel
 	OauthModel                      *model.UserOauthModel
 	MatchModel                      *model.MatchModel
 	CompetitiveReadModel            *model.CompetitiveReadModel
@@ -228,6 +237,7 @@ func (s *ServiceContext) WithContext(ctx context.Context) *ServiceContext {
 	models := newServiceModels(scoped.DB)
 	scoped.AreaModel = models.AreaModel
 	scoped.UserModel = models.UserModel
+	scoped.UserDataLifecycleModel = models.UserDataLifecycleModel
 	scoped.OauthModel = models.OauthModel
 	scoped.MatchModel = models.MatchModel
 	scoped.CompetitiveReadModel = models.CompetitiveReadModel
@@ -341,6 +351,7 @@ func newServiceModels(db *gorm.DB) serviceModels {
 	return serviceModels{
 		AreaModel:                       areaModel,
 		UserModel:                       model.NewUserModel(db),
+		UserDataLifecycleModel:          model.NewUserDataLifecycleModel(db),
 		OauthModel:                      model.NewUserOauthModel(db),
 		MatchModel:                      model.NewMatchModel(db),
 		CompetitiveReadModel:            model.NewCompetitiveReadModel(db),

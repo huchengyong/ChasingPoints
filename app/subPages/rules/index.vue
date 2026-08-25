@@ -21,6 +21,12 @@
 			<view v-if="searchLoading" class="loading-state">
 				<uni-icons type="spinner-cycle" size="28" color="#E0AE12"></uni-icons>
 			</view>
+			<view v-else-if="searchPageError" class="error-state">
+				<uni-icons type="info" size="44" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+				<text class="error-title">{{ searchPageError.title }}</text>
+				<text class="error-text">{{ searchPageError.description }}</text>
+				<button class="retry-btn" @tap="handleSearchErrorAction">{{ searchPageError.actionText }}</button>
+			</view>
 			<view v-else-if="searchResults.length > 0">
 				<view
 					v-for="item in searchResults"
@@ -32,7 +38,7 @@
 					<text class="result-category">{{ getRuleCategoryLabel(item.category) }} · {{ getTypeLabel(item.content_type) }}</text>
 				</view>
 			</view>
-			<view v-else class="empty-hint">
+			<view v-else-if="searchState.status === ASYNC_PAGE_STATUS.EMPTY" class="empty-hint">
 				<text>未找到相关内容</text>
 			</view>
 		</view>
@@ -92,10 +98,20 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { searchRules } from '@/api/rules.js'
 import { getRuleCategoryLabel } from '@/utils/game-types.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 
@@ -103,6 +119,12 @@ const searchKeyword = ref('')
 const searchResults = ref([])
 const searchLoading = ref(false)
 const showSearchResults = ref(false)
+const searchState = ref(createAsyncPageState({ data: [] }))
+const searchPageError = computed(() => (
+	searchState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(searchState.value.error, { resource: '规则搜索' })
+		: null
+))
 
 const getTypeLabel = (type) => {
 	const map = { rule: '规则', foul: '犯规', glossary: '术语' }
@@ -112,13 +134,21 @@ const getTypeLabel = (type) => {
 const handleSearch = async () => {
 	if (!searchKeyword.value.trim()) return
 	showSearchResults.value = true
+	const nextState = beginAsyncPageLoad(searchState.value, { emptyData: [] })
+	const pageRequest = getAsyncPageRequest(nextState)
+	searchState.value = nextState
 	searchLoading.value = true
 	try {
 		const res = await searchRules({ keyword: searchKeyword.value.trim() })
-		searchResults.value = res.list || res || []
+		if (searchState.value.requestId !== pageRequest.requestId) return
+		if (!res || res.success === false) throw createRequestError({ message: res?.message || '搜索规则失败', category: 'business' })
+		searchResults.value = res.list || []
+		searchState.value = resolveAsyncPageLoad(searchState.value, pageRequest, { data: searchResults.value })
 	} catch (e) {
-		console.error('搜索失败:', e)
+		if (searchState.value.requestId !== pageRequest.requestId) return
+		searchState.value = rejectAsyncPageLoad(searchState.value, pageRequest, e)
 	} finally {
+		if (searchState.value.requestId !== pageRequest.requestId) return
 		searchLoading.value = false
 	}
 }
@@ -127,6 +157,25 @@ const clearSearch = () => {
 	searchKeyword.value = ''
 	searchResults.value = []
 	showSearchResults.value = false
+	searchState.value = {
+		...searchState.value,
+		status: ASYNC_PAGE_STATUS.IDLE,
+		requestId: searchState.value.requestId + 1,
+		data: [],
+		hasData: false,
+		error: null,
+		refreshError: null
+	}
+}
+
+const retrySearch = () => handleSearch()
+
+const handleSearchErrorAction = () => {
+	if (searchState.value.error?.category === 'permission' || searchState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retrySearch()
 }
 
 const goToDetail = (category) => {
@@ -273,6 +322,44 @@ const goToGlossary = () => {
 	color: #9A8C67;
 }
 
+.error-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16rpx;
+	padding: 60rpx 32rpx;
+	text-align: center;
+}
+
+.error-title {
+	font-size: 30rpx;
+	font-weight: 600;
+	color: #231C0B;
+}
+
+.error-text {
+	font-size: 24rpx;
+	line-height: 1.7;
+	color: #6E6242;
+}
+
+.retry-btn {
+	min-width: 200rpx;
+	height: 76rpx;
+	line-height: 76rpx;
+	margin: 12rpx 0 0;
+	padding: 0 32rpx;
+	border-radius: 38rpx;
+	background: #E0AE12;
+	color: #ffffff;
+	font-size: 28rpx;
+	font-weight: 600;
+}
+
+.retry-btn::after {
+	display: none;
+}
+
 .rules-page.dark-mode {
 	background: #141109;
 
@@ -294,8 +381,13 @@ const goToGlossary = () => {
 	.game-cards .game-card .card-info .card-desc,
 	.glossary-entry .glossary-info .glossary-desc,
 	.search-results .result-category,
-	.empty-hint {
+	.empty-hint,
+	.error-text {
 		color: #9f926e;
+	}
+
+	.error-title {
+		color: #fff7e1;
 	}
 }
 </style>

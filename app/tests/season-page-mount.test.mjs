@@ -23,6 +23,9 @@ export const useUserDataInvalidationStore = () => ({
   versionOf: (scope) => globalThis.__SEASON_PAGE_MOUNT__.versionOf(scope)
 })
 `,
+  '@/store/user.js': `
+export const useUserStore = () => ({ userId: 1, authGeneration: 1 })
+`,
   '@/utils/game-types.js': `
 export const GAME_TYPE_TABS = [{ value: 3, label: '中式八球' }]
 `,
@@ -38,6 +41,63 @@ export const usePageTheme = () => ({ isDarkMode: ref(false) })
 `,
   '@/utils/user-profile.js': `
 export const resolveAvatarUrl = () => ''
+`,
+  '@/utils/async-page-state.js': `
+export const ASYNC_PAGE_STATUS = {
+  IDLE: 'idle',
+  LOADING: 'loading',
+  READY: 'ready',
+  EMPTY: 'empty',
+  ERROR: 'error',
+  REFRESHING: 'refreshing'
+}
+export const createAsyncPageState = ({ authGeneration = -1, data = null } = {}) => ({
+  status: ASYNC_PAGE_STATUS.IDLE,
+  authGeneration,
+  requestId: 0,
+  data,
+  hasData: data !== null,
+  error: null,
+  refreshError: null
+})
+export const beginAsyncPageLoad = (state, { authGeneration } = {}) => ({
+  ...state,
+  status: state.hasData ? ASYNC_PAGE_STATUS.REFRESHING : ASYNC_PAGE_STATUS.LOADING,
+  authGeneration,
+  requestId: state.requestId + 1,
+  error: null,
+  refreshError: null
+})
+export const getAsyncPageRequest = (state) => ({
+  requestId: state.requestId,
+  authGeneration: state.authGeneration
+})
+export const resolveAsyncPageLoad = (state, request, { data } = {}) => ({
+  ...state,
+  status: ASYNC_PAGE_STATUS.READY,
+  data,
+  hasData: true,
+  error: null,
+  refreshError: null
+})
+export const rejectAsyncPageLoad = (state, request, error) => ({
+  ...state,
+  status: state.hasData ? ASYNC_PAGE_STATUS.READY : ASYNC_PAGE_STATUS.ERROR,
+  error: state.hasData ? null : error,
+  refreshError: state.hasData ? error : null
+})
+export const resolveAsyncPageErrorFeedback = (error, { resource = '内容' } = {}) => ({
+  title: resource,
+  description: error?.message || '加载失败',
+  actionText: '重试'
+})
+`,
+  '@/utils/request-errors.js': `
+export const createRequestError = ({ message = '请求失败', category = 'business' } = {}) => {
+  const error = new Error(message)
+  error.category = category
+  return error
+}
 `
 }
 

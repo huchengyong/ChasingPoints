@@ -25,7 +25,7 @@
 		</view>
 
 		<!-- 内容列表 -->
-		<view v-else class="content-list">
+		<view v-else-if="contentList.length > 0" class="content-list">
 			<view
 				v-for="(item, index) in contentList"
 				:key="item.id || index"
@@ -46,20 +46,37 @@
 			</view>
 		</view>
 
+		<view v-else-if="contentPageError" class="empty-state error-state">
+			<uni-icons type="info" size="48" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+			<text class="empty-text">{{ contentPageError.title }}</text>
+			<text class="error-text">{{ contentPageError.description }}</text>
+			<button class="retry-btn" @tap="handleContentErrorAction">{{ contentPageError.actionText }}</button>
+		</view>
+
 		<!-- 空状态 -->
-		<view v-if="!loading && contentList.length === 0" class="empty-state">
+		<view v-else-if="contentState.status === ASYNC_PAGE_STATUS.EMPTY" class="empty-state">
 			<text class="empty-text">暂无内容</text>
 		</view>
 	</view>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getRuleContent } from '@/api/rules.js'
 import { usePublicReadStore } from '@/store/publicRead.js'
 import { getRuleCategoryLabel } from '@/utils/game-types.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 const publicReadStore = usePublicReadStore()
@@ -69,6 +86,12 @@ const currentType = ref('rule')
 const contentList = ref([])
 const loading = ref(true)
 const expandedIndex = ref(-1)
+const contentState = ref(createAsyncPageState({ data: [] }))
+const contentPageError = computed(() => (
+	contentState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(contentState.value.error, { resource: '规则内容' })
+		: null
+))
 
 const contentTabs = [
 	{ key: 'rule', label: '规则' },
@@ -90,8 +113,19 @@ const getCategoryLabel = () => {
 }
 
 const switchType = (type) => {
+	if (currentType.value === type) return
 	currentType.value = type
 	expandedIndex.value = -1
+	contentList.value = []
+	contentState.value = {
+		...contentState.value,
+		status: ASYNC_PAGE_STATUS.IDLE,
+		requestId: contentState.value.requestId + 1,
+		data: [],
+		hasData: false,
+		error: null,
+		refreshError: null
+	}
 	loadContent()
 }
 
@@ -100,20 +134,37 @@ const toggleItem = (index) => {
 }
 
 const loadContent = async () => {
-	loading.value = true
+	const nextState = beginAsyncPageLoad(contentState.value, { emptyData: [] })
+	const pageRequest = getAsyncPageRequest(nextState)
+	contentState.value = nextState
+	loading.value = nextState.status === ASYNC_PAGE_STATUS.LOADING
 	try {
 		const resolvedCategory = resolveRuleCategory(category.value)
 		const res = await publicReadStore.loadStatic(
 			`rules:content:${resolvedCategory}:${currentType.value}`,
 			() => getRuleContent({ category: resolvedCategory, content_type: currentType.value })
 		)
-		contentList.value = res.list || res || []
+		if (contentState.value.requestId !== pageRequest.requestId) return
+		if (!res || res.success === false) throw createRequestError({ message: res?.message || '加载规则内容失败', category: 'business' })
+		contentList.value = res.list || []
+		contentState.value = resolveAsyncPageLoad(contentState.value, pageRequest, { data: contentList.value })
 	} catch (e) {
-		console.error('加载规则内容失败:', e)
-		contentList.value = []
+		if (contentState.value.requestId !== pageRequest.requestId) return
+		contentState.value = rejectAsyncPageLoad(contentState.value, pageRequest, e)
 	} finally {
+		if (contentState.value.requestId !== pageRequest.requestId) return
 		loading.value = false
 	}
+}
+
+const retryContent = () => loadContent()
+
+const handleContentErrorAction = () => {
+	if (contentState.value.error?.category === 'permission' || contentState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryContent()
 }
 
 onLoad((options) => {
@@ -230,6 +281,38 @@ onLoad((options) => {
 	}
 }
 
+.error-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16rpx;
+	padding-left: 32rpx;
+	padding-right: 32rpx;
+}
+
+.error-text {
+	font-size: 24rpx;
+	line-height: 1.7;
+	color: #6E6242;
+}
+
+.retry-btn {
+	min-width: 200rpx;
+	height: 76rpx;
+	line-height: 76rpx;
+	margin: 12rpx 0 0;
+	padding: 0 32rpx;
+	border-radius: 38rpx;
+	background: #E0AE12;
+	color: #ffffff;
+	font-size: 28rpx;
+	font-weight: 600;
+}
+
+.retry-btn::after {
+	display: none;
+}
+
 .detail-page.dark-mode {
 	background: #141109;
 
@@ -253,7 +336,8 @@ onLoad((options) => {
 	}
 
 	.content-list .content-item .item-content,
-	.empty-text {
+	.empty-text,
+	.error-text {
 		color: #9f926e;
 	}
 }

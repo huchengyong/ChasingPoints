@@ -9,8 +9,8 @@ import (
 type UserOauth struct {
 	Id        int64     `gorm:"primarykey"`
 	UserId    int64     `gorm:"not null;index"`
-	Provider  string    `gorm:"size:20;not null"`
-	OpenId    string    `gorm:"size:128;not null"`
+	Provider  string    `gorm:"size:20;not null;uniqueIndex:idx_provider_openid,priority:1"`
+	OpenId    string    `gorm:"size:128;not null;uniqueIndex:idx_provider_openid,priority:2"`
 	UnionId   *string   `gorm:"size:128"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 }
@@ -29,8 +29,16 @@ func NewUserOauthModel(db *gorm.DB) *UserOauthModel {
 
 // FindByProviderAndOpenId 根据 provider 和 openId 查找
 func (m *UserOauthModel) FindByProviderAndOpenId(provider, openId string) (*UserOauth, error) {
+	return m.FindByProviderAndOpenIdWithTx(nil, provider, openId)
+}
+
+func (m *UserOauthModel) FindByProviderAndOpenIdWithTx(tx *gorm.DB, provider, openId string) (*UserOauth, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
 	var oauth UserOauth
-	err := m.db.Where("provider = ? AND open_id = ?", provider, openId).First(&oauth).Error
+	err := db.Where("provider = ? AND open_id = ?", provider, openId).First(&oauth).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}
@@ -55,6 +63,14 @@ func (m *UserOauthModel) CreateWithTx(tx *gorm.DB, oauth *UserOauth) error {
 		db = tx
 	}
 	return db.Create(oauth).Error
+}
+
+func (m *UserOauthModel) DeleteByUserIdWithTx(tx *gorm.DB, userID int64) error {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	return db.Where("user_id = ?", userID).Delete(&UserOauth{}).Error
 }
 
 // UpdateUserId 更新 OAuth 记录的用户ID（用于账号合并）

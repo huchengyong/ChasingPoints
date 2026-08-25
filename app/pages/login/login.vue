@@ -216,6 +216,7 @@ import {
 	clearPostLoginIntent,
 	getPostLoginIntent
 } from '@/utils/post-login-intent.js'
+import { buildHuaweiOAuthLoginPayload } from '@/utils/oauth-login.js'
 
 const WELCOME_PAGE_VIEWED_KEY = 'welcome_page_viewed'
 const ENTRY_FUNNEL_AGREEMENT_KEY = 'entry_funnel_agreement_accepted'
@@ -529,14 +530,11 @@ const handleHuaweiLogin = async () => {
 		const systemInfo = uni.getSystemInfoSync()
 		const platform = systemInfo?.uniPlatform || 'app-plus'
 
-		const loginResult = await loginByOauth({
-			provider: 'huawei',
-			nick_name: userInfo.userInfo?.nickName || '',
-			avatar_url: userInfo.userInfo?.avatarUrl || '',
-			open_id: loginRes.authResult?.openid || '',
-			union_id: loginRes.authResult?.unionID || '',
+		const loginResult = await loginByOauth(buildHuaweiOAuthLoginPayload({
+			loginResult: loginRes,
+			userInfo,
 			platform
-		})
+		}))
 
 		userStore.login(loginResult)
 		uni.setStorageSync(WELCOME_PAGE_VIEWED_KEY, true)

@@ -20,9 +20,9 @@
 				</view>
 				<text v-if="statusBanUntilText" class="summary-ban">禁赛至 {{ statusBanUntilText }}</text>
 				<text class="summary-tip">异常比赛会扣减信誉，信誉会按规则恢复</text>
-				<view v-if="statusError" class="summary-error">
-					<text>{{ statusError }}</text>
-					<text class="summary-retry" @click="handleRetryStatus">重新获取</text>
+				<view v-if="statusFeedback" class="summary-error">
+					<text>{{ statusFeedback.description }}</text>
+					<text class="summary-retry" @click="handleStatusErrorAction">{{ statusFeedback.actionText }}</text>
 				</view>
 			</view>
 
@@ -35,12 +35,12 @@
 					<text class="section-total" v-if="total > 0">共 {{ total }} 条</text>
 				</view>
 
-				<view v-if="logsError && reputationLogs.length === 0" class="state-card">
+				<view v-if="logsPageError" class="state-card">
 					<uni-icons type="info" size="28" :color="isDarkMode ? '#fbbf24' : '#d97706'"></uni-icons>
-					<text class="state-title">信誉记录暂时加载失败</text>
-					<text class="state-description">{{ logsError }}</text>
-					<button class="state-btn" @click="handleRetryLogs">
-						<text>重试</text>
+					<text class="state-title">{{ logsPageError.title }}</text>
+					<text class="state-description">{{ logsPageError.description }}</text>
+					<button class="state-btn" @click="handleLogsErrorAction">
+						<text>{{ logsPageError.actionText }}</text>
 					</button>
 				</view>
 
@@ -49,14 +49,14 @@
 					<text class="state-title">正在加载信誉记录</text>
 				</view>
 
-				<view v-else-if="!logsLoading && reputationLogs.length === 0" class="state-card">
+				<view v-else-if="logsState.status === ASYNC_PAGE_STATUS.EMPTY" class="state-card">
 					<uni-icons type="list" size="32" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 					<text class="state-title">暂时还没有信誉变更记录</text>
 				</view>
 
 				<view v-else class="log-list">
-					<view v-if="logsError" class="inline-error">
-						<text>{{ logsError }}</text>
+					<view v-if="logsRefreshError" class="inline-error">
+						<text>{{ logsRefreshError.description }}</text>
 						<text class="inline-error-retry" @click="handleRetryLogs">重试</text>
 					</view>
 
@@ -105,17 +105,33 @@ import { getUserReputationLogs } from '@/api/user.js'
 import { useUserOverviewStore } from '@/store/userOverview.js'
 import { useUserStore } from '@/store/user.js'
 import { formatDateTime, formatRelativeTime } from '@/utils/format.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 const userOverviewStore = useUserOverviewStore()
 const userStore = useUserStore()
 
 const statusLoading = ref(false)
-const statusError = ref('')
 const reputationStatus = ref(null)
+const statusState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: null
+}))
 
 const logsLoading = ref(false)
-const logsError = ref('')
+const logsState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: []
+}))
 const isRefreshing = ref(false)
 const isLoadingMore = ref(false)
 const hasMore = ref(true)
@@ -127,6 +143,21 @@ const logsLoaded = ref(false)
 const PAGE_SIZE = 20
 let statusRequestSeq = 0
 let logsRequestSeq = 0
+const statusFeedback = computed(() => (
+	statusState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(statusState.value.error, { resource: '信誉状态' })
+		: null
+))
+const logsPageError = computed(() => (
+	logsState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(logsState.value.error, { resource: '信誉记录' })
+		: null
+))
+const logsRefreshError = computed(() => (
+	logsState.value.refreshError
+		? resolveAsyncPageErrorFeedback(logsState.value.refreshError, { resource: '信誉记录' })
+		: null
+))
 
 const displayScore = computed(() => {
 	const score = reputationStatus.value?.score
@@ -170,22 +201,30 @@ const loadStatus = async ({ force = false } = {}) => {
 		return
 	}
 	const requestSeq = ++statusRequestSeq
+	const nextState = beginAsyncPageLoad(statusState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: null
+	})
+	if (statusState.value.authGeneration !== userStore.authGeneration) reputationStatus.value = null
+	const pageRequest = getAsyncPageRequest(nextState)
+	statusState.value = nextState
 	statusLoading.value = true
-	statusError.value = ''
 	try {
 		const overview = await userOverviewStore.fetch(getReadIdentity(), { force, silent: true })
-		if (requestSeq !== statusRequestSeq) {
+		if (requestSeq !== statusRequestSeq || statusState.value.requestId !== pageRequest.requestId || statusState.value.authGeneration !== pageRequest.authGeneration) {
 			return
 		}
-		if (overview?.reputation?.success) {
-			reputationStatus.value = overview.reputation
-		}
+		if (!overview?.reputation?.success) throw createRequestError({ message: '信誉状态暂时不可用', category: 'business' })
+		reputationStatus.value = overview.reputation
+		statusState.value = resolveAsyncPageLoad(statusState.value, pageRequest, {
+			data: reputationStatus.value,
+			isEmpty: () => false
+		})
 	} catch (error) {
 		if (requestSeq !== statusRequestSeq) {
 			return
-		}
-		console.error('获取信誉状态失败:', error)
-		statusError.value = error?.message || '信誉状态暂时不可用'
+	}
+	statusState.value = rejectAsyncPageLoad(statusState.value, pageRequest, error)
 	} finally {
 		if (requestSeq === statusRequestSeq) {
 			statusLoading.value = false
@@ -197,13 +236,25 @@ const loadLogs = async ({ refresh = false, append = false, force = false } = {})
 	if ((logsLoading.value || isLoadingMore.value) && !force) {
 		return
 	}
+	if (append && !hasMore.value) return
 
 	const requestSeq = ++logsRequestSeq
 	const targetPage = refresh ? 1 : currentPage.value + 1
-	logsError.value = ''
+	const nextState = beginAsyncPageLoad(logsState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: []
+	})
+	if (logsState.value.authGeneration !== userStore.authGeneration) {
+		reputationLogs.value = []
+		currentPage.value = 1
+		total.value = 0
+		hasMore.value = true
+		logsLoaded.value = false
+	}
+	const pageRequest = getAsyncPageRequest(nextState)
+	logsState.value = nextState
 
 	if (append) {
-		if (!hasMore.value) return
 		isLoadingMore.value = true
 	} else {
 		logsLoading.value = true
@@ -214,21 +265,22 @@ const loadLogs = async ({ refresh = false, append = false, force = false } = {})
 			page: targetPage,
 			page_size: PAGE_SIZE
 		})
-		if (requestSeq !== logsRequestSeq) {
+		if (requestSeq !== logsRequestSeq || logsState.value.requestId !== pageRequest.requestId || logsState.value.authGeneration !== pageRequest.authGeneration) {
 			return
 		}
+		if (!res?.success) throw createRequestError({ message: res?.message || '信誉记录加载失败，请稍后重试', category: 'business' })
 		const list = Array.isArray(res?.list) ? res.list : []
 		total.value = Number(res?.total) || 0
 		currentPage.value = targetPage
 		reputationLogs.value = append ? [...reputationLogs.value, ...list] : list
 		hasMore.value = reputationLogs.value.length < total.value
 		logsLoaded.value = true
+		logsState.value = resolveAsyncPageLoad(logsState.value, pageRequest, { data: reputationLogs.value })
 	} catch (error) {
 		if (requestSeq !== logsRequestSeq) {
 			return
-		}
-		console.error('获取信誉记录失败:', error)
-		logsError.value = error?.message || '信誉记录加载失败，请稍后重试'
+	}
+	logsState.value = rejectAsyncPageLoad(logsState.value, pageRequest, error)
 		if (append) {
 			hasMore.value = true
 		}
@@ -262,6 +314,22 @@ const handleRetryStatus = () => {
 
 const handleRetryLogs = () => {
 	void loadLogs({ refresh: true, force: true })
+}
+
+const handleStatusErrorAction = () => {
+	if (statusState.value.error?.category === 'permission' || statusState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	handleRetryStatus()
+}
+
+const handleLogsErrorAction = () => {
+	if (logsState.value.error?.category === 'permission' || logsState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	handleRetryLogs()
 }
 
 const formatChangeScore = (score) => {

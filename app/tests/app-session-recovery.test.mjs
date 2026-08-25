@@ -82,7 +82,9 @@ test('ongoing-match results are scoped to auth and App lifecycle generations', (
 
 test('App delegates session invalid navigation to the token-scoped request layer', () => {
   assert.doesNotMatch(appSource, /reLaunch\(\{\s*url: '\/pages\/login\/login'/)
+  assert.match(appSource, /handleCurrentSessionInvalid\(\{ data: payload, message: payload\.message \}\)/)
   assert.match(requestSource, /createSessionInvalidHandler/)
+  assert.match(requestSource, /export const handleCurrentSessionInvalid/)
   assert.match(requestSource, /sessionKey:\s*requestToken/)
   assert.match(requestSource, /uni\.reLaunch\(\{\s*url\s*\}\)/)
 })

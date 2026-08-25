@@ -29,6 +29,10 @@
 
 		<!-- 好友列表 -->
 		<view v-else-if="friendList.length > 0" class="friend-list">
+			<view v-if="friendRefreshError" class="refresh-error-banner">
+				<text>{{ friendRefreshError.description }}</text>
+				<text class="refresh-error-action" @tap="retryFriendList">重试</text>
+			</view>
 			<view
 				v-for="item in friendList"
 				:key="item.friend_user_id || item.id"
@@ -73,8 +77,15 @@
 			</view>
 		</view>
 
+		<view v-else-if="friendPageError" class="empty-state error-state">
+			<uni-icons type="info" size="48" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+			<text class="empty-title">{{ friendPageError.title }}</text>
+			<text class="empty-sub">{{ friendPageError.description }}</text>
+			<button class="add-btn" @tap="handleFriendErrorAction">{{ friendPageError.actionText }}</button>
+		</view>
+
 		<!-- 空状态 -->
-		<view v-else class="empty-state">
+		<view v-else-if="friendState.status === ASYNC_PAGE_STATUS.EMPTY" class="empty-state">
 			<text class="empty-icon">👥</text>
 			<text class="empty-title">还没有好友</text>
 			<text class="empty-sub">去添加好友，一起打球吧！</text>
@@ -86,10 +97,11 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
 import { getFriendList, getFriendRequests, deleteFriend, blacklistFriend } from '@/api/friend.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
+import { useUserStore } from '@/store/user.js'
 import {
 	buildBlacklistFriendPayload,
 	buildDeleteFriendPayload,
@@ -101,6 +113,16 @@ import {
 import { clampFriendSwipeOffset, resolveFriendSwipeEndOffset } from '@/utils/friend-swipe.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 
@@ -127,18 +149,48 @@ const openFriendUserId = ref(0)
 const swipeOffsets = ref({})
 const touchState = ref(createEmptyTouchState())
 const friendRequestStore = useFriendRequestStore()
+const userStore = useUserStore()
+const friendState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: []
+}))
+const friendPageError = computed(() => (
+	friendState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(friendState.value.error, { resource: '好友列表' })
+		: null
+))
+const friendRefreshError = computed(() => (
+	friendState.value.refreshError
+		? resolveAsyncPageErrorFeedback(friendState.value.refreshError, { resource: '好友列表' })
+		: null
+))
 
 const loadData = async (isRefresh = false) => {
+	if (friendState.value.status === ASYNC_PAGE_STATUS.LOADING || friendState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
+	const nextState = beginAsyncPageLoad(friendState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: []
+	})
+	const pageRequest = getAsyncPageRequest(nextState)
+	if (friendState.value.authGeneration !== userStore.authGeneration) {
+		friendList.value = []
+		page.value = 1
+		total.value = 0
+		hasMore.value = false
+	}
+	friendState.value = nextState
 	if (isRefresh) {
 		page.value = 1
-		loading.value = true
 		resetSwipeState()
 	}
+	loading.value = nextState.status === ASYNC_PAGE_STATUS.LOADING
 	try {
 		const [friendRes, requestRes] = await Promise.all([
 			getFriendList({ page: page.value, page_size: pageSize }),
 			getFriendRequests({ page: 1, page_size: 1 }).catch(() => null)
 		])
+		if (friendState.value.requestId !== pageRequest.requestId || friendState.value.authGeneration !== pageRequest.authGeneration) return
+		if (!friendRes?.success) throw createRequestError({ message: friendRes?.message || '加载好友列表失败', category: 'business' })
 		const list = (friendRes.list || friendRes || []).map(normalizeFriendListItem)
 		if (isRefresh) {
 			friendList.value = list
@@ -151,8 +203,9 @@ const loadData = async (isRefresh = false) => {
 			pendingCount.value = requestRes.total || 0
 			friendRequestStore.pendingCount = pendingCount.value
 		}
+		friendState.value = resolveAsyncPageLoad(friendState.value, pageRequest, { data: friendList.value })
 	} catch (e) {
-		console.error('加载好友列表失败:', e)
+		friendState.value = rejectAsyncPageLoad(friendState.value, pageRequest, e)
 	} finally {
 		loading.value = false
 		uni.stopPullDownRefresh()
@@ -163,6 +216,16 @@ const loadMore = () => {
 	if (!hasMore.value) return
 	page.value++
 	loadData(false)
+}
+
+const retryFriendList = () => loadData(true)
+
+const handleFriendErrorAction = () => {
+	if (friendState.value.error?.category === 'permission' || friendState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryFriendList()
 }
 
 const goToAddFriend = () => {
@@ -606,6 +669,25 @@ onPullDownRefresh(() => {
 			border: none;
 		}
 	}
+}
+
+.refresh-error-banner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20rpx;
+	margin-bottom: 20rpx;
+	padding: 18rpx 22rpx;
+	border-radius: 14rpx;
+	background: rgba(224, 174, 18, 0.12);
+	color: #8a5b00;
+	font-size: 24rpx;
+}
+
+.refresh-error-action {
+	flex-shrink: 0;
+	color: #a86f00;
+	font-weight: 600;
 }
 
 .friend-list-page.dark-mode {

@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	"chasing_points/internal/model"
+	"chasing_points/internal/sms"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -53,7 +54,7 @@ func (l *BindPhoneLogic) BindPhone(req *types.BindPhoneReq) (resp *types.BindPho
 	}
 
 	// 验证验证码
-	valid, err := l.svcCtx.CodeManager.VerifyCode(l.ctx, req.Phone, req.SmsCode)
+	valid, err := l.svcCtx.CodeManager.VerifyCodeForScene(l.ctx, req.Phone, sms.SceneBind, req.SmsCode)
 	if err != nil {
 		return &types.BindPhoneResp{
 			Success: false,

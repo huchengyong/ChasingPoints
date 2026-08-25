@@ -35,8 +35,15 @@
 				<text class="loading-text">加载中...</text>
 			</view>
 
+			<view v-else-if="pageError" class="empty-state error-state">
+				<uni-icons type="info" size="72" color="#9A8C67" class="empty-icon"></uni-icons>
+				<text class="empty-title">{{ pageError.title }}</text>
+				<text class="empty-subtitle">{{ pageError.description }}</text>
+				<button class="start-button" @click="handlePageErrorAction">{{ pageError.actionText }}</button>
+			</view>
+
 			<!-- 空数据状态 -->
-			<view v-else-if="!visibleCurrentMatch && spectatorMatches.length === 0" class="empty-state">
+			<view v-else-if="lobbyState.status === ASYNC_PAGE_STATUS.EMPTY" class="empty-state">
 				<uni-icons type="medal" size="128" color="#6E6242" class="empty-icon"></uni-icons>
 				<text class="empty-title">{{ emptyState.title }}</text>
 				<text class="empty-subtitle">{{ emptyState.subtitle }}</text>
@@ -50,6 +57,10 @@
 
 			<!-- 对局列表 -->
 			<view v-else class="match-list">
+				<view v-if="refreshError" class="refresh-error-banner">
+					<text>{{ refreshError.description }}</text>
+					<text class="refresh-error-action" @tap="retryLobby">重试</text>
+				</view>
 				<!-- 进行中的对局 -->
 				<view v-if="visibleCurrentMatch" class="match-card my-match" @click="handleContinueMatch(visibleCurrentMatch)">
 					<!-- MY MATCH 标签 -->
@@ -232,14 +243,14 @@
 						<text class="match-qr-error">二维码加载失败</text>
 						<button class="match-qr-retry" @click="loadMyMatchQRCode">重试</button>
 					</view>
-					<image
-						v-if="matchQrUrl && !matchQrFailed"
+					<canvas
+						v-if="matchQrContent && !matchQrFailed"
+						canvas-id="match-page-invite-qrcode"
+						id="match-page-invite-qrcode"
 						class="match-qr-image"
 						:class="{ 'is-loading': matchQrLoading }"
-						:src="matchQrUrl"
-						mode="aspectFit"
-						@load="handleMatchQrLoad"
-						@error="handleMatchQrError"
+						:width="240"
+						:height="240"
 					/>
 				</view>
 				<button class="match-qr-done" @click="closeMatchQrModal">关闭</button>
@@ -287,17 +298,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 
 import { onLoad, onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useActivityStore } from '@/store/activity.js'
 import { useUserStore } from '@/store/user.js'
 import { usePageTheme } from '@/utils/page-theme.js'
-import { getPublicMatches, joinMatchReferee, previewMatchReferee, startMatch } from '@/api/match.js'
-import { getMatchQRCode } from '@/api/match.js'
+import { getPublicMatches, getMatchQRCode, joinMatchReferee, previewMatchInvite, previewMatchReferee, startMatch } from '@/api/match.js'
+import { renderLocalQRCode } from '@/utils/local-qrcode.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
-import { shouldShowMatchPageLoading } from '@/utils/match-page.js'
-import { buildPlayingRoute, resolveMatchScanAction, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
+import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import { GAME_TYPE_FILTER_OPTIONS_WITH_ALL } from '@/utils/game-types.js'
 import {
@@ -316,6 +326,17 @@ import {
 	validateScannedOpponentForContext
 } from '@/utils/start-match.js'
 import { readDefaultGameType, saveDefaultGameType } from '@/utils/game-type-preference.js'
+import { scanAndResolveMatchCode } from '@/utils/match-scan.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 // ========== 状态管理 ==========
 const userStore = useUserStore()
@@ -323,8 +344,10 @@ const activityStore = useActivityStore()
 const { isDarkMode } = usePageTheme()
 
 // ========== 响应式数据 ==========
-const loading = ref(false)
-const refreshing = ref(false)
+const lobbyState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: []
+}))
 const currentMatch = computed(() => (userStore.isLoggedIn ? activityStore.currentMatch : null))
 const spectatorMatches = ref([])
 const showGameTypeModal = ref(false)
@@ -333,11 +356,12 @@ const defaultGameType = ref(0)
 const startMatchMode = ref('practice')
 const startMatchVisibility = ref('private')
 const pendingStartContext = ref(null)
+const pendingStartAuthGeneration = ref(-1)
 const scanIntent = ref('start')
 const showMatchQrModal = ref(false)
 const matchQrLoading = ref(false)
 const matchQrFailed = ref(false)
-const matchQrUrl = ref('')
+const matchQrContent = ref('')
 const showRefereePreview = ref(false)
 const refereePreviewLoading = ref(false)
 const refereeJoining = ref(false)
@@ -350,7 +374,16 @@ const currentStatus = ref(1)
 const currentGameType = ref(0)
 const draftStatus = ref(1)
 const draftGameType = ref(0)
-const showPageLoading = computed(() => shouldShowMatchPageLoading(loading.value, refreshing.value))
+const showPageLoading = computed(() => lobbyState.value.status === ASYNC_PAGE_STATUS.LOADING)
+const pageError = computed(() => {
+	if (lobbyState.value.status !== ASYNC_PAGE_STATUS.ERROR) return null
+	return resolveAsyncPageErrorFeedback(lobbyState.value.error, { resource: '对局大厅' })
+})
+const refreshError = computed(() => (
+	lobbyState.value.refreshError
+		? resolveAsyncPageErrorFeedback(lobbyState.value.refreshError, { resource: '对局大厅' })
+		: null
+))
 const scopeOptions = SPECTATOR_SCOPES
 const statusOptions = SPECTATOR_STATUS_OPTIONS
 const gameTypeOptions = GAME_TYPE_FILTER_OPTIONS_WITH_ALL
@@ -432,11 +465,9 @@ onLoad(() => {
 
 // 下拉刷新
 onPullDownRefresh(async () => {
-	refreshing.value = true
 	try {
 		await loadData({ forceActivity: true })
 	} finally {
-		refreshing.value = false
 		uni.stopPullDownRefresh()
 	}
 })
@@ -457,6 +488,7 @@ const consumePendingChallengeContext = () => {
 			continue
 		}
 		pendingStartContext.value = result.context
+		pendingStartAuthGeneration.value = userStore.authGeneration
 		selectedGameType.value = result.context.game_type
 		startMatchMode.value = result.context.match_mode
 		startMatchVisibility.value = result.context.visibility
@@ -468,6 +500,13 @@ const consumePendingChallengeContext = () => {
 	}
 }
 
+const clearPendingStartContext = () => {
+	pendingStartContext.value = null
+	pendingStartAuthGeneration.value = -1
+	uni.removeStorageSync('pending_match_challenge')
+	uni.removeStorageSync('pending_match_rematch')
+}
+
 // ========== 方法 ==========
 
 /**
@@ -476,9 +515,17 @@ const consumePendingChallengeContext = () => {
 const hasLoadedOnce = ref(false)
 
 const loadData = async ({ forceActivity = false } = {}) => {
-	if (loading.value) return
+	if (lobbyState.value.status === ASYNC_PAGE_STATUS.LOADING) return
+	const currentGeneration = userStore.authGeneration
+	const nextState = beginAsyncPageLoad(lobbyState.value, {
+		authGeneration: currentGeneration,
+		emptyData: []
+	})
+	const request = getAsyncPageRequest(nextState)
+	const identityChanged = lobbyState.value.authGeneration !== currentGeneration
+	if (identityChanged) spectatorMatches.value = []
+	lobbyState.value = nextState
 
-	loading.value = true
 	try {
 		const publicMatchesRequest = getPublicMatches(buildSpectatorMatchListParams({
 			scope: currentScope.value,
@@ -486,28 +533,57 @@ const loadData = async ({ forceActivity = false } = {}) => {
 			gameType: currentGameType.value,
 			page: 1,
 			pageSize: 20
-		})).catch(() => ({ success: false, list: [] }))
+		}))
 
-		if (userStore.isLoggedIn) {
-			await activityStore.fetch({
+		const activityRequest = userStore.isLoggedIn
+			? activityStore.fetch({
 				userId: userStore.userId,
 				authGeneration: userStore.authGeneration
-			}, { force: forceActivity, silent: true }).catch(() => activityStore.snapshot())
+			}, { force: forceActivity, silent: true })
+			: Promise.resolve(null)
+		const [matchResult] = await Promise.all([
+			publicMatchesRequest.then(
+				value => ({ value }),
+				error => ({ error })
+			),
+			activityRequest.catch(() => null)
+		])
+		if (lobbyState.value.authGeneration !== request.authGeneration || lobbyState.value.requestId !== request.requestId) return
+		if (matchResult.error || !matchResult.value?.success) {
+			const error = matchResult.error || createRequestError({
+				message: matchResult.value?.message || '加载对局大厅失败',
+				category: 'business'
+			})
+			if (currentMatch.value) {
+				lobbyState.value = resolveAsyncPageLoad(lobbyState.value, request, {
+					data: [currentMatch.value]
+				})
+			}
+			lobbyState.value = rejectAsyncPageLoad(lobbyState.value, request, error)
+			return
 		}
-		const matchListRes = await publicMatchesRequest
-		if (matchListRes.success && matchListRes.list) {
-			spectatorMatches.value = userStore.isLoggedIn
-				? filteredSpectatorList(matchListRes.list)
-				: matchListRes.list
-		} else {
-			spectatorMatches.value = []
-		}
+
+		const list = matchResult.value.list || []
+		spectatorMatches.value = userStore.isLoggedIn
+			? filteredSpectatorList(list)
+			: list
+		lobbyState.value = resolveAsyncPageLoad(lobbyState.value, request, {
+			data: [currentMatch.value, ...spectatorMatches.value].filter(Boolean)
+		})
 		hasLoadedOnce.value = true
 	} catch (error) {
-		console.error('加载对局数据失败:', error)
-	} finally {
-		loading.value = false
+		lobbyState.value = rejectAsyncPageLoad(lobbyState.value, request, error)
 	}
+}
+
+const retryLobby = () => loadData({ forceActivity: true })
+
+const handlePageErrorAction = () => {
+	if (lobbyState.value.error?.category === 'permission' || lobbyState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryLobby()
 }
 
 const handleScopeChange = (scope) => {
@@ -625,7 +701,7 @@ const showMyMatchQRCode = async () => {
 const loadMyMatchQRCode = async () => {
 	matchQrLoading.value = true
 	matchQrFailed.value = false
-	matchQrUrl.value = ''
+	matchQrContent.value = ''
 	try {
 		const res = await getMatchQRCode()
 		if (!res?.success || !res.qrcode_data) {
@@ -633,27 +709,26 @@ const loadMyMatchQRCode = async () => {
 			matchQrFailed.value = true
 			return
 		}
-		matchQrUrl.value = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(res.qrcode_data)}`
+		matchQrContent.value = res.qrcode_data
+		await nextTick()
+		renderLocalQRCode({
+			canvasId: 'match-page-invite-qrcode',
+			content: matchQrContent.value,
+			size: 240,
+			uniApi: uni
+		})
+		matchQrLoading.value = false
 	} catch (error) {
 		matchQrLoading.value = false
 		matchQrFailed.value = true
 	}
 }
 
-const handleMatchQrLoad = () => {
-	matchQrLoading.value = false
-}
-
-const handleMatchQrError = () => {
-	matchQrLoading.value = false
-	matchQrFailed.value = true
-}
-
 const closeMatchQrModal = () => {
 	showMatchQrModal.value = false
 	matchQrLoading.value = false
 	matchQrFailed.value = false
-	matchQrUrl.value = ''
+	matchQrContent.value = ''
 	uni.showTabBar({ animation: true })
 }
 
@@ -759,38 +834,41 @@ const handleGameTypeConfirm = ({ gameType, setAsDefault } = {}) => {
 /**
  * 开始扫码
  */
-const handleScanCode = () => {
-	// #ifdef APP-PLUS || APP-HARMONY
-	uni.scanCode({
-		scanType: ['qrCode'],
-		success: (res) => {
-			console.log('扫码结果:', res.result)
-			handleMatchResult(res.result)
-		},
-		fail: (err) => {
-			console.error('扫码失败:', err)
-		}
+const handleScanCode = async () => {
+	const scanAction = await scanAndResolveMatchCode({
+		uniApi: uni,
+		previewMatchInvite
 	})
-	// #endif
+	if (scanAction.type === 'cancelled') {
+		clearPendingStartContext()
+		return
+	}
+	if (scanAction.type === 'error') {
+		clearPendingStartContext()
+		uni.showToast({ title: scanAction.message || '扫码失败', icon: 'none' })
+		return
+	}
+	await handleMatchResult(scanAction)
 }
 
 /**
  * 处理匹配结果
  */
-const handleMatchResult = async (scanResult) => {
+const handleMatchResult = async (scanAction) => {
 	try {
-		const scanAction = resolveMatchScanAction(scanResult)
-		if (scanAction.type === 'error') {
-			uni.showToast({ title: scanAction.message || '无效的二维码', icon: 'none' })
+		if (pendingStartContext.value && pendingStartAuthGeneration.value !== userStore.authGeneration) {
+			clearPendingStartContext()
+			uni.showToast({ title: '登录状态已变更，请重新发起扫码', icon: 'none' })
 			return
 		}
-
 		if (scanAction.type === 'join_referee') {
+			clearPendingStartContext()
 			await openRefereePreview(scanAction.refereeJoin)
 			return
 		}
 
 		if (scanIntent.value === 'referee') {
+			clearPendingStartContext()
 			uni.showToast({ title: '请扫描对局裁判码', icon: 'none' })
 			return
 		}
@@ -798,6 +876,7 @@ const handleMatchResult = async (scanResult) => {
 		const opponentData = scanAction.opponent
 		const scanMessage = validateScannedOpponentForContext(pendingStartContext.value || {}, opponentData)
 		if (scanMessage) {
+			clearPendingStartContext()
 			uni.showToast({ title: scanMessage, icon: 'none' })
 			return
 		}
@@ -811,7 +890,8 @@ const handleMatchResult = async (scanResult) => {
 			opponent: opponentData,
 			matchMode: startMatchMode.value,
 			visibility: startMatchVisibility.value,
-			challengeId: pendingStartContext.value?.challenge_id || 0
+			challengeId: pendingStartContext.value?.challenge_id || 0,
+			inviteToken: scanAction.inviteToken
 		}))
 
 		// 隐藏加载
@@ -822,8 +902,9 @@ const handleMatchResult = async (scanResult) => {
 			selectedGameType: selectedGameType.value,
 			scannedOpponent: opponentData
 		}))
-		if (res?.success) pendingStartContext.value = null
+		clearPendingStartContext()
 	} catch (error) {
+		clearPendingStartContext()
 		uni.hideLoading()
 		console.error('处理匹配结果失败:', error)
 		uni.showToast({ title: '匹配失败', icon: 'none' })

@@ -52,21 +52,26 @@
           <text class="loading-text">加载中...</text>
         </view>
 
-        <view class="error-wrapper" v-else-if="loadFailed && cardViewModels.length === 0">
+        <view class="error-wrapper" v-else-if="opponentPageError">
           <uni-icons type="info-filled" size="52" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
-          <text class="error-text">{{ loadErrorMessage || '过往对手加载失败' }}</text>
-          <button class="retry-btn" @click="fetchOpponentList">
-            <text>重新加载</text>
+          <text class="error-text">{{ opponentPageError.title }}</text>
+          <text class="error-desc">{{ opponentPageError.description }}</text>
+          <button class="retry-btn" @click="handleOpponentErrorAction">
+            <text>{{ opponentPageError.actionText }}</text>
           </button>
         </view>
 
-        <view class="empty-wrapper" v-else-if="!isLoading && cardViewModels.length === 0">
+        <view class="empty-wrapper" v-else-if="opponentState.status === ASYNC_PAGE_STATUS.EMPTY">
           <uni-icons type="contact" size="64" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
           <text class="empty-text">{{ emptyState.text }}</text>
           <text class="empty-hint">{{ emptyState.hint }}</text>
         </view>
 
         <view class="opponent-items" v-else>
+          <view v-if="opponentRefreshError" class="refresh-error-banner">
+            <text>{{ opponentRefreshError.description }}</text>
+            <text class="refresh-error-action" @tap="retryOpponentList">重试</text>
+          </view>
           <view
             v-for="opponent in cardViewModels"
             :key="opponent.id || opponent.name"
@@ -134,6 +139,16 @@ import {
   buildOpponentStatsSummary,
   normalizeOpponentRecordOptions
 } from '@/utils/opponent-record.js'
+import {
+  ASYNC_PAGE_STATUS,
+  beginAsyncPageLoad,
+  createAsyncPageState,
+  getAsyncPageRequest,
+  rejectAsyncPageLoad,
+  resolveAsyncPageErrorFeedback,
+  resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
@@ -155,6 +170,10 @@ const isLoadingMore = ref(false)
 const hasMore = ref(true)
 const loadFailed = ref(false)
 const loadErrorMessage = ref('')
+const opponentState = ref(createAsyncPageState({
+  authGeneration: userStore.authGeneration,
+  data: []
+}))
 const searchKeyword = ref('')
 const needLogin = ref(false)
 const targetUserId = ref(0)
@@ -168,6 +187,16 @@ const total = ref(0)
 const latestRequestId = ref(0)
 const loadedIdentityKey = ref('')
 const loadedOpponentScopeVersion = ref(0)
+const opponentPageError = computed(() => (
+  opponentState.value.status === ASYNC_PAGE_STATUS.ERROR
+    ? resolveAsyncPageErrorFeedback(opponentState.value.error, { resource: '过往对手' })
+    : null
+))
+const opponentRefreshError = computed(() => (
+  opponentState.value.refreshError
+    ? resolveAsyncPageErrorFeedback(opponentState.value.refreshError, { resource: '过往对手' })
+    : null
+))
 
 const statsData = reactive({
   totalOpponents: 0,
@@ -237,25 +266,31 @@ onShow(() => {
     statsData.totalWins = 0
     isLoading.value = false
     isLoadingMore.value = false
+    opponentState.value = createAsyncPageState({ authGeneration: userStore.authGeneration, data: [] })
   }
-  if (opponentList.value.length === 0 || loadFailed.value || loadedOpponentScopeVersion.value !== scopeVersion) {
+  if (opponentList.value.length === 0 || opponentState.value.status === ASYNC_PAGE_STATUS.ERROR || loadedOpponentScopeVersion.value !== scopeVersion) {
     fetchOpponentList()
   }
 })
 
 const fetchOpponentList = async (isRefresh = false, isLoadMore = false) => {
-  if (isLoading.value || isLoadingMore.value) return
+  if (isLoading.value || isLoadingMore.value || (isLoadMore && !hasMore.value)) return
   const requestId = latestRequestId.value + 1
   const requestIdentityKey = currentIdentityKey()
   const requestScopeVersion = userDataInvalidationStore.versionOf('opponents')
+  const nextState = beginAsyncPageLoad(opponentState.value, {
+    authGeneration: userStore.authGeneration,
+    emptyData: []
+  })
+  const pageRequest = getAsyncPageRequest(nextState)
   latestRequestId.value = requestId
+  opponentState.value = nextState
 
   if (isRefresh) {
     isRefreshing.value = true
     currentPage.value = 1
     hasMore.value = true
   } else if (isLoadMore) {
-    if (!hasMore.value) return
     isLoadingMore.value = true
     currentPage.value += 1
   } else {
@@ -273,7 +308,8 @@ const fetchOpponentList = async (isRefresh = false, isLoadMore = false) => {
       targetUserId: targetUserId.value
     }))
 
-    if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
+    if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey || opponentState.value.requestId !== pageRequest.requestId || opponentState.value.authGeneration !== pageRequest.authGeneration) return
+    if (!res?.success) throw createRequestError({ message: res?.message || '获取过往对手失败', category: 'business' })
     const list = Array.isArray(res.list) ? res.list : []
     total.value = Number(res.total || 0)
     statsData.totalOpponents = Number(res.total_opponents || 0)
@@ -290,17 +326,15 @@ const fetchOpponentList = async (isRefresh = false, isLoadMore = false) => {
     hasMore.value = opponentList.value.length < total.value
     loadedIdentityKey.value = requestIdentityKey
     loadedOpponentScopeVersion.value = requestScopeVersion
+    opponentState.value = resolveAsyncPageLoad(opponentState.value, pageRequest, { data: opponentList.value })
   } catch (error) {
     if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
     if (isLoadMore) {
       currentPage.value = Math.max(currentPage.value - 1, 1)
     }
-    loadFailed.value = opponentList.value.length === 0
+    opponentState.value = rejectAsyncPageLoad(opponentState.value, pageRequest, error)
+    loadFailed.value = opponentState.value.status === ASYNC_PAGE_STATUS.ERROR
     loadErrorMessage.value = error.message || '获取过往对手失败'
-    uni.showToast({
-      title: loadErrorMessage.value,
-      icon: 'none'
-    })
   } finally {
     if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey) return
     isLoading.value = false
@@ -313,6 +347,7 @@ const handleSearch = () => {
   currentPage.value = 1
   hasMore.value = true
   opponentList.value = []
+  opponentState.value = createAsyncPageState({ authGeneration: userStore.authGeneration, data: [] })
   fetchOpponentList()
 }
 
@@ -322,6 +357,16 @@ const onRefresh = () => {
 
 const onLoadMore = () => {
   fetchOpponentList(false, true)
+}
+
+const retryOpponentList = () => fetchOpponentList(true, false)
+
+const handleOpponentErrorAction = () => {
+  if (opponentState.value.error?.category === 'permission' || opponentState.value.error?.category === 'not-found') {
+    uni.navigateBack({ delta: 1 })
+    return
+  }
+  retryOpponentList()
 }
 
 const getAvatarText = (name) => {

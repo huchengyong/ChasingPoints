@@ -5,7 +5,14 @@
 			<text class="loading-text">加载对阵图...</text>
 		</view>
 
-		<view v-else-if="matches.length === 0" class="empty-state">
+		<view v-else-if="bracketPageError" class="empty-state error-state">
+			<uni-icons type="info" size="48" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+			<text class="empty-text">{{ bracketPageError.title }}</text>
+			<text class="error-text">{{ bracketPageError.description }}</text>
+			<button class="retry-btn" @tap="handleBracketErrorAction">{{ bracketPageError.actionText }}</button>
+		</view>
+
+		<view v-else-if="bracketState.status === ASYNC_PAGE_STATUS.EMPTY" class="empty-state">
 			<text class="empty-icon">🏆</text>
 			<text class="empty-text">暂无对阵信息</text>
 		</view>
@@ -46,9 +53,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { getTournamentBracket } from '@/api/tournament.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 
@@ -56,6 +73,12 @@ const matches = ref([])
 const totalRounds = ref(0)
 const loading = ref(true)
 const tournamentId = ref(0)
+const bracketState = ref(createAsyncPageState({ data: [] }))
+const bracketPageError = computed(() => (
+	bracketState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(bracketState.value.error, { resource: '赛事对阵图' })
+		: null
+))
 
 const getMatchesByRound = (round) => {
 	return matches.value.filter(m => m.round_number === round).sort((a, b) => a.match_order - b.match_order)
@@ -69,25 +92,49 @@ const getRoundName = (round) => {
 }
 
 const fetchBracket = async () => {
-	loading.value = true
+	const nextState = beginAsyncPageLoad(bracketState.value, { emptyData: [] })
+	const pageRequest = getAsyncPageRequest(nextState)
+	bracketState.value = nextState
+	loading.value = nextState.status === ASYNC_PAGE_STATUS.LOADING
+	if (!tournamentId.value) {
+		bracketState.value = rejectAsyncPageLoad(bracketState.value, pageRequest, createRequestError({
+			message: '未找到赛事信息，请返回赛事列表后重试。',
+			category: 'not-found'
+		}))
+		loading.value = false
+		return
+	}
 	try {
 		const res = await getTournamentBracket({ tournament_id: tournamentId.value })
-		if (res.success) {
-			matches.value = res.matches || []
-			totalRounds.value = res.total_rounds || 0
-		}
+		if (bracketState.value.requestId !== pageRequest.requestId) return
+		if (!res?.success) throw createRequestError({ message: res?.message || '获取对阵图失败', category: 'business' })
+		matches.value = res.matches || []
+		totalRounds.value = res.total_rounds || 0
+		bracketState.value = resolveAsyncPageLoad(bracketState.value, pageRequest, { data: matches.value })
 	} catch (e) {
-		console.error('获取对阵图失败', e)
+		if (bracketState.value.requestId !== pageRequest.requestId) return
+		bracketState.value = rejectAsyncPageLoad(bracketState.value, pageRequest, e)
 	} finally {
+		if (bracketState.value.requestId !== pageRequest.requestId) return
 		loading.value = false
 	}
+}
+
+const retryBracket = () => fetchBracket()
+
+const handleBracketErrorAction = () => {
+	if (bracketState.value.error?.category === 'permission' || bracketState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryBracket()
 }
 
 onMounted(() => {
 	const pages = getCurrentPages()
 	const currentPage = pages[pages.length - 1]
 	tournamentId.value = parseInt(currentPage.options.id || 0)
-	if (tournamentId.value > 0) fetchBracket()
+	fetchBracket()
 })
 </script>
 
@@ -113,6 +160,10 @@ onMounted(() => {
 	.empty-icon { font-size: 80rpx; margin-bottom: 16rpx; }
 	.empty-text { font-size: 28rpx; color: #6E6242; }
 }
+.error-state { gap: 16rpx; padding: 0 32rpx; text-align: center; }
+.error-text { font-size: 24rpx; line-height: 1.7; color: #6E6242; }
+.retry-btn { min-width: 200rpx; height: 76rpx; line-height: 76rpx; margin: 12rpx 0 0; padding: 0 32rpx; border-radius: 38rpx; background: #E0AE12; color: #ffffff; font-size: 28rpx; font-weight: 600; }
+.retry-btn::after { display: none; }
 .bracket-scroll {
 	width: 100%;
 	height: 100vh;
@@ -212,6 +263,11 @@ onMounted(() => {
 		.match-status .status-done {
 			color: #9f926e;
 		}
+	}
+
+	.error-text,
+	.empty-text {
+		color: #9f926e;
 	}
 }
 </style>

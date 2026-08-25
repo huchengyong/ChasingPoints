@@ -63,6 +63,10 @@
 			@refresherrefresh="onRefresh"
 		>
 			<view v-if="list.length > 0" class="tournament-list">
+				<view v-if="tournamentRefreshError" class="refresh-error-banner">
+					<text>{{ tournamentRefreshError.description }}</text>
+					<text class="refresh-error-action" @tap="retryTournaments">重试</text>
+				</view>
 				<view
 					v-for="item in list"
 					:key="item.id"
@@ -111,7 +115,16 @@
 				</view>
 			</view>
 
-			<view v-else class="empty-state">
+			<view v-else-if="tournamentPageError" class="empty-state error-state">
+				<view class="empty-badge">
+					<uni-icons type="info" size="28" color="#E0AE12"></uni-icons>
+				</view>
+				<text class="empty-title">{{ tournamentPageError.title }}</text>
+				<text class="empty-text">{{ tournamentPageError.description }}</text>
+				<button class="retry-btn" @tap="handleTournamentErrorAction">{{ tournamentPageError.actionText }}</button>
+			</view>
+
+			<view v-else-if="tournamentState.status === ASYNC_PAGE_STATUS.EMPTY" class="empty-state">
 				<view class="empty-badge">
 						<uni-icons type="calendar" size="28" color="#E0AE12"></uni-icons>
 				</view>
@@ -131,6 +144,16 @@ import { computed, onMounted, ref } from 'vue'
 import { usePublicReadStore } from '@/store/publicRead.js'
 import { normalizeSaiXunCard } from '@/utils/saixun.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 const publicReadStore = usePublicReadStore()
@@ -159,9 +182,20 @@ const refreshing = ref(false)
 const page = ref(1)
 const hasMore = ref(true)
 const totalCount = ref(0)
+const tournamentState = ref(createAsyncPageState({ data: [] }))
 
 const liveCount = computed(() => list.value.filter(item => item.status === 1).length)
 const upcomingCount = computed(() => list.value.filter(item => item.status === 0).length)
+const tournamentPageError = computed(() => (
+	tournamentState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(tournamentState.value.error, { resource: '赛事情报' })
+		: null
+))
+const tournamentRefreshError = computed(() => (
+	tournamentState.value.refreshError
+		? resolveAsyncPageErrorFeedback(tournamentState.value.refreshError, { resource: '赛事情报' })
+		: null
+))
 
 const buildQueryParams = (pageValue, gameTypeValue, statusValue) => {
 	const params = {
@@ -181,21 +215,20 @@ const fetchList = async ({
 	commitSelection = null,
 	force = false
 } = {}) => {
-	if (loading.value) return
-	loading.value = true
+	if (tournamentState.value.status === ASYNC_PAGE_STATUS.LOADING || tournamentState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return false
+	const nextState = beginAsyncPageLoad(tournamentState.value, { emptyData: [] })
+	const pageRequest = getAsyncPageRequest(nextState)
+	tournamentState.value = nextState
+	loading.value = nextState.status === ASYNC_PAGE_STATUS.LOADING
 	try {
 		const res = await publicReadStore.loadEventNews(
 			buildQueryParams(pageValue, gameTypeValue, statusValue),
 			{ force }
 		)
-		// 显式检查API返回值
-		if (!res.success) {
-			console.error('获取赛事情报列表失败:', res.message)
-			return false
-		}
+		if (tournamentState.value.requestId !== pageRequest.requestId) return false
+		if (!res?.success) throw createRequestError({ message: res?.message || '获取赛事情报列表失败', category: 'business' })
 		if (!Array.isArray(res.list)) {
-			console.error('获取赛事情报列表失败: 返回数据格式错误')
-			return false
+			throw createRequestError({ message: '赛事情报数据格式异常，请稍后重试', category: 'business' })
 		}
 		const newList = (res.list || []).map((item) => normalizeSaiXunCard(item))
 		if (commitSelection) {
@@ -210,18 +243,21 @@ const fetchList = async ({
 		page.value = pageValue
 		totalCount.value = res.total || 0
 		hasMore.value = list.value.length < (res.total || 0)
+		tournamentState.value = resolveAsyncPageLoad(tournamentState.value, pageRequest, { data: list.value })
 		return true
 	} catch (e) {
-		console.error('获取赛事情报列表失败', e)
+		if (tournamentState.value.requestId !== pageRequest.requestId) return false
+		tournamentState.value = rejectAsyncPageLoad(tournamentState.value, pageRequest, e)
 		return false
 	} finally {
+		if (tournamentState.value.requestId !== pageRequest.requestId) return
 		loading.value = false
 		refreshing.value = false
 	}
 }
 
 const onRefresh = async () => {
-	if (loading.value) return
+	if (tournamentState.value.status === ASYNC_PAGE_STATUS.LOADING || tournamentState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
 	refreshing.value = true
 	await fetchList({
 		pageValue: 1,
@@ -231,7 +267,7 @@ const onRefresh = async () => {
 }
 
 const loadMore = async () => {
-	if (!hasMore.value || loading.value) return
+	if (!hasMore.value || tournamentState.value.status === ASYNC_PAGE_STATUS.LOADING || tournamentState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
 	await fetchList({
 		pageValue: page.value + 1,
 		replace: false
@@ -239,33 +275,55 @@ const loadMore = async () => {
 }
 
 const onGameTypeChange = async (e) => {
-	if (loading.value) return
+	if (tournamentState.value.status === ASYNC_PAGE_STATUS.LOADING || tournamentState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
 	const nextGameType = gameTypes.value[e.detail.value]
+	selectedGameType.value = nextGameType
+	resetTournamentList()
 	await fetchList({
 		pageValue: 1,
 		gameTypeValue: nextGameType.value,
 		statusValue: selectedStatus.value.value,
-		replace: true,
-		commitSelection: {
-			gameType: nextGameType,
-			status: selectedStatus.value
-		}
+		replace: true
 	})
 }
 
 const onStatusChange = async (e) => {
-	if (loading.value) return
+	if (tournamentState.value.status === ASYNC_PAGE_STATUS.LOADING || tournamentState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
 	const nextStatus = statusList.value[e.detail.value]
+	selectedStatus.value = nextStatus
+	resetTournamentList()
 	await fetchList({
 		pageValue: 1,
 		gameTypeValue: selectedGameType.value.value,
 		statusValue: nextStatus.value,
-		replace: true,
-		commitSelection: {
-			gameType: selectedGameType.value,
-			status: nextStatus
-		}
+		replace: true
 	})
+}
+
+const resetTournamentList = () => {
+	list.value = []
+	page.value = 1
+	totalCount.value = 0
+	hasMore.value = false
+	tournamentState.value = {
+		...tournamentState.value,
+		status: ASYNC_PAGE_STATUS.IDLE,
+		requestId: tournamentState.value.requestId + 1,
+		data: [],
+		hasData: false,
+		error: null,
+		refreshError: null
+	}
+}
+
+const retryTournaments = () => fetchList({ pageValue: 1, replace: true, force: true })
+
+const handleTournamentErrorAction = () => {
+	if (tournamentState.value.error?.category === 'permission' || tournamentState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryTournaments()
 }
 
 const goDetail = (id) => {

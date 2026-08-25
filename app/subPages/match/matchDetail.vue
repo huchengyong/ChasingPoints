@@ -123,7 +123,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { onHide, onLoad, onShow } from '@dcloudio/uni-app'
 import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import { getMatchDetail, getPublicMatchDetail } from '@/api/match.js'
 import { usePageTheme } from '@/utils/page-theme.js'
@@ -251,6 +251,7 @@ onMounted(() => {
 })
 
 onShow(() => {
+	matchWS.setTargetActive(true)
 	if (wsHandlersReady && matchId.value && matchData.value.status === 1) {
 		if (matchWS.isConnected()) {
 			matchWS.requestSync()
@@ -258,6 +259,10 @@ onShow(() => {
 			connectWebSocket()
 		}
 	}
+})
+
+onHide(() => {
+	matchWS.setTargetActive(false)
 })
 
 onUnmounted(() => {

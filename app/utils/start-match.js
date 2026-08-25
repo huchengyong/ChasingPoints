@@ -1,7 +1,8 @@
 export const validateStartMatchPayload = (payload = {}) => {
   const gameType = Number(payload.game_type || payload.gameType || 0)
+  const inviteToken = String(payload.invite_token || payload.inviteToken || '').trim()
   const opponentId = Number(payload.opponent_id || payload.opponentId || 0)
-  if (!Number.isFinite(opponentId) || opponentId <= 0) {
+  if (!inviteToken && (!Number.isFinite(opponentId) || opponentId <= 0)) {
     return '请选择有效的平台对手'
   }
   const mode = payload.match_mode || payload.matchMode || ''
@@ -109,15 +110,21 @@ export const buildStartMatchPayload = ({
   opponent = {},
   matchMode = 'ranked',
   visibility,
-  challengeId = 0
+  challengeId = 0,
+  inviteToken = ''
 } = {}) => {
   const options = normalizeStartMatchOptions({ matchMode, visibility })
+  const normalizedInviteToken = String(inviteToken || '').trim()
   const payload = {
     game_type: Number(gameType) || 0,
-    opponent_id: Number(opponent.id || opponent.user_id || opponent.opponent_id || 0),
-    opponent_name: opponent.nickname || opponent.name || opponent.opponent_name || '对手',
-    opponent_avatar: opponent.avatar || opponent.opponent_avatar || '',
     ...options
+  }
+  if (normalizedInviteToken) {
+    payload.invite_token = normalizedInviteToken
+  } else {
+    payload.opponent_id = Number(opponent.id || opponent.user_id || opponent.opponent_id || 0)
+    payload.opponent_name = opponent.nickname || opponent.name || opponent.opponent_name || '对手'
+    payload.opponent_avatar = opponent.avatar || opponent.opponent_avatar || ''
   }
   if (Number(challengeId) > 0) payload.challenge_id = Number(challengeId)
   if (payload.game_type === 1) {

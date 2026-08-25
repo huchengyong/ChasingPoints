@@ -5,31 +5,33 @@ import (
 	"net/http"
 	"time"
 
+	"chasing_points/internal/pkg/wsticket"
 	"chasing_points/internal/svc"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
 // UserWSHandler 用户级WebSocket处理器
-// 连接地址: ws://host:port/api/user/ws?token=xxx
+// 连接地址: ws://host:port/api/user/ws?ticket=xxx
 // 用于接收匹配通知等用户级别的消息
 func UserWSHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// 获取token
-		token := r.URL.Query().Get("token")
-
-		if token == "" {
-			http.Error(w, "missing token", http.StatusBadRequest)
+		if rejectWebSocketQueryToken(w, r) {
 			return
 		}
 
-		// 验证token
-		userId, err := parseAccessTokenUserID(token, svcCtx.Config.Auth.AccessSecret)
+		ticket := r.URL.Query().Get("ticket")
+		if ticket == "" {
+			http.Error(w, "missing ticket", http.StatusBadRequest)
+			return
+		}
+
+		claims, err := consumeWebSocketTicket(r.Context(), svcCtx, ticket, wsticket.ScopeUser)
 		if err != nil {
-			logx.Errorf("WebSocket token验证失败: %v", err)
-			http.Error(w, "invalid token", http.StatusUnauthorized)
+			writeWebSocketTicketError(w, err)
 			return
 		}
+		userId := claims.UserID
 		active, err := isActiveWebSocketUser(svcCtx, userId)
 		if err != nil {
 			logx.Errorf("用户WebSocket状态校验失败: userId=%d err=%v", userId, err)
@@ -42,7 +44,7 @@ func UserWSHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 
 		// 升级为WebSocket连接
-		conn, err := upgrader.Upgrade(w, r, nil)
+		conn, err := newWebSocketUpgrader(svcCtx.Config).Upgrade(w, r, nil)
 		if err != nil {
 			logx.Errorf("WebSocket升级失败: %v", err)
 			return

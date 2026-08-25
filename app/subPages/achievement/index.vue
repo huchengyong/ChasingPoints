@@ -501,6 +501,14 @@ import {
 } from '@/utils/honor-wall.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import {
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 const notificationStore = useNotificationStore()
@@ -563,6 +571,10 @@ const selectedHistorySeasonId = ref(0)
 const historyPage = ref(1)
 const historyPageSize = 20
 const wall = ref(createEmptyWall())
+const honorState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: null
+}))
 const showTitleSelector = ref(false)
 const titleList = ref([])
 const titleListLoading = ref(false)
@@ -685,6 +697,11 @@ const loadData = async ({ appendHistory = false } = {}) => {
 	const requestId = wallRequestGuard.next()
 	const requestIdentityKey = currentIdentityKey()
 	const requestScopeVersion = userDataInvalidationStore.versionOf('honor')
+	const nextState = beginAsyncPageLoad(honorState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: null
+	})
+	const pageRequest = getAsyncPageRequest(nextState)
 	requestedIdentityKey.value = requestIdentityKey
 	requestedHonorScopeVersion.value = requestScopeVersion
 	if (!appendHistory && loadedIdentityKey.value && loadedIdentityKey.value !== requestIdentityKey) {
@@ -693,7 +710,9 @@ const loadData = async ({ appendHistory = false } = {}) => {
 		titleListLoaded.value = false
 		titleListLoading.value = false
 		loaded.value = false
+		honorState.value = createAsyncPageState({ authGeneration: userStore.authGeneration, data: null })
 	}
+	honorState.value = nextState
 	const requestParams = buildRequestParams()
 	if (appendHistory) {
 		historyLoading.value = true
@@ -708,8 +727,8 @@ const loadData = async ({ appendHistory = false } = {}) => {
 
 	try {
 		const response = await getHonorWall(requestParams)
-		if (!response?.success) throw new Error(response?.message || '荣誉墙加载失败')
-		if (!wallRequestGuard.isLatest(requestId) || currentIdentityKey() !== requestIdentityKey) return
+		if (!response?.success) throw createRequestError({ message: response?.message || '荣誉墙加载失败', category: 'business' })
+		if (!wallRequestGuard.isLatest(requestId) || currentIdentityKey() !== requestIdentityKey || honorState.value.requestId !== pageRequest.requestId || honorState.value.authGeneration !== pageRequest.authGeneration) return
 		const normalized = normalizeWall(response)
 		if (appendHistory) {
 			normalized.history.honors = [...historyHonors.value, ...normalized.history.honors]
@@ -721,13 +740,17 @@ const loadData = async ({ appendHistory = false } = {}) => {
 		if (isSelf.value && !appendHistory) showLatestRollover()
 		loadedIdentityKey.value = requestIdentityKey
 		loadedHonorScopeVersion.value = requestScopeVersion
+		honorState.value = resolveAsyncPageLoad(honorState.value, pageRequest, {
+			data: wall.value,
+			isEmpty: () => false
+		})
 	} catch (error) {
 		if (!wallRequestGuard.isLatest(requestId) || currentIdentityKey() !== requestIdentityKey) return
-		console.error('加载荣誉墙失败:', error)
+		const previousState = honorState.value
+		honorState.value = rejectAsyncPageLoad(honorState.value, pageRequest, error)
+		if (honorState.value === previousState) return
 		const loadError = resolveHonorWallLoadError({ error })
 		if (loadError.kind === 'superseded') {
-			loadFailed.value = true
-			loadErrorState.value = loadError
 			if (appendHistory) historyPage.value = Math.max(1, historyPage.value - 1)
 			return
 		}

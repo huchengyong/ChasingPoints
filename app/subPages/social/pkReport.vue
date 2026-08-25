@@ -2,20 +2,25 @@
   <view class="pk-report-page" :class="{ 'dark-mode': isDarkMode }">
     <canvas canvas-id="pkReportPoster" class="poster-canvas"></canvas>
 
-    <view v-if="pageStatus === 'loading'" class="loading-state">
+    <view v-if="pageStatusWithRequestState === 'loading'" class="loading-state">
       <uni-icons type="spinner-cycle" size="38" color="#E0AE12"></uni-icons>
       <text class="loading-text">正在生成 PK 报表...</text>
     </view>
 
-    <view v-else-if="pageStatus === 'error'" class="loading-state error-state">
+    <view v-else-if="pageStatusWithRequestState === 'error'" class="loading-state error-state">
       <uni-icons type="info-filled" size="40" color="#9A8C67"></uni-icons>
-      <text class="loading-text">{{ loadErrorMessage || 'PK 报表加载失败' }}</text>
-      <button class="retry-btn" @tap="loadData">
-        <text>重新加载</text>
+      <text class="loading-text">{{ reportPageError?.title || 'PK 报表加载失败' }}</text>
+      <text class="error-description">{{ reportPageError?.description }}</text>
+      <button class="retry-btn" @tap="handlePkReportErrorAction">
+        <text>{{ reportPageError?.actionText || '重试' }}</text>
       </button>
     </view>
 
     <scroll-view v-else scroll-y class="report-scroll">
+      <view v-if="reportRefreshError" class="refresh-error-banner">
+        <text>{{ reportRefreshError.description }}</text>
+        <text class="refresh-error-action" @tap="retryPkReport">重试</text>
+      </view>
       <view class="hero-card">
         <text class="hero-kicker">真实线下交锋</text>
         <text class="hero-title">{{ heroViewModel.title }}</text>
@@ -117,6 +122,16 @@ import {
   buildPkReportHero,
   resolvePkReportStatus
 } from '@/utils/pk-report-view-model.js'
+import {
+  ASYNC_PAGE_STATUS,
+  beginAsyncPageLoad,
+  createAsyncPageState,
+  getAsyncPageRequest,
+  rejectAsyncPageLoad,
+  resolveAsyncPageErrorFeedback,
+  resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
@@ -128,12 +143,14 @@ const myAvatar = ref('')
 const opponentId = ref(0)
 const statsLoaded = ref(false)
 const historyLoaded = ref(false)
-const loadErrorMessage = ref('')
-const hasCoreError = ref(false)
 const historyList = ref([])
 const hasLoadedOnce = ref(false)
 const loadedIdentityKey = ref('')
 const loadedH2HScopeVersion = ref(0)
+const reportState = ref(createAsyncPageState({
+  authGeneration: userStore.authGeneration,
+  data: null
+}))
 
 const currentReadIdentity = () => ({
   userId: userStore.userId,
@@ -174,9 +191,23 @@ const evidenceList = computed(() => buildPkEvidenceList({
 const pageStatus = computed(() => resolvePkReportStatus({
   statsLoaded: statsLoaded.value,
   historyLoaded: historyLoaded.value,
-  totalMatches: statsData.total_matches,
-  hasError: hasCoreError.value
+  totalMatches: statsData.total_matches
 }))
+const reportPageError = computed(() => (
+  reportState.value.status === ASYNC_PAGE_STATUS.ERROR
+    ? resolveAsyncPageErrorFeedback(reportState.value.error, { resource: 'PK 报表' })
+    : null
+))
+const reportRefreshError = computed(() => (
+  reportState.value.refreshError
+    ? resolveAsyncPageErrorFeedback(reportState.value.refreshError, { resource: 'PK 报表' })
+    : null
+))
+const pageStatusWithRequestState = computed(() => {
+  if (reportState.value.status === ASYNC_PAGE_STATUS.ERROR) return 'error'
+  if (reportState.value.status === ASYNC_PAGE_STATUS.IDLE || reportState.value.status === ASYNC_PAGE_STATUS.LOADING) return 'loading'
+  return pageStatus.value
+})
 
 const latestMatchSummary = computed(() => {
   const latestMatch = historyList.value[0]
@@ -244,53 +275,75 @@ const loadData = async ({ force = false } = {}) => {
   const requestIdentityKey = currentIdentityKey()
   const requestScopeVersion = userDataInvalidationStore.versionOf('h2h')
   if (hasLoadedOnce.value && !force && loadedIdentityKey.value === requestIdentityKey && loadedH2HScopeVersion.value === requestScopeVersion) return
-  if (loadedIdentityKey.value && loadedIdentityKey.value !== requestIdentityKey) {
+  if (reportState.value.authGeneration !== userStore.authGeneration) {
     applyStats()
     historyList.value = []
     hasLoadedOnce.value = false
+    statsLoaded.value = false
+    historyLoaded.value = false
+    posterPath.value = ''
+    reportState.value = createAsyncPageState({ authGeneration: userStore.authGeneration, data: null })
   }
-  statsLoaded.value = false
-  historyLoaded.value = false
-  hasCoreError.value = false
-  loadErrorMessage.value = ''
-  posterPath.value = ''
+  const nextState = beginAsyncPageLoad(reportState.value, {
+    authGeneration: userStore.authGeneration,
+    emptyData: null
+  })
+  const pageRequest = getAsyncPageRequest(nextState)
+  reportState.value = nextState
+  let loadedSuccessfully = false
+  if (!nextState.hasData) {
+    applyStats()
+    historyList.value = []
+    statsLoaded.value = false
+    historyLoaded.value = false
+    posterPath.value = ''
+  }
 
   try {
     const response = await getH2HOverview({ ...buildRequestParams(), page_size: 5 })
-    if (currentIdentityKey() !== requestIdentityKey) return
+    if (currentIdentityKey() !== requestIdentityKey || reportState.value.requestId !== pageRequest.requestId || reportState.value.authGeneration !== pageRequest.authGeneration) return
     if (!response?.success) {
-      throw new Error(response?.message || 'PK 报表加载失败')
+      throw createRequestError({ message: response?.message || 'PK 报表加载失败', category: 'business' })
+    }
+    if (response.availability?.stats === false || response.availability?.history === false) {
+      throw createRequestError({ message: 'PK 报表部分数据加载失败，请稍后重试', category: 'business' })
     }
     if (response.opponent) {
       opponent.id = Number(response.opponent.id || opponentId.value)
       opponent.name = response.opponent.name || opponent.name
       opponent.avatar = response.opponent.avatar || opponent.avatar
     }
-    if (response.availability?.stats !== false) {
-      applyStats(response.stats)
-      statsLoaded.value = true
-    }
-    if (response.availability?.history !== false) {
-      historyLoaded.value = true
-      historyList.value = Array.isArray(response.list) ? response.list : []
-    }
-    if (!statsLoaded.value || !historyLoaded.value) {
-      hasCoreError.value = true
-      loadErrorMessage.value = 'PK 报表部分数据加载失败，请稍后重试'
-    }
+    applyStats(response.stats)
+    statsLoaded.value = true
+    historyLoaded.value = true
+    historyList.value = Array.isArray(response.list) ? response.list : []
+    if (!statsData.total_matches) posterPath.value = ''
     loadedIdentityKey.value = requestIdentityKey
     loadedH2HScopeVersion.value = requestScopeVersion
+    hasLoadedOnce.value = true
+    reportState.value = resolveAsyncPageLoad(reportState.value, pageRequest, {
+      data: response,
+      isEmpty: () => false
+    })
+    loadedSuccessfully = true
   } catch (error) {
-    if (currentIdentityKey() !== requestIdentityKey) return
-    hasCoreError.value = true
-    loadErrorMessage.value = error?.message || 'PK 报表加载失败，请稍后重试'
-    historyList.value = []
+    if (currentIdentityKey() !== requestIdentityKey || reportState.value.requestId !== pageRequest.requestId || reportState.value.authGeneration !== pageRequest.authGeneration) return
+    reportState.value = rejectAsyncPageLoad(reportState.value, pageRequest, error)
   }
 
-  if (currentIdentityKey() === requestIdentityKey && pageStatus.value === 'ready') {
-    hasLoadedOnce.value = true
+  if (loadedSuccessfully && currentIdentityKey() === requestIdentityKey && reportState.value.requestId === pageRequest.requestId && reportState.value.authGeneration === pageRequest.authGeneration && pageStatus.value === 'ready') {
     await generatePoster()
   }
+}
+
+const retryPkReport = () => loadData({ force: true })
+
+const handlePkReportErrorAction = () => {
+  if (reportState.value.error?.category === 'permission' || reportState.value.error?.category === 'not-found') {
+    uni.navigateBack({ delta: 1 })
+    return
+  }
+  retryPkReport()
 }
 
 const formatMatchDate = (dateStr) => {
@@ -377,7 +430,7 @@ onLoad((options) => {
 })
 
 onShow(() => {
-  if (!hasLoadedOnce.value || loadedIdentityKey.value !== currentIdentityKey() || loadedH2HScopeVersion.value !== userDataInvalidationStore.versionOf('h2h')) {
+  if (!hasLoadedOnce.value || reportState.value.authGeneration !== userStore.authGeneration || loadedIdentityKey.value !== currentIdentityKey() || loadedH2HScopeVersion.value !== userDataInvalidationStore.versionOf('h2h')) {
     loadData()
   }
 })

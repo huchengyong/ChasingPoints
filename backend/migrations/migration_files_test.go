@@ -143,6 +143,28 @@ func TestWSTSyncJobStatesMigrationCreatesCursorTable(t *testing.T) {
 	}
 }
 
+func TestUserOauthProviderOpenIDMigrationAuditsDuplicatesBeforeUniqueIndex(t *testing.T) {
+	content, err := os.ReadFile("20260820110000_add_user_oauth_provider_open_id_unique_constraint.sql")
+	if err != nil {
+		t.Fatalf("read user oauth unique migration: %v", err)
+	}
+
+	text := string(content)
+	requiredSnippets := []string{
+		"duplicate_user_oauth_provider_open_id",
+		"SIGNAL SQLSTATE",
+		"information_schema.STATISTICS",
+		"idx_provider_openid",
+		"uk_user_oauth_provider_open_id",
+		"UNIQUE KEY `uk_user_oauth_provider_open_id` (`provider`, `open_id`)",
+	}
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(text, snippet) {
+			t.Fatalf("expected user oauth unique migration to contain %q", snippet)
+		}
+	}
+}
+
 func TestMemberGrowthMigrationCreatesProfileAndLogTables(t *testing.T) {
 	content, err := os.ReadFile("20260411110000_add_member_growth_tables.sql")
 	if err != nil {

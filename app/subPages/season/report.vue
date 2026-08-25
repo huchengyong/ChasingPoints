@@ -5,6 +5,10 @@
 		</view>
 
 		<view v-else-if="report" class="report-content">
+			<view v-if="seasonReportRefreshError" class="refresh-error-banner">
+				<text>{{ seasonReportRefreshError.description }}</text>
+				<text class="refresh-error-action" @tap="retrySeasonReport">重试</text>
+			</view>
 			<view class="game-type-tabs">
 				<view
 					v-for="item in gameTypeTabs"
@@ -107,7 +111,14 @@
 			</view>
 		</view>
 
-		<view v-else class="empty-state">
+		<view v-else-if="seasonReportPageError" class="empty-state error-state">
+			<uni-icons type="info" size="48" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+			<text class="empty-text">{{ seasonReportPageError.title }}</text>
+			<text class="error-text">{{ seasonReportPageError.description }}</text>
+			<button class="retry-btn" @tap="handleSeasonReportErrorAction">{{ seasonReportPageError.actionText }}</button>
+		</view>
+
+		<view v-else-if="seasonReportState.status === ASYNC_PAGE_STATUS.EMPTY" class="empty-state">
 			<text class="empty-text">暂无赛季报告</text>
 		</view>
 	</view>
@@ -119,6 +130,16 @@ import { onLoad } from '@dcloudio/uni-app'
 import { getSeasonReport } from '@/api/season.js'
 import { GAME_TYPE_TABS, getGameTypeLabel } from '@/utils/game-types.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 const gameTypeTabs = GAME_TYPE_TABS
@@ -126,6 +147,17 @@ const report = ref(null)
 const loading = ref(true)
 const seasonId = ref(0)
 const currentGameType = ref(3)
+const seasonReportState = ref(createAsyncPageState({ data: null }))
+const seasonReportPageError = computed(() => (
+	seasonReportState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(seasonReportState.value.error, { resource: '赛季报告' })
+		: null
+))
+const seasonReportRefreshError = computed(() => (
+	seasonReportState.value.refreshError
+		? resolveAsyncPageErrorFeedback(seasonReportState.value.refreshError, { resource: '赛季报告' })
+		: null
+))
 
 const winRate = computed(() => {
 	if (!report.value || !report.value.record || report.value.record.matches_played === 0) return 0
@@ -138,19 +170,41 @@ const formatUnlockTime = (value) => {
 }
 
 const fetchReport = async () => {
-	loading.value = true
+	const nextState = beginAsyncPageLoad(seasonReportState.value, { emptyData: null })
+	const pageRequest = getAsyncPageRequest(nextState)
+	seasonReportState.value = nextState
+	loading.value = nextState.status === ASYNC_PAGE_STATUS.LOADING
+	if (!seasonId.value) {
+		seasonReportState.value = rejectAsyncPageLoad(seasonReportState.value, pageRequest, createRequestError({
+			message: '未找到赛季信息，请返回赛季页后重试。',
+			category: 'not-found'
+		}))
+		loading.value = false
+		return
+	}
 	try {
 		const res = await getSeasonReport({ season_id: seasonId.value, game_type: currentGameType.value })
-		if (res.success && res.report) {
-			report.value = res.report
-		} else {
-			report.value = null
-		}
+		if (seasonReportState.value.requestId !== pageRequest.requestId) return
+		if (!res?.success) throw createRequestError({ message: res?.message || '获取赛季报告失败', category: 'business' })
+		report.value = res.report || null
+		seasonReportState.value = resolveAsyncPageLoad(seasonReportState.value, pageRequest, { data: report.value })
 	} catch (e) {
-		console.error('获取赛季报告失败', e)
+		if (seasonReportState.value.requestId !== pageRequest.requestId) return
+		seasonReportState.value = rejectAsyncPageLoad(seasonReportState.value, pageRequest, e)
 	} finally {
+		if (seasonReportState.value.requestId !== pageRequest.requestId) return
 		loading.value = false
 	}
+}
+
+const retrySeasonReport = () => fetchReport()
+
+const handleSeasonReportErrorAction = () => {
+	if (seasonReportState.value.error?.category === 'permission' || seasonReportState.value.error?.category === 'not-found') {
+		goBack()
+		return
+	}
+	retrySeasonReport()
 }
 
 const goBack = () => { uni.navigateBack() }
@@ -158,6 +212,16 @@ const goBack = () => { uni.navigateBack() }
 const handleGameTypeChange = (gameType) => {
 	if (currentGameType.value === gameType) return
 	currentGameType.value = gameType
+	report.value = null
+	seasonReportState.value = {
+		...seasonReportState.value,
+		status: ASYNC_PAGE_STATUS.IDLE,
+		requestId: seasonReportState.value.requestId + 1,
+		data: null,
+		hasData: false,
+		error: null,
+		refreshError: null
+	}
 	fetchReport()
 }
 
@@ -167,8 +231,7 @@ onLoad((options) => {
 	if (gameType > 0) {
 		currentGameType.value = gameType
 	}
-	if (seasonId.value > 0) fetchReport()
-	else loading.value = false
+	fetchReport()
 })
 </script>
 
@@ -294,6 +357,12 @@ onLoad((options) => {
 	align-items: center;
 	min-height: 60vh;
 }
+.refresh-error-banner { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; padding: 18rpx 22rpx; border-radius: 14rpx; background: rgba(224, 174, 18, 0.12); color: #8a5b00; font-size: 24rpx; }
+.refresh-error-action { flex-shrink: 0; color: #a86f00; font-weight: 600; }
+.error-state { display: flex; flex-direction: column; align-items: center; gap: 16rpx; padding-left: 32rpx; padding-right: 32rpx; text-align: center; }
+.error-text { font-size: 24rpx; line-height: 1.7; color: #6E6242; }
+.retry-btn { min-width: 200rpx; height: 76rpx; line-height: 76rpx; margin: 12rpx 0 0; padding: 0 32rpx; border-radius: 38rpx; background: #E0AE12; color: #ffffff; font-size: 28rpx; font-weight: 600; }
+.retry-btn::after { display: none; }
 .report-content {
 	display: flex;
 	flex-direction: column;

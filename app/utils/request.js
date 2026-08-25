@@ -36,6 +36,18 @@ const handleSessionInvalid = createSessionInvalidHandler({
   delay: 800
 })
 
+// WebSocket 等非 HTTP 通道复用同一会话失效入口，仍以当前 token 与认证代次隔离。
+export const handleCurrentSessionInvalid = ({ data = null, message = '', silent = false } = {}) => {
+  const userStore = useUserStore(pinia)
+  return handleSessionInvalid({
+    sessionKey: String(uni.getStorageSync('token') || ''),
+    sessionGeneration: userStore.authGeneration,
+    data,
+    message,
+    silent
+  })
+}
+
 // 请求拦截器
 const requestInterceptor = (config, token = '') => {
   if (token) {

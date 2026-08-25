@@ -39,6 +39,7 @@ func (l *RefreshTokenLogic) RefreshToken(req *types.RefreshTokenReq) (resp *type
 		return &types.RefreshTokenResp{
 			Success: false,
 			Message: "登录状态已失效",
+			Reason:  "SESSION_INVALID",
 		}, nil
 	}
 
@@ -53,7 +54,8 @@ func (l *RefreshTokenLogic) RefreshToken(req *types.RefreshTokenReq) (resp *type
 	if user == nil || user.Status != 1 {
 		return &types.RefreshTokenResp{
 			Success: false,
-			Message: "账号不可用",
+			Message: "登录状态已失效",
+			Reason:  "SESSION_INVALID",
 		}, nil
 	}
 

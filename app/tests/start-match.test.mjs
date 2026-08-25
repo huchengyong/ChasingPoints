@@ -77,6 +77,26 @@ test('buildStartMatchPayload carries challenge and mode context without bypassin
   )
 })
 
+test('signed invite start payload omits mutable opponent identity fields', () => {
+  const payload = buildStartMatchPayload({
+    gameType: 3,
+    opponent: { id: 2001, nickname: '仅用于预览' },
+    matchMode: 'practice',
+    challengeId: 88,
+    inviteToken: 'signed.invite'
+  })
+  assert.deepEqual(payload, {
+    game_type: 3,
+    match_mode: 'practice',
+    visibility: 'private',
+    invite_token: 'signed.invite',
+    challenge_id: 88,
+    match_format: 'free',
+    target_wins: 0
+  })
+  assert.equal(validateStartMatchPayload(payload), '')
+})
+
 test('validateStartMatchPayload supports pool free and race-to formats', () => {
   assert.equal(validateStartMatchPayload({ game_type: 3, opponent_id: 2001, match_format: 'free', target_wins: 0 }), '')
   assert.equal(validateStartMatchPayload({ game_type: 4, opponent_id: 2001, match_format: 'race_to', target_wins: 65 }), '')
@@ -157,7 +177,7 @@ test('pending challenge and rematch contexts use independent required fields', (
   })
 })
 
-test('accepted challenge scan must match the invited opponent while payload uses scanned profile', () => {
+test('accepted challenge scan must match the invited opponent while payload uses its signed invite', () => {
   const context = { context_type: 'challenge', challenge_id: 88, opponent_id: 2001, game_type: 3 }
   assert.equal(validateScannedOpponentForContext(context, { user_id: 9999 }), '请扫描邀约中的指定对手')
   assert.equal(validateScannedOpponentForContext(context, { user_id: 2001 }), '')
@@ -166,15 +186,14 @@ test('accepted challenge scan must match the invited opponent while payload uses
     opponent: { user_id: 2001, nickname: '扫码昵称', avatar: 'scan.png' },
     matchMode: 'practice',
     visibility: 'private',
-    challengeId: context.challenge_id
+    challengeId: context.challenge_id,
+    inviteToken: 'signed.invite'
   }), {
     game_type: 3,
-    opponent_id: 2001,
-    opponent_name: '扫码昵称',
-    opponent_avatar: 'scan.png',
     match_mode: 'practice',
     visibility: 'private',
     challenge_id: 88,
+    invite_token: 'signed.invite',
     match_format: 'free',
     target_wins: 0
   })

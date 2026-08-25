@@ -7,7 +7,7 @@ import { post } from '@/utils/request.js'
 /**
  * 发送短信验证码
  * @param {String} phone 手机号
- * @param {String} scene 场景 login/bind
+ * @param {String} scene 场景 login/bind/delete_account
  * @returns {Promise}
  */
 export const sendSms = (phone, scene = 'login') => {
@@ -29,11 +29,11 @@ export const login = (data) => {
  * OAuth 登录
  * @param {Object} data OAuth登录数据
  * @param {String} data.provider 提供商 (huawei)
+ * @param {String} data.credential Provider短期授权凭据
+ * @param {String} data.credential_type 凭据类型 authorization_code/id_token/access_token
+ * @param {String} data.platform 平台 (app-plus)
  * @param {String} data.nick_name 昵称
  * @param {String} data.avatar_url 头像URL
- * @param {String} data.open_id OpenID
- * @param {String} data.platform 平台 (app-plus)
- * @param {String} data.union_id UnionID (可选)
  * @returns {Promise}
  */
 export const loginByOauth = (data) => {

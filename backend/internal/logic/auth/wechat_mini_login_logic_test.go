@@ -484,8 +484,8 @@ func TestLoginByOauthRejectsWechatMiniProvider(t *testing.T) {
 	svcCtx := newWechatMiniAuthTestSvc(t, &fakeWechatMiniClient{})
 
 	resp, err := NewLoginByOauthLogic(context.Background(), svcCtx).LoginByOauth(&types.LoginByOauthReq{
-		Provider: wechatMiniProvider,
-		OpenId:   "forged-openid",
+		Provider:   wechatMiniProvider,
+		Credential: "forged-credential",
 	})
 	if err != nil {
 		t.Fatalf("reject mini provider: %v", err)
