@@ -132,6 +132,8 @@ App 增加一个统一二维码渲染 wrapper，使用锁定版本、经过许�
 
 HBuilderX 本地运行与打包通过 `app/harmony-configs/build-profile.json5` 接入本机签名：HBuilderX 会在编译前将 `harmony-configs` 覆盖到临时 Harmony 工程；该文件由受版本控制的安全模板和被忽略的 `.harmony-signing.local.json` 生成。调试运行使用 `default`，本地发布包使用 `release`。安全版 Manifest 保持空 `signingConfigs`，以免 HBuilderX 用 Manifest 中的材料覆盖本地 build profile。
 
+图标与启动页不是秘密，必须与签名材料分开管理。Android/iOS 沿用 Manifest 中稳定的 `unpackage/res/icons/*.png` 相对路径，并通过 Git 例外规则只提交该资源目录、继续忽略其余构建产物。Harmony 原生图标、启动页图标和背景色由 `app/harmony-configs/entry/src/main/resources/base/{media,element}` 提供，`module.json5` 引用对应资源名。发布契约测试校验所有 Manifest 图标输入和 Harmony 原生资源在干净工作区存在且尺寸正确，避免本机生成资源掩盖缺失。
+
 建立 Manifest 契约测试：拒绝非空签名秘密、绝对用户路径、未批准高敏 Android 权限和未启用模块带来的权限。首轮移除没有当前链路依据的 `READ_LOGS`、`GET_ACCOUNTS`、`READ_PHONE_STATE`、`WRITE_SETTINGS`、存储挂载与网络状态修改权限；相机、网络、位置、Push 等保留项必须对应实际入口与运行时申请。
 
 自动化还检查 CORS / WS 不允许通配、源码不含 query access token或 `api.qrserver.com`、OAuth 请求不再接受客户端身份。签名轮换、正式 Origin 值、平台隐私清单和真机矩阵由人工发布记录补齐。
