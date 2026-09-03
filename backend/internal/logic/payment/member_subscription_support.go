@@ -10,6 +10,7 @@ import (
 	"time"
 
 	logicx "chasing_points/internal/logic"
+	"chasing_points/internal/config"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -496,7 +497,7 @@ func (s *GatewayService) newAlipayClient() (*gopayalipay.Client, error) {
 		return nil, errors.New("alipay config is incomplete")
 	}
 
-	client, err := gopayalipay.NewClient(appID, cfg.PrivateKey, cfg.IsProd)
+	client, err := gopayalipay.NewClient(appID, cfg.PrivateKey, config.IsProductionEnv(s.svcCtx.Config.AppEnv))
 	if err != nil {
 		return nil, err
 	}

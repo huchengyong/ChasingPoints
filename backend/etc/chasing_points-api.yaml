@@ -1,5 +1,5 @@
-Name: ${APP_NAME}
-Host: ${APP_HOST}
+Name: 追分
+Host: 0.0.0.0
 Port: ${APP_PORT}
 Env: ${APP_ENV}
 Timeout: 10000
@@ -15,7 +15,7 @@ Auth:
 
 # MySQL配置
 MySQL:
-  DataSource: ${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(${MYSQL_HOST}:${MYSQL_PORT})/${MYSQL_DATABASE}?charset=utf8mb4&parseTime=true&loc=Local
+  DataSource: ${MYSQL_DSN}
 
 # Redis配置
 Redis:
@@ -27,9 +27,9 @@ Redis:
 AliSms:
   AccessKeyId: ${ALI_SMS_ACCESS_KEY_ID}
   AccessKeySecret: ${ALI_SMS_ACCESS_KEY_SECRET}
-  SignName: ${ALI_SMS_SIGN_NAME}
-  TemplateCode: ${ALI_SMS_TEMPLATE_CODE}
-  Endpoint: ${ALI_SMS_ENDPOINT}
+  SignName: 上海点早早互联网络科技
+  TemplateCode: SMS_482815537
+  Endpoint: dysmsapi.aliyuncs.com
 
 # 推送配置
 UniPush:
@@ -41,58 +41,54 @@ UniPush:
 Qiniu:
   AccessKey: ${QINIU_ACCESS_KEY}
   SecretKey: ${QINIU_SECRET_KEY}
-  Bucket: ${QINIU_BUCKET}
-  UploadUrl: ${QINIU_UPLOAD_URL}
-  PublicDomain: ${QINIU_PUBLIC_DOMAIN}
+  Bucket: zhuifen
+  UploadUrl: https://up-z2.qiniup.com
+  PublicDomain: https://cdn.zhuifen.cn
 
 # 支付宝支付配置
 Alipay:
-  AppId: ${ALIPAY_APP_ID}
+  AppId: 2021006105686565
   PrivateKey: ${ALIPAY_PRIVATE_KEY}
-  PublicKey: ${ALIPAY_PUBLIC_KEY}
-  PublicCert: ${ALIPAY_PUBLIC_CERT}
-  AppCert: ${ALIPAY_APP_CERT}
-  RootCert: ${ALIPAY_ROOT_CERT}
-  NotifyUrl: ${ALIPAY_NOTIFY_URL}
-  ReturnUrl: ${ALIPAY_RETURN_URL}
-  IsProd: ${ALIPAY_IS_PROD}
-  Charset: ${ALIPAY_CHARSET}
-  SignType: ${ALIPAY_SIGN_TYPE}
-  UseCert: ${ALIPAY_USE_CERT}
+  PublicKey: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwGNwwIquBdJE7sOnHtuPxq3FxGK3sF4zG6QuPmT9VhODtErhlVvz3owYut3jpBdfh1346iOhzjOEuPGeezMz4RvvNBUSM+arKAcKIcoIdls0HMgNbVxHm+W3A+L1HTUluUKQmtqC9Ek1x5OZwQSlhJ8fmO2WI8Zh2ldXImM3Z6Ams0KDccEJmo1SgsVLy5/QSsx7Mjp9lw7DgJgW2lVYGpKgq3e4Z6ubF2ARQx+BK7TsDJz2sD8FcY3KhiB9ietiS5We6AleJCcY+VYw5DOv0BEsnhDeAaV7zWYzLLldOLTVGOCd+hypHZ9c1bsSIiMCKTfVGD7wuqqqArhZ1EaR3wIDAQAB
+  PublicCert: alipayCertPublicKey_RSA2.crt
+  AppCert: appCertPublicKey.crt
+  RootCert: alipayRootCert.crt
+  NotifyUrl: https://api.zhuifen.cn/api/v1/payment/alipay/notify
+  ReturnUrl: https://api.zhuifen.cn/payment/return
+  Charset: utf-8
+  SignType: RSA2
 
 # 微信支付配置
 WechatPay:
-  AppId: ${WECHAT_APP_ID}
-  MchId: ${WECHAT_MCH_ID}
+  AppId: 0
+  MchId: 0
   ApiKey: ${WECHAT_API_KEY}
   SerialNo: ${WECHAT_SERIAL_NO}
   ApiV3Key: ${WECHAT_API_V3_KEY}
   PrivateKey: ${WECHAT_PRIVATE_KEY}
-  NotifyUrl: ${WECHAT_NOTIFY_URL}
-  IsProd: ${WECHAT_IS_PROD}
-  UseCert: ${WECHAT_USE_CERT}
+  NotifyUrl: https://api.zhuifen.cn/api/v1/payment/wechat/notify
 
 # 微信小程序登录配置
 WechatMiniProgram:
-  AppId: ${WECHAT_MINI_PROGRAM_APP_ID}
+  AppId: "wx3196c9366b3b39ba"
   AppSecret: ${WECHAT_MINI_PROGRAM_APP_SECRET}
   RequestTimeoutMs: 5000
   MessagePushToken: ${WECHAT_MINI_MESSAGE_PUSH_TOKEN}
   MessagePushEncodingAESKey: ${WECHAT_MINI_MESSAGE_PUSH_ENCODING_AES_KEY}
 
 Security:
-  HTTPAllowedOrigins: ${HTTP_ALLOWED_ORIGINS}
-  WebSocketAllowedOrigins: ${WEBSOCKET_ALLOWED_ORIGINS}
-  AllowNativeMissingOrigin: ${ALLOW_NATIVE_MISSING_ORIGIN}
+  HTTPAllowedOrigins: https://www.zhuifen.cn,https://api.zhuifen.cn,https://ws.zhuifen.cn
+  WebSocketAllowedOrigins: https://www.zhuifen.cn,https://api.zhuifen.cn,https://ws.zhuifen.cn
+  AllowNativeMissingOrigin: false
   HuaweiOAuth:
-    Enabled: ${HUAWEI_OAUTH_ENABLED}
-    ClientID: ${HUAWEI_OAUTH_CLIENT_ID}
+    Enabled: false
+    ClientID: "6917600900395032152"
     ClientSecret: ${HUAWEI_OAUTH_CLIENT_SECRET}
-    VerifyURL: ${HUAWEI_OAUTH_VERIFY_URL}
-    RequestTimeoutMs: ${HUAWEI_OAUTH_REQUEST_TIMEOUT_MS}
+    VerifyURL: https://oauth-login.cloud.huawei.com/oauth2/v3/tokeninfo
+    RequestTimeoutMs: 5000
   MatchInvite:
     SigningSecret: ${MATCH_INVITE_SIGNING_SECRET}
-    TTLSeconds: ${MATCH_INVITE_TTL_SECONDS}
+    TTLSeconds: 300
 
 Geocode:
   WorkerEnabled: true
@@ -115,8 +111,8 @@ WSTSync:
   HotLookaheadDays: 7
 
 SeasonLifecycle:
-  Enabled: false
-  AnchorDate: ""
+  Enabled: true
+  AnchorDate: "2026-08-01"
   InitialNumber: 1
   CycleMonths: 1
   Timezone: Asia/Shanghai
@@ -134,5 +130,5 @@ Log:
   Mode: file
   Level: debug
   Path: tmp/logs
-  KeepDays: 3
-  Stat: true
+  Rotation: daily
+  KeepDays: 7

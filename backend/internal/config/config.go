@@ -95,10 +95,8 @@ type Config struct {
 		RootCert   string
 		NotifyUrl  string
 		ReturnUrl  string
-		IsProd     bool
 		Charset    string
 		SignType   string
-		UseCert    bool
 	}
 
 	// 微信支付配置
@@ -110,8 +108,6 @@ type Config struct {
 		ApiV3Key   string
 		PrivateKey string
 		NotifyUrl  string
-		IsProd     bool
-		UseCert    bool
 	}
 
 	// 微信小程序登录配置
