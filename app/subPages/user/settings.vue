@@ -3,42 +3,6 @@
 		<view class="main-content">
 			<!-- 菜单列表 -->
 			<view class="menu-group">
-				<view class="menu-item avatar-item" @click="openEditProfile">
-					<view class="menu-left">
-						<view class="avatar-preview">
-							<image class="avatar-image" :src="userAvatar" mode="aspectFill"></image>
-						</view>
-						<text class="menu-text">头像</text>
-					</view>
-					<view class="menu-right">
-						<text class="menu-value">点击编辑</text>
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#9A8C67'"></uni-icons>
-					</view>
-				</view>
-				<view class="menu-item" @click="openEditProfile">
-					<view class="menu-left">
-						<view class="icon-wrapper blue">
-							<uni-icons type="person" size="24" color="#E0AE12"></uni-icons>
-						</view>
-						<text class="menu-text">用户昵称</text>
-					</view>
-					<view class="menu-right">
-						<text class="menu-value">{{ userNickname }}</text>
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#9A8C67'"></uni-icons>
-					</view>
-				</view>
-				<view class="menu-item" @click="handlePhoneRow">
-					<view class="menu-left">
-						<view class="icon-wrapper gold-soft">
-							<uni-icons type="phone-filled" size="24" color="#E0AE12"></uni-icons>
-						</view>
-						<text class="menu-text">手机号</text>
-					</view>
-					<view class="menu-right">
-						<text class="menu-value">{{ displayPhoneText }}</text>
-						<uni-icons v-if="canBindPhone" type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#9A8C67'"></uni-icons>
-					</view>
-				</view>
 				<view class="menu-item theme-menu-item">
 					<view class="menu-left">
 						<view class="icon-wrapper gold">
@@ -106,78 +70,55 @@
 					</view>
 				</view>
 				<view class="menu-item" @click="handleHelp">
-					<view class="menu-left">
-						<view class="icon-wrapper blue">
-							<uni-icons type="chat" size="24" color="#E0AE12"></uni-icons>
-						</view>
-						<view class="menu-copy">
-							<text class="menu-text">帮助、投诉与举报</text>
-							<text class="menu-description">提交问题建议、投诉举报或获取帮助</text>
-						</view>
+				<view class="menu-left">
+					<view class="icon-wrapper blue">
+						<uni-icons type="chat" size="24" color="#E0AE12"></uni-icons>
 					</view>
-					<view class="menu-right">
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#9A8C67'"></uni-icons>
+					<view class="menu-copy">
+						<text class="menu-text">帮助、投诉与举报</text>
+						<text class="menu-description">提交问题建议、投诉举报或获取帮助</text>
 					</view>
+				</view>
+				<view class="menu-right">
+					<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#9A8C67'"></uni-icons>
 				</view>
 			</view>
-
-			<text class="section-label">账号与数据</text>
-			<view class="menu-group account-data-group">
-				<view class="menu-item" @click="handleExportPersonalData">
-					<view class="menu-left">
-						<view class="icon-wrapper blue">
-							<uni-icons type="download" size="24" color="#E0AE12"></uni-icons>
-						</view>
-						<view class="menu-copy">
-							<text class="menu-text">导出个人数据</text>
-							<text class="menu-description">生成完整 JSON 文件，可保存或分享</text>
-						</view>
+			<view class="menu-item preference-menu-item">
+				<view class="menu-left">
+					<view class="icon-wrapper gold">
+						<uni-icons type="flag-filled" size="24" color="#E0AE12"></uni-icons>
 					</view>
-					<view class="menu-right">
-						<text class="menu-value">{{ exportInProgress ? exportProgressText : '导出' }}</text>
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#9A8C67'"></uni-icons>
+					<view class="menu-copy">
+						<text class="menu-text">对局偏好</text>
+						<text class="menu-description">发起 PK 时自动预选，仍可临时切换</text>
 					</view>
 				</view>
-				<view class="menu-item danger-menu-item" @click="openDeleteAccountDialog">
-					<view class="menu-left">
-						<view class="icon-wrapper rose">
-							<uni-icons type="trash" size="24" color="#dc2626"></uni-icons>
-						</view>
-						<view class="menu-copy">
-							<text class="menu-text danger-text">注销账号</text>
-							<text class="menu-description">删除个人资料与关系，此操作不可恢复</text>
-						</view>
-					</view>
-					<view class="menu-right">
-						<uni-icons type="right" size="20" :color="isDarkMode ? '#fca5a5' : '#dc2626'"></uni-icons>
-					</view>
+				<view class="preference-options">
+					<button
+						v-for="option in defaultGameTypeOptions"
+						:key="option.value"
+						class="preference-option"
+						:class="{ active: defaultGameType === option.value }"
+						@click="setDefaultGameType(option.value)"
+					>
+						{{ option.label }}
+					</button>
 				</view>
 			</view>
-
-			<text class="section-label">对局偏好</text>
-			<view class="menu-group preference-group">
-				<view class="menu-item preference-menu-item">
-					<view class="menu-left">
-						<view class="icon-wrapper gold">
-							<uni-icons type="flag-filled" size="24" color="#E0AE12"></uni-icons>
-						</view>
-						<view class="menu-copy">
-							<text class="menu-text">默认对局类型</text>
-							<text class="menu-description">发起 PK 时自动预选，仍可临时切换</text>
-						</view>
+			<view class="menu-item danger-menu-item" @click="openDeleteAccountDialog">
+				<view class="menu-left">
+					<view class="icon-wrapper rose">
+						<uni-icons type="trash" size="24" color="#dc2626"></uni-icons>
 					</view>
-					<view class="preference-options">
-						<button
-							v-for="option in defaultGameTypeOptions"
-							:key="option.value"
-							class="preference-option"
-							:class="{ active: defaultGameType === option.value }"
-							@click="setDefaultGameType(option.value)"
-						>
-							{{ option.label }}
-						</button>
+					<view class="menu-copy">
+						<text class="menu-text danger-text">注销账号</text>
+						<text class="menu-description">删除个人资料与关系，此操作不可恢复</text>
 					</view>
 				</view>
+				<view class="menu-right">
+					<uni-icons type="right" size="20" :color="isDarkMode ? '#fca5a5' : '#dc2626'"></uni-icons>
+				</view>
+			</view>
 			</view>
 			<view class="page-actions">
 				<button class="logout-btn" @click="handleLogout">
@@ -185,14 +126,6 @@
 				</button>
 			</view>
 		</view>
-
-		<bindPhone
-			:show="showBindPhoneModal"
-			:closable="true"
-			:is-dark-mode="isDarkMode"
-			@close="handleBindPhoneClose"
-			@success="handleBindPhoneSuccess"
-		/>
 
 		<view v-if="showDeleteAccountDialog" class="deletion-mask" @click="closeDeleteAccountDialog">
 			<view class="deletion-dialog" @click.stop>
@@ -229,18 +162,9 @@ import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { useUserStore } from '@/store/user.js'
-import { deleteAccount, exportPersonalData, getUserPrivacy, updateUserPrivacy } from '@/api/user.js'
+import { deleteAccount, getUserPrivacy, updateUserPrivacy } from '@/api/user.js'
 import { sendSms } from '@/api/auth.js'
-import bindPhone from '@/components/bindPhone.vue'
-import { formatSettingsPhone } from '@/utils/settings-profile.js'
-import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import { buildHuaweiOAuthReauthPayload } from '@/utils/oauth-login.js'
-import { buildPersonalDataExportFilename, exportPersonalDataToWriter } from '@/utils/personal-data-export.js'
-import {
-	createPersonalDataExportFileWriter,
-	getPersonalDataExportCapability,
-	openPersonalDataExportFile
-} from '@/utils/personal-data-export-file.js'
 import {
 	DEFAULT_GAME_TYPE_OPTIONS,
 	readDefaultGameType,
@@ -258,21 +182,13 @@ const themeOptions = [
 const defaultGameTypeOptions = DEFAULT_GAME_TYPE_OPTIONS
 
 // ========== 响应式数据 ==========
-const userNickname = computed(() => userStore.userInfo?.nickname || '用户')
-const userPhone = computed(() => userStore.userInfo?.phone || '')
-const userAvatar = computed(() => resolveAvatarUrl(userStore.userInfo?.avatar, userStore.userInfo?.id))
-const canBindPhone = computed(() => Boolean(userStore.needBindPhone || !userPhone.value))
-const hasBoundPhone = computed(() => Boolean(userPhone.value))
-const displayPhoneText = computed(() => formatSettingsPhone(userPhone.value) || '未绑定')
-const showBindPhoneModal = ref(false)
+const hasBoundPhone = computed(() => Boolean(userStore.userInfo?.phone))
 const defaultGameType = ref(0)
 const isHideMatch = ref(false)
 const hideMatchLoading = ref(false)
 const privacyLoadedAt = ref(0)
 const privacyDirty = ref(true)
 const PRIVACY_CACHE_TTL = 5 * 60 * 1000
-const exportInProgress = ref(false)
-const exportProgressText = ref('')
 const showDeleteAccountDialog = ref(false)
 const deleteAccountStep = ref('warning')
 const deletePhone = ref('')
@@ -300,45 +216,6 @@ const loadUserPrivacy = async ({ force = false } = {}) => {
 
 // ========== 方法 ==========
 
-const openEditProfile = () => {
-	uni.navigateTo({ url: '/subPages/user/editProfile' })
-}
-
-const handlePhoneRow = () => {
-	if (!canBindPhone.value) return
-	openBindPhoneModal()
-}
-
-const openBindPhoneModal = () => {
-	showBindPhoneModal.value = true
-}
-
-const handleBindPhoneClose = () => {
-	showBindPhoneModal.value = false
-}
-
-const handleBindPhoneSuccess = (payload) => {
-	showBindPhoneModal.value = false
-
-	if (payload?.action === 'relogin') {
-		userStore.logout()
-		uni.showToast({
-			title: payload.message || '账号已合并，请重新登录',
-			icon: 'none'
-		})
-		uni.reLaunch({ url: '/pages/login/login' })
-		return
-	}
-
-	if (!payload?.sessionReplaced) {
-		userStore.bindPhoneSuccess(payload?.maskedPhone || payload?.phone || '')
-	}
-	uni.showToast({
-		title: payload?.message || '绑定成功',
-		icon: 'success'
-	})
-}
-
 /**
  * 通知管理
  */
@@ -351,7 +228,7 @@ const handleNotifications = () => {
 const setDefaultGameType = (gameType) => {
 	defaultGameType.value = saveDefaultGameType(uni, userStore.userId, gameType)
 	uni.showToast({
-		title: defaultGameType.value > 0 ? '默认对局类型已更新' : '已改为每次询问',
+		title: defaultGameType.value > 0 ? '对局偏好已更新' : '已改为每次询问',
 		icon: 'none'
 	})
 }
@@ -409,51 +286,6 @@ const handleAgreement = () => {
 
 const handleHelp = () => {
 	uni.navigateTo({ url: '/subPages/help/feedback' })
-}
-
-const handleExportPersonalData = async () => {
-	if (exportInProgress.value) return
-	const capability = getPersonalDataExportCapability()
-	if (!capability.supported) {
-		uni.showToast({ title: capability.message, icon: 'none' })
-		return
-	}
-
-	exportInProgress.value = true
-	exportProgressText.value = '准备中…'
-	try {
-		const fileName = buildPersonalDataExportFilename(userStore.userId)
-		const writer = await createPersonalDataExportFileWriter({ fileName })
-		const result = await exportPersonalDataToWriter({
-			userId: userStore.userId,
-			fileName,
-			writer,
-			requestPage: async (cursor) => {
-				const response = await exportPersonalData(cursor)
-				if (!response?.success) throw new Error(response?.message || '导出分段失败')
-				return response
-			},
-			onProgress: ({ itemCount, complete }) => {
-				exportProgressText.value = complete ? '正在完成…' : `已整理 ${itemCount} 条`
-			}
-		})
-		exportProgressText.value = '已完成'
-		uni.showModal({
-			title: '导出完成',
-			content: `已生成 ${result.itemCount} 条个人数据，是否打开文件？`,
-			success: ({ confirm }) => {
-				if (!confirm || !result.saved?.filePath) return
-				openPersonalDataExportFile({ filePath: result.saved.filePath }).catch(() => {
-					uni.showToast({ title: '文件已生成，可在设备文件中查看', icon: 'none' })
-				})
-			}
-		})
-	} catch (error) {
-		uni.showToast({ title: error.message || '导出失败，请重试', icon: 'none' })
-	} finally {
-		exportInProgress.value = false
-		exportProgressText.value = ''
-	}
 }
 
 const openDeleteAccountDialog = () => {
