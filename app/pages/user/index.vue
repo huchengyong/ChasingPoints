@@ -271,15 +271,15 @@
 					</view>
 				</view>
 				<view class="qrcode-modal-body">
-					<view v-show="qrcodeLoading" class="qrcode-loading">
+					<view v-if="qrcodeLoading" class="qrcode-loading">
 						<uni-icons type="spinner-cycle" size="48" color="#E0AE12"></uni-icons>
 						<text class="qrcode-loading-text">生成中...</text>
 					</view>
-					<view v-show="!qrcodeLoading && qrcodeError" class="qrcode-loading">
+					<view v-else-if="qrcodeError" class="qrcode-loading">
 						<text class="qrcode-loading-text">{{ qrcodeError }}</text>
 						<text class="qrcode-helper" @click="generateQRCode">点击刷新</text>
 					</view>
-					<view v-show="!qrcodeLoading && !qrcodeError" class="qrcode-display">
+					<view v-else class="qrcode-display">
 						<canvas
 							v-if="qrcodeContent"
 							canvas-id="user-match-invite-qrcode"
@@ -878,6 +878,7 @@ const handleQrCode = () => {
 
 const closeQrCodeModal = () => {
 	showQrCodeModal.value = false
+	qrcodeLoading.value = false
 	qrcodeContent.value = ''
 	qrcodeError.value = ''
 }
@@ -892,6 +893,7 @@ const generateQRCode = async () => {
 		const res = await getMatchQRCode()
 		if (res.success && res.qrcode_data) {
 			qrcodeContent.value = res.qrcode_data
+			qrcodeLoading.value = false
 			await nextTick()
 			renderLocalQRCode({
 				canvasId: 'user-match-invite-qrcode',
@@ -899,7 +901,6 @@ const generateQRCode = async () => {
 				size: 240,
 				uniApi: uni
 			})
-			qrcodeLoading.value = false
 		} else {
 			qrcodeLoading.value = false
 			qrcodeError.value = res?.message || '二维码生成失败，请点击刷新'

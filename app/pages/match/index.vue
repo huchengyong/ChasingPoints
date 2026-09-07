@@ -2,7 +2,7 @@
 	<view class="match-container" :class="{ 'dark-mode': isDarkMode }">
 		<!-- 主内容区 -->
 		<view class="main-content">
-			<view class="match-primary-action">
+			<view class="match-primary-action" v-if="lobbyState.status !== ASYNC_PAGE_STATUS.EMPTY">
 				<view class="match-primary-action__copy">
 					<text class="match-primary-action__eyebrow">双人对局</text>
 					<text class="match-primary-action__title">{{ homePrimaryAction.label }}</text>
@@ -48,10 +48,11 @@
 				<text class="empty-title">{{ emptyState.title }}</text>
 				<text class="empty-subtitle">{{ emptyState.subtitle }}</text>
 				<button class="start-button" @click="handleStartMatch">
-					<text>发起PK</text>
+					<text>发起好友对局</text>
 				</button>
 				<button class="secondary-link" @click="handleScanAsReferee">
 					<text>专业比赛需要裁判？扫码进入</text>
+					<uni-icons type="arrowright" size="16" :color="isDarkMode ? '#9f926e' : '#6E6242'"></uni-icons>
 				</button>
 			</view>
 

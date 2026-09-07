@@ -115,6 +115,15 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
             }
         }
 
+        .scope-tab {
+            background-color: rgba(255, 247, 225, 0.06);
+            border-color: $border-color-dark;
+
+            &.active {
+                border-color: $primary-color;
+            }
+        }
+
         .filter-panel-title,
         .filter-group-title {
             color: $text-primary-dark;
@@ -245,6 +254,12 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
 .scope-tab {
     flex: 1;
     padding: 0 28rpx;
+    background-color: #ffffff;
+    border: 2rpx solid $border-color-light;
+
+    &.active {
+        border-color: $primary-color;
+    }
 }
 
 .filter-button {
@@ -685,8 +700,8 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 60vh;
-    padding: 64rpx 32rpx;
+    min-height: 40vh;
+    padding: 24rpx 32rpx;
     text-align: center;
 
     .empty-icon {
@@ -702,8 +717,8 @@ $border-color-dark: rgba(224, 174, 18, 0.12);
 
     .empty-subtitle {
         font-size: 28rpx;
-        color: $text-secondary-light;
-        margin-bottom: 64rpx;
+        color: #5A4F35;
+        margin-bottom: 40rpx;
     }
 
     .start-button {

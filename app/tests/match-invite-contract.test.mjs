@@ -53,6 +53,10 @@ test('local QR displays expose loading, failure, and refresh states', () => {
   assert.match(userPageSource, /qrcodeLoading/)
   assert.match(userPageSource, /qrcodeError/)
   assert.match(userPageSource, /@click="generateQRCode"/)
+  assert.match(userPageSource, /v-if="qrcodeLoading"/)
+  assert.match(userPageSource, /v-else-if="qrcodeError"/)
+  assert.match(userPageSource, /v-else class="qrcode-display"/)
+  assert.match(userPageSource, /qrcodeLoading\.value = false\s+await nextTick\(\)\s+renderLocalQRCode/)
 
   assert.match(matchPageSource, /matchQrLoading/)
   assert.match(matchPageSource, /matchQrFailed/)
