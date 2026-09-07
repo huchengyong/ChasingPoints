@@ -55,8 +55,6 @@ func UpsertPlayers(db *gorm.DB, now time.Time, records []PlayerUpsertRecord) err
 					player.Id = current.Id
 					player.CreatedAt = current.CreatedAt
 					player.DeletedAt = current.DeletedAt
-					// 国旗 emoji 允许人工长期维护，官方同步不覆盖已有值。
-					player.FlagEmoji = current.FlagEmoji
 				}
 
 				if player.Id == 0 {

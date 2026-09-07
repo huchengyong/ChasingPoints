@@ -144,9 +144,9 @@
 
 .card-cover {
 	display: block;
-	width: calc(100% - 56rpx);
-	height: 260rpx;
-	margin: 28rpx 28rpx 0;
+	width: calc(100% - 40rpx);
+	height: 200rpx;
+	margin: 20rpx 20rpx 0;
 	border-radius: 22rpx;
 	background: #E9E2CF;
 }
@@ -159,20 +159,20 @@
 }
 
 .card-topline {
-	margin: 20rpx 28rpx 0;
+	margin: 14rpx 20rpx 0;
 }
 
 .card-title,
 .card-summary,
 .card-meta,
 .card-footer {
-	margin-left: 28rpx;
-	margin-right: 28rpx;
+	margin-left: 20rpx;
+	margin-right: 20rpx;
 }
 
 .card-title {
-	margin-top: 18rpx;
-	margin-bottom: 18rpx;
+	margin-top: 12rpx;
+	margin-bottom: 12rpx;
 }
 
 .card-chip,
@@ -183,6 +183,14 @@
 
 .game-chip {
 	color: #7c5b12;
+}
+
+.card-date {
+	flex: 1;
+	text-align: center;
+	font-size: 22rpx;
+	font-weight: 500;
+	color: #6E6242;
 }
 
 .status-tag {
@@ -213,7 +221,7 @@
 
 .card-summary {
 	display: block;
-	margin-top: 10rpx;
+	margin-top: 6rpx;
 	font-size: 24rpx;
 	line-height: 1.55;
 	color: #6E6242;
@@ -223,7 +231,7 @@
 	display: flex;
 	flex-wrap: wrap;
 	gap: 14rpx;
-	margin-top: 20rpx;
+	margin-top: 14rpx;
 }
 
 .meta-item {
@@ -251,8 +259,8 @@
 }
 
 .card-footer {
-	margin-top: 20rpx;
-	margin-bottom: 28rpx;
+	margin-top: 14rpx;
+	margin-bottom: 20rpx;
 	padding-top: 20rpx;
 	border-top: 1rpx solid #E9E2CF;
 }

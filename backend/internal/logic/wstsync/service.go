@@ -774,7 +774,7 @@ func buildFlagEmoji(countryCode string) string {
 		return ""
 	}
 	if strings.HasPrefix(normalized, "gb-") {
-		return "🏴"
+		return buildSubdivisionFlag(strings.TrimPrefix(normalized, "gb-"))
 	}
 
 	base := normalized
@@ -787,6 +787,18 @@ func buildFlagEmoji(countryCode string) string {
 
 	runes := []rune(strings.ToUpper(base))
 	return string([]rune{regionalIndicator(runes[0]), regionalIndicator(runes[1])})
+}
+
+func buildSubdivisionFlag(subdivision string) string {
+	var b strings.Builder
+	b.WriteRune(0x1F3F4) // black flag base
+	for _, ch := range subdivision {
+		if ch >= 'a' && ch <= 'z' {
+			b.WriteRune(0xE0000 + ch) // tag letter
+		}
+	}
+	b.WriteRune(0xE007F) // cancel tag
+	return b.String()
 }
 
 func regionalIndicator(letter rune) rune {

@@ -38,7 +38,6 @@
 			<view class="info-card">
 				<view class="section-head">
 					<text class="section-title">赛事信息</text>
-					<text class="section-tip">{{ eventView.matchCountText }}</text>
 				</view>
 				<view class="info-grid">
 					<view class="grid-item">
@@ -54,7 +53,7 @@
 
 			<view class="story-card">
 				<view class="section-head">
-					<text class="section-title">比赛结果</text>
+					<text class="section-title">赛程与赛果</text>
 					<text class="section-tip">{{ eventView.matchCountText }}</text>
 				</view>
 				<view v-if="eventView.rounds.length" class="story-list">
@@ -66,6 +65,7 @@
 						<view v-for="match in round.matches" :key="match.id" class="story-item">
 							<view class="story-topline">
 								<text class="story-label">{{ match.startTimeText }}</text>
+								<text class="story-meta-inline">{{ match.metaText }}</text>
 								<text class="story-badge" :class="'badge-' + match.status">{{ match.statusText }}</text>
 							</view>
 							<view class="match-row">
@@ -79,14 +79,11 @@
 										<image class="player-avatar" :src="match.homePlayerAvatar" mode="aspectFit"></image>
 									</view>
 									<view class="player-copy">
-										<view class="player-copy-top">
-											<text v-if="match.homePlayerFlagEmoji" class="player-flag">{{ match.homePlayerFlagEmoji }}</text>
-											<text v-if="match.homePlayerFirstName" class="player-first-name">{{ match.homePlayerFirstName }}</text>
-										</view>
-										<text class="player-last-name">{{ match.homePlayerLastName }}</text>
+										<text v-if="match.homePlayerFlagEmoji" class="player-flag">{{ match.homePlayerFlagEmoji }}</text>
+										<text class="player-name-full">{{ match.homePlayerName }}</text>
 									</view>
 								</view>
-								<view class="score-pill">
+								<view class="score-pill" :class="{ 'score-pill--muted': match.status === 0 }">
 									<text class="score-pill-text">{{ match.scoreText }}</text>
 								</view>
 								<view class="player-side player-side-right" :class="{ winner: match.winnerSide === 2 }">
@@ -99,21 +96,17 @@
 										<image class="player-avatar" :src="match.awayPlayerAvatar" mode="aspectFit"></image>
 									</view>
 									<view class="player-copy">
-										<view class="player-copy-top">
-											<text v-if="match.awayPlayerFlagEmoji" class="player-flag">{{ match.awayPlayerFlagEmoji }}</text>
-											<text v-if="match.awayPlayerFirstName" class="player-first-name">{{ match.awayPlayerFirstName }}</text>
-										</view>
-										<text class="player-last-name">{{ match.awayPlayerLastName }}</text>
+										<text v-if="match.awayPlayerFlagEmoji" class="player-flag">{{ match.awayPlayerFlagEmoji }}</text>
+										<text class="player-name-full">{{ match.awayPlayerName }}</text>
 									</view>
 								</view>
 							</view>
-							<text class="story-meta">{{ match.metaText }}</text>
 						</view>
 					</view>
 				</view>
 				<view v-else class="story-empty">
 					<text class="story-empty-title">比赛待更新</text>
-					<text class="story-empty-text">当前赛事还没有录入逐场比赛结果。</text>
+					<text class="story-empty-text">当前赛事还没有录入逐场赛程与赛果。</text>
 				</view>
 			</view>
 
@@ -149,6 +142,7 @@ import {
 	buildSaiXunDetailRounds,
 	formatEventDateRange,
 	formatEventTimeRange,
+	localizeCountryName,
 	normalizeSaiXunCard
 } from '@/utils/saixun.js'
 import {
@@ -193,7 +187,7 @@ const normalizeEventView = ({ eventNews, tournament, matches }, now = Date.now()
 		...eventNews,
 		tournament_name: eventNews.tournament_name || tournament?.name || eventNews.title || '',
 		cover_image: eventNews.cover_image || tournament?.cover_image || DEFAULT_EVENT_COVER,
-		country: eventNews.country || tournament?.country || '',
+		country: localizeCountryName(eventNews.country || tournament?.country || ''),
 		city: eventNews.city || tournament?.city || '',
 		venue: eventNews.venue || tournament?.venue_name || '',
 		start_date: eventNews.start_date || tournament?.start_date || '',

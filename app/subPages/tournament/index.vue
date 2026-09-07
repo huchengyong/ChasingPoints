@@ -30,7 +30,7 @@
 							<text class="filter-label">球种</text>
 							<text class="filter-value">{{ selectedGameType.label }}</text>
 						</view>
-						<uni-icons type="bottom" size="14" color="#6E6242"></uni-icons>
+						<uni-icons type="bottom" size="18" color="#C69200"></uni-icons>
 					</view>
 				</picker>
 				<picker :range="statusList" range-key="label" @change="onStatusChange">
@@ -39,7 +39,7 @@
 							<text class="filter-label">状态</text>
 							<text class="filter-value">{{ selectedStatus.label }}</text>
 						</view>
-						<uni-icons type="bottom" size="14" color="#6E6242"></uni-icons>
+						<uni-icons type="bottom" size="18" color="#C69200"></uni-icons>
 					</view>
 				</picker>
 			</view>
@@ -78,6 +78,7 @@
 						<view class="card-chip game-chip">
 							<text>{{ item.gameTypeText }}</text>
 						</view>
+						<text class="card-date">{{ item.dateText }}</text>
 						<view class="status-tag" :class="'status-' + item.status">
 							<text>{{ item.statusText }}</text>
 						</view>

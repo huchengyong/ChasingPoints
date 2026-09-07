@@ -32,6 +32,45 @@ const ORDINAL_WORD_TO_NUMBER = Object.freeze({
   nine: '9',
   ten: '10'
 })
+const COUNTRY_NAME_MAP = Object.freeze({
+  england: '英格兰',
+  scotland: '苏格兰',
+  wales: '威尔士',
+  'northern ireland': '北爱尔兰',
+  china: '中国',
+  germany: '德国',
+  'saudi arabia': '沙特阿拉伯',
+  thailand: '泰国',
+  belgium: '比利时',
+  australia: '澳大利亚',
+  iran: '伊朗',
+  india: '印度',
+  pakistan: '巴基斯坦',
+  malta: '马耳他',
+  brazil: '巴西',
+  canada: '加拿大',
+  usa: '美国',
+  'united states': '美国',
+  japan: '日本',
+  'south korea': '韩国',
+  france: '法国',
+  italy: '意大利',
+  spain: '西班牙',
+  netherlands: '荷兰',
+  russia: '俄罗斯',
+  switzerland: '瑞士',
+  austria: '奥地利',
+  poland: '波兰',
+  norway: '挪威',
+  sweden: '瑞典',
+  denmark: '丹麦',
+  finland: '芬兰',
+  ireland: '爱尔兰',
+  'hong kong': '中国香港',
+  taiwan: '中国台湾',
+  macau: '中国澳门'
+})
+
 const TOURNAMENT_SERIES_TRANSLATIONS = Object.freeze([
   { pattern: /\bRiyadh Season Snooker Championship\b/i, zh: '利雅得狂欢季斯诺克锦标赛' },
   { pattern: /\bSaudi Arabia Snooker Masters\b/i, zh: '沙特阿拉伯斯诺克大师赛' },
@@ -337,13 +376,13 @@ const normalizeSaiXunMatch = (match = {}, now = Date.now()) => {
     homePlayerName: match.home_player_name || '待定',
     homePlayerFirstName: homePlayerParts.firstName,
     homePlayerLastName: homePlayerParts.lastName,
-    homePlayerFlagEmoji: String(match.home_player_flag_emoji || '').trim(),
+    homePlayerFlagEmoji: sanitizeFlagEmoji(match.home_player_flag_emoji),
     homePlayerAvatar: match.home_player_avatar || DEFAULT_PLAYER_AVATAR,
     homeResultText: buildPlayerResultText(match.winner_side, 1),
     awayPlayerName: match.away_player_name || '待定',
     awayPlayerFirstName: awayPlayerParts.firstName,
     awayPlayerLastName: awayPlayerParts.lastName,
-    awayPlayerFlagEmoji: String(match.away_player_flag_emoji || '').trim(),
+    awayPlayerFlagEmoji: sanitizeFlagEmoji(match.away_player_flag_emoji),
     awayPlayerAvatar: match.away_player_avatar || DEFAULT_PLAYER_AVATAR,
     awayResultText: buildPlayerResultText(match.winner_side, 2),
     scoreText: buildScoreText(match),
@@ -402,4 +441,19 @@ export const buildSaiXunDetailRounds = (matches = [], now = Date.now()) => {
   })
 
   return Array.from(roundMap.values())
+}
+
+export const localizeCountryName = (name) => {
+  const text = String(name || '').trim()
+  if (!text) return ''
+  if (CJK_PATTERN.test(text)) return text
+  return COUNTRY_NAME_MAP[text.toLowerCase()] || text
+}
+
+const sanitizeFlagEmoji = (emoji) => {
+  const text = String(emoji || '').trim()
+  if (!text) return ''
+  // Bare black flag base (U+1F3F4) without tag sequence — unsupported England/Scotland/Wales flag
+  if (text.length === 2) return ''
+  return text
 }

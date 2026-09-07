@@ -15,7 +15,7 @@ type Player struct {
 	DisplayName    string         `gorm:"size:128;not null;default:''"`
 	Avatar         string         `gorm:"size:512;not null;default:''"`
 	CountryCode    string         `gorm:"size:32;not null;default:''"`
-	FlagEmoji      string         `gorm:"size:16;not null;default:''"`
+	FlagEmoji      string         `gorm:"size:32;not null;default:''"`
 	CreatedAt      time.Time      `gorm:"autoCreateTime"`
 	UpdatedAt      time.Time      `gorm:"autoUpdateTime"`
 	DeletedAt      gorm.DeletedAt `gorm:"index"`
