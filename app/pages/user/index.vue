@@ -839,7 +839,6 @@ onPullDownRefresh(async () => {
 			userOverviewStore.fetch(getReadIdentity(), { force: true, silent: true }),
 			rankStore.forceRefresh(getReadIdentity())
 		])
-		applyActivity(activityStore.snapshot())
 		applyUserOverview(userOverviewStore.snapshot())
 	} catch (error) {
 		console.error('刷新个人主页失败:', error)

@@ -39,7 +39,7 @@ printf 'Building Linux ARM64 release %s...\n' "$release_id"
 (cd "$backend_dir" && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -o "$work_dir/chasing-points" .)
 cp "$backend_dir/etc/chasing_points-api.yaml" "$work_dir/chasing_points-api.yaml"
 cp -R "$backend_dir/migrations" "$work_dir/migrations"
-tar -C "$work_dir" -czf "$archive" chasing-points chasing_points-api.yaml migrations
+COPYFILE_DISABLE=1 tar -C "$work_dir" -czf "$archive" chasing-points chasing_points-api.yaml migrations
 
 printf 'Uploading release...\n'
 scp -P "$deploy_port" "$archive" "${deploy_target}:${remote_archive}"

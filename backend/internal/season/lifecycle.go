@@ -224,8 +224,8 @@ func Resolve(policy Policy, now time.Time, existing []model.Season) Resolution {
 func WindowSeason(window Window) model.Season {
 	return model.Season{
 		Name:      window.Name,
-		StartDate: window.StartDate,
-		EndDate:   window.EndDate,
+		StartDate: dateAtLocation(window.StartDate, time.UTC),
+		EndDate:   dateAtLocation(window.EndDate, time.UTC),
 	}
 }
 

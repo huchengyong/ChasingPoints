@@ -59,6 +59,22 @@ func TestPolicyGeneratesContinuousCalendarWindows(t *testing.T) {
 	}
 }
 
+func TestWindowSeasonStoresBusinessDatesInUTC(t *testing.T) {
+	location, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		t.Fatalf("load location: %v", err)
+	}
+	item := WindowSeason(Window{
+		Name:      "S1",
+		StartDate: time.Date(2026, 8, 1, 0, 0, 0, 0, location),
+		EndDate:   time.Date(2026, 8, 31, 0, 0, 0, 0, location),
+	})
+	if item.StartDate.Location() != time.UTC || item.EndDate.Location() != time.UTC ||
+		item.StartDate.Format(time.DateOnly) != "2026-08-01" || item.EndDate.Format(time.DateOnly) != "2026-08-31" {
+		t.Fatalf("unexpected persisted season dates: %s - %s", item.StartDate, item.EndDate)
+	}
+}
+
 func TestBoundsUseHalfOpenBusinessWindow(t *testing.T) {
 	location, err := time.LoadLocation("Asia/Shanghai")
 	if err != nil {
