@@ -506,9 +506,6 @@ func formatAdminDisplayTime(sourceType string, value *time.Time) string {
 	if value == nil || value.IsZero() {
 		return ""
 	}
-	if strings.EqualFold(strings.TrimSpace(sourceType), "official") {
-		return normalizeAdminStoredShanghaiClock(*value).In(adminShanghaiLocation).Format(adminEventNewsTimeLayout)
-	}
 	return reinterpretAdminUTC(*value).In(adminShanghaiLocation).Format(adminEventNewsTimeLayout)
 }
 

@@ -27,7 +27,7 @@ Host chasingpoints-dev
 
 ```bash
 cd backend
-./deploy-dev.sh chasingpoints-dev
+./deploy-dev.sh
 ```
 
 脚本会依次运行后端测试、构建 Linux ARM64 二进制、上传版本、执行 Goose 迁移、切换 `current` 软链接、重启 `chasing-points.service` 并完成健康检查。服务端目录如下：

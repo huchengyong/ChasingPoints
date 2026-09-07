@@ -78,8 +78,8 @@ WechatMiniProgram:
 
 Security:
   HTTPAllowedOrigins: https://www.zhuifen.cn,https://api.zhuifen.cn,https://ws.zhuifen.cn
-  WebSocketAllowedOrigins: https://www.zhuifen.cn,https://api.zhuifen.cn,https://ws.zhuifen.cn
-  AllowNativeMissingOrigin: false
+  WebSocketAllowedOrigins: https://www.zhuifen.cn,https://api.zhuifen.cn,https://ws.zhuifen.cn,https://dev-api.kekemate.cn
+  AllowNativeMissingOrigin: true
   HuaweiOAuth:
     Enabled: false
     ClientID: "6917600900395032152"

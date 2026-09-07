@@ -703,7 +703,7 @@ func TestGetEventNewsViewFormatsOfficialMatchStartTimeWithoutExtraTimezoneShift(
 		t.Fatalf("bind tournament: %v", err)
 	}
 
-	matchStart := time.Date(2026, 4, 8, 17, 0, 0, 0, shanghaiLocation)
+	matchStart := time.Date(2026, 4, 8, 9, 0, 0, 0, time.UTC)
 	if err := svcCtx.TournamentMatchModel.Create(&model.TournamentMatch{
 		TournamentId:   tournament.Id,
 		SourceType:     "official",

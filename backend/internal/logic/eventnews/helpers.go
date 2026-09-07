@@ -610,9 +610,6 @@ func normalizeStoredShanghaiClock(value time.Time) time.Time {
 }
 
 func normalizeDisplayTimeBySource(sourceType string, value time.Time) time.Time {
-	if strings.EqualFold(strings.TrimSpace(sourceType), "official") {
-		return normalizeStoredShanghaiClock(value)
-	}
 	return reinterpretStoredUTC(value)
 }
 

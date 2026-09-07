@@ -207,9 +207,9 @@ export const formatEventTimeRange = (startTime, endTime, now = Date.now()) => {
 
   if (!start && !end) return ''
   if (start && end) {
-    return `${formatEventNewsTime(start.toISOString(), now)} - ${formatEventNewsTime(end.toISOString(), now)}`
+    return `${formatEventNewsTime(start.getTime(), now)} - ${formatEventNewsTime(end.getTime(), now)}`
   }
-  return formatEventNewsTime((start || end).toISOString(), now)
+  return formatEventNewsTime((start || end).getTime(), now)
 }
 
 export const buildEventLocationText = (item = {}) => {
@@ -333,7 +333,7 @@ const normalizeSaiXunMatch = (match = {}, now = Date.now()) => {
     status: effectiveStatus,
     statusText: getEventNewsStatusText(effectiveStatus, '待更新'),
     startAt,
-    startTimeText: startAt ? formatEventNewsTime(startAt.toISOString(), now) : '时间待定',
+    startTimeText: startAt ? formatEventNewsTime(startAt.getTime(), now) : '时间待定',
     homePlayerName: match.home_player_name || '待定',
     homePlayerFirstName: homePlayerParts.firstName,
     homePlayerLastName: homePlayerParts.lastName,

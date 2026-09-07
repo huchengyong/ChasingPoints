@@ -1,15 +1,22 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 
 import {
   inferWsBaseUrl,
   resolveNetworkConfig
 } from '../utils/runtime-config.js'
 
+const runtimeConfigSource = readFileSync(new URL('../utils/runtime-config.js', import.meta.url), 'utf8')
+
+test('runtime environment uses the NODE_ENV expression recognized by the UniApp compiler', () => {
+  assert.match(runtimeConfigSource, /process\.env\.NODE_ENV/)
+})
+
 test('resolveNetworkConfig uses development hosts', () => {
   assert.deepEqual(resolveNetworkConfig({ env: 'development' }), {
-    httpBaseUrl: 'https://api-zhuifen.kekemate.cn',
-    wsBaseUrl: 'wss://api-zhuifen.kekemate.cn'
+    httpBaseUrl: 'https://dev-api.kekemate.cn',
+    wsBaseUrl: 'wss://dev-api.kekemate.cn'
   })
 })
 

@@ -2,8 +2,8 @@
 set -Eeuo pipefail
 
 usage() {
-    printf 'Usage: CHASING_POINTS_DEPLOY_TARGET=user@host %s\n' "${0##*/}"
-    printf '       %s user@host\n' "${0##*/}"
+    printf 'Usage: %s [user@host]\n' "${0##*/}"
+    printf '       CHASING_POINTS_DEPLOY_TARGET=user@host %s\n' "${0##*/}"
 }
 
 case "${1:-}" in
@@ -13,12 +13,8 @@ case "${1:-}" in
         ;;
 esac
 
-deploy_target="${CHASING_POINTS_DEPLOY_TARGET:-${1:-}}"
+deploy_target="${CHASING_POINTS_DEPLOY_TARGET:-${1:-chasingpoints-dev}}"
 deploy_port="${CHASING_POINTS_DEPLOY_PORT:-22}"
-if [ -z "$deploy_target" ]; then
-    usage >&2
-    exit 2
-fi
 
 backend_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 revision="$(git -C "$backend_dir" rev-parse --short=12 HEAD)"

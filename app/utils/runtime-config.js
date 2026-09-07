@@ -22,7 +22,7 @@ export const inferWsBaseUrl = (httpBaseUrl = '') => {
 }
 
 const resolveAppEnv = () => {
-  if (typeof process !== 'undefined' && process?.env?.NODE_ENV === 'production') {
+  if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') {
     return 'production'
   }
 
