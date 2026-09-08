@@ -10,19 +10,16 @@
 
     <view class="filter-bar">
       <view class="filter-chip" @tap="openYearSheet">
-        <text class="filter-chip-label">年份</text>
-        <text class="filter-chip-value">{{ filter.year }}年</text>
-        <uni-icons type="bottom" size="16" :color="isDarkMode ? '#9f926e' : '#a16207'"></uni-icons>
+        <text class="filter-chip-text">{{ filter.year }}年</text>
+        <view class="filter-chip-icon"><uni-icons type="bottom" size="14" :color="isDarkMode ? '#9f926e' : '#a16207'"></uni-icons></view>
       </view>
       <view class="filter-chip" @tap="openDatePresetSheet">
-        <text class="filter-chip-label">日期</text>
-        <text class="filter-chip-value">{{ filterDateLabel }}</text>
-        <uni-icons type="bottom" size="16" :color="isDarkMode ? '#9f926e' : '#a16207'"></uni-icons>
+        <text class="filter-chip-text">{{ filterDateLabel }}</text>
+        <view class="filter-chip-icon"><uni-icons type="bottom" size="14" :color="isDarkMode ? '#9f926e' : '#a16207'"></uni-icons></view>
       </view>
       <view class="filter-chip" @tap="openFilterSheet">
-        <text class="filter-chip-label">筛选</text>
-        <text class="filter-chip-value">{{ filterSummary }}</text>
-        <uni-icons type="bottom" size="16" :color="isDarkMode ? '#9f926e' : '#a16207'"></uni-icons>
+        <text class="filter-chip-text" :class="{ 'filter-chip-text--active': activeFilterCount > 0 }">{{ filterChipLabel }}</text>
+        <view class="filter-chip-icon"><uni-icons type="bottom" size="14" :color="isDarkMode ? '#9f926e' : '#a16207'"></uni-icons></view>
       </view>
     </view>
 
@@ -201,6 +198,20 @@ const selectedGameType = computed(() => (
 const selectedStatus = computed(() => (
   STATUS_OPTIONS.find((item) => item.value === filter.value.status) || STATUS_OPTIONS[0]
 ))
+
+const activeFilterCount = computed(() => {
+  let count = 0
+  if (filter.value.gameType !== 0) count++
+  if (filter.value.status !== -1) count++
+  return count
+})
+
+const filterChipLabel = computed(() => {
+  if (activeFilterCount.value > 0) return `筛选·${activeFilterCount.value}`
+  return '筛选'
+})
+
+const showFilterSheet = ref(false)
 
 const filterDateLabel = computed(() => formatSaiXunFilterLabel(filter.value))
 const yearOptions = computed(() => buildYearOptions(filter.value.year))

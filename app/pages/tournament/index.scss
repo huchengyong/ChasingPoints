@@ -22,6 +22,10 @@
       border-color: #3a2e16;
     }
 
+    .post-status {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
     .hero-desc,
     .meta-label,
     .post-footer text,
@@ -52,13 +56,16 @@
       border-color: #3a2e16;
     }
 
-    .filter-chip-value,
+    .filter-chip-text,
     .custom-date-value {
       color: #fff7e1;
     }
 
-    .custom-date-label,
-    .filter-chip-label {
+    .filter-chip-text--active {
+      color: #E0AE12;
+    }
+
+    .custom-date-label {
       color: #d7c89b;
     }
 
@@ -114,33 +121,46 @@
 
 .filter-bar {
   display: flex;
-  gap: 16rpx;
+  gap: 12rpx;
   margin-top: 18rpx;
 }
 
 .filter-chip {
+  position: relative;
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-  padding: 18rpx 22rpx;
+  justify-content: center;
+  padding: 14rpx 36rpx 14rpx 16rpx;
   border-radius: 22rpx;
   background: linear-gradient(135deg, #fffdf7 0%, #fff7e4 100%);
   border: 1rpx solid rgba(224, 174, 18, 0.18);
   box-sizing: border-box;
 }
 
-.filter-chip-label {
-  font-size: 22rpx;
+.filter-chip-text {
+  flex: 1;
+  text-align: center;
+  font-size: 24rpx;
   font-weight: 600;
-  color: #a16207;
+  color: #231C0B;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
-.filter-chip-value {
-  font-size: 24rpx;
-  font-weight: 700;
-  color: #231C0B;
+.filter-chip-icon {
+  position: absolute;
+  right: 14rpx;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.filter-chip-text--active {
+  color: #c69200;
 }
 
 .custom-date-card {
@@ -264,10 +284,14 @@
   display: flex;
   align-items: center;
   gap: 10rpx;
+  padding: 6rpx 14rpx;
+  border-radius: 16rpx;
+  background: rgba(0, 0, 0, 0.35);
 
   text {
     font-size: 22rpx;
     font-weight: 500;
+    color: #ffffff;
   }
 }
 
@@ -279,10 +303,6 @@
     border-radius: 50%;
     background: #fbbf24;
   }
-
-  text {
-    color: #fcd34d;
-  }
 }
 
 .status-1 {
@@ -292,10 +312,6 @@
     height: 12rpx;
     border-radius: 50%;
     background: #e0ae12;
-  }
-
-  text {
-    color: #f0c542;
   }
 }
 
@@ -307,10 +323,6 @@
     border-radius: 50%;
     background: #9A8C67;
   }
-
-  text {
-    color: #9A8C67;
-  }
 }
 
 .status-3 {
@@ -320,10 +332,6 @@
     height: 12rpx;
     border-radius: 50%;
     background: #ef4444;
-  }
-
-  text {
-    color: #f87171;
   }
 }
 

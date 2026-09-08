@@ -80,6 +80,7 @@
 									</view>
 									<view class="player-copy">
 										<image v-if="match.homePlayerFlag.type === 'image'" class="player-flag-img" :src="match.homePlayerFlag.value" mode="aspectFit"></image>
+										<text v-else-if="match.homePlayerFlag.type === 'text'" class="player-flag-label">{{ match.homePlayerFlag.value }}</text>
 										<text v-else-if="match.homePlayerFlag.type === 'emoji'" class="player-flag">{{ match.homePlayerFlag.value }}</text>
 										<text class="player-name-full">{{ match.homePlayerName }}</text>
 									</view>
@@ -98,6 +99,7 @@
 									</view>
 									<view class="player-copy">
 										<image v-if="match.awayPlayerFlag.type === 'image'" class="player-flag-img" :src="match.awayPlayerFlag.value" mode="aspectFit"></image>
+										<text v-else-if="match.awayPlayerFlag.type === 'text'" class="player-flag-label">{{ match.awayPlayerFlag.value }}</text>
 										<text v-else-if="match.awayPlayerFlag.type === 'emoji'" class="player-flag">{{ match.awayPlayerFlag.value }}</text>
 										<text class="player-name-full">{{ match.awayPlayerName }}</text>
 									</view>

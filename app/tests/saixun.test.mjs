@@ -286,8 +286,12 @@ test('resolvePlayerFlag returns emoji for normal country codes', () => {
   assert.deepEqual(resolvePlayerFlag('🇧🇪', 'be'), { type: 'emoji', value: '🇧🇪' })
 })
 
+test('resolvePlayerFlag returns image for Northern Ireland', () => {
+  assert.deepEqual(resolvePlayerFlag('', 'gb-nir'), { type: 'image', value: '/static/flags/nir.png' })
+  assert.deepEqual(resolvePlayerFlag('', 'nir'), { type: 'image', value: '/static/flags/nir.png' })
+})
+
 test('resolvePlayerFlag returns none for unknown or empty codes', () => {
-  assert.deepEqual(resolvePlayerFlag('', 'gb-nir'), { type: 'none', value: '' })
   assert.deepEqual(resolvePlayerFlag('', 'gb-xxx'), { type: 'none', value: '' })
   assert.deepEqual(resolvePlayerFlag('', ''), { type: 'none', value: '' })
   assert.deepEqual(resolvePlayerFlag('', 'xx'), { type: 'none', value: '' })

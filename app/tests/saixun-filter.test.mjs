@@ -95,7 +95,8 @@ test('buildEventNewsListParams merges optional game type and status filters', ()
 })
 
 test('buildYearOptions and presets expose expected choices', () => {
-  assert.deepEqual(buildYearOptions(2026, 1), [2025, 2026, 2027])
+  assert.deepEqual(buildYearOptions(2026, 1, new Date('2026-06-01T00:00:00Z').getTime()), [2025, 2026])
+  assert.deepEqual(buildYearOptions(2024, 2, new Date('2026-06-01T00:00:00Z').getTime()), [2022, 2023, 2024, 2025, 2026])
   assert.deepEqual(SAIXUN_DATE_PRESETS.map(item => item.key), ['full_year', 'q1', 'jan_apr', 'jul_dec', 'custom'])
 })
 

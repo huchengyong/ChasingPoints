@@ -497,6 +497,9 @@ export const resolvePlayerFlag = (flagEmoji, countryCode) => {
   if (code === 'gb-wls' || code === 'wls') {
     return { type: 'image', value: SUBDIVISION_FLAG_IMAGES.wls }
   }
+  if (code === 'gb-nir' || code === 'nir') {
+    return { type: 'image', value: '/static/flags/nir.png' }
+  }
   const emoji = (flagEmoji || '').trim()
   if (emoji) {
     return { type: 'emoji', value: emoji }
