@@ -123,6 +123,12 @@ export const buildEventNewsListParams = (filter = {}, page = 1, pageSize = 10) =
     params.year = year
   }
 
+  const gameType = Number(filter.gameType || 0)
+  if (gameType > 0) params.game_type = gameType
+
+  const status = Number(filter.status)
+  if (Number.isInteger(status) && status >= 0) params.status = status
+
   return params
 }
 

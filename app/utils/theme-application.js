@@ -1,14 +1,14 @@
 export const TAB_BAR_ROUTES = [
   'pages/index/index',
   'pages/match/index',
-  'pages/social/index',
+  'pages/tournament/index',
   'pages/user/index'
 ]
 
 const TAB_BAR_ITEMS = [
   ['index', 'index-selected'],
   ['match', 'match-selected'],
-  ['social', 'social-selected'],
+  ['tournament', 'tournament-selected'],
   ['user', 'user-selected']
 ]
 

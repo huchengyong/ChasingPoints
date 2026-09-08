@@ -3,13 +3,13 @@ import path from 'node:path'
 
 const pagePath = path.resolve('subPages/notification/index.vue')
 const apiPath = path.resolve('api/notification.js')
-const socialPagePath = path.resolve('pages/social/index.vue')
+const tournamentPagePath = path.resolve('pages/tournament/index.vue')
 const sendFriendRequestLogicPath = path.resolve('backend/internal/logic/send_friend_request_logic.go')
 const finishMatchLogicPath = path.resolve('backend/internal/logic/finish_match_logic.go')
 
 const pageSource = fs.readFileSync(pagePath, 'utf8')
 const apiSource = fs.readFileSync(apiPath, 'utf8')
-const socialPageSource = fs.readFileSync(socialPagePath, 'utf8')
+const tournamentPageSource = fs.readFileSync(tournamentPagePath, 'utf8')
 const sendFriendRequestLogicSource = fs.readFileSync(sendFriendRequestLogicPath, 'utf8')
 const finishMatchLogicSource = fs.readFileSync(finishMatchLogicPath, 'utf8')
 
@@ -34,7 +34,7 @@ const assertions = [
 	},
 	{
 		name: '社交页好友请求入口显示角标',
-		ok: socialPageSource.includes("v-if=\"friendRequestStore.pendingCount > 0\" class=\"tool-badge\"")
+		ok: tournamentPageSource.includes("v-if=\"friendRequestStore.pendingCount > 0\" class=\"tool-badge\"")
 	},
 	{
 		name: '发送好友申请时创建通知消息',

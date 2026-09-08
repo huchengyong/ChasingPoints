@@ -67,6 +67,33 @@ test('buildEventNewsListParams prefers explicit from/to over year', () => {
   })
 })
 
+test('buildEventNewsListParams merges optional game type and status filters', () => {
+  assert.deepEqual(buildEventNewsListParams({
+    year: 2026,
+    gameType: 1,
+    status: 2
+  }, 1, 10), {
+    page: 1,
+    page_size: 10,
+    year: 2026,
+    game_type: 1,
+    status: 2
+  })
+
+  assert.deepEqual(buildEventNewsListParams({ year: 2026, gameType: 0, status: -1 }, 1, 10), {
+    page: 1,
+    page_size: 10,
+    year: 2026
+  })
+
+  assert.deepEqual(buildEventNewsListParams({ year: 2026, status: 0 }, 1, 10), {
+    page: 1,
+    page_size: 10,
+    year: 2026,
+    status: 0
+  })
+})
+
 test('buildYearOptions and presets expose expected choices', () => {
   assert.deepEqual(buildYearOptions(2026, 1), [2025, 2026, 2027])
   assert.deepEqual(SAIXUN_DATE_PRESETS.map(item => item.key), ['full_year', 'q1', 'jan_apr', 'jul_dec', 'custom'])

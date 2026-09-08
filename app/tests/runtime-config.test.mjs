@@ -3,7 +3,6 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 import {
-  inferWsBaseUrl,
   resolveNetworkConfig
 } from '../utils/runtime-config.js'
 
@@ -40,7 +39,3 @@ test('resolveNetworkConfig lets explicit overrides win', () => {
   })
 })
 
-test('inferWsBaseUrl converts http protocols to websocket protocols', () => {
-  assert.equal(inferWsBaseUrl('https://api-bm.dianzaozao.com'), 'wss://api-bm.dianzaozao.com')
-  assert.equal(inferWsBaseUrl('http://localhost:8080'), 'ws://localhost:8080')
-})

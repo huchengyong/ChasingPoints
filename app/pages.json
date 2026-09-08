@@ -39,6 +39,12 @@
 			}
 		},
 		{
+			"path": "pages/tournament/index",
+			"style": {
+				"navigationBarTitleText": "赛讯"
+			}
+		},
+		{
 			"path": "pages/social/index",
 			"style": {
 				"navigationBarTitleText": "赛讯"
@@ -71,10 +77,10 @@
 				"selectedIconPath": "@selectedMatchIconPath"
 			},
 			{
-				"pagePath": "pages/social/index",
+				"pagePath": "pages/tournament/index",
 				"text": "赛讯",
-				"iconPath": "@socialIconPath",
-				"selectedIconPath": "@selectedSocialIconPath"
+				"iconPath": "@tournamentIconPath",
+				"selectedIconPath": "@selectedTournamentIconPath"
 			},
 			{
 				"pagePath": "pages/user/index",
@@ -314,13 +320,6 @@
 		{
 			"root": "subPages/tournament",
 			"pages": [
-				{
-					"path": "index",
-					"style": {
-						"navigationBarTitleText": "赛事情报",
-						"enablePullDownRefresh": true
-					}
-				},
 				{
 					"path": "create",
 					"style": {

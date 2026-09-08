@@ -11,16 +11,6 @@ const NETWORK_CONFIG_BY_ENV = {
 
 const normalizeBaseUrl = (value = '') => value.replace(/\/+$/, '')
 
-export const inferWsBaseUrl = (httpBaseUrl = '') => {
-  if (!httpBaseUrl) {
-    return ''
-  }
-
-  return normalizeBaseUrl(httpBaseUrl)
-    .replace(/^https:\/\//, 'wss://')
-    .replace(/^http:\/\//, 'ws://')
-}
-
 const resolveAppEnv = () => {
   if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') {
     return 'production'
@@ -32,7 +22,7 @@ const resolveAppEnv = () => {
 export const resolveNetworkConfig = ({ env = resolveAppEnv(), override = {} } = {}) => {
   const envConfig = NETWORK_CONFIG_BY_ENV[env] || NETWORK_CONFIG_BY_ENV.development
   const httpBaseUrl = normalizeBaseUrl(override.httpBaseUrl || envConfig.httpBaseUrl)
-  const wsBaseUrl = normalizeBaseUrl(override.wsBaseUrl || envConfig.wsBaseUrl || inferWsBaseUrl(httpBaseUrl))
+  const wsBaseUrl = normalizeBaseUrl(override.wsBaseUrl || envConfig.wsBaseUrl)
 
   return {
     httpBaseUrl,

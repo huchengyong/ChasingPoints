@@ -146,7 +146,7 @@ test('event news detail cache single-flights by event id', async () => {
 test('home and ranking pages use the cached aggregate leaderboard reads', () => {
   const homeSource = readAppFile('pages/index/index.vue')
   const rankingSource = readAppFile('pages/ranking/index.vue')
-  const eventListSource = readAppFile('subPages/tournament/index.vue')
+  const eventListSource = readAppFile('pages/tournament/index.vue')
   const eventDetailSource = readAppFile('subPages/tournament/detail.vue')
 
   assert.match(homeSource, /const homeLoading = computed\(\(\) => homeState\.value\.status === ASYNC_PAGE_STATUS\.LOADING\)/)

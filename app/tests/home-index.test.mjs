@@ -64,7 +64,7 @@ test('buildFeaturedPostTarget falls back to community for report posts without m
 
   assert.deepEqual(target, {
     type: 'community',
-    url: '/pages/social/index',
+    url: '/pages/tournament/index',
     ctaText: '去社区查看更多'
   })
 })

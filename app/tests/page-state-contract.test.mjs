@@ -17,7 +17,7 @@ import { createRequestError } from '../utils/request-errors.js'
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 const CORE_DATA_PAGES = [
-  'pages/social/index.vue',
+  'pages/tournament/index.vue',
   'subPages/notification/index.vue',
   'subPages/social/feed.vue',
   'subPages/social/myPosts.vue',
@@ -28,7 +28,6 @@ const CORE_DATA_PAGES = [
   'subPages/social/friendHomepage.vue',
   'subPages/social/pkReport.vue',
   'subPages/user/notification.vue',
-  'subPages/tournament/index.vue',
   'subPages/tournament/detail.vue',
   'subPages/tournament/bracket.vue',
   'subPages/season/index.vue',
@@ -41,7 +40,7 @@ const CORE_DATA_PAGES = [
 ]
 
 const PAGE_LOADERS = {
-  'pages/social/index.vue': 'fetchData',
+  'pages/tournament/index.vue': 'fetchData',
   'subPages/notification/index.vue': 'loadNotifications',
   'subPages/social/feed.vue': 'loadData',
   'subPages/social/myPosts.vue': 'loadPosts',
@@ -52,7 +51,6 @@ const PAGE_LOADERS = {
   'subPages/social/friendHomepage.vue': 'loadData',
   'subPages/social/pkReport.vue': 'loadData',
   'subPages/user/notification.vue': 'loadNotificationSettings',
-  'subPages/tournament/index.vue': 'fetchList',
   'subPages/tournament/detail.vue': 'fetchDetail',
   'subPages/tournament/bracket.vue': 'fetchBracket',
   'subPages/season/index.vue': 'loadSeasonOverview',

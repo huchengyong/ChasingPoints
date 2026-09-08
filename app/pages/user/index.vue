@@ -45,7 +45,7 @@
 						</view>
 						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
 					</view>
-					<view class="guest-link" @click="openRoute('/pages/social/index', true)">
+					<view class="guest-link" @click="openRoute('/pages/tournament/index', true)">
 						<view class="guest-link-copy">
 							<text class="guest-link-title">赛讯</text>
 							<text class="guest-link-desc">查看赛事资讯和赛程更新</text>
@@ -241,7 +241,7 @@
 						<view class="service-item" @click="openRoute('/subPages/rules/index')"><text>规则百科</text></view>
 						<view class="service-item" @click="openRoute('/subPages/season/index')"><text>赛季档案</text></view>
 						<view class="service-item" @click="openRoute('/subPages/venue/index')"><text>附近球馆</text></view>
-						<view class="service-item" @click="openRoute('/subPages/tournament/index')"><text>赛事情报</text></view>
+						<view class="service-item" @click="openRoute('/pages/tournament/index', true)"><text>赛事情报</text></view>
 					</view>
 				</view>
 			</template>

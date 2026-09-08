@@ -37,7 +37,7 @@ const createUniRecorder = () => {
 test('isConfiguredTabBarRoute identifies configured tabBar routes', () => {
   assert.equal(isConfiguredTabBarRoute('pages/index/index'), true)
   assert.equal(isConfiguredTabBarRoute('/pages/match/index'), true)
-  assert.equal(isConfiguredTabBarRoute('pages/social/index'), true)
+  assert.equal(isConfiguredTabBarRoute('pages/tournament/index'), true)
   assert.equal(isConfiguredTabBarRoute('pages/user/index'), true)
 })
 
@@ -146,8 +146,8 @@ test('applyRuntimeTheme applies existing dark tabBar colors on tabBar pages', ()
       },
       {
         index: 2,
-        iconPath: '/static/tabbar/social_dark.png',
-        selectedIconPath: '/static/tabbar/social-selected_dark.png'
+        iconPath: '/static/tabbar/tournament_dark.png',
+        selectedIconPath: '/static/tabbar/tournament-selected_dark.png'
       },
       {
         index: 3,

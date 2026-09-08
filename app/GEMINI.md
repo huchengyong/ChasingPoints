@@ -21,7 +21,7 @@ app/
 │   ├── index/
 │   ├── match/
 │   ├── ranking/
-│   ├── social/
+│   ├── tournament/
 │   └── user/
 ├── subPages/                  # 分包页面
 ├── api/                       # 页面唯一请求门面
@@ -36,7 +36,7 @@ app/
 ## CURRENT ARCHITECTURE
 - 入口是 [app/main.js](/Users/wisesearch/Projects/ChasingPoints/app/main.js)，使用 Pinia；状态持久化由 [app/store/index.js](/Users/wisesearch/Projects/ChasingPoints/app/store/index.js) 注册的 `pinia-plugin-persistedstate` 完成。
 - [app/App.vue](/Users/wisesearch/Projects/ChasingPoints/app/App.vue) 仍使用 Options API，因为需要承接 UniApp app 级生命周期；页面组件默认继续优先用 `script setup`。
-- [app/pages.json](/Users/wisesearch/Projects/ChasingPoints/app/pages.json) 当前注册 6 个主包页面和 12 个分包根目录。
+- [app/pages.json](/Users/wisesearch/Projects/ChasingPoints/app/pages.json) 当前注册 7 个主包页面（含 1 个旧路径兼容跳转页）和 12 个分包根目录。
 - [app/utils/runtime-config.js](/Users/wisesearch/Projects/ChasingPoints/app/utils/runtime-config.js) 负责按环境解析网络基地址；[app/utils/request.js](/Users/wisesearch/Projects/ChasingPoints/app/utils/request.js) 统一处理 token、401、业务成功判定；[app/utils/websocket.js](/Users/wisesearch/Projects/ChasingPoints/app/utils/websocket.js) 负责 match/user 两条 WS 链路。
 - 页面层只能依赖 `api/*.js`；业务纯函数尽量沉到 `utils/*.js` 并在 `tests/*.test.mjs` 里覆盖。
 

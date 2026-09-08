@@ -101,7 +101,7 @@ test('low-frequency services only use existing rules, season, venue, tournament,
   assert.match(source, /openRoute\('\/subPages\/rules\/index'\)/)
   assert.match(source, /openRoute\('\/subPages\/season\/index'\)/)
   assert.match(source, /openRoute\('\/subPages\/venue\/index'\)/)
-  assert.match(source, /openRoute\('\/subPages\/tournament\/index'\)/)
+  assert.match(source, /openRoute\('\/pages\/tournament\/index', true\)/)
   assert.doesNotMatch(source, /更多服务/)
 })
 

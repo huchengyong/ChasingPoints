@@ -48,7 +48,7 @@ export const buildFeaturedPostTarget = (post) => {
   if (!post || post.post_type !== REPORT_POST_TYPE) {
     return {
       type: 'community',
-      url: '/pages/social/index',
+      url: '/pages/tournament/index',
       ctaText: '去社区查看更多'
     }
   }
@@ -63,7 +63,7 @@ export const buildFeaturedPostTarget = (post) => {
 
   return {
     type: 'community',
-    url: '/pages/social/index',
+    url: '/pages/tournament/index',
     ctaText: '去社区查看更多'
   }
 }

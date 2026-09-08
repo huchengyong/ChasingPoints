@@ -96,7 +96,7 @@
         <view v-if="!homePageError || hasContent" class="focus-section">
           <view class="section-header">
             <text class="section-title">赛事情报</text>
-            <view class="section-more" @tap="goTo('/subPages/tournament/index')">
+            <view class="section-more" @tap="goTo('/pages/tournament/index', true)">
               <text>全部情报</text>
               <uni-icons type="right" size="14" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
             </view>
