@@ -127,7 +127,7 @@
 }
 
 .tournament-scroll {
-	height: calc(100vh - 520rpx);
+	height: calc(100vh - 380rpx);
 }
 
 .tournament-list {
@@ -325,10 +325,20 @@
 }
 
 .no-more {
-	padding: 28rpx 0 48rpx;
-	text-align: center;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 16rpx;
+	padding: 32rpx 0 32rpx;
 	font-size: 24rpx;
 	color: #9A8C67;
+}
+
+.no-more-line {
+	width: 48rpx;
+	height: 2rpx;
+	background: #D4C9A8;
+	border-radius: 1rpx;
 }
 
 .tournament-page.dark-mode {
@@ -367,6 +377,10 @@
 	.empty-text,
 	.no-more {
 		color: #9f926e;
+	}
+
+	.no-more-line {
+		background: #3a2e16;
 	}
 
 	.card-footer {

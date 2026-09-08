@@ -134,7 +134,9 @@
 			</view>
 
 			<view v-if="list.length > 0 && !hasMore" class="no-more">
-				<text>没有更多了</text>
+				<view class="no-more-line"></view>
+				<text>已展示全部赛事</text>
+				<view class="no-more-line"></view>
 			</view>
 		</scroll-view>
 	</view>

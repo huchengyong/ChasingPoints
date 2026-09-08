@@ -12,10 +12,12 @@
       <view class="filter-chip" @tap="openYearSheet">
         <text class="filter-chip-label">年份</text>
         <text class="filter-chip-value">{{ filter.year }}年</text>
+        <uni-icons type="bottom" size="16" :color="isDarkMode ? '#9f926e' : '#a16207'"></uni-icons>
       </view>
       <view class="filter-chip" @tap="openDatePresetSheet">
         <text class="filter-chip-label">日期</text>
         <text class="filter-chip-value">{{ filterDateLabel }}</text>
+        <uni-icons type="bottom" size="16" :color="isDarkMode ? '#9f926e' : '#a16207'"></uni-icons>
       </view>
     </view>
 
@@ -57,6 +59,7 @@
           <view class="post-overlay"></view>
           <view class="post-body">
             <view class="post-topline">
+              <text class="post-date">{{ item.dateText }}</text>
               <view class="post-status" :class="'status-' + item.status">
                 <text>{{ item.statusText }}</text>
               </view>
@@ -86,7 +89,9 @@
         <text>{{ loadingMore ? '加载更多...' : '上拉加载更多' }}</text>
       </view>
       <view v-if="!hasMore && list.length > 0" class="load-more">
-        <text>没有更多内容了</text>
+        <view class="load-more-line"></view>
+        <text>已展示全部赛事</text>
+        <view class="load-more-line"></view>
       </view>
     </scroll-view>
   </view>

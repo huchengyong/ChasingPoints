@@ -90,6 +90,7 @@ const TOURNAMENT_SERIES_TRANSLATIONS = Object.freeze([
   { pattern: /\bWelsh Open\b/i, zh: '威尔士公开赛' },
   { pattern: /\bWorld Open\b/i, zh: '世界公开赛' },
   { pattern: /\bWuhan Open\b/i, zh: '武汉公开赛' },
+  { pattern: /\bChina Open\b/i, zh: '中国公开赛' },
   { pattern: /\bXi'an Grand Prix\b/i, zh: '西安大奖赛' },
   { pattern: /\bAsia\s*&\s*Oceania Q School\b/i, zh: '亚洲及大洋洲 Q School' },
   { pattern: /\bQ School\b/i, zh: 'Q School' },
