@@ -774,7 +774,13 @@ func buildFlagEmoji(countryCode string) string {
 		return ""
 	}
 	if strings.HasPrefix(normalized, "gb-") {
-		return buildSubdivisionFlag(strings.TrimPrefix(normalized, "gb-"))
+		subCode := strings.TrimPrefix(normalized, "gb-")
+		switch subCode {
+		case "eng", "sct", "wls":
+			return buildSubdivisionFlag("gb" + subCode)
+		default:
+			return ""
+		}
 	}
 
 	base := normalized

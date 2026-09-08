@@ -635,3 +635,57 @@ func TestServiceResolveTournamentCoverImageNormalizesRelativeWSTPaths(t *testing
 		t.Fatalf("expected normalized relative path to resolve cover image, got %q", coverImage)
 	}
 }
+
+func TestBuildFlagEmoji(t *testing.T) {
+	// Normal country codes
+	if got := buildFlagEmoji("au"); got != "\U0001F1E6\U0001F1FA" {
+		t.Fatalf("expected AU flag, got %q", got)
+	}
+	if got := buildFlagEmoji("CN"); got != "\U0001F1E8\U0001F1F3" {
+		t.Fatalf("expected CN flag, got %q", got)
+	}
+	if got := buildFlagEmoji(""); got != "" {
+		t.Fatalf("expected empty for blank code, got %q", got)
+	}
+
+	// England, Scotland, Wales subdivision flags
+	eng := buildFlagEmoji("gb-eng")
+	if !strings.Contains(eng, "\U0001F3F4") {
+		t.Fatalf("expected England flag to contain black flag base, got %q", eng)
+	}
+	if len([]rune(eng)) != 7 {
+		t.Fatalf("expected England flag to have 7 runes (base + g+b+e+n+g + cancel), got %d: %q", len([]rune(eng)), eng)
+	}
+
+	sco := buildFlagEmoji("gb-sct")
+	if !strings.Contains(sco, "\U0001F3F4") {
+		t.Fatalf("expected Scotland flag to contain black flag base, got %q", sco)
+	}
+	if len([]rune(sco)) != 7 {
+		t.Fatalf("expected Scotland flag to have 7 runes, got %d: %q", len([]rune(sco)), sco)
+	}
+
+	wls := buildFlagEmoji("gb-wls")
+	if !strings.Contains(wls, "\U0001F3F4") {
+		t.Fatalf("expected Wales flag to contain black flag base, got %q", wls)
+	}
+	if len([]rune(wls)) != 7 {
+		t.Fatalf("expected Wales flag to have 7 runes, got %d: %q", len([]rune(wls)), wls)
+	}
+
+	// Northern Ireland and unknown UK subdivisions should return empty
+	if got := buildFlagEmoji("gb-nir"); got != "" {
+		t.Fatalf("expected empty for Northern Ireland, got %q", got)
+	}
+	if got := buildFlagEmoji("gb-xxx"); got != "" {
+		t.Fatalf("expected empty for unknown subdivision, got %q", got)
+	}
+	if got := buildFlagEmoji("gb-"); got != "" {
+		t.Fatalf("expected empty for bare gb-, got %q", got)
+	}
+
+	// Non-UK gb-* codes (like gb-aus) are not subdivision flags, return empty
+	if got := buildFlagEmoji("gb-aus"); got != "" {
+		t.Fatalf("expected empty for non-UK gb-aus, got %q", got)
+	}
+}

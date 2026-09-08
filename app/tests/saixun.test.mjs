@@ -9,7 +9,9 @@ import {
   formatEventDateRange,
   formatEventTimeRange,
   localizeTournamentTitle,
-  normalizeSaiXunCard
+  normalizeSaiXunCard,
+  resolvePlayerFlag,
+  sanitizeFlagEmoji
 } from '../utils/saixun.js'
 
 test('DEFAULT_EVENT_COVER uses a bundled application asset', () => {
@@ -118,10 +120,12 @@ test('buildSaiXunDetailRounds prioritizes live and upcoming rounds while hiding 
       home_player_first_name: 'Neil',
       home_player_last_name: 'Robertson',
       home_player_flag_emoji: '🇦🇺',
+      home_player_country_code: 'au',
       away_player_name: 'Barry Hawkins',
       away_player_first_name: 'Barry',
       away_player_last_name: 'Hawkins',
       away_player_flag_emoji: '🏴',
+      away_player_country_code: 'gb-eng',
       home_score: 10,
       away_score: 8,
       winner_side: 1
@@ -161,9 +165,13 @@ test('buildSaiXunDetailRounds prioritizes live and upcoming rounds while hiding 
   assert.equal(rounds[1].matches[0].homePlayerFirstName, 'Neil')
   assert.equal(rounds[1].matches[0].homePlayerLastName, 'Robertson')
   assert.equal(rounds[1].matches[0].homePlayerFlagEmoji, '🇦🇺')
+  assert.equal(rounds[1].matches[0].homePlayerCountryCode, 'au')
+  assert.deepEqual(rounds[1].matches[0].homePlayerFlag, { type: 'emoji', value: '🇦🇺' })
   assert.equal(rounds[1].matches[0].awayPlayerFirstName, 'Barry')
   assert.equal(rounds[1].matches[0].awayPlayerLastName, 'Hawkins')
-  assert.equal(rounds[1].matches[0].awayPlayerFlagEmoji, '🏴')
+  assert.equal(rounds[1].matches[0].awayPlayerFlagEmoji, '')
+  assert.equal(rounds[1].matches[0].awayPlayerCountryCode, 'gb-eng')
+  assert.deepEqual(rounds[1].matches[0].awayPlayerFlag, { type: 'image', value: '/static/flags/eng.png' })
   assert.equal(rounds.some((round) => round.roundName === '决赛'), false)
 })
 
@@ -243,4 +251,74 @@ test('buildSaiXunDetailRounds marks stale overdue matches as completed instead o
   assert.equal(rounds[0].matches[0].awayResultText, '')
   assert.equal(rounds[0].matches[1].homeResultText, '')
   assert.equal(rounds[0].matches[1].awayResultText, '')
+})
+
+// Flag emoji tests
+
+test('sanitizeFlagEmoji filters black flag base and all subdivision flags', () => {
+  assert.equal(sanitizeFlagEmoji(''), '')
+  assert.equal(sanitizeFlagEmoji('🇦🇺'), '🇦🇺')
+  assert.equal(sanitizeFlagEmoji('🇨🇳'), '🇨🇳')
+  // Black flag base (U+1F3F4) — bare or with tag sequence
+  assert.equal(sanitizeFlagEmoji('🏴'), '')
+  // Correct England flag (🏴 + gbeng tag sequence)
+  const englandFlag = '\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}'
+  assert.equal(englandFlag.codePointAt(0), 0x1F3F4)
+  assert.equal(sanitizeFlagEmoji(englandFlag), '')
+  // Wrong historical sequence (eng tag without gb prefix)
+  const wrongEngFlag = '\u{1F3F4}\u{E0065}\u{E006E}\u{E0067}\u{E007F}'
+  assert.equal(sanitizeFlagEmoji(wrongEngFlag), '')
+})
+
+test('resolvePlayerFlag returns local image for England, Scotland, Wales', () => {
+  assert.deepEqual(resolvePlayerFlag('', 'gb-eng'), { type: 'image', value: '/static/flags/eng.png' })
+  assert.deepEqual(resolvePlayerFlag('', 'gb-sct'), { type: 'image', value: '/static/flags/sco.png' })
+  assert.deepEqual(resolvePlayerFlag('', 'gb-wls'), { type: 'image', value: '/static/flags/wls.png' })
+  // Short codes
+  assert.deepEqual(resolvePlayerFlag('', 'eng'), { type: 'image', value: '/static/flags/eng.png' })
+  assert.deepEqual(resolvePlayerFlag('', 'sct'), { type: 'image', value: '/static/flags/sco.png' })
+  assert.deepEqual(resolvePlayerFlag('', 'wls'), { type: 'image', value: '/static/flags/wls.png' })
+})
+
+test('resolvePlayerFlag returns emoji for normal country codes', () => {
+  assert.deepEqual(resolvePlayerFlag('🇦🇺', 'au'), { type: 'emoji', value: '🇦🇺' })
+  assert.deepEqual(resolvePlayerFlag('🇨🇳', 'cn'), { type: 'emoji', value: '🇨🇳' })
+  assert.deepEqual(resolvePlayerFlag('🇧🇪', 'be'), { type: 'emoji', value: '🇧🇪' })
+})
+
+test('resolvePlayerFlag returns none for unknown or empty codes', () => {
+  assert.deepEqual(resolvePlayerFlag('', 'gb-nir'), { type: 'none', value: '' })
+  assert.deepEqual(resolvePlayerFlag('', 'gb-xxx'), { type: 'none', value: '' })
+  assert.deepEqual(resolvePlayerFlag('', ''), { type: 'none', value: '' })
+  assert.deepEqual(resolvePlayerFlag('', 'xx'), { type: 'none', value: '' })
+})
+
+test('resolvePlayerFlag prefers image over emoji for subdivision codes', () => {
+  // Even if a broken flag emoji is provided, country code wins
+  assert.deepEqual(resolvePlayerFlag('🏴', 'gb-eng'), { type: 'image', value: '/static/flags/eng.png' })
+  assert.deepEqual(resolvePlayerFlag('🏴', 'gb-sct'), { type: 'image', value: '/static/flags/sco.png' })
+})
+
+test('buildSaiXunDetailRounds normalizes subdivision flags to image type and filters bad emoji', () => {
+  const rounds = buildSaiXunDetailRounds([
+    {
+      id: 301,
+      round_name: 'Final',
+      round_order: 5,
+      match_order: 1,
+      status: 2,
+      home_player_name: 'Judd Trump',
+      home_player_flag_emoji: '🇬🇧',
+      home_player_country_code: 'gb-eng',
+      away_player_name: 'Mark Williams',
+      away_player_flag_emoji: '🏴',
+      away_player_country_code: 'gb-wls',
+      winner_side: 1
+    }
+  ], '2026-04-06T20:00:00+08:00')
+
+  assert.equal(rounds[0].matches[0].homePlayerFlagEmoji, '🇬🇧')
+  assert.deepEqual(rounds[0].matches[0].homePlayerFlag, { type: 'image', value: '/static/flags/eng.png' })
+  assert.equal(rounds[0].matches[0].awayPlayerFlagEmoji, '')
+  assert.deepEqual(rounds[0].matches[0].awayPlayerFlag, { type: 'image', value: '/static/flags/wls.png' })
 })

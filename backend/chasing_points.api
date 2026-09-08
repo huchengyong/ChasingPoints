@@ -2504,35 +2504,37 @@ type EventNewsInfo {
 }
 
 type EventNewsMatchInfo {
-	Id                  int64  `json:"id"`
-	EventId             int64  `json:"event_id"`
-	TournamentId        int64  `json:"tournament_id"`
-	SourceType          string `json:"source_type"`
-	SourceMatchId       string `json:"source_match_id"`
-	RoundName           string `json:"round_name"`
-	RoundOrder          int    `json:"round_order"`
-	MatchOrder          int    `json:"match_order"`
-	StartTime           string `json:"start_time"`
-	Status              int    `json:"status"`
-	BestOf              int    `json:"best_of"`
-	HomePlayerId        int64  `json:"home_player_id"`
-	HomePlayerName      string `json:"home_player_name"`
-	HomePlayerFirstName string `json:"home_player_first_name,optional"`
-	HomePlayerLastName  string `json:"home_player_last_name,optional"`
-	HomePlayerFlagEmoji string `json:"home_player_flag_emoji,optional"`
-	HomePlayerAvatar    string `json:"home_player_avatar,optional"`
-	AwayPlayerId        int64  `json:"away_player_id"`
-	AwayPlayerName      string `json:"away_player_name"`
-	AwayPlayerFirstName string `json:"away_player_first_name,optional"`
-	AwayPlayerLastName  string `json:"away_player_last_name,optional"`
-	AwayPlayerFlagEmoji string `json:"away_player_flag_emoji,optional"`
-	AwayPlayerAvatar    string `json:"away_player_avatar,optional"`
-	HomeScore           int    `json:"home_score"`
-	AwayScore           int    `json:"away_score"`
-	WinnerSide          int    `json:"winner_side"`
-	IsPlaceholder       bool   `json:"is_placeholder"`
-	CreatedAt           string `json:"created_at"`
-	UpdatedAt           string `json:"updated_at"`
+	Id                    int64  `json:"id"`
+	EventId               int64  `json:"event_id"`
+	TournamentId          int64  `json:"tournament_id"`
+	SourceType            string `json:"source_type"`
+	SourceMatchId         string `json:"source_match_id"`
+	RoundName             string `json:"round_name"`
+	RoundOrder            int    `json:"round_order"`
+	MatchOrder            int    `json:"match_order"`
+	StartTime             string `json:"start_time"`
+	Status                int    `json:"status"`
+	BestOf                int    `json:"best_of"`
+	HomePlayerId          int64  `json:"home_player_id"`
+	HomePlayerName        string `json:"home_player_name"`
+	HomePlayerFirstName   string `json:"home_player_first_name,optional"`
+	HomePlayerLastName    string `json:"home_player_last_name,optional"`
+	HomePlayerFlagEmoji   string `json:"home_player_flag_emoji,optional"`
+	HomePlayerCountryCode string `json:"home_player_country_code,optional"`
+	HomePlayerAvatar      string `json:"home_player_avatar,optional"`
+	AwayPlayerId          int64  `json:"away_player_id"`
+	AwayPlayerName        string `json:"away_player_name"`
+	AwayPlayerFirstName   string `json:"away_player_first_name,optional"`
+	AwayPlayerLastName    string `json:"away_player_last_name,optional"`
+	AwayPlayerFlagEmoji   string `json:"away_player_flag_emoji,optional"`
+	AwayPlayerCountryCode string `json:"away_player_country_code,optional"`
+	AwayPlayerAvatar      string `json:"away_player_avatar,optional"`
+	HomeScore             int    `json:"home_score"`
+	AwayScore             int    `json:"away_score"`
+	WinnerSide            int    `json:"winner_side"`
+	IsPlaceholder         bool   `json:"is_placeholder"`
+	CreatedAt             string `json:"created_at"`
+	UpdatedAt             string `json:"updated_at"`
 }
 
 type GetEventNewsListReq {

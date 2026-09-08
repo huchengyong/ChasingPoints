@@ -378,12 +378,22 @@ const normalizeSaiXunMatch = (match = {}, now = Date.now()) => {
     homePlayerFirstName: homePlayerParts.firstName,
     homePlayerLastName: homePlayerParts.lastName,
     homePlayerFlagEmoji: sanitizeFlagEmoji(match.home_player_flag_emoji),
+    homePlayerCountryCode: (match.home_player_country_code || '').trim().toLowerCase(),
+    homePlayerFlag: resolvePlayerFlag(
+      sanitizeFlagEmoji(match.home_player_flag_emoji),
+      (match.home_player_country_code || '').trim().toLowerCase()
+    ),
     homePlayerAvatar: match.home_player_avatar || DEFAULT_PLAYER_AVATAR,
     homeResultText: buildPlayerResultText(match.winner_side, 1),
     awayPlayerName: match.away_player_name || '待定',
     awayPlayerFirstName: awayPlayerParts.firstName,
     awayPlayerLastName: awayPlayerParts.lastName,
     awayPlayerFlagEmoji: sanitizeFlagEmoji(match.away_player_flag_emoji),
+    awayPlayerCountryCode: (match.away_player_country_code || '').trim().toLowerCase(),
+    awayPlayerFlag: resolvePlayerFlag(
+      sanitizeFlagEmoji(match.away_player_flag_emoji),
+      (match.away_player_country_code || '').trim().toLowerCase()
+    ),
     awayPlayerAvatar: match.away_player_avatar || DEFAULT_PLAYER_AVATAR,
     awayResultText: buildPlayerResultText(match.winner_side, 2),
     scoreText: buildScoreText(match),
@@ -451,10 +461,45 @@ export const localizeCountryName = (name) => {
   return COUNTRY_NAME_MAP[text.toLowerCase()] || text
 }
 
-const sanitizeFlagEmoji = (emoji) => {
+export const sanitizeFlagEmoji = (emoji) => {
   const text = String(emoji || '').trim()
   if (!text) return ''
-  // Bare black flag base (U+1F3F4) without tag sequence — unsupported England/Scotland/Wales flag
-  if (text.length === 2) return ''
+  // Black flag base (U+1F3F4) — all subdivision flags are handled via local images
+  if (text.codePointAt(0) === 0x1F3F4) return ''
   return text
+}
+
+const SUBDIVISION_FLAG_IMAGES = {
+  eng: '/static/flags/eng.png',
+  sct: '/static/flags/sco.png',
+  wls: '/static/flags/wls.png'
+}
+
+const SUBDIVISION_LABELS = {
+  eng: 'ENG',
+  sct: 'SCO',
+  wls: 'WLS'
+}
+
+/**
+ * @param {string} flagEmoji
+ * @param {string} countryCode
+ * @returns {{ type: 'image'|'emoji'|'text'|'none', value: string }}
+ */
+export const resolvePlayerFlag = (flagEmoji, countryCode) => {
+  const code = (countryCode || '').trim().toLowerCase()
+  if (code === 'gb-eng' || code === 'eng') {
+    return { type: 'image', value: SUBDIVISION_FLAG_IMAGES.eng }
+  }
+  if (code === 'gb-sct' || code === 'sct') {
+    return { type: 'image', value: SUBDIVISION_FLAG_IMAGES.sct }
+  }
+  if (code === 'gb-wls' || code === 'wls') {
+    return { type: 'image', value: SUBDIVISION_FLAG_IMAGES.wls }
+  }
+  const emoji = (flagEmoji || '').trim()
+  if (emoji) {
+    return { type: 'emoji', value: emoji }
+  }
+  return { type: 'none', value: '' }
 }

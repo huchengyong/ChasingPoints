@@ -79,7 +79,8 @@
 										<image class="player-avatar" :src="match.homePlayerAvatar" mode="aspectFit"></image>
 									</view>
 									<view class="player-copy">
-										<text v-if="match.homePlayerFlagEmoji" class="player-flag">{{ match.homePlayerFlagEmoji }}</text>
+										<image v-if="match.homePlayerFlag.type === 'image'" class="player-flag-img" :src="match.homePlayerFlag.value" mode="aspectFit"></image>
+										<text v-else-if="match.homePlayerFlag.type === 'emoji'" class="player-flag">{{ match.homePlayerFlag.value }}</text>
 										<text class="player-name-full">{{ match.homePlayerName }}</text>
 									</view>
 								</view>
@@ -96,7 +97,8 @@
 										<image class="player-avatar" :src="match.awayPlayerAvatar" mode="aspectFit"></image>
 									</view>
 									<view class="player-copy">
-										<text v-if="match.awayPlayerFlagEmoji" class="player-flag">{{ match.awayPlayerFlagEmoji }}</text>
+										<image v-if="match.awayPlayerFlag.type === 'image'" class="player-flag-img" :src="match.awayPlayerFlag.value" mode="aspectFit"></image>
+										<text v-else-if="match.awayPlayerFlag.type === 'emoji'" class="player-flag">{{ match.awayPlayerFlag.value }}</text>
 										<text class="player-name-full">{{ match.awayPlayerName }}</text>
 									</view>
 								</view>
