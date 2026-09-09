@@ -45,7 +45,7 @@ type tournamentSchema struct {
 	CoverImage         string     `gorm:"size:512;not null;default:''"`
 	GameType           int        `gorm:"not null;index"`
 	Format             int        `gorm:"not null;default:1"`
-	MaxPlayers         int        `gorm:"not null;default:16"`
+	MaxPlayers         int        `gorm:"not null;default:0"`
 	CurrentPlayers     int        `gorm:"not null;default:0"`
 	Status             int        `gorm:"not null;default:0;index"`
 	Country            string     `gorm:"size:64;not null;default:''"`

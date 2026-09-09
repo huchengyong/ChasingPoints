@@ -109,22 +109,9 @@ func SelectTournamentsForWindow(items []TournamentResource, window DateWindow, i
 			continue
 		}
 
-		startAt, err := parseDateOnly(item.Attributes.StartDate)
+		start, end, err := tournamentDateRange(item)
 		if err != nil {
 			continue
-		}
-		endAt, err := parseDateOnly(item.Attributes.EndDate)
-		if err != nil {
-			continue
-		}
-
-		start := time.Time{}
-		end := time.Time{}
-		if startAt != nil {
-			start = *startAt
-		}
-		if endAt != nil {
-			end = *endAt
 		}
 		if !window.Overlaps(start, end) {
 			continue
@@ -134,6 +121,27 @@ func SelectTournamentsForWindow(items []TournamentResource, window DateWindow, i
 	}
 
 	return selected
+}
+
+func tournamentDateRange(item TournamentResource) (time.Time, time.Time, error) {
+	start, err := parseDateOnly(item.Attributes.StartDate)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid start date %q", item.Attributes.StartDate)
+	}
+	if start == nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("missing start date")
+	}
+	end, err := parseDateOnly(item.Attributes.EndDate)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid end date %q", item.Attributes.EndDate)
+	}
+	if end == nil {
+		return *start, *start, nil
+	}
+	if end.Before(*start) {
+		return time.Time{}, time.Time{}, fmt.Errorf("end date %q is before start date %q", item.Attributes.EndDate, item.Attributes.StartDate)
+	}
+	return *start, *end, nil
 }
 
 func FilterMatchesByTournamentIDs(items []MatchResource, tournamentIDs map[string]struct{}) []MatchResource {

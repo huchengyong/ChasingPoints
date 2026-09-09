@@ -73,6 +73,20 @@ func TestSelectTournamentsForWindowExcludesQualifiersWhenDisabled(t *testing.T) 
 	}
 }
 
+func TestSelectTournamentsForWindowRejectsInvalidDateRanges(t *testing.T) {
+	window, _ := buildYearWindow(2025)
+	items := []TournamentResource{
+		{ID: "missing-start", Attributes: TournamentAttributes{EndDate: "2025-01-02"}},
+		{ID: "invalid-end", Attributes: TournamentAttributes{StartDate: "2025-01-01", EndDate: "bad"}},
+		{ID: "inverted", Attributes: TournamentAttributes{StartDate: "2025-01-02", EndDate: "2025-01-01"}},
+		{ID: "missing-end", Attributes: TournamentAttributes{StartDate: "2025-01-03"}},
+	}
+	selected := SelectTournamentsForWindow(items, window, true)
+	if len(selected) != 1 || selected[0].ID != "missing-end" {
+		t.Fatalf("unexpected date-filter result: %+v", selected)
+	}
+}
+
 func TestFilterMatchesByTournamentIDsKeepsOnlySelectedTournamentIDs(t *testing.T) {
 	selectedTournamentIDs := map[string]struct{}{
 		"t-1": {},

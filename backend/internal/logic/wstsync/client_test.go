@@ -2,6 +2,7 @@ package wstsync
 
 import (
 	"context"
+	"encoding/json"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -9,17 +10,33 @@ import (
 	"time"
 )
 
+func TestMatchAttributesTreatsNullPlayersAllocatedAsMissing(t *testing.T) {
+	var attributes MatchAttributes
+	if err := json.Unmarshal([]byte(`{"playersAllocated":null}`), &attributes); err != nil {
+		t.Fatalf("decode match attributes: %v", err)
+	}
+	if attributes.PlayersAllocatedPresent {
+		t.Fatal("expected null playersAllocated to be treated as missing")
+	}
+}
+
 func TestClientFetchSeasonsDecodesResponse(t *testing.T) {
+	requests := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
 		if got := r.URL.Path; got != "/v2" {
 			t.Fatalf("unexpected path: %s", got)
+		}
+		if got := r.URL.Query().Get("page.number"); got != "1" {
+			t.Fatalf("unexpected page.number: %s", got)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{
 			"data": [
 				{"id":"2025","attributes":{"name":"2025/26"}},
 				{"id":"2024","attributes":{"name":"2024/25"}}
-			]
+			],
+			"links":{"next":null}
 		}`))
 	}))
 	defer srv.Close()
@@ -35,6 +52,9 @@ func TestClientFetchSeasonsDecodesResponse(t *testing.T) {
 	if items[0].ID != "2025" || items[0].Attributes.Name != "2025/26" {
 		t.Fatalf("unexpected first season: %+v", items[0])
 	}
+	if requests != 1 {
+		t.Fatalf("expected explicit final link to stop after one request, got %d", requests)
+	}
 }
 
 func TestClientFetchTournamentsDecodesResponse(t *testing.T) {
@@ -42,23 +62,29 @@ func TestClientFetchTournamentsDecodesResponse(t *testing.T) {
 		if got := r.URL.Query().Get("season"); got != "2025" {
 			t.Fatalf("unexpected season query: %s", got)
 		}
+		pageNumber := r.URL.Query().Get("page.number")
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{
-			"data": [
-				{
-					"id":"t-1",
-					"attributes":{
-						"name":"Example Open 2025",
-						"startDate":"2025-01-01",
-						"endDate":"2025-01-07",
-						"city":"Sheffield",
-						"country":"England",
-						"informationPage":"https://example.com",
-						"season":{"id":"2025"}
+		if pageNumber == "1" {
+			_, _ = w.Write([]byte(`{
+				"data": [
+					{
+						"id":"t-1",
+						"attributes":{
+							"name":"Example Open 2025",
+							"startDate":"2025-01-01",
+							"endDate":"2025-01-07",
+							"city":"Sheffield",
+							"country":"England",
+							"informationPage":"https://example.com"
+						}
 					}
-				}
-			]
-		}`))
+				],
+				"meta":{"totalCount":1,"count":1},
+				"links":{"next":null}
+			}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"data":[]}`))
 	}))
 	defer srv.Close()
 
@@ -129,8 +155,11 @@ func TestClientFetchMatchesPageDecodesResponse(t *testing.T) {
 	if page.Data[0].Attributes.HomePlayer.FirstName != "Player" {
 		t.Fatalf("unexpected home player: %+v", page.Data[0].Attributes.HomePlayer)
 	}
-	if page.Data[0].Attributes.HomePlayerScore != 3 || page.Data[0].Attributes.AwayPlayerScore != 1 {
+	if *page.Data[0].Attributes.HomePlayerScore != 3 || *page.Data[0].Attributes.AwayPlayerScore != 1 {
 		t.Fatalf("unexpected score mapping: %+v", page.Data[0].Attributes)
+	}
+	if !page.Data[0].Attributes.PlayersAllocatedPresent {
+		t.Fatal("expected playersAllocated presence to be retained")
 	}
 	if page.Data[0].Attributes.Tournament.TicketingLink != "https://tickets.example.com" {
 		t.Fatalf("unexpected ticketing link: %+v", page.Data[0].Attributes.Tournament)
@@ -194,6 +223,24 @@ func TestClientFetchMatchesPageRetriesTimeoutOnce(t *testing.T) {
 	}
 	if attempts != 2 {
 		t.Fatalf("expected 2 attempts after timeout, got %d", attempts)
+	}
+}
+
+func TestClientFetchMatchesPageRetries503(t *testing.T) {
+	attempts := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts == 1 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		_, _ = w.Write([]byte(`{"data":[]}`))
+	}))
+	defer srv.Close()
+
+	_, err := NewClient("", "", srv.URL).FetchMatchesPage(context.Background(), 1, 50)
+	if err != nil || attempts != 2 {
+		t.Fatalf("expected 503 retry to recover: attempts=%d err=%v", attempts, err)
 	}
 }
 

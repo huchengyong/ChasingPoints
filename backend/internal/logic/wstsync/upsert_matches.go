@@ -11,22 +11,25 @@ import (
 )
 
 type MatchUpsertRecord struct {
-	SourceType         string
-	SourceMatchId      string
-	SourceTournamentId string
-	RoundName          string
-	RoundOrder         int
-	MatchOrder         int
-	StartTime          *time.Time
-	BestOf             int
-	HomePlayerSourceId string
-	HomePlayerName     string
-	AwayPlayerSourceId string
-	AwayPlayerName     string
-	HomeScore          int
-	AwayScore          int
-	SourceStatus       string
-	PlayersAllocated   bool
+	SourceType              string
+	SourceMatchId           string
+	SourceTournamentId      string
+	RoundName               string
+	RoundOrder              int
+	MatchOrder              int
+	StartTime               *time.Time
+	BestOf                  int
+	HomePlayerSourceId      string
+	HomePlayerName          string
+	AwayPlayerSourceId      string
+	AwayPlayerName          string
+	HomeScore               int
+	AwayScore               int
+	ScoresConfirmed         bool
+	SourceStatus            string
+	PlayersAllocated        bool
+	PlayersAllocatedPresent bool
+	PreserveSourceStatus    bool
 }
 
 func UpsertMatches(db *gorm.DB, now time.Time, records []MatchUpsertRecord) error {
@@ -156,7 +159,7 @@ func buildOfficialMatch(
 
 	placeholder := isOfficialMatchPlaceholder(record)
 	status := resolveOfficialMatchStatus(record, now, placeholder)
-	if placeholder {
+	if placeholder && !record.PreserveSourceStatus {
 		status = model.EventNewsStatusUpcoming
 	}
 
@@ -269,7 +272,19 @@ func mapOfficialMatchStatus(sourceStatus string) int {
 	}
 }
 
+func isKnownOfficialMatchStatus(sourceStatus string) bool {
+	switch normalizeOfficialText(sourceStatus) {
+	case "scheduled", "live", "completed":
+		return true
+	default:
+		return false
+	}
+}
+
 func resolveOfficialMatchStatus(record MatchUpsertRecord, now time.Time, placeholder bool) int {
+	if record.PreserveSourceStatus {
+		return mapOfficialMatchStatus(record.SourceStatus)
+	}
 	if placeholder {
 		return model.EventNewsStatusUpcoming
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -25,19 +26,38 @@ type DataClient interface {
 }
 
 type SyncSummary struct {
-	Mode                SyncMode
-	DryRun              bool
-	Publish             bool
-	SeasonsFetched      int
-	CandidateSeasons    int
-	TournamentsFetched  int
-	TournamentsSelected int
-	MatchesScanned      int
-	MatchesSelected     int
-	PlayersPrepared     int
-	TournamentsPrepared int
-	MatchesPrepared     int
-	EventNewsProjected  int
+	Mode                 SyncMode
+	DryRun               bool
+	Publish              bool
+	SeasonsFetched       int
+	CandidateSeasons     int
+	TournamentsFetched   int
+	TournamentsSelected  int
+	MatchesScanned       int
+	MatchPages           int
+	MatchesSelected      int
+	PlayersPrepared      int
+	TournamentsPrepared  int
+	MatchesPrepared      int
+	MatchesSkipped       int
+	MatchesRetained      int
+	EventNewsProjected   int
+	PublishAffected      int
+	PlayersCommitted     int
+	TournamentsCommitted int
+	MatchesCommitted     int
+	EventNewsCommitted   int
+	CommittedCountsKnown bool
+	Status               string
+	ExitCode             int
+	From                 *time.Time
+	To                   *time.Time
+	Elapsed              time.Duration
+	CommitState          string
+	Warnings             []string
+	Years                []BackfillYearSummary
+	CoverageStart        *time.Time
+	CoverageEnd          *time.Time
 }
 
 type Service struct {
@@ -67,29 +87,46 @@ func (s *Service) Sync(ctx context.Context, params SyncParams) (*SyncSummary, er
 		return nil, fmt.Errorf("wst sync client is not initialized")
 	}
 
+	startTime := time.Now()
 	now := s.now().UTC()
 	summary := &SyncSummary{
-		Mode:    params.Mode,
-		DryRun:  params.DryRun,
-		Publish: params.Publish,
+		Mode:                 params.Mode,
+		DryRun:               params.DryRun,
+		Publish:              params.Publish,
+		From:                 params.From,
+		To:                   params.To,
+		CommitState:          "not_started",
+		CommittedCountsKnown: true,
 	}
+	defer func() { summary.Elapsed = time.Since(startTime) }()
 
-	seasonIDs, seasonsFetched, err := s.resolveSeasonIDs(ctx, params)
+	seasonIDs, seasonsFetched, seasonWarnings, err := s.resolveSeasonIDs(ctx, params)
 	if err != nil {
-		return nil, err
+		summary.Status = BackfillStatusFailed
+		summary.ExitCode = ExitCodeFailed
+		return summary, err
 	}
 	summary.SeasonsFetched = seasonsFetched
 	summary.CandidateSeasons = len(seasonIDs)
+	summary.Warnings = append(summary.Warnings, seasonWarnings...)
 
 	tournaments, err := s.fetchCandidateTournaments(ctx, seasonIDs)
 	if err != nil {
-		return nil, err
+		summary.Status = BackfillStatusFailed
+		summary.ExitCode = ExitCodeFailed
+		return summary, err
 	}
 	summary.TournamentsFetched = len(tournaments)
+	if params.Backfill {
+		s.addTournamentDateWarnings(summary, tournaments)
+	}
 
 	selected := selectTournamentsForParams(tournaments, params)
 	summary.TournamentsSelected = len(selected)
+	setBackfillCoverage(summary, selected)
 	if len(selected) == 0 {
+		summary.Status = BackfillStatusNeedsReview
+		summary.ExitCode = ExitCodeNeedsReview
 		return summary, nil
 	}
 
@@ -98,31 +135,87 @@ func (s *Service) Sync(ctx context.Context, params SyncParams) (*SyncSummary, er
 		targetTournamentIDs[item.ID] = struct{}{}
 	}
 
-	matches, scannedCount, err := s.scanMatchesForTournaments(ctx, targetTournamentIDs)
+	matches, scannedCount, matchPages, err := s.scanMatchesForTournaments(ctx, targetTournamentIDs)
 	if err != nil {
-		return nil, err
+		summary.MatchesScanned = scannedCount
+		summary.MatchPages = matchPages
+		summary.Status = BackfillStatusFailed
+		summary.ExitCode = ExitCodeFailed
+		return summary, err
 	}
 	summary.MatchesScanned = scannedCount
+	summary.MatchPages = matchPages
 	summary.MatchesSelected = len(matches)
+	if params.Backfill {
+		summary.Years = buildBackfillYearSummaries(params, selected, matches)
+		for _, item := range summary.Years {
+			if item.Tournaments == 0 {
+				summary.Warnings = append(summary.Warnings, fmt.Sprintf("year %d has no selected tournaments", item.Year))
+			}
+		}
+	}
 
 	playerRecords := buildPlayerUpsertRecords(matches)
 	matchRecords := buildMatchUpsertRecords(matches)
+
+	// Backfill only writes records with confirmed scores and an explicit status.
+	if params.Backfill {
+		confirmed := make([]MatchUpsertRecord, 0, len(matchRecords))
+		for _, rec := range matchRecords {
+			rec.PreserveSourceStatus = true
+			if rec.ScoresConfirmed && isKnownOfficialMatchStatus(rec.SourceStatus) && (rec.PlayersAllocated || rec.PlayersAllocatedPresent) {
+				confirmed = append(confirmed, rec)
+			} else {
+				summary.MatchesSkipped++
+				summary.Warnings = append(summary.Warnings, fmt.Sprintf("skipped match %s (missing scores, status, or player allocation)", rec.SourceMatchId))
+			}
+		}
+		matchRecords = confirmed
+		summary.MatchesPrepared = len(matchRecords)
+	} else {
+		summary.MatchesPrepared = len(matchRecords)
+	}
+	if params.Backfill {
+		s.addNoMatchWarnings(summary, selected, matches)
+	}
+
 	coverImages := s.resolveTournamentCoverImages(ctx, selected)
 	tournamentRecords := buildTournamentUpsertRecords(selected, matchRecords, coverImages, params.GameType, now)
 	summary.PlayersPrepared = len(playerRecords)
 	summary.TournamentsPrepared = len(tournamentRecords)
-	summary.MatchesPrepared = len(matchRecords)
+	if !params.Backfill {
+		summary.MatchesPrepared = len(matchRecords)
+	}
 	summary.EventNewsProjected = len(tournamentRecords)
 
+	// Backfill pre-check: detect soft-deleted records and duplicate IDs.
+	if params.Backfill {
+		if err := s.preCheckBackfill(ctx, tournamentRecords, playerRecords, matchRecords); err != nil {
+			summary.Status = BackfillStatusFailed
+			summary.ExitCode = ExitCodeFailed
+			summary.Warnings = append(summary.Warnings, err.Error())
+			return summary, nil
+		}
+		if err := s.loadBackfillImpact(ctx, tournamentRecords, matchRecords, summary); err != nil {
+			summary.Status = BackfillStatusFailed
+			summary.ExitCode = ExitCodeFailed
+			return summary, err
+		}
+	}
 	if params.DryRun {
+		summary.Status = s.finalizeStatus(summary)
+		summary.ExitCode = exitCodeForStatus(summary.Status)
 		return summary, nil
 	}
 
 	if err := s.mirrorPreparedImages(ctx, playerRecords, tournamentRecords); err != nil {
-		return nil, err
+		summary.Status = BackfillStatusFailed
+		summary.ExitCode = ExitCodeFailed
+		return summary, err
 	}
 
-	if err := s.svcCtx.DB.Transaction(func(tx *gorm.DB) error {
+	transactionBodyComplete := false
+	if err := s.svcCtx.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := UpsertPlayers(tx, now, playerRecords); err != nil {
 			return err
 		}
@@ -132,42 +225,309 @@ func (s *Service) Sync(ctx context.Context, params SyncParams) (*SyncSummary, er
 		if err := UpsertMatches(tx, now, matchRecords); err != nil {
 			return err
 		}
-		if err := deleteMissingOfficialMatches(tx, tournamentRecords, matchRecords); err != nil {
-			return err
+		// In backfill mode, skip deletion of missing matches.
+		if !params.Backfill {
+			if err := deleteMissingOfficialMatches(tx, tournamentRecords, matchRecords); err != nil {
+				return err
+			}
 		}
 		if err := s.projectEventNews(tx, tournamentRecords, params.Publish); err != nil {
 			return err
 		}
+		transactionBodyComplete = true
 		return nil
 	}); err != nil {
-		return nil, err
+		summary.Status = BackfillStatusFailed
+		summary.ExitCode = ExitCodeFailed
+		if transactionBodyComplete {
+			summary.CommitState = "unknown"
+			summary.CommittedCountsKnown = false
+		} else {
+			summary.CommitState = "rolled_back"
+		}
+		return summary, err
 	}
+	summary.CommitState = "committed"
+	summary.PlayersCommitted = len(playerRecords)
+	summary.TournamentsCommitted = len(tournamentRecords)
+	summary.MatchesCommitted = len(matchRecords)
+	summary.EventNewsCommitted = len(tournamentRecords)
+
 	if err := eventnews.BumpEventNewsCacheVersion(ctx, s.svcCtx); err != nil {
 		logx.WithContext(ctx).Errorf("WST同步后更新赛讯缓存版本失败: err=%v", err)
+		summary.Status = BackfillStatusNeedsReview
+		summary.ExitCode = ExitCodeNeedsReview
+		summary.Warnings = append(summary.Warnings, "cache version bump failed after commit")
+		return summary, nil
 	}
 
+	summary.Status = s.finalizeStatus(summary)
+	summary.ExitCode = exitCodeForStatus(summary.Status)
 	return summary, nil
 }
 
-func (s *Service) resolveSeasonIDs(ctx context.Context, params SyncParams) ([]int, int, error) {
+func buildBackfillYearSummaries(params SyncParams, tournaments []TournamentResource, matches []MatchResource) []BackfillYearSummary {
+	if params.From == nil || params.To == nil {
+		return nil
+	}
+	years := make(map[int]*BackfillYearSummary)
+	for year := params.From.Year(); year <= params.To.Year(); year++ {
+		years[year] = &BackfillYearSummary{Year: year}
+	}
+	tournamentYears := make(map[string]int, len(tournaments))
+	for _, item := range tournaments {
+		start, err := parseDateOnly(item.Attributes.StartDate)
+		if err != nil || start == nil {
+			continue
+		}
+		year := start.Year()
+		tournamentYears[item.ID] = year
+		if item := years[year]; item != nil {
+			item.Tournaments++
+		}
+	}
+	for _, item := range matches {
+		if year := tournamentYears[item.Attributes.TournamentID]; years[year] != nil {
+			years[year].Matches++
+		}
+	}
+	result := make([]BackfillYearSummary, 0, len(years))
+	for year := params.From.Year(); year <= params.To.Year(); year++ {
+		result = append(result, *years[year])
+	}
+	return result
+}
+
+func setBackfillCoverage(summary *SyncSummary, tournaments []TournamentResource) {
+	if summary.Mode != SyncModeBackfill {
+		return
+	}
+	for _, item := range tournaments {
+		start, end, err := tournamentDateRange(item)
+		if err != nil {
+			continue
+		}
+		if summary.CoverageStart == nil || start.Before(*summary.CoverageStart) {
+			value := start
+			summary.CoverageStart = &value
+		}
+		if summary.CoverageEnd == nil || end.After(*summary.CoverageEnd) {
+			value := end
+			summary.CoverageEnd = &value
+		}
+	}
+}
+
+func (s *Service) loadBackfillImpact(ctx context.Context, tournaments []TournamentUpsertRecord, matches []MatchUpsertRecord, summary *SyncSummary) error {
+	sourceIDs := make([]string, 0, len(tournaments))
+	for _, item := range tournaments {
+		sourceIDs = append(sourceIDs, item.SourceTournamentId)
+	}
+	existing, err := model.NewTournamentModel(s.svcCtx.DB.WithContext(ctx)).FindBySourceTournamentIds(wstSourceType, sourceIDs)
+	if err != nil {
+		return err
+	}
+	ids := make([]int64, 0, len(existing))
+	for _, item := range existing {
+		ids = append(ids, item.Id)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	current, err := model.NewTournamentMatchModel(s.svcCtx.DB.WithContext(ctx)).FindByTournamentIds(ids)
+	if err != nil {
+		return err
+	}
+	prepared := make(map[string]struct{}, len(matches))
+	for _, item := range matches {
+		prepared[item.SourceMatchId] = struct{}{}
+	}
+	for _, list := range current {
+		for _, item := range list {
+			if item.SourceType == wstSourceType {
+				if _, ok := prepared[item.SourceMatchId]; !ok {
+					summary.MatchesRetained++
+				}
+			}
+		}
+	}
+	var publishAffected int64
+	if err := s.svcCtx.DB.WithContext(ctx).Model(&model.EventNews{}).
+		Where("tournament_id IN ? AND source_type = ? AND published <> ?", ids, wstSourceType, summary.Publish).
+		Count(&publishAffected).Error; err != nil {
+		return err
+	}
+	summary.PublishAffected = int(publishAffected)
+	if summary.MatchesRetained > 0 {
+		summary.Warnings = append(summary.Warnings, fmt.Sprintf("retained %d existing official matches", summary.MatchesRetained))
+	}
+	return nil
+}
+
+// preCheckBackfill checks for soft-deleted records and duplicate active source IDs.
+// It returns an error if any conflicts are found.
+func (s *Service) preCheckBackfill(ctx context.Context, tournaments []TournamentUpsertRecord, players []PlayerUpsertRecord, matches []MatchUpsertRecord) error {
+	db := s.svcCtx.DB.WithContext(ctx)
+	tournamentSourceIDs := make(map[string]struct{}, len(tournaments))
+	for _, record := range tournaments {
+		sourceID := strings.TrimSpace(record.SourceTournamentId)
+		if sourceID == "" {
+			return fmt.Errorf("pre-check tournament has empty source id")
+		}
+		tournamentSourceIDs[sourceID] = struct{}{}
+	}
+	playerSourceIDs := make(map[string]struct{}, len(players))
+	for _, record := range players {
+		sourceID := strings.TrimSpace(record.SourcePlayerId)
+		if sourceID == "" {
+			return fmt.Errorf("pre-check player has empty source id")
+		}
+		playerSourceIDs[sourceID] = struct{}{}
+	}
+	for _, record := range matches {
+		if strings.TrimSpace(record.SourceMatchId) == "" {
+			return fmt.Errorf("pre-check match has empty source id")
+		}
+		if _, ok := tournamentSourceIDs[strings.TrimSpace(record.SourceTournamentId)]; !ok {
+			return fmt.Errorf("pre-check match %s references unknown tournament %s", record.SourceMatchId, record.SourceTournamentId)
+		}
+		if record.PlayersAllocated {
+			for _, sourceID := range []string{record.HomePlayerSourceId, record.AwayPlayerSourceId} {
+				if _, ok := playerSourceIDs[strings.TrimSpace(sourceID)]; !ok {
+					return fmt.Errorf("pre-check match %s references unknown player %s", record.SourceMatchId, sourceID)
+				}
+			}
+		}
+	}
+
+	// Check players for soft-deleted records.
+	playerIDs := make([]string, 0, len(players))
+	for _, r := range players {
+		playerIDs = append(playerIDs, r.SourcePlayerId)
+	}
+	if len(playerIDs) > 0 {
+		var softDeleted []model.Player
+		if err := db.Unscoped().Where("source_type = ? AND source_player_id IN ? AND deleted_at IS NOT NULL", wstSourceType, playerIDs).Find(&softDeleted).Error; err != nil {
+			return fmt.Errorf("pre-check player query: %w", err)
+		}
+		for _, p := range softDeleted {
+			return fmt.Errorf("soft-deleted player found: source_player_id=%s, please resolve before retrying", p.SourcePlayerId)
+		}
+	}
+
+	// Check matches for soft-deleted records.
+	matchIDs := make([]string, 0, len(matches))
+	for _, r := range matches {
+		matchIDs = append(matchIDs, r.SourceMatchId)
+	}
+	if len(matchIDs) > 0 {
+		var softDeleted []model.TournamentMatch
+		if err := db.Unscoped().Where("source_type = ? AND source_match_id IN ? AND deleted_at IS NOT NULL", wstSourceType, matchIDs).Find(&softDeleted).Error; err != nil {
+			return fmt.Errorf("pre-check match query: %w", err)
+		}
+		for _, m := range softDeleted {
+			return fmt.Errorf("soft-deleted match found: source_match_id=%s, please resolve before retrying", m.SourceMatchId)
+		}
+	}
+
+	// Event news is keyed by the local tournament ID. A soft-deleted row would be
+	// invisible to the projector and cause it to create a replacement row.
+	tournamentIDs := make([]string, 0, len(tournamentSourceIDs))
+	for sourceID := range tournamentSourceIDs {
+		tournamentIDs = append(tournamentIDs, sourceID)
+	}
+	if len(tournamentIDs) > 0 {
+		existing, err := model.NewTournamentModel(db).FindBySourceTournamentIds(wstSourceType, tournamentIDs)
+		if err != nil {
+			return fmt.Errorf("pre-check tournament query: %w", err)
+		}
+		localIDs := make([]int64, 0, len(existing))
+		for _, tournament := range existing {
+			localIDs = append(localIDs, tournament.Id)
+		}
+		if len(localIDs) > 0 {
+			var softDeleted []model.EventNews
+			if err := db.Unscoped().Where("source_type = ? AND tournament_id IN ? AND deleted_at IS NOT NULL", wstSourceType, localIDs).Find(&softDeleted).Error; err != nil {
+				return fmt.Errorf("pre-check event news query: %w", err)
+			}
+			if len(softDeleted) > 0 {
+				return fmt.Errorf("soft-deleted event news found: tournament_id=%d, please resolve before retrying", softDeleted[0].TournamentId)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *Service) addNoMatchWarnings(summary *SyncSummary, tournaments []TournamentResource, matches []MatchResource) {
+	matched := make(map[string]int, len(matches))
+	for _, item := range matches {
+		matched[item.Attributes.TournamentID]++
+	}
+	for _, item := range tournaments {
+		actual := matched[item.ID]
+		if actual == 0 {
+			summary.Warnings = append(summary.Warnings, fmt.Sprintf("tournament %s has no official matches", item.ID))
+		}
+		if expected := item.Attributes.DatedMatchCount; expected != nil && actual != *expected {
+			summary.Warnings = append(summary.Warnings, fmt.Sprintf("tournament %s returned %d matches, official metadata reports %d dated matches", item.ID, actual, *expected))
+		}
+		if total, dated := item.Attributes.MatchCount, item.Attributes.DatedMatchCount; total != nil && dated != nil && *total != *dated {
+			summary.Warnings = append(summary.Warnings, fmt.Sprintf("tournament %s reports %d total matches but only %d with start dates", item.ID, *total, *dated))
+		}
+	}
+}
+
+func (s *Service) addTournamentDateWarnings(summary *SyncSummary, tournaments []TournamentResource) {
+	for _, item := range tournaments {
+		if _, _, err := tournamentDateRange(item); err != nil {
+			summary.Warnings = append(summary.Warnings, fmt.Sprintf("skipped tournament %s (%v)", item.ID, err))
+		}
+	}
+}
+
+// finalizeStatus determines the final status based on summary contents.
+func (s *Service) finalizeStatus(summary *SyncSummary) string {
+	if len(summary.Warnings) > 0 {
+		return BackfillStatusNeedsReview
+	}
+	return BackfillStatusCompleted
+}
+
+func exitCodeForStatus(status string) int {
+	switch status {
+	case BackfillStatusCompleted:
+		return ExitCodeCompleted
+	case BackfillStatusNeedsReview:
+		return ExitCodeNeedsReview
+	default:
+		return ExitCodeFailed
+	}
+}
+
+func (s *Service) resolveSeasonIDs(ctx context.Context, params SyncParams) ([]int, int, []string, error) {
 	if params.Mode == SyncModeSeason {
-		return []int{params.Season}, 0, nil
+		return []int{params.Season}, 0, nil, nil
 	}
 
 	seasons, err := s.client.FetchSeasons(ctx)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
 
 	window := syncWindowFromParams(params)
-	ids := resolveSeasonIDsForWindow(seasons, window)
+	ids, unknown := resolveSeasonIDsForWindow(seasons, window)
 	if len(ids) == 0 {
 		ids = extractAllSeasonIDs(seasons)
 	}
 	if len(ids) == 0 {
-		return nil, len(seasons), fmt.Errorf("no WST seasons resolved for sync window")
+		return nil, len(seasons), nil, fmt.Errorf("no WST seasons resolved for sync window")
 	}
-	return ids, len(seasons), nil
+	warnings := make([]string, 0, len(unknown))
+	for _, item := range unknown {
+		warnings = append(warnings, fmt.Sprintf("season %s has unrecognized name %q and was included for tournament date filtering", item.ID, item.Attributes.Name))
+	}
+	return ids, len(seasons), warnings, nil
 }
 
 func (s *Service) fetchCandidateTournaments(ctx context.Context, seasonIDs []int) ([]TournamentResource, error) {
@@ -178,6 +538,12 @@ func (s *Service) fetchCandidateTournaments(ctx context.Context, seasonIDs []int
 			return nil, err
 		}
 		for _, item := range items {
+			if strings.TrimSpace(item.ID) == "" {
+				return nil, fmt.Errorf("wst tournament in season %d has an empty id", seasonID)
+			}
+			if current, ok := seen[item.ID]; ok && !reflect.DeepEqual(current, item) {
+				return nil, fmt.Errorf("wst tournament duplicate id %s has conflicting data across seasons", item.ID)
+			}
 			seen[item.ID] = item
 		}
 	}
@@ -197,31 +563,82 @@ func (s *Service) fetchCandidateTournaments(ctx context.Context, seasonIDs []int
 	return result, nil
 }
 
-func (s *Service) scanMatchesForTournaments(ctx context.Context, tournamentIDs map[string]struct{}) ([]MatchResource, int, error) {
+func (s *Service) scanMatchesForTournaments(ctx context.Context, tournamentIDs map[string]struct{}) ([]MatchResource, int, int, error) {
 	if len(tournamentIDs) == 0 {
-		return []MatchResource{}, 0, nil
+		return []MatchResource{}, 0, 0, nil
 	}
 
 	pageNumber := 1
 	scanned := 0
-	seen := make(map[string]struct{})
+	seenAll := make(map[string]MatchResource)
+	seenFiltered := make(map[string]struct{})
 	filtered := make([]MatchResource, 0)
+	var expectedTotal *int
+	dataPages := 0
 	for {
+		if pageNumber > maxPaginationPages {
+			return nil, scanned, dataPages, fmt.Errorf("match pagination exceeded page limit %d", maxPaginationPages)
+		}
+
 		page, err := s.client.FetchMatchesPage(ctx, pageNumber, defaultMatchesPageSize)
 		if err != nil {
-			return nil, scanned, err
+			return nil, scanned, dataPages, err
+		}
+		if err := validatePaginationMeta("matches", pageNumber, len(page.Data), page.Meta, &expectedTotal); err != nil {
+			return nil, scanned, dataPages, err
 		}
 		if len(page.Data) == 0 {
+			if page.Links != nil && page.Links.Next != nil {
+				return nil, scanned, dataPages, fmt.Errorf("wst matches page %d is empty but links.next is present", pageNumber)
+			}
+			if expectedTotal != nil && len(seenAll) != *expectedTotal {
+				return nil, scanned, dataPages, fmt.Errorf("match pagination ended with %d unique records, expected %d", len(seenAll), *expectedTotal)
+			}
 			break
+		}
+		dataPages = pageNumber
+
+		// Progress detection: track all raw IDs on this page before filtering.
+		pageNewIDs := 0
+		for _, item := range page.Data {
+			if strings.TrimSpace(item.ID) == "" {
+				return nil, scanned, dataPages, fmt.Errorf("wst matches page %d contains an empty id", pageNumber)
+			}
+			if current, ok := seenAll[item.ID]; ok {
+				if !reflect.DeepEqual(current, item) {
+					return nil, scanned, dataPages, fmt.Errorf("wst match duplicate id %s has conflicting data", item.ID)
+				}
+				continue
+			}
+			seenAll[item.ID] = item
+			pageNewIDs++
+		}
+		if pageNewIDs == 0 {
+			return nil, scanned, dataPages, fmt.Errorf("match pagination stalled at page %d (no new IDs)", pageNumber)
+		}
+		if expectedTotal != nil && len(seenAll) > *expectedTotal {
+			return nil, scanned, dataPages, fmt.Errorf("match pagination returned %d unique records, expected %d", len(seenAll), *expectedTotal)
 		}
 
 		scanned += len(page.Data)
 		for _, item := range FilterMatchesByTournamentIDs(page.Data, tournamentIDs) {
-			if _, ok := seen[item.ID]; ok {
+			if _, ok := seenFiltered[item.ID]; ok {
 				continue
 			}
-			seen[item.ID] = struct{}{}
+			seenFiltered[item.ID] = struct{}{}
 			filtered = append(filtered, item)
+		}
+		if expectedTotal != nil && len(seenAll) == *expectedTotal {
+			if page.Links != nil && page.Links.Next != nil {
+				return nil, scanned, dataPages, fmt.Errorf("wst matches reached expected total %d at page %d but links.next is present", *expectedTotal, pageNumber)
+			}
+			break
+		}
+		if page.Links != nil && page.Links.Next == nil {
+			if expectedTotal != nil {
+				return nil, scanned, dataPages, fmt.Errorf("wst matches pagination ended at page %d before expected total", pageNumber)
+			}
+			break
 		}
 		pageNumber++
 	}
@@ -246,7 +663,7 @@ func (s *Service) scanMatchesForTournaments(ctx context.Context, tournamentIDs m
 		return filtered[i].ID < filtered[j].ID
 	})
 
-	return filtered, scanned, nil
+	return filtered, scanned, dataPages, nil
 }
 
 func (s *Service) projectEventNews(db *gorm.DB, records []TournamentUpsertRecord, publish bool) error {
@@ -308,17 +725,21 @@ func syncWindowFromParams(params SyncParams) DateWindow {
 	}
 }
 
-func resolveSeasonIDsForWindow(items []SeasonResource, window DateWindow) []int {
+func resolveSeasonIDsForWindow(items []SeasonResource, window DateWindow) ([]int, []SeasonResource) {
 	seen := make(map[int]struct{})
 	ids := make([]int, 0, len(items))
+	unknown := make([]SeasonResource, 0)
 	for _, item := range items {
 		seasonID, err := strconv.Atoi(strings.TrimSpace(item.ID))
 		if err != nil {
 			continue
 		}
 		seasonWindow, ok := parseSeasonWindow(item.Attributes.Name)
-		if !ok || !seasonWindow.Overlaps(window.From, window.To) {
+		if ok && !seasonWindow.Overlaps(window.From, window.To) {
 			continue
+		}
+		if !ok {
+			unknown = append(unknown, item)
 		}
 		if _, exists := seen[seasonID]; exists {
 			continue
@@ -327,7 +748,7 @@ func resolveSeasonIDsForWindow(items []SeasonResource, window DateWindow) []int 
 		ids = append(ids, seasonID)
 	}
 	sort.Ints(ids)
-	return ids
+	return ids, unknown
 }
 
 func extractAllSeasonIDs(items []SeasonResource) []int {
@@ -557,23 +978,32 @@ func buildMatchUpsertRecords(matches []MatchResource) []MatchUpsertRecord {
 			matchOrder = perRoundCounter[groupKey]
 		}
 
+		homeScore, awayScore, scoresConfirmed := 0, 0, false
+		if item.Attributes.HomePlayerScore != nil && item.Attributes.AwayPlayerScore != nil {
+			homeScore = *item.Attributes.HomePlayerScore
+			awayScore = *item.Attributes.AwayPlayerScore
+			scoresConfirmed = true
+		}
+
 		result = append(result, MatchUpsertRecord{
-			SourceType:         wstSourceType,
-			SourceMatchId:      strings.TrimSpace(item.ID),
-			SourceTournamentId: strings.TrimSpace(item.Attributes.TournamentID),
-			RoundName:          strings.TrimSpace(item.Attributes.Round),
-			RoundOrder:         roundOrder,
-			MatchOrder:         matchOrder,
-			StartTime:          startTime,
-			BestOf:             item.Attributes.NumberOfFrames,
-			HomePlayerSourceId: strings.TrimSpace(item.Attributes.HomePlayerID),
-			HomePlayerName:     firstNonEmptyValue(buildPlayerDisplayName(item.Attributes.HomePlayer.FirstName, item.Attributes.HomePlayer.Surname), item.Attributes.HomePlayerID),
-			AwayPlayerSourceId: strings.TrimSpace(item.Attributes.AwayPlayerID),
-			AwayPlayerName:     firstNonEmptyValue(buildPlayerDisplayName(item.Attributes.AwayPlayer.FirstName, item.Attributes.AwayPlayer.Surname), item.Attributes.AwayPlayerID),
-			HomeScore:          item.Attributes.HomePlayerScore,
-			AwayScore:          item.Attributes.AwayPlayerScore,
-			SourceStatus:       strings.TrimSpace(item.Attributes.Status),
-			PlayersAllocated:   item.Attributes.PlayersAllocated,
+			SourceType:              wstSourceType,
+			SourceMatchId:           strings.TrimSpace(item.ID),
+			SourceTournamentId:      strings.TrimSpace(item.Attributes.TournamentID),
+			RoundName:               strings.TrimSpace(item.Attributes.Round),
+			RoundOrder:              roundOrder,
+			MatchOrder:              matchOrder,
+			StartTime:               startTime,
+			BestOf:                  item.Attributes.NumberOfFrames,
+			HomePlayerSourceId:      strings.TrimSpace(item.Attributes.HomePlayerID),
+			HomePlayerName:          firstNonEmptyValue(buildPlayerDisplayName(item.Attributes.HomePlayer.FirstName, item.Attributes.HomePlayer.Surname), item.Attributes.HomePlayerID),
+			AwayPlayerSourceId:      strings.TrimSpace(item.Attributes.AwayPlayerID),
+			AwayPlayerName:          firstNonEmptyValue(buildPlayerDisplayName(item.Attributes.AwayPlayer.FirstName, item.Attributes.AwayPlayer.Surname), item.Attributes.AwayPlayerID),
+			HomeScore:               homeScore,
+			AwayScore:               awayScore,
+			ScoresConfirmed:         scoresConfirmed,
+			SourceStatus:            strings.TrimSpace(item.Attributes.Status),
+			PlayersAllocated:        item.Attributes.PlayersAllocated,
+			PlayersAllocatedPresent: item.Attributes.PlayersAllocatedPresent,
 		})
 	}
 	return result

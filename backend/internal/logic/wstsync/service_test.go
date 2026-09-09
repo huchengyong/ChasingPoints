@@ -19,6 +19,7 @@ type fakeDataClient struct {
 	seasons             []SeasonResource
 	tournamentsBySeason map[int][]TournamentResource
 	matchesPages        []MatchListResponse
+	matchPageRequests   []int
 	pageCoverImages     map[string]string
 }
 
@@ -54,11 +55,70 @@ func (f *fakeDataClient) FetchTournamentsBySeason(ctx context.Context, season in
 }
 
 func (f *fakeDataClient) FetchMatchesPage(ctx context.Context, pageNumber, pageSize int) (MatchListResponse, error) {
+	f.matchPageRequests = append(f.matchPageRequests, pageNumber)
 	index := pageNumber - 1
 	if index < 0 || index >= len(f.matchesPages) {
 		return MatchListResponse{}, nil
 	}
 	return f.matchesPages[index], nil
+}
+
+func TestScanMatchesHonorsConsistentPaginationMetadata(t *testing.T) {
+	client := &fakeDataClient{matchesPages: []MatchListResponse{{
+		Data:  []MatchResource{{ID: "match-1", Attributes: MatchAttributes{TournamentID: "tournament-1"}}},
+		Meta:  &PaginationMeta{TotalCount: intPtr(1), Count: intPtr(1)},
+		Links: &PaginationLinks{Next: nil},
+	}}}
+	service := &Service{client: client}
+	matches, scanned, pages, err := service.scanMatchesForTournaments(context.Background(), map[string]struct{}{"tournament-1": {}})
+	if err != nil || len(matches) != 1 || scanned != 1 || pages != 1 || len(client.matchPageRequests) != 1 {
+		t.Fatalf("unexpected completed scan: matches=%d scanned=%d pages=%d requests=%v err=%v", len(matches), scanned, pages, client.matchPageRequests, err)
+	}
+
+	next := "page-2"
+	client = &fakeDataClient{matchesPages: []MatchListResponse{{
+		Data:  []MatchResource{{ID: "match-1", Attributes: MatchAttributes{TournamentID: "tournament-1"}}},
+		Meta:  &PaginationMeta{TotalCount: intPtr(1), Count: intPtr(1)},
+		Links: &PaginationLinks{Next: &next},
+	}}}
+	service.client = client
+	_, _, _, err = service.scanMatchesForTournaments(context.Background(), map[string]struct{}{"tournament-1": {}})
+	if err == nil || !strings.Contains(err.Error(), "links.next is present") {
+		t.Fatalf("expected contradictory next link to fail, got %v", err)
+	}
+}
+
+func TestBackfillPreCheckDetectsSoftDeletedEventNews(t *testing.T) {
+	db := newWSTSyncServiceTestDB(t)
+	tournament := &model.Tournament{Name: "Soft Event Parent", GameType: 1, SourceType: wstSourceType, SourceTournamentId: "soft-event-tournament"}
+	if err := db.Create(tournament).Error; err != nil {
+		t.Fatalf("seed tournament: %v", err)
+	}
+	event := &model.EventNews{Title: "Soft Event", TournamentId: tournament.Id, GameType: 1, SourceType: wstSourceType}
+	if err := db.Create(event).Error; err != nil {
+		t.Fatalf("seed event news: %v", err)
+	}
+	if err := db.Delete(event).Error; err != nil {
+		t.Fatalf("soft-delete event news: %v", err)
+	}
+
+	service := newWSTSyncServiceForTest(t, db, nil)
+	err := service.preCheckBackfill(context.Background(), []TournamentUpsertRecord{{SourceTournamentId: tournament.SourceTournamentId}}, nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "soft-deleted event news") {
+		t.Fatalf("expected soft-deleted event news conflict, got %v", err)
+	}
+}
+
+func TestResolveSeasonIDsForWindowIncludesUnknownNames(t *testing.T) {
+	window := DateWindow{From: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), To: time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)}
+	ids, unknown := resolveSeasonIDsForWindow([]SeasonResource{
+		{ID: "2024", Attributes: SeasonAttributes{Name: "2024/25"}},
+		{ID: "2025", Attributes: SeasonAttributes{Name: "current"}},
+		{ID: "2027", Attributes: SeasonAttributes{Name: "2027/28"}},
+	}, window)
+	if len(ids) != 2 || ids[0] != 2024 || ids[1] != 2025 || len(unknown) != 1 || unknown[0].ID != "2025" {
+		t.Fatalf("unexpected season resolution: ids=%v unknown=%+v", ids, unknown)
+	}
 }
 
 func (f *fakeDataClient) FetchPageCoverImage(ctx context.Context, pageURL string) (string, error) {
@@ -152,8 +212,8 @@ func TestServiceDryRunBuildsSummaryWithoutWritingDatabase(t *testing.T) {
 							TournamentID:     "world-open-2025",
 							HomePlayerID:     "player-a",
 							AwayPlayerID:     "player-b",
-							HomePlayerScore:  5,
-							AwayPlayerScore:  2,
+							HomePlayerScore:  intPtr(5),
+							AwayPlayerScore:  intPtr(2),
 							StartDateTime:    "2025-03-16 09:00:00",
 							Round:            "Round 1",
 							Status:           "Completed",
@@ -170,8 +230,8 @@ func TestServiceDryRunBuildsSummaryWithoutWritingDatabase(t *testing.T) {
 							TournamentID:     "british-open-2025",
 							HomePlayerID:     "player-c",
 							AwayPlayerID:     "player-d",
-							HomePlayerScore:  0,
-							AwayPlayerScore:  0,
+							HomePlayerScore:  intPtr(0),
+							AwayPlayerScore:  intPtr(0),
 							StartDateTime:    "2025-08-25 09:00:00",
 							Round:            "Round 1",
 							Status:           "Scheduled",
@@ -251,6 +311,9 @@ func TestServiceDryRunBuildsSummaryWithoutWritingDatabase(t *testing.T) {
 func TestServiceSyncWritesFactsAndProjectsEventNews(t *testing.T) {
 	db := newWSTSyncServiceTestDB(t)
 	client := &fakeDataClient{
+		seasons: []SeasonResource{
+			{ID: "2025", Attributes: SeasonAttributes{Name: "2025/26"}},
+		},
 		tournamentsBySeason: map[int][]TournamentResource{
 			2025: {
 				{
@@ -277,8 +340,8 @@ func TestServiceSyncWritesFactsAndProjectsEventNews(t *testing.T) {
 							TournamentID:     "tour-championship-2026",
 							HomePlayerID:     "player-home",
 							AwayPlayerID:     "player-away",
-							HomePlayerScore:  10,
-							AwayPlayerScore:  8,
+							HomePlayerScore:  intPtr(10),
+							AwayPlayerScore:  intPtr(8),
 							StartDateTime:    "2026-03-30 12:00:00",
 							Round:            "Quarter Finals",
 							Status:           "Completed",
@@ -526,6 +589,9 @@ func TestServiceSyncRemovesStaleOfficialMatchesForTouchedTournament(t *testing.T
 	}
 
 	client := &fakeDataClient{
+		seasons: []SeasonResource{
+			{ID: "2025", Attributes: SeasonAttributes{Name: "2025/26"}},
+		},
 		tournamentsBySeason: map[int][]TournamentResource{
 			2025: {
 				{
@@ -554,8 +620,8 @@ func TestServiceSyncRemovesStaleOfficialMatchesForTouchedTournament(t *testing.T
 							StartDateTime:    "2026-03-30 12:00:00",
 							Round:            "Quarter Finals",
 							Status:           "Completed",
-							HomePlayerScore:  10,
-							AwayPlayerScore:  8,
+							HomePlayerScore:  intPtr(10),
+							AwayPlayerScore:  intPtr(8),
 							NumberOfFrames:   19,
 							FixtureNumber:    1,
 							PlayersAllocated: true,
@@ -636,8 +702,342 @@ func TestServiceResolveTournamentCoverImageNormalizesRelativeWSTPaths(t *testing
 	}
 }
 
+func TestBackfillModeSkipsDeleteMissingMatches(t *testing.T) {
+	db := newWSTSyncServiceTestDB(t)
+	tournamentModel := model.NewTournamentModel(db)
+	matchModel := model.NewTournamentMatchModel(db)
+
+	tournament := &model.Tournament{
+		Id:                 99,
+		Name:               "Backfill Tournament",
+		GameType:           1,
+		SourceType:         "official",
+		SourceTournamentId: "backfill-tournament",
+		SourceSeasonId:     "2025",
+	}
+	if err := tournamentModel.Create(tournament); err != nil {
+		t.Fatalf("seed tournament: %v", err)
+	}
+	oldMatch := &model.TournamentMatch{
+		Id:             199,
+		TournamentId:   tournament.Id,
+		SourceType:     "official",
+		SourceMatchId:  "old-match",
+		RoundName:      "Round 1",
+		RoundOrder:     10,
+		MatchOrder:     1,
+		HomePlayerName: "Old A",
+		AwayPlayerName: "Old B",
+		Status:         model.EventNewsStatusFinished,
+	}
+	if err := matchModel.Create(oldMatch); err != nil {
+		t.Fatalf("seed old match: %v", err)
+	}
+
+	client := &fakeDataClient{
+		seasons: []SeasonResource{
+			{ID: "2025", Attributes: SeasonAttributes{Name: "2025/26"}},
+		},
+		tournamentsBySeason: map[int][]TournamentResource{
+			2025: {
+				{
+					ID: "backfill-tournament",
+					Attributes: TournamentAttributes{
+						Name:      "Backfill Tournament",
+						StartDate: "2025-06-01",
+						EndDate:   "2025-06-07",
+						City:      "Test",
+						Country:   "Test",
+						Season:    TournamentSeason{ID: "2025"},
+					},
+				},
+			},
+		},
+		matchesPages: []MatchListResponse{
+			{
+				Data: []MatchResource{
+					{
+						ID: "new-match",
+						Attributes: MatchAttributes{
+							TournamentID:     "backfill-tournament",
+							HomePlayerID:     "p1",
+							AwayPlayerID:     "p2",
+							HomePlayerScore:  intPtr(5),
+							AwayPlayerScore:  intPtr(3),
+							StartDateTime:    "2025-06-01 12:00:00",
+							Round:            "Round 1",
+							Status:           "Completed",
+							NumberOfFrames:   9,
+							FixtureNumber:    1,
+							PlayersAllocated: true,
+							HomePlayer:       WstPlayer{PlayerID: "p1", FirstName: "New", Surname: "A", CountryCode: "cn"},
+							AwayPlayer:       WstPlayer{PlayerID: "p2", FirstName: "New", Surname: "B", CountryCode: "cn"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	service := newWSTSyncServiceForTest(t, db, client)
+	now := time.Date(2025, 6, 8, 0, 0, 0, 0, time.UTC)
+	service.now = func() time.Time { return now }
+
+	summary, err := service.Sync(context.Background(), SyncParams{
+		Mode:              SyncModeBackfill,
+		Backfill:          true,
+		From:              timePtr(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+		To:                timePtr(time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)),
+		Publish:           true,
+		DryRun:            false,
+		IncludeQualifiers: true,
+		GameType:          1,
+	})
+	if err != nil {
+		t.Fatalf("backfill sync: %v", err)
+	}
+	if summary.MatchesRetained != 1 {
+		t.Fatalf("expected 1 retained match, got %d", summary.MatchesRetained)
+	}
+
+	// Old match should still exist (backfill skips delete).
+	matchMap, err := matchModel.FindBySourceMatchIds("official", []string{"old-match", "new-match"})
+	if err != nil {
+		t.Fatalf("find matches after backfill: %v", err)
+	}
+	if _, ok := matchMap["old-match"]; !ok {
+		t.Fatal("expected old match to be retained in backfill mode")
+	}
+	if _, ok := matchMap["new-match"]; !ok {
+		t.Fatal("expected new match to be upserted")
+	}
+}
+
+func TestBackfillModeSkipsMatchesWithoutScores(t *testing.T) {
+	db := newWSTSyncServiceTestDB(t)
+	client := &fakeDataClient{
+		seasons: []SeasonResource{
+			{ID: "2025", Attributes: SeasonAttributes{Name: "2025/26"}},
+		},
+		tournamentsBySeason: map[int][]TournamentResource{
+			2025: {
+				{
+					ID: "backfill-tournament",
+					Attributes: TournamentAttributes{
+						Name:      "Backfill Tournament",
+						StartDate: "2025-06-01",
+						EndDate:   "2025-06-07",
+						City:      "Test",
+						Country:   "Test",
+						Season:    TournamentSeason{ID: "2025"},
+					},
+				},
+			},
+		},
+		matchesPages: []MatchListResponse{
+			{
+				Data: []MatchResource{
+					{
+						ID: "match-with-scores",
+						Attributes: MatchAttributes{
+							TournamentID:     "backfill-tournament",
+							HomePlayerID:     "p1",
+							AwayPlayerID:     "p2",
+							HomePlayerScore:  intPtr(5),
+							AwayPlayerScore:  intPtr(3),
+							StartDateTime:    "2025-06-01 12:00:00",
+							Round:            "Round 1",
+							Status:           "Completed",
+							NumberOfFrames:   9,
+							FixtureNumber:    1,
+							PlayersAllocated: true,
+							HomePlayer:       WstPlayer{PlayerID: "p1", FirstName: "A", Surname: "B", CountryCode: "cn"},
+							AwayPlayer:       WstPlayer{PlayerID: "p2", FirstName: "C", Surname: "D", CountryCode: "cn"},
+						},
+					},
+					{
+						ID: "match-without-scores",
+						Attributes: MatchAttributes{
+							TournamentID:     "backfill-tournament",
+							HomePlayerID:     "p3",
+							AwayPlayerID:     "p4",
+							HomePlayerScore:  nil,
+							AwayPlayerScore:  nil,
+							StartDateTime:    "2025-06-02 12:00:00",
+							Round:            "Round 2",
+							Status:           "Completed",
+							NumberOfFrames:   9,
+							FixtureNumber:    2,
+							PlayersAllocated: true,
+							HomePlayer:       WstPlayer{PlayerID: "p3", FirstName: "E", Surname: "F", CountryCode: "cn"},
+							AwayPlayer:       WstPlayer{PlayerID: "p4", FirstName: "G", Surname: "H", CountryCode: "cn"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	service := newWSTSyncServiceForTest(t, db, client)
+	now := time.Date(2025, 6, 8, 0, 0, 0, 0, time.UTC)
+	service.now = func() time.Time { return now }
+
+	summary, err := service.Sync(context.Background(), SyncParams{
+		Mode:              SyncModeBackfill,
+		Backfill:          true,
+		From:              timePtr(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+		To:                timePtr(time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)),
+		Publish:           true,
+		DryRun:            false,
+		IncludeQualifiers: true,
+		GameType:          1,
+	})
+	if err != nil {
+		t.Fatalf("backfill sync: %v", err)
+	}
+
+	if summary.MatchesSkipped != 1 {
+		t.Fatalf("expected 1 match skipped, got %d", summary.MatchesSkipped)
+	}
+	if summary.MatchesPrepared != 1 {
+		t.Fatalf("expected 1 match prepared, got %d", summary.MatchesPrepared)
+	}
+
+	// Only the match with scores should be in the database.
+	matchMap, err := model.NewTournamentMatchModel(db).FindBySourceMatchIds("official", []string{"match-with-scores", "match-without-scores"})
+	if err != nil {
+		t.Fatalf("find matches: %v", err)
+	}
+	if _, ok := matchMap["match-with-scores"]; !ok {
+		t.Fatal("expected match with scores to be upserted")
+	}
+	if _, ok := matchMap["match-without-scores"]; ok {
+		t.Fatal("expected match without scores to be skipped")
+	}
+}
+
+func TestBackfillPreCheckDetectsSoftDeletedRecord(t *testing.T) {
+	db := newWSTSyncServiceTestDB(t)
+	playerModel := model.NewPlayerModel(db)
+
+	// Seed a soft-deleted player.
+	softDeletedPlayer := &model.Player{
+		SourceType:     "official",
+		SourcePlayerId: "soft-deleted-player",
+		DisplayName:    "Soft Deleted",
+		CountryCode:    "cn",
+	}
+	if err := playerModel.Create(softDeletedPlayer); err != nil {
+		t.Fatalf("seed player: %v", err)
+	}
+	if err := db.Delete(softDeletedPlayer).Error; err != nil {
+		t.Fatalf("soft delete player: %v", err)
+	}
+
+	client := &fakeDataClient{
+		seasons: []SeasonResource{
+			{ID: "2025", Attributes: SeasonAttributes{Name: "2025/26"}},
+		},
+		tournamentsBySeason: map[int][]TournamentResource{
+			2025: {
+				{
+					ID: "backfill-tournament",
+					Attributes: TournamentAttributes{
+						Name:      "Backfill Tournament",
+						StartDate: "2025-06-01",
+						EndDate:   "2025-06-07",
+						City:      "Test",
+						Country:   "Test",
+						Season:    TournamentSeason{ID: "2025"},
+					},
+				},
+			},
+		},
+		matchesPages: []MatchListResponse{
+			{
+				Data: []MatchResource{
+					{
+						ID: "match-1",
+						Attributes: MatchAttributes{
+							TournamentID:     "backfill-tournament",
+							HomePlayerID:     "soft-deleted-player",
+							AwayPlayerID:     "p2",
+							HomePlayerScore:  intPtr(5),
+							AwayPlayerScore:  intPtr(3),
+							StartDateTime:    "2025-06-01 12:00:00",
+							Round:            "Round 1",
+							Status:           "Completed",
+							NumberOfFrames:   9,
+							FixtureNumber:    1,
+							PlayersAllocated: true,
+							HomePlayer:       WstPlayer{PlayerID: "soft-deleted-player", FirstName: "A", Surname: "B", CountryCode: "cn"},
+							AwayPlayer:       WstPlayer{PlayerID: "p2", FirstName: "C", Surname: "D", CountryCode: "cn"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	service := newWSTSyncServiceForTest(t, db, client)
+	now := time.Date(2025, 6, 8, 0, 0, 0, 0, time.UTC)
+	service.now = func() time.Time { return now }
+
+	summary, err := service.Sync(context.Background(), SyncParams{
+		Mode:              SyncModeBackfill,
+		Backfill:          true,
+		From:              timePtr(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+		To:                timePtr(time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)),
+		Publish:           true,
+		DryRun:            false,
+		IncludeQualifiers: true,
+		GameType:          1,
+	})
+	if err != nil {
+		t.Fatalf("backfill sync: %v", err)
+	}
+
+	if summary.Status != BackfillStatusFailed {
+		t.Fatalf("expected failed status due to soft-deleted player, got %s", summary.Status)
+	}
+	if summary.ExitCode != ExitCodeFailed {
+		t.Fatalf("expected exit code %d, got %d", ExitCodeFailed, summary.ExitCode)
+	}
+}
+
+func TestBackfillDryRunChecksSoftDeletedRecord(t *testing.T) {
+	db := newWSTSyncServiceTestDB(t)
+	player := &model.Player{SourceType: "official", SourcePlayerId: "p1", DisplayName: "Deleted"}
+	if err := db.Create(player).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Delete(player).Error; err != nil {
+		t.Fatal(err)
+	}
+	client := &fakeDataClient{
+		seasons: []SeasonResource{{ID: "2025", Attributes: SeasonAttributes{Name: "2025/26"}}},
+		tournamentsBySeason: map[int][]TournamentResource{
+			2025: {{ID: "t1", Attributes: TournamentAttributes{Name: "Test", StartDate: "2025-01-01", EndDate: "2025-01-02"}}},
+		},
+		matchesPages: []MatchListResponse{{
+			Data: []MatchResource{{
+				ID: "m1",
+				Attributes: MatchAttributes{
+					TournamentID: "t1", HomePlayerID: "p1", AwayPlayerID: "p2", HomePlayerScore: intPtr(1), AwayPlayerScore: intPtr(0), Status: "Completed", PlayersAllocated: true,
+					HomePlayer: WstPlayer{PlayerID: "p1"}, AwayPlayer: WstPlayer{PlayerID: "p2"},
+				},
+			}},
+		}},
+	}
+	summary, err := newWSTSyncServiceForTest(t, db, client).Sync(context.Background(), SyncParams{Mode: SyncModeBackfill, Backfill: true, DryRun: true, GameType: 1, IncludeQualifiers: true, From: timePtr(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)), To: timePtr(time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC))})
+	if err != nil || summary.Status != BackfillStatusFailed {
+		t.Fatalf("expected dry-run pre-check failure: status=%s err=%v", summary.Status, err)
+	}
+}
+
+func timePtr(t time.Time) *time.Time { return &t }
+
 func TestBuildFlagEmoji(t *testing.T) {
-	// Normal country codes
 	if got := buildFlagEmoji("au"); got != "\U0001F1E6\U0001F1FA" {
 		t.Fatalf("expected AU flag, got %q", got)
 	}
