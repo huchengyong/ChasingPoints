@@ -292,8 +292,8 @@ export const resolveCompactRewardEntry = (rewardStatus = {}) => {
 
   let { title, description } = card
   if (status === 'not_started') {
-    title = '免费ProVIP限时赠送'
-    description = '绑定你常去的球馆，可免费领取1个月ProVIP'
+    title = '免费VIP限时赠送'
+    description = '绑定你常去的球馆，可免费领取1个月VIP'
   }
 
   return {

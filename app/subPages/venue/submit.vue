@@ -3,7 +3,7 @@
 		<view class="page-intro">
 			<view class="intro-copy">
 				<text class="intro-eyebrow">绑定常玩球馆</text>
-				<text class="intro-title">限时领取1个月ProVIP</text>
+				<text class="intro-title">限时领取1个月VIP</text>
 				<text class="intro-desc">填写球馆真实的位置信息，审核通过后会自动发放VIP。虚假信息将不予通过。</text>
 			</view>
 		</view>
