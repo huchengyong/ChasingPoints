@@ -132,14 +132,17 @@ export const buildEventNewsListParams = (filter = {}, page = 1, pageSize = 10) =
   return params
 }
 
+const MIN_YEAR = 2023
+
 export const buildYearOptions = (centerYear, span = 2, now = Date.now()) => {
   const year = Number(centerYear)
   if (!Number.isInteger(year) || year <= 0) return []
 
   const currentYear = new Date(now).getFullYear()
   const maxYear = Math.min(year + span, currentYear)
+  const minYear = Math.max(year - span, MIN_YEAR)
   const options = []
-  for (let value = year - span; value <= maxYear; value += 1) {
+  for (let value = minYear; value <= maxYear; value += 1) {
     options.push(value)
   }
   return options
