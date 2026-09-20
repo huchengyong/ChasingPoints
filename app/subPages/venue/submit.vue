@@ -3,15 +3,15 @@
 		<view class="page-intro">
 			<view class="intro-copy">
 				<text class="intro-eyebrow">绑定常玩球馆</text>
-				<text class="intro-title">限时领取1个月Pro会员</text>
-				<text class="intro-desc">填写球馆真实的位置信息，审核通过后会自动发放会员。虚假信息将不予通过。</text>
+				<text class="intro-title">限时领取1个月ProVIP</text>
+				<text class="intro-desc">填写球馆真实的位置信息，审核通过后会自动发放VIP。虚假信息将不予通过。</text>
 			</view>
 		</view>
 
 		<view class="form-section">
 			<view class="section-head">
 				<text class="section-title">常玩球馆资料</text>
-				<text class="section-tip">请填写球馆名称、地区和详细地址，审核通过后会自动发放会员。</text>
+				<text class="section-tip">请填写球馆名称、地区和详细地址，审核通过后会自动发放VIP。</text>
 			</view>
 			<view class="form-group" :class="getFieldClass('name')">
 				<view class="label-row">
@@ -268,7 +268,7 @@ const handleSubmit = async () => {
 		const data = buildVenueSubmitPayload(form.value)
 		const res = await createVenue(data)
 		if (res.success) {
-			uni.showToast({ title: res.message || '已提交，审核通过后会员将自动到账', icon: 'success' })
+			uni.showToast({ title: res.message || '已提交，审核通过后VIP将自动到账', icon: 'success' })
 			setTimeout(() => {
 				uni.navigateBack()
 			}, 1500)

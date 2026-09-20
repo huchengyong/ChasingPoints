@@ -44,7 +44,7 @@ test('resolveMemberGrowthCard returns unopened guidance for users without growth
   assert.equal(card.levelLabel, 'Lv1')
   assert.equal(card.growthPointsText, '成长值 0')
   assert.equal(card.todayProgressText, '今日已计入 0/5')
-  assert.equal(card.nextLevelText, '开通会员后，完成真实对局可累计成长')
+  assert.equal(card.nextLevelText, '开通VIP后，完成真实对局可累计成长')
 })
 
 test('resolveMemberCenterSummary includes growth progress for active members', () => {
@@ -55,7 +55,7 @@ test('resolveMemberCenterSummary includes growth progress for active members', (
     today_growth_count: 3
   }, new Date('2026-04-11T10:00:00+08:00'))
 
-  assert.equal(summary.statusText, '会员中')
+  assert.equal(summary.statusText, 'VIP中')
   assert.match(summary.description, /Lv3/)
   assert.match(summary.description, /今日已计入 3\/5/)
 })

@@ -166,7 +166,7 @@ func resolveAdminMemberStatus(user *model.User) string {
 		return "未开通"
 	}
 	if logicx.InUTC8(*user.MemberExpiresAt).After(logicx.NowUTC8()) {
-		return "会员中"
+		return "VIP中"
 	}
 	return "已到期"
 }

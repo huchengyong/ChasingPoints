@@ -109,10 +109,10 @@ func TestRankLogToDetailsIncludesPolicyAdjustmentsFromRemark(t *testing.T) {
 	if !hasRankDetail(details, "基础分", 20) {
 		t.Fatalf("expected base score detail, got %#v", details)
 	}
-	if !hasRankDetail(details, "会员特殊战绩分", 15) {
+	if !hasRankDetail(details, "VIP特殊战绩分", 15) {
 		t.Fatalf("expected achievement detail, got %#v", details)
 	}
-	if !hasRankDetail(details, "会员特殊战绩每日封顶", -5) {
+	if !hasRankDetail(details, "VIP特殊战绩每日封顶", -5) {
 		t.Fatalf("expected member achievement daily cap detail, got %#v", details)
 	}
 	if !hasRankDetail(details, "同对手衰减", -7) {

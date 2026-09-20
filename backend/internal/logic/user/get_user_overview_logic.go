@@ -78,7 +78,7 @@ func (l *GetUserOverviewLogic) GetUserOverview() (resp *types.GetUserOverviewRes
 		result.Availability["reputation"] = true
 	}
 	if member, memberErr := memberlogic.NewGetMemberStatusLogic(l.ctx, l.svcCtx).GetMemberStatus(); memberErr != nil || member == nil || !member.Success {
-		appendOverviewPartial(result, "member", "会员读取失败")
+		appendOverviewPartial(result, "member", "VIP读取失败")
 	} else {
 		result.MemberStatus = member
 		result.Availability["member"] = true

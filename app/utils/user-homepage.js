@@ -189,7 +189,7 @@ export const resolveStatusCardContent = ({ mode, currentMatch = null, currentUse
     type: 'empty',
     eyebrow: '准备开杆',
     title: isNewcomer ? '从第一场比赛开始' : '今天还没开杆',
-    statusText: '待开局',
+    statusText: '',
     description: isNewcomer
       ? '发起一场 PK，建立你的第一份竞技记录。'
       : '来打一场找回节奏，继续积累你的竞技状态。',
@@ -277,8 +277,8 @@ export const resolveMemberHeroStrip = (memberStatus = {}, now = new Date(), memb
   return {
     visible: true,
     state: isActive ? 'active' : 'expired',
-    statusText: isActive ? '会员中' : '已到期',
-    title: isActive ? '会员权益已生效' : '会员权益已到期',
+    statusText: isActive ? 'VIP中' : '已到期',
+    title: isActive ? 'VIP权益已生效' : 'VIP权益已到期',
     description: isActive ? `有效期至 ${expiresAtText}` : `上次有效期至 ${expiresAtText}`,
     levelText
   }
@@ -292,8 +292,8 @@ export const resolveCompactRewardEntry = (rewardStatus = {}) => {
 
   let { title, description } = card
   if (status === 'not_started') {
-    title = '免费Pro会员限时赠送'
-    description = '绑定你常去的球馆，可免费领取1个月Pro会员'
+    title = '免费ProVIP限时赠送'
+    description = '绑定你常去的球馆，可免费领取1个月ProVIP'
   }
 
   return {

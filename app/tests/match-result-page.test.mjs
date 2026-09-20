@@ -26,7 +26,7 @@ test('resolveMatchRankingRightsSummary marks highlights as recorded only when no
 
   assert.equal(summary.countedInRanking, false)
   assert.equal(summary.badgeText, '高光仅记录')
-  assert.match(summary.description, /普通用户高光会保留记录，会员用户才会按等级倍率计入/)
+  assert.match(summary.description, /普通用户高光会保留记录，VIP用户才会按等级倍率计入/)
 })
 
 test('resolveMatchRankingRightsSummary explains counted member highlights and daily cap clipping', () => {
@@ -36,7 +36,7 @@ test('resolveMatchRankingRightsSummary explains counted member highlights and da
     },
     my_rank_details: [
       { label: '基础分', value: 20 },
-      { label: '会员特殊战绩分', value: 30 },
+      { label: 'VIP特殊战绩分', value: 30 },
       { label: '每日封顶', value: -6 }
     ]
   })
@@ -45,7 +45,7 @@ test('resolveMatchRankingRightsSummary explains counted member highlights and da
   assert.equal(summary.capped, true)
   assert.equal(summary.badgeText, '已计入并触发封顶')
   assert.match(summary.description, /30 分特殊战绩已计入排位/)
-  assert.match(summary.description, /6 分受到会员特殊战绩单日上限影响/)
+  assert.match(summary.description, /6 分受到VIP特殊战绩单日上限影响/)
 })
 
 test('resolveMatchRankingRightsSummary falls back to base-rank explanation without achievements', () => {

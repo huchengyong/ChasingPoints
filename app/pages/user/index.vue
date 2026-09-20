@@ -152,7 +152,7 @@
 					<template v-else>
 						<view class="status-heading">
 							<text class="status-title">{{ statusCard.title }}</text>
-							<view class="status-pill" :class="{ referee: homepageMode === 'ongoing-referee' }">
+							<view v-if="statusCard.statusText" class="status-pill" :class="{ referee: homepageMode === 'ongoing-referee' }">
 								<text>{{ statusCard.statusText }}</text>
 							</view>
 						</view>

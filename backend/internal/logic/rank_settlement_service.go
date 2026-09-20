@@ -187,11 +187,11 @@ func (s *RankSettlementService) SettleWithPolicy(
 		{Label: "基础分", Value: baseScore},
 	}
 	if achievementScore != 0 {
-		label := "会员特殊战绩分"
+		label := "VIP特殊战绩分"
 		details = append(details, types.RankDetail{Label: label, Value: achievementScore})
 	}
 	if memberAchievementCapAdjustment != 0 {
-		details = append(details, types.RankDetail{Label: "会员特殊战绩每日封顶", Value: memberAchievementCapAdjustment})
+		details = append(details, types.RankDetail{Label: "VIP特殊战绩每日封顶", Value: memberAchievementCapAdjustment})
 	}
 	if lossFloorAdjustment != 0 {
 		details = append(details, types.RankDetail{Label: "失败保底", Value: lossFloorAdjustment})

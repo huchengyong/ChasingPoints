@@ -3,7 +3,7 @@
     <el-card class="config-card">
       <template #header>
         <div class="card-header">
-          <span>会员奖励配置</span>
+          <span>VIP奖励配置</span>
         </div>
       </template>
 

@@ -104,16 +104,16 @@ export const resolveMemberRankingRightsCard = (memberStatus = {}, now = new Date
 
   let statusText = '未生效'
   let headline = '普通用户高光只记录，不计入排位'
-  let description = '开通会员后，特殊战绩会按当前会员等级倍率计入排位分。'
+  let description = '开通VIP后，特殊战绩会按当前VIP等级倍率计入排位分。'
 
   if (active) {
     statusText = '权益生效中'
     headline = `当前按 Lv${level} ${levelConfig.percentText} 计入特殊战绩排位分`
-    description = `普通用户高光会保留记录但不计入排位；会员用户会按 Lv${level} 的 ${levelConfig.percentText} 倍率结算高光分，单日最高计入 200 分。`
+    description = `普通用户高光会保留记录但不计入排位；VIP用户会按 Lv${level} 的 ${levelConfig.percentText} 倍率结算高光分，单日最高计入 200 分。`
   } else if (frozen) {
     statusText = '权益已冻结'
     headline = `当前冻结在 Lv${level} ${levelConfig.percentText}`
-    description = `会员已到期，高光仍会记录但不会计入排位；续开后会按 Lv${level} 的 ${levelConfig.percentText} 倍率恢复结算。`
+    description = `VIP已到期，高光仍会记录但不会计入排位；续开后会按 Lv${level} 的 ${levelConfig.percentText} 倍率恢复结算。`
   }
 
   return {
@@ -132,8 +132,8 @@ export const resolveMemberRankingRightsCard = (memberStatus = {}, now = new Date
     })),
     ruleItems: [
       '普通用户高光会正常记录到战报，但不计入排位分。',
-      '会员用户按 Lv1-Lv5 的 100% / 110% / 120% / 130% / 140% 倍率计入特殊战绩分。',
-      `会员特殊战绩排位分仅看每日上限，当日最多计入 ${MEMBER_RANKING_DAILY_CAP} 分。`
+      'VIP用户按 Lv1-Lv5 的 100% / 110% / 120% / 130% / 140% 倍率计入特殊战绩分。',
+      `VIP特殊战绩排位分仅看每日上限，当日最多计入 ${MEMBER_RANKING_DAILY_CAP} 分。`
     ]
   }
 }
@@ -149,7 +149,7 @@ export const resolveAchievementRecords = (achievements = {}) => {
 
 const isAchievementRankDetail = (detail = {}) => {
   const label = typeof detail.label === 'string' ? detail.label : ''
-  return /(会员特殊战绩分|成就奖励|特殊战绩)/.test(label)
+  return /(VIP特殊战绩分|成就奖励|特殊战绩)/.test(label)
 }
 
 const isDailyCapDetail = (detail = {}) => {
@@ -191,7 +191,7 @@ export const resolveMatchRankingRightsSummary = (match = {}) => {
       badgeText: capped ? '已计入并触发封顶' : '高光已计入排位',
       title: capped ? '本场高光已部分计入排位' : '本场高光已计入排位',
       description: capped
-        ? `本场记录了 ${recordText}，其中 ${countedScore} 分特殊战绩已计入排位，另有 ${capReduction} 分受到会员特殊战绩单日上限影响。`
+        ? `本场记录了 ${recordText}，其中 ${countedScore} 分特殊战绩已计入排位，另有 ${capReduction} 分受到VIP特殊战绩单日上限影响。`
         : `本场记录了 ${recordText}，特殊战绩分已计入排位，具体结算以排位变化明细为准。`,
       tone: capped ? 'gold' : 'emerald',
       countedInRanking: true,
@@ -203,7 +203,7 @@ export const resolveMatchRankingRightsSummary = (match = {}) => {
   return {
     badgeText: '高光仅记录',
     title: '本场高光未计入排位',
-    description: `本场记录了 ${recordText}，但这场排位未计入高光分。普通用户高光会保留记录，会员用户才会按等级倍率计入。`,
+    description: `本场记录了 ${recordText}，但这场排位未计入高光分。普通用户高光会保留记录，VIP用户才会按等级倍率计入。`,
     tone: 'blue',
     countedInRanking: false,
     capped: false,

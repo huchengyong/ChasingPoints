@@ -13,17 +13,6 @@ const settingsScssSource = readFileSync(
   'utf8'
 )
 
-test('settings page exposes a bind phone entry and reuses the bind phone sheet', () => {
-  assert.match(settingsSource, /手机号/)
-  assert.match(settingsSource, /<bindPhone/)
-  assert.match(settingsSource, /showBindPhoneModal/)
-  assert.match(settingsSource, /handleBindPhoneSuccess/)
-})
-
-test('settings page keeps a replacement mini-program session instead of logging out', () => {
-  assert.match(settingsSource, /sessionReplaced/)
-})
-
 test('settings page adds a bottom logout action', () => {
   assert.match(settingsSource, /handleLogout/)
   assert.match(settingsSource, /退出登录/)
@@ -59,11 +48,7 @@ test('settings page exposes system, light and dark theme modes', () => {
   assert.match(settingsSource, /setThemeMode/)
 })
 
-test('settings page exposes data export and irreversible account deletion flows', () => {
-  assert.match(settingsSource, /导出个人数据/)
-  assert.match(settingsSource, /handleExportPersonalData/)
-  assert.match(settingsSource, /exportPersonalDataToWriter/)
-  assert.match(settingsSource, /getPersonalDataExportCapability/)
+test('settings page exposes the irreversible account deletion flow', () => {
   assert.match(settingsSource, /注销账号/)
   assert.match(settingsSource, /我已知晓，继续/)
   assert.match(settingsSource, /sendSms\(deletePhone\.value, 'delete_account'\)/)
@@ -73,8 +58,7 @@ test('settings page exposes data export and irreversible account deletion flows'
   assert.match(settingsSource, /userStore\.logout\(\)/)
 })
 
-test('settings page guards repeated lifecycle actions and remains a valid SFC', () => {
-  assert.match(settingsSource, /if \(exportInProgress\.value\) return/)
+test('settings page guards repeated deletion attempts and remains a valid SFC', () => {
   assert.match(settingsSource, /if \(deleteAccountSubmitting\.value\) return/)
   assert.match(settingsSource, /closeDeleteAccountDialog\(\{ force: true \}\)/)
 

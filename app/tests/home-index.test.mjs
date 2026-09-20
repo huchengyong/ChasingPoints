@@ -192,6 +192,8 @@ test('newcomer and idle cards share actions but use different copy', () => {
 
   assert.match(newcomer.title, /第一场/)
   assert.match(idle.title, /还没开杆/)
+  assert.equal(newcomer.statusText, '')
+  assert.equal(idle.statusText, '')
   assert.equal(newcomer.action, 'start')
   assert.equal(idle.secondaryAction, 'show_pk_code')
 })
@@ -393,8 +395,8 @@ test('formatHomeVenueDistance keeps home cards compact', () => {
 
 test('home nearby venue empty action mentions member reward only when activity is enabled', () => {
   assert.deepEqual(resolveHomeVenueEmptyAction({ enabled: true }), {
-    text: '添加球馆领取会员',
-    desc: '你可以提交常玩球馆，审核通过后会员会自动到账。',
+    text: '添加球馆领取VIP',
+    desc: '你可以提交常玩球馆，审核通过后VIP会自动到账。',
     url: '/subPages/venue/submit'
   })
   assert.deepEqual(resolveHomeVenueEmptyAction({ enabled: false }), {

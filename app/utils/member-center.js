@@ -146,9 +146,9 @@ const resolveComplianceMemberEntryCard = (expiresAtText, isActive) => {
   if (isActive) {
     return {
       visible: true,
-      eyebrow: '会员权益',
-      statusText: '会员权益中',
-      title: '会员权益已生效',
+      eyebrow: 'VIP权益',
+      statusText: 'VIP权益中',
+      title: 'VIP权益已生效',
       description: '查看当前权益明细和有效期。',
       actionText: '查看权益',
       priceText: ''
@@ -158,10 +158,10 @@ const resolveComplianceMemberEntryCard = (expiresAtText, isActive) => {
   if (expiresAtText) {
     return {
       visible: true,
-      eyebrow: '会员权益',
+      eyebrow: 'VIP权益',
       statusText: '已结束',
-      title: '获赠会员已结束',
-      description: `上次获赠会员有效期到 ${expiresAtText}，新的权益到账后会继续展示。`,
+      title: '获赠VIP已结束',
+      description: `上次获赠VIP有效期到 ${expiresAtText}，新的权益到账后会继续展示。`,
       actionText: '查看权益',
       priceText: ''
     }
@@ -189,10 +189,10 @@ export const resolveMemberEntryCard = (memberStatus = {}, now = new Date(), opti
   if (isActive) {
     return {
       visible: true,
-      eyebrow: '会员中心',
-      statusText: '会员中',
-      title: `会员有效期至 ${expiresAtText}`,
-      description: '当前会员已生效，可随时续费顺延时长。',
+      eyebrow: 'VIP中心',
+      statusText: 'VIP中',
+      title: `VIP有效期至 ${expiresAtText}`,
+      description: '当前VIP已生效，可随时续费顺延时长。',
       actionText: '立即续费',
       priceText: '月卡 ¥19'
     }
@@ -201,10 +201,10 @@ export const resolveMemberEntryCard = (memberStatus = {}, now = new Date(), opti
   if (expiresAtText) {
     return {
       visible: true,
-      eyebrow: '会员中心',
+      eyebrow: 'VIP中心',
       statusText: '已到期',
-      title: '会员已到期',
-      description: `上次会员有效期到 ${expiresAtText}，现在可以继续续费。`,
+      title: 'VIP已到期',
+      description: `上次VIP有效期到 ${expiresAtText}，现在可以继续续费。`,
       actionText: '立即续费',
       priceText: '月卡 ¥19'
     }
@@ -212,10 +212,10 @@ export const resolveMemberEntryCard = (memberStatus = {}, now = new Date(), opti
 
   return {
     visible: true,
-    eyebrow: '会员中心',
+    eyebrow: 'VIP中心',
     statusText: '未开通',
-    title: '月卡会员',
-    description: '开通后即可在这里查看会员状态，并随时继续订阅。',
+    title: '月卡VIP',
+    description: '开通后即可在这里查看VIP状态，并随时继续订阅。',
     actionText: '立即开通',
     priceText: '月卡 ¥19'
   }
@@ -234,8 +234,8 @@ export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date(), 
   if (complianceMode) {
     if (isActive) {
       return {
-        statusText: '会员权益中',
-        title: '获赠会员权益已生效',
+        statusText: 'VIP权益中',
+        title: '获赠VIP权益已生效',
         description: `当前有效期至 ${expiresAtText}，新的系统奖励或活动奖励也会继续同步到这里。`,
         primaryActionText: '查看权益'
       }
@@ -244,15 +244,15 @@ export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date(), 
     if (expiresAtText) {
       return {
         statusText: '已结束',
-        title: '获赠会员权益已结束',
-        description: `上次获赠会员有效期到 ${expiresAtText}，如后续继续发放，会在这里展示最新状态。`,
+        title: '获赠VIP权益已结束',
+        description: `上次获赠VIP有效期到 ${expiresAtText}，如后续继续发放，会在这里展示最新状态。`,
         primaryActionText: '查看权益'
       }
     }
 
     return {
       statusText: '待发放',
-      title: '会员权益等待发放',
+      title: 'VIP权益等待发放',
       description: '新用户注册奖励或活动奖励到账后，无需订阅或支付，会自动更新这里的状态。',
       primaryActionText: '查看权益'
     }
@@ -260,9 +260,9 @@ export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date(), 
 
   if (isActive) {
     return {
-      statusText: '会员中',
-      title: '月卡会员生效中',
-      description: `当前有效期至 ${expiresAtText}，会员成长 ${growthStatus}，高光排位按 ${rankingRightsCard.levelLabel} ${rankingRightsCard.currentPercentText} 计入。`,
+      statusText: 'VIP中',
+      title: '月卡VIP生效中',
+      description: `当前有效期至 ${expiresAtText}，VIP成长 ${growthStatus}，高光排位按 ${rankingRightsCard.levelLabel} ${rankingRightsCard.currentPercentText} 计入。`,
       primaryActionText: '立即续费'
     }
   }
@@ -271,18 +271,18 @@ export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date(), 
     const hasGrowthProgress = growthPoints > 0 || currentLevel.level > 1 || Boolean(memberStatus.growth_frozen)
     return {
       statusText: '已到期',
-      title: '会员已到期',
+      title: 'VIP已到期',
       description: hasGrowthProgress
-        ? `上次会员有效期到 ${expiresAtText}，当前成长 Lv${currentLevel.level} 已冻结，续开后恢复继续成长；高光排位权益会按 ${rankingRightsCard.levelLabel} ${rankingRightsCard.currentPercentText} 恢复。`
-        : `上次会员有效期到 ${expiresAtText}，续费后会从当前时间重新开始计算。`,
+        ? `上次VIP有效期到 ${expiresAtText}，当前成长 Lv${currentLevel.level} 已冻结，续开后恢复继续成长；高光排位权益会按 ${rankingRightsCard.levelLabel} ${rankingRightsCard.currentPercentText} 恢复。`
+        : `上次VIP有效期到 ${expiresAtText}，续费后会从当前时间重新开始计算。`,
       primaryActionText: '立即续费'
     }
   }
 
   return {
     statusText: '未开通',
-    title: '开通月卡会员',
-    description: '目前先开放月卡订阅，开通后完成真实对局可累计会员成长，高光会按会员等级计入排位。',
+    title: '开通月卡VIP',
+    description: '目前先开放月卡订阅，开通后完成真实对局可累计VIP成长，高光会按VIP等级计入排位。',
     primaryActionText: '立即开通'
   }
 }
@@ -299,8 +299,8 @@ export const resolveMemberGrowthCard = (memberStatus = {}, now = new Date()) => 
   const hasGrowthProfile = frozen || growthPoints > 0 || todayGrowthCount > 0
 
   let statusText = '待开启'
-  let description = '开通会员后，完成真实对局可累计成长。'
-  let nextLevelText = '开通会员后，完成真实对局可累计成长'
+  let description = '开通VIP后，完成真实对局可累计成长。'
+  let nextLevelText = '开通VIP后，完成真实对局可累计成长'
 
   if (isActive) {
     statusText = '成长中'
@@ -310,7 +310,7 @@ export const resolveMemberGrowthCard = (memberStatus = {}, now = new Date()) => 
       : '当前已达到最高成长等级'
   } else if (frozen && hasGrowthProfile) {
     statusText = '成长已冻结'
-    description = `会员已于 ${expiresAtText} 到期，当前成长已冻结，续开后恢复继续成长。`
+    description = `VIP已于 ${expiresAtText} 到期，当前成长已冻结，续开后恢复继续成长。`
     nextLevelText = nextLevel
       ? `续开后，再完成 ${remainingPoints} 场可升到 Lv${nextLevel.level}`
       : '续开后继续保留当前最高成长等级'

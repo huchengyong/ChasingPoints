@@ -65,7 +65,7 @@ func (l *CreateMemberSubscriptionOrderLogic) CreateMemberSubscriptionOrder(req *
 	if !ok {
 		return &types.CreateMemberSubscriptionOrderResp{
 			Success: false,
-			Message: "会员套餐不存在",
+			Message: "VIP套餐不存在",
 		}, nil
 	}
 

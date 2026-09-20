@@ -32,14 +32,14 @@
             {{ row.ban_until || '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="member_status" label="会员状态" width="110">
+        <el-table-column prop="member_status" label="VIP状态" width="110">
           <template #default="{ row }">
             <el-tag :type="resolveMemberTagType(row.member_status)">
               {{ row.member_status || '未开通' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="member_expires_at" label="会员到期时间" width="170">
+        <el-table-column prop="member_expires_at" label="VIP到期时间" width="170">
           <template #default="{ row }">
             {{ row.member_expires_at || '-' }}
           </template>
@@ -138,7 +138,7 @@ const handlePageChange = (val: number) => {
 }
 
 const resolveMemberTagType = (memberStatus: string) => {
-  if (memberStatus === '会员中') return 'warning'
+  if (memberStatus === 'VIP中') return 'warning'
   if (memberStatus === '已到期') return 'info'
   return undefined
 }

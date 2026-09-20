@@ -33,7 +33,7 @@ func DisabledFeatureMessage(feature string) string {
 	case "social":
 		return "当前版本暂未开放动态互动功能"
 	case "member_payment":
-		return "当前版本暂未开放会员订阅"
+		return "当前版本暂未开放VIP订阅"
 	case "tournament_user_action":
 		return "当前版本暂未开放用户赛事操作"
 	default:

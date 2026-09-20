@@ -88,13 +88,13 @@ const routes = [
         path: 'settings/member-rewards',
         name: 'MemberRewardSettings',
         component: () => import('@/views/config/member-rewards.vue'),
-        meta: { title: '会员奖励配置', parent: '/settings' }
+        meta: { title: 'VIP奖励配置', parent: '/settings' }
       },
       {
         path: 'settings/member-ranking-rights',
         name: 'MemberRankingRightsSettings',
         component: () => import('@/views/config/member-ranking-rights.vue'),
-        meta: { title: '会员排位权益配置', parent: '/settings' }
+        meta: { title: 'VIP排位权益配置', parent: '/settings' }
       },
       {
         path: 'settings/reputation',

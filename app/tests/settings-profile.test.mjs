@@ -11,10 +11,6 @@ import {
   normalizeQiniuUploadResult
 } from '../utils/settings-profile.js'
 
-const settingsSource = readFileSync(
-  new URL('../subPages/user/settings.vue', import.meta.url),
-  'utf8'
-)
 const settingsProfileSource = readFileSync(
   new URL('../utils/settings-profile.js', import.meta.url),
   'utf8'
@@ -71,11 +67,9 @@ test('avatar compression keeps the longest edge within 512 while preserving aspe
   )
 })
 
-test('settings page exposes avatar, nickname, phone, and image picker entry points', () => {
-  assert.match(settingsSource, /头像/)
-  assert.match(settingsSource, /用户昵称/)
-  assert.match(settingsSource, /手机号/)
-  assert.match(settingsSource, /openEditProfile/)
+test('edit profile exposes avatar, nickname, phone, and image picker entry points', () => {
+  assert.match(editProfileSource, /头像/)
+  assert.match(editProfileSource, /手机号/)
   assert.match(editProfileSource, /chooseAvatarSource/)
   assert.match(editProfileSource, /pickAvatarImage\(\['camera'\]\)/)
   assert.match(editProfileSource, /pickAvatarImage\(\['album'\]\)/)

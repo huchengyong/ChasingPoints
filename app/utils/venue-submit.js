@@ -35,6 +35,6 @@ export const resolveVenueSubmitCopy = (missingRequiredLabels = []) => {
 
   return {
     title: '确认常玩球馆后提交',
-    tip: '首次有效补充并审核通过，送 1 个月会员。'
+    tip: '首次有效补充并审核通过，送 1 个月VIP。'
   }
 }

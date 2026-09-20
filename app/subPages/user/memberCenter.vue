@@ -3,7 +3,7 @@
 		<view class="member-center-scroll">
 			<view class="member-hero">
 				<view class="member-hero-head">
-					<text class="member-hero-eyebrow">{{ isComplianceMode ? '会员权益' : '会员中心' }}</text>
+					<text class="member-hero-eyebrow">{{ isComplianceMode ? 'VIP权益' : 'VIP中心' }}</text>
 					<text class="member-hero-status">{{ summary.statusText }}</text>
 				</view>
 				<text class="member-hero-title">{{ summary.title }}</text>
@@ -13,7 +13,7 @@
 			<view class="member-section member-growth-section">
 				<view class="member-section-head member-growth-head">
 					<view class="member-growth-head-copy">
-						<text class="member-section-title">会员成长</text>
+						<text class="member-section-title">VIP成长</text>
 						<text class="member-growth-status">{{ growthCard.statusText }}</text>
 					</view>
 					<text class="member-growth-level">{{ growthCard.levelLabel }}</text>
@@ -130,14 +130,14 @@
 					<text class="member-section-title">{{ isComplianceMode ? '权益说明' : '订阅说明' }}</text>
 				</view>
 				<view class="tips-card">
-					<text v-if="isComplianceMode" class="tips-item">新用户注册会直接获赠会员奖励，前台会自动同步会员状态。</text>
-					<text v-if="isComplianceMode" class="tips-item">补充常玩球馆并审核通过后，还可继续获赠会员，无需订阅或支付。</text>
-					<text v-if="!isComplianceMode" class="tips-item">支付成功后会自动更新会员状态。</text>
-					<text v-if="!isComplianceMode" class="tips-item">如果你当前会员仍在有效期内，续费会在现有到期时间基础上顺延。</text>
-					<text class="tips-item">会员成长只统计真实完赛对局，每完成 1 场记 1 点成长，每天最多计入 5 场。</text>
-					<text class="tips-item">会员到期后成长会冻结但保留，续开会员后会从原进度继续成长。</text>
-					<text class="tips-item">普通用户高光会保留记录但不计入排位；会员按当前等级倍率计入特殊战绩排位分。</text>
-					<text class="tips-item">会员特殊战绩排位分仅保留单日上限，当日最多计入 200 分。</text>
+					<text v-if="isComplianceMode" class="tips-item">新用户注册会直接获赠VIP奖励，前台会自动同步VIP状态。</text>
+					<text v-if="isComplianceMode" class="tips-item">补充常玩球馆并审核通过后，还可继续获赠VIP，无需订阅或支付。</text>
+					<text v-if="!isComplianceMode" class="tips-item">支付成功后会自动更新VIP状态。</text>
+					<text v-if="!isComplianceMode" class="tips-item">如果你当前VIP仍在有效期内，续费会在现有到期时间基础上顺延。</text>
+					<text class="tips-item">VIP成长只统计真实完赛对局，每完成 1 场记 1 点成长，每天最多计入 5 场。</text>
+					<text class="tips-item">VIP到期后成长会冻结但保留，续开VIP后会从原进度继续成长。</text>
+					<text class="tips-item">普通用户高光会保留记录但不计入排位；VIP按当前等级倍率计入特殊战绩排位分。</text>
+					<text class="tips-item">VIP特殊战绩排位分仅保留单日上限，当日最多计入 200 分。</text>
 					<text class="tips-item">所有展示时间统一按 UTC+8 显示。</text>
 				</view>
 			</view>
@@ -227,10 +227,10 @@ const loadData = async ({ force = false } = {}) => {
 			selectedPlanCode.value = plans.value[0].plan_code
 		}
 	} catch (error) {
-		console.error('加载会员中心失败:', error)
+		console.error('加载VIP中心失败:', error)
 		if (!memberStatus.value && !plans.value.length) {
 			uni.showToast({
-				title: '加载会员中心失败',
+				title: '加载VIP中心失败',
 				icon: 'none'
 			})
 		}
@@ -314,7 +314,7 @@ const requestAppPayment = (orderRes) => {
 const handleSubmit = async () => {
 	if (isComplianceMode) {
 		uni.showToast({
-			title: '当前仅展示会员权益',
+			title: '当前仅展示VIP权益',
 			icon: 'none'
 		})
 		return
@@ -342,7 +342,7 @@ const handleSubmit = async () => {
 		await requestAppPayment(orderRes)
 
 		uni.showLoading({
-			title: '同步会员状态...'
+			title: '同步VIP状态...'
 		})
 
 		const finalStatus = await pollOrderStatus(orderRes.order_no)
@@ -352,7 +352,7 @@ const handleSubmit = async () => {
 			userOverviewStore.markDirty()
 			await loadData({ force: true })
 			uni.showToast({
-				title: '会员已开通',
+				title: 'VIP已开通',
 				icon: 'success'
 			})
 			return
@@ -364,7 +364,7 @@ const handleSubmit = async () => {
 		})
 	} catch (error) {
 		uni.hideLoading()
-		console.error('会员支付失败:', error)
+		console.error('VIP支付失败:', error)
 		const errMsg = String(error?.errMsg || error?.message || '')
 		uni.showToast({
 			title: /cancel/i.test(errMsg) ? '已取消支付' : (error.message || '支付失败'),

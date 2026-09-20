@@ -4,8 +4,8 @@
       <template #header>
         <div class="card-header">
           <div>
-            <span>会员排位权益配置</span>
-            <div class="card-subtitle">独立维护会员成长 MVP 与会员排位权益 V2，旧会员奖励配置页保持不变。</div>
+            <span>VIP排位权益配置</span>
+            <div class="card-subtitle">独立维护VIP成长 MVP 与VIP排位权益 V2，旧VIP奖励配置页保持不变。</div>
           </div>
           <div v-if="config.updated_at" class="update-meta">最近更新：{{ config.updated_at }}</div>
         </div>
@@ -17,7 +17,7 @@
         class="config-form"
         v-loading="configLoading"
       >
-        <div class="config-section-title">会员成长 MVP</div>
+        <div class="config-section-title">VIP成长 MVP</div>
         <div class="config-grid">
           <el-form-item label="每场成长值">
             <el-input-number v-model="config.growth_rules.points_per_completed_match" :min="1" :max="100" />
@@ -54,7 +54,7 @@
 
         <el-divider />
 
-        <div class="config-section-title">会员排位权益 V2</div>
+        <div class="config-section-title">VIP排位权益 V2</div>
         <div class="config-grid">
           <el-form-item label="普通用户计入特殊战绩">
             <el-switch v-model="config.ranking_rights_rules.ordinary_user_can_gain_achievement_rank_score" />
@@ -101,7 +101,7 @@
           </el-form-item>
         </div>
 
-        <div class="nested-section-title">会员等级倍率</div>
+        <div class="nested-section-title">VIP等级倍率</div>
         <div class="config-grid">
           <el-form-item label="Lv1">
             <el-input-number v-model="config.ranking_rights_rules.level_multipliers.lv1" :min="0" :max="1000" />
@@ -140,7 +140,7 @@
           <el-alert
             type="info"
             :closable="false"
-            title="会员特殊战绩排位分默认仅胜方可得，且只有单日上限，没有单场上限。"
+            title="VIP特殊战绩排位分默认仅胜方可得，且只有单日上限，没有单场上限。"
           />
         </div>
 
@@ -219,7 +219,7 @@ const fetchConfig = async () => {
     const res = await getMemberRightsConfig()
     assignConfig(res)
   } catch (error: any) {
-    ElMessage.error(error.message || '获取会员排位权益配置失败')
+    ElMessage.error(error.message || '获取VIP排位权益配置失败')
   } finally {
     configLoading.value = false
   }
@@ -234,7 +234,7 @@ const validateConfig = () => {
     thresholds.lv4 <= thresholds.lv3 ||
     thresholds.lv5 <= thresholds.lv4
   ) {
-    ElMessage.error('会员成长等级门槛必须严格递增，且 Lv1 固定为 0')
+    ElMessage.error('VIP成长等级门槛必须严格递增，且 Lv1 固定为 0')
     return false
   }
 
@@ -245,7 +245,7 @@ const validateConfig = () => {
     multipliers.lv4 < multipliers.lv3 ||
     multipliers.lv5 < multipliers.lv4
   ) {
-    ElMessage.error('会员等级倍率必须按 Lv1 到 Lv5 非递减')
+    ElMessage.error('VIP等级倍率必须按 Lv1 到 Lv5 非递减')
     return false
   }
 
@@ -263,10 +263,10 @@ const handleSave = async () => {
   configSaving.value = true
   try {
     const res = await updateMemberRightsConfig(config)
-    ElMessage.success(res.message || '会员排位权益配置已保存')
+    ElMessage.success(res.message || 'VIP排位权益配置已保存')
     await fetchConfig()
   } catch (error: any) {
-    ElMessage.error(error.message || '保存会员排位权益配置失败')
+    ElMessage.error(error.message || '保存VIP排位权益配置失败')
   } finally {
     configSaving.value = false
   }

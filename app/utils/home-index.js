@@ -123,8 +123,8 @@ export const resolveHomeVenueEmptyAction = (rewardStatus) => {
   const rewardEnabled = rewardStatus?.enabled === true
 
   return {
-    text: rewardEnabled ? '添加球馆领取会员' : '添加附近球馆',
-    desc: rewardEnabled ? '你可以提交常玩球馆，审核通过后会员会自动到账。' : '你可以提交常去球馆，审核通过后会展示给附近球友。',
+    text: rewardEnabled ? '添加球馆领取VIP' : '添加附近球馆',
+    desc: rewardEnabled ? '你可以提交常玩球馆，审核通过后VIP会自动到账。' : '你可以提交常去球馆，审核通过后会展示给附近球友。',
     url: '/subPages/venue/submit'
   }
 }

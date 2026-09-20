@@ -49,7 +49,7 @@ func MemberPlans() []MemberPlan {
 	return []MemberPlan{
 		{
 			Code:         memberMonthlyPlanCode,
-			Name:         "月卡会员",
+			Name:         "月卡VIP",
 			PriceFen:     1900,
 			DurationDays: 30,
 			Description:  "APP 端月卡订阅，支付成功后立即生效。",

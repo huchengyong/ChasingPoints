@@ -103,14 +103,16 @@ test('Harmony native icon and splash resources should be complete', () => {
 	})
 	assert.ok(colors.color.some((color) => color.name === 'start_window_background'), '缺少 Harmony 启动页背景色')
 
-	for (const relativePath of [
-		`${resourceRoot}/media/icon_background.png`,
-		`${resourceRoot}/media/icon_foreground.png`,
-		`${resourceRoot}/media/startIcon.png`
-	]) {
+	// 2026-08-26 品牌资产升级：分层图标采用 DevEco 标准的 1024×1024，启动图为定制尺寸
+	const expectedDimensions = {
+		[`${resourceRoot}/media/icon_background.png`]: [1024, 1024],
+		[`${resourceRoot}/media/icon_foreground.png`]: [1024, 1024],
+		[`${resourceRoot}/media/startIcon.png`]: [1316, 2832]
+	}
+	for (const [relativePath, [expectedWidth, expectedHeight]] of Object.entries(expectedDimensions)) {
 		assert.equal(existsSync(new URL(`../${relativePath}`, import.meta.url)), true, `缺少 Harmony 资源：${relativePath}`)
 		const { width, height } = readPngDimensions(relativePath)
-		assert.equal(width, 192, `${relativePath} 宽度不匹配`)
-		assert.equal(height, 192, `${relativePath} 高度不匹配`)
+		assert.equal(width, expectedWidth, `${relativePath} 宽度不匹配`)
+		assert.equal(height, expectedHeight, `${relativePath} 高度不匹配`)
 	}
 })
