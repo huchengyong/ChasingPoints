@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import {
   DEFAULT_EVENT_COVER,
   DEFAULT_PLAYER_AVATAR,
+  OFFICIAL_PLAYER_AVATAR_PLACEHOLDER,
   buildSaiXunDetailRounds,
   buildSaiXunHeroStats,
   formatEventDateRange,
@@ -138,6 +139,7 @@ test('buildSaiXunDetailRounds prioritizes live and upcoming rounds while hiding 
       start_time: '2026-04-03T20:00:00+08:00',
       status: 0,
       best_of: 19,
+      source_type: 'official',
       home_player_name: 'Judd Trump',
       away_player_name: '待定',
       home_player_avatar: 'https://cdn.example.com/wst/players/trump.png',
@@ -158,7 +160,7 @@ test('buildSaiXunDetailRounds prioritizes live and upcoming rounds while hiding 
   assert.equal(rounds[0].roundName, '半决赛')
   assert.equal(rounds[1].roundName, '四分之一决赛')
   assert.equal(rounds[0].matches[0].homePlayerAvatar, 'https://cdn.example.com/wst/players/trump.png')
-  assert.equal(rounds[0].matches[0].awayPlayerAvatar, DEFAULT_PLAYER_AVATAR)
+  assert.equal(rounds[0].matches[0].awayPlayerAvatar, OFFICIAL_PLAYER_AVATAR_PLACEHOLDER)
   assert.equal(rounds[1].matches[0].scoreText, '10 : 8')
   assert.equal(rounds[1].matches[0].homeResultText, '胜')
   assert.equal(rounds[1].matches[0].awayResultText, '败')
@@ -173,6 +175,23 @@ test('buildSaiXunDetailRounds prioritizes live and upcoming rounds while hiding 
   assert.equal(rounds[1].matches[0].awayPlayerCountryCode, 'gb-eng')
   assert.deepEqual(rounds[1].matches[0].awayPlayerFlag, { type: 'image', value: '/static/flags/eng.png' })
   assert.equal(rounds.some((round) => round.roundName === '决赛'), false)
+})
+
+test('official matches use the official avatar placeholder while platform ones keep the app avatar', () => {
+  const base = {
+    id: 1,
+    round_name: 'Round 1',
+    round_order: 1,
+    match_order: 1,
+    status: 2
+  }
+  const official = buildSaiXunDetailRounds([{ ...base, source_type: 'official' }], Date.now())
+  const platform = buildSaiXunDetailRounds([{ ...base, source_type: '' }], Date.now())
+
+  assert.equal(official[0].matches[0].homePlayerAvatar, OFFICIAL_PLAYER_AVATAR_PLACEHOLDER)
+  assert.equal(official[0].matches[0].awayPlayerAvatar, OFFICIAL_PLAYER_AVATAR_PLACEHOLDER)
+  assert.equal(platform[0].matches[0].homePlayerAvatar, DEFAULT_PLAYER_AVATAR)
+  assert.equal(platform[0].matches[0].awayPlayerAvatar, DEFAULT_PLAYER_AVATAR)
 })
 
 test('buildSaiXunDetailRounds promotes overdue scheduled matches to live status', () => {

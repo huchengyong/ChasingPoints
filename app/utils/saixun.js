@@ -4,6 +4,8 @@ import { DEFAULT_USER_AVATAR } from './user-profile.js'
 
 export const DEFAULT_EVENT_COVER = '/static/images/default-event-cover.png'
 export const DEFAULT_PLAYER_AVATAR = DEFAULT_USER_AVATAR
+// 官方赛讯球员无头像时的中性占位图（WST 官方风格剪影），不用平台自定义台球头像
+export const OFFICIAL_PLAYER_AVATAR_PLACEHOLDER = '/static/images/wst-player-placeholder.png'
 
 const MATCH_ACTIVE_STATUSES = new Set([0, 1])
 const MATCH_LIVE_FALLBACK_WINDOW_MS = 12 * 60 * 60 * 1000
@@ -365,6 +367,10 @@ const normalizeSaiXunMatch = (match = {}, now = Date.now()) => {
   const effectiveStatus = resolveEffectiveMatchStatus(match, startAt, now)
   const homePlayerParts = resolvePlayerTextParts(match.home_player_first_name, match.home_player_last_name, match.home_player_name || '待定')
   const awayPlayerParts = resolvePlayerTextParts(match.away_player_first_name, match.away_player_last_name, match.away_player_name || '待定')
+  // 官方赛事球员不用平台自定义风格头像，缺头像时用中性官方占位图
+  const playerAvatarFallback = match.source_type === 'official'
+    ? OFFICIAL_PLAYER_AVATAR_PLACEHOLDER
+    : DEFAULT_PLAYER_AVATAR
   return {
     id: match.id,
     roundName: standardizeRoundText(match.round_name) || '轮次待更新',
@@ -383,7 +389,7 @@ const normalizeSaiXunMatch = (match = {}, now = Date.now()) => {
       sanitizeFlagEmoji(match.home_player_flag_emoji),
       (match.home_player_country_code || '').trim().toLowerCase()
     ),
-    homePlayerAvatar: match.home_player_avatar || DEFAULT_PLAYER_AVATAR,
+    homePlayerAvatar: match.home_player_avatar || playerAvatarFallback,
     homeResultText: buildPlayerResultText(match.winner_side, 1),
     awayPlayerName: match.away_player_name || '待定',
     awayPlayerFirstName: awayPlayerParts.firstName,
@@ -394,7 +400,7 @@ const normalizeSaiXunMatch = (match = {}, now = Date.now()) => {
       sanitizeFlagEmoji(match.away_player_flag_emoji),
       (match.away_player_country_code || '').trim().toLowerCase()
     ),
-    awayPlayerAvatar: match.away_player_avatar || DEFAULT_PLAYER_AVATAR,
+    awayPlayerAvatar: match.away_player_avatar || playerAvatarFallback,
     awayResultText: buildPlayerResultText(match.winner_side, 2),
     scoreText: buildScoreText(match),
     winnerSide: Number(match.winner_side || 0),
