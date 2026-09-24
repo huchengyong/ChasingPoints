@@ -6,6 +6,27 @@ type SnookerRoundState struct {
 	ClearedColors          []int `json:"cleared_colors"`
 	ExpectedClearanceScore int   `json:"expected_clearance_score"`
 	ClearanceCompleted     bool  `json:"clearance_completed"`
+
+	RulesVersion           int    `json:"rules_version"`
+	RoundNo                int    `json:"round_no"`
+	Phase                  string `json:"phase"`
+	BallOn                 string `json:"ball_on"`
+	Striker                int    `json:"striker"`
+	StartingActor          int    `json:"starting_actor"`
+	VisitNo                int    `json:"visit_no"`
+	CurrentBreak           int    `json:"current_break"`
+	RedsRemaining          int    `json:"reds_remaining"`
+	FreeBallAvailable      bool   `json:"free_ball_available"`
+	CueBallInHand          bool   `json:"cue_ball_in_hand"`
+	MissSequenceCount      int    `json:"miss_sequence_count"`
+	MissWarningActive      bool   `json:"miss_warning_active"`
+	PendingConcessionActor int    `json:"pending_concession_actor"`
+	PendingConcessionScope string `json:"pending_concession_scope"`
+	FrameEnded             bool   `json:"frame_ended"`
+	FrameWinner            int    `json:"frame_winner"`
+	FrameEndReason         string `json:"frame_end_reason"`
+	Player1Score           int    `json:"player1_score"`
+	Player2Score           int    `json:"player2_score"`
 }
 
 func BuildSnookerRoundState(actions []MatchAction, roundNo int) SnookerRoundState {

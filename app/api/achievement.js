@@ -13,6 +13,15 @@ export const getAchievementList = (params = {}) => {
 }
 
 /**
+ * 获取荣誉墙聚合数据
+ * @param {Object} params { user_id, game_type, history_season_id, history_page, history_page_size }
+ * @returns {Promise}
+ */
+export const getHonorWall = (params = {}) => {
+  return get('/api/achievement/honor-wall', params)
+}
+
+/**
  * 装备/卸下称号
  * @param {Object} data { title_id, equip }
  * @returns {Promise}

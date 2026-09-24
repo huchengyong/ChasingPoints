@@ -141,6 +141,12 @@ func (l *StartNextRoundLogic) StartNextRound(req *types.StartNextRoundReq) (resp
 			l.Logger.Errorf("斯诺克当前局尚未结束: matchId=%d, roundNo=%d", match.Id, newRoundNo)
 			return &types.StartNextRoundResp{Success: false}, nil
 		}
+		if isSnookerV2Match(match) {
+			state, stateErr := loadSnookerStateForMatch(l.svcCtx, match, int(roundCount))
+			if stateErr != nil || !state.FrameEnded {
+				return &types.StartNextRoundResp{Success: false}, nil
+			}
+		}
 		match.CurrentFrameStarted = true
 		match.CurrentFrameMyScore = 0
 		match.CurrentFrameOpponentScore = 0
@@ -234,7 +240,23 @@ func (l *StartNextRoundLogic) StartNextRound(req *types.StartNextRoundReq) (resp
 				SnookerClearanceStarted:       false,
 				SnookerClearedColors:          []int{},
 				SnookerExpectedClearanceScore: 0,
-				SnookerClearanceCompleted:     false,
+				SnookerClearanceCompleted:     view.SnookerState.ClearanceCompleted,
+				SnookerRulesVersion:           match.SnookerRulesVersion,
+				BestOfFrames:                  match.BestOfFrames,
+				StartingActor:                 match.StartingActor,
+				SnookerPhase:                  view.SnookerState.Phase,
+				SnookerBallOn:                 view.SnookerState.BallOn,
+				SnookerStriker:                view.SnookerState.Striker,
+				SnookerVisitNo:                view.SnookerState.VisitNo,
+				SnookerCurrentBreak:           view.SnookerState.CurrentBreak,
+				SnookerRedsRemaining:          view.SnookerState.RedsRemaining,
+				SnookerFreeBallAvailable:      view.SnookerState.FreeBallAvailable,
+				SnookerCueBallInHand:          view.SnookerState.CueBallInHand,
+				SnookerMissWarningActive:      view.SnookerState.MissWarningActive,
+				SnookerRespottedBlackPending:  view.SnookerState.Phase == model.SnookerPhaseRespottedBlackPending,
+				SnookerPendingConcessionActor: view.SnookerState.PendingConcessionActor,
+				SnookerPendingConcessionScope: view.SnookerState.PendingConcessionScope,
+				SnookerFrameEndReason:         view.SnookerState.FrameEndReason,
 				Status:                        match.Status,
 			},
 		})

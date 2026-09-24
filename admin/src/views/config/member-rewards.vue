@@ -66,7 +66,7 @@ const rewardConfig = reactive<VenueRewardConfig>({
   enabled: false,
   popup_enabled: false,
   reward_days: 30,
-  welcome_reward_enabled: true,
+  welcome_reward_enabled: false,
   welcome_reward_days: 7,
   start_at: '',
   end_at: ''
@@ -80,7 +80,7 @@ const fetchRewardConfig = async () => {
       rewardConfig.enabled = !!res.enabled
       rewardConfig.popup_enabled = !!res.popup_enabled
       rewardConfig.reward_days = res.reward_days || 30
-      rewardConfig.welcome_reward_enabled = res.welcome_reward_enabled ?? true
+      rewardConfig.welcome_reward_enabled = res.welcome_reward_enabled ?? false
       rewardConfig.welcome_reward_days = res.welcome_reward_days || 7
       rewardConfig.start_at = res.start_at || ''
       rewardConfig.end_at = res.end_at || ''

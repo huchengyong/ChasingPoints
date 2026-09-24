@@ -36,7 +36,16 @@ test('normalizeMatchDetailPayload maps private match detail fields into display 
     status: 2,
     duration_seconds: 0,
     current_round: 1,
-    total_rounds: 0
+    total_rounds: 0,
+    viewer_role: '',
+    referee_bound: false,
+    referee_user_id: 0,
+    referee_name: '',
+    referee_avatar: '',
+    referee_joined_at: '',
+    referee_duration_seconds: 0,
+    completed_by_user_id: 0,
+    completion_source: 'unknown'
   })
   assert.deepEqual(detail.player1Info, {
     name: '张三',
@@ -46,6 +55,29 @@ test('normalizeMatchDetailPayload maps private match detail fields into display 
     name: '李四',
     avatar: 'b.png'
   })
+})
+
+test('normalizeMatchDetailPayload keeps referee identity and completion attribution', () => {
+  const detail = normalizeMatchDetailPayload({
+    player1_score: 5,
+    player2_score: 3,
+    game_type: 3,
+    status: 2,
+    viewer_role: 'referee',
+    referee_bound: true,
+    referee_user_id: 3,
+    referee_name: '裁判丙',
+    referee_avatar: 'referee.png',
+    referee_joined_at: '2026-07-22T14:00:00+08:00',
+    referee_duration_seconds: 600,
+    completed_by_user_id: 3,
+    completion_source: 'referee'
+  })
+
+  assert.equal(detail.matchData.viewer_role, 'referee')
+  assert.equal(detail.matchData.referee_name, '裁判丙')
+  assert.equal(detail.matchData.referee_avatar, 'referee.png')
+  assert.equal(detail.matchData.completion_source, 'referee')
 })
 
 test('normalizeMatchDetailPayload converts public rounds to the requested user perspective', () => {

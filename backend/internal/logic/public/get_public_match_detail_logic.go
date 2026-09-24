@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -32,6 +33,9 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 		l.Logger.Errorf("对局不存在: %v", err)
 		return &types.GetPublicMatchDetailResp{Success: false}, nil
 	}
+	if model.NormalizeMatchVisibility(match.Visibility, match.MatchMode) != model.MatchVisibilityPublic {
+		return &types.GetPublicMatchDetailResp{Success: false}, nil
+	}
 
 	// 查询创建者(player1)信息
 	player1Name := "玩家1"
@@ -50,6 +54,36 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 		if player2, _ := l.svcCtx.UserModel.FindById(*match.OpponentId); player2 != nil {
 			player2Name = player2.Nickname
 			player2Avatar = player2.Avatar
+		}
+	}
+
+	// 裁判信息（仅公开对局可见）
+	refereeBound := match.RefereeUserId != nil && *match.RefereeUserId > 0
+	refereeUserId := int64(0)
+	refereeName := ""
+	refereeAvatar := ""
+	refereeJoinedAt := ""
+	if refereeBound {
+		refereeUserId = *match.RefereeUserId
+		if referee, _ := l.svcCtx.UserModel.FindById(*match.RefereeUserId); referee != nil {
+			refereeName = referee.Nickname
+			refereeAvatar = referee.Avatar
+		}
+		if match.RefereeJoinedAt != nil {
+			refereeJoinedAt = match.RefereeJoinedAt.Format("2006-01-02T15:04:05+08:00")
+		}
+	}
+	completedByUserId, completionSource := resolvePublicCompletionAttribution(match)
+
+	refereeDurationSeconds := int64(0)
+	if refereeBound && match.RefereeJoinedAt != nil {
+		if match.EndTime != nil {
+			refereeDurationSeconds = int64(match.EndTime.Sub(*match.RefereeJoinedAt).Seconds())
+		} else {
+			refereeDurationSeconds = int64(time.Since(*match.RefereeJoinedAt).Seconds())
+		}
+		if refereeDurationSeconds < 0 {
+			refereeDurationSeconds = 0
 		}
 	}
 
@@ -85,32 +119,91 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 	if match.Status != 1 && !match.CurrentFrameStarted {
 		currentRound = totalRounds
 	}
+	snookerState := model.SnookerRoundState{ClearedColors: make([]int, 0, 6)}
+	if match.GameType == 1 {
+		roundNo := int(roundCount) + 1
+		if !match.CurrentFrameStarted && roundCount > 0 {
+			roundNo = int(roundCount)
+		}
+		if actions, actionsErr := l.svcCtx.MatchModel.ListActiveActions(match.Id); actionsErr == nil {
+			if match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA {
+				starter := model.SnookerStartingActor(match.StartingActor, roundNo)
+				if state, replayErr := model.ReplaySnookerRoundV2(actions, roundNo, starter); replayErr == nil {
+					snookerState = state
+				}
+			} else {
+				snookerState = model.BuildSnookerRoundState(actions, roundNo)
+			}
+		}
+	}
 
 	l.Logger.Infof("公开接口获取对局 %d 详情 (观战模式)", match.Id)
 
 	return &types.GetPublicMatchDetailResp{
 		Success: true,
 		Match: &types.PublicMatchDetailData{
-			Id:                       match.Id,
-			GameType:                 match.GameType,
-			Status:                   match.Status,
-			ServerRevision:           match.SyncRevision,
-			Player1Id:                match.UserId,
-			Player1Name:              player1Name,
-			Player1Avatar:            player1Avatar,
-			Player2Id:                player2Id,
-			Player2Name:              player2Name,
-			Player2Avatar:            player2Avatar,
-			Player1Score:             match.MyScore,
-			Player2Score:             match.OpponentScore,
-			CurrentFramePlayer1Score: match.CurrentFrameMyScore,
-			CurrentFramePlayer2Score: match.CurrentFrameOpponentScore,
-			CurrentFrameStarted:      match.CurrentFrameStarted,
-			CurrentRound:             currentRound,
-			TotalRounds:              totalRounds,
-			DurationSeconds:          durationSeconds,
-			Rounds:                   rounds,
-			CreatedAt:                match.CreatedAt.Format("2006-01-02 15:04:05"),
+			Id:                            match.Id,
+			GameType:                      match.GameType,
+			MatchMode:                     model.NormalizeMatchMode(match.MatchMode),
+			Visibility:                    model.NormalizeMatchVisibility(match.Visibility, match.MatchMode),
+			FinishState:                   model.NormalizeFinishState(match.FinishState),
+			Status:                        match.Status,
+			ServerRevision:                match.SyncRevision,
+			Player1Id:                     match.UserId,
+			Player1Name:                   player1Name,
+			Player1Avatar:                 player1Avatar,
+			Player2Id:                     player2Id,
+			Player2Name:                   player2Name,
+			Player2Avatar:                 player2Avatar,
+			RefereeBound:                  refereeBound,
+			RefereeUserId:                 refereeUserId,
+			RefereeName:                   refereeName,
+			RefereeAvatar:                 refereeAvatar,
+			RefereeJoinedAt:               refereeJoinedAt,
+			RefereeDurationSeconds:        refereeDurationSeconds,
+			CompletedByUserId:             completedByUserId,
+			CompletionSource:              completionSource,
+			ViewerRole:                    "spectator",
+			Player1Score:                  match.MyScore,
+			Player2Score:                  match.OpponentScore,
+			CurrentFramePlayer1Score:      match.CurrentFrameMyScore,
+			CurrentFramePlayer2Score:      match.CurrentFrameOpponentScore,
+			CurrentFrameStarted:           match.CurrentFrameStarted,
+			SnookerRulesVersion:           match.SnookerRulesVersion,
+			BestOfFrames:                  match.BestOfFrames,
+			StartingActor:                 match.StartingActor,
+			SnookerPhase:                  snookerState.Phase,
+			SnookerBallOn:                 snookerState.BallOn,
+			SnookerStriker:                snookerState.Striker,
+			SnookerVisitNo:                snookerState.VisitNo,
+			SnookerCurrentBreak:           snookerState.CurrentBreak,
+			SnookerRedsRemaining:          snookerState.RedsRemaining,
+			SnookerFreeBallAvailable:      snookerState.FreeBallAvailable,
+			SnookerCueBallInHand:          snookerState.CueBallInHand,
+			SnookerMissWarningActive:      snookerState.MissWarningActive,
+			SnookerRespottedBlackPending:  snookerState.Phase == model.SnookerPhaseRespottedBlackPending,
+			SnookerPendingConcessionActor: snookerState.PendingConcessionActor,
+			SnookerPendingConcessionScope: snookerState.PendingConcessionScope,
+			SnookerFrameEndReason:         snookerState.FrameEndReason,
+			CurrentRound:                  currentRound,
+			TotalRounds:                   totalRounds,
+			DurationSeconds:               durationSeconds,
+			Rounds:                        rounds,
+			CreatedAt:                     match.CreatedAt.Format("2006-01-02 15:04:05"),
 		},
 	}, nil
+}
+
+func resolvePublicCompletionAttribution(match *model.Match) (int64, string) {
+	if match == nil || match.Status != 2 {
+		return 0, model.CompletionSourceUnknown
+	}
+	completedByUserId := int64(0)
+	if match.CompletedByUserId != nil {
+		completedByUserId = *match.CompletedByUserId
+	}
+	if match.CompletionSource == "" {
+		return completedByUserId, model.CompletionSourceUnknown
+	}
+	return completedByUserId, match.CompletionSource
 }

@@ -75,9 +75,6 @@ func UpsertTournaments(db *gorm.DB, now time.Time, records []TournamentUpsertRec
 					tournament.StartTime = current.StartTime
 					tournament.EndTime = current.EndTime
 					tournament.CreatedAt = current.CreatedAt
-					if strings.TrimSpace(tournament.CoverImage) == "" || tournament.CoverImage == defaultTournamentCoverImage {
-						tournament.CoverImage = firstNonEmptyTournamentField(current.CoverImage, tournament.CoverImage)
-					}
 					tournament.Country = firstNonEmptyTournamentField(tournament.Country, current.Country)
 					tournament.City = firstNonEmptyTournamentField(tournament.City, current.City)
 					tournament.VenueName = firstNonEmptyTournamentField(tournament.VenueName, current.VenueName)

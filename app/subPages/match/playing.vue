@@ -18,7 +18,7 @@
 						<view class="player-compact__main">
 							<view class="player-compact__profile">
 								<view class="avatar-wrapper">
-									<image class="avatar" :src="myInfo.avatar || DEFAULT_AVATAR" mode="aspectFill"></image>
+								<image class="avatar" :src="resolveAvatarUrl(myInfo.avatar, myInfo.userId)" mode="aspectFill"></image>
 								</view>
 								<view class="player-info">
 									<view class="player-name-row">
@@ -49,7 +49,7 @@
 									</view>
 								</view>
 								<view class="avatar-wrapper">
-									<image class="avatar" :src="opponentInfo.avatar || DEFAULT_AVATAR" mode="aspectFill"></image>
+								<image class="avatar" :src="resolveAvatarUrl(opponentInfo.avatar, opponentInfo.userId)" mode="aspectFill"></image>
 								</view>
 							</view>
 							<text class="player-score is-opponent">{{ opponentScore }}</text>
@@ -66,6 +66,10 @@
 				</view>
 				<view class="viewer-banner">
 					<text class="viewer-banner__role">{{ viewerUi.roleLabel }}</text>
+					<view v-if="refereeBound" class="viewer-banner__referee">
+						<image :src="resolveAvatarUrl(refereeAvatar, refereeUserId)" mode="aspectFill"></image>
+						<text>本场裁判：{{ refereeName || '裁判' }}</text>
+					</view>
 					<text v-if="viewerUi.readonlyHint" class="viewer-banner__hint">{{ viewerUi.readonlyHint }}</text>
 					<button
 						v-if="showInviteRefereeAction"
@@ -74,6 +78,19 @@
 					>
 						邀请裁判扫码
 					</button>
+				</view>
+				<view v-if="lastAction?.description" class="last-action-banner">
+					<text class="last-action-banner__label">最近操作</text>
+					<text class="last-action-banner__text">{{ lastAction.description }}</text>
+				</view>
+				<view v-if="finishState === 'pending_confirmation'" class="finish-confirmation-panel">
+					<text class="finish-confirmation-panel__title">排位赛等待确认</text>
+					<text class="finish-confirmation-panel__desc">比分已冻结，请核对后确认或提出异议。</text>
+					<view class="finish-confirmation-panel__actions">
+						<button v-if="canConfirmFinish" class="finish-action finish-action--primary" @click="handleConfirmFinish">确认结束</button>
+						<button v-if="canDisputeFinish" class="finish-action" @click="handleDisputeFinish">提出异议</button>
+						<button v-if="canWithdrawFinish" class="finish-action" @click="handleWithdrawFinish">撤回请求</button>
+					</view>
 				</view>
 				<view v-if="gameType === 1" class="snooker-frame-summary">
 					<view class="snooker-frame-summary__label">
@@ -90,22 +107,156 @@
 						<text class="panel-desc">{{ actionPanelDescription }}</text>
 					</view>
 
-				<view v-if="isRoundWinMode" class="action-grid is-three">
+				<view v-if="isRoundWinMode && isReferee" class="referee-action-groups referee-round-win-groups">
+					<view v-for="group in refereeRoundWinGroups" :key="group.actor" class="action-column">
+						<text :class="['action-column__title', group.actor === 1 ? 'is-me' : 'is-opponent']">{{ group.label }}获胜</text>
+						<view class="action-grid is-three">
+							<button
+								v-for="item in group.options"
+								:key="item.type"
+								:class="['action-btn', group.actor === 1 ? 'action-btn--me' : 'action-btn--opponent']"
+								@click="handleOpponentWin(item.type, item.score, group.actor)"
+							>
+								<text class="action-btn__title">{{ item.title }}</text>
+								<text class="action-btn__desc">{{ item.desc }}</text>
+							</button>
+						</view>
+					</view>
+				</view>
+				<view v-else-if="isRoundWinMode" class="action-grid is-three">
 					<button
 						v-for="item in roundWinActionOptions"
 						:key="item.type"
 						class="action-btn action-btn--opponent"
-						@click="handleOpponentWin(item.type)"
+						@click="handleOpponentWin(item.type, item.score, 2)"
 					>
 						<text class="action-btn__title">{{ item.title }}</text>
 						<text class="action-btn__desc">{{ item.desc }}</text>
 					</button>
 				</view>
 
-				<view v-if="gameType === 1" class="snooker-layout">
+				<view v-if="gameType === 1 && isSnookerV2" class="snooker-v2-layout" data-snooker-v2-panel>
+					<view class="snooker-v2-status">
+						<view class="snooker-v2-status__row">
+							<text class="snooker-v2-status__phase">{{ snookerV2PhaseLabel }}</text>
+							<text class="snooker-v2-status__format">{{ snookerBestOfFrames ? `${snookerBestOfFrames} 局制` : '标准15红球' }}</text>
+						</view>
+						<view class="snooker-v2-status__target">
+							<text>当前击球：{{ snookerV2StrikerLabel }}</text>
+							<text>目标球：{{ snookerV2BallOnLabel }}</text>
+						</view>
+						<view class="snooker-v2-status__meta">
+							<text>红球剩余 {{ snookerV2State.redsRemaining }}</text>
+							<text>第 {{ snookerV2State.visitNo }} 次上手 · 单杆 {{ snookerV2State.currentBreak }}</text>
+						</view>
+						<text v-if="snookerV2State.freeBallAvailable" class="snooker-v2-alert">裁判已宣告自由球</text>
+						<text v-if="snookerV2State.cueBallInHand" class="snooker-v2-alert">母球为D区手中球</text>
+						<text v-if="snookerV2State.missWarningActive" class="snooker-v2-alert is-danger">连续 Miss 警告：再次符合条件的失败将判负本局</text>
+					</view>
+
+					<view v-if="snookerV2State.respottedBlackPending && !snookerV2State.pendingConcessionActor" class="snooker-v2-section">
+						<text class="snooker-v2-section__title">选择重置黑球先打方</text>
+						<view class="snooker-v2-actions is-two">
+							<button class="snooker-v2-action" @click="handleStartRespottedBlack(1)">{{ snookerActorLabel(1) }}先打</button>
+							<button class="snooker-v2-action" @click="handleStartRespottedBlack(2)">{{ snookerActorLabel(2) }}先打</button>
+						</view>
+					</view>
+
+					<view v-else-if="currentFrameStarted && !snookerV2State.pendingConcessionActor" class="snooker-v2-section">
+						<text class="snooker-v2-section__title">记录本杆结果</text>
+						<view class="snooker-v2-pot-grid">
+							<button
+								v-for="item in snookerV2PotOptions"
+								:key="item.key"
+								:class="['snooker-v2-pot', `is-${item.color}`]"
+								@click="handleSnookerV2Pot(item)"
+							>
+								<text>{{ item.label }}</text>
+								<text class="snooker-v2-pot__score">{{ item.value }} 分</text>
+							</button>
+						</view>
+						<view class="snooker-v2-actions">
+							<button v-if="snookerV2State.freeBallAvailable" class="snooker-v2-action is-highlight" @click="handleSnookerV2FreeBall">记录自由球</button>
+							<button class="snooker-v2-action" @click="handleSnookerV2NoScore">合法未进球 / 上手结束</button>
+							<button class="snooker-v2-action is-danger" @click="showSnookerFoulEditor = !showSnookerFoulEditor">记录犯规</button>
+						</view>
+					</view>
+
+					<view v-if="showSnookerFoulEditor && currentFrameStarted && !snookerV2State.pendingConcessionActor" class="snooker-v2-section snooker-v2-foul-editor" data-snooker-v2-foul-editor>
+						<text class="snooker-v2-section__title">犯规裁判决定</text>
+						<view v-if="snookerV2State.ballOn === 'color_choice'" class="snooker-v2-field">
+							<text class="snooker-v2-field__label">本杆目标彩球</text>
+							<view class="snooker-v2-chips">
+								<button v-for="item in snookerColorOptions" :key="item.value" :class="['snooker-v2-chip', { active: snookerFoulBallOnValue === item.value }]" @click="snookerFoulBallOnValue = item.value">{{ item.label }}</button>
+							</view>
+						</view>
+						<view class="snooker-v2-field">
+							<text class="snooker-v2-field__label">罚分</text>
+							<view class="snooker-v2-chips">
+								<button v-for="value in [4, 5, 6, 7]" :key="value" :class="['snooker-v2-chip', { active: snookerFoulPenalty === value }]" @click="snookerFoulPenalty = value">{{ value }} 分</button>
+							</view>
+						</view>
+						<view class="snooker-v2-field is-counter">
+							<text class="snooker-v2-field__label">犯规杆离台红球</text>
+							<view class="snooker-v2-counter">
+								<button @click="adjustSnookerFoulReds(-1)">−</button>
+								<text>{{ snookerFoulRedsRemoved }}</text>
+								<button @click="adjustSnookerFoulReds(1)">＋</button>
+							</view>
+						</view>
+						<view class="snooker-v2-field">
+							<text class="snooker-v2-field__label">犯规后选择</text>
+							<view class="snooker-v2-chips is-column">
+								<button v-for="item in snookerFoulResolutions" :key="item.value" :class="['snooker-v2-chip', { active: snookerFoulResolution === item.value }]" @click="snookerFoulResolution = item.value">{{ item.label }}</button>
+							</view>
+						</view>
+						<view class="snooker-v2-toggle-list">
+							<button :class="['snooker-v2-toggle', { active: snookerFoulAndMiss }]" @click="snookerFoulAndMiss = !snookerFoulAndMiss">Foul and a Miss</button>
+							<button v-if="snookerFoulResolution === 'offender_replays_original' && snookerFoulAndMiss" :class="['snooker-v2-toggle', { active: snookerMissSequenceEligible }]" @click="snookerMissSequenceEligible = !snookerMissSequenceEligible">具备整球直线条件</button>
+							<button v-if="snookerFoulResolution === 'incoming_plays'" :class="['snooker-v2-toggle', { active: snookerFreeBallAwarded }]" @click="snookerFreeBallAwarded = !snookerFreeBallAwarded">宣告自由球</button>
+							<button v-if="snookerFoulResolution !== 'offender_replays_original'" :class="['snooker-v2-toggle', { active: snookerFoulCueBallInHand }]" @click="snookerFoulCueBallInHand = !snookerFoulCueBallInHand">母球D区手中球</button>
+						</view>
+						<view class="snooker-v2-actions is-two">
+							<button class="snooker-v2-action" @click="showSnookerFoulEditor = false">取消</button>
+							<button class="snooker-v2-action is-danger" @click="submitSnookerV2Foul">确认犯规</button>
+						</view>
+					</view>
+
+					<view v-if="snookerV2State.pendingConcessionActor" class="snooker-v2-section">
+						<text class="snooker-v2-section__title">{{ snookerActorLabel(snookerV2State.pendingConcessionActor) }}提出{{ snookerV2State.pendingConcessionScope === 'match' ? '整场' : '本局' }}认输</text>
+						<view v-if="canRespondToSnookerConcession" class="snooker-v2-actions is-two">
+							<button class="snooker-v2-action" @click="handleSnookerConcessionDecision('reject_concession')">拒绝</button>
+							<button class="snooker-v2-action is-danger" @click="handleSnookerConcessionDecision('accept_concession')">接受</button>
+						</view>
+					</view>
+					<view v-else-if="currentFrameStarted && !snookerV2State.respottedBlackPending" class="snooker-v2-section">
+						<text class="snooker-v2-section__title">局与比赛决定</text>
+						<view class="snooker-v2-actions">
+							<button v-if="!isReferee" class="snooker-v2-action" @click="handleOfferSnookerConcession('frame')">提出本局认输</button>
+							<button v-if="!isReferee" class="snooker-v2-action is-danger" @click="handleOfferSnookerConcession('match')">认输整场比赛</button>
+							<button v-if="isReferee" class="snooker-v2-action" @click="handleRefereeAwardFrame(1)">判给选手1</button>
+							<button v-if="isReferee" class="snooker-v2-action" @click="handleRefereeAwardFrame(2)">判给选手2</button>
+							<button v-if="isReferee" class="snooker-v2-action is-danger" @click="handleRefereeAcceptedConcession">记录双方已接受的认输</button>
+						</view>
+					</view>
+				</view>
+
+				<view v-else-if="gameType === 1" class="snooker-layout" data-snooker-v1-panel>
 					<view class="snooker-section">
 						<view class="snooker-section__head">
-							<text class="action-column__title is-opponent">给对手计分</text>
+							<view class="snooker-section__title-group">
+								<text class="action-column__title is-opponent">{{ snookerScoreTitle }}</text>
+								<view v-if="isReferee" class="participant-switch" data-referee-score-target>
+									<button
+										v-for="actor in refereeActors"
+										:key="actor"
+										:class="['participant-switch__btn', { 'is-active': snookerScoringActor === actor }]"
+										@click="snookerScoringActor = actor"
+									>
+										{{ resolveScoringParticipantLabel({ viewerRole: 'referee', uiActor: actor }) }}
+									</button>
+								</view>
+							</view>
 							<text :class="['snooker-red-counter', { 'is-warning': snookerRedBallRemaining <= 2 && !isSnookerRedDisabled, 'is-finished': isSnookerRedDisabled }]">
 								{{ snookerRedBallText }}
 							</text>
@@ -159,7 +310,19 @@
 					</view>
 
 					<view class="snooker-section">
-						<text class="action-column__title is-me">对手犯规，给我方加分</text>
+						<view class="snooker-section__title-group">
+							<text class="action-column__title is-me">{{ snookerFoulTitle }}</text>
+							<view v-if="isReferee" class="participant-switch" data-referee-foul-target>
+								<button
+									v-for="actor in refereeActors"
+									:key="actor"
+									:class="['participant-switch__btn', { 'is-active': snookerFoulingActor === actor }]"
+									@click="snookerFoulingActor = actor"
+								>
+									{{ resolveScoringParticipantLabel({ viewerRole: 'referee', uiActor: actor }) }}犯规
+								</button>
+							</view>
+						</view>
 						<view class="snooker-stage is-foul">
 							<view class="snooker-stage__left">
 								<view class="snooker-ball-row is-foul-top">
@@ -205,12 +368,39 @@
 					</view>
 				</view>
 
-				<view v-if="gameType === 2" class="jiuqiu-layout">
+				<view v-if="gameType === 2 && isReferee" class="jiuqiu-layout referee-jiuqiu-layout">
+					<view v-for="group in refereeJiuqiuGroups" :key="group.actor" class="action-column" :data-referee-actor="group.actor">
+						<text :class="['action-column__title', group.actor === 1 ? 'is-me' : 'is-opponent']">记到{{ group.label }}</text>
+						<button
+							:class="['action-btn', group.actor === 1 ? 'action-btn--me' : 'action-btn--opponent']"
+							@click="handleOpponentWin(group.options[0].type, group.options[0].score, group.actor)"
+						>
+							<text class="action-btn__title">{{ group.options[0].title }}</text>
+							<text class="action-btn__desc">{{ group.options[0].desc }}</text>
+						</button>
+						<view class="action-row-two">
+							<button
+								v-for="item in group.options.slice(1)"
+								:key="item.type"
+								:class="['action-btn', 'action-btn--compact', group.actor === 1 ? 'action-btn--me' : 'action-btn--opponent']"
+								@click="handleOpponentWin(item.type, item.score, group.actor)"
+							>
+								<text class="action-btn__title">{{ item.title }}</text>
+								<text class="action-btn__desc">{{ item.desc }}</text>
+							</button>
+						</view>
+						<button :class="['action-btn', 'action-btn--compact', group.actor === 1 ? 'action-btn--me' : 'action-btn--opponent']" @click="handleFoul(group.actor)">
+							<text class="action-btn__title">{{ group.label }}犯规</text>
+							<text class="action-btn__desc">{{ group.foulScoringLabel }} +1 分</text>
+						</button>
+					</view>
+				</view>
+				<view v-else-if="gameType === 2" class="jiuqiu-layout">
 					<view class="action-column">
 						<text class="action-column__title is-opponent">记到对手</text>
 						<button
 							class="action-btn action-btn--opponent"
-							@click="handleOpponentWin(jiuqiuNormalOption.type, jiuqiuNormalOption.score)"
+							@click="handleOpponentWin(jiuqiuNormalOption.type, jiuqiuNormalOption.score, 2)"
 						>
 							<text class="action-btn__title">{{ jiuqiuNormalOption.title }}</text>
 							<text class="action-btn__desc">{{ jiuqiuNormalOption.desc }}</text>
@@ -220,7 +410,7 @@
 								v-for="item in jiuqiuGoldOptions"
 								:key="item.type"
 								class="action-btn action-btn--opponent action-btn--compact"
-								@click="handleOpponentWin(item.type, item.score)"
+								@click="handleOpponentWin(item.type, item.score, 2)"
 							>
 								<text class="action-btn__title">{{ item.title }}</text>
 								<text class="action-btn__desc">{{ item.desc }}</text>
@@ -245,13 +435,14 @@
 		<view class="footer">
 			<view class="footer-buttons">
 				<button
-					v-if="gameType === 1 && viewerUi.showActionPanel"
+					v-if="gameType === 1 && viewerUi.showActionPanel && (!isSnookerV2 || !currentFrameStarted)"
 					class="footer-btn btn-secondary full-width"
 					@click="handleNextRound"
 				>
 					开始下一局
 				</button>
 				<button v-if="viewerUi.showFinishButton" class="footer-btn btn-primary full-width" @click="handleFinishMatch">结束本场对局</button>
+				<button v-if="viewerUi.showFinishRequestButton" class="footer-btn btn-primary full-width" @click="handleRequestFinish">发起结束确认</button>
 			</view>
 			<button v-if="viewerUi.showUndoButton" class="undo-btn" @click="handleUndo">撤销</button>
 		</view>
@@ -280,20 +471,49 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
+import { useRankStore } from '@/store/rank.js'
 import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
-import { matchScore, endRound, startNextRound, matchFoul, matchUndo, finishMatch, getMatchDetail, getCurrentMatch, getMatchRefereeQRCode } from '@/api/match.js'
+import { matchScore, endRound, startNextRound, matchFoul, matchUndo, finishMatch, requestFinishMatch, confirmFinishMatch, disputeFinishMatch, withdrawFinishMatch, getMatchDetail, getCurrentMatch, getMatchRefereeQRCode, snookerStroke, snookerFrameAction } from '@/api/match.js'
 import { consumeResultNavigationGuard, getMatchHistoryPageUrl, getMatchHistoryTabUrl, shouldLeavePlayingPage } from '@/utils/match-navigation.js'
 import { buildMatchActionPayload } from '@/utils/match-action.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolvePlayingViewerUi } from '@/utils/match-role-view.js'
+import {
+	buildJiuqiuWinOptions,
+	buildRoundWinActionOptions,
+	resolveFoulFeedback,
+	resolveMatchApiActor,
+	resolveScoreFeedback,
+	resolveScoringParticipantLabel,
+	resolveWinFeedback
+} from '@/utils/match-scoring-target.js'
 import { resolveSnookerFinishMatchAction, resolveSnookerNextFrameAction } from '@/utils/snooker-frame.js'
+import {
+	SNOOKER_BALLS,
+	buildSnookerCountPages,
+	buildSnookerV2FoulPayload,
+	buildSnookerV2NoScorePayload,
+	buildSnookerV2PotPayload,
+	getSnookerV2BallOnLabel,
+	getSnookerV2FreeBallOptions,
+	getSnookerV2MinimumPenalty,
+	getSnookerV2PhaseLabel,
+	getSnookerV2PotOptions,
+	isSnookerRulesV2,
+	normalizeSnookerV2State,
+	snookerBallOnValue
+} from '@/utils/snooker-v2.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import { shouldInvalidateRankAfterSettlement } from '@/utils/rank-cache.js'
 
 // ========== 状态管理 ==========
 const userStore = useUserStore()
+const rankStore = useRankStore()
 
 // ========== 响应式数据 ==========
 const matchId = ref(null)
 const gameType = ref(3) // 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
+const matchMode = ref('ranked')
 const myScore = ref(0)
 const opponentScore = ref(0)
 const currentFrameMyScore = ref(0)
@@ -306,16 +526,36 @@ const snookerClearanceStarted = ref(false)
 const snookerClearedColors = ref([])
 const snookerExpectedClearanceScore = ref(0)
 const snookerClearanceCompleted = ref(false)
-const DEFAULT_AVATAR = '/static/default-avatar.png'
-const myInfo = ref({ avatar: DEFAULT_AVATAR })
-const opponentInfo = ref({ avatar: DEFAULT_AVATAR })
+const snookerRulesVersion = ref(0)
+const snookerBestOfFrames = ref(0)
+const snookerStartingActor = ref(0)
+const snookerV2State = ref(normalizeSnookerV2State())
+const showSnookerFoulEditor = ref(false)
+const snookerFoulPenalty = ref(4)
+const snookerFoulBallOnValue = ref(2)
+const snookerFoulRedsRemoved = ref(0)
+const snookerFoulResolution = ref('incoming_plays')
+const snookerFoulAndMiss = ref(false)
+const snookerMissSequenceEligible = ref(false)
+const snookerFreeBallAwarded = ref(false)
+const snookerFoulCueBallInHand = ref(false)
+const myInfo = ref({ userId: 0, avatar: '' })
+const opponentInfo = ref({ userId: 0, avatar: '' })
 const viewerRole = ref('player1')
 const refereeBound = ref(false)
 const refereeUserId = ref(0)
 const refereeName = ref('')
+const refereeAvatar = ref('')
 const canScore = ref(true)
 const canUndo = ref(true)
 const canFinish = ref(true)
+const canRequestFinish = ref(false)
+const canConfirmFinish = ref(false)
+const canDisputeFinish = ref(false)
+const canWithdrawFinish = ref(false)
+const finishState = ref('none')
+const finishRequestedBy = ref(0)
+const lastAction = ref(null)
 const showRefereeQrModal = ref(false)
 const refereeQrcodeLoading = ref(false)
 const refereeQrcodeUrl = ref('')
@@ -326,6 +566,9 @@ const isLeavingPlayingPage = ref(false)
 let syncTimeoutId = null // 同步超时定时器
 let wsHandlersReady = false
 const resultNavigationState = { hasNavigatedToResult: false }
+const pendingFinishAction = ref(null) // 裁判结束确认的回退 action
+const snookerScoringActor = ref(1)
+const snookerFoulingActor = ref(1)
 
 const pageLog = (message, payload) => {
 	if (payload === undefined) {
@@ -380,6 +623,18 @@ const gameTypeName = computed(() => {
 })
 
 const gameSubtitle = computed(() => {
+	if (gameType.value === 1 && isSnookerV2.value) {
+		return '后端权威维护击球方、目标球与上手'
+	}
+	if (viewerRole.value === 'referee') {
+		switch (gameType.value) {
+			case 1: return '上方为整场 frame，下方记录当前局得分'
+			case 2: return '分别记录选手1与选手2得分'
+			case 3:
+			case 4: return '明确判定双方的本局胜法'
+			default: return ''
+		}
+	}
 	switch (gameType.value) {
 		case 1: return '上方为整场 frame，下方记录当前局得分'
 		case 2: return '区分我方得分与对手得分'
@@ -394,6 +649,12 @@ const viewerUi = computed(() => resolvePlayingViewerUi({
 	canScore: canScore.value,
 	canUndo: canUndo.value,
 	canFinish: canFinish.value,
+	canRequestFinish: canRequestFinish.value,
+	canConfirmFinish: canConfirmFinish.value,
+	canDisputeFinish: canDisputeFinish.value,
+	canWithdrawFinish: canWithdrawFinish.value,
+	finishState: finishState.value,
+	lastAction: lastAction.value,
 	refereeName: refereeName.value
 }))
 
@@ -434,12 +695,13 @@ const syncStatusText = computed(() => isSyncing.value ? '比分同步中' : '实
 
 const actionPanelDescription = computed(() => {
 	if (!canScore.value) return viewerUi.value.readonlyHint || '当前由裁判负责记分'
+	if (gameType.value === 1 && isSnookerV2.value) return '按当前击球方和目标球记录一次真实击球结果'
 	if (viewerRole.value === 'referee') {
 		switch (gameType.value) {
 			case 1:
-				return '为选手2记录进球，为选手1记录对手犯规得分'
+				return '分别选择得分方和犯规方，再记录对应球值'
 			case 2:
-				return '左列为选手1得分，右列为选手2得分'
+				return '为选手1或选手2记录得分与犯规'
 			case 3:
 			case 4:
 				return '以下按钮会判给对应选手本局胜'
@@ -460,23 +722,43 @@ const actionPanelDescription = computed(() => {
 	}
 })
 
-const isRoundWinMode = computed(() => gameType.value === 3 || gameType.value === 4)
-
-const roundWinActionOptions = computed(() => {
-	if (gameType.value === 4) {
-		return [
-			{ type: 'normal', title: '对手普胜', desc: '本局计给对手' },
-			{ type: 'small_gold', title: '对手小金', desc: '对手金球直接制胜' },
-			{ type: 'big_gold', title: '对手大金', desc: '对手开球直接制胜' }
-		]
-	}
-
-	return [
-		{ type: 'normal', title: '对手普胜', desc: '本局计给对手' },
-		{ type: 'break_clear', title: '对手炸清', desc: '对手直接清台获胜' },
-		{ type: 'continue_clear', title: '对手接清', desc: '对手连续清台获胜' }
-	]
+const isReferee = computed(() => viewerRole.value === 'referee')
+const isSnookerV2 = computed(() => gameType.value === 1 && snookerRulesVersion.value === 2)
+const viewerFixedActor = computed(() => isReferee.value ? 0 : (isPlayer1.value ? 1 : 2))
+const snookerActorLabel = (actor) => {
+	const normalizedActor = Number(actor)
+	if (normalizedActor !== 1 && normalizedActor !== 2) return '待确定'
+	if (isReferee.value) return normalizedActor === 1 ? '选手1' : '选手2'
+	return normalizedActor === viewerFixedActor.value ? '我方' : '对手'
+}
+const snookerV2PhaseLabel = computed(() => getSnookerV2PhaseLabel(snookerV2State.value))
+const snookerV2BallOnLabel = computed(() => getSnookerV2BallOnLabel(snookerV2State.value))
+const snookerV2StrikerLabel = computed(() => snookerActorLabel(snookerV2State.value.striker))
+const snookerV2PotOptions = computed(() => getSnookerV2PotOptions(snookerV2State.value))
+const snookerColorOptions = SNOOKER_BALLS.slice(1)
+const snookerFoulResolutions = [
+	{ value: 'incoming_plays', label: '非犯规方从现状击球' },
+	{ value: 'offender_plays_from_left', label: '犯规方从现状继续' },
+	{ value: 'offender_replays_original', label: '复原球位，由犯规方重打' }
+]
+const canRespondToSnookerConcession = computed(() => {
+	const pendingActor = snookerV2State.value.pendingConcessionActor
+	return pendingActor > 0 && (isReferee.value || viewerFixedActor.value === (pendingActor === 1 ? 2 : 1))
 })
+const isRoundWinMode = computed(() => gameType.value === 3 || gameType.value === 4)
+const refereeActors = [1, 2]
+
+const roundWinActionOptions = computed(() => buildRoundWinActionOptions({
+	gameType: gameType.value,
+	viewerRole: viewerRole.value,
+	uiActor: 2
+}))
+
+const refereeRoundWinGroups = computed(() => refereeActors.map(actor => ({
+	actor,
+	label: resolveScoringParticipantLabel({ viewerRole: 'referee', uiActor: actor }),
+	options: buildRoundWinActionOptions({ gameType: gameType.value, viewerRole: 'referee', uiActor: actor })
+})))
 
 const snookerScoreBalls = computed(() => ([
 	{ key: 'red', name: '红球', color: 'red', score: 1 },
@@ -503,15 +785,25 @@ const snookerPrimaryFoul = computed(() => snookerFoulOptions.value[0])
 const snookerFoulTopRow = computed(() => snookerFoulOptions.value.slice(1, 3))
 const snookerFoulBottomRow = computed(() => snookerFoulOptions.value.slice(3))
 
-const jiuqiuWinOptions = computed(() => [
-	{ type: 'normal', score: 4, title: '对手普胜', desc: '对手 +4 分' },
-	{ type: 'small_gold', score: 7, title: '对手小金', desc: '对手 +7 分' },
-	{ type: 'big_gold', score: 10, title: '对手大金', desc: '对手 +10 分' }
-])
+const jiuqiuWinOptions = computed(() => buildJiuqiuWinOptions({
+	viewerRole: viewerRole.value,
+	uiActor: 2
+}))
 
 const jiuqiuNormalOption = computed(() => jiuqiuWinOptions.value[0])
-
 const jiuqiuGoldOptions = computed(() => jiuqiuWinOptions.value.slice(1))
+const refereeJiuqiuGroups = computed(() => refereeActors.map(actor => ({
+	actor,
+	label: resolveScoringParticipantLabel({ viewerRole: 'referee', uiActor: actor }),
+	foulScoringLabel: resolveScoringParticipantLabel({ viewerRole: 'referee', uiActor: actor === 1 ? 2 : 1 }),
+	options: buildJiuqiuWinOptions({ viewerRole: 'referee', uiActor: actor })
+})))
+const snookerScoreTitle = computed(() => isReferee.value
+	? `给${resolveScoringParticipantLabel({ viewerRole: 'referee', uiActor: snookerScoringActor.value })}计分`
+	: '给对手计分')
+const snookerFoulTitle = computed(() => isReferee.value
+	? `${resolveScoringParticipantLabel({ viewerRole: 'referee', uiActor: snookerFoulingActor.value })}犯规，给${resolveScoringParticipantLabel({ viewerRole: 'referee', uiActor: snookerFoulingActor.value === 1 ? 2 : 1 })}加分`
+	: '对手犯规，给我方加分')
 
 // ========== 生命周期 ==========
 onLoad((options) => {
@@ -523,6 +815,9 @@ onLoad((options) => {
 	}
 	if (options.opponent_name) {
 		opponentInfo.value.nickname = decodeURIComponent(options.opponent_name)
+	}
+	if (options.opponent_id) {
+		opponentInfo.value.userId = Number(options.opponent_id) || 0
 	}
 	if (options.opponent_avatar) {
 		opponentInfo.value.avatar = decodeURIComponent(options.opponent_avatar)
@@ -540,6 +835,11 @@ onMounted(async () => {
 	matchWS.on(WS_MESSAGE_TYPES.ROUND_START, handleRoundStart)
 	matchWS.on(WS_MESSAGE_TYPES.MATCH_END, handleMatchEnd)
 	matchWS.on(WS_MESSAGE_TYPES.MATCH_ROLE_CHANGED, handleRoleChanged)
+	matchWS.on(WS_MESSAGE_TYPES.MATCH_FINISH_REQUEST, handleFinishStateUpdate)
+	matchWS.on(WS_MESSAGE_TYPES.MATCH_FINISH_CONFIRM, handleFinishStateUpdate)
+	matchWS.on(WS_MESSAGE_TYPES.MATCH_FINISH_DISPUTE, handleFinishStateUpdate)
+	matchWS.on(WS_MESSAGE_TYPES.MATCH_FINISH_WITHDRAW, handleFinishStateUpdate)
+	matchWS.on(WS_MESSAGE_TYPES.MATCH_FINISH_EXPIRED, handleFinishStateUpdate)
 	matchWS.on(WS_MESSAGE_TYPES.SYNC, handleSync)
 
 	const canStayOnPlayingPage = await loadMatchInfo()
@@ -576,6 +876,11 @@ onUnmounted(() => {
 	matchWS.off(WS_MESSAGE_TYPES.ROUND_START, handleRoundStart)
 	matchWS.off(WS_MESSAGE_TYPES.MATCH_END, handleMatchEnd)
 	matchWS.off(WS_MESSAGE_TYPES.MATCH_ROLE_CHANGED, handleRoleChanged)
+	matchWS.off(WS_MESSAGE_TYPES.MATCH_FINISH_REQUEST, handleFinishStateUpdate)
+	matchWS.off(WS_MESSAGE_TYPES.MATCH_FINISH_CONFIRM, handleFinishStateUpdate)
+	matchWS.off(WS_MESSAGE_TYPES.MATCH_FINISH_DISPUTE, handleFinishStateUpdate)
+	matchWS.off(WS_MESSAGE_TYPES.MATCH_FINISH_WITHDRAW, handleFinishStateUpdate)
+	matchWS.off(WS_MESSAGE_TYPES.MATCH_FINISH_EXPIRED, handleFinishStateUpdate)
 	matchWS.off(WS_MESSAGE_TYPES.SYNC, handleSync)
 	// 断开WebSocket
 	matchWS.disconnect()
@@ -589,6 +894,7 @@ onUnmounted(() => {
 const loadUserInfo = () => {
 	if (userStore.userInfo) {
 		myInfo.value = {
+			userId: userStore.userInfo.id || 0,
 			nickname: userStore.userInfo.nickname || '我',
 			avatar: userStore.userInfo.avatar,
 			winRate: 0, // 将由 loadMatchInfo 从API获取
@@ -613,6 +919,9 @@ const applyViewerCapabilities = (payload = {}) => {
 	if (payload.referee_name !== undefined) {
 		refereeName.value = payload.referee_name || ''
 	}
+	if (payload.referee_avatar !== undefined) {
+		refereeAvatar.value = payload.referee_avatar || ''
+	}
 	if (typeof payload.can_score === 'boolean') {
 		canScore.value = payload.can_score
 	}
@@ -621,6 +930,27 @@ const applyViewerCapabilities = (payload = {}) => {
 	}
 	if (typeof payload.can_finish === 'boolean') {
 		canFinish.value = payload.can_finish
+	}
+	if (typeof payload.can_request_finish === 'boolean') {
+		canRequestFinish.value = payload.can_request_finish
+	}
+	if (typeof payload.can_confirm_finish === 'boolean') {
+		canConfirmFinish.value = payload.can_confirm_finish
+	}
+	if (typeof payload.can_dispute_finish === 'boolean') {
+		canDisputeFinish.value = payload.can_dispute_finish
+	}
+	if (typeof payload.can_withdraw_finish === 'boolean') {
+		canWithdrawFinish.value = payload.can_withdraw_finish
+	}
+	if (typeof payload.finish_state === 'string') {
+		finishState.value = payload.finish_state || 'none'
+	}
+	if (payload.finish_requested_by !== undefined) {
+		finishRequestedBy.value = Number(payload.finish_requested_by || 0)
+	}
+	if (payload.last_action !== undefined) {
+		lastAction.value = payload.last_action || null
 	}
 }
 
@@ -655,16 +985,18 @@ const loadMatchInfo = async () => {
 			
 			// 设置我的信息（使用API返回的胜率和单杆最高分）
 			myInfo.value = {
+				userId: Number(res.match.my_user_id || res.match.my_id || userStore.userInfo?.id || 0),
 				nickname: res.match.my_name || '我',
-				avatar: res.match.my_avatar || DEFAULT_AVATAR,
+				avatar: res.match.my_avatar || '',
 				winRate: Math.round(res.match.my_win_rate || 0),
 				maxScore: res.match.my_max_score || 0
 			}
 			
 			// 设置对手信息（使用API返回的胜率和单杆最高分）
 			opponentInfo.value = {
+				userId: Number(res.match.opponent_id || opponentInfo.value.userId || 0),
 				nickname: res.match.opponent_name || '对手',
-				avatar: res.match.opponent_avatar || DEFAULT_AVATAR,
+				avatar: res.match.opponent_avatar || '',
 				winRate: Math.round(res.match.opponent_win_rate || 0),
 				maxScore: res.match.opponent_max_score || 0
 			}
@@ -672,6 +1004,9 @@ const loadMatchInfo = async () => {
 			// 设置游戏类型
 			if (res.match.game_type) {
 				gameType.value = res.match.game_type
+			}
+			if (res.match.match_mode) {
+				matchMode.value = res.match.match_mode
 			}
 			currentFrameStarted.value = !!res.match.current_frame_started
 			currentFrameMyScore.value = res.match.current_frame_my_score || 0
@@ -804,6 +1139,21 @@ const applySnookerRoundState = (payload = {}) => {
 	snookerClearedColors.value = Array.isArray(payload.snooker_cleared_colors) ? payload.snooker_cleared_colors : []
 	snookerExpectedClearanceScore.value = payload.snooker_expected_clearance_score || 0
 	snookerClearanceCompleted.value = !!payload.snooker_clearance_completed
+	if (payload.snooker_rules_version !== undefined) {
+		snookerRulesVersion.value = isSnookerRulesV2(payload) ? 2 : Number(payload.snooker_rules_version || 0)
+		snookerBestOfFrames.value = Number(payload.best_of_frames || 0)
+		snookerStartingActor.value = Number(payload.starting_actor || 0)
+		snookerV2State.value = normalizeSnookerV2State(payload)
+		if (snookerRulesVersion.value === 2) {
+			const target = snookerBallOnValue(snookerV2State.value)
+			snookerFoulBallOnValue.value = target >= 2 ? target : 2
+			snookerFoulPenalty.value = getSnookerV2MinimumPenalty(snookerV2State.value, snookerFoulBallOnValue.value)
+			snookerFoulRedsRemoved.value = 0
+			if (!snookerV2State.value.currentFrameStarted || snookerV2State.value.pendingConcessionActor || ['ended', 'respotted_black_pending'].includes(snookerV2State.value.phase)) {
+				showSnookerFoulEditor.value = false
+			}
+		}
+	}
 }
 
 const applyMatchSnapshot = (snapshot = {}) => {
@@ -811,6 +1161,7 @@ const applyMatchSnapshot = (snapshot = {}) => {
 		return
 	}
 	applyViewerCapabilities(snapshot)
+	if (snapshot.match_mode) matchMode.value = snapshot.match_mode
 	updateServerRevision(snapshot.server_revision)
 	if (typeof snapshot.my_score === 'number') {
 		myScore.value = snapshot.my_score
@@ -856,6 +1207,23 @@ const applyWriteResponse = (payload = {}) => {
 		currentFrameOpponentScore.value = payload.current_frame_opponent_score
 	}
 	applySnookerRoundState(payload)
+}
+
+const invalidateRankAfterSettlement = (payload = {}) => {
+	const snapshot = payload?.snapshot || payload
+	if (snapshot?.match_mode) matchMode.value = snapshot.match_mode
+	if (shouldInvalidateRankAfterSettlement({
+		isParticipant: viewerRole.value === 'player1' || viewerRole.value === 'player2',
+		matchMode: matchMode.value,
+		status: snapshot?.status ?? payload?.status,
+		result: snapshot?.result ?? payload?.result,
+		player1Score: payload?.player1_score,
+		player2Score: payload?.player2_score,
+		myScore: snapshot?.my_score ?? payload?.my_score ?? myScore.value,
+		opponentScore: snapshot?.opponent_score ?? payload?.opponent_score ?? opponentScore.value
+	})) {
+		rankStore.invalidate(userStore.userId)
+	}
 }
 
 const getSnookerColorName = (score) => {
@@ -982,6 +1350,10 @@ const handleRoundEnd = (data) => {
 		currentRound: data.current_round
 	})
 	
+	if (isSnookerV2.value) {
+		uni.showToast({ title: `本局已判给${snookerActorLabel(data.winner)}`, icon: 'none' })
+		return
+	}
 	// 根据当前用户视角判断是否是自己赢
 	let isMyWin = false
 	if (isPlayer1.value) {
@@ -1027,6 +1399,7 @@ const handleSync = (data) => {
 		return
 	}
 	applyViewerCapabilities(data)
+	if (data.match_mode) matchMode.value = data.match_mode
 	updateServerRevision(data?.server_revision)
 	applyServerScores(data.player1_score, data.player2_score)
 	applyServerCurrentFrameScores(data.current_frame_player1_score, data.current_frame_player2_score)
@@ -1041,8 +1414,24 @@ const handleSync = (data) => {
 		status: data.status
 	})
 	if (data.status === 2) {
+		invalidateRankAfterSettlement(data)
 		navigateToResultOnce()
 	}
+}
+
+const handleFinishStateUpdate = (data = {}) => {
+	if (!shouldApplyIncomingRevision(data?.server_revision)) return
+	if (data.snapshot) {
+		applyMatchSnapshot(data.snapshot)
+	} else {
+		applyViewerCapabilities(data)
+		updateServerRevision(data.server_revision)
+	}
+	invalidateRankAfterSettlement(data)
+	uni.showToast({
+		title: finishState.value === 'pending_confirmation' ? '对局等待结束确认' : '对局结束状态已更新',
+		icon: 'none'
+	})
 }
 
 const handleRoleChanged = async () => {
@@ -1066,6 +1455,11 @@ const handleMatchEnd = (data) => {
 	if (!shouldApplyIncomingRevision(data?.server_revision)) {
 		return
 	}
+	if (data.match_mode) matchMode.value = data.match_mode
+	if (typeof data.player1_score === 'number' && typeof data.player2_score === 'number') {
+		applyServerScores(data.player1_score, data.player2_score)
+	}
+	invalidateRankAfterSettlement(data)
 	updateServerRevision(data?.server_revision)
 	pageLog('收到对局结束消息', {
 		matchId: data.match_id,
@@ -1081,21 +1475,266 @@ const handleMatchEnd = (data) => {
  * 后端存储从player1视角：actor=1是player1，actor=2是player2
  * 前端操作从当前用户视角："我"的操作应该发送正确的actor
  */
-const convertActor = (uiActor) => {
-	// uiActor: 前端UI视角的actor，1=我方，2=对手方
-	if (isPlayer1.value) {
-		// 当前用户是player1，不需要转换
-		return uiActor
-	} else {
-		// 当前用户是player2，需要反转
-		// UI中的"我方"(actor=1) 实际上是后端的"对手方"(actor=2)
-		// UI中的"对手方"(actor=2) 实际上是后端的"我方"(actor=1)
-		return uiActor === 1 ? 2 : 1
+const convertActor = (uiActor) => resolveMatchApiActor({
+	viewerRole: viewerRole.value,
+	isPlayer1: isPlayer1.value,
+	uiActor
+})
+
+const selectActionSheetIndex = (itemList) => new Promise((resolve) => {
+	uni.showActionSheet({
+		itemList,
+		success: ({ tapIndex }) => resolve(tapIndex),
+		fail: () => resolve(-1)
+	})
+})
+
+const selectSnookerCount = async (minimum, maximum, buildLabel) => {
+	const pages = buildSnookerCountPages(minimum, maximum)
+	let values = pages[0] || []
+	if (pages.length > 1) {
+		const pageIndex = await selectActionSheetIndex(pages.map(page => `${page[0]}–${page[page.length - 1]} 颗`))
+		if (pageIndex < 0) return null
+		values = pages[pageIndex]
+	}
+	const selectedIndex = await selectActionSheetIndex(values.map(buildLabel))
+	return selectedIndex < 0 ? null : values[selectedIndex]
+}
+
+const submitSnookerV2Stroke = async (stroke, successMessage) => {
+	if (!ensureViewerCapability(canScore.value, '当前只有裁判可以记分')) return false
+	if (!matchId.value || isSyncing.value || !isSnookerV2.value) return false
+	showSyncLoading()
+	try {
+		const res = await snookerStroke(buildActionRequest({ match_id: matchId.value, ...stroke }))
+		applyWriteResponse(res)
+		hideSyncLoading()
+		if (!res?.success) {
+			uni.showToast({ title: res?.message || '局面已更新，请重试', icon: 'none' })
+			return false
+		}
+		uni.showToast({ title: successMessage || '本杆已记录', icon: 'none' })
+		if (res.snapshot?.status === 2) navigateToResultOnce()
+		return true
+	} catch (error) {
+		hideSyncLoading()
+		console.error('[MatchPlaying] 斯诺克击球提交失败', error)
+		uni.showToast({ title: '操作失败', icon: 'none' })
+		return false
 	}
 }
 
+const submitSnookerV2FrameAction = async (payload, successMessage) => {
+	if (!ensureViewerCapability(canScore.value, '当前只有裁判可以处理局动作')) return false
+	if (!matchId.value || isSyncing.value || !isSnookerV2.value) return false
+	showSyncLoading()
+	try {
+		const res = await snookerFrameAction(buildActionRequest({ match_id: matchId.value, ...payload }))
+		applyWriteResponse(res)
+		hideSyncLoading()
+		if (!res?.success) {
+			uni.showToast({ title: res?.message || '局面已更新，请重试', icon: 'none' })
+			return false
+		}
+		uni.showToast({ title: successMessage || '裁判决定已记录', icon: 'none' })
+		if (res.snapshot?.status === 2) navigateToResultOnce()
+		return true
+	} catch (error) {
+		hideSyncLoading()
+		console.error('[MatchPlaying] 斯诺克局动作提交失败', error)
+		uni.showToast({ title: '操作失败', icon: 'none' })
+		return false
+	}
+}
+
+const handleSnookerV2Pot = async (item) => {
+	const actor = snookerV2State.value.striker
+	if (!actor) return
+	if (item.value === 1) {
+		const maxReds = Math.max(0, snookerV2State.value.redsRemaining)
+		const count = await selectSnookerCount(1, maxReds, value => `${value} 颗红球入袋（${value}分）`)
+		if (count === null) return
+		await submitSnookerV2Stroke(buildSnookerV2PotPayload({
+			state: snookerV2State.value,
+			actor,
+			pottedReds: count
+		}), `已记录${count}颗红球`)
+		return
+	}
+	await submitSnookerV2Stroke(buildSnookerV2PotPayload({
+		state: snookerV2State.value,
+		actor,
+		ballOnValue: item.value,
+		ballOnPotted: true
+	}), `已记录${item.label} ${item.value}分`)
+}
+
+const handleSnookerV2FreeBall = async () => {
+	const state = snookerV2State.value
+	let ballOnValue = snookerBallOnValue(state)
+	if (state.ballOn === 'color_choice') {
+		const targetIndex = await selectActionSheetIndex(snookerColorOptions.map(item => `本杆以${item.label}为目标球`))
+		if (targetIndex < 0) return
+		ballOnValue = snookerColorOptions[targetIndex].value
+	}
+	const freeOptions = getSnookerV2FreeBallOptions(state, ballOnValue)
+	const freeIndex = await selectActionSheetIndex(freeOptions.map(item => `指定${item.label}为自由球`))
+	if (freeIndex < 0) return
+	const freeBallValue = freeOptions[freeIndex].value
+	const actor = state.striker
+	if (state.ballOn === 'red') {
+		const freeBallResult = await selectActionSheetIndex(['自由球入袋', '自由球未入袋'])
+		if (freeBallResult < 0) return
+		const freeBallPotted = freeBallResult === 0
+		const pottedReds = await selectSnookerCount(0, state.redsRemaining, value => value === 0 ? '没有真实红球入袋' : `${value} 颗真实红球入袋`)
+		if (pottedReds === null) return
+		if (!freeBallPotted && pottedReds === 0) {
+			await submitSnookerV2Stroke(buildSnookerV2NoScorePayload({ state, actor, ballOnValue, freeBallValue }), '自由球击球未进，上手已结束')
+			return
+		}
+		await submitSnookerV2Stroke(buildSnookerV2PotPayload({
+			state,
+			actor,
+			ballOnValue,
+			pottedReds,
+			freeBallValue,
+			freeBallPotted
+		}), '自由球结果已记录')
+		return
+	}
+	const resultIndex = await selectActionSheetIndex([
+		'仅自由球入袋',
+		'仅真实目标球入袋',
+		'自由球与真实目标球同时入袋',
+		'均未入袋'
+	])
+	if (resultIndex < 0) return
+	if (resultIndex === 3) {
+		await submitSnookerV2Stroke(buildSnookerV2NoScorePayload({ state, actor, ballOnValue, freeBallValue }), '自由球击球未进，上手已结束')
+		return
+	}
+	await submitSnookerV2Stroke(buildSnookerV2PotPayload({
+		state,
+		actor,
+		ballOnValue,
+		freeBallValue,
+		freeBallPotted: resultIndex !== 1,
+		ballOnPotted: resultIndex !== 0
+	}), '自由球结果已记录')
+}
+
+const handleSnookerV2NoScore = async () => {
+	const state = snookerV2State.value
+	let ballOnValue = snookerBallOnValue(state)
+	if (state.ballOn === 'color_choice') {
+		const targetIndex = await selectActionSheetIndex(snookerColorOptions.map(item => `本杆以${item.label}为目标球`))
+		if (targetIndex < 0) return
+		ballOnValue = snookerColorOptions[targetIndex].value
+	}
+	await submitSnookerV2Stroke(buildSnookerV2NoScorePayload({
+		state,
+		actor: state.striker,
+		ballOnValue
+	}), '上手已结束')
+}
+
+const adjustSnookerFoulReds = (change) => {
+	const max = Math.max(0, snookerV2State.value.redsRemaining)
+	snookerFoulRedsRemoved.value = Math.min(max, Math.max(0, snookerFoulRedsRemoved.value + change))
+}
+
+const submitSnookerV2Foul = async () => {
+	const minimum = getSnookerV2MinimumPenalty(snookerV2State.value, snookerFoulBallOnValue.value)
+	if (snookerFoulPenalty.value < minimum) {
+		uni.showToast({ title: `当前目标球至少罚${minimum}分`, icon: 'none' })
+		return
+	}
+	const submitted = await submitSnookerV2Stroke(buildSnookerV2FoulPayload({
+		state: snookerV2State.value,
+		actor: snookerV2State.value.striker,
+		penalty: snookerFoulPenalty.value,
+		ballOnValue: snookerFoulBallOnValue.value,
+		redsRemoved: snookerFoulRedsRemoved.value,
+		resolution: snookerFoulResolution.value,
+		freeBallAwarded: snookerFreeBallAwarded.value,
+		foulAndMiss: snookerFoulAndMiss.value,
+		missSequenceEligible: snookerMissSequenceEligible.value,
+		cueBallInHand: snookerFoulCueBallInHand.value
+	}), `已记录犯规${snookerFoulPenalty.value}分`)
+	if (submitted) {
+		showSnookerFoulEditor.value = false
+		snookerFoulAndMiss.value = false
+		snookerMissSequenceEligible.value = false
+		snookerFreeBallAwarded.value = false
+		snookerFoulCueBallInHand.value = false
+	}
+}
+
+const handleStartRespottedBlack = async (actor) => {
+	await submitSnookerV2FrameAction({
+		actor,
+		action: 'start_respotted_black'
+	}, `${snookerActorLabel(actor)}先打重置黑球`)
+}
+
+const handleOfferSnookerConcession = (scope) => {
+	const actor = viewerFixedActor.value
+	if (!actor) return
+	uni.showModal({
+		title: scope === 'match' ? '认输整场比赛' : '提出本局认输',
+		content: scope === 'match' ? '对方接受后，本场比赛将立即结束。' : '仅在需要对手犯规罚分才能反超时允许认输本局。',
+		confirmText: '确认提出',
+		success: async ({ confirm }) => {
+			if (!confirm) return
+			await submitSnookerV2FrameAction({ actor, action: 'offer_concession', scope }, '认输提议已发送')
+		}
+	})
+}
+
+const handleSnookerConcessionDecision = async (action) => {
+	const pendingActor = snookerV2State.value.pendingConcessionActor
+	const actor = pendingActor === 1 ? 2 : 1
+	await submitSnookerV2FrameAction({ actor, action }, action === 'accept_concession' ? '已接受认输' : '已拒绝认输')
+}
+
+const handleRefereeAwardFrame = (winner) => {
+	uni.showModal({
+		title: `判给${snookerActorLabel(winner)}本局`,
+		content: '仅用于裁判依规则作出的判局决定，确认后会立即结束当前局。',
+		confirmText: '确认判局',
+		success: async ({ confirm }) => {
+			if (!confirm) return
+			await submitSnookerV2FrameAction({
+				actor: winner,
+				action: 'award_frame',
+				winner,
+				reason: '裁判判局'
+			}, `已判给${snookerActorLabel(winner)}`)
+		}
+	})
+}
+
+const handleRefereeAcceptedConcession = async () => {
+	const actorIndex = await selectActionSheetIndex(['选手1认输', '选手2认输'])
+	if (actorIndex < 0) return
+	const scopeIndex = await selectActionSheetIndex(['认输本局', '认输整场比赛'])
+	if (scopeIndex < 0) return
+	const concedingActor = actorIndex === 0 ? 1 : 2
+	const scope = scopeIndex === 0 ? 'frame' : 'match'
+	const offered = await submitSnookerV2FrameAction({
+		actor: concedingActor,
+		action: 'offer_concession',
+		scope
+	}, '已记录认输提议')
+	if (!offered) return
+	await submitSnookerV2FrameAction({
+		actor: concedingActor === 1 ? 2 : 1,
+		action: 'accept_concession'
+	}, '已记录双方接受认输')
+}
+
 /**
- * 加分 (斯诺克模式 - 固定给对手加分)
+ * 加分（斯诺克模式）
  */
 const handleAddScore = async (score) => {
 	if (!ensureViewerCapability(canScore.value, '当前只有裁判可以记分')) return
@@ -1116,9 +1755,10 @@ const handleAddScore = async (score) => {
 	
 		try {
 			showSyncLoading()
+			const scoringActor = isReferee.value ? snookerScoringActor.value : 2
 			const res = await matchScore(buildActionRequest({
 				match_id: matchId.value,
-				actor: convertActor(2), // 固定给对手加分
+				actor: convertActor(scoringActor),
 				score: score
 			}))
 			if (!res?.success) {
@@ -1129,8 +1769,8 @@ const handleAddScore = async (score) => {
 			}
 			applyWriteResponse(res)
 			hideSyncLoading()
-			pageLog('加分HTTP成功', { matchId: matchId.value, score, serverRevision: res?.server_revision ?? res?.snapshot?.server_revision })
-			uni.showToast({ title: `已给对手 +${score} 分`, icon: 'none' })
+			pageLog('加分HTTP成功', { matchId: matchId.value, score, scoringActor, serverRevision: res?.server_revision ?? res?.snapshot?.server_revision })
+			uni.showToast({ title: resolveScoreFeedback({ viewerRole: viewerRole.value, uiActor: scoringActor, score }), icon: 'none' })
 		} catch (error) {
 		console.error('[MatchPlaying] 加分失败', { matchId: matchId.value, score, error })
 		hideSyncLoading()
@@ -1161,7 +1801,7 @@ const handleFoul = async (actor) => {
 			applyWriteResponse(res)
 			hideSyncLoading()
 			pageLog('犯规HTTP成功', { matchId: matchId.value, actor, serverRevision: res?.server_revision ?? res?.snapshot?.server_revision })
-			uni.showToast({ title: '对手犯规，我方 +1 分', icon: 'none' })
+			uni.showToast({ title: resolveFoulFeedback({ viewerRole: viewerRole.value, foulingActor: actor, score: 1 }), icon: 'none' })
 		} catch (error) {
 		console.error('[MatchPlaying] 犯规失败', { matchId: matchId.value, actor, error })
 		hideSyncLoading()
@@ -1175,9 +1815,10 @@ const handleFoulByScore = async (score) => {
 
 		try {
 			showSyncLoading()
+			const foulingActor = isReferee.value ? snookerFoulingActor.value : 2
 			const res = await matchFoul(buildActionRequest({
 				match_id: matchId.value,
-				actor: convertActor(2),
+				actor: convertActor(foulingActor),
 				score
 			}))
 			if (!res?.success) {
@@ -1188,8 +1829,8 @@ const handleFoulByScore = async (score) => {
 			}
 			applyWriteResponse(res)
 			hideSyncLoading()
-			pageLog('犯规加分HTTP成功', { matchId: matchId.value, score, serverRevision: res?.server_revision ?? res?.snapshot?.server_revision })
-			uni.showToast({ title: `对手犯规，我方 +${score} 分`, icon: 'none' })
+			pageLog('犯规加分HTTP成功', { matchId: matchId.value, score, foulingActor, serverRevision: res?.server_revision ?? res?.snapshot?.server_revision })
+			uni.showToast({ title: resolveFoulFeedback({ viewerRole: viewerRole.value, foulingActor, score }), icon: 'none' })
 		} catch (error) {
 		console.error('[MatchPlaying] 犯规加分失败', { matchId: matchId.value, score, error })
 		hideSyncLoading()
@@ -1224,8 +1865,8 @@ const handleOpponentWin = async (winType, score = 1, winnerActor = 2) => {
 			}
 			applyWriteResponse(res)
 			hideSyncLoading()
-			pageLog('结束单局HTTP成功', { matchId: matchId.value, winType, score, roundNo: res.round_no, serverRevision: res?.server_revision ?? res?.snapshot?.server_revision })
-			uni.showToast({ title: winnerActor === 1 ? '已判给我方' : '已判给对手', icon: 'none' })
+			pageLog('结束单局HTTP成功', { matchId: matchId.value, winType, score, winnerActor, roundNo: res.round_no, serverRevision: res?.server_revision ?? res?.snapshot?.server_revision })
+			uni.showToast({ title: resolveWinFeedback({ viewerRole: viewerRole.value, uiActor: winnerActor }), icon: 'none' })
 		} catch (error) {
 		console.error('[MatchPlaying] 结束单局失败', { matchId: matchId.value, winType, score, error })
 		hideSyncLoading()
@@ -1239,6 +1880,34 @@ const handleOpponentWin = async (winType, score = 1, winnerActor = 2) => {
 const handleNextRound = async () => {
 	if (!ensureViewerCapability(canScore.value, '当前只有裁判可以开始下一局')) return
 	if (!matchId.value) return
+	if (isSnookerV2.value) {
+		if (currentFrameStarted.value) {
+			uni.showToast({ title: '当前局尚未按规则结束', icon: 'none' })
+			return
+		}
+		uni.showModal({
+			title: '开始下一局',
+			content: '新一局将按赛制自动轮换开球方。',
+			success: async ({ confirm }) => {
+				if (!confirm) return
+				showSyncLoading()
+				try {
+					const result = await startNextRound(buildActionRequest({ match_id: matchId.value }))
+					applyWriteResponse(result)
+					hideSyncLoading()
+					if (!result?.success) {
+						uni.showToast({ title: result?.message || '操作失败', icon: 'none' })
+						return
+					}
+					uni.showToast({ title: `第${result.round_no}局开始`, icon: 'none' })
+				} catch (error) {
+					hideSyncLoading()
+					uni.showToast({ title: '操作失败', icon: 'none' })
+				}
+			}
+		})
+		return
+	}
 
 	const nextFrameAction = resolveSnookerNextFrameAction({
 		currentFrameStarted: currentFrameStarted.value,
@@ -1250,8 +1919,12 @@ const handleNextRound = async () => {
 		return
 	}
 
+	const nextFrameWinnerLabel = resolveScoringParticipantLabel({
+		viewerRole: viewerRole.value,
+		uiActor: nextFrameAction.winner
+	})
 	const modalContent = nextFrameAction.action === 'settle_and_start_next_round'
-		? `将按当前局比分 ${currentFrameMyScore.value}:${currentFrameOpponentScore.value} 自动判定${nextFrameAction.winner === 1 ? '我方' : '对手'}赢下本局，并开始下一局。`
+		? `将按当前局比分 ${currentFrameMyScore.value}:${currentFrameOpponentScore.value} 自动判定${nextFrameWinnerLabel}赢下本局，并开始下一局。`
 		: '确定要开始新的一局吗？'
 
 	uni.showModal({
@@ -1324,71 +1997,194 @@ const handleUndo = async () => {
 	}
 }
 
-/**
- * 结束对局
- */
-const handleFinishMatch = () => {
-	if (!ensureViewerCapability(canFinish.value, '当前只有裁判可以结束对局')) return
-	const finishAction = gameType.value === 1
-		? resolveSnookerFinishMatchAction({
-			currentFrameStarted: currentFrameStarted.value,
-			myFrameScore: currentFrameMyScore.value,
-			opponentFrameScore: currentFrameOpponentScore.value
-		})
-		: { action: 'finish_match' }
-	if (finishAction.action === 'blocked') {
-		uni.showToast({ title: finishAction.message, icon: 'none' })
-		return
+const handleFinishActionResponse = (res, successMessage) => {
+	if (!res?.success) {
+		applyWriteResponse(res)
+		uni.showToast({ title: res?.message || '操作失败', icon: 'none' })
+		return false
 	}
+	applyWriteResponse(res)
+	invalidateRankAfterSettlement(res)
+	uni.showToast({ title: successMessage || res.message || '操作成功', icon: 'none' })
+	if (res.snapshot?.status === 2) {
+		navigateToResultOnce()
+	}
+	return true
+}
 
-	const finishContent = finishAction.action === 'settle_and_finish_match'
-		? `确定要结束本次对局吗？将按当前局比分 ${currentFrameMyScore.value}:${currentFrameOpponentScore.value} 自动判定${finishAction.winner === 1 ? '我方' : '对手'}赢下本局后，再结束整场对局。`
-		: '确定要结束本次对局吗？'
+const handleRequestFinish = () => {
+	if (!ensureViewerCapability(canRequestFinish.value, '当前无法发起结束确认')) return
 	uni.showModal({
-		title: '确认结束',
-		content: finishContent,
-		success: async (res) => {
-			if (res.confirm) {
-				try {
-					showSyncLoading()
-					if (finishAction.action === 'settle_and_finish_match') {
-						const settleRes = await endRound(buildActionRequest({
-							match_id: matchId.value,
-							winner: convertActor(finishAction.winner),
-							win_type: 'normal',
-							score: 1
-						}))
-						if (!settleRes?.success) {
-							applyWriteResponse(settleRes)
-							hideSyncLoading()
-							uni.showToast({ title: settleRes?.message || '本局结算失败', icon: 'none' })
-							return
-						}
-						applyWriteResponse(settleRes)
-					}
-
-					const res = await finishMatch(buildActionRequest({
-						match_id: matchId.value
-					}))
-					if (!res?.success) {
-						applyWriteResponse(res)
-						hideSyncLoading()
-						uni.showToast({ title: res?.message || '操作失败', icon: 'none' })
-						return
-					}
-					applyWriteResponse(res)
-					hideSyncLoading()
-					pageLog('结束对局HTTP成功', { matchId: matchId.value })
-					navigateToResultOnce()
-				} catch (error) {
-					hideSyncLoading()
-					console.error('[MatchPlaying] 结束对局失败', { matchId: matchId.value, error })
-					uni.showToast({ title: '操作失败', icon: 'none' })
-				}
+		title: '发起结束确认',
+		content: '比分将暂时冻结，等待对手确认后才会完成排位结算。',
+		confirmText: '发起请求',
+		success: async ({ confirm }) => {
+			if (!confirm || !matchId.value) return
+			showSyncLoading()
+			try {
+				const res = await requestFinishMatch(buildActionRequest({ match_id: matchId.value }))
+				hideSyncLoading()
+				handleFinishActionResponse(res, '已发起结束确认')
+			} catch (error) {
+				hideSyncLoading()
+				uni.showToast({ title: '发起结束确认失败', icon: 'none' })
 			}
 		}
 	})
 }
+
+const handleConfirmFinish = async () => {
+	if (!ensureViewerCapability(canConfirmFinish.value, '当前没有可确认的结束请求')) return
+	if (!matchId.value) return
+	showSyncLoading()
+	try {
+		const res = await confirmFinishMatch(buildActionRequest({ match_id: matchId.value }))
+		hideSyncLoading()
+		handleFinishActionResponse(res, '已确认结束并完成结算')
+	} catch (error) {
+		hideSyncLoading()
+		uni.showToast({ title: '确认结束失败', icon: 'none' })
+	}
+}
+
+const handleDisputeFinish = async () => {
+	if (!ensureViewerCapability(canDisputeFinish.value, '当前没有可异议的结束请求')) return
+	if (!matchId.value) return
+	uni.showModal({
+		title: '提出异议',
+		content: '提出异议后会恢复记分，请确认比分仍需继续调整。',
+		confirmText: '提出异议',
+		success: async ({ confirm }) => {
+			if (!confirm) return
+			showSyncLoading()
+			try {
+				const res = await disputeFinishMatch(buildActionRequest({ match_id: matchId.value }))
+				hideSyncLoading()
+				handleFinishActionResponse(res, '已提出异议，对局恢复进行中')
+			} catch (error) {
+				hideSyncLoading()
+				uni.showToast({ title: '提出异议失败', icon: 'none' })
+			}
+		}
+	})
+}
+
+const handleWithdrawFinish = async () => {
+	if (!ensureViewerCapability(canWithdrawFinish.value, '当前没有可撤回的结束请求')) return
+	if (!matchId.value) return
+	showSyncLoading()
+	try {
+		const res = await withdrawFinishMatch(buildActionRequest({ match_id: matchId.value }))
+		hideSyncLoading()
+		handleFinishActionResponse(res, '已撤回结束请求')
+	} catch (error) {
+		hideSyncLoading()
+		uni.showToast({ title: '撤回失败', icon: 'none' })
+	}
+}
+
+/**
+ * 结束对局
+ */
+	const executeFinishMatch = async (finishAction) => {
+		try {
+			showSyncLoading()
+			if (finishAction.action === 'settle_and_finish_match') {
+				const settleRes = await endRound(buildActionRequest({
+					match_id: matchId.value,
+					winner: convertActor(finishAction.winner),
+					win_type: 'normal',
+					score: 1
+				}))
+				if (!settleRes?.success) {
+					applyWriteResponse(settleRes)
+					hideSyncLoading()
+					uni.showToast({ title: settleRes?.message || '本局结算失败', icon: 'none' })
+					return
+				}
+				applyWriteResponse(settleRes)
+			}
+
+			const res = await finishMatch(buildActionRequest({
+				match_id: matchId.value
+			}))
+			if (!res?.success) {
+				applyWriteResponse(res)
+				hideSyncLoading()
+				if (res?.message && res.message.indexOf('revision') !== -1) {
+					uni.showToast({ title: '比分已变化，请重新核对后完成', icon: 'none' })
+				} else {
+					uni.showToast({ title: res?.message || '操作失败', icon: 'none' })
+				}
+				pendingFinishAction.value = null
+				return
+			}
+			applyWriteResponse(res)
+			invalidateRankAfterSettlement(res)
+			hideSyncLoading()
+			pendingFinishAction.value = null
+			pageLog('结束对局HTTP成功', { matchId: matchId.value })
+			navigateToResultOnce()
+		} catch (error) {
+			hideSyncLoading()
+			pendingFinishAction.value = null
+			console.error('[MatchPlaying] 结束对局失败', { matchId: matchId.value, error })
+			uni.showToast({ title: '操作失败', icon: 'none' })
+		}
+	}
+
+const handleFinishMatch = () => {
+		if (isSnookerV2.value) {
+			handleOfferSnookerConcession('match')
+			return
+		}
+		if (!ensureViewerCapability(canFinish.value, '当前只有裁判可以结束对局')) return
+		const finishAction = gameType.value === 1
+			? resolveSnookerFinishMatchAction({
+				currentFrameStarted: currentFrameStarted.value,
+				myFrameScore: currentFrameMyScore.value,
+				opponentFrameScore: currentFrameOpponentScore.value
+			})
+			: { action: 'finish_match' }
+		if (finishAction.action === 'blocked') {
+			uni.showToast({ title: finishAction.message, icon: 'none' })
+			return
+		}
+
+		pendingFinishAction.value = finishAction
+
+		// 裁判视角：显示最终比分确认面板
+		if (viewerRole.value === 'referee') {
+			const confirmContent = '双方最终比分：' + myScore.value + ' : ' + opponentScore.value + '\n\n完成后立即结算且无需选手确认'
+			uni.showModal({
+				title: '确认最终比分并完成结算',
+				content: confirmContent,
+				cancelText: '继续记分',
+				confirmText: '确认完成',
+				success: async ({ confirm }) => {
+					if (!confirm) {
+						pendingFinishAction.value = null
+						return
+					}
+					await executeFinishMatch(finishAction)
+				}
+			})
+			return
+		}
+
+		// 选手视角：普通确认
+		const finishContent = finishAction.action === 'settle_and_finish_match'
+			? '确定要结束本次对局吗？\n\n按当前局比分自动判定后结束'
+			: '确定要结束本次对局吗？'
+		uni.showModal({
+			title: '确认结束',
+			content: finishContent,
+			success: async ({ confirm }) => {
+				if (!confirm) return
+				await executeFinishMatch(finishAction)
+			}
+		})
+	}
 
 /**
  * 返回
@@ -1410,7 +2206,7 @@ const handleBack = () => {
  */
 const showMenu = () => {
 	uni.showActionSheet({
-		itemList: ['对局设置', '放弃对局'],
+		itemList: ['对局设置', isSnookerV2.value ? '认输整场比赛' : '放弃对局'],
 		success: (res) => {
 			if (res.tapIndex === 1) {
 				handleFinishMatch()

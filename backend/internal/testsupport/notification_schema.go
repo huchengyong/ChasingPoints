@@ -42,8 +42,9 @@ func (notificationPreferenceSchema) TableName() string {
 
 type notificationMessageSchema struct {
 	Id        int64     `gorm:"primarykey"`
-	UserId    int64     `gorm:"not null;index"`
-	Type      string    `gorm:"size:30;not null"`
+	UserId    int64     `gorm:"not null;index;uniqueIndex:uk_notifications_user_type_dedupe,priority:1"`
+	Type      string    `gorm:"size:30;not null;uniqueIndex:uk_notifications_user_type_dedupe,priority:2"`
+	DedupeKey *string   `gorm:"size:128;uniqueIndex:uk_notifications_user_type_dedupe,priority:3"`
 	Title     string    `gorm:"size:200;not null"`
 	Content   string    `gorm:"size:500"`
 	Data      *string   `gorm:"type:json"`

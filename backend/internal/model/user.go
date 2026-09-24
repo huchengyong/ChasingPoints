@@ -36,27 +36,67 @@ func NewUserModel(db *gorm.DB) *UserModel {
 
 // FindByPhone 根据手机号查找用户
 func (m *UserModel) FindByPhone(phone string) (*User, error) {
+	return m.FindByPhoneWithTx(nil, phone)
+}
+
+func (m *UserModel) FindByPhoneWithTx(tx *gorm.DB, phone string) (*User, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
 	var user User
-	err := m.db.Where("phone = ?", phone).First(&user).Error
+	err := db.Where("phone = ?", phone).First(&user).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}
 	return &user, err
+}
+
+func (m *UserModel) FindByPhoneForUpdateWithTx(tx *gorm.DB, phone string) (*User, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	return m.FindByPhoneWithTx(db.Clauses(clause.Locking{Strength: "UPDATE"}), phone)
 }
 
 // FindById 根据ID查找用户
 func (m *UserModel) FindById(id int64) (*User, error) {
+	return m.FindByIdWithTx(nil, id)
+}
+
+func (m *UserModel) FindByIdWithTx(tx *gorm.DB, id int64) (*User, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
 	var user User
-	err := m.db.First(&user, id).Error
+	err := db.First(&user, id).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}
 	return &user, err
 }
 
+func (m *UserModel) FindByIdForUpdateWithTx(tx *gorm.DB, id int64) (*User, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	return m.FindByIdWithTx(db.Clauses(clause.Locking{Strength: "UPDATE"}), id)
+}
+
 // Create 创建用户
 func (m *UserModel) Create(user *User) error {
-	return m.db.Create(user).Error
+	return m.CreateWithTx(nil, user)
+}
+
+func (m *UserModel) CreateWithTx(tx *gorm.DB, user *User) error {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	return db.Create(user).Error
 }
 
 // Update 更新用户
@@ -66,12 +106,32 @@ func (m *UserModel) Update(user *User) error {
 
 // UpdatePhone 更新用户手机号
 func (m *UserModel) UpdatePhone(userId int64, phone string) error {
-	return m.db.Model(&User{}).Where("id = ?", userId).Update("phone", phone).Error
+	return m.UpdatePhoneWithTx(nil, userId, phone)
+}
+
+func (m *UserModel) UpdatePhoneWithTx(tx *gorm.DB, userId int64, phone string) error {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	return db.Model(&User{}).Where("id = ?", userId).Update("phone", phone).Error
 }
 
 // DeleteById 软删除用户（用于账号合并时清理旧用户）
 func (m *UserModel) DeleteById(userId int64) error {
-	return m.db.Delete(&User{}, userId).Error
+	return m.DeleteByIdWithTx(nil, userId)
+}
+
+func (m *UserModel) DeleteByIdWithTx(tx *gorm.DB, userId int64) error {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	return db.Delete(&User{}, userId).Error
+}
+
+func (m *UserModel) Transaction(fn func(tx *gorm.DB) error) error {
+	return m.db.Transaction(fn)
 }
 
 // UpdatePushToken 更新用户推送令牌

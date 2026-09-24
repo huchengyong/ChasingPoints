@@ -41,17 +41,22 @@ type SyncSummary struct {
 }
 
 type Service struct {
-	svcCtx *svc.ServiceContext
-	client DataClient
-	now    func() time.Time
+	svcCtx      *svc.ServiceContext
+	client      DataClient
+	imageMirror WSTImageMirror
+	now         func() time.Time
 }
 
 func NewService(svcCtx *svc.ServiceContext, client DataClient) *Service {
-	return &Service{
+	service := &Service{
 		svcCtx: svcCtx,
 		client: client,
 		now:    time.Now,
 	}
+	if svcCtx != nil && svcCtx.QiniuUploadService != nil {
+		service.imageMirror = svcCtx.QiniuUploadService
+	}
+	return service
 }
 
 func (s *Service) Sync(ctx context.Context, params SyncParams) (*SyncSummary, error) {
@@ -111,6 +116,10 @@ func (s *Service) Sync(ctx context.Context, params SyncParams) (*SyncSummary, er
 
 	if params.DryRun {
 		return summary, nil
+	}
+
+	if err := s.mirrorPreparedImages(ctx, playerRecords, tournamentRecords); err != nil {
+		return nil, err
 	}
 
 	if err := s.svcCtx.DB.Transaction(func(tx *gorm.DB) error {
@@ -453,9 +462,6 @@ func buildTournamentUpsertRecords(
 		startDate, _ := parseDateOnly(item.Attributes.StartDate)
 		endDate, _ := parseDateOnly(item.Attributes.EndDate)
 		coverImage := strings.TrimSpace(coverImages[item.ID])
-		if coverImage == "" {
-			coverImage = defaultTournamentCoverImage
-		}
 		result = append(result, TournamentUpsertRecord{
 			SourceType:         wstSourceType,
 			SourceTournamentId: strings.TrimSpace(item.ID),
@@ -496,7 +502,6 @@ func (s *Service) resolveTournamentCoverImage(ctx context.Context, item Tourname
 		normalizeWSTPageURL(item.Attributes.TicketingLink),
 	}
 
-	fallbackCover := ""
 	for _, pageURL := range pageCandidates {
 		if pageURL == "" {
 			continue
@@ -508,18 +513,13 @@ func (s *Service) resolveTournamentCoverImage(ctx context.Context, item Tourname
 		}
 
 		coverImage = strings.TrimSpace(coverImage)
-		if coverImage == "" {
+		if coverImage == "" || coverImage == defaultTournamentCoverImage {
 			continue
 		}
-		if fallbackCover == "" {
-			fallbackCover = coverImage
-		}
-		if coverImage != defaultTournamentCoverImage {
-			return coverImage
-		}
+		return coverImage
 	}
 
-	return fallbackCover
+	return ""
 }
 
 func normalizeWSTPageURL(value string) string {

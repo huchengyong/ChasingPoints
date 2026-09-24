@@ -77,6 +77,24 @@ func matchAchievementCtx(userID int64) context.Context {
 	return context.WithValue(context.Background(), "user_id", userID)
 }
 
+func TestAppendMatchAchievementProgressEventUsesMatchEffectiveTime(t *testing.T) {
+	svcCtx := newMatchAchievementClosedLoopTestSvc(t)
+	service := achievementx.NewAchievementProgressService(svcCtx)
+	endedAt := time.Date(2026, 7, 22, 20, 30, 0, 0, time.UTC)
+	match := &model.Match{Id: 6999, GameType: 3, EndTime: &endedAt}
+
+	if err := appendMatchAchievementProgressEvent(service, 1001, match, achievementx.MetricMatchesTotal, 1); err != nil {
+		t.Fatalf("append match progress event: %v", err)
+	}
+	event, err := svcCtx.AchievementProgressEventModel.FindBySourceMetric(1001, achievementx.SourceTypeMatch, match.Id, achievementx.MetricMatchesTotal)
+	if err != nil || event == nil {
+		t.Fatalf("find progress event: event=%+v err=%v", event, err)
+	}
+	if !event.OccurredAt.Equal(endedAt) {
+		t.Fatalf("expected occurred_at %v, got %v", endedAt, event.OccurredAt)
+	}
+}
+
 func TestEndRoundStoresSpecialRecordForWinningActor(t *testing.T) {
 	svcCtx := newMatchAchievementClosedLoopTestSvc(t)
 	opponentID := int64(2002)
@@ -157,6 +175,7 @@ func TestFinishMatchWritesAchievementProgressAndIsIdempotent(t *testing.T) {
 	assertUserAchievementProgress(t, svcCtx, 1001, "streak_1", 1, true)
 	assertUserAchievementProgress(t, svcCtx, 2002, "break_clear_1", 1, true)
 	assertUserAchievementProgress(t, svcCtx, 1001, "break_clear_1", 0, false)
+	firstSyncedAt := assertMatchAchievementSynced(t, svcCtx, 7002, true)
 
 	replayResp, err := NewFinishMatchLogic(matchAchievementCtx(1001), svcCtx).FinishMatch(&types.FinishMatchReq{
 		MatchId:        7002,
@@ -178,6 +197,107 @@ func TestFinishMatchWritesAchievementProgressAndIsIdempotent(t *testing.T) {
 	}
 	assertUserAchievementProgress(t, svcCtx, 1001, "match_1", 1, true)
 	assertUserAchievementProgress(t, svcCtx, 2002, "break_clear_1", 1, true)
+	replayedSyncedAt := assertMatchAchievementSynced(t, svcCtx, 7002, true)
+	if !replayedSyncedAt.Equal(*firstSyncedAt) {
+		t.Fatalf("expected replay to preserve synced_at %v, got %v", firstSyncedAt, replayedSyncedAt)
+	}
+}
+
+func TestFinishPracticeMatchMarksAchievementSyncReadyWithoutRewards(t *testing.T) {
+	svcCtx := newMatchAchievementClosedLoopTestSvc(t)
+	opponentID := int64(2002)
+	seedMatchAchievementUsers(t, svcCtx, 1001, opponentID)
+	seedMatchAchievementDefinitions(t, svcCtx)
+	seedMatchAchievementMatch(t, svcCtx, &model.Match{
+		Id:            7004,
+		UserId:        1001,
+		OpponentId:    &opponentID,
+		OpponentName:  "选手乙",
+		GameType:      3,
+		MatchMode:     model.MatchModePractice,
+		MyScore:       1,
+		OpponentScore: 0,
+		Status:        1,
+		MatchTime:     time.Now().Add(-10 * time.Minute),
+	})
+	seedMatchAchievementRound(t, svcCtx, 7004, 1, 1)
+
+	resp, err := NewFinishMatchLogic(matchAchievementCtx(1001), svcCtx).FinishMatch(&types.FinishMatchReq{
+		MatchId:        7004,
+		ClientActionId: "finish-practice-7004",
+		BaseRevision:   0,
+	})
+	if err != nil || !resp.Success {
+		t.Fatalf("finish practice match: resp=%+v err=%v", resp, err)
+	}
+	assertMatchAchievementSynced(t, svcCtx, 7004, true)
+	if total := countAllProgressEvents(t, svcCtx); total != 0 {
+		t.Fatalf("expected practice match to create no progress events, got %d", total)
+	}
+}
+
+func TestFinishDrawMarksAchievementSyncReadyWithoutRewards(t *testing.T) {
+	svcCtx := newMatchAchievementClosedLoopTestSvc(t)
+	opponentID := int64(2002)
+	seedMatchAchievementUsers(t, svcCtx, 1001, opponentID)
+	seedMatchAchievementDefinitions(t, svcCtx)
+	seedMatchAchievementMatch(t, svcCtx, &model.Match{
+		Id:            7005,
+		UserId:        1001,
+		OpponentId:    &opponentID,
+		OpponentName:  "选手乙",
+		GameType:      3,
+		MatchMode:     model.MatchModeRanked,
+		MyScore:       1,
+		OpponentScore: 1,
+		Status:        1,
+		MatchTime:     time.Now().Add(-10 * time.Minute),
+	})
+	seedMatchAchievementRound(t, svcCtx, 7005, 1, 1)
+
+	resp, err := NewFinishMatchLogic(matchAchievementCtx(1001), svcCtx).FinishMatch(&types.FinishMatchReq{
+		MatchId:        7005,
+		ClientActionId: "finish-draw-7005",
+		BaseRevision:   0,
+	})
+	if err != nil || !resp.Success {
+		t.Fatalf("finish draw match: resp=%+v err=%v", resp, err)
+	}
+	assertMatchAchievementSynced(t, svcCtx, 7005, true)
+	if total := countAllProgressEvents(t, svcCtx); total != 0 {
+		t.Fatalf("expected draw to create no progress events, got %d", total)
+	}
+}
+
+func TestFinishMatchLeavesAchievementSyncPendingOnFailure(t *testing.T) {
+	svcCtx := newMatchAchievementClosedLoopTestSvc(t)
+	opponentID := int64(2002)
+	seedMatchAchievementUsers(t, svcCtx, 1001, opponentID)
+	seedMatchAchievementDefinitions(t, svcCtx)
+	seedMatchAchievementMatch(t, svcCtx, &model.Match{
+		Id:            7006,
+		UserId:        1001,
+		OpponentId:    &opponentID,
+		OpponentName:  "选手乙",
+		GameType:      3,
+		MatchMode:     model.MatchModeRanked,
+		MyScore:       1,
+		OpponentScore: 0,
+		Status:        1,
+		MatchTime:     time.Now().Add(-10 * time.Minute),
+	})
+	seedMatchAchievementRound(t, svcCtx, 7006, 1, 1)
+	svcCtx.AchievementProgressEventModel = nil
+
+	resp, err := NewFinishMatchLogic(matchAchievementCtx(1001), svcCtx).FinishMatch(&types.FinishMatchReq{
+		MatchId:        7006,
+		ClientActionId: "finish-sync-failure-7006",
+		BaseRevision:   0,
+	})
+	if err != nil || !resp.Success {
+		t.Fatalf("finish match with achievement sync failure: resp=%+v err=%v", resp, err)
+	}
+	assertMatchAchievementSynced(t, svcCtx, 7006, false)
 }
 
 func TestFinishMatchSkipsAchievementProgressForInvalidMatch(t *testing.T) {
@@ -295,4 +415,28 @@ func countProgressEvents(t *testing.T, svcCtx *svc.ServiceContext, userID int64,
 		t.Fatalf("count progress events: %v", err)
 	}
 	return total
+}
+
+func countAllProgressEvents(t *testing.T, svcCtx *svc.ServiceContext) int64 {
+	t.Helper()
+
+	var total int64
+	if err := svcCtx.DB.Model(&model.AchievementProgressEvent{}).Count(&total).Error; err != nil {
+		t.Fatalf("count all progress events: %v", err)
+	}
+	return total
+}
+
+func assertMatchAchievementSynced(t *testing.T, svcCtx *svc.ServiceContext, matchID int64, wantSynced bool) *time.Time {
+	t.Helper()
+
+	match, err := svcCtx.MatchModel.FindById(matchID)
+	if err != nil || match == nil {
+		t.Fatalf("find match %d: match=%+v err=%v", matchID, match, err)
+	}
+	gotSynced := match.AchievementSyncedAt != nil
+	if gotSynced != wantSynced {
+		t.Fatalf("expected match %d achievement_synced_at present=%v, got %v", matchID, wantSynced, match.AchievementSyncedAt)
+	}
+	return match.AchievementSyncedAt
 }

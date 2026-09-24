@@ -2,9 +2,9 @@
 	<view class="submit-page" :class="{ 'dark-mode': isDarkMode }">
 		<view class="page-intro">
 			<view class="intro-copy">
-				<text class="intro-eyebrow">常玩球馆</text>
-				<text class="intro-title">提交常玩的球馆，领取 1 个月会员</text>
-				<text class="intro-desc">填写基础资料，要求真实信息，后台审核通过后会自动发放会员。虚假信息将不予通过。</text>
+				<text class="intro-eyebrow">绑定常玩球馆</text>
+				<text class="intro-title">限时领取1个月Pro会员</text>
+				<text class="intro-desc">填写球馆真实的位置信息，审核通过后会自动发放会员。虚假信息将不予通过。</text>
 			</view>
 		</view>
 

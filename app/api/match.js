@@ -59,6 +59,15 @@ export const getMatchDetail = (params) => {
 }
 
 /**
+ * 获取当前用户的本场新解锁荣誉
+ * @param {Object} params { match_id }
+ * @returns {Promise}
+ */
+export const getMatchRewardSummary = (params) => {
+  return get('/api/match/reward-summary', params)
+}
+
+/**
  * 获取公开对局详情（观战模式，无需登录）
  * @param {Object} params { match_id }
  * @returns {Promise}
@@ -69,18 +78,21 @@ export const getPublicMatchDetail = (params) => {
 
 /**
  * 开始对局
- * @param {Object} data 对局信息
+ * @param {Object} data 对局信息；斯诺克需包含 best_of_frames、starting_actor
  * @returns {Promise}
  */
-export const startMatch = (data) => {
-  const message = validateStartMatchPayload(data)
+export const startMatch = (data = {}) => {
+  const payload = Number(data.game_type || data.gameType || 0) === 1
+    ? { ...data, snooker_rules_version: Number(data.snooker_rules_version || data.snookerRulesVersion || 2) }
+    : data
+  const message = validateStartMatchPayload(payload)
   if (message) {
     return Promise.resolve({
       success: false,
       message
     })
   }
-  return post('/api/match/start', data)
+  return post('/api/match/start', payload)
 }
 
 /**
@@ -90,6 +102,22 @@ export const startMatch = (data) => {
  */
 export const finishMatch = (data) => {
   return post('/api/match/finish', data)
+}
+
+export const requestFinishMatch = (data) => {
+  return post('/api/match/finish/request', data)
+}
+
+export const confirmFinishMatch = (data) => {
+  return post('/api/match/finish/confirm', data)
+}
+
+export const disputeFinishMatch = (data) => {
+  return post('/api/match/finish/dispute', data)
+}
+
+export const withdrawFinishMatch = (data) => {
+  return post('/api/match/finish/withdraw', data)
 }
 
 /**
@@ -137,6 +165,26 @@ export const joinMatchReferee = (data) => {
 }
 
 /**
+ * 裁判码预览
+ * @param {Object} data { match_id, join_token }
+ * @returns {Promise}
+ */
+export const previewMatchReferee = (data) => {
+  return post('/api/match/referee/preview', data)
+}
+
+/**
+ * 获取裁判历史
+ * @param {Object} params 查询参数
+ * @param {number} params.page 页码
+ * @param {number} params.page_size 每页条数
+ * @returns {Promise}
+ */
+export const getRefereeHistory = (params = {}) => {
+  return get('/api/match/referee/history', params)
+}
+
+/**
  * 加分
  * @param {Object} data { match_id, actor, score }
  * @returns {Promise}
@@ -170,6 +218,24 @@ export const startNextRound = (data) => {
  */
 export const matchFoul = (data) => {
   return post('/api/match/foul', data)
+}
+
+/**
+ * 记录版本2斯诺克一次击球结果
+ * @param {Object} data 击球方、结果、入袋球及犯规决定
+ * @returns {Promise}
+ */
+export const snookerStroke = (data) => {
+  return post('/api/match/snooker/stroke', data)
+}
+
+/**
+ * 记录版本2斯诺克局级动作
+ * @param {Object} data 重置黑球、认输或裁判判局动作
+ * @returns {Promise}
+ */
+export const snookerFrameAction = (data) => {
+  return post('/api/match/snooker/frame-action', data)
 }
 
 /**

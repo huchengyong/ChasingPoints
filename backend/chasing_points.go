@@ -8,6 +8,7 @@ import (
 
 	"chasing_points/internal/config"
 	"chasing_points/internal/handler"
+	logicx "chasing_points/internal/logic"
 	"chasing_points/internal/logic/wstsync"
 	"chasing_points/internal/middleware"
 	"chasing_points/internal/pkg/ws"
@@ -66,7 +67,8 @@ func main() {
 			go wstsync.NewHotAutoSyncWorker(svcCtx, c.WSTSync).Start(context.Background())
 		}
 	}
+	go logicx.NewSeasonRolloverWorker(svcCtx).Start(context.Background())
 
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
-	server.Start()
+	server.StartWithOpts(withWechatMessagePushRoute(c))
 }

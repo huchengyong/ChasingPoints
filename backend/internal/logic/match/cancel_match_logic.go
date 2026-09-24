@@ -2,6 +2,7 @@ package match
 
 import (
 	"context"
+	"time"
 
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -49,8 +50,12 @@ func (l *CancelMatchLogic) CancelMatch(req *types.CancelMatchReq) (resp *types.C
 		return &types.CommonResp{Success: false, Message: "对局已结束"}, nil
 	}
 
-	// 更新状态为已取消
+	// 更新状态为已取消，记录结束时间
+	now := time.Now()
 	match.Status = 3
+	match.EndTime = &now
+	match.CompletedByUserId = nil
+	match.CompletionSource = "unknown"
 
 	if err := l.svcCtx.MatchModel.Update(match); err != nil {
 		l.Logger.Errorf("取消对局失败: %v", err)

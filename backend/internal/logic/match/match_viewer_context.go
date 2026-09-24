@@ -3,19 +3,23 @@ package match
 import "chasing_points/internal/model"
 
 const (
-	matchViewerRoleUnknown  = ""
-	matchViewerRolePlayer1  = "player1"
-	matchViewerRolePlayer2  = "player2"
-	matchViewerRoleReferee  = "referee"
+	matchViewerRoleUnknown = ""
+	matchViewerRolePlayer1 = "player1"
+	matchViewerRolePlayer2 = "player2"
+	matchViewerRoleReferee = "referee"
 )
 
 type matchViewerCapabilities struct {
-	ViewerRole   string
-	RefereeBound bool
-	RefereeUserId int64
-	CanScore     bool
-	CanUndo      bool
-	CanFinish    bool
+	ViewerRole        string
+	RefereeBound      bool
+	RefereeUserId     int64
+	CanScore          bool
+	CanUndo           bool
+	CanFinish         bool
+	CanRequestFinish  bool
+	CanConfirmFinish  bool
+	CanDisputeFinish  bool
+	CanWithdrawFinish bool
 }
 
 func resolveMatchViewerCapabilities(match *model.Match, userId int64) matchViewerCapabilities {
@@ -37,14 +41,26 @@ func resolveMatchViewerCapabilities(match *model.Match, userId int64) matchViewe
 		capabilities.CanFinish = true
 	case match.UserId == userId:
 		capabilities.ViewerRole = matchViewerRolePlayer1
-		capabilities.CanScore = !capabilities.RefereeBound
-		capabilities.CanUndo = !capabilities.RefereeBound
-		capabilities.CanFinish = !capabilities.RefereeBound
+		capabilities.CanScore = !capabilities.RefereeBound && match.FinishState != model.FinishStatePendingConfirmation
+		capabilities.CanUndo = !capabilities.RefereeBound && match.FinishState != model.FinishStatePendingConfirmation
+		capabilities.CanFinish = !capabilities.RefereeBound && match.Status == 1 && (model.NormalizeMatchMode(match.MatchMode) == model.MatchModePractice || !match.FinishConfirmationRequired)
+		capabilities.CanRequestFinish = !capabilities.RefereeBound && match.FinishConfirmationRequired && model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked && match.FinishState != model.FinishStatePendingConfirmation && match.Status == 1
 	case match.OpponentId != nil && *match.OpponentId == userId:
 		capabilities.ViewerRole = matchViewerRolePlayer2
-		capabilities.CanScore = !capabilities.RefereeBound
-		capabilities.CanUndo = !capabilities.RefereeBound
-		capabilities.CanFinish = !capabilities.RefereeBound
+		capabilities.CanScore = !capabilities.RefereeBound && match.FinishState != model.FinishStatePendingConfirmation
+		capabilities.CanUndo = !capabilities.RefereeBound && match.FinishState != model.FinishStatePendingConfirmation
+		capabilities.CanFinish = !capabilities.RefereeBound && match.Status == 1 && (model.NormalizeMatchMode(match.MatchMode) == model.MatchModePractice || !match.FinishConfirmationRequired)
+		capabilities.CanRequestFinish = !capabilities.RefereeBound && match.FinishConfirmationRequired && model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked && match.FinishState != model.FinishStatePendingConfirmation && match.Status == 1
+	}
+
+	if !capabilities.RefereeBound && match.FinishState == model.FinishStatePendingConfirmation && capabilities.ViewerRole != matchViewerRoleReferee {
+		requestedBy := int64(0)
+		if match.FinishRequestedBy != nil {
+			requestedBy = *match.FinishRequestedBy
+		}
+		capabilities.CanConfirmFinish = requestedBy > 0 && requestedBy != userId
+		capabilities.CanDisputeFinish = capabilities.CanConfirmFinish
+		capabilities.CanWithdrawFinish = requestedBy == userId
 	}
 
 	return capabilities
@@ -52,4 +68,11 @@ func resolveMatchViewerCapabilities(match *model.Match, userId int64) matchViewe
 
 func shouldUsePlayer2Perspective(role string) bool {
 	return role == matchViewerRolePlayer2
+}
+
+func resolveFinishRequestedBy(match *model.Match) int64 {
+	if match == nil || match.FinishRequestedBy == nil {
+		return 0
+	}
+	return *match.FinishRequestedBy
 }

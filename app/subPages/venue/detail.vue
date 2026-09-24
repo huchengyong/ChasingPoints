@@ -91,7 +91,7 @@
 					<view v-for="item in recentCheckins" :key="item.id" class="checkin-user">
 						<image
 							class="checkin-avatar"
-							:src="item.avatar || '/static/default-avatar.png'"
+							:src="resolveAvatarUrl(item.avatar, item.user_id || item.id)"
 							mode="aspectFill"
 						></image>
 					</view>
@@ -125,6 +125,7 @@ import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getVenueDetail, checkinVenue } from '@/api/venue.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const { isDarkMode } = usePageTheme()
 

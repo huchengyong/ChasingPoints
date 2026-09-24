@@ -19,6 +19,10 @@ const settingsProfileSource = readFileSync(
   new URL('../utils/settings-profile.js', import.meta.url),
   'utf8'
 )
+const editProfileSource = readFileSync(
+  new URL('../subPages/user/editProfile.vue', import.meta.url),
+  'utf8'
+)
 
 test('formatSettingsPhone keeps +86 prefix and masked mainland number', () => {
   assert.equal(formatSettingsPhone('188****5657'), '+86 188****5657')
@@ -71,19 +75,18 @@ test('settings page exposes avatar, nickname, phone, and image picker entry poin
   assert.match(settingsSource, /头像/)
   assert.match(settingsSource, /用户昵称/)
   assert.match(settingsSource, /手机号/)
-  assert.match(settingsSource, /chooseAvatarSource/)
-  assert.match(settingsSource, /pickAvatarFromCamera/)
-  assert.match(settingsSource, /pickAvatarFromAlbum/)
-  assert.match(settingsSource, /pickAvatarImage\(\['camera'\]\)/)
-  assert.match(settingsSource, /pickAvatarImage\(\['album'\]\)/)
-  assert.match(settingsSource, /prepareAvatarForUpload/)
+  assert.match(settingsSource, /openEditProfile/)
+  assert.match(editProfileSource, /chooseAvatarSource/)
+  assert.match(editProfileSource, /pickAvatarImage\(\['camera'\]\)/)
+  assert.match(editProfileSource, /pickAvatarImage\(\['album'\]\)/)
+  assert.match(editProfileSource, /prepareAvatarForUpload/)
   assert.match(settingsProfileSource, /uniApi\.compressImage/)
-  assert.match(settingsSource, /getQiniuUploadToken/)
-  assert.match(settingsSource, /updateUserProfile/)
+  assert.match(editProfileSource, /getQiniuUploadToken/)
+  assert.match(editProfileSource, /updateUserProfile/)
 })
 
 test('settings page limits nickname input to 12 characters for profile layout safety', () => {
-  assert.match(settingsSource, /maxlength="12"/)
-  assert.match(settingsSource, /nickname\.length < 2 \|\| nickname\.length > 12/)
-  assert.match(settingsSource, /昵称长度需要在2-12个字符之间/)
+  assert.match(editProfileSource, /maxlength="12"/)
+  assert.match(editProfileSource, /nickname\.length < 2 \|\| nickname\.length > 12/)
+  assert.match(editProfileSource, /昵称长度需要在2-12个字符之间/)
 })

@@ -26,7 +26,7 @@ func DefaultFavoriteVenueRewardConfig() *FavoriteVenueRewardConfig {
 func DefaultWelcomeMemberRewardConfig() *FavoriteVenueRewardConfig {
 	return &FavoriteVenueRewardConfig{
 		ActivityKey:       WelcomeMemberRewardActivityKey,
-		Enabled:           true,
+		Enabled:           false,
 		PopupEnabled:      false,
 		RewardDays:        7,
 		NewUserWindowDays: 7,

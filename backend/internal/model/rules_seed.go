@@ -2,22 +2,22 @@ package model
 
 func GetDefaultRulesContent() []RulesContent {
 	return []RulesContent{
-		{Category: "snooker", ContentType: "rule", Title: "开球规则", Content: "首杆需从开球区内击打红球堆，至少有一颗红球碰库或入袋。", SortOrder: 1},
+		{Category: "snooker", ContentType: "rule", Title: "开球规则", Content: "每局首杆母球为D区内手中球，红球为目标球；标准斯诺克不要求该杆必须有红球碰库或入袋。", SortOrder: 1},
 		{Category: "snooker", ContentType: "rule", Title: "击球顺序", Content: "每次合法击球需遵循红球和彩球交替的基本顺序。", SortOrder: 2},
 		{Category: "snooker", ContentType: "rule", Title: "得分规则", Content: "红球1分，黄2分、绿3分、咖啡4分、蓝5分、粉6分、黑7分。", SortOrder: 3},
-		{Category: "snooker", ContentType: "rule", Title: "斯诺克规则", Content: "当目标球被阻挡无法直接击打时形成斯诺克，对手需尝试解球。", SortOrder: 4},
+		{Category: "snooker", ContentType: "rule", Title: "斯诺克规则", Content: "若母球无法沿直线直接击中至少一颗目标球的两个极边，则形成斯诺克；仅遮挡部分线路不一定构成斯诺克。", SortOrder: 4},
 		{Category: "snooker", ContentType: "rule", Title: "复位规则", Content: "彩球在非清彩阶段入袋后需按规则点位复位。", SortOrder: 5},
 		{Category: "snooker", ContentType: "foul", Title: "未击中目标球", Content: "击球后母球未先碰到当前应击打的目标球，判犯规。", SortOrder: 1},
-		{Category: "snooker", ContentType: "foul", Title: "同时击中两球", Content: "母球首碰出现两颗目标球或非法连击，判犯规。", SortOrder: 2},
+		{Category: "snooker", ContentType: "foul", Title: "同时击中两球", Content: "母球通常不得同时首碰两球；目标球为红球时同时首碰两颗红球合法，自由球情况下也可同时首碰指定自由球与目标球。", SortOrder: 2},
 		{Category: "snooker", ContentType: "foul", Title: "击球入袋后白球落袋", Content: "进攻得分同时母球落袋，进球无效并判犯规。", SortOrder: 3},
-		{Category: "snooker", ContentType: "glossary", Title: "斯诺克", Content: "通过障碍球让对手无法直接击中目标球的防守局面。", SortOrder: 1},
+		{Category: "snooker", ContentType: "glossary", Title: "斯诺克", Content: "母球被非目标球阻挡，无法沿直线击中至少一颗目标球两个极边的局面。", SortOrder: 1},
 		{Category: "snooker", ContentType: "glossary", Title: "清台", Content: "从某一阶段起连续得分直至台面目标球全部清空。", SortOrder: 2},
-		{Category: "snooker", ContentType: "glossary", Title: "满分147", Content: "标准规则下单杆可达到的最高分数。", SortOrder: 3},
+		{Category: "snooker", ContentType: "glossary", Title: "满分147", Content: "无自由球的标准15红球局中，单杆最高为147分；若开局因对手犯规获得自由球，理论最高单杆可达155分。", SortOrder: 3},
 		{Category: "snooker", ContentType: "glossary", Title: "世锦赛", Content: "斯诺克最具代表性的世界级职业赛事。", SortOrder: 4},
 		{Category: "snooker", ContentType: "glossary", Title: "安全球", Content: "以限制对手进攻机会为目标的防守击球。", SortOrder: 5},
 		{Category: "snooker", ContentType: "glossary", Title: "红球", Content: "每颗1分，共15颗，通常先于彩球被击打。", SortOrder: 6},
 		{Category: "snooker", ContentType: "glossary", Title: "彩球", Content: "黄绿咖啡蓝粉黑，分值2到7分不等。", SortOrder: 7},
-		{Category: "snooker", ContentType: "glossary", Title: "自由球", Content: "对手犯规后形成斯诺克时可指定任意球代替目标球。", SortOrder: 8},
+		{Category: "snooker", ContentType: "glossary", Title: "自由球", Content: "对手犯规后，若下一击球方对全部目标球形成斯诺克，裁判宣告自由球；击球方可指定一颗非目标球取得目标球身份和分值。", SortOrder: 8},
 		{Category: "snooker", ContentType: "glossary", Title: "复位", Content: "彩球入袋后按规则放回既定点位。", SortOrder: 9},
 		{Category: "snooker", ContentType: "glossary", Title: "延伸", Content: "使用延长器或架杆辅助完成远距离击球。", SortOrder: 10},
 

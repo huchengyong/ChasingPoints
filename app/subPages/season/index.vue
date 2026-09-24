@@ -88,7 +88,7 @@
 						</view>
 						<image
 							class="rank-avatar"
-							:src="item.avatar || '/static/default-avatar.png'"
+							:src="resolveAvatarUrl(item.avatar, item.user_id)"
 							mode="aspectFill"
 						></image>
 						<view class="rank-info">
@@ -121,6 +121,7 @@ import { ref, computed, onMounted } from 'vue'
 import { getCurrentSeason, getSeasonLeaderboard, getMySeasonRecord } from '@/api/season.js'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const { isDarkMode } = usePageTheme()
 
@@ -433,5 +434,63 @@ onMounted(async () => {
 	padding: 24rpx;
 	font-size: 24rpx;
 	color: #cbd5e1;
+}
+
+.season-page.dark-mode {
+	background: #141109;
+
+	.game-type-tab,
+	.no-season-card,
+	.my-record-card,
+	.leaderboard-card {
+		background: #1e180d;
+		border-color: #3a2e16;
+	}
+
+	.game-type-tab text,
+	.loading-text,
+	.no-season-text,
+	.stat-label,
+	.rank-score,
+	.empty-list,
+	.no-more {
+		color: #9f926e;
+	}
+
+	.game-type-tab.active {
+		background: rgba(224, 174, 18, 0.18);
+		border-color: rgba(224, 174, 18, 0.42);
+
+		text {
+			color: #f7e7a8;
+		}
+	}
+
+	.card-title,
+	.my-record-card .record-stats .stat-value,
+	.rank-item .rank-info .rank-name {
+		color: #fff7e1;
+	}
+
+	.rank-item {
+		border-bottom-color: #3a2e16;
+
+		.rank-num,
+		.rank-num.top-2,
+		.rank-avatar {
+			background: #3a2e16;
+			color: #d7c89b;
+		}
+
+		.rank-num.top-1 {
+			background: rgba(224, 174, 18, 0.2);
+			color: #fbbf24;
+		}
+
+		.rank-num.top-3 {
+			background: rgba(249, 115, 22, 0.18);
+			color: #fdba74;
+		}
+	}
 }
 </style>

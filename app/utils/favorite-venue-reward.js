@@ -32,7 +32,30 @@ const parseRewardTime = (rawValue) => {
   return parsed
 }
 
+const SNOOZE_DURATION_MS = 3 * 24 * 60 * 60 * 1000
+
+export const getFavoriteVenueRewardFloatSnoozeKey = (userId, status) => `favorite-venue-reward-float-snoozed-until:${userId || 0}:${status || 'not_started'}`
+
+export const calcFavoriteVenueRewardFloatSnoozeUntil = (now = new Date()) => new Date(now.getTime() + SNOOZE_DURATION_MS)
+
+export const isFavoriteVenueRewardFloatSnoozed = (snoozeUntil, now = new Date()) => {
+  if (!snoozeUntil) return false
+  const until = snoozeUntil instanceof Date ? snoozeUntil : new Date(snoozeUntil)
+  if (Number.isNaN(until.getTime())) return false
+  return now.getTime() < until.getTime()
+}
+
 export const getFavoriteVenueRewardPopupStorageKey = (userId) => `favorite-venue-reward-popup-dismissed:${userId || 0}`
+
+export const resolveFavoriteVenueRewardFloatSnoozeMigration = ({ userId, rewardStatus, oldPopupDismissed, getFloatSnoozeValue }) => {
+  if (!userId || !rewardStatus) return null
+  if (!oldPopupDismissed) return null
+  const status = rewardStatus.status
+  if (status !== 'not_started') return null
+  const existingSnooze = getFloatSnoozeValue(userId, status)
+  if (existingSnooze) return null
+  return { key: getFavoriteVenueRewardFloatSnoozeKey(userId, status), snoozeUntil: calcFavoriteVenueRewardFloatSnoozeUntil() }
+}
 
 export const shouldShowFavoriteVenueRewardPopup = ({ userId, rewardStatus, popupDismissed }) => {
   if (!userId || !rewardStatus) return false

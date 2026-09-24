@@ -3,6 +3,7 @@ package stats
 import (
 	"context"
 
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -51,6 +52,7 @@ func (l *GetOpponentStrengthLogic) GetOpponentStrength(req *types.GetOpponentStr
 			userIdInt, userIdInt).
 		Joins("LEFT JOIN user_ranking ur ON ur.user_id = CASE WHEN m.user_id = ? THEN m.opponent_id ELSE m.user_id END AND ur.game_type = m.game_type", userIdInt).
 		Where("(m.user_id = ? OR m.opponent_id = ?) AND m.status = 2", userIdInt, userIdInt)
+	query = query.Where("m.match_mode = ? OR m.match_mode = '' OR m.match_mode IS NULL", model.MatchModeRanked)
 
 	if req != nil && req.GameType > 0 {
 		query = query.Where("m.game_type = ?", req.GameType)

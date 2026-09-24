@@ -1,9 +1,90 @@
 const PHONE_REGEXP = /^1[3-9]\d{9}$/
 const CODE_REGEXP = /^\d{6}$/
+export const AUTH_SLOW_FEEDBACK_DELAY = 3000
 const ENTRY_FUNNEL_ROUTES = new Set([
   'pages/welcome/index',
   'pages/login/login'
 ])
+
+export function resolveLoginMode({ isWechatMini, requestedMethod = '' } = {}) {
+  if (!isWechatMini) {
+    return 'phone'
+  }
+
+  return requestedMethod === 'phone' ? 'phone' : 'wechat'
+}
+
+export function resolveAlternateLoginMode(currentMode) {
+  return currentMode === 'wechat' ? 'phone' : 'wechat'
+}
+
+export function resolveAuthenticationGate({
+  isWechatLogging = false,
+  isPhoneLogging = false,
+  isHuaweiLogging = false,
+  isPageActive = true
+} = {}) {
+  const isAuthenticating = Boolean(isWechatLogging || isPhoneLogging || isHuaweiLogging)
+  const canInteract = Boolean(isPageActive) && !isAuthenticating
+
+  return {
+    isAuthenticating,
+    canStart: canInteract,
+    canLeave: canInteract,
+    shouldHandleResult: Boolean(isPageActive)
+  }
+}
+
+export function resolveAuthenticationPhase({
+  isAuthenticating = false,
+  elapsedMs = 0
+} = {}) {
+  if (!isAuthenticating) {
+    return 'idle'
+  }
+
+  return Number(elapsedMs) >= AUTH_SLOW_FEEDBACK_DELAY ? 'slow' : 'pending'
+}
+
+export function resolveAuthenticationFeedback({
+  isAuthenticating = false,
+  isSlow = false
+} = {}) {
+  if (!isAuthenticating) {
+    return {
+      visible: false,
+      phase: 'idle',
+      message: ''
+    }
+  }
+
+  if (isSlow) {
+    return {
+      visible: true,
+      phase: 'slow',
+      message: '网络有些慢，追分竭尽全力为您继续尝试中'
+    }
+  }
+
+  return {
+    visible: true,
+    phase: 'pending',
+    message: '追分正在为您完成登录'
+  }
+}
+
+export function resolveWechatPostLoginState({
+  needBindPhone,
+  bindingSkipped = false,
+  bindingCompleted = false
+} = {}) {
+  const remainsUnbound = Boolean(needBindPhone) && !bindingCompleted
+
+  return {
+    action: remainsUnbound && !bindingSkipped ? 'bind-phone' : 'navigate',
+    needBindPhone: remainsUnbound
+  }
+}
 
 export function isPhoneValid(phone) {
   return PHONE_REGEXP.test(String(phone || '').trim())
@@ -19,6 +100,10 @@ export function canRequestSms({ phone, countdown, isSending }) {
 
 export function canAttemptLogin({ phone, code, isLogging }) {
   return isPhoneValid(phone) && isCodeValid(code) && !isLogging
+}
+
+export function canAttemptWechatMiniLogin({ isAgreed, isLogging }) {
+  return Boolean(isAgreed) && !isLogging
 }
 
 export function canSubmitLogin({ phone, code, isAgreed, isLogging }) {
@@ -85,7 +170,27 @@ export function shouldClearEntryFunnelAgreementSession({ currentRoute, visibleRo
   return !visibleRoutes.some((route) => route !== currentRoute && ENTRY_FUNNEL_ROUTES.has(route))
 }
 
-export function resolveWelcomeActions({ isHarmony, isAgreed }) {
+export function resolveWelcomeActions({
+  isHarmony,
+  isWechatMini = false,
+  isAgreed,
+  isLogging = false,
+  isSlowLogging = false
+}) {
+  if (isWechatMini) {
+    return {
+      primaryText: isLogging
+        ? (isSlowLogging ? '网络稍慢，正在继续…' : '正在安全登录…')
+        : '微信一键进入',
+      secondaryText: '手机号登录',
+      tertiaryText: '先逛逛',
+      showHuaweiLogin: false,
+      showPhoneLogin: true,
+      primaryDisabled: Boolean(isLogging),
+      secondaryDisabled: false
+    }
+  }
+
   return {
     primaryText: '手机号登录 / 注册',
     secondaryText: '华为账号登录',

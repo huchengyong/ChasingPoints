@@ -82,6 +82,22 @@ func (l *MatchScoreLogic) MatchScore(req *types.MatchScoreReq) (resp *types.Matc
 			OpponentScore:                 scoreView.OpponentScore,
 		}, nil
 	}
+	if req.Actor != 1 && req.Actor != 2 {
+		return &types.MatchScoreResp{Success: false, Accepted: false, Message: "参与方只能是选手1或选手2"}, nil
+	}
+	if isSnookerV2Match(match) {
+		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
+		if stateErr != nil {
+			return &types.MatchScoreResp{Success: false, Accepted: false, Message: "加载对局快照失败"}, nil
+		}
+		return &types.MatchScoreResp{
+			Success:        false,
+			Accepted:       false,
+			Message:        "版本2斯诺克请使用击球结果接口",
+			ServerRevision: view.Snapshot.ServerRevision,
+			Snapshot:       view.Snapshot,
+		}, nil
+	}
 	if req.ClientActionId == "" {
 		return &types.MatchScoreResp{
 			Success:  false,

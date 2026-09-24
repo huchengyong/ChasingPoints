@@ -67,24 +67,19 @@ $border-color-dark: #334155;
 
 .summary-badge {
 	flex-shrink: 0;
-	padding: 10rpx 18rpx;
-	border-radius: 999rpx;
 	font-size: 24rpx;
-	font-weight: 600;
+	font-weight: 500;
 	line-height: 1.2;
 
 	&.is-good {
-		background: rgba($primary-color, 0.12);
 		color: #c69200;
 	}
 
 	&.is-restricted {
-		background: rgba($negative-color, 0.12);
 		color: $negative-color;
 	}
 
 	&.is-unknown {
-		background: rgba($text-muted-light, 0.12);
 		color: $text-secondary-light;
 	}
 }
@@ -178,15 +173,11 @@ $border-color-dark: #334155;
 
 .state-btn {
 	margin-top: 8rpx;
-	min-width: 220rpx;
-	height: 80rpx;
-	line-height: 80rpx;
-	border-radius: 999rpx;
 	border: none;
-	background: rgba($primary-color, 0.14);
 	color: #c69200;
 	font-size: 28rpx;
-	font-weight: 600;
+	font-weight: 500;
+	background: transparent;
 
 	&::after {
 		display: none;
@@ -294,9 +285,6 @@ $border-color-dark: #334155;
 }
 
 .log-match {
-	padding: 4rpx 12rpx;
-	border-radius: 999rpx;
-	background: rgba($primary-color, 0.12);
 	color: #c69200;
 }
 

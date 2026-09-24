@@ -100,9 +100,12 @@ test('resolveMemberCenterSummary avoids payment wording in compliance mode', () 
 test('resolveMemberEntryCard avoids price wording in compliance mode', () => {
   const card = resolveMemberEntryCard({}, new Date('2026-03-31T10:00:00+08:00'), { complianceMode: true })
 
-  assert.equal(card.statusText, '待发放')
-  assert.doesNotMatch(card.title, /月卡|开通/)
-  assert.equal(card.actionText, '查看权益')
+  assert.equal(card.visible, false)
+  assert.equal(card.statusText, '')
+  assert.equal(card.title, '')
+  assert.equal(card.description, '')
+  assert.equal(card.actionText, '')
+  assert.equal(card.eyebrow, '')
   assert.equal(card.priceText, '')
 })
 
@@ -116,5 +119,20 @@ test('resolveMemberEntryCard keeps active compliance copy focused on the entry i
   assert.equal(card.title, '会员权益已生效')
   assert.equal(card.description, '查看当前权益明细和有效期。')
   assert.equal(card.actionText, '查看权益')
+  assert.equal(card.priceText, '')
+})
+
+test('resolveMemberEntryCard shows ended compliance copy when member history exists', () => {
+  const card = resolveMemberEntryCard({
+    is_active: false,
+    member_expires_at: '2026-03-20 10:00:00'
+  }, new Date('2026-03-31T10:00:00+08:00'), { complianceMode: true })
+
+  assert.equal(card.visible, true)
+  assert.equal(card.statusText, '已结束')
+  assert.equal(card.title, '获赠会员已结束')
+  assert.doesNotMatch(card.title, /月卡|开通|续费/)
+  assert.equal(card.actionText, '查看权益')
+  assert.equal(card.eyebrow, '会员权益')
   assert.equal(card.priceText, '')
 })

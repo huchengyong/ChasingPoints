@@ -290,10 +290,8 @@ const handleDelete = (item) => {
 .status-tag {
 	display: inline-flex;
 	align-items: center;
-	padding: 8rpx 16rpx;
-	border-radius: 999rpx;
 	font-size: 22rpx;
-	font-weight: 600;
+	font-weight: 500;
 }
 
 .status-pending {

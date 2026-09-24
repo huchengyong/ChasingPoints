@@ -11,6 +11,7 @@ import (
 type RankSettlementResult = logic.RankSettlementResult
 type RankSettlementPolicy = logic.RankSettlementPolicy
 type MemberGrowthAwardResult = logic.MemberGrowthAwardResult
+type SnookerBreakAchievementCounts = logic.SnookerBreakAchievementCounts
 
 const defaultDailyPositiveCap = logic.DefaultDailyPositiveCap
 const defaultMemberAchievementDailyCap = logic.DefaultMemberAchievementDailyCap
@@ -57,12 +58,26 @@ func resolveReplayAchievementScores(
 	return logic.ResolveReplayAchievementScores(gameType, rounds, actions, storedAchievements, rewardMap)
 }
 
+func resolveReplayAchievementScoresStrict(
+	gameType int,
+	rounds []model.MatchRound,
+	actions []model.MatchAction,
+	storedAchievements []model.MatchAchievement,
+	rewardMap map[string]int,
+) (int, int, error) {
+	return logic.ResolveReplayAchievementScoresStrict(gameType, rounds, actions, storedAchievements, rewardMap)
+}
+
 func buildMatchAchievementPayload(list []model.MatchAchievement) types.MatchAchievement {
 	return logic.BuildMatchAchievementPayload(list)
 }
 
 func calculateSnookerAchievementScoresByActor(actions []model.MatchAction, rewardMap map[string]int) (int, int) {
 	return logic.CalculateSnookerAchievementScoresByActor(actions, rewardMap)
+}
+
+func calculateSnookerBreakAchievementCounts(actions []model.MatchAction) (map[int]SnookerBreakAchievementCounts, error) {
+	return logic.CalculateSnookerBreakAchievementCounts(actions)
 }
 
 func loadUserMaxSingleScore(svcCtx *svc.ServiceContext, userId int64, gameType int) (int, error) {

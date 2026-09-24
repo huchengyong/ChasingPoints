@@ -1,4 +1,6 @@
 import { defineStore } from 'pinia'
+import { useRankStore } from './rank.js'
+import { userWS } from '@/utils/websocket.js'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -27,9 +29,12 @@ export const useUserStore = defineStore('user', {
   actions: {
     // 登录
     login(data) {
+      const nextUser = data.user || data.user_info
+      useRankStore().clear()
+      userWS.disconnect()
       this.token = data.token || data.access_token
       this.refreshToken = data.refreshToken || data.refresh_token || ''
-      this.userInfo = data.user || data.user_info
+      this.userInfo = nextUser
       this.expiresIn = data.expiresIn || data.expires_in || 0
       this.isLoggedIn = true
       this.needBindPhone = data.needBindPhone || data.need_bind_phone || false
@@ -39,6 +44,9 @@ export const useUserStore = defineStore('user', {
       if (this.refreshToken) {
         uni.setStorageSync('refreshToken', this.refreshToken)
       }
+      userWS.connect().catch((error) => {
+        console.error('[UserStore] 用户WS连接失败:', error)
+      })
     },
 
     // 刷新登录态，只更新令牌，不覆盖用户资料
@@ -56,6 +64,8 @@ export const useUserStore = defineStore('user', {
 
     // 退出登录
     logout() {
+      useRankStore().clear()
+      userWS.disconnect()
       this.token = ''
       this.refreshToken = ''
       this.userInfo = null

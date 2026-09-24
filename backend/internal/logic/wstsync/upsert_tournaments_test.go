@@ -35,7 +35,7 @@ func TestUpsertTournamentsInsertsMissingTournament(t *testing.T) {
 			SourceTournamentId: "tour-1",
 			SourceSeasonId:     "2025",
 			Name:               "Sportsbet.io Tour Championship 2026",
-			CoverImage:         "https://images.gc.wstservices.co.uk/fit-in/400x600/test.png",
+			CoverImage:         "https://cdn.example.com/wst/tournaments/test.png",
 			GameType:           1,
 			Status:             model.EventNewsStatusFinished,
 			Country:            "England",
@@ -111,7 +111,7 @@ func TestUpsertTournamentsUpdatesExistingTournamentWithoutChangingID(t *testing.
 			SourceTournamentId: "tour-1",
 			SourceSeasonId:     "2025",
 			Name:               "Sportsbet.io Tour Championship 2026",
-			CoverImage:         defaultTournamentCoverImage,
+			CoverImage:         "",
 			GameType:           1,
 			Status:             model.EventNewsStatusLive,
 			Country:            "England",
@@ -146,8 +146,8 @@ func TestUpsertTournamentsUpdatesExistingTournamentWithoutChangingID(t *testing.
 	if got.Status != model.EventNewsStatusLive {
 		t.Fatalf("expected live status after update, got %#v", got)
 	}
-	if got.CoverImage != "https://example.com/old.png" {
-		t.Fatalf("expected existing custom cover to be preserved, got %#v", got)
+	if got.CoverImage != "" {
+		t.Fatalf("expected prepared empty cover to replace unmanaged fallback, got %#v", got)
 	}
 	if got.VenueName != "Old Venue" {
 		t.Fatalf("expected existing venue to be preserved when incoming empty, got %#v", got)

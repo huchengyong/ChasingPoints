@@ -27,6 +27,10 @@ func NewLoginByOauthLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Logi
 }
 
 func (l *LoginByOauthLogic) LoginByOauth(req *types.LoginByOauthReq) (resp *types.LoginByOauthResp, err error) {
+	if req == nil || req.Provider == wechatMiniProvider {
+		return &types.LoginByOauthResp{Success: false}, nil
+	}
+
 	// 查找OAuth关联
 	oauth, err := l.svcCtx.OauthModel.FindByProviderAndOpenId(req.Provider, req.OpenId)
 	if err != nil {

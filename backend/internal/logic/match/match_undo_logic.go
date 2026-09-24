@@ -143,92 +143,106 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 		IsUndone:       1,
 	}
 	var serverRevision int64
-	err = l.svcCtx.DB.Transaction(func(tx *gorm.DB) error {
-		switch lastAction.ActionType {
-		case "score":
-			if match.GameType == 1 {
-				if lastAction.Actor == 1 {
-					match.CurrentFrameMyScore -= lastAction.ScoreChange
-				} else {
-					match.CurrentFrameOpponentScore -= lastAction.ScoreChange
-				}
-			} else if lastAction.Actor == 1 {
-				match.MyScore -= lastAction.ScoreChange
-			} else {
-				match.OpponentScore -= lastAction.ScoreChange
+	if isSnookerV2Match(match) {
+		err = l.svcCtx.DB.Transaction(func(tx *gorm.DB) error {
+			if err := undoSnookerV2ActionWithTx(l.svcCtx, tx, match, lastAction); err != nil {
+				return err
 			}
-		case "foul":
-			if match.GameType == 1 {
-				if lastAction.Actor == 1 {
-					match.CurrentFrameOpponentScore -= lastAction.ScoreChange
-				} else {
-					match.CurrentFrameMyScore -= lastAction.ScoreChange
-				}
-			} else if lastAction.Actor == 1 {
-				match.OpponentScore -= lastAction.ScoreChange
-			} else {
-				match.MyScore -= lastAction.ScoreChange
+			revision, revisionErr := l.svcCtx.MatchModel.BumpMatchRevisionWithTx(tx, match)
+			if revisionErr != nil {
+				return revisionErr
 			}
-		case "win":
-			if match.GameType == 1 {
-				round, roundErr := l.svcCtx.MatchModel.GetLastRoundWithTx(tx, match.Id)
-				if roundErr != nil {
-					return roundErr
-				}
-				if round == nil || round.Winner == nil {
-					return gorm.ErrRecordNotFound
-				}
-				reopenSnookerFrame(match, round, *round.Winner)
-				if err := l.svcCtx.MatchModel.DeleteRoundWithTx(tx, round.Id); err != nil {
-					return err
-				}
-			} else {
-				if lastAction.Actor == 1 {
+			serverRevision = revision
+			return l.svcCtx.MatchModel.CreateActionWithRevisionWithTx(tx, undoAction, serverRevision)
+		})
+	} else {
+		err = l.svcCtx.DB.Transaction(func(tx *gorm.DB) error {
+			switch lastAction.ActionType {
+			case "score":
+				if match.GameType == 1 {
+					if lastAction.Actor == 1 {
+						match.CurrentFrameMyScore -= lastAction.ScoreChange
+					} else {
+						match.CurrentFrameOpponentScore -= lastAction.ScoreChange
+					}
+				} else if lastAction.Actor == 1 {
 					match.MyScore -= lastAction.ScoreChange
 				} else {
 					match.OpponentScore -= lastAction.ScoreChange
 				}
-				round, roundErr := l.svcCtx.MatchModel.GetLastRoundWithTx(tx, match.Id)
-				if roundErr != nil {
-					return roundErr
+			case "foul":
+				if match.GameType == 1 {
+					if lastAction.Actor == 1 {
+						match.CurrentFrameOpponentScore -= lastAction.ScoreChange
+					} else {
+						match.CurrentFrameMyScore -= lastAction.ScoreChange
+					}
+				} else if lastAction.Actor == 1 {
+					match.OpponentScore -= lastAction.ScoreChange
+				} else {
+					match.MyScore -= lastAction.ScoreChange
 				}
-				if round != nil {
+			case "win":
+				if match.GameType == 1 {
+					round, roundErr := l.svcCtx.MatchModel.GetLastRoundWithTx(tx, match.Id)
+					if roundErr != nil {
+						return roundErr
+					}
+					if round == nil || round.Winner == nil {
+						return gorm.ErrRecordNotFound
+					}
+					reopenSnookerFrame(match, round, *round.Winner)
 					if err := l.svcCtx.MatchModel.DeleteRoundWithTx(tx, round.Id); err != nil {
 						return err
 					}
+				} else {
+					if lastAction.Actor == 1 {
+						match.MyScore -= lastAction.ScoreChange
+					} else {
+						match.OpponentScore -= lastAction.ScoreChange
+					}
+					round, roundErr := l.svcCtx.MatchModel.GetLastRoundWithTx(tx, match.Id)
+					if roundErr != nil {
+						return roundErr
+					}
+					if round != nil {
+						if err := l.svcCtx.MatchModel.DeleteRoundWithTx(tx, round.Id); err != nil {
+							return err
+						}
+					}
+				}
+			case "round_start":
+				if match.GameType == 1 {
+					match.CurrentFrameStarted = false
+					match.CurrentFrameMyScore = 0
+					match.CurrentFrameOpponentScore = 0
 				}
 			}
-		case "round_start":
-			if match.GameType == 1 {
-				match.CurrentFrameStarted = false
+
+			if match.MyScore < 0 {
+				match.MyScore = 0
+			}
+			if match.OpponentScore < 0 {
+				match.OpponentScore = 0
+			}
+			if match.CurrentFrameMyScore < 0 {
 				match.CurrentFrameMyScore = 0
+			}
+			if match.CurrentFrameOpponentScore < 0 {
 				match.CurrentFrameOpponentScore = 0
 			}
-		}
 
-		if match.MyScore < 0 {
-			match.MyScore = 0
-		}
-		if match.OpponentScore < 0 {
-			match.OpponentScore = 0
-		}
-		if match.CurrentFrameMyScore < 0 {
-			match.CurrentFrameMyScore = 0
-		}
-		if match.CurrentFrameOpponentScore < 0 {
-			match.CurrentFrameOpponentScore = 0
-		}
-
-		if err := l.svcCtx.MatchModel.UndoActionWithTx(tx, lastAction.Id); err != nil {
-			return err
-		}
-		revision, revisionErr := l.svcCtx.MatchModel.BumpMatchRevisionWithTx(tx, match)
-		if revisionErr != nil {
-			return revisionErr
-		}
-		serverRevision = revision
-		return l.svcCtx.MatchModel.CreateActionWithRevisionWithTx(tx, undoAction, serverRevision)
-	})
+			if err := l.svcCtx.MatchModel.UndoActionWithTx(tx, lastAction.Id); err != nil {
+				return err
+			}
+			revision, revisionErr := l.svcCtx.MatchModel.BumpMatchRevisionWithTx(tx, match)
+			if revisionErr != nil {
+				return revisionErr
+			}
+			serverRevision = revision
+			return l.svcCtx.MatchModel.CreateActionWithRevisionWithTx(tx, undoAction, serverRevision)
+		})
+	}
 	if err != nil {
 		if isRetryableMatchWriteError(err) {
 			replayState, replayErr := reloadMatchWriteReplayState(l.svcCtx, userId, req.MatchId, req.ClientActionId)
@@ -278,16 +292,15 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 	// 获取当前局数
 	roundCount, _ := l.svcCtx.MatchModel.GetRoundCount(match.Id)
 	redBallCount := 0
-	snookerState := model.SnookerRoundState{ClearedColors: make([]int, 0, 6)}
+	snookerState := view.SnookerState
 	if match.GameType == 1 {
-		if state, stateErr := loadSnookerRoundState(l.svcCtx, match.Id, int(roundCount)+1); stateErr == nil {
-			snookerState = state
-			redBallCount = state.RedBallCount
-		}
+		redBallCount = snookerState.RedBallCount
 	}
 
 	// 推送 WebSocket 消息通知双方
-	if ws.GlobalHub != nil {
+	if isSnookerV2Match(match) {
+		broadcastSnookerAction(match, snookerState, "undo", false)
+	} else if ws.GlobalHub != nil {
 		l.Logger.Infof("广播撤销结果: matchId=%d, action=%s, player1=%d, player2=%d, currentRound=%d",
 			match.Id, lastAction.ActionType, match.MyScore, match.OpponentScore, int(roundCount)+1)
 		ws.GlobalHub.BroadcastToMatch(match.Id, &ws.Message{

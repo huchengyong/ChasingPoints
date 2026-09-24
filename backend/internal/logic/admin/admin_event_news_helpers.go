@@ -12,7 +12,6 @@ import (
 
 const adminEventNewsTimeLayout = "2006-01-02 15:04:05"
 const adminEventNewsDateLayout = "2006-01-02"
-const defaultAdminTournamentCoverImage = "https://images.gc.wstservices.co.uk/fit-in/400x600/4ddad400-99d3-11ee-94e8-c9d138e537ff.png"
 
 var adminShanghaiLocation = time.FixedZone("UTC+8", 8*60*60)
 
@@ -119,9 +118,6 @@ func buildAdminEventNewsInfo(item model.EventNews, tournament *model.Tournament,
 	if info.TournamentName == "" {
 		info.TournamentName = item.Title
 	}
-	if info.CoverImage == "" {
-		info.CoverImage = defaultAdminTournamentCoverImage
-	}
 	if info.EndDate == "" {
 		info.EndDate = info.StartDate
 	}
@@ -205,7 +201,7 @@ func buildAdminTournament(req *types.AdminEventNewsCreateReq) (*model.Tournament
 		CreatorId:      0,
 		Name:           fallbackTournamentName(strings.TrimSpace(req.TournamentName), strings.TrimSpace(req.Title)),
 		Description:    strings.TrimSpace(req.Description),
-		CoverImage:     firstNonEmpty(strings.TrimSpace(req.CoverImage), defaultAdminTournamentCoverImage),
+		CoverImage:     strings.TrimSpace(req.CoverImage),
 		GameType:       req.GameType,
 		Format:         1,
 		MaxPlayers:     128,
@@ -291,7 +287,7 @@ func applyAdminTournamentUpdate(item *model.Tournament, req *types.AdminEventNew
 
 	item.Name = fallbackTournamentName(strings.TrimSpace(req.TournamentName), strings.TrimSpace(req.Title))
 	item.Description = strings.TrimSpace(req.Description)
-	item.CoverImage = firstNonEmpty(strings.TrimSpace(req.CoverImage), defaultAdminTournamentCoverImage)
+	item.CoverImage = strings.TrimSpace(req.CoverImage)
 	item.GameType = req.GameType
 	item.Status = req.Status
 	item.Country = strings.TrimSpace(req.Country)

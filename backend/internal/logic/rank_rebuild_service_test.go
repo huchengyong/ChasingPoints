@@ -91,10 +91,31 @@ func TestRankRebuildGrantsTraceableSeasonTitlesIdempotently(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("seed match: %v", err)
 	}
+	practiceResult := 1
+	if err := svcCtx.MatchModel.Create(&model.Match{
+		Id:            9102,
+		UserId:        1001,
+		OpponentId:    &opponentID,
+		OpponentName:  "选手乙",
+		GameType:      3,
+		MatchMode:     model.MatchModePractice,
+		Visibility:    model.MatchVisibilityPrivate,
+		MyScore:       9,
+		OpponentScore: 0,
+		Status:        2,
+		Result:        &practiceResult,
+		MatchTime:     matchTime.Add(time.Hour),
+		EndTime:       func() *time.Time { value := matchTime.Add(time.Hour); return &value }(),
+	}); err != nil {
+		t.Fatalf("seed practice match: %v", err)
+	}
 
 	summary, err := NewRankRebuildService(svcCtx).Rebuild(context.Background())
 	if err != nil {
 		t.Fatalf("rebuild ranks: %v", err)
+	}
+	if summary.MatchesTotal != 1 || summary.RankLogsTotal != 2 {
+		t.Fatalf("practice match leaked into ranking rebuild summary: %+v", summary)
 	}
 	if summary.SeasonRecords != 2 {
 		t.Fatalf("expected 2 season records, got %d", summary.SeasonRecords)

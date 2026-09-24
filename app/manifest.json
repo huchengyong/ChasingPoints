@@ -7,6 +7,8 @@
     "transformPx" : false,
     /* 5+App特有相关 */
     "app-plus" : {
+        "darkmode" : true,
+        "themeLocation" : "theme.json",
         "usingComponents" : true,
         "nvueStyleCompiler" : "uni-app",
         "compilerVersion" : 3,
@@ -134,9 +136,17 @@
     "quickapp" : {},
     /* 小程序特有相关 */
     "mp-weixin" : {
-        "appid" : "",
+        "appid" : "wx3196c9366b3b39ba",
+        "darkmode" : true,
+        "themeLocation" : "theme.json",
         "setting" : {
             "urlCheck" : false
+        },
+        "requiredPrivateInfos" : [ "getLocation" ],
+        "permission" : {
+            "scope.userLocation" : {
+                "desc" : "用于获取当前位置并展示附近球房"
+            }
         },
         "usingComponents" : true
     },
@@ -159,8 +169,8 @@
         "darkmode" : true,
         "themeLocation" : "theme.json",
         "safearea" : {
-            "background" : "#f6f7f8",
-            "backgroundDark" : "#101922",
+            "background" : "#ffffff",
+            "backgroundDark" : "#141109",
             "bottom" : {
                 "offset" : "none"
             }

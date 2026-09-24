@@ -5,70 +5,103 @@
 			<!-- 拖拽条和关闭按钮 -->
 			<view class="sheet-header">
 				<view class="drag-handle"></view>
-				<view class="close-btn" @click="handleClose" v-if="closable">
+				<view class="close-btn" :class="{ disabled: !canClose }" @click="handleClose" v-if="closable">
 					<text class="close-icon">×</text>
 				</view>
 			</view>
 			
 			<!-- 标题 -->
 			<text class="sheet-title">绑定手机号</text>
-			<text class="sheet-subtitle">为了保障您的账户安全，并为您匹配对手。</text>
+			<text class="sheet-subtitle">用于账号找回、重要赛事通知和已有账号安全合并</text>
 			
-			<!-- 手机号输入 -->
-			<view class="input-group">
-				<text class="input-label">手机号</text>
-				<view class="input-wrapper">
-					<text class="country-code">+86</text>
-					<input
-						class="phone-input"
-						type="number"
-						v-model="phone"
-						placeholder="请输入手机号码"
-						maxlength="11"
-						@input="handlePhoneInput"
-					/>
+			<!-- #ifdef MP-WEIXIN -->
+			<template v-if="!useSmsBinding">
+				<view class="wechat-phone-copy">
+					<text>授权微信手机号后即可完成绑定，可随时稍后处理。</text>
 				</view>
-				<text class="error-text" v-if="phoneError">{{ phoneError }}</text>
-			</view>
-			
-			<!-- 验证码输入 -->
-			<view class="input-group">
-				<text class="input-label">验证码</text>
-				<view class="input-wrapper code-wrapper">
-					<input
-						class="code-input"
-						type="number"
-						v-model="code"
-						placeholder="请输入6位验证码"
-						maxlength="6"
-					/>
-					<text
-						class="send-code-btn"
-						:class="{ disabled: !canSendCode }"
-						@click="handleSendCode"
+				<view class="binding-benefits">
+					<text>账号找回</text>
+					<text>赛事通知</text>
+					<text>账号合并</text>
+				</view>
+
+				<view class="bind-btn-container">
+					<button
+						class="bind-btn"
+						:class="{ active: canAuthorizeWechatPhone }"
+						:disabled="!canAuthorizeWechatPhone || loading"
+						open-type="getPhoneNumber"
+						@getphonenumber="handleWechatPhoneNumber"
 					>
-						{{ isSendingCode ? '发送中...' : (countdown > 0 ? `${countdown}s后重发` : '获取验证码') }}
-					</text>
+						{{ loading ? '绑定中...' : '授权微信手机号' }}
+					</button>
+					<button v-if="closable" class="close-text-btn" :disabled="!canClose" @click="handleClose">
+						稍后绑定
+					</button>
 				</view>
-			</view>
-			
-			<!-- 绑定按钮 -->
-			<view class="bind-btn-container">
-				<button
-					class="bind-btn"
-					:class="{ active: canBind }"
-					:disabled="!canBind || loading"
-					@click="handleBind"
-				>
-					{{ loading ? '绑定中...' : '立即绑定' }}
-				</button>
-				<button v-if="closable" class="close-text-btn" @click="handleClose">
-					稍后绑定
-				</button>
+			</template>
+			<!-- #endif -->
+
+			<view v-if="showSmsBinding" class="sms-binding-form">
+				<!-- 手机号输入 -->
+				<view class="input-group">
+					<text class="input-label">手机号</text>
+					<view class="input-wrapper">
+						<text class="country-code">+86</text>
+						<input
+							class="phone-input"
+							type="number"
+							v-model="phone"
+							placeholder="请输入手机号码"
+							maxlength="11"
+							@input="handlePhoneInput"
+						/>
+					</view>
+					<text class="error-text" v-if="phoneError">{{ phoneError }}</text>
+				</view>
+
+				<!-- 验证码输入 -->
+				<view class="input-group">
+					<text class="input-label">验证码</text>
+					<view class="input-wrapper code-wrapper">
+						<input
+							class="code-input"
+							type="number"
+							v-model="code"
+							placeholder="请输入6位验证码"
+							maxlength="6"
+						/>
+						<button
+							class="send-code-btn"
+							:class="{ disabled: !canSendCode }"
+							:disabled="isSendingCode || countdown > 0"
+							@click="handleSendCode"
+						>
+							{{ isSendingCode ? '发送中...' : (countdown > 0 ? `${countdown}s后重发` : '获取验证码') }}
+						</button>
+					</view>
+					<text v-if="slowAction === 'send'" class="slow-action-hint">网络稍慢，正在继续尝试</text>
+				</view>
+
+				<!-- 绑定按钮 -->
+				<view class="bind-btn-container">
+					<button
+						class="bind-btn"
+						:class="{ active: canBind }"
+						:disabled="!canBind || loading"
+						@click="handleBind"
+					>
+						{{ loading ? '绑定中...' : '立即绑定' }}
+					</button>
+					<button v-if="closable" class="close-text-btn" :disabled="!canClose" @click="handleClose">
+						稍后绑定
+					</button>
+				</view>
+				<text v-if="slowAction === 'bind'" class="slow-action-hint">网络稍慢，正在继续尝试</text>
 			</view>
 			
 			<!-- 协议文本 -->
-			<view class="agreement-section">
+			<view v-if="requireAgreement" class="agreement-section">
 				<view class="agreement-row" @click="toggleAgreement">
 					<view class="checkbox" :class="{ checked: isAgreed }">
 						<uni-icons v-if="isAgreed" type="checkmarkempty" size="14" color="#231c0b"></uni-icons>
@@ -86,15 +119,17 @@
 </template>
 
 <script>
-import { sendSms, bindPhone } from '@/api/auth.js'
+import { sendSms, bindPhone, wechatMiniBindPhone } from '@/api/auth.js'
 import { useUserStore } from '@/store/user.js'
 import {
+	canCloseBindPhone,
 	canRequestBindPhoneSms,
+	getWechatPhoneNumberCode,
 	isValidBindPhone,
 	resolveBindPhoneSuccess,
 	shouldResetBindPhoneVerification
 } from '@/utils/bind-phone-flow.js'
-import { resolveEntryFunnelAgreementState } from '@/utils/entry-funnel.js'
+import { AUTH_SLOW_FEEDBACK_DELAY, resolveEntryFunnelAgreementState } from '@/utils/entry-funnel.js'
 
 const ENTRY_FUNNEL_AGREEMENT_KEY = 'entry_funnel_agreement_accepted'
 const ENTRY_FUNNEL_SESSION_KEY = 'entry_funnel_session_active'
@@ -113,6 +148,14 @@ export default {
 		closable: {
 			type: Boolean,
 			default: true
+		},
+		requireAgreement: {
+			type: Boolean,
+			default: true
+		},
+		useSmsBinding: {
+			type: Boolean,
+			default: false
 		}
 	},
 	emits: ['close', 'success'],
@@ -125,6 +168,8 @@ export default {
 			timer: null,
 			isSendingCode: false,
 			loading: false,
+			slowAction: '',
+			slowTimer: null,
 			isAgreed: false
 		}
 	},
@@ -135,6 +180,13 @@ export default {
 		displayDarkMode() {
 			return this.isDarkMode
 		},
+		showSmsBinding() {
+			let isWechatMiniProgram = false
+			// #ifdef MP-WEIXIN
+			isWechatMiniProgram = true
+			// #endif
+			return !isWechatMiniProgram || this.useSmsBinding
+		},
 		canSendCode() {
 			return canRequestBindPhoneSms({
 				phone: this.phone,
@@ -142,8 +194,14 @@ export default {
 				isSending: this.isSendingCode
 			})
 		},
+		canAuthorizeWechatPhone() {
+			return !this.requireAgreement || this.isAgreed
+		},
+		canClose() {
+			return canCloseBindPhone({ isBinding: this.loading })
+		},
 		canBind() {
-			return isValidBindPhone(this.phone) && this.code.length === 6 && this.isAgreed
+			return isValidBindPhone(this.phone) && this.code.length === 6 && this.canAuthorizeWechatPhone
 		}
 	},
 	watch: {
@@ -191,6 +249,7 @@ export default {
 		},
 		
 		handleClose() {
+			if (!this.canClose) return
 			this.resetFormState()
 			this.$emit('close')
 		},
@@ -210,19 +269,39 @@ export default {
 			this.phone = ''
 			this.phoneError = ''
 			this.loading = false
+			this.clearSlowAction()
 			this.isAgreed = false
+		},
+
+		startSlowAction(action) {
+			this.clearSlowAction()
+			this.slowTimer = setTimeout(() => {
+				if (this.isSendingCode || this.loading) this.slowAction = action
+			}, AUTH_SLOW_FEEDBACK_DELAY)
+		},
+
+		clearSlowAction() {
+			if (this.slowTimer) {
+				clearTimeout(this.slowTimer)
+				this.slowTimer = null
+			}
+			this.slowAction = ''
 		},
 		
 		async handleSendCode() {
-			if (!this.canSendCode) return
+			if (this.isSendingCode || this.countdown > 0) return
 			
-			// 验证手机号
 			if (!isValidBindPhone(this.phone)) {
-				this.phoneError = '请输入正确的手机号'
+				this.phoneError = this.phone ? '请输入正确的手机号' : '请输入手机号'
+				uni.showToast({
+					title: this.phoneError,
+					icon: 'none'
+				})
 				return
 			}
 			
 			this.isSendingCode = true
+			this.startSlowAction('send')
 
 			try {
 				const res = await sendSms(this.phone, 'bind')
@@ -256,6 +335,7 @@ export default {
 				})
 			} finally {
 				this.isSendingCode = false
+				this.clearSlowAction()
 			}
 		},
 		
@@ -263,28 +343,12 @@ export default {
 			if (!this.canBind || this.loading) return
 			
 			this.loading = true
+			this.startSlowAction('bind')
 			
 			try {
 				const res = await bindPhone(this.phone, this.code)
 				
-				if (res.success) {
-					const userStore = useUserStore()
-					const outcome = resolveBindPhoneSuccess({
-						response: res,
-						phone: this.phone
-					})
-
-					if (outcome.action === 'complete') {
-						userStore.bindPhoneSuccess(outcome.maskedPhone)
-					}
-
-					this.$emit('success', outcome)
-				} else {
-					uni.showToast({
-						title: res.message || '绑定失败',
-						icon: 'none'
-					})
-				}
+				this.handleBindResponse(res, this.phone)
 			} catch (error) {
 				console.error('绑定手机号失败:', error)
 				uni.showToast({
@@ -293,7 +357,55 @@ export default {
 				})
 			} finally {
 				this.loading = false
+				this.clearSlowAction()
 			}
+		},
+
+		async handleWechatPhoneNumber(event) {
+			const code = getWechatPhoneNumberCode(event)
+			if (!code) {
+				uni.showToast({
+					title: '未授权手机号，可稍后绑定',
+					icon: 'none'
+				})
+				return
+			}
+			if (!this.canAuthorizeWechatPhone || this.loading) return
+
+			this.loading = true
+			this.startSlowAction('bind')
+			try {
+				const res = await wechatMiniBindPhone(code)
+				this.handleBindResponse(res, '')
+			} catch (error) {
+				uni.showToast({
+					title: error.message || '绑定失败',
+					icon: 'none'
+				})
+			} finally {
+				this.loading = false
+				this.clearSlowAction()
+			}
+		},
+
+		handleBindResponse(res, phone) {
+			if (!res.success) {
+				uni.showToast({
+					title: res.message || '绑定失败',
+					icon: 'none'
+				})
+				return
+			}
+
+			const userStore = useUserStore()
+			const outcome = resolveBindPhoneSuccess({ response: res, phone })
+			if (outcome.sessionReplaced) {
+				userStore.login(res)
+			} else if (outcome.action === 'complete') {
+				userStore.bindPhoneSuccess(outcome.maskedPhone)
+			}
+
+			this.$emit('success', outcome)
 		},
 		
 		openUserAgreement() {
@@ -311,6 +423,7 @@ export default {
 	
 	beforeUnmount() {
 		this.resetVerificationState()
+		this.clearSlowAction()
 	}
 }
 </script>
@@ -318,7 +431,7 @@ export default {
 <style lang="scss" scoped>
 // 浅色模式变量
 $light-bg: #ffffff;
-$light-sheet-bg: #f5f5f5;
+$light-sheet-bg: #fffdf9;
 $light-text-primary: #1a1a1a;
 $light-text-secondary: rgba(0, 0, 0, 0.6);
 $light-border: #e5e5e5;
@@ -326,7 +439,7 @@ $light-input-bg: #ffffff;
 
 // 深色模式变量
 $dark-bg: rgba(0, 0, 0, 0.5);
-$dark-sheet-bg: #1e1e1e;
+$dark-sheet-bg: #1b170f;
 $dark-text-primary: #ffffff;
 $dark-text-secondary: rgba(255, 255, 255, 0.7);
 $dark-border: #4a4a4a;
@@ -347,8 +460,8 @@ $dark-input-bg: transparent;
 	// 浅色模式样式
 	.bind-phone-sheet {
 		background-color: $light-sheet-bg;
-		border-radius: 24rpx 24rpx 0 0;
-		padding: 0 48rpx 64rpx;
+		border-radius: 32rpx 32rpx 0 0;
+		padding: 0 40rpx calc(40rpx + env(safe-area-inset-bottom));
 	}
 
 	.sheet-header {
@@ -375,6 +488,11 @@ $dark-input-bg: transparent;
 		align-items: center;
 		justify-content: center;
 		border-radius: 50%;
+
+		&.disabled {
+			opacity: 0.45;
+			pointer-events: none;
+		}
 	}
 
 	.close-icon {
@@ -384,17 +502,18 @@ $dark-input-bg: transparent;
 
 	.sheet-title {
 		display: block;
-		font-size: 48rpx;
+		font-size: 40rpx;
 		font-weight: bold;
 		color: $light-text-primary;
-		margin-bottom: 8rpx;
+		margin-bottom: 12rpx;
 	}
 
 	.sheet-subtitle {
 		display: block;
-		font-size: 28rpx;
+		font-size: 26rpx;
+		line-height: 1.6;
 		color: $light-text-secondary;
-		margin-bottom: 48rpx;
+		margin-bottom: 20rpx;
 	}
 
 	.input-group {
@@ -438,7 +557,8 @@ $dark-input-bg: transparent;
 	}
 
 	.code-input {
-		padding: 0 32rpx;
+		min-width: 0;
+		padding: 0 16rpx 0 32rpx;
 	}
 
 	.code-wrapper {
@@ -446,16 +566,32 @@ $dark-input-bg: transparent;
 	}
 
 	.send-code-btn {
-		position: absolute;
-		right: 16rpx;
-		padding: 16rpx 24rpx;
+		position: static;
+		flex-shrink: 0;
+		height: 64rpx;
+		line-height: 64rpx;
+		margin: 0 16rpx 0 0;
+		padding: 0 24rpx;
 		font-size: 28rpx;
 		font-weight: 500;
 		color: #c69200;
+		background: transparent;
+		border: none;
 		border-radius: 12rpx;
+		box-sizing: border-box;
+		white-space: nowrap;
+
+		&::after {
+			display: none;
+		}
 
 		&.disabled {
 			color: #9ca3af;
+		}
+
+		&[disabled] {
+			color: #9ca3af !important;
+			background: transparent;
 		}
 	}
 
@@ -466,6 +602,15 @@ $dark-input-bg: transparent;
 		margin-top: 8rpx;
 	}
 
+	.slow-action-hint {
+		display: block;
+		margin-top: 10rpx;
+		color: #9a7b2a;
+		font-size: 22rpx;
+		line-height: 1.4;
+		text-align: center;
+	}
+
 	.bind-btn-container {
 		margin-top: 32rpx;
 		margin-bottom: 32rpx;
@@ -473,7 +618,9 @@ $dark-input-bg: transparent;
 
 	.bind-btn {
 		width: 100%;
-		height: 112rpx;
+		height: 96rpx;
+		line-height: 96rpx;
+		margin: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -482,7 +629,6 @@ $dark-input-bg: transparent;
 		color: #9ca3af;
 		font-size: 32rpx;
 		font-weight: bold;
-		line-height: 1;
 		text-align: center;
 		border-radius: 24rpx;
 		border: none;
@@ -492,8 +638,36 @@ $dark-input-bg: transparent;
 			color: #ffffff;
 		}
 
+		&[disabled] {
+			background-color: #e5e5e5;
+			color: #9ca3af;
+		}
+
 		&::after {
 			display: none;
+		}
+	}
+
+	.wechat-phone-copy {
+		display: block;
+		font-size: 24rpx;
+		line-height: 1.6;
+		color: $light-text-secondary;
+	}
+
+	.binding-benefits {
+		display: flex;
+		gap: 12rpx;
+		margin-top: 20rpx;
+
+		text {
+			flex: 1;
+			padding: 14rpx 8rpx;
+			border-radius: 14rpx;
+			background: #f8f3e8;
+			color: #766a52;
+			font-size: 22rpx;
+			text-align: center;
 		}
 	}
 
@@ -514,6 +688,10 @@ $dark-input-bg: transparent;
 
 		&::after {
 			display: none;
+		}
+
+		&[disabled] {
+			opacity: 0.45;
 		}
 	}
 
@@ -600,6 +778,10 @@ $dark-input-bg: transparent;
 			color: $dark-text-secondary;
 		}
 
+		.wechat-phone-copy {
+			color: $dark-text-secondary;
+		}
+
 		.input-label {
 			color: $dark-text-primary;
 		}
@@ -628,9 +810,14 @@ $dark-input-bg: transparent;
 			color: #6b7280;
 
 			&.active {
-				background-color: #006400;
+				background: linear-gradient(135deg, #e5b928 0%, #c99700 100%);
 				color: #ffffff;
 			}
+		}
+
+		.binding-benefits text {
+			background: rgba(255, 255, 255, 0.05);
+			color: #d7c89b;
 		}
 
 		.close-text-btn {
@@ -652,6 +839,10 @@ $dark-input-bg: transparent;
 			.link {
 				color: #f7e7a8;
 			}
+		}
+
+		.slow-action-hint {
+			color: #d7b95c;
 		}
 	}
 }

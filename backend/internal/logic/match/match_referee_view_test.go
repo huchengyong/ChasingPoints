@@ -9,24 +9,28 @@ import (
 )
 
 func TestBuildCurrentMatchInfoExposesRefereeRoleAndCapabilities(t *testing.T) {
+	svcCtx := newCurrentMatchInfoTestSvc(t)
 	now := time.Date(2026, 4, 8, 20, 0, 0, 0, time.FixedZone("CST", 8*3600))
 	opponentID := int64(2002)
 	refereeID := int64(3003)
+	seedCurrentMatchInfoUser(t, svcCtx, 1001, "选手甲", "player1.png")
+	seedCurrentMatchInfoUser(t, svcCtx, opponentID, "选手乙", "player2.png")
+	seedCurrentMatchInfoUser(t, svcCtx, refereeID, "裁判丙", "referee.png")
 	match := &model.Match{
-		Id:           66,
-		UserId:       1001,
-		OpponentId:   &opponentID,
-		OpponentName: "对手甲",
-		GameType:     3,
-		MyScore:      5,
+		Id:            66,
+		UserId:        1001,
+		OpponentId:    &opponentID,
+		OpponentName:  "对手甲",
+		GameType:      3,
+		MyScore:       5,
 		OpponentScore: 4,
-		MatchTime:    now.Add(-12 * time.Minute),
-		SyncRevision: 9,
+		MatchTime:     now.Add(-12 * time.Minute),
+		SyncRevision:  9,
 	}
 	setInt64Field(t, match, "RefereeUserId", refereeID)
 	setTimeField(t, match, "RefereeJoinedAt", now.Add(-10*time.Minute))
 
-	player1Info := buildCurrentMatchInfo(nil, 1001, match)
+	player1Info := buildCurrentMatchInfo(svcCtx, 1001, match)
 	assertStructFieldEqual(t, player1Info, "ViewerRole", "player1")
 	assertStructFieldEqual(t, player1Info, "RefereeBound", true)
 	assertStructFieldEqual(t, player1Info, "RefereeUserId", refereeID)
@@ -34,18 +38,41 @@ func TestBuildCurrentMatchInfoExposesRefereeRoleAndCapabilities(t *testing.T) {
 	assertStructFieldEqual(t, player1Info, "CanUndo", false)
 	assertStructFieldEqual(t, player1Info, "CanFinish", false)
 
-	player2Info := buildCurrentMatchInfo(nil, opponentID, match)
+	player2Info := buildCurrentMatchInfo(svcCtx, opponentID, match)
 	assertStructFieldEqual(t, player2Info, "ViewerRole", "player2")
 	assertStructFieldEqual(t, player2Info, "RefereeBound", true)
 	assertStructFieldEqual(t, player2Info, "CanScore", false)
 
-	refereeInfo := buildCurrentMatchInfo(nil, refereeID, match)
+	refereeInfo := buildCurrentMatchInfo(svcCtx, refereeID, match)
 	assertStructFieldEqual(t, refereeInfo, "ViewerRole", "referee")
 	assertStructFieldEqual(t, refereeInfo, "RefereeBound", true)
 	assertStructFieldEqual(t, refereeInfo, "RefereeUserId", refereeID)
 	assertStructFieldEqual(t, refereeInfo, "CanScore", true)
 	assertStructFieldEqual(t, refereeInfo, "CanUndo", true)
 	assertStructFieldEqual(t, refereeInfo, "CanFinish", true)
+	assertStructFieldEqual(t, refereeInfo, "RefereeName", "裁判丙")
+	assertStructFieldEqual(t, refereeInfo, "RefereeAvatar", "referee.png")
+	if refereeInfo.RefereeJoinedAt == "" {
+		t.Fatal("expected referee joined time")
+	}
+	assertFixedParticipants(t, refereeInfo, 1001, "选手甲", "player1.png", opponentID, "选手乙", "player2.png")
+	assertStructFieldEqual(t, refereeInfo, "OpponentId", opponentID)
+	assertStructFieldEqual(t, refereeInfo, "OpponentName", "选手乙")
+	assertStructFieldEqual(t, refereeInfo, "MyScore", 5)
+	assertStructFieldEqual(t, refereeInfo, "OpponentScore", 4)
+}
+
+func TestBuildCurrentMatchInfoUsesStableEmptyRefereeFieldsWhenUnbound(t *testing.T) {
+	opponentID := int64(2002)
+	info := buildCurrentMatchInfo(nil, 1001, &model.Match{
+		Id: 68, UserId: 1001, OpponentId: &opponentID, Status: 1, MatchTime: time.Now(),
+	})
+	if info.RefereeBound || info.RefereeUserId != 0 || info.RefereeName != "" || info.RefereeAvatar != "" || info.RefereeJoinedAt != "" {
+		t.Fatalf("expected stable empty referee fields, got %+v", info)
+	}
+	if info.CompletedByUserId != 0 || info.CompletionSource != model.CompletionSourceUnknown {
+		t.Fatalf("expected unknown in-progress attribution, got %+v", info)
+	}
 }
 
 func TestBuildMatchSyncSnapshotForUserCarriesRoleCapabilities(t *testing.T) {

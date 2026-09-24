@@ -46,6 +46,9 @@ func (l *GetCurrentMatchLogic) GetCurrentMatch() (resp *types.GetCurrentMatchRes
 			Match:   nil,
 		}, nil
 	}
+	if refreshed, expireErr := expireStaleFinishRequest(l.svcCtx, match); expireErr == nil && refreshed != nil {
+		match = refreshed
+	}
 
 	return &types.GetCurrentMatchResp{
 		Success: true,

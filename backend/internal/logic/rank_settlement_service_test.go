@@ -191,9 +191,9 @@ func TestRankSettlementServiceDailyGainCapTruncatesPositiveGain(t *testing.T) {
 		TotalWins:   3,
 		TotalLosses: 1,
 	}, true, 15, RankSettlementPolicy{
-		TodayPositiveGain: 295,
-		DailyPositiveCap:  300,
-		CompletedRounds:   5,
+		TodayPositiveGain:        295,
+		DailyPositiveCap:         300,
+		CompletedRounds:          5,
 		OpponentCurrentRankScore: 999,
 	})
 
@@ -350,5 +350,28 @@ func TestRankSettlementServiceLossDoesNotOverDeductWhenCurrentScoreIsOne(t *test
 	}
 	if result.AfterScore != 0 {
 		t.Fatalf("expected after score 0, got %d", result.AfterScore)
+	}
+}
+
+func TestRankSettlementServiceModelAndFallbackUseSameSixTierBoundaries(t *testing.T) {
+	withModel := NewRankSettlementService(&model.RankingModel{})
+	withoutModel := NewRankSettlementService(nil)
+	tests := []struct {
+		score int
+		level int
+	}{
+		{score: 1999, level: 4},
+		{score: 2000, level: 5},
+		{score: 2499, level: 5},
+		{score: 2500, level: 6},
+	}
+
+	for _, tt := range tests {
+		if got := withModel.calculateLevel(tt.score); got != tt.level {
+			t.Fatalf("model score %d: expected level %d, got %d", tt.score, tt.level, got)
+		}
+		if got := withoutModel.calculateLevel(tt.score); got != tt.level {
+			t.Fatalf("fallback score %d: expected level %d, got %d", tt.score, tt.level, got)
+		}
 	}
 }

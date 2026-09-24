@@ -28,7 +28,7 @@ export const login = (data) => {
 /**
  * OAuth 登录
  * @param {Object} data OAuth登录数据
- * @param {String} data.provider 提供商 (weixin|huawei)
+ * @param {String} data.provider 提供商 (huawei)
  * @param {String} data.nick_name 昵称
  * @param {String} data.avatar_url 头像URL
  * @param {String} data.open_id OpenID
@@ -38,6 +38,15 @@ export const login = (data) => {
  */
 export const loginByOauth = (data) => {
 	return post('/api/auth/login-by-oauth', data)
+}
+
+/**
+ * 微信小程序一键登录
+ * @param {String} code uni.login 返回的短期凭证
+ * @returns {Promise}
+ */
+export const wechatMiniLogin = (code) => {
+	return post('/api/auth/wechat-mini-login', { code })
 }
 
 /**
@@ -59,10 +68,21 @@ export const bindPhone = (phone, smsCode) => {
 	return post('/api/auth/bind-phone', { phone, sms_code: smsCode })
 }
 
+/**
+ * 微信小程序绑定手机号
+ * @param {String} code getPhoneNumber 返回的短期凭证
+ * @returns {Promise}
+ */
+export const wechatMiniBindPhone = (code) => {
+	return post('/api/auth/wechat-mini-bind-phone', { code })
+}
+
 export default {
 	sendSms,
 	login,
 	loginByOauth,
+	wechatMiniLogin,
 	refreshToken,
-	bindPhone
+	bindPhone,
+	wechatMiniBindPhone
 }

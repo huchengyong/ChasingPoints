@@ -1,0 +1,1856 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>追分 · 对局进行中页面现状预览</title>
+  <style>
+    :root {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: #18222d;
+      background: #e9edf2;
+      font-synthesis: none;
+    }
+
+    * { box-sizing: border-box; }
+    button { font: inherit; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 28px;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 18% 10%, rgba(11, 122, 255, 0.13), transparent 28%),
+        radial-gradient(circle at 82% 88%, rgba(255, 123, 84, 0.12), transparent 30%),
+        #e9edf2;
+    }
+
+    .preview {
+      width: min(1040px, calc(100vw - 32px));
+      display: grid;
+      grid-template-columns: 278px minmax(0, 410px);
+      justify-content: center;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .control-panel {
+      padding: 20px;
+      border: 1px solid rgba(24, 34, 45, 0.08);
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow: 0 20px 60px rgba(17, 41, 69, 0.12);
+      backdrop-filter: blur(18px);
+    }
+
+    .eyebrow {
+      color: #0b7aff;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.13em;
+    }
+
+    h1 {
+      margin: 8px 0 7px;
+      font-size: 22px;
+      line-height: 1.3;
+    }
+
+    .intro,
+    .scene-description {
+      margin: 0;
+      color: #667687;
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .scene-list {
+      margin-top: 18px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .scene-button,
+    .utility-button {
+      width: 100%;
+      min-height: 43px;
+      margin: 0;
+      padding: 0 13px;
+      border: 1px solid rgba(102, 118, 135, 0.16);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.88);
+      color: #334155;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: left;
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+
+    .scene-button:hover,
+    .utility-button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(11, 122, 255, 0.34);
+    }
+
+    .scene-button.active {
+      border-color: rgba(11, 122, 255, 0.42);
+      background: linear-gradient(135deg, rgba(11, 122, 255, 0.11), #ffffff);
+      color: #075fca;
+      box-shadow: 0 8px 20px rgba(11, 122, 255, 0.1);
+    }
+
+    .scene-summary,
+    .utility-actions,
+    .notes {
+      margin-top: 16px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(102, 118, 135, 0.13);
+    }
+
+    .scene-current {
+      margin-bottom: 5px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .utility-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .utility-button {
+      min-height: 38px;
+      padding: 0 10px;
+      text-align: center;
+    }
+
+    .notes {
+      margin-bottom: 0;
+      padding-left: 17px;
+      color: #667687;
+      font-size: 11px;
+      line-height: 1.75;
+    }
+
+    .preview-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 13px;
+    }
+
+    .preview-label {
+      color: #536578;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .phone {
+      width: min(410px, calc(100vw - 32px));
+      height: min(884px, calc(100vh - 74px));
+      min-height: 700px;
+      padding: 9px;
+      border-radius: 45px;
+      background: #10151b;
+      box-shadow: 0 34px 90px rgba(17, 41, 69, 0.27), 0 5px 18px rgba(15, 23, 42, 0.18);
+    }
+
+    .screen {
+      --bg: #f4f6f8;
+      --bg-top: #f8fbff;
+      --card: rgba(255, 255, 255, 0.95);
+      --surface: #eef3f8;
+      --line: rgba(24, 34, 45, 0.07);
+      --text: #18222d;
+      --muted: #667687;
+      --me: #0b7aff;
+      --opponent: #ff7b54;
+      --gold: #e0ae12;
+      --success: #1bb56b;
+      position: relative;
+      height: 100%;
+      overflow-x: hidden;
+      overflow-y: auto;
+      border-radius: 37px;
+      scrollbar-width: none;
+      background:
+        radial-gradient(circle at top, rgba(11, 122, 255, 0.08), transparent 38%),
+        linear-gradient(180deg, var(--bg-top) 0%, var(--bg) 42%, #eef2f6 100%);
+      color: var(--text);
+      transition: 0.2s ease;
+    }
+
+    .screen::-webkit-scrollbar { display: none; }
+
+    .screen.dark {
+      --bg: #101922;
+      --bg-top: #0f1720;
+      --card: rgba(24, 35, 47, 0.96);
+      --surface: #223241;
+      --line: rgba(255, 255, 255, 0.07);
+      --text: #f4f7fb;
+      --muted: #94a5b8;
+      --me: #4da0ff;
+      --opponent: #ff9b7d;
+      --gold: #f7c948;
+      background:
+        radial-gradient(circle at top, rgba(11, 122, 255, 0.18), transparent 32%),
+        linear-gradient(180deg, #0f1720 0%, #101922 50%, #0c141d 100%);
+    }
+
+    .status-bar {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      height: 29px;
+      padding: 8px 21px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 750;
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(14px);
+    }
+
+    .status-icons {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .signal {
+      height: 10px;
+      display: flex;
+      align-items: flex-end;
+      gap: 1.5px;
+    }
+
+    .signal i { width: 2px; border-radius: 2px; background: currentColor; }
+    .signal i:nth-child(1) { height: 4px; }
+    .signal i:nth-child(2) { height: 6px; }
+    .signal i:nth-child(3) { height: 8px; }
+    .signal i:nth-child(4) { height: 10px; }
+
+    .wifi {
+      width: 12px;
+      height: 9px;
+      border: 2px solid currentColor;
+      border-left-color: transparent;
+      border-right-color: transparent;
+      border-bottom: 0;
+      border-radius: 50% 50% 0 0;
+      transform: translateY(1px);
+    }
+
+    .battery {
+      position: relative;
+      width: 20px;
+      height: 10px;
+      padding: 1px;
+      border: 1.5px solid currentColor;
+      border-radius: 3px;
+    }
+
+    .battery::before {
+      content: "";
+      display: block;
+      width: 13px;
+      height: 100%;
+      border-radius: 1px;
+      background: currentColor;
+    }
+
+    .battery::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      right: -3px;
+      width: 2px;
+      height: 5px;
+      border-radius: 0 2px 2px 0;
+      background: currentColor;
+    }
+
+    .app-header {
+      position: sticky;
+      top: 29px;
+      z-index: 3;
+      height: 67px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid rgba(24, 34, 45, 0.04);
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(14px);
+    }
+
+    .header-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      padding: 0 18px;
+      text-align: center;
+    }
+
+    .game-title { font-size: 17px; font-weight: 780; }
+    .game-subtitle {
+      max-width: 330px;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 10px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .scroll-area {
+      position: static;
+      overflow: visible;
+    }
+
+    .main-content {
+      padding: 12px 12px 10px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      background: var(--card);
+      box-shadow: 0 12px 24px rgba(17, 41, 69, 0.07);
+    }
+
+    .dark .card { box-shadow: none; }
+
+    .scoreboard-card {
+      padding: 11px;
+      display: grid;
+      gap: 7px;
+    }
+
+    .scoreboard {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .player-card {
+      min-width: 0;
+      padding: 9px;
+      display: grid;
+      gap: 8px;
+      border: 1px solid transparent;
+      border-radius: 13px;
+    }
+
+    .player-card.me {
+      border-color: rgba(11, 122, 255, 0.2);
+      background: linear-gradient(180deg, rgba(11, 122, 255, 0.16), rgba(11, 122, 255, 0.06));
+    }
+
+    .player-card.opponent {
+      border-color: rgba(255, 123, 84, 0.2);
+      background: linear-gradient(180deg, rgba(255, 123, 84, 0.14), rgba(255, 123, 84, 0.05));
+    }
+
+    .player-main {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 7px;
+    }
+
+    .opponent .player-main { flex-direction: row-reverse; }
+
+    .profile {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .opponent .profile { flex-direction: row-reverse; }
+
+    .avatar {
+      width: 43px;
+      height: 43px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--surface);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.34);
+    }
+
+    .player-info {
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+    }
+
+    .opponent .player-info { justify-items: end; }
+
+    .name-row {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .opponent .name-row { flex-direction: row-reverse; }
+
+    .identity {
+      padding: 3px 7px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: var(--me);
+      color: white;
+      font-size: 8px;
+      font-weight: 800;
+    }
+
+    .opponent .identity {
+      background: rgba(24, 34, 45, 0.1);
+      color: var(--text);
+    }
+
+    .dark .opponent .identity { background: rgba(255, 255, 255, 0.08); }
+
+    .player-name {
+      min-width: 0;
+      max-width: 64px;
+      overflow: hidden;
+      font-size: 12px;
+      font-weight: 780;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .player-meta {
+      display: grid;
+      gap: 2px;
+      color: var(--muted);
+      font-size: 8px;
+      white-space: nowrap;
+    }
+
+    .opponent .player-meta { text-align: right; }
+
+    .score {
+      min-width: 50px;
+      padding: 9px 5px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.46);
+      font-size: 31px;
+      font-weight: 850;
+      line-height: 1;
+      text-align: center;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+    }
+
+    .dark .score { background: rgba(255, 255, 255, 0.07); }
+    .me .score { color: var(--me); }
+    .opponent .score { color: var(--opponent); }
+
+    .score-meta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    .live-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--text);
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+
+    .live-status.syncing .live-dot {
+      background: var(--gold);
+      box-shadow: 0 0 0 4px rgba(247, 201, 72, 0.16);
+    }
+
+    .viewer-banner {
+      display: grid;
+      justify-items: center;
+      gap: 4px;
+      padding-top: 2px;
+      text-align: center;
+    }
+
+    .role-label { color: var(--gold); font-size: 11px; font-weight: 800; }
+    .viewer-hint { color: var(--muted); font-size: 9px; }
+
+    .text-action {
+      margin: 0;
+      padding: 3px 7px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 9px;
+      cursor: pointer;
+    }
+
+    .referee-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+    }
+
+    .referee-row img { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; }
+
+    .last-action,
+    .finish-confirmation {
+      padding: 9px 11px;
+      border: 1px solid rgba(224, 174, 18, 0.32);
+      border-radius: 10px;
+      background: rgba(224, 174, 18, 0.1);
+    }
+
+    .last-action { display: flex; gap: 8px; font-size: 10px; }
+    .last-action b { color: #a16207; white-space: nowrap; }
+    .last-action span { color: #713f12; }
+    .dark .last-action span { color: #fde68a; }
+
+    .frame-summary {
+      padding: 9px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: linear-gradient(180deg, rgba(11, 122, 255, 0.08), rgba(255, 123, 84, 0.06));
+    }
+
+    .frame-label { display: grid; gap: 3px; color: var(--muted); font-size: 9px; }
+    .frame-label strong { color: var(--me); font-size: 8px; }
+    .frame-score { font-size: 21px; font-weight: 850; }
+
+    .action-panel {
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .panel-header { display: grid; gap: 4px; }
+    .panel-title { font-size: 16px; font-weight: 800; }
+    .panel-desc { color: var(--muted); font-size: 10px; line-height: 1.45; }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 9px;
+    }
+
+    .action-button {
+      min-width: 0;
+      min-height: 78px;
+      margin: 0;
+      padding: 12px 9px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 6px;
+      border: 1px solid rgba(255, 123, 84, 0.17);
+      border-radius: 13px;
+      background: linear-gradient(180deg, rgba(255, 123, 84, 0.18), rgba(255, 123, 84, 0.08));
+      color: #ca4f28;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .dark .action-button { color: var(--opponent); }
+    .action-button strong { font-size: 12px; }
+    .action-button span { color: var(--muted); font-size: 9px; line-height: 1.35; }
+    .action-button:active { transform: scale(0.98); }
+
+    .action-button.me-button {
+      border-color: rgba(11, 122, 255, 0.2);
+      background: linear-gradient(180deg, rgba(11, 122, 255, 0.18), rgba(11, 122, 255, 0.08));
+      color: var(--me);
+    }
+
+    .referee-action-groups {
+      display: grid;
+      gap: 14px;
+    }
+
+    .referee-action-group {
+      display: grid;
+      gap: 8px;
+    }
+
+    .referee-action-group .action-button {
+      min-height: 70px;
+      padding: 9px 7px;
+    }
+
+    .referee-action-group .action-button strong { font-size: 10px; }
+    .referee-action-group .action-button span { font-size: 8px; }
+
+    .nine-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .action-column { display: grid; align-content: start; gap: 9px; }
+    .column-title { color: var(--opponent); font-size: 9px; font-weight: 750; }
+    .column-title.me-color { color: var(--me); }
+
+    .nine-layout .action-button { min-height: 70px; }
+
+    .gold-row { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .gold-row .action-button { min-height: 63px; padding: 8px 7px; }
+    .gold-row .action-button strong { font-size: 10px; }
+
+    .snooker-layout { display: grid; gap: 14px; }
+    .snooker-section { display: grid; gap: 8px; }
+
+    .snooker-head,
+    .snooker-title-group {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .snooker-title-group {
+      align-items: flex-start;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+
+    .participant-switch {
+      display: flex;
+      gap: 6px;
+    }
+
+    .participant-button {
+      height: 32px;
+      margin: 0;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(24, 34, 45, 0.06);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    .dark .participant-button { background: rgba(255,255,255,.08); }
+    .participant-button.active { background: var(--me); color: white; }
+
+    .red-counter { color: #b45309; font-size: 10px; font-weight: 700; }
+    .dark .red-counter { color: #fdba74; }
+
+    .snooker-stage {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 88px;
+      gap: 7px;
+    }
+
+    .ball-rows { display: grid; gap: 7px; }
+    .ball-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+    .ball-row.two { grid-template-columns: repeat(2, 1fr); }
+
+    .ball-button {
+      min-width: 0;
+      min-height: 77px;
+      margin: 0;
+      padding: 8px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(238,243,248,.92));
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .dark .ball-button { background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(34,50,65,.94)); }
+    .ball-button.tall { min-height: 161px; }
+    .ball-button.foul { background: linear-gradient(180deg, rgba(11,122,255,.14), rgba(11,122,255,.05)); }
+    .ball-button[disabled] { opacity: .56; cursor: default; box-shadow: none; }
+    .ball-button[disabled]:active { transform: none; }
+
+    .ball {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: white;
+      font-size: 11px;
+      font-weight: 850;
+      text-shadow: 0 1px 3px rgba(0,0,0,.35);
+      box-shadow: inset -4px -5px 7px rgba(0,0,0,.22), inset 4px 5px 7px rgba(255,255,255,.24), 0 5px 9px rgba(24,34,45,.16);
+    }
+
+    .tall .ball { width: 46px; height: 46px; }
+    .ball-button strong { font-size: 10px; }
+    .ball-button small { color: var(--muted); font-size: 8px; }
+    .ball.red { background: radial-gradient(circle at 30% 30%, #ff9d9d, #d52222 62%, #8f1010); }
+    .ball.yellow { background: radial-gradient(circle at 30% 30%, #fff5a8, #f3c21a 62%, #b88906); }
+    .ball.green { background: radial-gradient(circle at 30% 30%, #98f5c3, #20a05c 62%, #10683a); }
+    .ball.brown { background: radial-gradient(circle at 30% 30%, #d8b28b, #8a5a34 62%, #5b381e); }
+    .ball.blue { background: radial-gradient(circle at 30% 30%, #9bd7ff, #2d7cf4 62%, #154ca3); }
+    .ball.pink { background: radial-gradient(circle at 30% 30%, #ffd0e6, #ef71b2 62%, #b13a7a); }
+    .ball.black { background: radial-gradient(circle at 30% 30%, #738095, #1c2330 62%, #06090f); }
+    .snooker-hint { color: var(--muted); font-size: 9px; line-height: 1.45; }
+
+    .readonly-panel {
+      padding: 17px 18px;
+      display: grid;
+      gap: 7px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: color-mix(in srgb, var(--card) 76%, transparent);
+    }
+
+    .readonly-panel strong { font-size: 15px; }
+    .readonly-panel span { color: var(--muted); font-size: 11px; }
+
+    .finish-confirmation { display: grid; gap: 6px; }
+    .finish-confirmation strong { color: #713f12; font-size: 13px; }
+    .finish-confirmation p { margin: 0; color: #92400e; font-size: 10px; }
+    .dark .finish-confirmation strong,
+    .dark .finish-confirmation p { color: #fde68a; }
+
+    .confirm-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .confirm-actions button {
+      min-height: 31px;
+      margin: 0;
+      padding: 0 10px;
+      border: 0;
+      border-radius: 8px;
+      background: white;
+      color: #92400e;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .confirm-actions button.primary { background: #e0ae12; color: white; }
+
+    .footer {
+      position: static;
+      padding: 10px 12px 18px;
+      display: grid;
+      gap: 8px;
+      background: transparent;
+    }
+
+    .footer-button,
+    .undo-button {
+      width: 100%;
+      height: 45px;
+      margin: 0;
+      border: 0;
+      border-radius: 13px;
+      font-size: 14px;
+      font-weight: 780;
+      cursor: pointer;
+    }
+
+    .footer-button.primary {
+      background: linear-gradient(135deg, #0b7aff, #0262d6);
+      color: white;
+      box-shadow: 0 9px 14px rgba(11,122,255,.22);
+    }
+
+    .footer-button.secondary {
+      border: 1px solid rgba(11,122,255,.14);
+      background: linear-gradient(135deg, rgba(11,122,255,.16), rgba(11,122,255,.08));
+      color: var(--me);
+    }
+
+    .undo-button {
+      height: 36px;
+      background: rgba(24,34,45,.06);
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    .dark .undo-button { background: rgba(255,255,255,.08); }
+
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      padding: 26px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,.55);
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      width: 100%;
+      padding: 24px 20px;
+      display: grid;
+      justify-items: center;
+      gap: 12px;
+      border-radius: 18px;
+      background: #1d180f;
+      color: #fff7e1;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0,0,0,.32);
+    }
+
+    .modal h2 { margin: 0; font-size: 18px; }
+    .modal p { margin: 0; color: rgba(255,247,225,.72); font-size: 11px; line-height: 1.55; }
+
+    .fake-qr {
+      width: 156px;
+      height: 156px;
+      padding: 10px;
+      display: grid;
+      grid-template-columns: repeat(11, 1fr);
+      grid-template-rows: repeat(11, 1fr);
+      gap: 2px;
+      border-radius: 12px;
+      background: white;
+    }
+
+    .fake-qr i { background: transparent; }
+    .fake-qr i.on { background: #111827; }
+
+    .modal-confirm-actions {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .modal-close {
+      width: 100%;
+      height: 43px;
+      border: 0;
+      border-radius: 999px;
+      background: #f7c948;
+      color: white;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .modal-close.secondary {
+      background: rgba(255, 255, 255, .1);
+      color: #fff7e1;
+    }
+
+    .sync-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 11;
+      display: none;
+      place-items: center;
+      background: rgba(0, 0, 0, .2);
+      pointer-events: none;
+    }
+
+    .sync-overlay.open { display: grid; }
+
+    .sync-loading {
+      padding: 12px 16px;
+      border-radius: 11px;
+      background: rgba(15, 23, 42, .9);
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, .2);
+    }
+
+    .home-indicator {
+      position: sticky;
+      bottom: 5px;
+      left: 50%;
+      z-index: 5;
+      width: 118px;
+      height: 4px;
+      border-radius: 99px;
+      background: var(--text);
+      transform: translateX(-50%);
+      opacity: .78;
+    }
+
+    .toast {
+      position: sticky;
+      left: 50%;
+      bottom: 16px;
+      z-index: 9;
+      max-width: 80%;
+      padding: 8px 13px;
+      border-radius: 999px;
+      background: rgba(15,23,42,.88);
+      color: white;
+      font-size: 10px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 8px);
+      transition: .2s ease;
+    }
+
+    .toast.show { opacity: 1; transform: translate(-50%, -8px); }
+
+    @media (max-width: 790px) {
+      body { padding: 18px 0; }
+      .preview { grid-template-columns: 1fr; gap: 20px; }
+      .control-panel { width: min(410px, calc(100vw - 32px)); order: 2; }
+      .phone { height: 820px; min-height: 680px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="preview">
+    <aside class="control-panel">
+      <div class="eyebrow">CURRENT UI PREVIEW</div>
+      <h1>对局进行中内页</h1>
+      <p class="intro">按当前 <code>app/subPages/match/playing.vue</code> 的结构还原，可切换球种、角色、结束确认与深色模式。</p>
+
+      <div class="scene-list">
+        <button class="scene-button active" data-scene="chinese">01 · 中式八球 / 选手记分</button>
+        <button class="scene-button" data-scene="nine">02 · 九球追分 / 选手记分</button>
+        <button class="scene-button" data-scene="snooker">03 · 斯诺克 / 选手记分</button>
+        <button class="scene-button" data-scene="american">04 · 美式九球 / 选手记分</button>
+        <button class="scene-button" data-scene="player2">05 · 中式八球 / 选手2视角</button>
+        <button class="scene-button" data-scene="refereeRound">06 · 中式八球 / 裁判双方</button>
+        <button class="scene-button" data-scene="refereeAmerican">07 · 美式九球 / 裁判双方</button>
+        <button class="scene-button" data-scene="refereeNine">08 · 九球追分 / 裁判双方</button>
+        <button class="scene-button" data-scene="refereeSnooker">09 · 斯诺克 / 裁判双方</button>
+        <button class="scene-button" data-scene="readonly">10 · 选手只读观赛</button>
+        <button class="scene-button" data-scene="confirmationReceiver">11 · 排位结束 / 待确认方</button>
+        <button class="scene-button" data-scene="confirmationRequester">12 · 排位结束 / 发起方</button>
+        <button class="scene-button" data-scene="snookerClearance">13 · 斯诺克 / 清彩阶段</button>
+        <button class="scene-button" data-scene="snookerWaiting">14 · 斯诺克 / 下一局待开始</button>
+        <button class="scene-button" data-scene="syncing">15 · 比分同步中</button>
+      </div>
+
+      <div class="scene-summary">
+        <div class="scene-current" id="sceneCurrent">中式八球 · 选手记分</div>
+        <p class="scene-description" id="sceneDescription">展示双方信息、局分、实时同步状态、胜法按钮以及结束对局入口。</p>
+      </div>
+
+      <div class="utility-actions">
+        <button class="utility-button" id="themeToggle">切换深色</button>
+        <button class="utility-button" id="resetButton">重置比分</button>
+      </div>
+
+      <ul class="notes">
+        <li>操作按钮可点击，比分和最近操作会同步变化。</li>
+        <li>“邀请裁判扫码”可打开当前页面中的二维码弹窗。</li>
+        <li>本文件只用于可视化，不修改 App 业务代码。</li>
+      </ul>
+    </aside>
+
+    <section class="preview-stage">
+      <div class="preview-label">375 × 812 移动端效果</div>
+      <div class="phone">
+        <div class="screen" id="screen">
+          <div class="status-bar">
+            <span>9:41</span>
+            <div class="status-icons">
+              <span class="signal"><i></i><i></i><i></i><i></i></span>
+              <span class="wifi"></span>
+              <span class="battery"></span>
+            </div>
+          </div>
+
+          <header class="app-header">
+            <div class="header-center">
+              <div class="game-title" id="gameTitle">中式八球</div>
+              <div class="game-subtitle" id="gameSubtitle">明确判定对手的本局胜法 · 左我右敌</div>
+            </div>
+          </header>
+
+          <div class="scroll-area" id="scrollArea">
+            <div class="main-content">
+              <section class="card scoreboard-card">
+                <div class="scoreboard">
+                  <article class="player-card me">
+                    <div class="player-main">
+                      <div class="profile">
+                        <img class="avatar" src="../../app/static/images/default-avatars/ball-08.png" alt="我的头像" />
+                        <div class="player-info">
+                          <div class="name-row"><span class="identity" id="leftIdentity">我方</span><span class="player-name">阿哲</span></div>
+                          <div class="player-meta"><span>胜率 68%</span><span>单杆 7</span></div>
+                        </div>
+                      </div>
+                      <div class="score" id="myScore">3</div>
+                    </div>
+                  </article>
+
+                  <article class="player-card opponent">
+                    <div class="player-main">
+                      <div class="profile">
+                        <img class="avatar" src="../../app/static/images/default-avatars/ball-09.png" alt="对手头像" />
+                        <div class="player-info">
+                          <div class="name-row"><span class="identity" id="rightIdentity">对手</span><span class="player-name">陈一杆</span></div>
+                          <div class="player-meta"><span>胜率 61%</span><span>单杆 6</span></div>
+                        </div>
+                      </div>
+                      <div class="score" id="opponentScore">2</div>
+                    </div>
+                  </article>
+                </div>
+
+                <div class="score-meta">
+                  <span id="roundText">第 6 局</span><span>·</span>
+                  <span class="live-status" id="liveStatus"><i class="live-dot"></i><span id="syncStatusText">实时同步中</span></span>
+                </div>
+
+                <div class="viewer-banner" id="viewerBanner"></div>
+                <div id="lastActionContainer"></div>
+                <div id="confirmationContainer"></div>
+                <div id="frameSummaryContainer"></div>
+              </section>
+
+              <section id="actionContainer"></section>
+            </div>
+          </div>
+
+          <footer class="footer" id="footer"></footer>
+
+          <div class="modal-overlay" id="refereeModal">
+            <div class="modal">
+              <h2 id="modalTitle">邀请裁判扫码</h2>
+              <p id="modalDescription">让球童、助教或第三方扫码后接管本场记分</p>
+              <div class="fake-qr" id="fakeQr" aria-label="二维码示意图"></div>
+              <p id="modalHint">裁判加入后，选手端会自动切换为只读比分视图。</p>
+              <div class="modal-confirm-actions" id="modalConfirmActions" hidden>
+                <button class="modal-close secondary" id="modalCancel">取消</button>
+                <button class="modal-close" id="modalConfirm">确认</button>
+              </div>
+              <button class="modal-close" id="modalClose">关闭</button>
+            </div>
+          </div>
+
+          <div class="sync-overlay" id="syncOverlay"><div class="sync-loading">正在同步比分...</div></div>
+          <div class="toast" id="toast"></div>
+          <div class="home-indicator"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const scenes = {
+      chinese: {
+        current: '中式八球 · 选手记分',
+        description: '选手继续使用“我方/对手”相对视角，仅判定对手的本局胜法。',
+        gameTitle: '中式八球',
+        subtitle: '明确判定对手的本局胜法 · 左我右敌',
+        role: '选手视角',
+        viewerRole: 'player1',
+        type: 'round',
+        roundVariant: 'chinese',
+        round: 6,
+        scores: [3, 2],
+        refereeBound: false,
+        readonly: false,
+        confirmation: false
+      },
+      nine: {
+        current: '九球追分 · 选手记分',
+        description: '选手记录对手普胜、小金、大金，以及对手犯规后的我方加分。',
+        gameTitle: '九球追分',
+        subtitle: '区分我方得分与对手得分 · 左我右敌',
+        role: '选手视角',
+        viewerRole: 'player1',
+        type: 'nine',
+        round: 8,
+        scores: [19, 18],
+        refereeBound: false,
+        readonly: false,
+        confirmation: false
+      },
+      snooker: {
+        current: '斯诺克 · 选手记分',
+        description: '选手仍按相对视角给对手记球值、记录对手犯规后的我方加分。',
+        gameTitle: '斯诺克',
+        subtitle: '上方为整场 frame，下方记录当前局得分 · 左我右敌',
+        role: '选手视角',
+        viewerRole: 'player1',
+        type: 'snooker',
+        round: 3,
+        scores: [1, 1],
+        frameScores: [36, 28],
+        redBallCount: 6,
+        refereeBound: false,
+        readonly: false,
+        confirmation: false
+      },
+      american: {
+        current: '美式九球 · 选手记分',
+        description: '选手按相对视角记录对手普胜、小金或大金。',
+        gameTitle: '美式九球',
+        subtitle: '明确判定对手的本局胜法 · 左我右敌',
+        role: '选手视角',
+        viewerRole: 'player1',
+        type: 'round',
+        roundVariant: 'american',
+        round: 5,
+        scores: [3, 3],
+        refereeBound: false,
+        readonly: false,
+        confirmation: false
+      },
+      player2: {
+        current: '中式八球 · 选手2相对视角',
+        description: '真实页面对选手2仍展示“我方/对手”，写操作再转换为后端固定参与方。',
+        gameTitle: '中式八球',
+        subtitle: '明确判定对手的本局胜法 · 左我右敌',
+        role: '选手视角',
+        viewerRole: 'player2',
+        type: 'round',
+        roundVariant: 'chinese',
+        round: 6,
+        scores: [2, 3],
+        refereeBound: false,
+        readonly: false,
+        confirmation: false
+      },
+      refereeRound: {
+        current: '中式八球 · 裁判双方记分',
+        description: '裁判可分别为选手1、选手2判定普胜、炸清或接清，操作后明确提示实际胜方。',
+        gameTitle: '中式八球',
+        subtitle: '明确判定双方的本局胜法 · 左选手1右选手2',
+        role: '裁判视角',
+        viewerRole: 'referee',
+        type: 'round',
+        roundVariant: 'chinese',
+        round: 4,
+        scores: [2, 1],
+        refereeBound: true,
+        readonly: false,
+        confirmation: false
+      },
+      refereeAmerican: {
+        current: '美式九球 · 裁判双方记分',
+        description: '裁判可分别为选手1、选手2判定普胜、小金或大金，固定参与方语义与后端一致。',
+        gameTitle: '美式九球',
+        subtitle: '明确判定双方的本局胜法 · 左选手1右选手2',
+        role: '裁判视角',
+        viewerRole: 'referee',
+        type: 'round',
+        roundVariant: 'american',
+        round: 5,
+        scores: [3, 3],
+        refereeBound: true,
+        readonly: false,
+        confirmation: false
+      },
+      refereeNine: {
+        current: '九球追分 · 裁判双方记分',
+        description: '裁判为双方分别记录普胜、小金、大金和犯规，犯规分自动归到另一方。',
+        gameTitle: '九球追分',
+        subtitle: '分别记录选手1与选手2得分 · 左选手1右选手2',
+        role: '裁判视角',
+        viewerRole: 'referee',
+        type: 'nine',
+        round: 8,
+        scores: [19, 18],
+        refereeBound: true,
+        readonly: false,
+        confirmation: false
+      },
+      refereeSnooker: {
+        current: '斯诺克 · 裁判双方记分',
+        description: '得分方与犯规方分别选择，两个选择状态互不影响，球值按钮复用同一套布局。',
+        gameTitle: '斯诺克',
+        subtitle: '上方为整场 frame，下方记录当前局得分 · 左选手1右选手2',
+        role: '裁判视角',
+        viewerRole: 'referee',
+        type: 'snooker',
+        round: 3,
+        scores: [1, 1],
+        frameScores: [36, 28],
+        redBallCount: 6,
+        refereeBound: true,
+        readonly: false,
+        confirmation: false
+      },
+      readonly: {
+        current: '选手视角 · 裁判接管后只读',
+        description: '裁判接管后选手仍保持“我方/对手”视角，但隐藏记分和结束操作。',
+        gameTitle: '中式八球',
+        subtitle: '明确判定对手的本局胜法 · 左我右敌',
+        role: '选手视角',
+        viewerRole: 'player1',
+        type: 'round',
+        roundVariant: 'chinese',
+        round: 7,
+        scores: [4, 3],
+        refereeBound: true,
+        readonly: true,
+        confirmation: false
+      },
+      confirmationReceiver: {
+        current: '排位赛 · 待确认方',
+        description: '比分冻结后，待确认方只能确认结束或提出异议。',
+        gameTitle: '中式八球',
+        subtitle: '明确判定对手的本局胜法 · 左我右敌',
+        role: '选手视角',
+        viewerRole: 'player2',
+        type: 'round',
+        roundVariant: 'chinese',
+        round: 9,
+        scores: [4, 5],
+        refereeBound: false,
+        readonly: true,
+        confirmation: true,
+        confirmationActions: ['confirm', 'dispute']
+      },
+      confirmationRequester: {
+        current: '排位赛 · 结束请求发起方',
+        description: '比分冻结后，发起方等待对手处理，只能撤回结束请求。',
+        gameTitle: '中式八球',
+        subtitle: '明确判定对手的本局胜法 · 左我右敌',
+        role: '选手视角',
+        viewerRole: 'player1',
+        type: 'round',
+        roundVariant: 'chinese',
+        round: 9,
+        scores: [5, 4],
+        refereeBound: false,
+        readonly: true,
+        confirmation: true,
+        confirmationActions: ['withdraw']
+      },
+      snookerClearance: {
+        current: '斯诺克 · 清彩阶段',
+        description: '最后一颗红球后的彩球完成后进入清彩，只有下一颗目标彩球可点击。',
+        gameTitle: '斯诺克',
+        subtitle: '上方为整场 frame，下方记录当前局得分 · 左我右敌',
+        role: '选手视角',
+        viewerRole: 'player1',
+        type: 'snooker',
+        round: 4,
+        scores: [2, 1],
+        frameScores: [58, 52],
+        redBallCount: 15,
+        clearanceStarted: true,
+        expectedClearanceScore: 4,
+        clearedColors: [2, 3],
+        refereeBound: false,
+        readonly: false,
+        confirmation: false
+      },
+      snookerWaiting: {
+        current: '斯诺克 · 当前局已结束',
+        description: '当前 frame 已关闭，记分球全部禁用，可开始下一局或结束整场。',
+        gameTitle: '斯诺克',
+        subtitle: '上方为整场 frame，下方记录当前局得分 · 左我右敌',
+        role: '选手视角',
+        viewerRole: 'player1',
+        type: 'snooker',
+        round: 4,
+        scores: [2, 1],
+        frameScores: [0, 0],
+        redBallCount: 0,
+        currentFrameStarted: false,
+        refereeBound: false,
+        readonly: false,
+        confirmation: false
+      },
+      syncing: {
+        current: '中式八球 · 比分同步中',
+        description: '模拟真实写操作期间的同步状态、遮罩和按钮防重复提交。',
+        gameTitle: '中式八球',
+        subtitle: '明确判定对手的本局胜法 · 左我右敌',
+        role: '选手视角',
+        viewerRole: 'player1',
+        type: 'round',
+        roundVariant: 'chinese',
+        round: 6,
+        scores: [3, 2],
+        refereeBound: false,
+        readonly: false,
+        confirmation: false,
+        syncing: true
+      }
+    };
+
+    const sceneDefaults = Object.fromEntries(Object.entries(scenes).map(([key, scene]) => [key, JSON.parse(JSON.stringify(scene))]));
+
+    let currentScene = 'chinese';
+    let darkMode = false;
+    let scores = [...scenes[currentScene].scores];
+    let frameScores = [36, 28];
+    let lastAction = '';
+    let snookerRedBallCount = 0;
+    let snookerClearanceStarted = false;
+    let snookerExpectedClearanceScore = 0;
+    let snookerClearedColors = [];
+    let currentFrameStarted = true;
+    let snookerScoringActor = 1;
+    let snookerFoulingActor = 1;
+    let actionHistory = [];
+    let pendingModalAction = null;
+
+    const screen = document.getElementById('screen');
+    const actionContainer = document.getElementById('actionContainer');
+    const footer = document.getElementById('footer');
+    const viewerBanner = document.getElementById('viewerBanner');
+    const frameSummaryContainer = document.getElementById('frameSummaryContainer');
+    const confirmationContainer = document.getElementById('confirmationContainer');
+    const lastActionContainer = document.getElementById('lastActionContainer');
+    const toast = document.getElementById('toast');
+    const liveStatus = document.getElementById('liveStatus');
+    const syncOverlay = document.getElementById('syncOverlay');
+
+    function resetSceneState() {
+      const scene = scenes[currentScene];
+      scores = [...scene.scores];
+      frameScores = scene.frameScores ? [...scene.frameScores] : [36, 28];
+      snookerRedBallCount = scene.redBallCount || 0;
+      snookerClearanceStarted = !!scene.clearanceStarted;
+      snookerExpectedClearanceScore = scene.expectedClearanceScore || 0;
+      snookerClearedColors = [...(scene.clearedColors || [])];
+      currentFrameStarted = scene.currentFrameStarted !== false;
+      lastAction = '';
+      actionHistory = [];
+      snookerScoringActor = 1;
+      snookerFoulingActor = 1;
+    }
+
+    function captureActionState() {
+      actionHistory.push({
+        scores: [...scores],
+        frameScores: [...frameScores],
+        round: scenes[currentScene].round,
+        redBallCount: snookerRedBallCount,
+        clearanceStarted: snookerClearanceStarted,
+        expectedClearanceScore: snookerExpectedClearanceScore,
+        clearedColors: [...snookerClearedColors],
+        currentFrameStarted,
+        lastAction
+      });
+    }
+
+    function restoreLastAction() {
+      const previous = actionHistory.pop();
+      if (!previous) return false;
+      scores = previous.scores;
+      frameScores = previous.frameScores;
+      scenes[currentScene].round = previous.round;
+      snookerRedBallCount = previous.redBallCount;
+      snookerClearanceStarted = previous.clearanceStarted;
+      snookerExpectedClearanceScore = previous.expectedClearanceScore;
+      snookerClearedColors = previous.clearedColors;
+      currentFrameStarted = previous.currentFrameStarted;
+      lastAction = previous.lastAction;
+      return true;
+    }
+
+    function render() {
+      const scene = scenes[currentScene];
+      document.getElementById('sceneCurrent').textContent = scene.current;
+      document.getElementById('sceneDescription').textContent = scene.description;
+      document.getElementById('gameTitle').textContent = scene.gameTitle;
+      document.getElementById('gameSubtitle').textContent = scene.subtitle;
+      document.getElementById('roundText').textContent = scene.type === 'snooker' && !currentFrameStarted ? `待开始第 ${scene.round} 局` : `第 ${scene.round} 局`;
+      document.getElementById('myScore').textContent = scores[0];
+      document.getElementById('opponentScore').textContent = scores[1];
+      document.getElementById('leftIdentity').textContent = scene.viewerRole === 'referee' ? '选手1' : '我方';
+      document.getElementById('rightIdentity').textContent = scene.viewerRole === 'referee' ? '选手2' : '对手';
+      const syncing = !!scene.syncing;
+      liveStatus.classList.toggle('syncing', syncing);
+      document.getElementById('syncStatusText').textContent = syncing ? '比分同步中' : '实时同步中';
+      syncOverlay.classList.toggle('open', syncing);
+
+      screen.classList.toggle('dark', darkMode);
+      document.getElementById('themeToggle').textContent = darkMode ? '切换浅色' : '切换深色';
+
+      viewerBanner.innerHTML = renderViewerBanner(scene);
+      actionContainer.innerHTML = renderActionPanel(scene);
+      footer.innerHTML = renderFooter(scene);
+      frameSummaryContainer.innerHTML = scene.type === 'snooker'
+        ? `<div class="frame-summary"><div class="frame-label"><span>当前局比分</span><strong>${currentFrameStarted ? '进行中' : '待开始'}</strong></div><div class="frame-score">${frameScores[0]} : ${frameScores[1]}</div></div>`
+        : '';
+      confirmationContainer.innerHTML = scene.confirmation ? renderConfirmation() : '';
+      const confirmationHint = scene.confirmationActions?.includes('withdraw') ? '我方发起结束确认' : (scene.confirmation ? '对手发起结束确认' : '');
+      if (confirmationHint && !lastAction) lastAction = confirmationHint;
+      lastActionContainer.innerHTML = lastAction
+        ? `<div class="last-action"><b>最近操作</b><span>${lastAction}</span></div>`
+        : '';
+
+      actionContainer.querySelectorAll('button').forEach(button => {
+        if (scene.syncing) button.disabled = true;
+      });
+      bindDynamicActions();
+    }
+
+    function renderViewerBanner(scene) {
+      if (scene.viewerRole === 'referee') {
+        return `
+          <div class="role-label">${scene.role}</div>
+          <div class="referee-row">
+            <img src="../../app/static/images/default-avatars/ball-04.png" alt="裁判头像" />
+            <span>本场裁判：林教练</span>
+          </div>
+        `;
+      }
+      if (scene.refereeBound) {
+        return `
+          <div class="role-label">${scene.role}</div>
+          <div class="referee-row">
+            <img src="../../app/static/images/default-avatars/ball-04.png" alt="裁判头像" />
+            <span>本场裁判：林教练</span>
+          </div>
+          <div class="viewer-hint">本场由林教练负责记分</div>
+        `;
+      }
+      return `
+        <div class="role-label">${scene.role}</div>
+        ${scene.confirmation ? '<div class="viewer-hint">等待对手处理结束确认</div>' : '<button class="text-action" id="inviteReferee">邀请裁判扫码</button>'}
+      `;
+    }
+
+    function renderActionPanel(scene) {
+      if (scene.readonly) {
+        return `
+          <section class="readonly-panel">
+            <strong>当前为只读观赛</strong>
+            <span>${scene.confirmation ? '等待对手处理结束确认' : '本场由林教练负责记分'}</span>
+          </section>
+        `;
+      }
+
+      if (scene.type === 'round') {
+        if (scene.viewerRole === 'referee') {
+          return `
+            <section class="card action-panel">
+              <div class="panel-header"><div class="panel-title">记分操作</div><div class="panel-desc">以下按钮会判给对应选手本局胜</div></div>
+              <div class="referee-action-groups">
+                ${renderRoundWinGroup(1, scene.roundVariant)}
+                ${renderRoundWinGroup(2, scene.roundVariant)}
+              </div>
+            </section>
+          `;
+        }
+        return `
+          <section class="card action-panel">
+            <div class="panel-header"><div class="panel-title">记分操作</div><div class="panel-desc">以下按钮都会判给对手本局胜</div></div>
+            <div class="action-grid">
+              ${roundWinButton(2, '普胜', '本局计给对手')}
+              ${scene.roundVariant === 'american' ? roundWinButton(2, '小金', '对手金球直接制胜') : roundWinButton(2, '炸清', '对手直接清台获胜')}
+              ${scene.roundVariant === 'american' ? roundWinButton(2, '大金', '对手开球直接制胜') : roundWinButton(2, '接清', '对手连续清台获胜')}
+            </div>
+          </section>
+        `;
+      }
+
+      if (scene.type === 'nine') {
+        if (scene.viewerRole === 'referee') {
+          return `
+            <section class="card action-panel">
+              <div class="panel-header"><div class="panel-title">记分操作</div><div class="panel-desc">为选手1或选手2记录得分与犯规</div></div>
+              <div class="nine-layout">
+                ${renderNineRefereeGroup(1)}
+                ${renderNineRefereeGroup(2)}
+              </div>
+            </section>
+          `;
+        }
+        return `
+          <section class="card action-panel">
+            <div class="panel-header"><div class="panel-title">记分操作</div><div class="panel-desc">左列记到我方，右列记到对手</div></div>
+            <div class="nine-layout">
+              <div class="action-column">
+                <div class="column-title">记到对手</div>
+                ${nineWinButton(2, '普胜', 4)}
+                <div class="gold-row">${nineWinButton(2, '小金', 7)}${nineWinButton(2, '大金', 10)}</div>
+              </div>
+              <div class="action-column">
+                <div class="column-title me-color">记到我方</div>
+                <button class="action-button me-button foul-action" data-fouling-actor="2"><strong>对手犯规</strong><span>我方 +1 分</span></button>
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      const refereeSnooker = scene.viewerRole === 'referee';
+      return `
+        <section class="card action-panel">
+          <div class="panel-header"><div class="panel-title">记分操作</div><div class="panel-desc">${refereeSnooker ? '分别选择得分方和犯规方，再记录对应球值' : '对手每进一个球，都在下方点击对应的球进行记分'}</div></div>
+          <div class="snooker-layout">
+            <div class="snooker-section">
+              <div class="snooker-head">
+                <div class="snooker-title-group">
+                  <div class="column-title">${refereeSnooker ? `给选手${snookerScoringActor}计分` : '给对手计分'}</div>
+                  ${refereeSnooker ? renderParticipantSwitch('score', snookerScoringActor, false) : ''}
+                </div>
+                <div class="red-counter">红球 ${snookerRedBallCount}/15</div>
+              </div>
+              ${renderSnookerScoreSection(false)}
+              <div class="snooker-hint">${getSnookerHint()}</div>
+            </div>
+            <div class="snooker-section">
+              <div class="snooker-title-group">
+                <div class="column-title me-color">${refereeSnooker ? `选手${snookerFoulingActor}犯规，给选手${oppositeActor(snookerFoulingActor)}加分` : '对手犯规，给我方加分'}</div>
+                ${refereeSnooker ? renderParticipantSwitch('foul', snookerFoulingActor, true) : ''}
+              </div>
+              ${renderSnookerScoreSection(true)}
+            </div>
+          </div>
+        </section>
+      `;
+    }
+
+    function participantLabel(scene, actor) {
+      if (scene.viewerRole === 'referee') return `选手${actor}`;
+      return actor === 1 ? '我方' : '对手';
+    }
+
+    function oppositeActor(actor) {
+      return Number(actor) === 1 ? 2 : 1;
+    }
+
+    function roundWinButton(actor, winType, desc) {
+      const scene = scenes[currentScene];
+      const label = participantLabel(scene, actor);
+      const colorClass = actor === 1 ? 'me-button' : '';
+      return `<button class="action-button ${colorClass} round-win-action" data-actor="${actor}" data-win-type="${winType}"><strong>${label}${winType}</strong><span>${desc.replaceAll('对手', label)}</span></button>`;
+    }
+
+    function renderRoundWinGroup(actor, variant) {
+      const label = `选手${actor}`;
+      const titleClass = actor === 1 ? 'me-color' : '';
+      const secondary = variant === 'american'
+        ? roundWinButton(actor, '小金', `${label}金球直接制胜`) + roundWinButton(actor, '大金', `${label}开球直接制胜`)
+        : roundWinButton(actor, '炸清', `${label}直接清台获胜`) + roundWinButton(actor, '接清', `${label}连续清台获胜`);
+      return `<div class="referee-action-group"><div class="column-title ${titleClass}">${label}获胜</div><div class="action-grid">${roundWinButton(actor, '普胜', `本局计给${label}`)}${secondary}</div></div>`;
+    }
+
+    function nineWinButton(actor, winType, points) {
+      const scene = scenes[currentScene];
+      const label = participantLabel(scene, actor);
+      const colorClass = actor === 1 ? 'me-button' : '';
+      return `<button class="action-button ${colorClass} nine-win-action" data-actor="${actor}" data-points="${points}" data-win-type="${winType}"><strong>${label}${winType}</strong><span>${label} +${points} 分</span></button>`;
+    }
+
+    function renderNineRefereeGroup(actor) {
+      const label = `选手${actor}`;
+      const otherLabel = `选手${oppositeActor(actor)}`;
+      const titleClass = actor === 1 ? 'me-color' : '';
+      const colorClass = actor === 1 ? 'me-button' : '';
+      return `<div class="action-column"><div class="column-title ${titleClass}">记到${label}</div>${nineWinButton(actor, '普胜', 4)}<div class="gold-row">${nineWinButton(actor, '小金', 7)}${nineWinButton(actor, '大金', 10)}</div><button class="action-button ${colorClass} foul-action" data-fouling-actor="${actor}"><strong>${label}犯规</strong><span>${otherLabel} +1 分</span></button></div>`;
+    }
+
+    function renderParticipantSwitch(target, activeActor, foul) {
+      return `<div class="participant-switch"><button class="participant-button ${activeActor === 1 ? 'active' : ''}" data-target="${target}" data-actor="1">选手1${foul ? '犯规' : ''}</button><button class="participant-button ${activeActor === 2 ? 'active' : ''}" data-target="${target}" data-actor="2">选手2${foul ? '犯规' : ''}</button></div>`;
+    }
+
+    function getSnookerColorName(score) {
+      return ({ 2: '黄球', 3: '绿球', 4: '咖啡球', 5: '蓝球', 6: '粉球', 7: '黑球' })[score] || '';
+    }
+
+    function isSnookerScoreDisabled(score) {
+      if (!currentFrameStarted) return true;
+      if (score === 1) return snookerRedBallCount >= 15;
+      if (!snookerClearanceStarted) return false;
+      return snookerExpectedClearanceScore > 0 && score !== snookerExpectedClearanceScore;
+    }
+
+    function getSnookerHint() {
+      if (!currentFrameStarted) return '当前局已结束，可开始下一局，或直接结束整场比赛';
+      if (snookerClearanceStarted) {
+        const completed = snookerClearedColors.map(getSnookerColorName).filter(Boolean).join('、');
+        const next = getSnookerColorName(snookerExpectedClearanceScore);
+        return `已进入清彩阶段，彩球需按顺序计分${completed ? `，已完成：${completed}` : ''}${next ? `，下一颗：${next}` : ''}`;
+      }
+      const remaining = Math.max(15 - snookerRedBallCount, 0);
+      if (remaining <= 2) return `本局红球还剩 ${remaining} 颗`;
+      return '斯诺克最多打完15套红球';
+    }
+
+    function ballButton(color, score, name, foul = false, tall = false) {
+      const disabled = !foul && isSnookerScoreDisabled(score);
+      return `<button class="ball-button ${foul ? 'foul foul-score' : 'snooker-score'} ${tall ? 'tall' : ''}" data-score="${score}" data-label="${foul ? `对手犯规 ${score} 分` : `${name} ${score} 分`}" ${disabled ? 'disabled' : ''}><i class="ball ${color}">${score}</i><strong>${name}</strong><small>${foul ? `犯规 ${score} 分` : `${score} 分`}</small></button>`;
+    }
+
+    function renderSnookerScoreSection(foul) {
+      if (!foul) {
+        return `<div class="snooker-stage"><div class="ball-rows"><div class="ball-row">${ballButton('yellow',2,'黄球')}${ballButton('green',3,'绿球')}${ballButton('brown',4,'咖啡球')}</div><div class="ball-row">${ballButton('blue',5,'蓝球')}${ballButton('pink',6,'粉球')}${ballButton('black',7,'黑球')}</div></div>${ballButton('red',1,'红球',false,true)}</div>`;
+      }
+      return `<div class="snooker-stage"><div class="ball-rows"><div class="ball-row two">${ballButton('blue',5,'犯规 5 分',true)}${ballButton('pink',6,'犯规 6 分',true)}</div><div class="ball-row two">${ballButton('black',7,'犯规 7 分',true)}</div></div>${ballButton('brown',4,'犯规 4 分',true,true)}</div>`;
+    }
+
+    function renderConfirmation() {
+      const actions = scenes[currentScene].confirmationActions || [];
+      const buttons = [];
+      if (actions.includes('confirm')) buttons.push('<button class="primary confirmation-action" data-message="已确认结束">确认结束</button>');
+      if (actions.includes('dispute')) buttons.push('<button class="confirmation-action" data-message="已提出异议">提出异议</button>');
+      if (actions.includes('withdraw')) buttons.push('<button class="confirmation-action" data-message="已撤回请求">撤回请求</button>');
+      return `
+        <div class="finish-confirmation">
+          <strong>排位赛等待确认</strong>
+          <p>比分已冻结，请核对后确认或提出异议。</p>
+          <div class="confirm-actions">${buttons.join('')}</div>
+        </div>
+      `;
+    }
+
+    function renderFooter(scene) {
+      if (scene.readonly) return '';
+      const buttons = [];
+      if (scene.type === 'snooker') buttons.push('<button class="footer-button secondary" id="nextRound">开始下一局</button>');
+      buttons.push(`<button class="footer-button primary" id="finishMatch">${scene.viewerRole === 'referee' ? '结束本场对局' : '发起结束确认'}</button>`);
+      buttons.push('<button class="undo-button" id="undoButton">撤销</button>');
+      return buttons.join('');
+    }
+
+    function bindDynamicActions() {
+      const scene = scenes[currentScene];
+      if (scene.syncing) return;
+      document.getElementById('inviteReferee')?.addEventListener('click', openRefereeModal);
+
+      document.querySelectorAll('.round-win-action').forEach(button => {
+        button.addEventListener('click', () => {
+          const actor = Number(button.dataset.actor);
+          const label = participantLabel(scene, actor);
+          captureActionState();
+          scores[actor - 1] += 1;
+          scene.round += 1;
+          lastAction = `${label}${button.dataset.winType}`;
+          showToast(`已判给${label}`);
+          render();
+        });
+      });
+
+      document.querySelectorAll('.nine-win-action').forEach(button => {
+        button.addEventListener('click', () => {
+          const actor = Number(button.dataset.actor);
+          const points = Number(button.dataset.points);
+          const label = participantLabel(scene, actor);
+          captureActionState();
+          scores[actor - 1] += points;
+          lastAction = `${label}${button.dataset.winType}，+${points} 分`;
+          showToast(`已判给${label}`);
+          render();
+        });
+      });
+
+      document.querySelectorAll('.foul-action').forEach(button => {
+        button.addEventListener('click', () => {
+          const foulingActor = Number(button.dataset.foulingActor);
+          const scoringActor = oppositeActor(foulingActor);
+          const foulLabel = participantLabel(scene, foulingActor);
+          const scoringLabel = participantLabel(scene, scoringActor);
+          captureActionState();
+          scores[scoringActor - 1] += 1;
+          lastAction = `${foulLabel}犯规，${scoringLabel} +1 分`;
+          showToast(lastAction);
+          render();
+        });
+      });
+
+      document.querySelectorAll('.participant-button').forEach(button => {
+        button.addEventListener('click', () => {
+          const actor = Number(button.dataset.actor);
+          if (button.dataset.target === 'score') snookerScoringActor = actor;
+          else snookerFoulingActor = actor;
+          render();
+        });
+      });
+
+      document.querySelectorAll('.snooker-score').forEach(button => {
+        button.addEventListener('click', () => {
+          const value = Number(button.dataset.score);
+          const actor = scene.viewerRole === 'referee' ? snookerScoringActor : 2;
+          const label = participantLabel(scene, actor);
+          captureActionState();
+          frameScores[actor - 1] += value;
+          if (value === 1) {
+            snookerRedBallCount = Math.min(snookerRedBallCount + 1, 15);
+          } else if (snookerClearanceStarted && value === snookerExpectedClearanceScore) {
+            snookerClearedColors.push(value);
+            snookerExpectedClearanceScore = value < 7 ? value + 1 : 0;
+          } else if (snookerRedBallCount === 15 && !snookerClearanceStarted) {
+            snookerClearanceStarted = true;
+            snookerExpectedClearanceScore = 2;
+          }
+          lastAction = `给${label}记录${button.dataset.label}`;
+          showToast(`已给${label} +${value} 分`);
+          render();
+        });
+      });
+
+      document.querySelectorAll('.foul-score').forEach(button => {
+        button.addEventListener('click', () => {
+          const value = Number(button.dataset.score);
+          const foulingActor = scene.viewerRole === 'referee' ? snookerFoulingActor : 2;
+          const scoringActor = oppositeActor(foulingActor);
+          const foulLabel = participantLabel(scene, foulingActor);
+          const scoringLabel = participantLabel(scene, scoringActor);
+          captureActionState();
+          frameScores[scoringActor - 1] += value;
+          if (snookerRedBallCount === 15 && !snookerClearanceStarted) {
+            snookerClearanceStarted = true;
+            snookerExpectedClearanceScore = 2;
+          }
+          lastAction = `${foulLabel}犯规，${scoringLabel} +${value} 分`;
+          showToast(lastAction);
+          render();
+        });
+      });
+
+      document.getElementById('undoButton')?.addEventListener('click', () => {
+        if (!restoreLastAction()) {
+          showToast('暂无可撤销操作');
+          return;
+        }
+        showToast('已撤销');
+        render();
+      });
+
+      document.getElementById('nextRound')?.addEventListener('click', () => {
+        if (currentFrameStarted && frameScores[0] === frameScores[1]) {
+          showToast('当前局比分相同，无法自动判定胜负');
+          return;
+        }
+        const content = currentFrameStarted
+          ? `将按当前局比分 ${frameScores[0]}:${frameScores[1]} 自动判定${participantLabel(scene, frameScores[0] > frameScores[1] ? 1 : 2)}赢下本局，并开始下一局。`
+          : '确定要开始新的一局吗？';
+        openConfirmModal('开始下一局', content, '开始', () => {
+          captureActionState();
+          if (currentFrameStarted) scores[frameScores[0] > frameScores[1] ? 0 : 1] += 1;
+          scene.round += 1;
+          frameScores = [0, 0];
+          snookerRedBallCount = 0;
+          snookerClearanceStarted = false;
+          snookerExpectedClearanceScore = 0;
+          snookerClearedColors = [];
+          currentFrameStarted = true;
+          lastAction = `第${scene.round}局开始`;
+          render();
+          showToast(lastAction);
+        });
+      });
+      document.getElementById('finishMatch')?.addEventListener('click', () => {
+        const title = scene.viewerRole === 'referee' ? '确认最终比分并完成结算' : '发起结束确认';
+        const content = scene.viewerRole === 'referee'
+          ? `双方最终比分：${scores[0]} : ${scores[1]}\n\n完成后立即结算且无需选手确认`
+          : '比分将暂时冻结，等待对手确认后才会完成排位结算。';
+        openConfirmModal(title, content, scene.viewerRole === 'referee' ? '确认完成' : '发起请求', () => {
+          showToast(scene.viewerRole === 'referee' ? '对局已完成结算' : '已发起结束确认');
+        });
+      });
+      document.querySelectorAll('.confirmation-action').forEach(button => button.addEventListener('click', () => showToast(button.dataset.message)));
+    }
+
+    function setModalMode(mode) {
+      const qr = document.getElementById('fakeQr');
+      const close = document.getElementById('modalClose');
+      const actions = document.getElementById('modalConfirmActions');
+      const hint = document.getElementById('modalHint');
+      qr.hidden = mode !== 'qr';
+      close.hidden = mode !== 'qr';
+      actions.hidden = mode === 'qr';
+      hint.hidden = mode !== 'qr';
+    }
+
+    function openRefereeModal() {
+      setModalMode('qr');
+      document.getElementById('modalTitle').textContent = '邀请裁判扫码';
+      document.getElementById('modalDescription').textContent = '让球童、助教或第三方扫码后接管本场记分';
+      document.getElementById('refereeModal').classList.add('open');
+    }
+
+    function openConfirmModal(title, description, confirmText, onConfirm) {
+      setModalMode('confirm');
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalDescription').textContent = description;
+      document.getElementById('modalConfirm').textContent = confirmText;
+      pendingModalAction = onConfirm;
+      document.getElementById('refereeModal').classList.add('open');
+    }
+
+    function closeModal() {
+      pendingModalAction = null;
+      document.getElementById('refereeModal').classList.remove('open');
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove('show'), 1500);
+    }
+
+    document.querySelectorAll('.scene-button').forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.scene-button').forEach(item => item.classList.remove('active'));
+        button.classList.add('active');
+        currentScene = button.dataset.scene;
+        resetSceneState();
+        screen.scrollTop = 0;
+        render();
+      });
+    });
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      darkMode = !darkMode;
+      render();
+    });
+
+    document.getElementById('resetButton').addEventListener('click', () => {
+      Object.assign(scenes[currentScene], JSON.parse(JSON.stringify(sceneDefaults[currentScene])));
+      resetSceneState();
+      render();
+      showToast('比分已重置');
+    });
+
+    document.getElementById('modalClose').addEventListener('click', closeModal);
+    document.getElementById('modalCancel').addEventListener('click', closeModal);
+    document.getElementById('modalConfirm').addEventListener('click', () => {
+      const action = pendingModalAction;
+      closeModal();
+      action?.();
+    });
+    document.getElementById('refereeModal').addEventListener('click', event => {
+      if (event.target.id === 'refereeModal') closeModal();
+    });
+
+    const qrPattern = [
+      1,1,1,1,1,1,1,0,1,0,1, 1,0,0,0,0,0,1,0,0,1,0, 1,0,1,1,1,0,1,1,1,0,1,
+      1,0,1,1,1,0,1,0,1,1,0, 1,0,1,1,1,0,1,1,0,1,1, 1,0,0,0,0,0,1,0,1,0,0,
+      1,1,1,1,1,1,1,0,1,0,1, 0,0,1,0,1,0,0,1,0,1,0, 1,1,0,1,0,1,1,0,1,1,1,
+      0,1,1,0,1,0,0,1,1,0,1, 1,0,1,1,1,1,0,0,1,1,1
+    ];
+    document.getElementById('fakeQr').innerHTML = qrPattern.map(value => `<i class="${value ? 'on' : ''}"></i>`).join('');
+
+    resetSceneState();
+    render();
+  </script>
+</body>
+</html>

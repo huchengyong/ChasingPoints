@@ -1,9 +1,11 @@
 const NETWORK_CONFIG_BY_ENV = {
   development: {
-    httpBaseUrl: 'https://api-zhuifen.kekemate.cn'
+    httpBaseUrl: 'https://api-zhuifen.kekemate.cn',
+    wsBaseUrl: 'wss://api-zhuifen.kekemate.cn'
   },
   production: {
-    httpBaseUrl: 'https://api-bm.dianzaozao.com'
+    httpBaseUrl: 'https://api.zhuifen.cn',
+    wsBaseUrl: 'wss://ws.zhuifen.cn'
   }
 }
 
@@ -30,7 +32,7 @@ const resolveAppEnv = () => {
 export const resolveNetworkConfig = ({ env = resolveAppEnv(), override = {} } = {}) => {
   const envConfig = NETWORK_CONFIG_BY_ENV[env] || NETWORK_CONFIG_BY_ENV.development
   const httpBaseUrl = normalizeBaseUrl(override.httpBaseUrl || envConfig.httpBaseUrl)
-  const wsBaseUrl = normalizeBaseUrl(override.wsBaseUrl || inferWsBaseUrl(httpBaseUrl))
+  const wsBaseUrl = normalizeBaseUrl(override.wsBaseUrl || envConfig.wsBaseUrl || inferWsBaseUrl(httpBaseUrl))
 
   return {
     httpBaseUrl,

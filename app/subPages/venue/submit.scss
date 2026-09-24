@@ -175,25 +175,21 @@
 .label-required,
 .label-optional,
 .label-complete {
-	padding: 6rpx 14rpx;
-	border-radius: 999rpx;
 	font-size: 20rpx;
 	line-height: 1;
+	font-weight: 500;
 }
 
 .label-required {
 	color: #7c5b12;
-	background: rgba(224, 174, 18, 0.16);
 }
 
 .label-optional {
 	color: #64748b;
-	background: #e2e8f0;
 }
 
 .label-complete {
 	color: #C69200;
-	background: rgba(224, 174, 18, 0.16);
 }
 
 .form-input,
@@ -406,5 +402,72 @@
 	&.pending {
 		background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
 		box-shadow: 0 12rpx 24rpx rgba(249, 115, 22, 0.2);
+	}
+}
+
+.submit-page.dark-mode {
+	background: linear-gradient(180deg, #141109 0%, #171309 46%, #141109 100%);
+
+	.form-section {
+		background: rgba(30, 24, 13, 0.96);
+		box-shadow: none;
+	}
+
+	.section-title,
+	.form-label,
+	.picker-value,
+	.location-title,
+	.submit-title {
+		color: #fff7e1;
+	}
+
+	.section-tip,
+	.field-hint,
+	.field-count,
+	.location-subtitle,
+	.submit-tip {
+		color: #9f926e;
+	}
+
+	.form-group {
+		border-bottom-color: #3a2e16;
+	}
+
+	.label-optional {
+		background: #3a2e16;
+		color: #d7c89b;
+	}
+
+	.form-input,
+	.form-textarea {
+		background: #2a2110;
+		border-color: #3a2e16;
+		color: #fff7e1;
+	}
+
+	.form-picker.is-placeholder .picker-value {
+		color: #9f926e;
+	}
+
+	.input-missing {
+		background: rgba(127, 29, 29, 0.22);
+		border-color: rgba(248, 113, 113, 0.56);
+	}
+
+	.location-picker,
+	.notice-card {
+		background: linear-gradient(135deg, #2a2110 0%, #241d0f 100%);
+		border-color: rgba(224, 174, 18, 0.36);
+	}
+
+	.notice-title,
+	.notice-text,
+	.location-placeholder {
+		color: #f7e7a8;
+	}
+
+	.submit-bar {
+		background: rgba(20, 17, 9, 0.96);
+		border-top-color: #3a2e16;
 	}
 }

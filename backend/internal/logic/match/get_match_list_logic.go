@@ -3,6 +3,7 @@ package match
 import (
 	"context"
 
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -74,6 +75,9 @@ func (l *GetMatchListLogic) GetMatchList(req *types.MatchListReq) (resp *types.M
 			OpponentId:     opponentId,
 			GameType:       match.GameType,
 			GameTypeName:   GetGameTypeName(match.GameType),
+			MatchMode:      model.NormalizeMatchMode(match.MatchMode),
+			Visibility:     model.NormalizeMatchVisibility(match.Visibility, match.MatchMode),
+			FinishState:    model.NormalizeFinishState(match.FinishState),
 			OpponentName:   match.OpponentName,
 			OpponentAvatar: match.OpponentAvatar,
 			MyScore:        match.MyScore,

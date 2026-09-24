@@ -12,6 +12,9 @@ export interface SiteConfig {
   siteUrl: string
   icpRecordNumber: string
   icpRecordUrl: string
+  policeRecordNumber: string
+  policeRecordUrl: string
+  policeRecordIconUrl: string
   navLinks: SiteNavLink[]
   legalLinks: SiteNavLink[]
 }
@@ -31,6 +34,9 @@ export const siteConfig: SiteConfig = {
   siteUrl: resolvePublicValue('NUXT_PUBLIC_SITE_URL', 'https://www.zhuifen.cn'),
   icpRecordNumber: resolvePublicValue('NUXT_PUBLIC_ICP_RECORD_NUMBER', '沪ICP备2021037913号-11'),
   icpRecordUrl: 'https://beian.miit.gov.cn/',
+  policeRecordNumber: '沪公网安备31011502406701号',
+  policeRecordUrl: 'https://beian.mps.gov.cn/#/query/webSearch?code=31011502406701',
+  policeRecordIconUrl: 'https://beian.mps.gov.cn/web/assets/logo01.6189a29f.png',
   navLinks: legalLinks,
   legalLinks
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Season struct {
@@ -58,12 +59,77 @@ func (m *SeasonModel) FindCurrent() (*Season, error) {
 }
 
 func (m *SeasonModel) FindById(id int64) (*Season, error) {
+	return m.FindByIdWithTx(nil, id, false)
+}
+
+func (m *SeasonModel) FindByIdWithTx(tx *gorm.DB, id int64, lock bool) (*Season, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	if lock {
+		db = db.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
 	var season Season
-	err := m.db.First(&season, id).Error
+	err := db.First(&season, id).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}
 	return &season, err
+}
+
+func (m *SeasonModel) FindCurrentWithTx(tx *gorm.DB, lock bool) (*Season, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	if lock {
+		db = db.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+	var season Season
+	err := db.Where("status = ?", 1).Order("start_date DESC, id DESC").First(&season).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &season, err
+}
+
+func (m *SeasonModel) FindReadyUpcomingWithTx(tx *gorm.DB, now time.Time, after time.Time, lock bool) (*Season, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	if lock {
+		db = db.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+	query := db.Where("status = ? AND start_date <= ?", 0, now)
+	if !after.IsZero() {
+		query = query.Where("start_date > ?", after)
+	}
+	var season Season
+	err := query.Order("start_date ASC, id ASC").First(&season).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &season, err
+}
+
+func (m *SeasonModel) UpdateStatusWithTx(tx *gorm.DB, seasonId int64, fromStatus, toStatus int) (bool, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	result := db.Model(&Season{}).Where("id = ? AND status = ?", seasonId, fromStatus).Update("status", toStatus)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
+}
+
+func (m *SeasonModel) ListActive() ([]Season, error) {
+	var seasons []Season
+	err := m.db.Where("status = ?", 1).Order("start_date ASC, id ASC").Find(&seasons).Error
+	return seasons, err
 }
 
 func (m *SeasonModel) FindLatest() (*Season, error) {
@@ -152,6 +218,32 @@ func (m *SeasonRecordModel) CreateBatchWithTx(tx *gorm.DB, records []SeasonRecor
 		db = tx
 	}
 	return db.Create(&records).Error
+}
+
+func (m *SeasonRecordModel) UpsertBatchWithTx(tx *gorm.DB, records []SeasonRecord) error {
+	if len(records) == 0 {
+		return nil
+	}
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	return db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{
+			{Name: "season_id"},
+			{Name: "user_id"},
+			{Name: "game_type"},
+		},
+		DoUpdates: clause.AssignmentColumns([]string{
+			"start_rank_score",
+			"end_rank_score",
+			"peak_rank_score",
+			"matches_played",
+			"wins",
+			"final_rank",
+			"rewards",
+		}),
+	}).Create(&records).Error
 }
 
 func (m *SeasonRecordModel) DeleteAll(tx *gorm.DB) error {

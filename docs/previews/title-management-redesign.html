@@ -1,0 +1,1454 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>追分 · 荣誉墙称号切换方案</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #ebe8df;
+      color: #0f172a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+      background:
+        radial-gradient(circle at 18% 12%, rgba(224, 174, 18, 0.2), transparent 24%),
+        radial-gradient(circle at 82% 88%, rgba(60, 43, 8, 0.12), transparent 28%),
+        #ebe8df;
+    }
+
+    .preview {
+      width: min(900px, calc(100vw - 32px));
+      display: grid;
+      grid-template-columns: 238px minmax(0, 406px);
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+    }
+
+    .scenario-panel {
+      padding: 18px;
+      border: 1px solid rgba(107, 90, 46, 0.14);
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.66);
+      box-shadow: 0 18px 50px rgba(60, 43, 8, 0.1);
+      backdrop-filter: blur(18px);
+    }
+
+    .scenario-kicker {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: #9a7414;
+    }
+
+    .scenario-heading {
+      margin: 7px 0 5px;
+      font-size: 21px;
+      line-height: 1.28;
+    }
+
+    .scenario-intro,
+    .scenario-description {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.65;
+      color: #64748b;
+    }
+
+    .scenario-list {
+      margin-top: 16px;
+      display: grid;
+      gap: 7px;
+    }
+
+    .scenario-button {
+      width: 100%;
+      min-height: 42px;
+      padding: 0 12px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.76);
+      color: #334155;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: left;
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+
+    .scenario-button:hover {
+      border-color: rgba(224, 174, 18, 0.42);
+      transform: translateY(-1px);
+    }
+
+    .scenario-button.active {
+      border-color: rgba(224, 174, 18, 0.5);
+      background: linear-gradient(135deg, #fff8df, #ffffff);
+      color: #805b08;
+      box-shadow: 0 7px 18px rgba(224, 174, 18, 0.13);
+    }
+
+    .scenario-summary {
+      margin-top: 15px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(148, 163, 184, 0.16);
+    }
+
+    .scenario-current {
+      margin-bottom: 5px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .decision-note {
+      margin-top: 13px;
+      padding: 11px 12px;
+      border-radius: 12px;
+      background: rgba(255, 248, 223, 0.72);
+      color: #6b5a2e;
+      font-size: 10px;
+      line-height: 1.55;
+    }
+
+    .decision-note strong {
+      display: block;
+      margin-bottom: 3px;
+      color: #805b08;
+    }
+
+    .preview-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .preview-label {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #6b5a2e;
+    }
+
+    .phone {
+      width: min(406px, calc(100vw - 32px));
+      height: min(878px, calc(100vh - 82px));
+      min-height: 690px;
+      padding: 9px;
+      border-radius: 44px;
+      background: #17140d;
+      box-shadow:
+        0 34px 80px rgba(45, 33, 7, 0.25),
+        0 5px 18px rgba(15, 23, 42, 0.14);
+    }
+
+    .screen {
+      position: relative;
+      height: 100%;
+      overflow: hidden;
+      border-radius: 36px;
+      background:
+        radial-gradient(circle at 82% 8%, rgba(224, 174, 18, 0.07), transparent 27%),
+        linear-gradient(180deg, #fffdf8 0%, #f8fafc 44%, #f5f6f8 100%);
+      color: #0f172a;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .status-bar {
+      height: 29px;
+      padding: 8px 21px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.96);
+      font-size: 12px;
+      font-weight: 700;
+      transition: background 0.2s ease;
+    }
+
+    .status-icons {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .signal {
+      height: 10px;
+      display: flex;
+      align-items: flex-end;
+      gap: 1.5px;
+    }
+
+    .signal i {
+      width: 2px;
+      display: block;
+      border-radius: 2px;
+      background: currentColor;
+    }
+
+    .signal i:nth-child(1) { height: 4px; }
+    .signal i:nth-child(2) { height: 6px; }
+    .signal i:nth-child(3) { height: 8px; }
+    .signal i:nth-child(4) { height: 10px; }
+
+    .wifi {
+      width: 12px;
+      height: 9px;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-bottom: 0;
+      border-left-color: transparent;
+      border-radius: 50% 50% 0 0;
+      transform: translateY(1px);
+    }
+
+    .battery {
+      position: relative;
+      width: 20px;
+      height: 10px;
+      padding: 1px;
+      border: 1.5px solid currentColor;
+      border-radius: 3px;
+    }
+
+    .battery::before {
+      content: "";
+      width: 13px;
+      height: 100%;
+      display: block;
+      border-radius: 1px;
+      background: currentColor;
+    }
+
+    .battery::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      right: -3px;
+      width: 2px;
+      height: 5px;
+      border-radius: 0 2px 2px 0;
+      background: currentColor;
+    }
+
+    .nav {
+      position: relative;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.13);
+      background: rgba(255, 255, 255, 0.96);
+      font-size: 17px;
+      font-weight: 700;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .nav-back {
+      position: absolute;
+      top: 50%;
+      left: 12px;
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      background: transparent;
+      color: #475569;
+      transform: translateY(-50%);
+      cursor: pointer;
+    }
+
+    .nav-back svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .content {
+      position: absolute;
+      inset: 77px 0 11px;
+      overflow-y: auto;
+      padding: 12px 12px 28px;
+      scrollbar-width: none;
+    }
+
+    .content::-webkit-scrollbar {
+      display: none;
+    }
+
+    .honor-hero {
+      position: relative;
+      padding: 17px 16px 15px;
+      overflow: hidden;
+      border-radius: 18px;
+      color: #ffffff;
+      background:
+        radial-gradient(circle at 10% 2%, rgba(255, 241, 191, 0.22), transparent 25%),
+        radial-gradient(circle at 96% 4%, rgba(255, 255, 255, 0.15), transparent 30%),
+        linear-gradient(135deg, #3c2b08 0%, #8f6507 48%, #c69200 100%);
+      box-shadow: 0 14px 28px rgba(60, 43, 8, 0.2);
+    }
+
+    .honor-hero::after {
+      content: "";
+      position: absolute;
+      right: -31px;
+      bottom: -44px;
+      width: 132px;
+      height: 132px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 50%;
+    }
+
+    .hero-main {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 58px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .hero-medal {
+      width: 58px;
+      height: 58px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.13);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.13);
+    }
+
+    .hero-medal svg {
+      width: 31px;
+      height: 31px;
+      display: none;
+      fill: none;
+      stroke: #ffe7a0;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.7;
+    }
+
+    .hero-medal svg.active {
+      display: block;
+    }
+
+    .hero-copy {
+      min-width: 0;
+    }
+
+    .hero-eyebrow {
+      color: rgba(255, 255, 255, 0.68);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .hero-title {
+      margin-top: 4px;
+      overflow: hidden;
+      font-size: 21px;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .hero-meta {
+      margin-top: 5px;
+      overflow: hidden;
+      color: rgba(255, 255, 255, 0.76);
+      font-size: 10px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .change-title-button {
+      min-width: 54px;
+      height: 31px;
+      padding: 0 11px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.13);
+      color: #ffffff;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+
+    .change-title-button:hover {
+      background: rgba(255, 255, 255, 0.21);
+    }
+
+    .hero-stats {
+      position: relative;
+      z-index: 1;
+      margin-top: 15px;
+      padding-top: 13px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .hero-stat {
+      position: relative;
+      text-align: center;
+    }
+
+    .hero-stat + .hero-stat::before {
+      content: "";
+      position: absolute;
+      top: 3px;
+      bottom: 3px;
+      left: 0;
+      width: 1px;
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .hero-stat strong,
+    .hero-stat span {
+      display: block;
+    }
+
+    .hero-stat strong {
+      font-size: 16px;
+    }
+
+    .hero-stat span {
+      margin-top: 4px;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 9px;
+    }
+
+    .screen.no-title .honor-hero {
+      background:
+        radial-gradient(circle at 12% 0%, rgba(255, 241, 191, 0.16), transparent 28%),
+        linear-gradient(135deg, #403821, #6d5926 58%, #8f741d);
+    }
+
+    .honor-tabs {
+      margin-top: 11px;
+      padding: 4px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 4px;
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 14px;
+      background: #ffffff;
+      box-shadow: 0 5px 14px rgba(15, 23, 42, 0.05);
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .honor-tab {
+      min-height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 10px;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .honor-tab.active {
+      background: linear-gradient(135deg, #e0ae12, #c69200);
+      color: #ffffff;
+      box-shadow: 0 5px 12px rgba(224, 174, 18, 0.18);
+    }
+
+    .card {
+      margin-top: 11px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 16px;
+      background: #ffffff;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .section-heading {
+      padding: 13px 14px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .section-heading strong {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .section-heading span {
+      color: #94a3b8;
+      font-size: 10px;
+    }
+
+    .showcase-grid {
+      padding: 12px 10px 14px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .showcase-item {
+      min-width: 0;
+      padding: 12px 5px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      border-radius: 13px;
+      background: #f8fafc;
+      text-align: center;
+      transition: background 0.2s ease;
+    }
+
+    .showcase-item:nth-child(1) { background: #fff8df; }
+    .showcase-item:nth-child(2) { background: #f3f0ff; }
+    .showcase-item:nth-child(3) { background: #eef8f5; }
+
+    .showcase-icon {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 5px 12px rgba(15, 23, 42, 0.07);
+    }
+
+    .showcase-item:nth-child(1) .showcase-icon { color: #b77908; }
+    .showcase-item:nth-child(2) .showcase-icon { color: #7c3aed; }
+    .showcase-item:nth-child(3) .showcase-icon { color: #0f766e; }
+
+    .showcase-icon svg,
+    .progress-icon svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .showcase-item strong {
+      max-width: 100%;
+      overflow: hidden;
+      font-size: 10px;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .showcase-item span {
+      color: #94a3b8;
+      font-size: 8px;
+    }
+
+    .progress-list {
+      padding: 7px 14px 11px;
+    }
+
+    .progress-row {
+      padding: 11px 0;
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .progress-row:last-child {
+      border-bottom: 0;
+    }
+
+    .progress-icon {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: rgba(224, 174, 18, 0.12);
+      color: #b77908;
+    }
+
+    .progress-row:nth-child(2) .progress-icon {
+      background: rgba(59, 130, 246, 0.1);
+      color: #2563eb;
+    }
+
+    .progress-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .progress-track {
+      height: 7px;
+      margin-top: 7px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #eef2f7;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #e0ae12, #f2c94c);
+    }
+
+    .progress-note {
+      margin-top: 5px;
+      color: #94a3b8;
+      font-size: 9px;
+    }
+
+    .sheet-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      pointer-events: none;
+    }
+
+    .sheet-backdrop {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      border: 0;
+      background: rgba(15, 12, 7, 0.48);
+      opacity: 0;
+      cursor: default;
+      transition: opacity 0.22s ease;
+    }
+
+    .title-sheet {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      max-height: calc(100% - 104px);
+      padding: 8px 12px 27px;
+      overflow-y: auto;
+      border-radius: 24px 24px 0 0;
+      background: #ffffff;
+      box-shadow: 0 -14px 38px rgba(15, 23, 42, 0.14);
+      transform: translateY(102%);
+      transition: transform 0.24s cubic-bezier(0.22, 0.8, 0.32, 1), background 0.2s ease;
+      scrollbar-width: none;
+    }
+
+    .title-sheet::-webkit-scrollbar {
+      display: none;
+    }
+
+    .screen.sheet-open .sheet-layer {
+      pointer-events: auto;
+    }
+
+    .screen.sheet-open .sheet-backdrop {
+      opacity: 1;
+    }
+
+    .screen.sheet-open .title-sheet {
+      transform: translateY(0);
+    }
+
+    .sheet-handle {
+      width: 34px;
+      height: 4px;
+      margin: 0 auto 8px;
+      border-radius: 999px;
+      background: #d8dee8;
+    }
+
+    .sheet-header {
+      min-height: 48px;
+      padding: 0 2px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .sheet-heading strong,
+    .sheet-heading span {
+      display: block;
+    }
+
+    .sheet-heading strong {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .sheet-heading span {
+      margin-top: 4px;
+      color: #94a3b8;
+      font-size: 9px;
+    }
+
+    .sheet-close {
+      width: 31px;
+      height: 31px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border: 0;
+      border-radius: 50%;
+      background: #f1f5f9;
+      color: #64748b;
+      cursor: pointer;
+    }
+
+    .sheet-close svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-width: 2;
+    }
+
+    .title-options {
+      overflow: hidden;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 16px;
+      background: #ffffff;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .title-option {
+      width: 100%;
+      min-height: 62px;
+      padding: 9px 11px;
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr) 23px;
+      align-items: center;
+      gap: 10px;
+      border: 0;
+      border-bottom: 1px solid #f1f5f9;
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.16s ease;
+    }
+
+    .title-option:last-child {
+      border-bottom: 0;
+    }
+
+    .title-option:hover {
+      background: #fffbef;
+    }
+
+    .title-option.selected {
+      background: linear-gradient(90deg, #fff8df, #fffdf8);
+    }
+
+    .option-icon {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 13px;
+      background: #fff8df;
+      color: #b77908;
+    }
+
+    .title-option[data-title-id="season"] .option-icon {
+      background: #f3f0ff;
+      color: #7c3aed;
+    }
+
+    .title-option[data-title-id="tournament"] .option-icon {
+      background: #eef8f5;
+      color: #0f766e;
+    }
+
+    .title-option[data-title-id="veteran"] .option-icon {
+      background: #eef6ff;
+      color: #2563eb;
+    }
+
+    .title-option[data-title-id="none"] .option-icon {
+      background: #f1f5f9;
+      color: #64748b;
+    }
+
+    .option-icon svg {
+      width: 21px;
+      height: 21px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .option-copy {
+      min-width: 0;
+    }
+
+    .option-copy strong,
+    .option-copy span {
+      display: block;
+    }
+
+    .option-copy strong {
+      overflow: hidden;
+      font-size: 12px;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .option-copy span {
+      margin-top: 5px;
+      overflow: hidden;
+      color: #94a3b8;
+      font-size: 9px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .option-check {
+      width: 21px;
+      height: 21px;
+      display: grid;
+      place-items: center;
+      border: 1.5px solid #d8dee8;
+      border-radius: 50%;
+      color: transparent;
+      transition: 0.16s ease;
+    }
+
+    .option-check svg {
+      width: 12px;
+      height: 12px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 2.4;
+    }
+
+    .title-option.selected .option-check {
+      border-color: #d6a30d;
+      background: linear-gradient(135deg, #e0ae12, #c69200);
+      color: #ffffff;
+    }
+
+    .toast {
+      position: absolute;
+      left: 50%;
+      bottom: 27px;
+      z-index: 12;
+      max-width: calc(100% - 40px);
+      padding: 9px 13px;
+      border-radius: 999px;
+      background: rgba(23, 20, 13, 0.92);
+      color: #ffffff;
+      font-size: 10px;
+      font-weight: 700;
+      text-align: center;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 14px);
+      transition: 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    .home-indicator {
+      position: absolute;
+      bottom: 3px;
+      left: 50%;
+      z-index: 13;
+      width: 120px;
+      height: 4px;
+      border-radius: 999px;
+      background: currentColor;
+      opacity: 0.88;
+      transform: translateX(-50%);
+    }
+
+    .screen.dark-mode {
+      background:
+        radial-gradient(circle at 80% 8%, rgba(224, 174, 18, 0.12), transparent 28%),
+        linear-gradient(180deg, #17130c 0%, #141109 52%, #100e09 100%);
+      color: #fff7e1;
+    }
+
+    .dark-mode .status-bar,
+    .dark-mode .nav {
+      border-color: rgba(224, 174, 18, 0.1);
+      background: rgba(23, 19, 12, 0.96);
+    }
+
+    .dark-mode .nav-back {
+      color: #d7c89d;
+    }
+
+    .dark-mode .honor-tabs,
+    .dark-mode .card {
+      border-color: rgba(224, 174, 18, 0.12);
+      background: rgba(34, 28, 16, 0.92);
+      box-shadow: none;
+    }
+
+    .dark-mode .honor-tab {
+      color: #aa9b75;
+    }
+
+    .dark-mode .section-heading span,
+    .dark-mode .showcase-item span,
+    .dark-mode .progress-note {
+      color: #847858;
+    }
+
+    .dark-mode .showcase-item {
+      background: #211b10;
+    }
+
+    .dark-mode .showcase-item:nth-child(1) {
+      background: rgba(224, 174, 18, 0.1);
+    }
+
+    .dark-mode .showcase-item:nth-child(2) {
+      background: rgba(124, 58, 237, 0.1);
+    }
+
+    .dark-mode .showcase-item:nth-child(3) {
+      background: rgba(15, 118, 110, 0.12);
+    }
+
+    .dark-mode .showcase-icon {
+      background: #2a2112;
+      box-shadow: none;
+    }
+
+    .dark-mode .progress-row,
+    .dark-mode .title-option {
+      border-color: rgba(224, 174, 18, 0.09);
+    }
+
+    .dark-mode .progress-track {
+      background: #2d2619;
+    }
+
+    .dark-mode .title-sheet {
+      background: #19150e;
+      box-shadow: 0 -16px 42px rgba(0, 0, 0, 0.42);
+    }
+
+    .dark-mode .sheet-handle {
+      background: #514733;
+    }
+
+    .dark-mode .sheet-heading span,
+    .dark-mode .option-copy span {
+      color: #8f8262;
+    }
+
+    .dark-mode .sheet-close,
+    .dark-mode .title-option[data-title-id="none"] .option-icon {
+      background: #2a2418;
+      color: #b9aa83;
+    }
+
+    .dark-mode .title-options {
+      border-color: rgba(224, 174, 18, 0.13);
+      background: #211b11;
+    }
+
+    .dark-mode .title-option:hover {
+      background: rgba(224, 174, 18, 0.08);
+    }
+
+    .dark-mode .title-option.selected {
+      background: linear-gradient(90deg, rgba(224, 174, 18, 0.14), rgba(33, 27, 17, 0.94));
+    }
+
+    .dark-mode .option-check {
+      border-color: #5a4f36;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    @media (max-width: 760px) {
+      body {
+        display: block;
+        padding: 16px;
+      }
+
+      .preview {
+        width: 100%;
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .scenario-list {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .phone {
+        height: min(878px, calc(100vh - 42px));
+      }
+    }
+
+    @media (max-width: 430px) {
+      .scenario-list {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-height: 760px) and (min-width: 761px) {
+      body {
+        padding: 14px;
+      }
+
+      .phone {
+        height: calc(100vh - 28px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="preview">
+    <aside class="scenario-panel">
+      <div class="scenario-kicker">PRODUCT REVIEW</div>
+      <h1 class="scenario-heading">荣誉墙 · 称号切换预览</h1>
+      <p class="scenario-intro">称号不再进入独立管理页，而是在荣誉墙当前称号卡里完成轻量切换。</p>
+      <div class="scenario-list" aria-label="预览场景">
+        <button class="scenario-button active" data-scene="default">01 · 荣誉墙 · 默认状态</button>
+        <button class="scenario-button" data-scene="open">02 · 点击更换 · 选择器展开</button>
+        <button class="scenario-button" data-scene="switched">03 · 已切换 · S3 赛季冠军</button>
+        <button class="scenario-button" data-scene="none">04 · 不佩戴称号</button>
+        <button class="scenario-button" data-scene="dark">05 · 暖色暗黑 · 选择器展开</button>
+      </div>
+      <div class="scenario-summary">
+        <div class="scenario-current" id="scenarioCurrent">荣誉墙 · 默认状态</div>
+        <p class="scenario-description" id="scenarioDescription">默认只回答“现在展示什么”；需要调整时再展开底部选择器。</p>
+      </div>
+      <div class="decision-note">
+        <strong>交互边界</strong>
+        用户只选择对外佩戴身份；称号的获得、归档与统计仍由荣誉墙和成就体系负责。
+      </div>
+    </aside>
+
+    <div class="preview-stage">
+      <div class="preview-label" id="previewLabel">荣誉墙 · 当前称号</div>
+      <section class="phone" aria-label="追分荣誉墙称号切换效果">
+        <div class="screen" id="phoneScreen">
+          <div class="status-bar">
+            <span>9:41</span>
+            <div class="status-icons" aria-hidden="true">
+              <span class="signal"><i></i><i></i><i></i><i></i></span>
+              <span class="wifi"></span>
+              <span class="battery"></span>
+            </div>
+          </div>
+
+          <header class="nav">
+            <button class="nav-back" type="button" aria-label="返回">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
+            <span>荣誉墙</span>
+          </header>
+
+          <div class="content" id="phoneContent">
+            <section class="honor-hero" aria-label="当前称号">
+              <div class="hero-main">
+                <div class="hero-medal" aria-hidden="true">
+                  <svg class="active" data-hero-icon="streak" viewBox="0 0 24 24"><path d="m3 7 4.5 4L12 4l4.5 7L21 7l-2 11H5z"/><path d="M5 18h14"/></svg>
+                  <svg data-hero-icon="season" viewBox="0 0 24 24"><circle cx="12" cy="14" r="5"/><path d="m8.5 10-3-7h5L12 7l1.5-4h5l-3 7M10 14l1.2 1.2L14 12.5"/></svg>
+                  <svg data-hero-icon="tournament" viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H4v2a4 4 0 0 0 4 4M16 6h4v2a4 4 0 0 1-4 4M12 13v5M8 21h8M9 18h6"/></svg>
+                  <svg data-hero-icon="veteran" viewBox="0 0 24 24"><path d="m12 3 1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8zM5 14l.7 1.8L7.5 16l-1.8.7L5 18.5l-.7-1.8L2.5 16l1.8-.2z"/></svg>
+                  <svg data-hero-icon="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="m7 7 10 10"/></svg>
+                </div>
+                <div class="hero-copy">
+                  <div class="hero-eyebrow">当前称号</div>
+                  <div class="hero-title" id="heroTitle">不败王者</div>
+                  <div class="hero-meta" id="heroMeta">五连胜成就获得 · 好友可见</div>
+                </div>
+                <button class="change-title-button" id="openSheetButton" type="button" aria-haspopup="dialog">更换</button>
+              </div>
+              <div class="hero-stats">
+                <div class="hero-stat"><strong>4/12</strong><span>生涯成就</span></div>
+                <div class="hero-stat"><strong>2</strong><span>赛季荣誉</span></div>
+                <div class="hero-stat"><strong>1</strong><span>赛事荣誉</span></div>
+              </div>
+            </section>
+
+            <nav class="honor-tabs" aria-label="荣誉墙分类">
+              <div class="honor-tab active">生涯成就</div>
+              <div class="honor-tab">当前赛季</div>
+              <div class="honor-tab">历届荣誉</div>
+            </nav>
+
+            <section class="card">
+              <div class="section-heading">
+                <strong>最近荣誉</strong>
+                <span>按获得时间自动更新</span>
+              </div>
+              <div class="showcase-grid">
+                <div class="showcase-item">
+                  <div class="showcase-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 4.5 4L12 4l4.5 7L21 7l-2 11H5z"/><path d="M5 18h14"/></svg>
+                  </div>
+                  <strong>连胜猎手</strong>
+                  <span>2026.07.20</span>
+                </div>
+                <div class="showcase-item">
+                  <div class="showcase-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="14" r="5"/><path d="m8.5 10-3-7h5L12 7l1.5-4h5l-3 7"/></svg>
+                  </div>
+                  <strong>S3 冠军</strong>
+                  <span>2026.07.18</span>
+                </div>
+                <div class="showcase-item">
+                  <div class="showcase-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/></svg>
+                  </div>
+                  <strong>首次清台</strong>
+                  <span>2026.07.16</span>
+                </div>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="section-heading">
+                <strong>生涯进度</strong>
+                <span>永久累计</span>
+              </div>
+              <div class="progress-list">
+                <div class="progress-row">
+                  <div class="progress-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22c4.4 0 8-3.2 8-8 0-3.2-1.8-5.9-5.2-8.5.1 2.7-1 4.3-2.2 5.4.2-3.8-2.1-6.8-5.4-8.9.2 3.5-3.2 5.5-3.2 10.2C4 17.6 7.6 22 12 22Z"/></svg>
+                  </div>
+                  <div>
+                    <div class="progress-head"><span>十胜起步</span><span>7 / 10</span></div>
+                    <div class="progress-track"><div class="progress-fill" style="width: 70%"></div></div>
+                    <div class="progress-note">再赢 3 场解锁“胜场新星”</div>
+                  </div>
+                </div>
+                <div class="progress-row">
+                  <div class="progress-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/></svg>
+                  </div>
+                  <div>
+                    <div class="progress-head"><span>清台专家</span><span>3 / 8</span></div>
+                    <div class="progress-track"><div class="progress-fill" style="width: 37.5%"></div></div>
+                    <div class="progress-note">有效排位中的清台次数</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div class="sheet-layer" id="sheetLayer">
+            <button class="sheet-backdrop" id="sheetBackdrop" type="button" aria-label="关闭称号选择器" disabled></button>
+            <section class="title-sheet" id="titleSheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" aria-hidden="true" inert>
+              <div class="sheet-handle" aria-hidden="true"></div>
+              <div class="sheet-header">
+                <div class="sheet-heading">
+                  <strong id="sheetTitle">更换当前称号</strong>
+                  <span>选择后立即生效，仅改变对外展示</span>
+                </div>
+                <button class="sheet-close" id="closeSheetButton" type="button" aria-label="关闭">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                </button>
+              </div>
+
+              <div class="title-options" role="radiogroup" aria-label="选择佩戴称号">
+                <button class="title-option selected" data-title-id="streak" type="button" role="radio" aria-checked="true">
+                  <span class="option-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 4.5 4L12 4l4.5 7L21 7l-2 11H5z"/><path d="M5 18h14"/></svg>
+                  </span>
+                  <span class="option-copy"><strong>不败王者</strong><span>生涯成就 · 五连胜成就获得</span></span>
+                  <span class="option-check"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9"/></svg></span>
+                </button>
+
+                <button class="title-option" data-title-id="season" type="button" role="radio" aria-checked="false">
+                  <span class="option-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="14" r="5"/><path d="m8.5 10-3-7h5L12 7l1.5-4h5l-3 7M10 14l1.2 1.2L14 12.5"/></svg>
+                  </span>
+                  <span class="option-copy"><strong>S3 赛季冠军</strong><span>赛季荣誉 · 中式八球最终第 1 名</span></span>
+                  <span class="option-check"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9"/></svg></span>
+                </button>
+
+                <button class="title-option" data-title-id="tournament" type="button" role="radio" aria-checked="false">
+                  <span class="option-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H4v2a4 4 0 0 0 4 4M16 6h4v2a4 4 0 0 1-4 4M12 13v5M8 21h8M9 18h6"/></svg>
+                  </span>
+                  <span class="option-copy"><strong>城市夏季杯四强</strong><span>赛事荣誉 · 2026 城市夏季杯</span></span>
+                  <span class="option-check"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9"/></svg></span>
+                </button>
+
+                <button class="title-option" data-title-id="veteran" type="button" role="radio" aria-checked="false">
+                  <span class="option-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8zM5 14l.7 1.8L7.5 16l-1.8.7L5 18.5l-.7-1.8L2.5 16l1.8-.2z"/></svg>
+                  </span>
+                  <span class="option-copy"><strong>百战老将</strong><span>生涯成就 · 完成 100 场有效排位</span></span>
+                  <span class="option-check"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9"/></svg></span>
+                </button>
+
+                <button class="title-option" data-title-id="none" type="button" role="radio" aria-checked="false">
+                  <span class="option-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="m7 7 10 10"/></svg>
+                  </span>
+                  <span class="option-copy"><strong>不佩戴称号</strong><span>隐藏对外展示 · 已获称号仍永久保留</span></span>
+                  <span class="option-check"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9"/></svg></span>
+                </button>
+              </div>
+            </section>
+          </div>
+
+          <div class="toast" id="toast" role="status" aria-live="polite"></div>
+          <div class="home-indicator"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const titleData = {
+      streak: {
+        name: '不败王者',
+        meta: '五连胜成就获得 · 好友可见'
+      },
+      season: {
+        name: 'S3 赛季冠军',
+        meta: 'S3 中式八球最终第 1 名 · 好友可见'
+      },
+      tournament: {
+        name: '城市夏季杯四强',
+        meta: '2026 城市夏季杯 · 好友可见'
+      },
+      veteran: {
+        name: '百战老将',
+        meta: '完成 100 场有效排位 · 好友可见'
+      },
+      none: {
+        name: '暂未佩戴称号',
+        meta: '已获得的荣誉仍会永久保留'
+      }
+    };
+
+    const scenarios = {
+      default: {
+        title: '荣誉墙 · 默认状态',
+        description: '默认只回答“现在展示什么”；需要调整时再展开底部选择器。',
+        label: '荣誉墙 · 当前称号',
+        selected: 'streak',
+        open: false,
+        dark: false,
+        feedback: ''
+      },
+      open: {
+        title: '点击更换 · 选择器展开',
+        description: '选择器覆盖在荣誉墙之上，保留页面语境；点选后立即生效并自动关闭。',
+        label: '荣誉墙 · 更换当前称号',
+        selected: 'streak',
+        open: true,
+        dark: false,
+        feedback: ''
+      },
+      switched: {
+        title: '已切换 · S3 赛季冠军',
+        description: '可逆操作无需确认弹窗，更新当前称号后用轻提示完成反馈闭环。',
+        label: '荣誉墙 · 已切换称号',
+        selected: 'season',
+        open: false,
+        dark: false,
+        feedback: '已佩戴「S3 赛季冠军」'
+      },
+      none: {
+        title: '不佩戴称号',
+        description: '用户可以隐藏对外称号，但已经获得的成就、赛季和赛事荣誉不会删除。',
+        label: '荣誉墙 · 暂未佩戴',
+        selected: 'none',
+        open: false,
+        dark: false,
+        feedback: '已停止展示称号'
+      },
+      dark: {
+        title: '暖色暗黑 · 选择器展开',
+        description: '暗色主题沿用暖黑、象牙白与克制金色，交互层级和亮色模式保持一致。',
+        label: '荣誉墙 · 暖色暗黑',
+        selected: 'streak',
+        open: true,
+        dark: true,
+        feedback: ''
+      }
+    };
+
+    const state = {
+      selected: 'streak',
+      sheetOpen: false,
+      dark: false,
+      toastTimer: null
+    };
+
+    const elements = {
+      screen: document.getElementById('phoneScreen'),
+      content: document.getElementById('phoneContent'),
+      heroTitle: document.getElementById('heroTitle'),
+      heroMeta: document.getElementById('heroMeta'),
+      openButton: document.getElementById('openSheetButton'),
+      closeButton: document.getElementById('closeSheetButton'),
+      backdrop: document.getElementById('sheetBackdrop'),
+      sheet: document.getElementById('titleSheet'),
+      toast: document.getElementById('toast'),
+      scenarioCurrent: document.getElementById('scenarioCurrent'),
+      scenarioDescription: document.getElementById('scenarioDescription'),
+      previewLabel: document.getElementById('previewLabel')
+    };
+
+    const optionButtons = Array.from(document.querySelectorAll('.title-option'));
+    const heroIcons = Array.from(document.querySelectorAll('[data-hero-icon]'));
+
+    const renderSelection = () => {
+      const selected = titleData[state.selected] || titleData.streak;
+      elements.heroTitle.textContent = selected.name;
+      elements.heroMeta.textContent = selected.meta;
+      elements.openButton.textContent = state.selected === 'none' ? '选择' : '更换';
+      elements.screen.classList.toggle('no-title', state.selected === 'none');
+
+      heroIcons.forEach((icon) => {
+        icon.classList.toggle('active', icon.dataset.heroIcon === state.selected);
+      });
+
+      optionButtons.forEach((button) => {
+        const active = button.dataset.titleId === state.selected;
+        button.classList.toggle('selected', active);
+        button.setAttribute('aria-checked', String(active));
+      });
+    };
+
+    const setSheetOpen = (open, moveFocus) => {
+      state.sheetOpen = open;
+      elements.screen.classList.toggle('sheet-open', open);
+      elements.sheet.setAttribute('aria-hidden', String(!open));
+      elements.sheet.inert = !open;
+      elements.backdrop.disabled = !open;
+
+      if (moveFocus) {
+        if (open) {
+          const selectedOption = optionButtons.find((button) => button.dataset.titleId === state.selected);
+          if (selectedOption) selectedOption.focus();
+        } else {
+          elements.openButton.focus();
+        }
+      }
+    };
+
+    const showToast = (message) => {
+      if (state.toastTimer) clearTimeout(state.toastTimer);
+      elements.toast.textContent = message;
+      elements.toast.classList.add('show');
+      state.toastTimer = setTimeout(() => {
+        elements.toast.classList.remove('show');
+      }, 2000);
+    };
+
+    const selectTitle = (titleId) => {
+      if (!titleData[titleId]) return;
+      state.selected = titleId;
+      renderSelection();
+      setSheetOpen(false, true);
+
+      if (titleId === 'none') {
+        showToast('已停止展示称号');
+      } else {
+        showToast('已佩戴「' + titleData[titleId].name + '」');
+      }
+    };
+
+    const renderScene = (sceneKey, updateHash) => {
+      const scenario = scenarios[sceneKey] || scenarios.default;
+      state.selected = scenario.selected;
+      state.dark = scenario.dark;
+      elements.screen.classList.toggle('dark-mode', state.dark);
+
+      document.querySelectorAll('.scenario-button').forEach((button) => {
+        const active = button.dataset.scene === sceneKey;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+
+      elements.scenarioCurrent.textContent = scenario.title;
+      elements.scenarioDescription.textContent = scenario.description;
+      elements.previewLabel.textContent = scenario.label;
+      renderSelection();
+      setSheetOpen(scenario.open, false);
+      elements.content.scrollTop = 0;
+
+      if (state.toastTimer) clearTimeout(state.toastTimer);
+      elements.toast.classList.remove('show');
+      if (scenario.feedback) showToast(scenario.feedback);
+
+      if (updateHash !== false) {
+        history.replaceState(null, '', '#' + sceneKey);
+      }
+    };
+
+    elements.openButton.addEventListener('click', () => setSheetOpen(true, true));
+    elements.closeButton.addEventListener('click', () => setSheetOpen(false, true));
+    elements.backdrop.addEventListener('click', () => setSheetOpen(false, true));
+
+    optionButtons.forEach((button) => {
+      button.addEventListener('click', () => selectTitle(button.dataset.titleId));
+    });
+
+    document.querySelectorAll('.scenario-button').forEach((button) => {
+      button.addEventListener('click', () => renderScene(button.dataset.scene));
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && state.sheetOpen) {
+        setSheetOpen(false, true);
+      }
+    });
+
+    const initialScene = scenarios[location.hash.slice(1)] ? location.hash.slice(1) : 'default';
+    renderScene(initialScene, false);
+  </script>
+</body>
+</html>

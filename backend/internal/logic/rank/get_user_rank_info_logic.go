@@ -49,64 +49,21 @@ func (l *GetUserRankInfoLogic) GetUserRankInfo(req *types.GetUserRankInfoReq) (r
 		}, nil
 	}
 
-	// 获取当前段位配置
-	currentConfig, err := l.svcCtx.RankingModel.GetRankConfigByLevel(ranking.RankLevel)
-	if err != nil || currentConfig == nil {
+	configs, err := l.svcCtx.RankingModel.GetAllRankConfigs()
+	if err != nil {
 		l.Logger.Errorf("获取段位配置失败: %v", err)
 		return &types.GetUserRankInfoResp{
 			Success: false,
 		}, nil
 	}
-
-	// 获取下一段位配置
-	var nextLevel int
-	var nextName string
-	var nextScore int
-	var progress int
-
-	if ranking.RankLevel < 5 {
-		nextConfig, err := l.svcCtx.RankingModel.GetRankConfigByLevel(ranking.RankLevel + 1)
-		if err == nil && nextConfig != nil {
-			nextLevel = nextConfig.Level
-			nextName = nextConfig.Name
-			nextScore = nextConfig.MinScore
-
-			// 计算进度百分比
-			currentMin := currentConfig.MinScore
-			scoreInLevel := ranking.RankScore - currentMin
-			scoreToNext := nextScore - currentMin
-			if scoreToNext > 0 {
-				progress = scoreInLevel * 100 / scoreToNext
-				if progress > 100 {
-					progress = 100
-				}
-				if progress < 0 {
-					progress = 0
-				}
-			}
-		}
-	} else {
-		// 已经是最高段位
-		nextLevel = 5
-		nextName = "钻石王者"
-		nextScore = 2000
-		progress = 100
+	rankInfo := buildRankInfo(ranking, buildRankConfigByLevel(configs))
+	if rankInfo == nil {
+		l.Logger.Errorf("获取段位配置失败: 段位等级 %d 不存在", ranking.RankLevel)
+		return &types.GetUserRankInfoResp{Success: false}, nil
 	}
 
 	return &types.GetUserRankInfoResp{
-		Success: true,
-		RankInfo: &types.RankInfo{
-			Level:       ranking.RankLevel,
-			Name:        currentConfig.Name,
-			Icon:        currentConfig.Icon,
-			RankScore:   ranking.RankScore,
-			TotalWins:   ranking.TotalWins,
-			TotalLosses: ranking.TotalLosses,
-			MaxStreak:   ranking.MaxStreak,
-			NextLevel:   nextLevel,
-			NextName:    nextName,
-			NextScore:   nextScore,
-			Progress:    progress,
-		},
+		Success:  true,
+		RankInfo: rankInfo,
 	}, nil
 }

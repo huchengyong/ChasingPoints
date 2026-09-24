@@ -82,6 +82,22 @@ func (l *MatchFoulLogic) MatchFoul(req *types.MatchFoulReq) (resp *types.MatchSc
 			OpponentScore:                 scoreView.OpponentScore,
 		}, nil
 	}
+	if req.Actor != 1 && req.Actor != 2 {
+		return &types.MatchScoreResp{Success: false, Accepted: false, Message: "参与方只能是选手1或选手2"}, nil
+	}
+	if isSnookerV2Match(match) {
+		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
+		if stateErr != nil {
+			return &types.MatchScoreResp{Success: false, Accepted: false, Message: "加载对局快照失败"}, nil
+		}
+		return &types.MatchScoreResp{
+			Success:        false,
+			Accepted:       false,
+			Message:        "版本2斯诺克请使用击球结果接口",
+			ServerRevision: view.Snapshot.ServerRevision,
+			Snapshot:       view.Snapshot,
+		}, nil
+	}
 	if req.ClientActionId == "" {
 		return &types.MatchScoreResp{
 			Success:  false,
@@ -150,7 +166,11 @@ func (l *MatchFoulLogic) MatchFoul(req *types.MatchFoulReq) (resp *types.MatchSc
 	}
 
 	score := req.Score
-	if score <= 0 {
+	if match.GameType == 1 {
+		if score < 4 || score > 7 {
+			return &types.MatchScoreResp{Success: false, Accepted: false, Message: "斯诺克犯规罚分必须为4至7分"}, nil
+		}
+	} else if score <= 0 {
 		score = 1
 	}
 	roundCount, _ := l.svcCtx.MatchModel.GetRoundCount(match.Id)

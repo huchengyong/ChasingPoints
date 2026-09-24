@@ -94,7 +94,7 @@ onMounted(() => {
 <style lang="scss" scoped>
 .bracket-page {
 	min-height: 100vh;
-	background: #0f172a;
+	background: #f1f5f9;
 }
 .loading-state {
 	display: flex;
@@ -135,8 +135,8 @@ onMounted(() => {
 		margin-bottom: 24rpx;
 		font-size: 26rpx;
 		font-weight: 600;
-		color: #94a3b8;
-		background: rgba(255,255,255,0.05);
+		color: #64748b;
+		background: #ffffff;
 		border-radius: 8rpx;
 	}
 }
@@ -148,18 +148,18 @@ onMounted(() => {
 	flex: 1;
 }
 .match-card {
-	background: #1e293b;
+	background: #ffffff;
 	border-radius: 12rpx;
 	padding: 16rpx 20rpx;
-	border: 2rpx solid #334155;
-	&.completed { border-color: #475569; }
+	border: 2rpx solid #e2e8f0;
+	&.completed { border-color: #cbd5e1; }
 	.player-row {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
 		padding: 10rpx 8rpx;
 		border-radius: 6rpx;
-		.player-name { font-size: 26rpx; color: #cbd5e1; }
+		.player-name { font-size: 26rpx; color: #1e293b; }
 		.player-score { font-size: 24rpx; color: #22c55e; font-weight: 700; }
 		&.winner {
 			background: rgba(34, 197, 94, 0.1);
@@ -168,7 +168,7 @@ onMounted(() => {
 	}
 	.vs-line {
 		height: 2rpx;
-		background: #334155;
+		background: #e2e8f0;
 		margin: 6rpx 0;
 	}
 	.match-status {
@@ -177,7 +177,41 @@ onMounted(() => {
 		font-size: 20rpx;
 		.status-pending { color: #64748b; }
 		.status-live { color: #f59e0b; }
-		.status-done { color: #475569; }
+		.status-done { color: #64748b; }
+	}
+}
+
+.bracket-page.dark-mode {
+	background: #141109;
+
+	.round-column .round-title {
+		color: #d7c89b;
+		background: rgba(255, 247, 225, 0.05);
+	}
+
+	.match-card {
+		background: #1e180d;
+		border-color: #3a2e16;
+
+		&.completed {
+			border-color: #4a3a1c;
+		}
+
+		.player-row .player-name {
+			color: #fff7e1;
+		}
+
+		.player-row.winner .player-name {
+			color: #22c55e;
+		}
+
+		.vs-line {
+			background: #3a2e16;
+		}
+
+		.match-status .status-done {
+			color: #9f926e;
+		}
 	}
 }
 </style>

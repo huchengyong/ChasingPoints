@@ -69,6 +69,18 @@ func (l *EndRoundLogic) EndRound(req *types.EndRoundReq) (resp *types.EndRoundRe
 			OpponentScore:             scoreView.OpponentScore,
 		}, nil
 	}
+	if isSnookerV2Match(match) {
+		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
+		if stateErr != nil {
+			return &types.EndRoundResp{Success: false, Accepted: false}, nil
+		}
+		return &types.EndRoundResp{
+			Success:        false,
+			Accepted:       false,
+			ServerRevision: view.Snapshot.ServerRevision,
+			Snapshot:       view.Snapshot,
+		}, nil
+	}
 	if req.ClientActionId == "" {
 		return &types.EndRoundResp{
 			Success:  false,

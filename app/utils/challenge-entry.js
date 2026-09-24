@@ -28,3 +28,25 @@ export const normalizeChallengeListItem = (item = {}, currentUserId = 0) => {
       : (item.from_avatar ?? item.fromAvatar ?? '')
   }
 }
+
+export const resolveChallengeAction = (item = {}) => {
+  const matchId = Number(item.match_id || item.matchId || 0)
+  if (Number(item.status) === 1 && matchId > 0) {
+    return { type: 'view_match', label: '查看对局', match_id: matchId }
+  }
+  if (Number(item.status) === 1 && matchId === 0) {
+    return { type: 'offline_start', label: '线下扫码开局', match_id: 0 }
+  }
+  return { type: 'report', label: '查看PK报表', match_id: matchId }
+}
+
+export const buildChallengeStartContext = (item = {}) => {
+  if (resolveChallengeAction({ ...item, status: item.status ?? 1 }).type !== 'offline_start') return null
+  return {
+    challenge_id: Number(item.id || item.challenge_id || 0),
+    opponent_id: Number(item.opponent_id || 0),
+    opponent_name: item.opponent_name || item.nickname || '球友',
+    opponent_avatar: item.avatar || '',
+    game_type: Number(item.game_type) || 3
+  }
+}

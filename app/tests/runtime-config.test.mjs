@@ -6,7 +6,7 @@ import {
   resolveNetworkConfig
 } from '../utils/runtime-config.js'
 
-test('resolveNetworkConfig uses tunnel host in development', () => {
+test('resolveNetworkConfig uses development hosts', () => {
   assert.deepEqual(resolveNetworkConfig({ env: 'development' }), {
     httpBaseUrl: 'https://api-zhuifen.kekemate.cn',
     wsBaseUrl: 'wss://api-zhuifen.kekemate.cn'
@@ -15,8 +15,8 @@ test('resolveNetworkConfig uses tunnel host in development', () => {
 
 test('resolveNetworkConfig uses production host in production', () => {
   assert.deepEqual(resolveNetworkConfig({ env: 'production' }), {
-    httpBaseUrl: 'https://api-bm.dianzaozao.com',
-    wsBaseUrl: 'wss://api-bm.dianzaozao.com'
+    httpBaseUrl: 'https://api.zhuifen.cn',
+    wsBaseUrl: 'wss://ws.zhuifen.cn'
   })
 })
 

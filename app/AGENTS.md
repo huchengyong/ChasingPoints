@@ -1,7 +1,7 @@
 # APP FRONTEND GUIDE
 
 ## OVERVIEW
-`app/` 是 UniApp Vue3 用户端，当前代码重点覆盖 4 个 tab 页面、11 个分包页面簇、统一请求层、主题系统、登录与绑定手机号链路、对局实时同步、战报分享和一批纯逻辑测试。
+`app/` 是 UniApp Vue3 用户端，当前代码重点覆盖 4 个 tab 页面、12 个分包页面簇、统一请求层、主题系统、登录与绑定手机号链路、对局实时同步、战报分享和一批纯逻辑测试。
 
 ## GLOBAL RULES
 - 用简体中文沟通。
@@ -36,7 +36,7 @@ app/
 ## CURRENT ARCHITECTURE
 - 入口是 [app/main.js](/Users/wisesearch/Projects/ChasingPoints/app/main.js)，使用 Pinia；状态持久化由 [app/store/index.js](/Users/wisesearch/Projects/ChasingPoints/app/store/index.js) 注册的 `pinia-plugin-persistedstate` 完成。
 - [app/App.vue](/Users/wisesearch/Projects/ChasingPoints/app/App.vue) 仍使用 Options API，因为需要承接 UniApp app 级生命周期；页面组件默认继续优先用 `script setup`。
-- [app/pages.json](/Users/wisesearch/Projects/ChasingPoints/app/pages.json) 当前注册 6 个主包页面和 11 个分包根目录。
+- [app/pages.json](/Users/wisesearch/Projects/ChasingPoints/app/pages.json) 当前注册 6 个主包页面和 12 个分包根目录。
 - [app/utils/runtime-config.js](/Users/wisesearch/Projects/ChasingPoints/app/utils/runtime-config.js) 负责按环境解析网络基地址；[app/utils/request.js](/Users/wisesearch/Projects/ChasingPoints/app/utils/request.js) 统一处理 token、401、业务成功判定；[app/utils/websocket.js](/Users/wisesearch/Projects/ChasingPoints/app/utils/websocket.js) 负责 match/user 两条 WS 链路。
 - 页面层只能依赖 `api/*.js`；业务纯函数尽量沉到 `utils/*.js` 并在 `tests/*.test.mjs` 里覆盖。
 
@@ -64,6 +64,7 @@ app/
 ## THEME AND UI CONSTRAINTS
 - 主题变量必须同时兼容 `theme.json`、`App.vue` 中的 CSS 变量和 `store/theme.js` 的运行时切换。
 - 主题色背景按钮文字统一使用白色 `#ffffff`。
+- 微信小程序 WXSS 不支持 `*` 通配选择器。任何会编译到 MP-WEIXIN 的 `.vue` / `.scss` 都禁止使用 `*`、`*::before`、`*::after`，包括 scoped 样式中的 `.container *`（会生成 `.container *.data-v-*` 并导致真机编译失败）；改用明确的类选择器或 `view`、`text`、`button`、`image`、`scroll-view` 等组件选择器。仅供其他端使用的规则必须通过 `#ifndef MP-WEIXIN` 排除。
 - 针对 button 等内置组件的 disabled 状态样式覆盖，必须使用属性选择器 `&[disabled]` 或者 `button[disabled]`，绝不能使用伪类 `&:disabled`（在 UniApp 编译到小程序/App 端时，伪类无法正确匹配组件，并会导致框架默认的灰色字体强行覆盖被激活）。
 - 自定义按钮必须隐藏 `button::after`。
 - 为确保按钮文字垂直居中，所有自定义 `button` 组件的 `line-height` 应设为与 `height` 相同的值（例如 `height: 88rpx; line-height: 88rpx;`）。

@@ -62,7 +62,6 @@ func (l *LoginLogic) Login(req *types.LoginReq) (resp *types.LoginResp, err erro
 		user = &model.User{
 			Phone:           &req.Phone,
 			Nickname:        fmt.Sprintf("用户%s", req.Phone[7:]),
-			Avatar:          "https://cdn.dianzaozao.com/avatars/f512f44051984823941dd0d214ed84f6.jpg",
 			Status:          1,
 			MemberExpiresAt: resolveWelcomeMemberExpiresAt(l.svcCtx),
 		}

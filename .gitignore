@@ -14,6 +14,7 @@ Thumbs.db
 # Logs
 *.log
 logs/
+.run/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -52,6 +53,13 @@ backend/etc/*.local.yaml
 backend/etc/*.override.yaml
 docs/plans
 .worktrees/
+.superpowers/
 .omx/
 .gocache
 .gomodcache
+.claude/
+.codex/
+.opencode/
+.pi/
+.codegraph/
+.pi/

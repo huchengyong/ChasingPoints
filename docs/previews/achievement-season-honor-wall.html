@@ -1,0 +1,1497 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>追分 · 荣誉墙与赛季成就方案</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #ebe8df;
+      color: #0f172a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+      background:
+        radial-gradient(circle at 18% 12%, rgba(224, 174, 18, 0.2), transparent 24%),
+        radial-gradient(circle at 82% 88%, rgba(60, 43, 8, 0.12), transparent 28%),
+        #ebe8df;
+    }
+
+    .preview {
+      width: min(900px, calc(100vw - 32px));
+      display: grid;
+      grid-template-columns: 238px minmax(0, 406px);
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+    }
+
+    .scenario-panel {
+      padding: 18px;
+      border: 1px solid rgba(107, 90, 46, 0.14);
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.66);
+      box-shadow: 0 18px 50px rgba(60, 43, 8, 0.1);
+      backdrop-filter: blur(18px);
+    }
+
+    .scenario-kicker {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      color: #9a7414;
+    }
+
+    .scenario-heading {
+      margin: 7px 0 5px;
+      font-size: 21px;
+      line-height: 1.28;
+    }
+
+    .scenario-intro,
+    .scenario-description {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.65;
+      color: #64748b;
+    }
+
+    .scenario-list {
+      margin-top: 16px;
+      display: grid;
+      gap: 7px;
+    }
+
+    .scenario-button {
+      width: 100%;
+      min-height: 42px;
+      padding: 0 12px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.76);
+      color: #334155;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: left;
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+
+    .scenario-button:hover {
+      border-color: rgba(224, 174, 18, 0.42);
+      transform: translateY(-1px);
+    }
+
+    .scenario-button.active {
+      border-color: rgba(224, 174, 18, 0.5);
+      background: linear-gradient(135deg, #fff8df, #ffffff);
+      color: #805b08;
+      box-shadow: 0 7px 18px rgba(224, 174, 18, 0.13);
+    }
+
+    .scenario-summary {
+      margin-top: 15px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(148, 163, 184, 0.16);
+    }
+
+    .scenario-current {
+      margin-bottom: 5px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .preview-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .preview-label {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #6b5a2e;
+    }
+
+    .phone {
+      width: min(406px, calc(100vw - 32px));
+      height: min(878px, calc(100vh - 82px));
+      min-height: 690px;
+      padding: 9px;
+      border-radius: 44px;
+      background: #17140d;
+      box-shadow:
+        0 34px 80px rgba(45, 33, 7, 0.25),
+        0 5px 18px rgba(15, 23, 42, 0.14);
+    }
+
+    .screen {
+      position: relative;
+      height: 100%;
+      overflow: hidden;
+      border-radius: 36px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    }
+
+    .status-bar {
+      height: 29px;
+      padding: 8px 21px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+      background: #ffffff;
+    }
+
+    .status-icons {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .signal {
+      display: flex;
+      align-items: flex-end;
+      gap: 1.5px;
+      height: 10px;
+    }
+
+    .signal i {
+      display: block;
+      width: 2px;
+      border-radius: 2px;
+      background: #111827;
+    }
+
+    .signal i:nth-child(1) { height: 4px; }
+    .signal i:nth-child(2) { height: 6px; }
+    .signal i:nth-child(3) { height: 8px; }
+    .signal i:nth-child(4) { height: 10px; }
+
+    .wifi {
+      width: 12px;
+      height: 9px;
+      border: 2px solid #111827;
+      border-right-color: transparent;
+      border-bottom: 0;
+      border-left-color: transparent;
+      border-radius: 50% 50% 0 0;
+      transform: translateY(1px);
+    }
+
+    .battery {
+      position: relative;
+      width: 20px;
+      height: 10px;
+      padding: 1px;
+      border: 1.5px solid #111827;
+      border-radius: 3px;
+    }
+
+    .battery::before {
+      content: "";
+      display: block;
+      width: 13px;
+      height: 100%;
+      border-radius: 1px;
+      background: #111827;
+    }
+
+    .battery::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      right: -3px;
+      width: 2px;
+      height: 5px;
+      border-radius: 0 2px 2px 0;
+      background: #111827;
+    }
+
+    .nav {
+      position: relative;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.13);
+      background: #ffffff;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .nav-back {
+      position: absolute;
+      top: 50%;
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      background: transparent;
+      color: #475569;
+      transform: translateY(-50%);
+    }
+
+    .nav-back { left: 12px; }
+
+    .nav svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .content {
+      position: absolute;
+      inset: 77px 0 11px;
+      overflow-y: auto;
+      scrollbar-width: none;
+      padding: 12px 12px 28px;
+    }
+
+    .content::-webkit-scrollbar {
+      display: none;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    .honor-hero {
+      position: relative;
+      padding: 17px 16px 15px;
+      overflow: hidden;
+      border-radius: 18px;
+      color: #ffffff;
+      background:
+        radial-gradient(circle at 10% 2%, rgba(255, 241, 191, 0.22), transparent 25%),
+        radial-gradient(circle at 96% 4%, rgba(255, 255, 255, 0.15), transparent 30%),
+        linear-gradient(135deg, #3c2b08 0%, #8f6507 48%, #c69200 100%);
+      box-shadow: 0 14px 28px rgba(60, 43, 8, 0.2);
+    }
+
+    .honor-hero::after {
+      content: "";
+      position: absolute;
+      right: -30px;
+      bottom: -42px;
+      width: 130px;
+      height: 130px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 50%;
+    }
+
+    .hero-main {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .hero-medal {
+      width: 58px;
+      height: 58px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.13);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.13);
+    }
+
+    .hero-medal svg {
+      width: 31px;
+      height: 31px;
+      fill: none;
+      stroke: #ffe7a0;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.7;
+    }
+
+    .hero-copy {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .hero-eyebrow {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: rgba(255, 255, 255, 0.68);
+    }
+
+    .hero-title {
+      margin-top: 4px;
+      overflow: hidden;
+      font-size: 22px;
+      font-weight: 850;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .hero-meta {
+      margin-top: 5px;
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.76);
+    }
+
+    .hero-stats {
+      position: relative;
+      z-index: 1;
+      margin-top: 15px;
+      padding-top: 13px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .hero-stat {
+      position: relative;
+      text-align: center;
+    }
+
+    .hero-stat + .hero-stat::before {
+      content: "";
+      position: absolute;
+      top: 3px;
+      bottom: 3px;
+      left: 0;
+      width: 1px;
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .hero-stat strong,
+    .hero-stat span {
+      display: block;
+    }
+
+    .hero-stat strong {
+      font-size: 16px;
+      line-height: 1.1;
+    }
+
+    .hero-stat span {
+      margin-top: 4px;
+      font-size: 9px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .honor-tabs {
+      margin-top: 11px;
+      padding: 4px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 4px;
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 14px;
+      background: #ffffff;
+      box-shadow: 0 5px 14px rgba(15, 23, 42, 0.05);
+    }
+
+    .honor-tab {
+      min-height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 10px;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .honor-tab.active {
+      background: linear-gradient(135deg, #e0ae12, #c69200);
+      color: #ffffff;
+      box-shadow: 0 5px 12px rgba(224, 174, 18, 0.18);
+    }
+
+    .card {
+      margin-top: 11px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 16px;
+      background: #ffffff;
+    }
+
+    .section-heading {
+      padding: 13px 14px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .section-heading strong {
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .section-heading span {
+      font-size: 10px;
+      color: #94a3b8;
+    }
+
+    .showcase-grid {
+      padding: 12px 10px 14px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .showcase-item {
+      min-width: 0;
+      padding: 12px 5px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      border-radius: 13px;
+      background: #f8fafc;
+      text-align: center;
+    }
+
+    .showcase-item:nth-child(1) { background: #fff8df; }
+    .showcase-item:nth-child(2) { background: #f3f0ff; }
+    .showcase-item:nth-child(3) { background: #eef8f5; }
+
+    .showcase-icon {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 5px 12px rgba(15, 23, 42, 0.07);
+    }
+
+    .showcase-item:nth-child(1) .showcase-icon { color: #b77908; }
+    .showcase-item:nth-child(2) .showcase-icon { color: #7c3aed; }
+    .showcase-item:nth-child(3) .showcase-icon { color: #0f766e; }
+
+    .showcase-icon svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .showcase-item strong {
+      overflow: hidden;
+      max-width: 100%;
+      font-size: 10px;
+      font-weight: 800;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .showcase-item span {
+      font-size: 8px;
+      color: #94a3b8;
+    }
+
+    .progress-list,
+    .season-list,
+    .history-list,
+    .rule-list,
+    .current-list {
+      padding: 7px 14px 11px;
+    }
+
+    .progress-row,
+    .season-row,
+    .history-row,
+    .rule-row,
+    .current-row {
+      display: grid;
+      align-items: center;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .progress-row:last-child,
+    .season-row:last-child,
+    .history-row:last-child,
+    .rule-row:last-child,
+    .current-row:last-child {
+      border-bottom: 0;
+    }
+
+    .progress-row,
+    .season-row {
+      grid-template-columns: 38px minmax(0, 1fr);
+      gap: 10px;
+      padding: 11px 0;
+    }
+
+    .progress-icon,
+    .season-icon,
+    .history-icon,
+    .rule-icon,
+    .current-icon {
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+    }
+
+    .progress-icon,
+    .season-icon {
+      width: 38px;
+      height: 38px;
+      background: rgba(224, 174, 18, 0.12);
+      color: #b77908;
+    }
+
+    .progress-icon svg,
+    .season-icon svg,
+    .history-icon svg,
+    .rule-icon svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .progress-copy,
+    .season-copy {
+      min-width: 0;
+    }
+
+    .progress-head,
+    .season-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .progress-track {
+      height: 7px;
+      margin-top: 7px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #eef2f7;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #e0ae12, #f2c94c);
+    }
+
+    .progress-note,
+    .season-note {
+      margin-top: 5px;
+      font-size: 9px;
+      color: #94a3b8;
+    }
+
+    .season-banner {
+      margin-top: 11px;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border: 1px solid rgba(224, 174, 18, 0.28);
+      border-radius: 16px;
+      background:
+        radial-gradient(circle at 96% 0%, rgba(224, 174, 18, 0.13), transparent 42%),
+        linear-gradient(135deg, #fffbef, #ffffff);
+    }
+
+    .season-banner-copy strong,
+    .season-banner-copy span {
+      display: block;
+    }
+
+    .season-banner-copy strong {
+      font-size: 14px;
+    }
+
+    .season-banner-copy span {
+      margin-top: 5px;
+      font-size: 10px;
+      color: #64748b;
+    }
+
+    .season-days {
+      min-width: 66px;
+      padding: 8px 9px;
+      border-radius: 11px;
+      background: #fff4c7;
+      color: #8a6309;
+      font-size: 10px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .game-tabs {
+      margin-top: 10px;
+      padding: 4px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 4px;
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 13px;
+      background: #ffffff;
+    }
+
+    .game-tab {
+      min-width: 0;
+      padding: 8px 3px;
+      border-radius: 9px;
+      color: #64748b;
+      font-size: 8px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .game-tab.active {
+      background: #fff4c7;
+      color: #805b08;
+    }
+
+    .season-footnote {
+      padding: 0 14px 13px;
+      font-size: 9px;
+      line-height: 1.55;
+      color: #94a3b8;
+    }
+
+    .season-row:nth-child(2) .season-icon {
+      background: rgba(59, 130, 246, 0.11);
+      color: #2563eb;
+    }
+
+    .season-row:nth-child(3) .season-icon {
+      background: rgba(139, 92, 246, 0.11);
+      color: #7c3aed;
+    }
+
+    .history-row {
+      grid-template-columns: 42px minmax(0, 1fr) auto;
+      gap: 10px;
+      padding: 12px 0;
+    }
+
+    .history-icon {
+      width: 42px;
+      height: 42px;
+      background: #fff8df;
+      color: #b77908;
+    }
+
+    .history-row:nth-child(2) .history-icon {
+      background: #f3f0ff;
+      color: #7c3aed;
+    }
+
+    .history-row:nth-child(3) .history-icon {
+      background: #eef8f5;
+      color: #0f766e;
+    }
+
+    .history-copy {
+      min-width: 0;
+    }
+
+    .history-copy strong,
+    .history-copy span {
+      display: block;
+    }
+
+    .history-copy strong {
+      overflow: hidden;
+      font-size: 11px;
+      font-weight: 800;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .history-copy span {
+      margin-top: 5px;
+      font-size: 9px;
+      color: #94a3b8;
+    }
+
+    .history-tag,
+    .rule-tag {
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: #fff5cf;
+      color: #8a6309;
+      font-size: 9px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .rollover-notice {
+      margin-top: 11px;
+      padding: 18px 16px;
+      border-radius: 18px;
+      color: #ffffff;
+      background:
+        radial-gradient(circle at 90% 10%, rgba(255, 255, 255, 0.16), transparent 32%),
+        linear-gradient(135deg, #3c2b08, #9a7414 62%, #c69200);
+      box-shadow: 0 14px 28px rgba(60, 43, 8, 0.18);
+      text-align: center;
+    }
+
+    .rollover-icon {
+      width: 46px;
+      height: 46px;
+      margin: 0 auto;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 15px;
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .rollover-icon svg {
+      width: 24px;
+      height: 24px;
+      fill: none;
+      stroke: #ffe6a0;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .rollover-kicker {
+      margin-top: 12px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: #ffe6a0;
+    }
+
+    .rollover-title {
+      margin-top: 6px;
+      font-size: 19px;
+      font-weight: 850;
+    }
+
+    .rollover-desc {
+      margin: 7px auto 0;
+      max-width: 280px;
+      font-size: 10px;
+      line-height: 1.55;
+      color: rgba(255, 255, 255, 0.76);
+    }
+
+    .rollover-status {
+      margin-top: 13px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .rollover-status span {
+      display: block;
+      padding: 9px 7px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.09);
+      font-size: 9px;
+      font-weight: 700;
+    }
+
+    .rollover-read-hint {
+      margin-top: 10px;
+      font-size: 9px;
+      color: #94a3b8;
+      text-align: center;
+    }
+
+    .rule-row {
+      grid-template-columns: 40px minmax(0, 1fr) auto;
+      gap: 10px;
+      padding: 11px 0;
+    }
+
+    .rule-icon {
+      width: 40px;
+      height: 40px;
+      background: #fff8df;
+      color: #b77908;
+    }
+
+    .rule-row:nth-child(2) .rule-icon {
+      background: #eef6ff;
+      color: #2563eb;
+    }
+
+    .rule-row:nth-child(3) .rule-icon {
+      background: #f3f0ff;
+      color: #7c3aed;
+    }
+
+    .rule-row:nth-child(4) .rule-icon {
+      background: #eef8f5;
+      color: #0f766e;
+    }
+
+    .rule-row.rule-career .rule-icon {
+      background: #eef8f5;
+      color: #0f766e;
+    }
+
+    .rule-row.rule-archive .rule-icon {
+      background: #f3f0ff;
+      color: #7c3aed;
+    }
+
+    .rule-row.rule-award .rule-icon {
+      background: #fff8df;
+      color: #b77908;
+    }
+
+    .rule-row.rule-new-season .rule-icon {
+      background: #eef6ff;
+      color: #2563eb;
+    }
+
+    .rule-copy strong,
+    .rule-copy span {
+      display: block;
+    }
+
+    .rule-copy strong {
+      font-size: 11px;
+    }
+
+    .rule-copy span {
+      margin-top: 4px;
+      font-size: 9px;
+      color: #94a3b8;
+    }
+
+    .rule-tag.new {
+      background: #eef6ff;
+      color: #2563eb;
+    }
+
+    .rule-tag.archive {
+      background: #f3f0ff;
+      color: #7c3aed;
+    }
+
+    .rule-tag.keep {
+      background: #eef8f5;
+      color: #0f766e;
+    }
+
+    .current-title-bar {
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-radius: 18px;
+      color: #ffffff;
+      background: linear-gradient(135deg, #e0ae12, #f59e0b);
+      box-shadow: 0 10px 24px rgba(224, 174, 18, 0.2);
+    }
+
+    .current-title-bar span,
+    .current-title-bar strong {
+      display: block;
+    }
+
+    .current-title-bar span {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.78);
+    }
+
+    .current-title-bar strong {
+      margin-top: 5px;
+      font-size: 18px;
+    }
+
+    .current-section {
+      margin-top: 15px;
+    }
+
+    .current-section-head {
+      margin-bottom: 8px;
+      padding: 0 3px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .current-section-head strong {
+      font-size: 13px;
+    }
+
+    .current-section-head span {
+      font-size: 10px;
+      color: #94a3b8;
+    }
+
+    .current-list {
+      padding-top: 0;
+      padding-bottom: 0;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 16px;
+      background: #ffffff;
+    }
+
+    .current-row {
+      grid-template-columns: 42px minmax(0, 1fr) auto;
+      gap: 10px;
+      padding: 12px 0;
+    }
+
+    .current-icon {
+      width: 42px;
+      height: 42px;
+      background: #f1f5f9;
+      font-size: 20px;
+      opacity: 0.7;
+    }
+
+    .current-copy {
+      min-width: 0;
+    }
+
+    .current-copy strong {
+      display: block;
+      font-size: 11px;
+    }
+
+    .current-copy span {
+      display: block;
+      margin-top: 5px;
+      font-size: 9px;
+      line-height: 1.45;
+      color: #94a3b8;
+    }
+
+    .current-copy .progress-track {
+      margin-top: 8px;
+    }
+
+    .current-value {
+      font-size: 10px;
+      color: #94a3b8;
+    }
+
+    .current-value.unlocked {
+      color: #0f766e;
+      font-weight: 800;
+    }
+
+    .honor-tabs.friend {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .snapshot-state {
+      display: inline-flex;
+      margin-right: 4px;
+      font-weight: 800;
+      color: #0f766e;
+    }
+
+    .snapshot-state.incomplete {
+      color: #b45309;
+    }
+
+    .result-summary {
+      padding: 22px 18px 18px;
+      border-radius: 18px;
+      color: #ffffff;
+      background:
+        radial-gradient(circle at 10% 4%, rgba(255, 241, 191, 0.22), transparent 24%),
+        linear-gradient(135deg, #3c2b08, #946a08 58%, #c69200);
+      box-shadow: 0 14px 28px rgba(60, 43, 8, 0.2);
+      text-align: center;
+    }
+
+    .result-eyebrow {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .result-score {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .result-score strong {
+      font-size: 38px;
+      font-weight: 900;
+    }
+
+    .result-score span {
+      padding: 6px 11px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .result-players {
+      margin-top: 3px;
+      display: flex;
+      justify-content: space-around;
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+    .unlock-card {
+      position: relative;
+      margin-top: 13px;
+      padding: 19px 16px 15px;
+      overflow: hidden;
+      border: 2px solid rgba(224, 174, 18, 0.72);
+      border-radius: 18px;
+      background:
+        radial-gradient(circle at 90% 0%, rgba(224, 174, 18, 0.16), transparent 36%),
+        #ffffff;
+      box-shadow: 0 12px 28px rgba(224, 174, 18, 0.15);
+      text-align: center;
+    }
+
+    .unlock-badge {
+      width: 58px;
+      height: 58px;
+      margin: 0 auto 10px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #fff4c7, #ffe18a);
+      color: #8a6309;
+      box-shadow: 0 8px 20px rgba(224, 174, 18, 0.18);
+    }
+
+    .unlock-badge svg {
+      width: 29px;
+      height: 29px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .unlock-kicker {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: #b77908;
+    }
+
+    .unlock-title {
+      margin-top: 5px;
+      font-size: 21px;
+      font-weight: 850;
+    }
+
+    .unlock-desc {
+      margin-top: 6px;
+      font-size: 10px;
+      color: #64748b;
+    }
+
+    .unlock-reward {
+      margin-top: 12px;
+      padding: 9px;
+      border-radius: 11px;
+      background: #fff8df;
+      color: #805b08;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .unlock-action {
+      margin-top: 11px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #e0ae12, #c69200);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 800;
+      box-shadow: 0 7px 15px rgba(224, 174, 18, 0.18);
+    }
+
+    .home-indicator {
+      position: absolute;
+      bottom: 3px;
+      left: 50%;
+      width: 120px;
+      height: 4px;
+      border-radius: 999px;
+      background: #111827;
+      transform: translateX(-50%);
+      opacity: 0.88;
+    }
+
+    @media (max-width: 760px) {
+      body {
+        display: block;
+        padding: 16px;
+      }
+
+      .preview {
+        width: 100%;
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .scenario-list {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .phone {
+        height: min(878px, calc(100vh - 42px));
+      }
+    }
+
+    @media (max-width: 430px) {
+      .scenario-list {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-height: 760px) and (min-width: 761px) {
+      .phone { height: calc(100vh - 28px); }
+      body { padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="preview">
+    <aside class="scenario-panel">
+      <div class="scenario-kicker">PRODUCT REVIEW</div>
+      <h1 class="scenario-heading">荣誉墙 · 成就体系预览</h1>
+      <p class="scenario-intro">切换场景，验收本人、好友、赛季归档、自动换季与赛后奖励闭环。</p>
+      <div class="scenario-list" aria-label="预览场景">
+        <button class="scenario-button active" data-scene="career">01 · 本人荣誉墙 · 生涯成就</button>
+        <button class="scenario-button" data-scene="friend">02 · 好友荣誉墙 · 只读公开</button>
+        <button class="scenario-button" data-scene="season">03 · 当前赛季 · S3 挑战</button>
+        <button class="scenario-button" data-scene="history">04 · 历届荣誉 · 永久与快照</button>
+        <button class="scenario-button" data-scene="rollover">05 · 系统自动换季 · S4 开启</button>
+        <button class="scenario-button" data-scene="unlock">06 · 赛后奖励 · 首次解锁</button>
+      </div>
+      <div class="scenario-summary">
+        <div class="scenario-current" id="scenarioCurrent">本人荣誉墙 · 生涯成就</div>
+        <p class="scenario-description" id="scenarioDescription">生涯成就永久累计，最近三项荣誉按获得时间自动生成。</p>
+      </div>
+    </aside>
+
+    <div class="preview-stage">
+      <div class="preview-label" id="previewLabel">荣誉墙 · 推荐结构效果</div>
+      <section class="phone" aria-label="追分荣誉墙产品方案效果">
+        <div class="screen">
+          <div class="status-bar">
+            <span>9:41</span>
+            <div class="status-icons" aria-hidden="true">
+              <span class="signal"><i></i><i></i><i></i><i></i></span>
+              <span class="wifi"></span>
+              <span class="battery"></span>
+            </div>
+          </div>
+          <header class="nav">
+            <button class="nav-back" aria-label="返回">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
+            <span id="navTitle">荣誉墙</span>
+          </header>
+          <div class="content" id="phoneContent"></div>
+          <div class="home-indicator"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const icons = {
+      crown: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 4.5 4L12 4l4.5 7L21 7l-2 11H5z"/><path d="M5 18h14"/></svg>`,
+      flame: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22c4.4 0 8-3.2 8-8 0-3.2-1.8-5.9-5.2-8.5.1 2.7-1 4.3-2.2 5.4.2-3.8-2.1-6.8-5.4-8.9.2 3.5-3.2 5.5-3.2 10.2C4 17.6 7.6 22 12 22Z"/><path d="M9.5 17.8c0-1.8 1-3.2 2.8-4.6.1 1.4.7 2.3 1.4 3 .1-1 .5-1.8 1.2-2.7.8 1.1 1.1 2.1 1.1 3.2 0 2.2-1.7 3.8-3.6 3.8-1.6 0-2.9-1.1-2.9-2.7Z"/></svg>`,
+      target: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/></svg>`,
+      trophy: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H4v2a4 4 0 0 0 4 4M16 6h4v2a4 4 0 0 1-4 4M12 13v5M8 21h8M9 18h6"/></svg>`,
+      swords: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 4 7 7M3 7l4-4 6 6M20 4l-7 7M21 7l-4-4-6 6M8 14l-4 4M16 14l4 4M3 21l4-1-3-3zM21 21l-4-1 3-3z"/></svg>`,
+      medal: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="14" r="5"/><path d="m8.5 10-3-7h5L12 7l1.5-4h5l-3 7M10 14l1.2 1.2L14 12.5"/></svg>`,
+      calendar: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M8 14h3M13 14h3M8 17h3"/></svg>`,
+      archive: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM3 3h18v4H3zM9 11h6"/></svg>`,
+      infinity: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.5 8c-3.5 0-5.2 8-8.8 8A4.2 4.2 0 0 1 5.5 12a4.2 4.2 0 0 1 4.2-4c3.6 0 5.3 8 8.8 8a4.2 4.2 0 0 0 0-8Z"/></svg>`,
+      refresh: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v5h-5M4 18v-5h5"/><path d="M18.5 9A7 7 0 0 0 6.4 6.4L4 11M5.5 15A7 7 0 0 0 17.6 17.6L20 13"/></svg>`
+    }
+
+    const scenarios = {
+      career: {
+        title: '本人荣誉墙 · 生涯成就',
+        description: '生涯成就永久累计；最近三项荣誉按获得时间自动生成，不提供手动编辑。',
+        label: '荣誉墙 · 本人完整视图',
+        nav: '荣誉墙',
+        view: 'career'
+      },
+      friend: {
+        title: '好友荣誉墙 · 只读公开',
+        description: '好友只能看到装备称号、已解锁成就、最近荣誉和永久荣誉，不返回任何未完成进度。',
+        label: '荣誉墙 · 好友只读视图',
+        nav: 'TA 的荣誉墙',
+        view: 'friend'
+      },
+      season: {
+        title: '当前赛季 · S3 挑战',
+        description: '固定三项挑战按“赛季 + 球种”独立累计；完成挑战本身不发称号。',
+        label: '荣誉墙 · 当前赛季挑战',
+        nav: '荣誉墙',
+        view: 'season'
+      },
+      history: {
+        title: '历届荣誉 · 永久与快照',
+        description: '赛季和赛事称号永久保留；本人还可查看结束赛季冻结后的完成与未完成挑战。',
+        label: '荣誉墙 · 历届荣誉档案',
+        nav: '荣誉墙',
+        view: 'history'
+      },
+      rollover: {
+        title: '系统自动换季 · S4 已开启',
+        description: '这是一次性系统结果通知，不是用户切换器：S3 自动归档，S4 自动启用。',
+        label: '换季通知 · 首次查看一次',
+        nav: '赛季更新',
+        view: 'rollover'
+      },
+      unlock: {
+        title: '赛后奖励 · 首次解锁',
+        description: '只展示当前用户由本场首次触发的新成就及配对称号；无奖励时不出现空卡。',
+        label: '比赛结果 · 本场荣誉反馈',
+        nav: '比赛结果',
+        view: 'unlock'
+      }
+    }
+
+    const elements = {
+      current: document.getElementById('scenarioCurrent'),
+      description: document.getElementById('scenarioDescription'),
+      label: document.getElementById('previewLabel'),
+      navTitle: document.getElementById('navTitle'),
+      content: document.getElementById('phoneContent')
+    }
+
+    const hero = () => `
+      <section class="honor-hero">
+        <div class="hero-main">
+          <div class="hero-medal">${icons.crown}</div>
+          <div class="hero-copy">
+            <div class="hero-eyebrow">当前称号</div>
+            <div class="hero-title">不败王者</div>
+            <div class="hero-meta">好友可见 · 五连胜成就获得</div>
+          </div>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat"><strong>4/12</strong><span>生涯成就</span></div>
+          <div class="hero-stat"><strong>2</strong><span>赛季荣誉</span></div>
+          <div class="hero-stat"><strong>1</strong><span>赛事荣誉</span></div>
+        </div>
+      </section>
+    `
+
+    const tabs = (active, friend = false) => `
+      <div class="honor-tabs${friend ? ' friend' : ''}">
+        <div class="honor-tab${active === 'career' ? ' active' : ''}">生涯成就</div>
+        ${friend ? '' : `<div class="honor-tab${active === 'season' ? ' active' : ''}">当前赛季</div>`}
+        <div class="honor-tab${active === 'history' ? ' active' : ''}">历届荣誉</div>
+      </div>
+    `
+
+    const renderCareer = () => `
+      ${hero()}
+      ${tabs('career')}
+      <section class="card">
+        <div class="section-heading"><strong>最近荣誉</strong><span>按获得时间自动更新</span></div>
+        <div class="showcase-grid">
+          <div class="showcase-item"><div class="showcase-icon">${icons.flame}</div><strong>连胜猎手</strong><span>五连胜</span></div>
+          <div class="showcase-item"><div class="showcase-icon">${icons.target}</div><strong>首次清台</strong><span>炸清达成</span></div>
+          <div class="showcase-item"><div class="showcase-icon">${icons.trophy}</div><strong>赛事四强</strong><span>夏季杯</span></div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="section-heading"><strong>即将达成</strong><span>按接近度排序</span></div>
+        <div class="progress-list">
+          <div class="progress-row">
+            <div class="progress-icon">${icons.swords}</div>
+            <div class="progress-copy"><div class="progress-head"><span>初入战局</span><span>8 / 10</span></div><div class="progress-track"><div class="progress-fill" style="width:80%"></div></div><div class="progress-note">再完成 2 场有效比赛</div></div>
+          </div>
+          <div class="progress-row">
+            <div class="progress-icon">${icons.medal}</div>
+            <div class="progress-copy"><div class="progress-head"><span>十胜起步</span><span>7 / 10</span></div><div class="progress-track"><div class="progress-fill" style="width:70%"></div></div><div class="progress-note">奖励称号：胜场新星</div></div>
+          </div>
+        </div>
+      </section>
+    `
+
+    const renderFriend = () => `
+      ${hero()}
+      ${tabs('career', true)}
+      <section class="current-title-bar"><div><span>好友只读视图</span><strong>仅展示已经获得的荣誉</strong></div><b>只读</b></section>
+      <section class="current-section">
+        <div class="current-section-head"><strong>已解锁生涯成就</strong><span>未完成进度已隐藏</span></div>
+        <div class="current-list">
+          <div class="current-row"><div class="current-icon">🔥</div><div class="current-copy"><strong>连胜猎手</strong><span>完成五连胜 · 2026.07.20</span></div><div class="current-value unlocked">已解锁</div></div>
+          <div class="current-row"><div class="current-icon">🎯</div><div class="current-copy"><strong>首次清台</strong><span>首次完成炸清 · 2026.07.16</span></div><div class="current-value unlocked">已解锁</div></div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="section-heading"><strong>永久荣誉</strong><span>赛季与赛事称号</span></div>
+        <div class="history-list">
+          <div class="history-row"><div class="history-icon">${icons.crown}</div><div class="history-copy"><strong>S2 中式八球赛季前十</strong><span>最终第 8 名</span></div><div class="history-tag">赛季</div></div>
+          <div class="history-row"><div class="history-icon">${icons.trophy}</div><div class="history-copy"><strong>城市夏季杯四强</strong><span>2026.06.18</span></div><div class="history-tag">赛事</div></div>
+        </div>
+      </section>
+    `
+
+    const renderSeason = () => `
+      ${hero()}
+      ${tabs('season')}
+      <section class="season-banner">
+        <div class="season-banner-copy"><strong>S3 · 中式八球</strong><span>挑战按本赛季比赛独立统计</span></div>
+        <div class="season-days">剩余 18 天</div>
+      </section>
+      <div class="game-tabs" aria-label="球种切换">
+        <span class="game-tab active">中式八球</span><span class="game-tab">九球追分</span><span class="game-tab">斯诺克</span><span class="game-tab">美式九球</span>
+      </div>
+      <section class="card">
+        <div class="section-heading"><strong>三项固定挑战</strong><span>按当前球种隔离</span></div>
+        <div class="season-list">
+          <div class="season-row"><div class="season-icon">${icons.calendar}</div><div class="season-copy"><div class="season-head"><span>完成 20 场有效排位</span><span>12 / 20</span></div><div class="progress-track"><div class="progress-fill" style="width:60%"></div></div><div class="season-note">练习赛、平局和无效对局不计入</div></div></div>
+          <div class="season-row"><div class="season-icon">${icons.flame}</div><div class="season-copy"><div class="season-head"><span>赢得 10 场有效排位</span><span>7 / 10</span></div><div class="progress-track"><div class="progress-fill" style="width:70%"></div></div><div class="season-note">只统计当前赛季与当前球种</div></div></div>
+          <div class="season-row"><div class="season-icon">${icons.trophy}</div><div class="season-copy"><div class="season-head"><span>完成 1 场正式赛事</span><span>0 / 1</span></div><div class="progress-track"><div class="progress-fill" style="width:0%"></div></div><div class="season-note">形成有效最终名次后计入</div></div></div>
+        </div>
+        <div class="season-footnote">挑战完成只记录赛季状态，不额外发放称号；排名称号与赛事称号仍作为永久荣誉。</div>
+      </section>
+    `
+
+    const renderHistory = () => `
+      ${hero()}
+      ${tabs('history')}
+      <section class="card">
+        <div class="section-heading"><strong>永久荣誉</strong><span>赛季与赛事称号</span></div>
+        <div class="history-list">
+          <div class="history-row"><div class="history-icon">${icons.crown}</div><div class="history-copy"><strong>S2 中式八球赛季前十</strong><span>2026 春季赛 · 最终第 8 名</span></div><div class="history-tag">赛季</div></div>
+          <div class="history-row"><div class="history-icon">${icons.trophy}</div><div class="history-copy"><strong>城市夏季杯四强</strong><span>2026.06.18 · 32 人赛事</span></div><div class="history-tag">赛事</div></div>
+          <div class="history-row"><div class="history-icon">${icons.medal}</div><div class="history-copy"><strong>S1 九球追分赛季前十</strong><span>2025 冬季赛 · 最终第 6 名</span></div><div class="history-tag">赛季</div></div>
+        </div>
+      </section>
+      <section class="season-banner">
+        <div class="season-banner-copy"><strong>S2 · 中式八球挑战快照</strong><span>赛季结束后冻结，只读回看</span></div>
+        <div class="season-days">已归档</div>
+      </section>
+      <section class="card">
+        <div class="section-heading"><strong>往届挑战记录</strong><span>完成与未完成都保留</span></div>
+        <div class="season-list">
+          <div class="season-row"><div class="season-icon">${icons.calendar}</div><div class="season-copy"><div class="season-head"><span>完成 20 场有效排位</span><span>20 / 20</span></div><div class="progress-track"><div class="progress-fill" style="width:100%"></div></div><div class="season-note"><b class="snapshot-state">已完成</b>归档后不再变化</div></div></div>
+          <div class="season-row"><div class="season-icon">${icons.flame}</div><div class="season-copy"><div class="season-head"><span>赢得 10 场有效排位</span><span>8 / 10</span></div><div class="progress-track"><div class="progress-fill" style="width:80%"></div></div><div class="season-note"><b class="snapshot-state incomplete">未完成</b>最终进度仍永久保留</div></div></div>
+          <div class="season-row"><div class="season-icon">${icons.trophy}</div><div class="season-copy"><div class="season-head"><span>完成 1 场正式赛事</span><span>1 / 1</span></div><div class="progress-track"><div class="progress-fill" style="width:100%"></div></div><div class="season-note"><b class="snapshot-state">已完成</b>只读快照</div></div></div>
+        </div>
+      </section>
+    `
+
+    const renderRollover = () => `
+      <section class="rollover-notice">
+        <div class="rollover-icon">${icons.refresh}</div>
+        <div class="rollover-kicker">一次性系统通知</div>
+        <div class="rollover-title">赛季已自动更新</div>
+        <div class="rollover-desc">系统已完成 S3 结算并自动启用 S4，用户无需选择或确认切换。</div>
+        <div class="rollover-status"><span>S3 · 历史已冻结</span><span>S4 · 当前进行中</span></div>
+      </section>
+      <section class="card">
+        <div class="section-heading"><strong>本次结算结果</strong><span>所有历史仍保留</span></div>
+        <div class="rule-list">
+          <div class="rule-row rule-career"><div class="rule-icon">${icons.infinity}</div><div class="rule-copy"><strong>生涯成就 · 43 / 100 胜</strong><span>跨赛季继续累计</span></div><div class="rule-tag keep">已保留</div></div>
+          <div class="rule-row rule-archive"><div class="rule-icon">${icons.archive}</div><div class="rule-copy"><strong>S3 挑战 · 7 / 10 胜</strong><span>旧进度冻结为只读记录</span></div><div class="rule-tag archive">已归档</div></div>
+          <div class="rule-row rule-award"><div class="rule-icon">${icons.crown}</div><div class="rule-copy"><strong>S3 赛季荣誉 · 1 枚</strong><span>结算称号已进入历届荣誉</span></div><div class="rule-tag">已发放</div></div>
+          <div class="rule-row rule-new-season"><div class="rule-icon">${icons.refresh}</div><div class="rule-copy"><strong>S4 三项挑战 · 从零开始</strong><span>按新赛季与球种创建独立进度</span></div><div class="rule-tag new">已开始</div></div>
+        </div>
+      </section>
+      <div class="rollover-read-hint">本通知展示后自动标记已读，同一次换季不会重复弹出</div>
+    `
+
+    const renderUnlock = () => `
+      <section class="result-summary">
+        <div class="result-eyebrow">中式八球 · 比赛已结束</div>
+        <div class="result-score"><strong>7</strong><span>胜利</span><strong>4</strong></div>
+        <div class="result-players"><span>我</span><span>球友小林</span></div>
+      </section>
+      <section class="unlock-card">
+        <div class="unlock-badge">${icons.medal}</div>
+        <div class="unlock-kicker">新成就解锁</div>
+        <div class="unlock-title">十胜起步</div>
+        <div class="unlock-desc">由本场首次触发 · 累计赢下 10 场有效比赛</div>
+        <div class="unlock-reward">获得称号 · 胜场新星</div>
+        <div class="unlock-action">查看荣誉墙 →</div>
+      </section>
+    `
+
+    const renderers = {
+      career: renderCareer,
+      friend: renderFriend,
+      season: renderSeason,
+      history: renderHistory,
+      rollover: renderRollover,
+      unlock: renderUnlock
+    }
+
+    const renderScene = (sceneKey, updateHash = true) => {
+      const scenario = scenarios[sceneKey] || scenarios.career
+      document.querySelectorAll('.scenario-button').forEach((button) => {
+        const active = button.dataset.scene === sceneKey
+        button.classList.toggle('active', active)
+        button.setAttribute('aria-pressed', String(active))
+      })
+
+      elements.current.textContent = scenario.title
+      elements.description.textContent = scenario.description
+      elements.label.textContent = scenario.label
+      elements.navTitle.textContent = scenario.nav
+      elements.content.innerHTML = renderers[scenario.view]()
+      elements.content.scrollTop = 0
+
+      if (updateHash) history.replaceState(null, '', `#${sceneKey}`)
+    }
+
+    document.querySelectorAll('.scenario-button').forEach((button) => {
+      button.addEventListener('click', () => renderScene(button.dataset.scene))
+    })
+
+    const initialScene = scenarios[location.hash.slice(1)] ? location.hash.slice(1) : 'career'
+    renderScene(initialScene, false)
+  </script>
+</body>
+</html>

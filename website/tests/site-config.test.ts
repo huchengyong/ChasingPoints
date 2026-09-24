@@ -19,4 +19,14 @@ describe('siteConfig', () => {
   it('defaults the ICP record displayed in the site footer', () => {
     expect(siteConfig.icpRecordNumber).toBe('沪ICP备2021037913号-11')
   })
+
+  it('defaults the public security record displayed in the site footer', () => {
+    expect(siteConfig.policeRecordNumber).toBe('沪公网安备31011502406701号')
+    expect(siteConfig.policeRecordUrl).toBe(
+      'https://beian.mps.gov.cn/#/query/webSearch?code=31011502406701'
+    )
+    expect(siteConfig.policeRecordIconUrl).toBe(
+      'https://beian.mps.gov.cn/web/assets/logo01.6189a29f.png'
+    )
+  })
 })

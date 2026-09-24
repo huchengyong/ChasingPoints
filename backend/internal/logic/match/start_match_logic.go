@@ -53,6 +53,10 @@ func (l *StartMatchLogic) StartMatch(req *types.StartMatchReq) (resp *types.Star
 		l.Logger.Errorf("获取用户ID失败: %v", err)
 		return &types.StartMatchResp{Success: false, Message: "获取用户信息失败"}, nil
 	}
+	finishConfirmationRequired := req.MatchMode == model.MatchModeRanked
+	if message := normalizeStartMatchOptions(req); message != "" {
+		return &types.StartMatchResp{Success: false, Message: message}, nil
+	}
 	if message := validateStartMatchReq(userId, req); message != "" {
 		return &types.StartMatchResp{Success: false, Message: message}, nil
 	}
@@ -71,6 +75,20 @@ func (l *StartMatchLogic) StartMatch(req *types.StartMatchReq) (resp *types.Star
 	}
 	if opponentUser == nil {
 		return &types.StartMatchResp{Success: false, Message: "请选择有效的平台对手"}, nil
+	}
+
+	var challenge *model.Challenge
+	if req.ChallengeId > 0 {
+		challenge, err = l.svcCtx.ChallengeModel.FindById(req.ChallengeId)
+		if err != nil || challenge == nil {
+			return &types.StartMatchResp{Success: false, Message: "邀约不存在或已失效"}, nil
+		}
+		if challenge.Status != 1 || challenge.MatchId != nil {
+			return &types.StartMatchResp{Success: false, Message: "邀约已处理或已关联对局"}, nil
+		}
+		if challenge.GameType != req.GameType || !challengeMatchesUsers(challenge, userId, req.OpponentId) {
+			return &types.StartMatchResp{Success: false, Message: "邀约对手或球种不匹配"}, nil
+		}
 	}
 
 	var (
@@ -108,20 +126,32 @@ func (l *StartMatchLogic) StartMatch(req *types.StartMatchReq) (resp *types.Star
 		}
 
 		match := &model.Match{
-			UserId:                    userId,
-			OpponentId:                opponentId,
-			OpponentName:              req.OpponentName,
-			GameType:                  req.GameType,
-			GameMode:                  req.GameMode,
-			CurrentFrameStarted:       true,
-			CurrentFrameMyScore:       0,
-			CurrentFrameOpponentScore: 0,
-			Status:                    1, // 进行中
-			MatchTime:                 time.Now(),
+			UserId:                     userId,
+			OpponentId:                 opponentId,
+			OpponentName:               req.OpponentName,
+			GameType:                   req.GameType,
+			GameMode:                   req.GameMode,
+			SnookerRulesVersion:        req.SnookerRulesVersion,
+			BestOfFrames:               req.BestOfFrames,
+			StartingActor:              req.StartingActor,
+			MatchMode:                  req.MatchMode,
+			Visibility:                 req.Visibility,
+			FinishConfirmationRequired: finishConfirmationRequired,
+			FinishState:                model.FinishStateNone,
+			CurrentFrameStarted:        true,
+			CurrentFrameMyScore:        0,
+			CurrentFrameOpponentScore:  0,
+			Status:                     1, // 进行中
+			MatchTime:                  time.Now(),
 		}
 
 		if err := l.svcCtx.MatchModel.CreateWithTx(tx, match); err != nil {
 			return err
+		}
+		if req.ChallengeId > 0 {
+			if err := l.svcCtx.ChallengeModel.LinkAcceptedWithTx(tx, req.ChallengeId, challenge.FromUserId, challenge.ToUserId, req.GameType, match.Id); err != nil {
+				return err
+			}
 		}
 
 		if _, err := l.svcCtx.MatchModel.FindOrCreateOpponentWithTx(tx, userId, req.OpponentName, req.OpponentAvatar); err != nil {
@@ -195,7 +225,16 @@ func (l *StartMatchLogic) StartMatch(req *types.StartMatchReq) (resp *types.Star
 		Success: true,
 		Action:  startMatchActionCreated,
 		MatchId: createdMatch.Id,
+		Match:   buildCurrentMatchInfo(l.svcCtx, userId, createdMatch),
 	}, nil
+}
+
+func challengeMatchesUsers(challenge *model.Challenge, userId, opponentId int64) bool {
+	if challenge == nil || userId <= 0 || opponentId <= 0 {
+		return false
+	}
+	return (challenge.FromUserId == userId && challenge.ToUserId == opponentId) ||
+		(challenge.FromUserId == opponentId && challenge.ToUserId == userId)
 }
 
 func evaluateStartMatchDecision(
@@ -240,6 +279,57 @@ func validateStartMatchReq(userId int64, req *types.StartMatchReq) string {
 	}
 	if req.OpponentId == userId {
 		return "不能和自己发起 PK"
+	}
+	if req.GameType == 1 {
+		if req.SnookerRulesVersion == 0 {
+			req.SnookerRulesVersion = model.SnookerRulesVersionLegacy
+		}
+		switch req.SnookerRulesVersion {
+		case model.SnookerRulesVersionLegacy:
+			req.BestOfFrames = 0
+			req.StartingActor = 0
+		case model.SnookerRulesVersionWPBSA:
+			if req.BestOfFrames <= 0 || req.BestOfFrames%2 == 0 {
+				return "斯诺克总局数必须为正奇数"
+			}
+			if req.StartingActor != 1 && req.StartingActor != 2 {
+				return "请选择首局开球方"
+			}
+		default:
+			return "不支持的斯诺克规则版本"
+		}
+	} else {
+		req.SnookerRulesVersion = model.SnookerRulesVersionLegacy
+		req.BestOfFrames = 0
+		req.StartingActor = 0
+	}
+	return ""
+}
+
+func normalizeStartMatchOptions(req *types.StartMatchReq) string {
+	if req == nil {
+		return "请选择有效的平台对手"
+	}
+
+	if req.MatchMode == "" {
+		req.MatchMode = model.MatchModeRanked
+	}
+	if req.MatchMode != model.MatchModePractice && req.MatchMode != model.MatchModeRanked {
+		return "请选择有效的对局模式"
+	}
+
+	if req.Visibility == "" {
+		if req.MatchMode == model.MatchModePractice {
+			req.Visibility = model.MatchVisibilityPrivate
+		} else {
+			req.Visibility = model.MatchVisibilityPublic
+		}
+	}
+	if req.Visibility != model.MatchVisibilityPrivate && req.Visibility != model.MatchVisibilityPublic {
+		return "请选择有效的公开范围"
+	}
+	if req.MatchMode == model.MatchModeRanked && req.Visibility != model.MatchVisibilityPublic {
+		return "排位赛必须公开展示"
 	}
 	return ""
 }

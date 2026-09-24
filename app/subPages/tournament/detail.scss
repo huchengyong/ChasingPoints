@@ -231,36 +231,24 @@
 
 .story-badge {
 	flex-shrink: 0;
-	padding: 9rpx 16rpx;
-	border-radius: 999rpx;
 	font-size: 20rpx;
-	font-weight: 700;
+	font-weight: 500;
 	line-height: 1;
-	border: 1rpx solid transparent;
-	box-shadow: 0 6rpx 14rpx rgba(95, 67, 5, 0.06);
 
 	&.badge-0 {
-		background: rgba(255, 238, 184, 0.96);
 		color: #7c5b12;
-		border-color: rgba(224, 174, 18, 0.3);
 	}
 
 	&.badge-1 {
-		background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
 		color: #166534;
-		border-color: rgba(34, 197, 94, 0.2);
 	}
 
 	&.badge-2 {
-		background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
 		color: #475569;
-		border-color: rgba(148, 163, 184, 0.28);
 	}
 
 	&.badge-3 {
-		background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
 		color: #991b1b;
-		border-color: rgba(220, 38, 38, 0.18);
 	}
 }
 
@@ -297,19 +285,15 @@
 
 .player-result-tag {
 	min-width: 48rpx;
-	padding: 6rpx 14rpx;
-	border-radius: 999rpx;
 	font-size: 20rpx;
-	font-weight: 700;
+	font-weight: 500;
 	line-height: 1;
 
 	&.is-win {
-		background: rgba(224, 174, 18, 0.16);
 		color: #8a6508;
 	}
 
 	&.is-lose {
-		background: rgba(148, 163, 184, 0.16);
 		color: #64748b;
 	}
 }
@@ -497,5 +481,63 @@
 		background: #f8fafc;
 		color: #0f172a;
 		border: 1rpx solid #e2e8f0;
+	}
+}
+
+.detail-page.dark-mode {
+	background: linear-gradient(180deg, #141109 0%, #171309 40%, #141109 100%);
+
+	.hero-card,
+	.info-card,
+	.story-card,
+	.empty-state {
+		border-color: #3a2e16;
+		box-shadow: none;
+	}
+
+	.info-card,
+	.story-card,
+	.empty-state {
+		background: rgba(30, 24, 13, 0.98);
+	}
+
+	.grid-item,
+	.story-item,
+	.story-empty {
+		background: linear-gradient(180deg, #2a2110 0%, #241d0f 100%);
+		border-color: #3a2e16;
+	}
+
+	.section-title,
+	.grid-value,
+	.player-last-name,
+	.story-empty-title,
+	.empty-title {
+		color: #fff7e1;
+	}
+
+	.section-tip,
+	.grid-label,
+	.round-tip,
+	.story-meta,
+	.story-empty-text,
+	.player-first-name,
+	.loading-text,
+	.empty-text {
+		color: #9f926e;
+	}
+
+	.round-title,
+	.story-label,
+	.player-side.winner .player-first-name,
+	.player-side.winner .player-last-name {
+		color: #f7e7a8;
+	}
+
+	.story-badge.badge-2,
+	.empty-btn.secondary {
+		background: #3a2e16;
+		color: #d7c89b;
+		border-color: #4a3a1c;
 	}
 }

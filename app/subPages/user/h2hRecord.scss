@@ -177,12 +177,12 @@ $border-color-dark: #334155;
     padding-bottom: 32rpx;
 
     .badge-chip {
-        padding: 12rpx 20rpx;
-        border-radius: 999rpx;
-        background-color: $stats-bg-light;
+        display: flex;
+        align-items: center;
 
         .badge-text {
             font-size: 24rpx;
+            font-weight: 500;
             color: $text-secondary-light;
         }
     }
@@ -490,10 +490,8 @@ $border-color-dark: #334155;
         gap: 12rpx;
 
         .match-tag {
-            padding: 6rpx 14rpx;
-            border-radius: 999rpx;
-            background-color: $stats-bg-light;
             font-size: 22rpx;
+            font-weight: 500;
             color: $text-secondary-light;
         }
     }

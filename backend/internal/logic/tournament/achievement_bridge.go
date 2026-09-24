@@ -53,10 +53,27 @@ func appendTournamentProgressAndRefresh(svcCtx *svc.ServiceContext, userId int64
 		GameType:    tournament.GameType,
 		MetricKey:   metricKey,
 		MetricValue: metricValue,
+		OccurredAt:  tournamentAchievementOccurredAt(tournament, sourceType),
 	}); err != nil {
 		return err
 	}
-	return progressService.RefreshUserAchievements(userId)
+	_, err := progressService.RefreshUserAchievementsWithSource(userId, sourceType, tournament.Id)
+	return err
+}
+
+func tournamentAchievementOccurredAt(tournament *model.Tournament, sourceType string) time.Time {
+	if tournament == nil {
+		return time.Now()
+	}
+	if sourceType == achievementx.SourceTypeTournamentFinish {
+		if tournament.EndTime != nil && !tournament.EndTime.IsZero() {
+			return *tournament.EndTime
+		}
+		if tournament.EndDate != nil && !tournament.EndDate.IsZero() {
+			return *tournament.EndDate
+		}
+	}
+	return time.Now()
 }
 
 func grantTournamentRankTitle(svcCtx *svc.ServiceContext, userId int64, tournament *model.Tournament, finalRank int, participantCount int) error {

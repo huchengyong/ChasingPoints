@@ -97,9 +97,6 @@ $success: #1bb56b;
 
 .status-chip {
 	min-width: 0;
-	padding: 10rpx 16rpx;
-	border-radius: 999rpx;
-	background: $surface-light;
 	display: inline-flex;
 	align-items: center;
 	gap: 10rpx;
@@ -114,13 +111,11 @@ $success: #1bb56b;
 
 	&__text {
 		font-size: 20rpx;
-		font-weight: 600;
+		font-weight: 500;
 		color: $text-primary-light;
 	}
 
 	&.syncing {
-		background: rgba(247, 201, 72, 0.15);
-
 		.status-chip__dot {
 			background: $gold;
 			box-shadow: 0 0 0 8rpx rgba(247, 201, 72, 0.16);
@@ -163,6 +158,21 @@ $success: #1bb56b;
 	color: $gold;
 }
 
+.viewer-banner__referee {
+	display: flex;
+	align-items: center;
+	gap: 10rpx;
+	font-size: 22rpx;
+	color: $text-primary-light;
+
+	image {
+		width: 34rpx;
+		height: 34rpx;
+		border-radius: 50%;
+		background: $line-light;
+	}
+}
+
 .viewer-banner__hint {
 	font-size: 22rpx;
 	color: $text-secondary-light;
@@ -170,10 +180,6 @@ $success: #1bb56b;
 }
 
 .viewer-banner__action {
-	height: 60rpx;
-	line-height: 60rpx;
-	padding: 0 18rpx;
-	border-radius: 999rpx;
 	background: transparent;
 
 	&::after {
@@ -182,7 +188,7 @@ $success: #1bb56b;
 
 	color: $text-secondary-light;
 	font-size: 22rpx;
-	font-weight: 600;
+	font-weight: 500;
 }
 
 .readonly-panel {
@@ -494,6 +500,238 @@ $success: #1bb56b;
 	gap: 20rpx;
 }
 
+.referee-action-groups {
+	display: flex;
+	flex-direction: column;
+	gap: 28rpx;
+}
+
+.snooker-v2-layout {
+	display: flex;
+	flex-direction: column;
+	gap: 24rpx;
+}
+
+.snooker-v2-status,
+.snooker-v2-section {
+	padding: 24rpx;
+	border-radius: 24rpx;
+	background: rgba(24, 34, 45, 0.04);
+	border: 2rpx solid rgba(24, 34, 45, 0.07);
+	box-sizing: border-box;
+}
+
+.snooker-v2-status__row,
+.snooker-v2-status__target,
+.snooker-v2-status__meta {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16rpx;
+}
+
+.snooker-v2-status__target,
+.snooker-v2-status__meta {
+	margin-top: 16rpx;
+	font-size: 22rpx;
+	color: $text-secondary-light;
+}
+
+.snooker-v2-status__phase,
+.snooker-v2-section__title {
+	font-size: 26rpx;
+	font-weight: 800;
+	color: $text-primary-light;
+}
+
+.snooker-v2-status__format {
+	font-size: 20rpx;
+	color: $text-secondary-light;
+}
+
+.snooker-v2-alert {
+	display: block;
+	margin-top: 16rpx;
+	padding: 14rpx 18rpx;
+	border-radius: 16rpx;
+	background: rgba(224, 174, 18, 0.14);
+	color: #9a6f00;
+	font-size: 21rpx;
+	line-height: 1.45;
+
+	&.is-danger {
+		background: rgba(239, 68, 68, 0.12);
+		color: #b91c1c;
+	}
+}
+
+.snooker-v2-section {
+	display: flex;
+	flex-direction: column;
+	gap: 20rpx;
+}
+
+.snooker-v2-pot-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 14rpx;
+}
+
+.snooker-v2-pot {
+	margin: 0;
+	min-height: 112rpx;
+	padding: 16rpx 10rpx;
+	border-radius: 20rpx;
+	border: 2rpx solid rgba(24, 34, 45, 0.08);
+	background: #ffffff;
+	color: $text-primary-light;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 8rpx;
+	font-size: 23rpx;
+	font-weight: 700;
+	line-height: 1.2;
+	box-sizing: border-box;
+
+	&::after {
+		display: none;
+	}
+
+	&.is-red { border-color: rgba(213, 34, 34, 0.38); }
+	&.is-yellow { border-color: rgba(243, 194, 26, 0.5); }
+	&.is-green { border-color: rgba(32, 160, 92, 0.4); }
+	&.is-brown { border-color: rgba(138, 90, 52, 0.42); }
+	&.is-blue { border-color: rgba(45, 124, 244, 0.42); }
+	&.is-pink { border-color: rgba(239, 113, 178, 0.42); }
+	&.is-black { border-color: rgba(28, 35, 48, 0.5); }
+}
+
+.snooker-v2-pot__score {
+	font-size: 18rpx;
+	font-weight: 500;
+	color: $text-secondary-light;
+}
+
+.snooker-v2-actions {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 14rpx;
+
+	&.is-two {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+.snooker-v2-action {
+	margin: 0;
+	height: 80rpx;
+	line-height: 80rpx;
+	padding: 0 18rpx;
+	border-radius: 18rpx;
+	background: rgba(11, 122, 255, 0.1);
+	color: $me-primary;
+	font-size: 22rpx;
+	font-weight: 700;
+	box-sizing: border-box;
+
+	&::after {
+		display: none;
+	}
+
+	&.is-highlight {
+		background: rgba(224, 174, 18, 0.18);
+		color: #9a6f00;
+	}
+
+	&.is-danger {
+		background: rgba(239, 68, 68, 0.12);
+		color: #b91c1c;
+	}
+}
+
+.snooker-v2-field {
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+
+	&.is-counter {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+	}
+}
+
+.snooker-v2-field__label {
+	font-size: 22rpx;
+	font-weight: 700;
+	color: $text-primary-light;
+}
+
+.snooker-v2-chips,
+.snooker-v2-toggle-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12rpx;
+
+	&.is-column {
+		flex-direction: column;
+		flex-wrap: nowrap;
+	}
+}
+
+.snooker-v2-chip,
+.snooker-v2-toggle {
+	margin: 0;
+	height: 64rpx;
+	line-height: 64rpx;
+	padding: 0 20rpx;
+	border-radius: 999rpx;
+	background: rgba(24, 34, 45, 0.06);
+	color: $text-secondary-light;
+	font-size: 20rpx;
+	box-sizing: border-box;
+
+	&::after {
+		display: none;
+	}
+
+	&.active {
+		background: $me-primary;
+		color: #ffffff;
+	}
+}
+
+.snooker-v2-counter {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+
+	button {
+		margin: 0;
+		width: 64rpx;
+		height: 64rpx;
+		line-height: 64rpx;
+		padding: 0;
+		border-radius: 50%;
+		background: rgba(24, 34, 45, 0.08);
+		color: $text-primary-light;
+		font-size: 30rpx;
+
+		&::after {
+			display: none;
+		}
+	}
+
+	text {
+		min-width: 36rpx;
+		text-align: center;
+		font-size: 28rpx;
+		font-weight: 800;
+	}
+}
+
 .snooker-layout {
 	display: flex;
 	flex-direction: column;
@@ -508,28 +746,57 @@ $success: #1bb56b;
 
 .snooker-section__head {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	justify-content: space-between;
 	gap: 16rpx;
 }
 
-.snooker-red-counter {
-	padding: 10rpx 18rpx;
+.snooker-section__title-group {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 14rpx;
+}
+
+.participant-switch {
+	display: flex;
+	gap: 12rpx;
+}
+
+.participant-switch__btn {
+	margin: 0;
+	height: 64rpx;
+	line-height: 64rpx;
+	padding: 0 24rpx;
 	border-radius: 999rpx;
+	background: rgba(24, 34, 45, 0.06);
+	color: $text-secondary-light;
 	font-size: 22rpx;
 	font-weight: 700;
+	box-sizing: border-box;
+
+	&::after {
+		display: none;
+	}
+
+	&.is-active {
+		background: $me-primary;
+		color: #ffffff;
+	}
+}
+
+.snooker-red-counter {
+	font-size: 22rpx;
+	font-weight: 500;
 	line-height: 1;
 	color: #b45309;
-	background: rgba(245, 158, 11, 0.12);
 
 	&.is-warning {
 		color: #c2410c;
-		background: rgba(249, 115, 22, 0.14);
 	}
 
 	&.is-finished {
 		color: #b91c1c;
-		background: rgba(239, 68, 68, 0.14);
 	}
 }
 
@@ -725,23 +992,18 @@ $success: #1bb56b;
 .action-column__title {
 	display: inline-flex;
 	align-items: center;
-	justify-content: center;
 	align-self: flex-start;
-	padding: 8rpx 16rpx;
-	border-radius: 999rpx;
 	font-size: 20rpx;
-	font-weight: 700;
+	font-weight: 500;
 	line-height: 1;
 	letter-spacing: 1rpx;
 
 	&.is-me {
 		color: $me-primary;
-		background: rgba(11, 122, 255, 0.08);
 	}
 
 	&.is-opponent {
 		color: $opponent-primary;
-		background: rgba(255, 123, 84, 0.08);
 	}
 }
 
@@ -898,6 +1160,10 @@ $success: #1bb56b;
 		color: $text-secondary-dark;
 	}
 
+	.viewer-banner__referee {
+		color: $text-primary-dark;
+	}
+
 	.status-chip__text,
 	.player-name,
 	.panel-title,
@@ -961,6 +1227,44 @@ $success: #1bb56b;
 		border-color: rgba(11, 122, 255, 0.22);
 	}
 
+	.snooker-v2-status,
+	.snooker-v2-section {
+		background: rgba(255, 255, 255, 0.05);
+		border-color: rgba(255, 255, 255, 0.08);
+	}
+
+	.snooker-v2-status__phase,
+	.snooker-v2-section__title,
+	.snooker-v2-field__label,
+	.snooker-v2-counter text {
+		color: $text-primary-dark;
+	}
+
+	.snooker-v2-status__target,
+	.snooker-v2-status__meta,
+	.snooker-v2-status__format,
+	.snooker-v2-pot__score {
+		color: $text-secondary-dark;
+	}
+
+	.snooker-v2-pot {
+		background: rgba(255, 255, 255, 0.06);
+		color: $text-primary-dark;
+	}
+
+	.snooker-v2-chip,
+	.snooker-v2-toggle,
+	.snooker-v2-counter button {
+		background: rgba(255, 255, 255, 0.08);
+		color: $text-secondary-dark;
+	}
+
+	.snooker-v2-chip.active,
+	.snooker-v2-toggle.active {
+		background: $me-primary;
+		color: #ffffff;
+	}
+
 	.snooker-ball-btn {
 		background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(34, 50, 65, 0.94));
 		border-color: rgba(255, 255, 255, 0.06);
@@ -984,6 +1288,16 @@ $success: #1bb56b;
 		color: $text-secondary-dark;
 	}
 
+	.participant-switch__btn {
+		background: rgba(255, 255, 255, 0.08);
+		color: $text-secondary-dark;
+
+		&.is-active {
+			background: $me-primary;
+			color: #ffffff;
+		}
+	}
+
 	.snooker-red-counter {
 		color: #fdba74;
 		background: rgba(251, 146, 60, 0.14);
@@ -1002,6 +1316,45 @@ $success: #1bb56b;
 	.undo-btn {
 		background: rgba(255, 255, 255, 0.08);
 	}
+}
+
+.last-action-banner,
+.finish-confirmation-panel {
+	margin-top: 20rpx;
+	padding: 20rpx 24rpx;
+	border-radius: 18rpx;
+	background: rgba(224, 174, 18, 0.1);
+	border: 1rpx solid rgba(224, 174, 18, 0.35);
+}
+
+.last-action-banner {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	&__label { color: #a16207; font-size: 22rpx; }
+	&__text { color: #713f12; font-size: 24rpx; }
+}
+
+.finish-confirmation-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+	&__title { font-size: 28rpx; font-weight: 700; color: #713f12; }
+	&__desc { font-size: 23rpx; color: #92400e; }
+	&__actions { display: flex; flex-wrap: wrap; gap: 12rpx; }
+}
+
+.finish-action {
+	margin: 0;
+	height: 68rpx;
+	line-height: 68rpx;
+	padding: 0 24rpx;
+	border-radius: 14rpx;
+	background: #ffffff;
+	color: #92400e;
+	font-size: 24rpx;
+	&::after { display: none; }
+	&--primary { background: #e0ae12; color: #ffffff; }
 }
 
 @media (max-width: 768px) {
@@ -1039,6 +1392,16 @@ $success: #1bb56b;
 	.action-grid.is-three,
 	.jiuqiu-layout {
 		grid-template-columns: 1fr;
+	}
+
+	.snooker-v2-pot-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.snooker-v2-status__target,
+	.snooker-v2-status__meta {
+		align-items: flex-start;
+		flex-direction: column;
 	}
 
 	.snooker-stage {

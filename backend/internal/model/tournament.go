@@ -85,6 +85,12 @@ func (m *TournamentModel) FindByIdWithDB(db *gorm.DB, id int64) (*Tournament, er
 	return &tournament, err
 }
 
+func (m *TournamentModel) ListForAchievementRebuild() ([]Tournament, error) {
+	var list []Tournament
+	err := m.db.Order("id ASC").Find(&list).Error
+	return list, err
+}
+
 func (m *TournamentModel) FindByIds(ids []int64) (map[int64]Tournament, error) {
 	result := make(map[int64]Tournament, len(ids))
 	if len(ids) == 0 {
@@ -276,6 +282,12 @@ func (m *TournamentParticipantModel) FindListByTournamentId(tournamentId int64) 
 	err := m.db.Where("tournament_id = ?", tournamentId).
 		Order("seed ASC, created_at ASC, id ASC").
 		Find(&list).Error
+	return list, err
+}
+
+func (m *TournamentParticipantModel) ListForAchievementRebuild() ([]TournamentParticipant, error) {
+	var list []TournamentParticipant
+	err := m.db.Order("tournament_id ASC, created_at ASC, id ASC").Find(&list).Error
 	return list, err
 }
 

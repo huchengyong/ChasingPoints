@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -55,6 +56,7 @@ func (l *GetMatchDurationStatsLogic) GetMatchDurationStats(req *types.GetMatchDu
 			COALESCE(MAX(%[1]s), 0) AS longest_seconds,
 			COUNT(*) AS total_matches`, durationExpr)).
 		Where("(user_id = ? OR opponent_id = ?) AND status = 2 AND end_time IS NOT NULL", userIdInt, userIdInt)
+	query = query.Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", model.MatchModeRanked)
 
 	if req != nil && req.GameType > 0 {
 		query = query.Where("game_type = ?", req.GameType)

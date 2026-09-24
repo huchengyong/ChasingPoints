@@ -14,9 +14,10 @@ const (
 )
 
 var (
-	errMatchRefereeCodeInvalid = errors.New("裁判二维码已失效")
-	errMatchRefereeAlreadyBound = errors.New("本场已绑定裁判")
+	errMatchRefereeCodeInvalid     = errors.New("裁判二维码已失效")
+	errMatchRefereeAlreadyBound    = errors.New("本场已绑定裁判")
 	errMatchRefereeJoinUnavailable = errors.New("当前对局无法加入裁判")
+	errMatchRefereeFinishPending   = errors.New("本场正在等待结束确认")
 )
 
 type matchRefereeQRCodePayload struct {

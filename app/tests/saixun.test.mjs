@@ -12,6 +12,11 @@ import {
   normalizeSaiXunCard
 } from '../utils/saixun.js'
 
+test('DEFAULT_EVENT_COVER uses a bundled application asset', () => {
+  assert.equal(DEFAULT_EVENT_COVER, '/static/images/default-event-cover.png')
+  assert.equal(DEFAULT_EVENT_COVER.startsWith('http'), false)
+})
+
 test('formatEventDateRange prefers date-only output', () => {
   assert.equal(formatEventDateRange('2026-03-30', '2026-04-05'), '3月30日 - 4月5日')
   assert.equal(formatEventDateRange('2026-03-30', '2026-03-30'), '3月30日')
@@ -55,6 +60,17 @@ test('normalizeSaiXunCard maps赛事摘要并在缺失封面时回退默认值',
   assert.equal(card.matchCountText, '11 场比赛')
   assert.equal(card.sourceText, 'WST')
   assert.equal(card.coverImage, DEFAULT_EVENT_COVER)
+})
+
+test('normalizeSaiXunCard keeps a mirrored CDN cover URL', () => {
+  const coverImage = 'https://cdn.example.com/wst/tournaments/tour-cover.png'
+  const card = normalizeSaiXunCard({
+    id: 8,
+    title: 'Tour Championship 2026',
+    cover_image: coverImage
+  })
+
+  assert.equal(card.coverImage, coverImage)
 })
 
 test('localizeTournamentTitle strips sponsor prefix and keeps year for standard WST events', () => {
@@ -120,7 +136,7 @@ test('buildSaiXunDetailRounds prioritizes live and upcoming rounds while hiding 
       best_of: 19,
       home_player_name: 'Judd Trump',
       away_player_name: '待定',
-      home_player_avatar: 'https://example.com/trump.png',
+      home_player_avatar: 'https://cdn.example.com/wst/players/trump.png',
       is_placeholder: false
     },
     {
@@ -137,7 +153,7 @@ test('buildSaiXunDetailRounds prioritizes live and upcoming rounds while hiding 
   assert.equal(rounds.length, 2)
   assert.equal(rounds[0].roundName, '半决赛')
   assert.equal(rounds[1].roundName, '四分之一决赛')
-  assert.equal(rounds[0].matches[0].homePlayerAvatar, 'https://example.com/trump.png')
+  assert.equal(rounds[0].matches[0].homePlayerAvatar, 'https://cdn.example.com/wst/players/trump.png')
   assert.equal(rounds[0].matches[0].awayPlayerAvatar, DEFAULT_PLAYER_AVATAR)
   assert.equal(rounds[1].matches[0].scoreText, '10 : 8')
   assert.equal(rounds[1].matches[0].homeResultText, '胜')
