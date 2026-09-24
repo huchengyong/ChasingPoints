@@ -34,12 +34,13 @@ func newDeleteAccountTestSvc(t *testing.T) (*svc.ServiceContext, *gorm.DB) {
 			push_token TEXT NOT NULL DEFAULT '',
 			member_expires_at DATETIME,
 			hide_match_record BOOLEAN NOT NULL DEFAULT false,
+			friends_only_challenges BOOLEAN NOT NULL DEFAULT false,
 			created_at DATETIME,
 			updated_at DATETIME,
 			deleted_at DATETIME
 		);
 		CREATE TABLE user_oauth (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, provider TEXT NOT NULL, open_id TEXT NOT NULL, union_id TEXT, created_at DATETIME, UNIQUE(provider, open_id));
-		CREATE TABLE matches (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, opponent_id INTEGER, opponent_name TEXT NOT NULL DEFAULT '', referee_user_id INTEGER, completed_by_user_id INTEGER, status INTEGER NOT NULL DEFAULT 1, end_time DATETIME, finish_state TEXT NOT NULL DEFAULT '', finish_requested_by INTEGER, finish_requested_at DATETIME, finish_request_revision INTEGER NOT NULL DEFAULT 0, completion_source TEXT NOT NULL DEFAULT '', remark TEXT NOT NULL DEFAULT '', sync_revision INTEGER NOT NULL DEFAULT 0, updated_at DATETIME, deleted_at DATETIME);
+		CREATE TABLE matches (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, opponent_id INTEGER, challenge_id INTEGER UNIQUE, opponent_name TEXT NOT NULL DEFAULT '', referee_user_id INTEGER, completed_by_user_id INTEGER, status INTEGER NOT NULL DEFAULT 1, end_time DATETIME, finish_state TEXT NOT NULL DEFAULT '', finish_requested_by INTEGER, finish_requested_at DATETIME, finish_request_revision INTEGER NOT NULL DEFAULT 0, completion_source TEXT NOT NULL DEFAULT '', remark TEXT NOT NULL DEFAULT '', sync_revision INTEGER NOT NULL DEFAULT 0, updated_at DATETIME, deleted_at DATETIME);
 		CREATE TABLE social_posts (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL);
 		CREATE TABLE social_post_likes (id INTEGER PRIMARY KEY, post_id INTEGER NOT NULL, user_id INTEGER NOT NULL);
 		CREATE TABLE social_post_comments (id INTEGER PRIMARY KEY, post_id INTEGER NOT NULL, user_id INTEGER NOT NULL);
@@ -47,7 +48,7 @@ func newDeleteAccountTestSvc(t *testing.T) (*svc.ServiceContext, *gorm.DB) {
 		CREATE TABLE friend_requests (id INTEGER PRIMARY KEY, from_user_id INTEGER NOT NULL, to_user_id INTEGER NOT NULL);
 		CREATE TABLE friend_blacklists (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, blocked_user_id INTEGER NOT NULL);
 		CREATE TABLE follows (id INTEGER PRIMARY KEY, follower_id INTEGER NOT NULL, following_id INTEGER NOT NULL);
-		CREATE TABLE challenges (id INTEGER PRIMARY KEY, from_user_id INTEGER NOT NULL, to_user_id INTEGER NOT NULL);
+		CREATE TABLE challenges (id INTEGER PRIMARY KEY, from_user_id INTEGER NOT NULL, to_user_id INTEGER NOT NULL, status INTEGER NOT NULL DEFAULT 0, match_id INTEGER, expires_at DATETIME NOT NULL DEFAULT '1970-01-01', merged_into_id INTEGER, close_reason TEXT NOT NULL DEFAULT '');
 		CREATE TABLE notifications (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL);
 		CREATE TABLE user_notification_preferences (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL);
 		CREATE TABLE opponents (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, name TEXT NOT NULL DEFAULT '', avatar TEXT NOT NULL DEFAULT '', linked_user_id INTEGER);

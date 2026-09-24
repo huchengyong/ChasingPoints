@@ -161,6 +161,12 @@ const navigateByNotification = (item) => {
 		return
 	}
 
+	// 约球通知：只打开权威详情，不替用户进入或开局。
+	if (item.type === 'challenge' && data.challenge_id) {
+		uni.navigateTo({ url: `/subPages/match/challengeWaiting?challenge_id=${data.challenge_id}` })
+		return
+	}
+
 	if (item.type === 'friend_request') {
 		uni.navigateTo({ url: '/subPages/social/friendRequests' })
 	}

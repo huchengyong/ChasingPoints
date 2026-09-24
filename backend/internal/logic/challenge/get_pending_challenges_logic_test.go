@@ -29,7 +29,7 @@ func getPendingChallengeQueryCount(t *testing.T, challengeCount int) int {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&model.User{}, &model.Challenge{}); err != nil {
+	if err := db.AutoMigrate(&model.User{}, &model.Challenge{}, &model.Match{}); err != nil {
 		t.Fatalf("prepare challenge schema: %v", err)
 	}
 	users := []model.User{{Id: 1, Nickname: "我"}}
@@ -67,7 +67,7 @@ func TestGetPendingChallengesDoesNotWriteBusinessRows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&model.User{}, &model.Challenge{}); err != nil {
+	if err := db.AutoMigrate(&model.User{}, &model.Challenge{}, &model.Match{}); err != nil {
 		t.Fatalf("prepare challenge schema: %v", err)
 	}
 	now := time.Now()
@@ -96,7 +96,7 @@ func TestGetPendingChallengesReturnsLinkedMatchID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open sqlite db: %v", err)
 	}
-	if err := db.AutoMigrate(&model.User{}, &model.Challenge{}); err != nil {
+	if err := db.AutoMigrate(&model.User{}, &model.Challenge{}, &model.Match{}); err != nil {
 		t.Fatalf("prepare challenge schema: %v", err)
 	}
 	svcCtx := &svc.ServiceContext{DB: db, UserModel: model.NewUserModel(db), ChallengeModel: model.NewChallengeModel(db)}
@@ -106,9 +106,14 @@ func TestGetPendingChallengesReturnsLinkedMatchID(t *testing.T) {
 		}
 	}
 	linkedMatchID := int64(88)
+	linkedChallengeID := int64(2)
+	linkedMatch := model.Match{Id: linkedMatchID, UserId: 1001, OpponentId: pendingChallengeOpponentPtr(2002), OpponentName: "对手", GameType: 3, MatchMode: model.MatchModeRanked, Visibility: model.MatchVisibilityPublic, Status: 1, MatchTime: time.Now(), ChallengeId: &linkedChallengeID}
+	if err := db.Create(&linkedMatch).Error; err != nil {
+		t.Fatalf("create linked match: %v", err)
+	}
 	for _, challenge := range []model.Challenge{
-		{Id: 1, FromUserId: 1001, ToUserId: 2002, GameType: 3, Status: 1, ExpiresAt: time.Now().Add(time.Hour)},
-		{Id: 2, FromUserId: 1001, ToUserId: 2002, GameType: 3, Status: 1, MatchId: &linkedMatchID, ExpiresAt: time.Now().Add(time.Hour)},
+		{Id: 1, FromUserId: 1001, ToUserId: 2002, GameType: 3, Status: model.ChallengeStatusAccepted, ExpiresAt: time.Now().Add(time.Hour)},
+		{Id: 2, FromUserId: 1001, ToUserId: 2002, GameType: 3, Status: model.ChallengeStatusStarted, ExpiresAt: time.Now().Add(time.Hour)},
 	} {
 		if err := svcCtx.ChallengeModel.Create(&challenge); err != nil {
 			t.Fatalf("create challenge: %v", err)
@@ -126,4 +131,9 @@ func TestGetPendingChallengesReturnsLinkedMatchID(t *testing.T) {
 	if matchIDs[1] != 0 || matchIDs[2] != linkedMatchID {
 		t.Fatalf("unexpected challenge match ids: %#v", matchIDs)
 	}
+}
+
+func pendingChallengeOpponentPtr(value int64) *int64 {
+	copy := value
+	return &copy
 }

@@ -88,6 +88,7 @@ type MatchSyncRound struct {
 
 type MatchSyncData struct {
 	MatchId                       int64                  `json:"match_id"`
+	ChallengeId                   int64                  `json:"challenge_id,optional"`
 	Status                        int                    `json:"status"`
 	ServerRevision                int64                  `json:"server_revision"`
 	Player1Score                  int                    `json:"player1_score"`
@@ -561,8 +562,13 @@ func buildMatchSyncDataForViewer(match *model.Match, userId int64, completedRoun
 	if model.IsPoolMatchFormatGameType(match.GameType) {
 		matchFormat, targetWins, _ = model.NormalizePoolMatchFormat(match.GameType, match.MatchFormat, match.TargetWins)
 	}
+	challengeID := int64(0)
+	if match.ChallengeId != nil && *match.ChallengeId > 0 {
+		challengeID = *match.ChallengeId
+	}
 	return MatchSyncData{
 		MatchId:                       match.Id,
+		ChallengeId:                   challengeID,
 		Status:                        match.Status,
 		ServerRevision:                match.SyncRevision,
 		Player1Score:                  match.MyScore,
@@ -659,13 +665,21 @@ func resolveMatchSyncCapabilities(match *model.Match, userId int64) (string, boo
 		if match.GameType == 1 && match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA {
 			canFinish = snookerNormalFinishEligibleForSync(match)
 		}
+		pending := model.NormalizeFinishState(match.FinishState) == model.FinishStatePendingConfirmation
+		// 灵活赛制未到合法结束点时，裁判与参赛者同样不可结束（与 HTTP 快照一致）。
+		if model.IsFlexiblePoolMatch(match) && !pending && !poolNormalFinishEligibleForSync(match) {
+			canFinish = false
+		}
 		return viewerRole, refereeBound, refereeUserId, true, true, canFinish, false, false, false, false
 	}
 	mode := model.NormalizeMatchMode(match.MatchMode)
 	pending := model.NormalizeFinishState(match.FinishState) == model.FinishStatePendingConfirmation
+	// 约球创建的比赛：任一参赛方在合法结束点单方结束；非约球比赛仍不得绕过裁判。
+	challengeMatch := match.ChallengeId != nil && *match.ChallengeId > 0
 	canScore := !refereeBound && !pending
 	canUndo := !refereeBound && !pending
-	canFinish := !refereeBound && match.Status == 1 && (mode == model.MatchModePractice || !match.FinishConfirmationRequired)
+	canFinish := match.Status == 1 && !pending &&
+		((!refereeBound && (mode == model.MatchModePractice || !match.FinishConfirmationRequired)) || challengeMatch)
 	canRequestFinish := !refereeBound && match.FinishConfirmationRequired && mode == model.MatchModeRanked && !pending && match.Status == 1
 	requestedBy := resolveFinishRequestedBy(match)
 	canConfirmFinish := !refereeBound && pending && requestedBy > 0 && requestedBy != userId
@@ -675,7 +689,32 @@ func resolveMatchSyncCapabilities(match *model.Match, userId int64) (string, boo
 		canFinish = false
 		canRequestFinish = false
 	}
+	// 灵活赛制未到合法结束点时不得放行结束/发起确认（与 HTTP 快照一致）。
+	if model.IsFlexiblePoolMatch(match) && !pending && !poolNormalFinishEligibleForSync(match) {
+		canFinish = false
+		canRequestFinish = false
+	}
 	return viewerRole, refereeBound, refereeUserId, canScore, canUndo, canFinish, canRequestFinish, canConfirmFinish, canDisputeFinish, canWithdrawFinish
+}
+
+// poolNormalFinishEligibleForSync 与 logic/match 的 poolNormalFinishEligible 保持一致；
+// pkg/ws 不能反向导入 logic 层，这里按同一模型规则复算。
+func poolNormalFinishEligibleForSync(match *model.Match) bool {
+	if match == nil || !model.IsFlexiblePoolMatch(match) || match.Status != 1 {
+		return false
+	}
+	format, targetWins, ok := model.NormalizePoolMatchFormat(match.GameType, match.MatchFormat, match.TargetWins)
+	if !ok {
+		format = model.MatchFormatLegacy
+	}
+	switch format {
+	case model.MatchFormatFree:
+		return match.MyScore+match.OpponentScore >= 1
+	case model.MatchFormatRaceTo:
+		return targetWins > 0 && (match.MyScore >= targetWins || match.OpponentScore >= targetWins)
+	default:
+		return true
+	}
 }
 
 func snookerNormalFinishEligibleForSync(match *model.Match) bool {

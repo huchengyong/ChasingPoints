@@ -80,6 +80,7 @@ type Match struct {
 	FinishRequestRevision      int64          `gorm:"not null;default:0" json:"finish_request_revision"`
 	RefereeUserId              *int64         `gorm:"index" json:"referee_user_id"`
 	RefereeJoinedAt            *time.Time     `json:"referee_joined_at"`
+	ChallengeId                *int64         `gorm:"uniqueIndex:uk_matches_challenge_id" json:"challenge_id"`
 	CompletedByUserId          *int64         `gorm:"index" json:"completed_by_user_id"`
 	CompletionSource           string         `gorm:"size:20;not null;default:unknown" json:"completion_source"` // referee/player_direct/player_confirmed/unknown
 	MyScore                    int            `gorm:"not null;default:0" json:"my_score"`
@@ -291,6 +292,63 @@ func (m *MatchModel) ListCompletedPendingAchievementSync(limit int) ([]Match, er
 // FindCurrentByUserId 查找用户进行中的对局
 func (m *MatchModel) FindCurrentByUserId(userId int64) (*Match, error) {
 	return m.FindCurrentByUserIdWithTx(nil, userId)
+}
+
+// ExistsBetweenUsers 双方是否存在真实比赛记录（含已取消，排除约球未打成的情形）。
+func (m *MatchModel) ExistsBetweenUsers(userA, userB int64) (bool, error) {
+	return m.ExistsBetweenUsersWithTx(nil, userA, userB)
+}
+
+func (m *MatchModel) ExistsBetweenUsersWithTx(tx *gorm.DB, userA, userB int64) (bool, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	var count int64
+	err := db.Model(&Match{}).
+		Where("(user_id = ? AND opponent_id = ?) OR (user_id = ? AND opponent_id = ?)", userA, userB, userB, userA).
+		Limit(1).
+		Count(&count).Error
+	return count > 0, err
+}
+
+// FindIdByChallengeId 查询约球关联的比赛 ID。
+func (m *MatchModel) FindIdByChallengeId(challengeId int64) (int64, error) {
+	return m.FindIdByChallengeIdWithTx(nil, challengeId)
+}
+
+func (m *MatchModel) FindIdByChallengeIdWithTx(tx *gorm.DB, challengeId int64) (int64, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	var match Match
+	err := db.Select("id").Where("challenge_id = ?", challengeId).First(&match).Error
+	if err == gorm.ErrRecordNotFound {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return match.Id, nil
+}
+
+// ListChallengeMatchIds 批量查询约球→比赛ID映射，调用方传入有界 ID 列表。
+func (m *MatchModel) ListChallengeMatchIds(challengeIds []int64) (map[int64]int64, error) {
+	result := map[int64]int64{}
+	if len(challengeIds) == 0 {
+		return result, nil
+	}
+	var rows []Match
+	if err := m.db.Select("id, challenge_id").Where("challenge_id IN ?", challengeIds).Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		if row.ChallengeId != nil {
+			result[*row.ChallengeId] = row.Id
+		}
+	}
+	return result, nil
 }
 
 func (m *MatchModel) FindCurrentByUserIdWithTx(tx *gorm.DB, userId int64) (*Match, error) {

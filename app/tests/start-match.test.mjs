@@ -5,7 +5,6 @@ import {
   buildStartMatchPayload,
   normalizePendingMatchContext,
   normalizeStartMatchOptions,
-  validateScannedOpponentForContext,
   validateStartMatchPayload
 } from '../utils/start-match.js'
 
@@ -54,7 +53,7 @@ test('normalizeStartMatchOptions defaults practice to private and ranked to publ
   })
 })
 
-test('buildStartMatchPayload carries challenge and mode context without bypassing opponent selection', () => {
+test('buildStartMatchPayload never sends challenge_id; matches come from both players entering', () => {
   assert.deepEqual(
     buildStartMatchPayload({
       gameType: 3,
@@ -70,7 +69,6 @@ test('buildStartMatchPayload carries challenge and mode context without bypassin
       opponent_avatar: 'a.png',
       match_mode: 'practice',
       visibility: 'public',
-      challenge_id: 88,
       match_format: 'free',
       target_wins: 0
     }
@@ -90,7 +88,6 @@ test('signed invite start payload omits mutable opponent identity fields', () =>
     match_mode: 'practice',
     visibility: 'private',
     invite_token: 'signed.invite',
-    challenge_id: 88,
     match_format: 'free',
     target_wins: 0
   })
@@ -121,13 +118,9 @@ test('buildStartMatchPayload defaults new snooker matches to free format', () =>
   })
 })
 
-test('pending challenge and rematch contexts use independent required fields', () => {
+test('challenge scan context is retired; rematch contexts use independent required fields', () => {
   assert.equal(normalizePendingMatchContext('pending_match_challenge', JSON.stringify({
     challenge_id: 88,
-    opponent_id: 2001,
-    game_type: 3
-  })).valid, true)
-  assert.equal(normalizePendingMatchContext('pending_match_challenge', JSON.stringify({
     opponent_id: 2001,
     game_type: 3
   })).valid, false)
@@ -177,22 +170,18 @@ test('pending challenge and rematch contexts use independent required fields', (
   })
 })
 
-test('accepted challenge scan must match the invited opponent while payload uses its signed invite', () => {
-  const context = { context_type: 'challenge', challenge_id: 88, opponent_id: 2001, game_type: 3 }
-  assert.equal(validateScannedOpponentForContext(context, { user_id: 9999 }), '请扫描邀约中的指定对手')
-  assert.equal(validateScannedOpponentForContext(context, { user_id: 2001 }), '')
+test('scan start payload keeps the signed invite and never sends challenge_id', () => {
+  assert.equal(typeof validateScannedOpponentForContext, 'undefined')
   assert.deepEqual(buildStartMatchPayload({
-    gameType: context.game_type,
+    gameType: 3,
     opponent: { user_id: 2001, nickname: '扫码昵称', avatar: 'scan.png' },
     matchMode: 'practice',
     visibility: 'private',
-    challengeId: context.challenge_id,
     inviteToken: 'signed.invite'
   }), {
     game_type: 3,
     match_mode: 'practice',
     visibility: 'private',
-    challenge_id: 88,
     invite_token: 'signed.invite',
     match_format: 'free',
     target_wins: 0

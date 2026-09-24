@@ -2,7 +2,9 @@ package user
 
 import (
 	"context"
+	"time"
 
+	challengeLogic "chasing_points/internal/logic/challenge"
 	matchlogic "chasing_points/internal/logic/match"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
@@ -79,6 +81,37 @@ func (l *GetUserBootstrapLogic) GetUserBootstrap() (resp *types.GetUserBootstrap
 		result.PendingFriendRequestCount = int(pendingCount)
 		result.Availability["pending_friend_request_count"] = true
 	}
+
+	// 约球区块独立可用性：失败不当作无约球。
+	if l.svcCtx.ChallengeModel == nil {
+		appendBootstrapPartial(result, "current_challenge", "约球服务不可用")
+		appendBootstrapPartial(result, "challenge_received_count", "约球服务不可用")
+	} else {
+		now := time.Now()
+		summary, summaryErr := l.svcCtx.ChallengeModel.FindCurrentSummaryByUser(userID, now)
+		if summaryErr != nil {
+			appendBootstrapPartial(result, "current_challenge", "当前约球读取失败")
+		} else {
+			if summary != nil {
+				info, infoErr := challengeLogic.BuildChallengeInfoForBootstrap(l.ctx, l.svcCtx, userID, summary, now)
+				if infoErr != nil {
+					appendBootstrapPartial(result, "current_challenge", "当前约球读取失败")
+				} else {
+					result.CurrentChallenge = info
+					result.Availability["current_challenge"] = true
+				}
+			} else {
+				result.Availability["current_challenge"] = true
+			}
+		}
+		if count, countErr := l.svcCtx.ChallengeModel.CountReceivedPending(userID, now); countErr != nil {
+			appendBootstrapPartial(result, "challenge_received_count", "收到邀请数读取失败")
+		} else {
+			result.ReceivedPendingChallengeCount = int(count)
+			result.Availability["challenge_received_count"] = true
+		}
+	}
+	result.ServerTime = challengeLogic.ServerTimeNow()
 
 	if !l.svcCtx.CompetitiveReadModelsEnabled() {
 		appendBootstrapPartial(result, "competitive_revision", "竞技读模型尚未切换")

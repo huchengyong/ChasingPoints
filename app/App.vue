@@ -199,7 +199,10 @@
 				const userStore = useUserStore()
 				const expectedGeneration = userStore.authGeneration
 				const expectedLifecycleGeneration = this.sessionRecoveryLifecycle
-				const bootstrapReservation = useActivityStore().reserveBootstrap({
+				const activityStore = useActivityStore()
+				// 记录 Bootstrap 开始时的失效序号：无论走预约还是直接应用，请求期间的标脏都不能被覆盖。
+				const bootstrapStartDirtySeq = activityStore.dirtySeq
+				const bootstrapReservation = activityStore.reserveBootstrap({
 					userId: userStore.userId,
 					authGeneration: expectedGeneration
 				})
@@ -235,8 +238,11 @@
 							bootstrapReservation.apply(result.bootstrap)
 						} else {
 							bootstrapReservation?.release()
-							useActivityStore().applyBootstrap(identity, result.bootstrap)
+							activityStore.applyBootstrap(identity, result.bootstrap, { startDirtySeq: bootstrapStartDirtySeq })
 						}
+						// 应用后仍有未消费的失效标记（如请求期间的新写入）时，安排一次真正的补读：
+						// 旧批次仍在途中时 fetch 只会复用 inFlight，因此由 Store 等其结束后再读。
+						activityStore.refreshIfDirty(identity).catch(() => {})
 						if (this.bootstrapActivityReservation === bootstrapReservation) {
 							this.bootstrapActivityReservation = null
 						}
@@ -329,6 +335,9 @@
 				if (scopes.includes('leaderboard')) {
 					usePublicReadStore().invalidate('leaderboard')
 				}
+				if (scopes.includes('challenge')) {
+					useActivityStore().markDirty()
+				}
 				if (Object.prototype.hasOwnProperty.call(data, 'pending_friend_request_count')) {
 					useActivityStore().setPendingFriendRequestCount(data.pending_friend_request_count, identity)
 				}
@@ -344,7 +353,7 @@
 				if (Object.prototype.hasOwnProperty.call(data, 'unread_count')) {
 					useActivityStore().setUnreadCount(data.unread_count, identity)
 				}
-				if (data.category === 'season_rollover') {
+				if (data.category === 'season_rollover' || data.category === 'challenge') {
 					useActivityStore().markDirty()
 				}
 			},

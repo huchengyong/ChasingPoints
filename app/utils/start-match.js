@@ -55,18 +55,15 @@ export const normalizeStartMatchOptions = ({ match_mode, matchMode, visibility }
 }
 
 export const normalizePendingMatchContext = (storageKey = '', raw = '') => {
-  const type = storageKey === 'pending_match_challenge'
-    ? 'challenge'
-    : storageKey === 'pending_match_rematch'
-      ? 'rematch'
-      : ''
+  // 约球比赛由双方主动进入创建；扫码上下文仅保留重赛（rematch）。
+  const type = storageKey === 'pending_match_rematch' ? 'rematch' : ''
   if (!type || !raw) return { valid: false, context: null, message: '开局信息已失效' }
 
   let parsed
   try {
     parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
   } catch {
-    return { valid: false, context: null, message: type === 'challenge' ? '邀约开局信息已失效' : '重赛信息已失效' }
+    return { valid: false, context: null, message: '重赛信息已失效' }
   }
 
   const context = {
@@ -89,20 +86,12 @@ export const normalizePendingMatchContext = (storageKey = '', raw = '') => {
     context.match_format = 'free'
     context.target_wins = 0
   }
-  const valid = context.opponent_id > 0 && context.game_type > 0 && (type !== 'challenge' || context.challenge_id > 0)
+  const valid = context.opponent_id > 0 && context.game_type > 0
   return {
     valid,
     context: valid ? context : null,
-    message: valid ? '' : type === 'challenge' ? '邀约开局信息不完整' : '重赛信息不完整'
+    message: valid ? '' : '重赛信息不完整'
   }
-}
-
-export const validateScannedOpponentForContext = (context = {}, scannedOpponent = {}) => {
-  if (context.context_type !== 'challenge') return ''
-  const expectedId = Number(context.opponent_id || 0)
-  const scannedId = Number(scannedOpponent.id || scannedOpponent.user_id || scannedOpponent.opponent_id || 0)
-  if (expectedId > 0 && scannedId !== expectedId) return '请扫描邀约中的指定对手'
-  return ''
 }
 
 export const buildStartMatchPayload = ({
@@ -110,7 +99,6 @@ export const buildStartMatchPayload = ({
   opponent = {},
   matchMode = 'ranked',
   visibility,
-  challengeId = 0,
   inviteToken = ''
 } = {}) => {
   const options = normalizeStartMatchOptions({ matchMode, visibility })
@@ -126,7 +114,6 @@ export const buildStartMatchPayload = ({
     payload.opponent_name = opponent.nickname || opponent.name || opponent.opponent_name || '对手'
     payload.opponent_avatar = opponent.avatar || opponent.opponent_avatar || ''
   }
-  if (Number(challengeId) > 0) payload.challenge_id = Number(challengeId)
   if (payload.game_type === 1) {
     payload.snooker_rules_version = 2
     payload.snooker_format = 'free'

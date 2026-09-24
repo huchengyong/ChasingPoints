@@ -52,8 +52,12 @@ func (l *FinishMatchLogic) finishMatchImmediately(req *types.FinishMatchReq, for
 		l.Logger.Errorf("对局不存在: %v", err)
 		return &types.FinishMatchResp{Success: false}, nil
 	}
-	// 验证用户权限
+	// 验证用户权限；约球创建的比赛放宽参赛方单方结束（裁判接管也只放宽结束）。
+	challengeFinisher := isChallengeFinisher(match, userId)
 	_, authorityErr := validateMatchWriteAuthority(match, userId)
+	if authorityErr != nil && challengeFinisher && authorityErr == errMatchWriteForbiddenByReferee {
+		authorityErr = nil
+	}
 	if authorityErr != nil {
 		if authorityErr == errMatchViewerNotParticipant {
 			l.Logger.Errorf("用户不是对局参与者: matchUserId=%d, matchOpponentId=%v, refereeUserId=%v, currentUserId=%d",
@@ -96,16 +100,21 @@ func (l *FinishMatchLogic) finishMatchImmediately(req *types.FinishMatchReq, for
 			l.awardMemberGrowthForMatch(match.Id, match.UserId, match.OpponentId)
 		}
 		l.syncAchievementProgressForCompletedMatch(match)
+		// 幂等重放补发失效事件：首次提交后的通知可能因快照失败而漏发。
+		result := 3
+		if match.Result != nil {
+			result = *match.Result
+		}
+		broadcastRankInfoUpdated(match, result)
+		broadcastUserDataUpdated(match, result, nil)
 		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
 		if stateErr != nil {
 			l.Logger.Errorf("加载重放快照失败: matchId=%d, clientActionId=%s, err=%v", match.Id, req.ClientActionId, stateErr)
 			return &types.FinishMatchResp{Success: false, Accepted: false}, nil
 		}
 		scoreView := buildMatchWriteScoreView(userId, match)
-		result := 3
-		if match.Result != nil {
-			result = *match.Result
-		}
+		// 合法重放补发比赛终态广播：首次提交后可能因快照失败漏发 match_end。
+		broadcastMatchEnd(match, result, view.Snapshot)
 		return &types.FinishMatchResp{
 			Accepted:       true,
 			Success:        true,
@@ -214,12 +223,32 @@ func (l *FinishMatchLogic) finishMatchImmediately(req *types.FinishMatchReq, for
 				result = *replayState.Match.Result
 			}
 			if replayState.ExistingAction != nil {
-				if replayState.Match != nil {
-					if model.NormalizeMatchMode(replayState.Match.MatchMode) == model.MatchModeRanked {
-						l.awardMemberGrowthForMatch(replayState.Match.Id, replayState.Match.UserId, replayState.Match.OpponentId)
-					}
-					l.syncAchievementProgressForCompletedMatch(replayState.Match)
+				if replayState.Match == nil ||
+					replayState.ExistingAction.ActionType != "match_end" ||
+					replayState.ExistingAction.Actor != resolveFinishActionActor(replayState.Match, userId) ||
+					replayState.ExistingAction.BaseRevision != req.BaseRevision ||
+					replayState.Match.Status != 2 {
+					// 只有已提交的结束动作才能报告结束成功并广播终态；
+					// 幂等键被其他操作（如记局）占用时按普通冲突返回。
+					return &types.FinishMatchResp{
+						Accepted:       false,
+						Success:        false,
+						Result:         result,
+						ClientActionId: req.ClientActionId,
+						ServerRevision: replayState.View.Snapshot.ServerRevision,
+						Snapshot:       replayState.View.Snapshot,
+						MyScore:        scoreView.MyScore,
+						OpponentScore:  scoreView.OpponentScore,
+					}, nil
 				}
+				if model.NormalizeMatchMode(replayState.Match.MatchMode) == model.MatchModeRanked {
+					l.awardMemberGrowthForMatch(replayState.Match.Id, replayState.Match.UserId, replayState.Match.OpponentId)
+				}
+				l.syncAchievementProgressForCompletedMatch(replayState.Match)
+				// 幂等重放补发失效事件：首次提交后的通知可能因快照失败而漏发。
+				broadcastRankInfoUpdated(replayState.Match, result)
+				broadcastUserDataUpdated(replayState.Match, result, nil)
+				broadcastMatchEnd(replayState.Match, result, replayState.View.Snapshot)
 				return &types.FinishMatchResp{
 					Accepted:       true,
 					Success:        true,
@@ -253,18 +282,7 @@ func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, user
 	if model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked {
 		l.applyMatchReputation(match)
 	}
-	view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
-	if stateErr != nil {
-		l.Logger.Errorf("加载写入快照失败: matchId=%d, clientActionId=%s, err=%v", match.Id, req.ClientActionId, stateErr)
-		return &types.FinishMatchResp{Success: false, Accepted: false}, nil
-	}
-	if model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked {
-		l.awardMemberGrowthForMatch(match.Id, match.UserId, match.OpponentId)
-	}
-	l.syncAchievementProgressForCompletedMatch(match)
-
-	l.Logger.Infof("用户 %d 结束对局 %d，比分: %d:%d，结果: %d",
-		userId, match.Id, match.MyScore, match.OpponentScore, result)
+	// 失效与排名广播紧跟已提交的事务结果：响应快照组装失败也不能漏发。
 	broadcastRankInfoUpdated(match, result)
 	broadcastUserDataUpdated(match, result, competitiveRevisions)
 	l.invalidateCompetitiveSharedReads(match, result, seasonID)
@@ -314,27 +332,38 @@ func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, user
 			}
 		}
 	}
+	if model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked {
+		l.awardMemberGrowthForMatch(match.Id, match.UserId, match.OpponentId)
+	}
+	l.syncAchievementProgressForCompletedMatch(match)
 
+	l.Logger.Infof("用户 %d 结束对局 %d，比分: %d:%d，结果: %d",
+		userId, match.Id, match.MyScore, match.OpponentScore, result)
+	view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
+	if stateErr != nil {
+		// 快照组装失败只降级响应细节：结算已提交、通知已送达，
+		// 终态广播与响应快照改用比赛对象上的权威字段兑底，不再返回假零值。
+		l.Logger.Errorf("加载写入快照失败: matchId=%d, clientActionId=%s, err=%v", match.Id, req.ClientActionId, stateErr)
+		fallback := degradedMatchEndSnapshot(match)
+		// 降级快照也要按访问者视角携带真实比分与完成归因，避免客户端比分被覆盖为 0:0。
+		snapshot := degradedMatchWriteSnapshot(match, userId, resolveCompletedByUserId(match), resolveCompletionSource(match), fallback)
+		broadcastMatchEnd(match, result, fallback)
+		scoreView := buildMatchWriteScoreView(userId, match)
+		return &types.FinishMatchResp{
+			Accepted:       true,
+			Success:        true,
+			Result:         result,
+			ClientActionId: req.ClientActionId,
+			ServerRevision: fallback.ServerRevision,
+			Snapshot:       snapshot,
+			MyScore:        scoreView.MyScore,
+			OpponentScore:  scoreView.OpponentScore,
+		}, nil
+	}
 	if ws.GlobalHub != nil {
 		l.Logger.Infof("广播对局结束: matchId=%d, result=%d, player1=%d, player2=%d",
 			match.Id, result, match.MyScore, match.OpponentScore)
-		ws.GlobalHub.BroadcastToMatch(match.Id, &ws.Message{
-			Type: "match_end",
-			Data: map[string]interface{}{
-				"match_id":                match.Id,
-				"server_revision":         view.Snapshot.ServerRevision,
-				"my_score":                match.MyScore,
-				"opponent_score":          match.OpponentScore,
-				"player1_score":           match.MyScore,
-				"player2_score":           match.OpponentScore,
-				"status":                  match.Status,
-				"result":                  result,
-				"match_mode":              model.NormalizeMatchMode(match.MatchMode),
-				"match_format":            view.Snapshot.MatchFormat,
-				"target_wins":             view.Snapshot.TargetWins,
-				"can_change_match_format": view.Snapshot.CanChangeMatchFormat,
-			},
-		})
+		broadcastMatchEnd(match, result, view.Snapshot)
 	}
 
 	scoreView := buildMatchWriteScoreView(userId, match)
@@ -350,11 +379,108 @@ func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, user
 	}, nil
 }
 
+// degradedMatchEndSnapshot 快照组装失败时，match_end 与响应仍携带比赛对象上的权威字段，
+// 避免终态广播缺失或假零值覆盖客户端比分；未读取到的细节（如局数、斯诺克局面）才留空。
+func degradedMatchEndSnapshot(match *model.Match) types.MatchSyncSnapshot {
+	if match == nil {
+		return types.MatchSyncSnapshot{}
+	}
+	// 与权威快照同源组装：所有只依赖比赛对象的字段统一填充，避免逐字段补丁继续遗漏。
+	snookerFormat, snookerTargetWins := normalizedSnookerFormat(match)
+	matchFormat, targetWins := normalizedPoolMatchFormat(match)
+	snapshot := types.MatchSyncSnapshot{
+		MatchId:                   match.Id,
+		ServerRevision:            match.SyncRevision,
+		Status:                    match.Status,
+		MatchMode:                 model.NormalizeMatchMode(match.MatchMode),
+		Visibility:                model.NormalizeMatchVisibility(match.Visibility, match.MatchMode),
+		FinishState:               model.NormalizeFinishState(match.FinishState),
+		FinishRequestedBy:         resolveFinishRequestedBy(match),
+		MyScore:                   match.MyScore,
+		OpponentScore:             match.OpponentScore,
+		CurrentFrameStarted:       match.CurrentFrameStarted,
+		CurrentFrameMyScore:       match.CurrentFrameMyScore,
+		CurrentFrameOpponentScore: match.CurrentFrameOpponentScore,
+		SnookerRulesVersion:       match.SnookerRulesVersion,
+		BestOfFrames:              match.BestOfFrames,
+		SnookerFormat:             snookerFormat,
+		SnookerTargetWins:         snookerTargetWins,
+		MatchFormat:               matchFormat,
+		TargetWins:                targetWins,
+		StartingActor:             match.StartingActor,
+	}
+	if match.ChallengeId != nil {
+		snapshot.ChallengeId = challengeIdOf(match)
+	}
+	return snapshot
+}
+
+// degradedMatchWriteSnapshot 在降级快照上补齐访问者视角与完成归因：与权威快照同源，
+// 未读取到的细节才留空。调用方提供 userId 与已提交的完成信息。
+func degradedMatchWriteSnapshot(match *model.Match, userId int64, completedBy int64, source string, fallback types.MatchSyncSnapshot) types.MatchSyncSnapshot {
+	if match == nil {
+		return fallback
+	}
+	capabilities := resolveMatchViewerCapabilities(match, userId)
+	snapshot := fallback
+	snapshot.ViewerRole = capabilities.ViewerRole
+	snapshot.RefereeBound = capabilities.RefereeBound
+	snapshot.RefereeUserId = capabilities.RefereeUserId
+	// 访问者视角比分来自比赛对象：player1 视角即原存储方向。
+	snapshot.MyScore = match.MyScore
+	snapshot.OpponentScore = match.OpponentScore
+	snapshot.CurrentFrameMyScore = match.CurrentFrameMyScore
+	snapshot.CurrentFrameOpponentScore = match.CurrentFrameOpponentScore
+	if capabilities.ViewerRole == matchViewerRolePlayer2 {
+		snapshot.MyScore = match.OpponentScore
+		snapshot.OpponentScore = match.MyScore
+		snapshot.CurrentFrameMyScore = match.CurrentFrameOpponentScore
+		snapshot.CurrentFrameOpponentScore = match.CurrentFrameMyScore
+	}
+	if match.Status == 2 {
+		if completedBy > 0 {
+			snapshot.CompletedByUserId = completedBy
+		}
+		if source != "" {
+			snapshot.CompletionSource = source
+		}
+	}
+	return snapshot
+}
+
+// broadcastMatchEnd 向比赛房间发送/补发终态消息；快照由调用方提供。
+func broadcastMatchEnd(match *model.Match, result int, snapshot types.MatchSyncSnapshot) {
+	if ws.GlobalHub == nil || match == nil {
+		return
+	}
+	ws.GlobalHub.BroadcastToMatch(match.Id, &ws.Message{
+		Type: "match_end",
+		Data: map[string]interface{}{
+			"match_id":                match.Id,
+			"server_revision":         snapshot.ServerRevision,
+			"my_score":                match.MyScore,
+			"opponent_score":          match.OpponentScore,
+			"player1_score":           match.MyScore,
+			"player2_score":           match.OpponentScore,
+			"status":                  match.Status,
+			"result":                  result,
+			"match_mode":              model.NormalizeMatchMode(match.MatchMode),
+			"match_format":            snapshot.MatchFormat,
+			"target_wins":             snapshot.TargetWins,
+			"can_change_match_format": snapshot.CanChangeMatchFormat,
+		},
+	})
+}
+
 func broadcastUserDataUpdated(match *model.Match, result int, competitiveRevisions map[int64]int64) {
 	if match == nil {
 		return
 	}
 	scopes := []string{"history", "h2h", "opponents"}
+	if match.ChallengeId != nil && *match.ChallengeId > 0 {
+		// 约球比赛终态已在同一事务同步结束关联约球，双方主 Tab 活动卡需要失效。
+		scopes = append(scopes, "challenge")
+	}
 	if result != 3 && model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked {
 		scopes = append(scopes, "rank", "stats", "honor", "season", "leaderboard")
 	}
@@ -466,18 +592,25 @@ func (l *FinishMatchLogic) settleMatchWithCompletionSourceTx(tx *gorm.DB, match 
 	match.CompletedAt = &now
 	clearFinishRequest(match)
 
-	// 写入完成归因
+	// 比赛正常完成同步结束关联约球（仅本场比赛，条件更新不触碰其他约球）。
+	if match.ChallengeId != nil && *match.ChallengeId > 0 {
+		if _, err := l.svcCtx.ChallengeModel.MarkCompletedByMatchIdWithTx(tx, *match.ChallengeId); err != nil {
+			return finishMatchSettlement{}, err
+		}
+	}
+
+	// 写入完成归因：记录实际完成人；仅绑定裁判本人结束时才记为裁判完成。
 	if match.CompletedByUserId == nil {
-		completedBy := &userId
+		completedBy := userId
 		source := completionSource
-		if match.RefereeUserId != nil && *match.RefereeUserId > 0 {
-			completedBy = match.RefereeUserId
-			source = model.CompletionSourceReferee
-		}
 		if source == "" {
-			source = model.CompletionSourcePlayerDirect
+			if match.RefereeUserId != nil && *match.RefereeUserId > 0 && *match.RefereeUserId == userId {
+				source = model.CompletionSourceReferee
+			} else {
+				source = model.CompletionSourcePlayerDirect
+			}
 		}
-		match.CompletedByUserId = completedBy
+		match.CompletedByUserId = &completedBy
 		match.CompletionSource = source
 	}
 	if match.GameType == 1 {

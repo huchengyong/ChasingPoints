@@ -42,7 +42,8 @@ func (l *GetUserPrivacyLogic) GetUserPrivacy() (resp *types.GetUserPrivacyResp, 
 	}
 
 	return &types.GetUserPrivacyResp{
-		Success:         true,
-		HideMatchRecord: user.HideMatchRecord,
+		Success:               true,
+		HideMatchRecord:       user.HideMatchRecord,
+		FriendsOnlyChallenges: user.FriendsOnlyChallenges,
 	}, nil
 }

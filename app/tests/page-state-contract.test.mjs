@@ -46,7 +46,7 @@ const PAGE_LOADERS = {
   'subPages/social/myPosts.vue': 'loadPosts',
   'subPages/social/friendList.vue': 'loadData',
   'subPages/social/friendRequests.vue': 'loadData',
-  'subPages/social/challenges.vue': 'fetchList',
+  'subPages/social/challenges.vue': 'fetchActiveList',
   'subPages/social/addFriend.vue': 'doSearch',
   'subPages/social/friendHomepage.vue': 'loadData',
   'subPages/social/pkReport.vue': 'loadData',

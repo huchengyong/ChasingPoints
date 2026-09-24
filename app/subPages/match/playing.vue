@@ -510,8 +510,29 @@
 				>
 					开始下一局
 				</button>
-				<button v-if="viewerUi.showFinishButton" class="footer-btn btn-primary full-width" @click="handleFinishMatch">{{ finishButtonLabel }}</button>
-				<button v-if="viewerUi.showFinishRequestButton" class="footer-btn btn-primary full-width" @click="handleRequestFinish">{{ finishRequestButtonLabel }}</button>
+				<view
+					v-if="isChallengeMatchFinishSlider"
+					class="finish-slider"
+					:class="{ committed: slideCommitted }"
+				>
+					<view
+						class="finish-slider-thumb"
+						:class="{ dragging: slideDragging }"
+						:style="{ transform: `translateX(${slideThumbOffsetPx}px)` }"
+						tabindex="0"
+						@touchstart="handleSlideTouchStart"
+						@touchmove.stop.prevent="handleSlideTouchMove"
+						@touchend="handleSlideTouchEnd"
+						@touchcancel="handleSlideTouchCancel"
+						@mousedown="handleSlideMouseDown"
+						@keydown="handleSlideKeydown"
+					>
+						<text>→</text>
+					</view>
+					<text class="finish-slider-track-label">向右滑动结束对局 ››</text>
+				</view>
+				<button v-if="!isChallengeMatchFinishSlider && viewerUi.showFinishButton" class="footer-btn btn-primary full-width" @click="handleFinishMatch">{{ finishButtonLabel }}</button>
+				<button v-if="!isChallengeMatchFinishSlider && viewerUi.showFinishRequestButton" class="footer-btn btn-primary full-width" @click="handleRequestFinish">{{ finishRequestButtonLabel }}</button>
 			</view>
 			<button v-if="viewerUi.showUndoButton" class="undo-btn" @click="handleUndo">撤销</button>
 		</view>
@@ -547,8 +568,10 @@ import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { onHide, onLoad, onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { useRankStore } from '@/store/rank.js'
+import { useActivityStore } from '@/store/activity.js'
 import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import { matchScore, endRound, startNextRound, matchFoul, matchUndo, finishMatch, requestFinishMatch, confirmFinishMatch, disputeFinishMatch, withdrawFinishMatch, getMatchDetail, getCurrentMatch, getMatchRefereeQRCode, snookerStroke, snookerFrameAction, updateSnookerFormat, updateMatchFormat } from '@/api/match.js'
+import { isSlideFinishKey, isSlideResetKey, shouldCommitOnRelease, slideProgress } from '@/utils/slide-to-confirm.js'
 import { consumeResultNavigationGuard, getMatchHistoryPageUrl, getMatchHistoryTabUrl, shouldLeavePlayingPage } from '@/utils/match-navigation.js'
 import { buildMatchActionPayload } from '@/utils/match-action.js'
 import { renderLocalQRCode } from '@/utils/local-qrcode.js'
@@ -606,6 +629,7 @@ import {
 // ========== 状态管理 ==========
 const userStore = useUserStore()
 const rankStore = useRankStore()
+const activityStore = useActivityStore()
 
 // ========== 响应式数据 ==========
 const matchId = ref(null)
@@ -665,6 +689,12 @@ const canConfirmFinish = ref(false)
 const canDisputeFinish = ref(false)
 const canWithdrawFinish = ref(false)
 const finishState = ref('none')
+// 约球创建的比赛：滑动结束（单方完成，无二次确认）。
+const challengeId = ref(0)
+const slideProgressRatio = ref(0)
+const slideDragging = ref(false)
+const slideCommitted = ref(false)
+const SLIDE_THRESHOLD = 0.98
 const finishRequestedBy = ref(0)
 const lastAction = ref(null)
 const showRefereeQrModal = ref(false)
@@ -1123,6 +1153,9 @@ const loadMatchInfo = async () => {
 			if (res.match) {
 				// 设置视角标识
 				isPlayer1.value = res.match.is_player1
+				if (res.match.challenge_id !== undefined) {
+					challengeId.value = Number(res.match.challenge_id) || 0
+				}
 				applyViewerCapabilities(res.match)
 				updateServerRevision(res.match.server_revision)
 				
@@ -1455,9 +1488,134 @@ const saveMatchFormat = async () => {
 	}
 }
 
+// ========== 滑动结束（约球比赛） ==========
+const isChallengeMatchFinishSlider = computed(() => challengeId.value > 0 && viewerUi.value.showFinishButton && !viewerUi.value.showFinishRequestButton)
+const slideTrackMaxPx = ref(0)
+const slideThumbOffsetPx = computed(() => Math.round(slideProgressRatio.value * slideTrackMaxPx.value))
+
+const resetSlide = () => {
+	slideProgressRatio.value = 0
+	slideDragging.value = false
+}
+
+const commitSlide = () => {
+	if (slideCommitted.value) return
+	slideCommitted.value = true
+	executeChallengeSlideFinish().finally(() => {
+		slideCommitted.value = false
+		slideProgressRatio.value = 0
+		slideDragging.value = false
+	})
+}
+
+const measureSlideTrack = () => {
+	// 轨道与滑块一次排队、一次执行；同一条件查询链上嵌套 exec 会反复回调自身。
+	const query = uni.createSelectorQuery()
+	query.select('.finish-slider').boundingClientRect()
+	query.select('.finish-slider-thumb').boundingClientRect()
+	query.exec((results) => {
+		const [trackRect, thumbRect] = results || []
+		if (!trackRect || !thumbRect || !trackRect.width || !thumbRect.width) return
+		slideTrackMaxPx.value = Math.max(trackRect.width - thumbRect.width, 1)
+	})
+}
+
+const updateSlideFromX = (clientX) => {
+	if (slideTrackMaxPx.value <= 0) {
+		measureSlideTrack()
+		return
+	}
+	// 进度 = 手指自起点位移 / 可拖动距离；只有从滑块起点开始拖动才可能到达终点。
+	slideProgressRatio.value = slideProgress(clientX - slideDragStartX.value, slideTrackMaxPx.value)
+}
+
+const slideDragStartX = ref(0)
+
+const handleSlideTouchStart = (event) => {
+	const touch = event?.touches?.[0] || event?.changedTouches?.[0]
+	if (!touch) return
+	slideDragStartX.value = touch.clientX
+	slideDragging.value = true
+	measureSlideTrack()
+}
+const handleSlideTouchMove = (event) => {
+	if (!slideDragging.value) return
+	const touch = event?.touches?.[0] || event?.changedTouches?.[0]
+	if (!touch) return
+	updateSlideFromX(touch.clientX)
+}
+const handleSlideTouchEnd = () => {
+	if (!slideDragging.value) return
+	slideDragging.value = false
+	if (shouldCommitOnRelease(slideProgressRatio.value, 1)) {
+		commitSlide()
+	} else {
+		slideProgressRatio.value = 0
+	}
+}
+const handleSlideTouchCancel = () => resetSlide()
+
+let slideMouseActive = false
+const handleSlideMouseDown = (event) => {
+	if (slideMouseActive) return
+	if (typeof document === 'undefined') return
+	slideMouseActive = true
+	slideDragStartX.value = event.clientX
+	slideDragging.value = true
+	measureSlideTrack()
+	const move = (moveEvent) => {
+		updateSlideFromX(moveEvent.clientX)
+	}
+	const up = (upEvent) => {
+		document.removeEventListener('mousemove', move)
+		document.removeEventListener('mouseup', up)
+		slideMouseActive = false
+		slideDragging.value = false
+		if (shouldCommitOnRelease(slideProgressRatio.value, 1)) {
+			commitSlide()
+		} else {
+			slideProgressRatio.value = 0
+		}
+	}
+	document.addEventListener('mousemove', move)
+	document.addEventListener('mouseup', up)
+}
+
+const handleSlideKeydown = (event) => {
+	const key = event?.key || ''
+	if (isSlideFinishKey(key)) {
+		slideProgressRatio.value = 1
+		commitSlide()
+	} else if (isSlideResetKey(key)) {
+		resetSlide()
+	}
+}
+
+const executeChallengeSlideFinish = async () => {
+	if (gameType.value === 1) {
+		const finishAction = resolveSnookerFinishMatchAction({
+			currentFrameStarted: currentFrameStarted.value,
+			myFrameScore: currentFrameMyScore.value,
+			opponentFrameScore: currentFrameOpponentScore.value
+		})
+		if (finishAction.action === 'blocked') {
+			uni.showToast({ title: finishAction.message, icon: 'none' })
+			return
+		}
+		if (finishAction.action === 'settle_and_finish_match') {
+			await executeFinishMatch(finishAction)
+			return
+		}
+	}
+	await executeFinishMatch({ action: 'finish_match' })
+}
+
 const applyMatchSnapshot = (snapshot = {}) => {
 	if (!snapshot || typeof snapshot !== 'object') {
 		return
+	}
+	if (snapshot.challenge_id !== undefined) {
+		challengeId.value = Number(snapshot.challenge_id) || 0
 	}
 	applyViewerCapabilities(snapshot)
 	if (snapshot.match_mode) matchMode.value = snapshot.match_mode
@@ -1704,6 +1862,10 @@ const handleSync = (data) => {
 		return
 	}
 	applyViewerCapabilities(data)
+	if (data.challenge_id !== undefined) {
+		// 同步快照携带权威来源约球 ID：与 HTTP 快照保持一致，避免滑动结束入口丢失。
+		challengeId.value = Number(data.challenge_id) || 0
+	}
 	if (data.match_mode) matchMode.value = data.match_mode
 	updateServerRevision(data?.server_revision)
 	applyServerScores(data.player1_score, data.player2_score)
@@ -1766,6 +1928,7 @@ const handleMatchEnd = (data) => {
 		applyServerScores(data.player1_score, data.player2_score)
 	}
 	invalidateRankAfterSettlement(data)
+	activityStore.markDirty()
 	updateServerRevision(data?.server_revision)
 	pageLog('收到对局结束消息', {
 		matchId: data.match_id,
@@ -2428,6 +2591,8 @@ const handleWithdrawFinish = async () => {
 			}
 			applyWriteResponse(res)
 			invalidateRankAfterSettlement(res)
+			// 比赛终态已同步结束关联约球：本机立即失效活动卡，不等 TTL 或另一端事件。
+			activityStore.markDirty()
 			hideSyncLoading()
 			pendingFinishAction.value = null
 			pageLog('结束对局HTTP成功', { matchId: matchId.value })
@@ -2510,9 +2675,11 @@ const handleBack = () => {
  * 显示菜单
  */
 const showMenu = () => {
+	const challengeSlider = isChallengeMatchFinishSlider.value
 	uni.showActionSheet({
-		itemList: ['对局设置', isSnookerV2.value ? '认输整场比赛' : '放弃对局'],
+		itemList: challengeSlider ? ['对局设置'] : ['对局设置', isSnookerV2.value ? '认输整场比赛' : '放弃对局'],
 		success: (res) => {
+			if (challengeSlider) return
 			if (res.tapIndex === 1) {
 				if (isSnookerV2.value) {
 					handleOfferSnookerConcession('match')

@@ -87,7 +87,10 @@
 				</view>
 			</view>
 
-			<button v-if="showH2H" class="h2h-entry-button" @tap="handleOpenH2H">查看双方交锋记录</button>
+			<view class="detail-entry-row" v-if="showH2H || showRematch">
+				<button v-if="showH2H" class="h2h-entry-button" @tap="handleOpenH2H">查看双方交锋记录</button>
+				<button v-if="showRematch" class="h2h-entry-button rematch-button" @tap="handleRematch">再约一场</button>
+			</view>
 
 			<!-- 局记录列表 -->
 			<view class="round-history">
@@ -215,6 +218,13 @@ const refereeCard = computed(() => resolveRefereeIdentityCard({
 }))
 
 const showH2H = computed(() => matchData.value.status === 2 && matchData.value.viewer_role !== 'referee')
+// 再约一场：本人是选手且对手为平台用户时展示（扫码对局同样可用；仅旁观/裁判不显示）。
+const showRematch = computed(() => {
+	const detail = matchData.value
+	if (!detail || detail.viewer_role === 'referee') return false
+	const isParticipant = detail.is_player1 || detail.viewer_role === 'player1' || detail.viewer_role === 'player2'
+	return isParticipant && Number(detail.opponent_id) > 0
+})
 
 // ========== 生命周期 ==========
 onLoad((options) => {
@@ -469,6 +479,19 @@ const getRoundResultTone = (round) => {
 
 const getRoundResultText = (round) => {
 	return round.resultText || (round.result === 'win' || round.winner === 1 ? '胜' : '负')
+}
+
+const handleRematch = () => {
+	const detail = matchData.value
+	if (!detail) return
+	const query = [
+		`opponent_id=${Number(detail.opponent_id) || 0}`,
+		`opponent_name=${encodeURIComponent(detail.opponent_name || '')}`,
+		`opponent_avatar=${encodeURIComponent(detail.opponent_avatar || '')}`,
+		`game_type=${Number(detail.game_type) || 3}`,
+		`match_mode=${detail.match_mode === 'practice' ? 'practice' : 'ranked'}`
+	]
+	uni.navigateTo({ url: `/subPages/match/challengeCompose?${query.join('&')}` })
 }
 
 const handleOpenH2H = () => {

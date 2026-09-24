@@ -10,6 +10,25 @@
 				</view>
 				<button class="match-primary-action__button" @click="handlePrimaryAction">{{ homePrimaryAction.label }}</button>
 			</view>
+			<view class="challenge-quick-card" v-if="currentChallenge" @click="openChallengeWaiting">
+				<view class="challenge-quick-copy">
+					<text class="challenge-quick-title">{{ challengeQuickTitle }}</text>
+					<text class="challenge-quick-sub">{{ challengeQuickSub }}</text>
+				</view>
+				<view class="challenge-quick-action">
+					<text>{{ challengeQuickActionLabel }}</text>
+				</view>
+			</view>
+			<view class="challenge-entry-row">
+				<button class="challenge-entry-btn" @click="goChallengeCompose"><text>发起约球</text></button>
+				<button class="challenge-entry-btn ghost" @click="goChallenges('history')"><text>约球记录</text></button>
+				<button class="challenge-entry-btn ghost" @click="goChallenges('received')">
+					<text>收到的邀请{{ receivedChallengeCount > 0 ? '(' + receivedChallengeCount + ')' : '' }}</text>
+				</button>
+			</view>
+			<view class="challenge-unavailable" v-if="userStore.isLoggedIn && !activityStore.challengeAvailable" @click="retryChallengeActivity">
+				<text class="challenge-unavailable__text">约球状态读取失败，点击重试</text>
+			</view>
 			<view class="lobby-toolbar">
 				<view class="lobby-toolbar-row">
 					<view class="scope-tabs">
@@ -321,10 +340,10 @@ import {
 	shouldOpenPlayingForSpectatorMatch
 } from '@/utils/spectator-lobby.js'
 import { buildFinishedMatchDetailRoute, resolveMatchHomePrimaryAction } from '@/utils/match-core-flow.js'
+import { GAME_TYPE_LABEL_MAP } from '@/utils/game-types.js'
 import {
 	buildStartMatchPayload,
-	normalizePendingMatchContext,
-	validateScannedOpponentForContext
+	normalizePendingMatchContext
 } from '@/utils/start-match.js'
 import { readDefaultGameType, saveDefaultGameType } from '@/utils/game-type-preference.js'
 import { scanAndResolveMatchCode } from '@/utils/match-scan.js'
@@ -404,6 +423,47 @@ const visibleCurrentMatch = computed(() => {
 	return currentMatch.value
 })
 const homePrimaryAction = computed(() => resolveMatchHomePrimaryAction({ currentMatch: currentMatch.value }))
+const currentChallenge = computed(() => (userStore.isLoggedIn ? activityStore.currentChallenge : null))
+const receivedChallengeCount = computed(() => activityStore.receivedChallengeCount || 0)
+const challengeQuickTitle = computed(() => {
+	const item = currentChallenge.value
+	if (!item) return ''
+	if (Number(item.status) === 6) return '对局进行中'
+	if (Number(item.status) === 1) {
+		if (Number(item.waiting_user_id) === Number(userId.value)) return '你已进入，等待对方'
+		if (Number(item.waiting_user_id) > 0) return '对方已进入，等你开始'
+		return '已约好，待进入'
+	}
+	if (Number(item.status) === 0) return item.from_user_id === userId.value ? '等待对方回应' : '收到约球邀请'
+	return ''
+})
+const challengeQuickSub = computed(() => {
+	const item = currentChallenge.value
+	if (!item) return ''
+	const opponentName = item.from_user_id === userId.value ? item.to_nickname : item.from_nickname
+	return `${opponentName || '球友'} · ${GAME_TYPE_LABEL_MAP[item.game_type] || '台球'}${item.match_mode === 'practice' ? ' · 练习' : ' · 排位'}`
+})
+const challengeQuickActionLabel = computed(() => (currentChallenge.value && Number(currentChallenge.value.status) === 6 && currentChallenge.value.match_id > 0 ? '继续比赛' : '进入'))
+
+const openChallengeWaiting = () => {
+	const item = currentChallenge.value
+	if (!item) return
+	if (Number(item.status) === 6 && item.match_id > 0) {
+		uni.navigateTo({ url: `/subPages/match/playing?match_id=${item.match_id}` })
+		return
+	}
+	uni.navigateTo({ url: `/subPages/match/challengeWaiting?challenge_id=${item.id}` })
+}
+
+const goChallengeCompose = () => {
+	uni.navigateTo({ url: '/subPages/match/challengeCompose' })
+}
+
+const goChallenges = (tab) => {
+	// 明确指定目标 Tab：本人发出的邀请在「发出」，历史在「记录」，避免被默认 Tab 过滤。
+	const query = tab ? `?tab=${tab}` : ''
+	uni.navigateTo({ url: `/subPages/social/challenges${query}` })
+}
 const emptyState = computed(() => getSpectatorEmptyState({
 	scope: currentScope.value,
 	status: currentStatus.value,
@@ -460,10 +520,6 @@ onMounted(() => {
 	loadData()
 })
 
-onLoad(() => {
-	consumePendingChallengeContext()
-})
-
 // 下拉刷新
 onPullDownRefresh(async () => {
 	try {
@@ -474,37 +530,53 @@ onPullDownRefresh(async () => {
 })
 
 onShow(() => {
-	consumePendingChallengeContext()
-	if (!hasLoadedOnce.value) loadData()
-})
-
-const consumePendingChallengeContext = () => {
-	for (const storageKey of ['pending_match_challenge', 'pending_match_rematch']) {
-		const raw = uni.getStorageSync(storageKey)
-		if (!raw) continue
-		const result = normalizePendingMatchContext(storageKey, raw)
-		uni.removeStorageSync(storageKey)
-		if (!result.valid) {
-			uni.showToast({ title: result.message, icon: 'none' })
-			continue
-		}
-		pendingStartContext.value = result.context
-		pendingStartAuthGeneration.value = userStore.authGeneration
-		selectedGameType.value = result.context.game_type
-		startMatchMode.value = result.context.match_mode
-		startMatchVisibility.value = result.context.visibility
-		scanIntent.value = 'start'
-		setTimeout(() => {
-			handleScanCode()
-		}, 80)
+	consumePendingMatchContext()
+	if (!hasLoadedOnce.value) {
+		loadData()
 		return
 	}
+	// 已挂载过：由 Store 的 dirty/TTL 决定是否回源，避免每次切页都拉取。
+	if (userStore.isLoggedIn && activityStore.shouldFetch()) {
+		activityStore.fetch({
+			userId: userStore.userId,
+			authGeneration: userStore.authGeneration
+		}, { force: true, silent: true }).then(() => loadData()).catch(() => loadData())
+	}
+})
+
+// 赛果页「再来一局」上下文：切回对局页后恢复设置并直接进入扫码。
+const consumePendingMatchContext = () => {
+	const raw = uni.getStorageSync('pending_match_rematch')
+	if (!raw) return
+	const result = normalizePendingMatchContext('pending_match_rematch', raw)
+	uni.removeStorageSync('pending_match_rematch')
+	if (!result.valid) {
+		uni.showToast({ title: result.message, icon: 'none' })
+		return
+	}
+	pendingStartContext.value = result.context
+	pendingStartAuthGeneration.value = userStore.authGeneration
+	selectedGameType.value = result.context.game_type
+	startMatchMode.value = result.context.match_mode
+	startMatchVisibility.value = result.context.visibility
+	scanIntent.value = 'start'
+	setTimeout(() => {
+		handleScanCode()
+	}, 80)
 }
+
+const retryChallengeActivity = () => {
+	if (!userStore.isLoggedIn) return
+	activityStore.fetch({
+		userId: userStore.userId,
+		authGeneration: userStore.authGeneration
+	}, { force: true, silent: true })
+}
+
 
 const clearPendingStartContext = () => {
 	pendingStartContext.value = null
 	pendingStartAuthGeneration.value = -1
-	uni.removeStorageSync('pending_match_challenge')
 	uni.removeStorageSync('pending_match_rematch')
 }
 
@@ -875,10 +947,12 @@ const handleMatchResult = async (scanAction) => {
 		}
 
 		const opponentData = scanAction.opponent
-		const scanMessage = validateScannedOpponentForContext(pendingStartContext.value || {}, opponentData)
-		if (scanMessage) {
+		// 重赛上下文锁定对手；约球比赛不再走扫码开局通道。
+		const expectedOpponentId = Number(pendingStartContext.value?.opponent_id || 0)
+		const scannedOpponentId = Number(opponentData?.id || opponentData?.user_id || opponentData?.opponent_id || 0)
+		if (expectedOpponentId > 0 && scannedOpponentId > 0 && scannedOpponentId !== expectedOpponentId) {
 			clearPendingStartContext()
-			uni.showToast({ title: scanMessage, icon: 'none' })
+			uni.showToast({ title: '请扫描指定对手的匹配码', icon: 'none' })
 			return
 		}
 
@@ -891,7 +965,6 @@ const handleMatchResult = async (scanAction) => {
 			opponent: opponentData,
 			matchMode: startMatchMode.value,
 			visibility: startMatchVisibility.value,
-			challengeId: pendingStartContext.value?.challenge_id || 0,
 			inviteToken: scanAction.inviteToken
 		}))
 

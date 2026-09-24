@@ -203,7 +203,19 @@
 				{
 					"path": "opponentSelector",
 					"style": {
-						"navigationBarTitleText": "选择PK对手"
+						"navigationBarTitleText": "选择球友"
+					}
+				},
+				{
+					"path": "challengeCompose",
+					"style": {
+						"navigationBarTitleText": "发起约球"
+					}
+				},
+				{
+					"path": "challengeWaiting",
+					"style": {
+						"navigationBarTitleText": "等待对手"
 					}
 				},
 				{

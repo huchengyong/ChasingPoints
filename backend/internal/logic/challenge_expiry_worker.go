@@ -52,7 +52,7 @@ func (w *ChallengeExpiryWorker) RunOnce(ctx context.Context) error {
 		return nil
 	}
 	now := time.Now()
-	challenges, err := w.svcCtx.ChallengeModel.ListExpiredPending(challengeExpiryWorkerBatchSize, now)
+	challenges, err := w.svcCtx.ChallengeModel.ListExpiredUnstarted(challengeExpiryWorkerBatchSize, now)
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func (w *ChallengeExpiryWorker) RunOnce(ctx context.Context) error {
 			default:
 			}
 		}
-		if _, err := w.svcCtx.ChallengeModel.MarkExpiredIfPending(challenge.Id, now); err != nil {
+		if _, err := w.svcCtx.ChallengeModel.MarkExpiredIfUnstarted(challenge.Id, now); err != nil {
 			return err
 		}
 	}

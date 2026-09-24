@@ -416,28 +416,70 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
-				// 接受挑战
+				// 放弃本次约球
+				Method:  http.MethodPost,
+				Path:    "/abandon",
+				Handler: challenge.AbandonChallengeHandler(serverCtx),
+			},
+			{
+				// 接受约球
 				Method:  http.MethodPost,
 				Path:    "/accept",
 				Handler: challenge.AcceptChallengeHandler(serverCtx),
 			},
 			{
-				// 获取待处理挑战
+				// 取消约球
+				Method:  http.MethodPost,
+				Path:    "/cancel",
+				Handler: challenge.CancelChallengeHandler(serverCtx),
+			},
+			{
+				// 约球详情
+				Method:  http.MethodGet,
+				Path:    "/detail",
+				Handler: challenge.GetChallengeDetailHandler(serverCtx),
+			},
+			{
+				// 进入约球对局
+				Method:  http.MethodPost,
+				Path:    "/enter",
+				Handler: challenge.EnterChallengeHandler(serverCtx),
+			},
+			{
+				// 约球历史分页
+				Method:  http.MethodGet,
+				Path:    "/history",
+				Handler: challenge.GetChallengeHistoryHandler(serverCtx),
+			},
+			{
+				// 退出等待保留约球
+				Method:  http.MethodPost,
+				Path:    "/leave",
+				Handler: challenge.LeaveChallengeHandler(serverCtx),
+			},
+			{
+				// 活动约球列表
 				Method:  http.MethodGet,
 				Path:    "/pending",
 				Handler: challenge.GetPendingChallengesHandler(serverCtx),
 			},
 			{
-				// 拒绝挑战
+				// 拒绝约球
 				Method:  http.MethodPost,
 				Path:    "/reject",
 				Handler: challenge.RejectChallengeHandler(serverCtx),
 			},
 			{
-				// 发起挑战
+				// 发起约球
 				Method:  http.MethodPost,
 				Path:    "/send",
 				Handler: challenge.SendChallengeHandler(serverCtx),
+			},
+			{
+				// 当前约球摘要
+				Method:  http.MethodGet,
+				Path:    "/summary",
+				Handler: challenge.GetChallengeSummaryHandler(serverCtx),
 			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),

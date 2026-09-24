@@ -9,10 +9,10 @@ import (
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
-// 接受挑战
+// 接受约球
 func AcceptChallengeHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req types.HandleChallengeReq
+		var req types.AcceptChallengeReq
 		if err := httpx.Parse(r, &req); err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return

@@ -83,8 +83,16 @@ func NewFriendModel(db *gorm.DB) *FriendModel {
 }
 
 func (m *FriendModel) AreFriends(userId1, userId2 int64) (bool, error) {
+	return m.AreFriendsWithTx(nil, userId1, userId2)
+}
+
+func (m *FriendModel) AreFriendsWithTx(tx *gorm.DB, userId1, userId2 int64) (bool, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
 	var count int64
-	err := m.db.Model(&Friend{}).
+	err := db.Model(&Friend{}).
 		Where("status = 1").
 		Where("(user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)", userId1, userId2, userId2, userId1).
 		Count(&count).Error

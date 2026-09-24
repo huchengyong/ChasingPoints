@@ -68,10 +68,10 @@ test('local QR displays expose loading, failure, and refresh states', () => {
   assert.match(playingPageSource, /@click="openRefereeQrModal"/)
 })
 
-test('accepted challenge context is cleared after cancellation, failure, or identity change', () => {
+test('challenge scan context is gone and rematch context is cleared after cancellation, failure, or identity change', () => {
   assert.match(matchPageSource, /const clearPendingStartContext/)
   assert.match(matchPageSource, /scanAction\.type === 'cancelled'/)
   assert.match(matchPageSource, /pendingStartAuthGeneration\.value !== userStore\.authGeneration/)
-  assert.match(matchPageSource, /uni\.removeStorageSync\('pending_match_challenge'\)/)
+  assert.doesNotMatch(matchPageSource, /pending_match_challenge/)
   assert.match(matchPageSource, /uni\.removeStorageSync\('pending_match_rematch'\)/)
 })

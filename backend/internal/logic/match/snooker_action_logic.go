@@ -274,17 +274,22 @@ func executeSnookerAction(ctx context.Context, svcCtx *svc.ServiceContext, userI
 		return buildSnookerActionResponse(svcCtx, userID, fresh, input.ClientActionID, false, false, message), nil
 	}
 
-	fresh, err := svcCtx.MatchModel.FindById(input.MatchID)
-	if err != nil || fresh == nil {
+	fresh, freshErr := svcCtx.MatchModel.FindById(input.MatchID)
+	if freshErr != nil || fresh == nil {
+		// 重读失败不代表事务失败：终态后处理仍用已提交的事务内结果完成，
+		// 让重读失败只影响响应，不阻断终态通知（与灵活赛制自动结束一致）。
+		if result.FinishedNow && result.FinishReq != nil && result.Match != nil {
+			finishLogic := NewFinishMatchLogic(ctx, svcCtx)
+			if _, postErr := finishLogic.finishMatchPostCommit(result.FinishReq, userID, result.Match, result.Result, result.CompetitiveRevisions, result.SeasonID); postErr != nil {
+				finishLogic.Logger.Errorf("斯诺克自动结束后处理失败: matchId=%d err=%v", input.MatchID, postErr)
+			}
+		}
+		if result.Replayed && result.Match != nil && result.Match.Status == 2 && result.Match.Result != nil {
+			reconcileCompletedSnookerAction(ctx, svcCtx, userID, result.Match, input)
+		}
 		return &types.SnookerActionResp{Success: false, Message: "加载对局状态失败"}, nil
 	}
-	view, viewErr := loadMatchWriteState(svcCtx, userID, fresh)
-	if viewErr != nil {
-		return &types.SnookerActionResp{Success: false, Message: "加载对局快照失败"}, nil
-	}
-	if !result.Replayed {
-		broadcastSnookerAction(fresh, view.SnookerState, input.ActionType, result.RoundEnded)
-	}
+	// 终态后处理先于响应快照读取：失效通知紧跟已提交的事务，快照失败不能漏发。
 	if result.Replayed {
 		reconcileCompletedSnookerAction(ctx, svcCtx, userID, fresh, input)
 	}
@@ -293,6 +298,13 @@ func executeSnookerAction(ctx context.Context, svcCtx *svc.ServiceContext, userI
 		if _, err := finishLogic.finishMatchPostCommit(result.FinishReq, userID, fresh, result.Result, result.CompetitiveRevisions, result.SeasonID); err != nil {
 			finishLogic.Logger.Errorf("斯诺克自动结束后处理失败: matchId=%d err=%v", fresh.Id, err)
 		}
+	}
+	view, viewErr := loadMatchWriteState(svcCtx, userID, fresh)
+	if viewErr != nil {
+		return &types.SnookerActionResp{Success: false, Message: "加载对局快照失败"}, nil
+	}
+	if !result.Replayed {
+		broadcastSnookerAction(fresh, view.SnookerState, input.ActionType, result.RoundEnded)
 	}
 	if result.FinishRequested {
 		broadcastFinishActionState(svcCtx, fresh, "match_finish_request")

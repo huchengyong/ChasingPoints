@@ -12,17 +12,18 @@ import (
 )
 
 type memberSubscriptionUserSchema struct {
-	Id              int64          `gorm:"primarykey"`
-	Phone           *string        `gorm:"uniqueIndex;size:20"`
-	Nickname        string         `gorm:"size:50;not null;default:''"`
-	Avatar          string         `gorm:"size:255;not null;default:''"`
-	Status          int            `gorm:"not null;default:1"`
-	PushToken       string         `gorm:"size:255;not null;default:''"`
-	MemberExpiresAt *time.Time     `gorm:"comment:会员到期时间"`
-	HideMatchRecord bool           `gorm:"not null;default:false"`
-	CreatedAt       time.Time      `gorm:"autoCreateTime"`
-	UpdatedAt       time.Time      `gorm:"autoUpdateTime"`
-	DeletedAt       gorm.DeletedAt `gorm:"index"`
+	Id                    int64          `gorm:"primarykey"`
+	Phone                 *string        `gorm:"uniqueIndex;size:20"`
+	Nickname              string         `gorm:"size:50;not null;default:''"`
+	Avatar                string         `gorm:"size:255;not null;default:''"`
+	Status                int            `gorm:"not null;default:1"`
+	PushToken             string         `gorm:"size:255;not null;default:''"`
+	MemberExpiresAt       *time.Time     `gorm:"comment:会员到期时间"`
+	HideMatchRecord       bool           `gorm:"not null;default:false"`
+	FriendsOnlyChallenges bool           `gorm:"not null;default:false"`
+	CreatedAt             time.Time      `gorm:"autoCreateTime"`
+	UpdatedAt             time.Time      `gorm:"autoUpdateTime"`
+	DeletedAt             gorm.DeletedAt `gorm:"index"`
 }
 
 func (memberSubscriptionUserSchema) TableName() string {

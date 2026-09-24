@@ -10,17 +10,18 @@ import (
 )
 
 type User struct {
-	Id              int64          `gorm:"primarykey"`
-	Phone           *string        `gorm:"uniqueIndex;size:20"`
-	Nickname        string         `gorm:"size:50;not null;default:''"`
-	Avatar          string         `gorm:"size:255;not null;default:''"`
-	Status          int            `gorm:"not null;default:1"`
-	PushToken       string         `gorm:"size:255;not null;default:''"`
-	MemberExpiresAt *time.Time     `gorm:"comment:会员到期时间" json:"member_expires_at"`
-	HideMatchRecord bool           `gorm:"not null;default:false" json:"hide_match_record"`
-	CreatedAt       time.Time      `gorm:"autoCreateTime"`
-	UpdatedAt       time.Time      `gorm:"autoUpdateTime"`
-	DeletedAt       gorm.DeletedAt `gorm:"index"`
+	Id                    int64          `gorm:"primarykey"`
+	Phone                 *string        `gorm:"uniqueIndex;size:20"`
+	Nickname              string         `gorm:"size:50;not null;default:''"`
+	Avatar                string         `gorm:"size:255;not null;default:''"`
+	Status                int            `gorm:"not null;default:1"`
+	PushToken             string         `gorm:"size:255;not null;default:''"`
+	MemberExpiresAt       *time.Time     `gorm:"comment:会员到期时间" json:"member_expires_at"`
+	HideMatchRecord       bool           `gorm:"not null;default:false" json:"hide_match_record"`
+	FriendsOnlyChallenges bool           `gorm:"not null;default:false" json:"friends_only_challenges"`
+	CreatedAt             time.Time      `gorm:"autoCreateTime"`
+	UpdatedAt             time.Time      `gorm:"autoUpdateTime"`
+	DeletedAt             gorm.DeletedAt `gorm:"index"`
 }
 
 const DeletedUserDisplayName = "已注销用户"
@@ -263,6 +264,25 @@ func (m *UserModel) UpdateMemberExpiresAtWithTx(tx *gorm.DB, userId int64, expir
 
 func (m *UserModel) UpdateHideMatchRecord(userId int64, hidden bool) error {
 	return m.db.Model(&User{}).Where("id = ?", userId).Update("hide_match_record", hidden).Error
+}
+
+// UpdatePrivacyFields 按提交字段更新，不覆盖未提交的开关。
+func (m *UserModel) UpdatePrivacyFields(tx *gorm.DB, userId int64, hideMatchRecord, friendsOnlyChallenges *bool) error {
+	if hideMatchRecord == nil && friendsOnlyChallenges == nil {
+		return nil
+	}
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	updates := map[string]interface{}{}
+	if hideMatchRecord != nil {
+		updates["hide_match_record"] = *hideMatchRecord
+	}
+	if friendsOnlyChallenges != nil {
+		updates["friends_only_challenges"] = *friendsOnlyChallenges
+	}
+	return db.Model(&User{}).Where("id = ?", userId).Updates(updates).Error
 }
 
 // LockUsersForUpdate 按主键顺序锁定用户行，用于串行化涉及同一用户的关键事务。

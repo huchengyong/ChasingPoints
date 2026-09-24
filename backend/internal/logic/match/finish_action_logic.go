@@ -28,6 +28,10 @@ func shouldRequestRankedFinish(match *model.Match, userId int64) bool {
 	if match == nil || match.Status != 1 || userId <= 0 || !match.FinishConfirmationRequired || model.NormalizeMatchMode(match.MatchMode) != model.MatchModeRanked {
 		return false
 	}
+	if match.ChallengeId != nil && *match.ChallengeId > 0 {
+		// 约球比赛由任一参赛方单方结束。
+		return false
+	}
 	if match.RefereeUserId != nil && *match.RefereeUserId > 0 {
 		return false
 	}
@@ -162,6 +166,12 @@ func handleConfirmedFinishAction(ctx context.Context, svcCtx *svc.ServiceContext
 		if viewErr != nil {
 			return &types.FinishMatchActionResp{Success: false, Accepted: false, ClientActionId: req.ClientActionId, Message: "加载对局快照失败"}, nil
 		}
+		// 合法重放补发比赛终态广播：首次提交后可能因快照失败漏发 match_end。
+		result := 3
+		if match.Result != nil {
+			result = *match.Result
+		}
+		broadcastMatchEnd(match, result, view.Snapshot)
 		return &types.FinishMatchActionResp{
 			Accepted:          true,
 			Success:           true,

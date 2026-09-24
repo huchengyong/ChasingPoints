@@ -476,9 +476,44 @@ func (l *EndRoundLogic) endFlexiblePoolRound(req *types.EndRoundReq, userID int6
 		return &types.EndRoundResp{Success: false, Accepted: false}, nil
 	}
 
-	fresh, _ := l.svcCtx.MatchModel.FindById(req.MatchId)
-	if fresh == nil {
+	fresh, freshErr := l.svcCtx.MatchModel.FindById(req.MatchId)
+	if freshErr != nil || fresh == nil {
+		// 重读失败不代表事务失败：终态后处理仍用已提交的事务内结果完成，
+		// 响应不再返回假成功或零值快照。
+		if result.FinishedNow && result.FinishReq != nil && result.Match != nil {
+			finishLogic := NewFinishMatchLogic(l.ctx, l.svcCtx)
+			if _, postErr := finishLogic.finishMatchPostCommit(result.FinishReq, userID, result.Match, result.Result, result.CompetitiveRevisions, result.SeasonID); postErr != nil {
+				finishLogic.Logger.Errorf("灵活赛制自动结束后处理失败: matchId=%d err=%v", req.MatchId, postErr)
+			}
+		}
+		if result.ExistingAction != nil && result.Match != nil && result.Match.Status == 2 && result.Match.Result != nil {
+			finishLogic := NewFinishMatchLogic(l.ctx, l.svcCtx)
+			if _, postErr := finishLogic.finishMatchPostCommit(&types.FinishMatchReq{
+				MatchId:        result.Match.Id,
+				ClientActionId: autoPoolFinishActionID(req.ClientActionId),
+				BaseRevision:   result.ExistingAction.ServerRevision,
+			}, userID, result.Match, *result.Match.Result, nil, 0); postErr != nil {
+				finishLogic.Logger.Errorf("灵活赛制幂等重放补偿失败: matchId=%d err=%v", result.Match.Id, postErr)
+			}
+		}
 		return &types.EndRoundResp{Success: false, Accepted: false}, nil
+	}
+	// 终态后处理先于响应快照读取：失效通知紧跟已提交的事务，快照失败不能漏发。
+	if result.ExistingAction != nil && fresh.Status == 2 && fresh.Result != nil {
+		finishLogic := NewFinishMatchLogic(l.ctx, l.svcCtx)
+		if _, err := finishLogic.finishMatchPostCommit(&types.FinishMatchReq{
+			MatchId:        fresh.Id,
+			ClientActionId: autoPoolFinishActionID(req.ClientActionId),
+			BaseRevision:   result.ExistingAction.ServerRevision,
+		}, userID, fresh, *fresh.Result, nil, 0); err != nil {
+			finishLogic.Logger.Errorf("灵活赛制幂等重放补偿失败: matchId=%d err=%v", fresh.Id, err)
+		}
+	}
+	if result.FinishedNow && result.FinishReq != nil {
+		finishLogic := NewFinishMatchLogic(l.ctx, l.svcCtx)
+		if _, err := finishLogic.finishMatchPostCommit(result.FinishReq, userID, fresh, result.Result, result.CompetitiveRevisions, result.SeasonID); err != nil {
+			finishLogic.Logger.Errorf("灵活赛制自动结束后处理失败: matchId=%d err=%v", fresh.Id, err)
+		}
 	}
 	view, stateErr := loadMatchWriteState(l.svcCtx, userID, fresh)
 	if stateErr != nil {
@@ -507,22 +542,6 @@ func (l *EndRoundLogic) endFlexiblePoolRound(req *types.EndRoundReq, userID int6
 	if result.Round != nil {
 		roundNo = result.Round.RoundNo
 		broadcastFlexiblePoolRoundEnd(fresh, view, result.Round, req.Winner)
-	}
-	if result.ExistingAction != nil && fresh.Status == 2 && fresh.Result != nil {
-		finishLogic := NewFinishMatchLogic(l.ctx, l.svcCtx)
-		if _, err := finishLogic.finishMatchPostCommit(&types.FinishMatchReq{
-			MatchId:        fresh.Id,
-			ClientActionId: autoPoolFinishActionID(req.ClientActionId),
-			BaseRevision:   result.ExistingAction.ServerRevision,
-		}, userID, fresh, *fresh.Result, nil, 0); err != nil {
-			finishLogic.Logger.Errorf("灵活赛制幂等重放补偿失败: matchId=%d err=%v", fresh.Id, err)
-		}
-	}
-	if result.FinishedNow && result.FinishReq != nil {
-		finishLogic := NewFinishMatchLogic(l.ctx, l.svcCtx)
-		if _, err := finishLogic.finishMatchPostCommit(result.FinishReq, userID, fresh, result.Result, result.CompetitiveRevisions, result.SeasonID); err != nil {
-			finishLogic.Logger.Errorf("灵活赛制自动结束后处理失败: matchId=%d err=%v", fresh.Id, err)
-		}
 	}
 	if result.FinishRequested {
 		broadcastFinishActionState(l.svcCtx, fresh, "match_finish_request")

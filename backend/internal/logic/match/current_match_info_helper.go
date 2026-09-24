@@ -133,6 +133,7 @@ func buildCurrentMatchInfoWithKnownUser(svcCtx *svc.ServiceContext, userId int64
 
 	return &types.CurrentMatchInfo{
 		Id:                            match.Id,
+		ChallengeId:                   challengeIdOf(match),
 		GameType:                      match.GameType,
 		GameTypeName:                  GetGameTypeName(match.GameType),
 		GameMode:                      match.GameMode,

@@ -31,6 +31,7 @@ const loadActivityStore = (mocks) => {
   return new Function(
     'defineStore',
     'getCurrentMatch',
+    'getChallengeSummary',
     'getFriendRequests',
     'getNotificationList',
     'getUnreadCount',
@@ -40,6 +41,7 @@ const loadActivityStore = (mocks) => {
   )(
     defineStore,
     mocks.getCurrentMatch,
+    mocks.getChallengeSummary,
     mocks.getFriendRequests,
     mocks.getNotificationList,
     mocks.getUnreadCount,
@@ -111,6 +113,7 @@ const loadUserDataInvalidationStore = () => {
 
 const successfulActivityResponse = (id) => ({
   getCurrentMatch: () => Promise.resolve({ success: true, match: { id } }),
+  getChallengeSummary: () => Promise.resolve({ success: true, current_challenge: null, received_pending_count: 0, server_time: '2026-08-25 12:00:00' }),
   getUnreadCount: () => Promise.resolve({ count: id }),
   getFriendRequests: () => Promise.resolve({ total: id }),
   getNotificationList: () => Promise.resolve({ list: [] })
@@ -151,6 +154,7 @@ test('activity Store coalesces concurrent reads into one request batch', async (
   const pending = deferred()
   const useActivityStore = loadActivityStore({
     getCurrentMatch: () => { requests.push('match'); return pending.promise },
+    getChallengeSummary: () => { requests.push('challenge'); return pending.promise },
     getUnreadCount: () => { requests.push('unread'); return pending.promise },
     getFriendRequests: () => { requests.push('friend'); return pending.promise },
     getNotificationList: () => { requests.push('season'); return pending.promise }
@@ -159,7 +163,7 @@ test('activity Store coalesces concurrent reads into one request batch', async (
 
   const first = store.fetch({ userId: 7, authGeneration: 3 })
   const second = store.fetch({ userId: 7, authGeneration: 3 })
-  assert.deepEqual(requests, ['match', 'unread', 'friend', 'season'])
+  assert.deepEqual(requests, ['match', 'challenge', 'unread', 'friend', 'season'])
 
   pending.resolve({ success: true, match: { id: 7 }, count: 7, total: 7, list: [] })
   await Promise.all([first, second])
@@ -170,6 +174,7 @@ test('activity Store applies Bootstrap without scheduling legacy activity reques
   const calls = []
   const useActivityStore = loadActivityStore({
     getCurrentMatch: () => { calls.push('match'); return Promise.resolve({}) },
+    getChallengeSummary: () => { calls.push('challenge'); return Promise.resolve({}) },
     getUnreadCount: () => { calls.push('unread'); return Promise.resolve({}) },
     getFriendRequests: () => { calls.push('friend'); return Promise.resolve({}) },
     getNotificationList: () => { calls.push('season'); return Promise.resolve({}) }
@@ -213,12 +218,13 @@ test('activity Store releases a reserved Bootstrap waiter when the identity is c
 })
 
 test('activity Store prevents an old account in-flight result from writing into the new account', async () => {
-  const oldRequests = [deferred(), deferred(), deferred(), deferred()]
-  const newRequests = [deferred(), deferred(), deferred(), deferred()]
+  const oldRequests = [deferred(), deferred(), deferred(), deferred(), deferred()]
+  const newRequests = [deferred(), deferred(), deferred(), deferred(), deferred()]
   let requestIndex = 0
-  const nextRequest = () => (requestIndex < 4 ? oldRequests[requestIndex++] : newRequests[requestIndex++ - 4]).promise
+  const nextRequest = () => (requestIndex < 5 ? oldRequests[requestIndex++] : newRequests[requestIndex++ - 5]).promise
   const useActivityStore = loadActivityStore({
     getCurrentMatch: nextRequest,
+    getChallengeSummary: nextRequest,
     getUnreadCount: nextRequest,
     getFriendRequests: nextRequest,
     getNotificationList: nextRequest
@@ -228,18 +234,20 @@ test('activity Store prevents an old account in-flight result from writing into 
   const oldFetch = store.fetch({ userId: 1, authGeneration: 10 })
   const newFetch = store.fetch({ userId: 2, authGeneration: 11 })
   oldRequests[0].resolve({ success: true, match: { id: 1 } })
-  oldRequests[1].resolve({ count: 1 })
-  oldRequests[2].resolve({ total: 1 })
-  oldRequests[3].resolve({ list: [] })
+  oldRequests[1].resolve({ success: true, current_challenge: null, received_pending_count: 0 })
+  oldRequests[2].resolve({ count: 1 })
+  oldRequests[3].resolve({ total: 1 })
+  oldRequests[4].resolve({ list: [] })
   await oldFetch
 
   assert.equal(store.ownerUserId, 2)
   assert.equal(store.currentMatch, null)
 
   newRequests[0].resolve({ success: true, match: { id: 2 } })
-  newRequests[1].resolve({ count: 2 })
-  newRequests[2].resolve({ total: 2 })
-  newRequests[3].resolve({ list: [] })
+  newRequests[1].resolve({ success: true, current_challenge: null, received_pending_count: 0 })
+  newRequests[2].resolve({ count: 2 })
+  newRequests[3].resolve({ total: 2 })
+  newRequests[4].resolve({ list: [] })
   await newFetch
   assert.equal(store.currentMatch.id, 2)
 })
@@ -249,6 +257,7 @@ test('activity Store keeps stale data when a refresh fails', async () => {
   const successful = successfulActivityResponse(9)
   const useActivityStore = loadActivityStore({
     getCurrentMatch: () => shouldFail ? Promise.reject(new Error('offline')) : successful.getCurrentMatch(),
+    getChallengeSummary: () => shouldFail ? Promise.reject(new Error('offline')) : successful.getChallengeSummary(),
     getUnreadCount: () => shouldFail ? Promise.reject(new Error('offline')) : successful.getUnreadCount(),
     getFriendRequests: () => shouldFail ? Promise.reject(new Error('offline')) : successful.getFriendRequests(),
     getNotificationList: () => shouldFail ? Promise.reject(new Error('offline')) : successful.getNotificationList()
@@ -313,6 +322,93 @@ test('user overview Store maps the aggregate contract scopes and response keys',
   assert.equal(store.dirty, true)
 })
 
+test('activity Store marks the challenge block unavailable instead of pretending empty', async () => {
+  const fetchStore = loadActivityStore({
+    getCurrentMatch: () => Promise.resolve({ success: true, match: { id: 7 } }),
+    getChallengeSummary: () => Promise.reject(new Error('down')),
+    getUnreadCount: () => Promise.resolve({ count: 0 }),
+    getFriendRequests: () => Promise.resolve({ total: 0 }),
+    getNotificationList: () => Promise.resolve({ list: [] })
+  })()
+  await fetchStore.fetch({ userId: 7, authGeneration: 3 })
+  assert.equal(fetchStore.challengeAvailable, false)
+
+  const bootstrapStore = loadActivityStore(successfulActivityResponse(7))()
+  bootstrapStore.applyBootstrap({ userId: 7, authGeneration: 3 }, {
+    availability: { current_challenge: false, challenge_received_count: true }
+  })
+  assert.equal(bootstrapStore.challengeAvailable, false)
+
+  const healthyStore = loadActivityStore(successfulActivityResponse(7))()
+  healthyStore.applyBootstrap({ userId: 7, authGeneration: 3 }, {
+    availability: { current_challenge: true, challenge_received_count: true }
+  })
+  assert.equal(healthyStore.challengeAvailable, true)
+})
+
+test('activity Store keeps dirty marks that happen during an in-flight fetch or bootstrap', async () => {
+  const summary = deferred()
+  const fetchStore = loadActivityStore({
+    getCurrentMatch: () => Promise.resolve({ success: true, match: null }),
+    getChallengeSummary: () => summary.promise,
+    getUnreadCount: () => Promise.resolve({ count: 0 }),
+    getFriendRequests: () => Promise.resolve({ total: 0 }),
+    getNotificationList: () => Promise.resolve({ list: [] })
+  })()
+  const identity = { userId: 7, authGeneration: 3 }
+  const pending = fetchStore.fetch(identity)
+  fetchStore.markDirty()
+  summary.resolve({ success: true, current_challenge: null, received_pending_count: 0, server_time: '2026-08-25 12:00:00' })
+  await pending
+  assert.equal(fetchStore.dirty, true, '请求期间的标脏不得被旧响应覆盖')
+
+  const bootstrapStore = loadActivityStore(successfulActivityResponse(7))()
+  const reservation = bootstrapStore.reserveBootstrap(identity)
+  bootstrapStore.markDirty()
+  reservation.apply({ availability: {}, current_match: { id: 1 } })
+  assert.equal(bootstrapStore.dirty, true, 'Bootstrap 期间的标脏不得被覆盖')
+})
+
+test('activity Store keeps dirty marks across a direct bootstrap apply with a start seq', () => {
+  const store = loadActivityStore(successfulActivityResponse(7))()
+  const identity = { userId: 7, authGeneration: 3 }
+  store.applyBootstrap(identity, { availability: {} })
+  store.markDirty()
+  // 无预约 reservation 时的直接应用路径必须携带请求开始时的失效序号。
+  store.applyBootstrap(identity, { availability: {} }, { startDirtySeq: 0 })
+  assert.equal(store.dirty, true, '直接应用的 Bootstrap 不得覆盖请求期间的标脏')
+  store.applyBootstrap(identity, { availability: {} })
+  assert.equal(store.dirty, false, '未携带序号的调用保持原有语义')
+})
+
+test('activity Store refreshIfDirty waits for the old batch and refetches after it settles', async () => {
+  let summaryCalls = 0
+  let releaseOld
+  const store = loadActivityStore({
+    getCurrentMatch: () => Promise.resolve({ success: true, match: null }),
+    getChallengeSummary: () => {
+      summaryCalls += 1
+      return summaryCalls === 1
+        ? new Promise(resolve => { releaseOld = resolve })
+        : Promise.resolve({ success: true, current_challenge: { id: 99 }, received_pending_count: 0 })
+    },
+    getUnreadCount: () => Promise.resolve({ count: 0 }),
+    getFriendRequests: () => Promise.resolve({ total: 0 }),
+    getNotificationList: () => Promise.resolve({ list: [] })
+  })()
+  const identity = { userId: 7, authGeneration: 3 }
+  const oldBatch = store.fetch(identity)
+  store.markDirty()
+  const refreshed = store.refreshIfDirty(identity)
+  assert.ok(store.inFlight, '旧批次仍在途中时不得并发新读取')
+  releaseOld({ success: true, current_challenge: null, received_pending_count: 0 })
+  await oldBatch
+  await refreshed
+  assert.equal(summaryCalls, 2, '旧批次结束后必须真正发出第二次读取')
+  assert.equal(store.currentChallenge.id, 99)
+  assert.equal(store.dirty, false)
+})
+
 test('user data invalidation scopes stay identity-bound and retain the newest competitive revision', () => {
   const useUserDataInvalidationStore = loadUserDataInvalidationStore()
   const store = useUserDataInvalidationStore()
@@ -364,6 +460,6 @@ test('client pages keep auth-scoped stores and avoid first-load or tab-switch du
   assert.doesNotMatch(rankingSource, /onMounted\(/)
   assert.match(rankingSource, /onShow\(\(\) => \{\s*fetchLeaderboard\(\)/)
   assert.match(rankingSource, /publicReadStore\.loadLeaderboard\(/)
-  assert.match(challengeSource, /const allChallenges = ref\(\[\]\)/)
-  assert.match(challengeSource, /const switchTab = \(newTab\) => \{\s*tab\.value = newTab\s*\}/)
+  assert.match(challengeSource, /const activeItems = ref\(\[\]\)/)
+  assert.match(challengeSource, /const switchTab = \(value\) => \{\s*tab\.value = value/)
 })

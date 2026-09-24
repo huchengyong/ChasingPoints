@@ -1264,3 +1264,55 @@ $border-dark: rgba(247, 231, 168, 0.12);
 	}
 
 }
+
+.challenge-status-strip {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+	margin-bottom: 20rpx;
+	padding: 24rpx 28rpx;
+	border-radius: 24rpx;
+	background: linear-gradient(135deg, rgba(224, 174, 18, 0.16), rgba(224, 174, 18, 0.06));
+
+	.challenge-strip-copy {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 6rpx;
+	}
+
+	.challenge-strip-title {
+		font-size: 28rpx;
+		font-weight: 600;
+		color: #231C0B;
+	}
+
+	.challenge-strip-sub {
+		font-size: 22rpx;
+		color: #8A7340;
+	}
+
+	.challenge-strip-action {
+		padding: 12rpx 30rpx;
+		border-radius: 999rpx;
+		background: #E0AE12;
+
+		text {
+			font-size: 24rpx;
+			color: #ffffff;
+			font-weight: 600;
+		}
+	}
+}
+
+.challenge-status-unavailable {
+	margin-bottom: 20rpx;
+	padding: 20rpx 28rpx;
+	border-radius: 24rpx;
+	background: rgba(224, 91, 76, 0.12);
+
+	.challenge-status-unavailable__text {
+		font-size: 24rpx;
+		color: #C0533F;
+	}
+}

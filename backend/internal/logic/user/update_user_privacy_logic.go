@@ -50,7 +50,15 @@ func (l *UpdateUserPrivacyLogic) UpdateUserPrivacy(req *types.UpdateUserPrivacyR
 		}, nil
 	}
 
-	if err := l.svcCtx.UserModel.UpdateHideMatchRecord(userID, req.HideMatchRecord); err != nil {
+	hideMatchRecord := user.HideMatchRecord
+	friendsOnly := user.FriendsOnlyChallenges
+	if req.HideMatchRecord != nil {
+		hideMatchRecord = *req.HideMatchRecord
+	}
+	if req.FriendsOnlyChallenges != nil {
+		friendsOnly = *req.FriendsOnlyChallenges
+	}
+	if err := l.svcCtx.UserModel.UpdatePrivacyFields(nil, userID, req.HideMatchRecord, req.FriendsOnlyChallenges); err != nil {
 		l.Logger.Errorf("更新用户隐私设置失败: userId=%d err=%v", userID, err)
 		return &types.UpdateUserPrivacyResp{
 			Success: false,
@@ -59,8 +67,9 @@ func (l *UpdateUserPrivacyLogic) UpdateUserPrivacy(req *types.UpdateUserPrivacyR
 	}
 
 	return &types.UpdateUserPrivacyResp{
-		Success:         true,
-		Message:         "更新成功",
-		HideMatchRecord: req.HideMatchRecord,
+		Success:               true,
+		Message:               "更新成功",
+		HideMatchRecord:       hideMatchRecord,
+		FriendsOnlyChallenges: friendsOnly,
 	}, nil
 }

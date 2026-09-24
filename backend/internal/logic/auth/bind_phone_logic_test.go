@@ -33,6 +33,7 @@ func newSmsBindTestSvc(t *testing.T) (*svc.ServiceContext, *miniredis.Miniredis)
 			push_token TEXT NOT NULL DEFAULT '',
 			member_expires_at DATETIME,
 			hide_match_record BOOLEAN NOT NULL DEFAULT false,
+			friends_only_challenges BOOLEAN NOT NULL DEFAULT false,
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			deleted_at DATETIME

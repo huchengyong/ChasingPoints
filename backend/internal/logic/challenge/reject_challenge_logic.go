@@ -2,15 +2,15 @@ package challenge
 
 import (
 	"context"
-	"fmt"
 	"time"
 
-	logicx "chasing_points/internal/logic"
+	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
 
 	"github.com/zeromicro/go-zero/core/logx"
+	"gorm.io/gorm"
 )
 
 type RejectChallengeLogic struct {
@@ -19,7 +19,7 @@ type RejectChallengeLogic struct {
 	svcCtx *svc.ServiceContext
 }
 
-// 拒绝挑战
+// 拒绝约球
 func NewRejectChallengeLogic(ctx context.Context, svcCtx *svc.ServiceContext) *RejectChallengeLogic {
 	return &RejectChallengeLogic{
 		Logger: logx.WithContext(ctx),
@@ -28,47 +28,65 @@ func NewRejectChallengeLogic(ctx context.Context, svcCtx *svc.ServiceContext) *R
 	}
 }
 
-func (l *RejectChallengeLogic) RejectChallenge(req *types.HandleChallengeReq) (resp *types.CommonResp, err error) {
-	userIdInt, err := utils.GetUserIDFromCtx(l.ctx)
+func (l *RejectChallengeLogic) RejectChallenge(req *types.HandleChallengeReq) (resp *types.ChallengeActionResp, err error) {
+	resp = &types.ChallengeActionResp{}
+	userId, err := utils.GetUserIDFromCtx(l.ctx)
 	if err != nil {
-		l.Logger.Errorf("获取用户ID失败: %v", err)
-		return &types.CommonResp{Success: false, Message: "获取用户信息失败"}, nil
+		resp.Message = "获取用户信息失败"
+		return resp, nil
 	}
-
-	challenge, err := l.svcCtx.ChallengeModel.FindById(req.ChallengeId)
+	if req.ChallengeId <= 0 {
+		resp.Message = "约球不存在"
+		return resp, nil
+	}
+	var senderId int64
+	err = l.svcCtx.DB.Transaction(func(tx *gorm.DB) error {
+		challenge, err := l.svcCtx.ChallengeModel.FindByIdForUpdateWithTx(tx, req.ChallengeId)
+		if err != nil {
+			return err
+		}
+		// 锁后再取当前时间：锁等待跨过失效时刻的请求不能拒绝成功。
+		now := time.Now()
+		if challenge == nil || challenge.ToUserId != userId {
+			resp.Message = "约球不存在"
+			return nil
+		}
+		if challenge.Status != model.ChallengeStatusPending {
+			resp.Message = "约球已处理或已失效"
+			return nil
+		}
+		if !challenge.ExpiresAt.After(now) {
+			resp.Message = "约球已失效"
+			return nil
+		}
+		ok, err := l.svcCtx.ChallengeModel.UpdateStatusWithTx(tx, challenge.Id, []int{model.ChallengeStatusPending}, model.ChallengeStatusRejected,
+			map[string]interface{}{"close_reason": model.ChallengeCloseReasonRejected})
+		if err != nil {
+			return err
+		}
+		if !ok {
+			resp.Message = "约球已处理或已失效"
+			return nil
+		}
+		senderId = challenge.FromUserId
+		resp.Success = true
+		resp.ChallengeId = challenge.Id
+		return nil
+	})
 	if err != nil {
-		l.Logger.Errorf("查询挑战失败: challengeId=%d err=%v", req.ChallengeId, err)
-		return &types.CommonResp{Success: false, Message: "操作失败"}, nil
+		l.Logger.Errorf("拒绝约球失败: id=%d err=%v", req.ChallengeId, err)
+		// 事务已回滚：清除事务内写入的成功结果。
+		resp.Success = false
+		if resp.Message == "" {
+			resp.Message = "操作失败"
+		}
+		return resp, nil
 	}
-	if challenge == nil || challenge.ToUserId != userIdInt || challenge.Status != 0 {
-		return &types.CommonResp{Success: false, Message: "挑战不存在或已处理"}, nil
+	if resp.Success {
+		dispatchChallengeNotification(l.svcCtx, senderId, "约球已拒绝", "对方这次不了", map[string]interface{}{
+			"challenge_id": resp.ChallengeId,
+			"status":       model.ChallengeStatusRejected,
+		}, l.Logger)
 	}
-	if !challenge.ExpiresAt.After(time.Now()) {
-		return &types.CommonResp{Success: false, Message: "挑战已过期"}, nil
-	}
-
-	if err = l.svcCtx.ChallengeModel.Reject(req.ChallengeId, userIdInt); err != nil {
-		l.Logger.Errorf("拒绝挑战失败: challengeId=%d userId=%d err=%v", req.ChallengeId, userIdInt, err)
-		return &types.CommonResp{Success: false, Message: "操作失败"}, nil
-	}
-
-	myName := "好友"
-	if me, userErr := l.svcCtx.UserModel.FindById(userIdInt); userErr == nil && me != nil && me.Nickname != "" {
-		myName = me.Nickname
-	}
-
-	content := fmt.Sprintf("%s 拒绝了你的挑战", myName)
-	if notifyErr := logicx.DispatchNotification(l.svcCtx, logicx.NotificationDispatchInput{
-		UserId:      challenge.FromUserId,
-		Type:        "challenge",
-		Title:       "挑战被拒绝",
-		Content:     content,
-		PushTitle:   "挑战被拒绝",
-		PushContent: content,
-		WSCategory:  "challenge",
-	}); notifyErr != nil {
-		l.Logger.Errorf("分发挑战拒绝通知失败: from=%d err=%v", challenge.FromUserId, notifyErr)
-	}
-
-	return &types.CommonResp{Success: true, Message: "操作成功"}, nil
+	return resp, nil
 }

@@ -135,6 +135,18 @@
 					</view>
 				</view>
 
+				<view class="challenge-status-strip" v-if="currentChallenge" @click="openChallengeFromHome">
+					<view class="challenge-strip-copy">
+						<text class="challenge-strip-title">{{ challengeStripTitle }}</text>
+						<text class="challenge-strip-sub">{{ challengeStripSub }}</text>
+					</view>
+					<view class="challenge-strip-action">
+						<text>{{ Number(currentChallenge.status) === 6 && currentChallenge.match_id > 0 ? '继续比赛' : '进入' }}</text>
+					</view>
+				</view>
+				<view class="challenge-status-unavailable" v-if="isLoggedIn && !activityStore.challengeAvailable" @click="retryChallengeActivity">
+					<text class="challenge-status-unavailable__text">约球状态读取失败，点击重试</text>
+				</view>
 				<view class="status-card" :class="{ ongoing: statusCard.type === 'ongoing', loading: statusCard.loading }">
 					<template v-if="statusCard.loading">
 						<view class="status-skeleton-head">
@@ -324,7 +336,7 @@ import { resolveQrCodeModalCopy } from '@/utils/pk-entry-actions.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
 import { useNotificationStore } from '@/store/notification.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
-import { GAME_TYPE_TABS } from '@/utils/game-types.js'
+import { GAME_TYPE_LABEL_MAP, GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { markAsRead } from '@/api/notification.js'
 import { buildHonorWallUrl, presentLatestSeasonRollover } from '@/utils/honor-wall.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
@@ -373,7 +385,41 @@ const qrcodeError = ref('')
 const selectedGameType = ref(null)
 const defaultGameType = ref(0)
 const currentRankGameType = ref(3)
+const currentUserId = computed(() => Number(userStore.userId) || 0)
 const currentMatch = computed(() => (isLoggedIn.value ? activityStore.currentMatch : null))
+const currentChallenge = computed(() => (isLoggedIn.value ? activityStore.currentChallenge : null))
+const challengeStripTitle = computed(() => {
+	const item = currentChallenge.value
+	if (!item) return ''
+	if (Number(item.status) === 6) return '对局进行中'
+	if (Number(item.status) === 1) {
+		if (Number(item.waiting_user_id) === currentUserId.value) return '你已进入，等待对方'
+		if (Number(item.waiting_user_id) > 0) return '对方已进入，等你开始'
+		return '已约好，待进入'
+	}
+	if (Number(item.status) === 0) return item.from_user_id === currentUserId.value ? '等待对方回应' : '收到约球邀请'
+	return ''
+})
+const challengeStripSub = computed(() => {
+	const item = currentChallenge.value
+	if (!item) return ''
+	const opponentName = item.from_user_id === currentUserId.value ? item.to_nickname : item.from_nickname
+	return `${opponentName || '球友'} · ${GAME_TYPE_LABEL_MAP[item.game_type] || '台球'}`
+})
+const openChallengeFromHome = () => {
+	const item = currentChallenge.value
+	if (!item) return
+	if (Number(item.status) === 6 && item.match_id > 0) {
+		uni.navigateTo({ url: `/subPages/match/playing?match_id=${item.match_id}` })
+		return
+	}
+	uni.navigateTo({ url: `/subPages/match/challengeWaiting?challenge_id=${item.id}` })
+}
+
+const retryChallengeActivity = () => {
+	if (!isLoggedIn.value) return
+	activityStore.fetch(getReadIdentity(), { force: true, silent: true })
+}
 const rankInfo = computed(() => rankStore.rankInfoMap[currentRankGameType.value] || null)
 const favoriteVenueRewardStatus = ref(null)
 const memberStatus = ref(null)

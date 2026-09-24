@@ -38,7 +38,7 @@ test('App applies recovery data only after auth-generation and foreground checks
   assert.match(restoreSource, /currentGeneration: currentUserStore\.authGeneration/)
   assert.match(restoreSource, /isForeground: this\.appIsForeground/)
   assert.match(restoreSource, /currentUserStore\.updateUserInfo\(result\.userInfo\)/)
-  assert.match(restoreSource, /useActivityStore\(\)\.applyBootstrap\(identity, result\.bootstrap\)/)
+  assert.match(restoreSource, /applyBootstrap\(identity, result\.bootstrap, \{ startDirtySeq: bootstrapStartDirtySeq \}\)/)
   assert.match(restoreSource, /this\.applyBootstrapCompetitiveRevision\(identity, result\.bootstrap\)/)
 
   const guardIndex = restoreSource.indexOf('canApplySessionRecoveryResult')

@@ -427,18 +427,21 @@ type UpdateUserProfileResp {
 }
 
 type GetUserPrivacyResp {
-	Success         bool `json:"success"`
-	HideMatchRecord bool `json:"hide_match_record"`
+	Success               bool `json:"success"`
+	HideMatchRecord       bool `json:"hide_match_record"`
+	FriendsOnlyChallenges bool `json:"friends_only_challenges"`
 }
 
 type UpdateUserPrivacyReq {
-	HideMatchRecord bool `json:"hide_match_record"`
+	HideMatchRecord       *bool `json:"hide_match_record,optional"`
+	FriendsOnlyChallenges *bool `json:"friends_only_challenges,optional"`
 }
 
 type UpdateUserPrivacyResp {
-	Success         bool   `json:"success"`
-	Message         string `json:"message"`
-	HideMatchRecord bool   `json:"hide_match_record"`
+	Success               bool   `json:"success"`
+	Message               string `json:"message"`
+	HideMatchRecord       bool   `json:"hide_match_record"`
+	FriendsOnlyChallenges bool   `json:"friends_only_challenges"`
 }
 
 type FavoriteVenueRewardStatusResp {
@@ -476,15 +479,18 @@ type ReadPartialError {
 }
 
 type GetUserBootstrapResp {
-	Success                   bool               `json:"success"`
-	UserInfo                  *UserInfo          `json:"user_info"`
-	CurrentMatch              *CurrentMatchInfo  `json:"current_match"`
-	UnreadCount               int                `json:"unread_count"`
-	PendingFriendRequestCount int                `json:"pending_friend_request_count"`
-	LatestSeasonRollover      *NotificationInfo  `json:"latest_season_rollover"`
-	CompetitiveRevision       int64              `json:"competitive_revision"`
-	Availability              map[string]bool    `json:"availability"`
-	PartialErrors             []ReadPartialError `json:"partial_errors"`
+	Success                       bool               `json:"success"`
+	UserInfo                      *UserInfo          `json:"user_info"`
+	CurrentMatch                  *CurrentMatchInfo  `json:"current_match"`
+	CurrentChallenge              *ChallengeInfo     `json:"current_challenge"`
+	ReceivedPendingChallengeCount int                `json:"received_pending_challenge_count"`
+	ServerTime                    string             `json:"server_time"`
+	UnreadCount                   int                `json:"unread_count"`
+	PendingFriendRequestCount     int                `json:"pending_friend_request_count"`
+	LatestSeasonRollover          *NotificationInfo  `json:"latest_season_rollover"`
+	CompetitiveRevision           int64              `json:"competitive_revision"`
+	Availability                  map[string]bool    `json:"availability"`
+	PartialErrors                 []ReadPartialError `json:"partial_errors"`
 }
 
 type GetUserOverviewResp {
@@ -779,6 +785,7 @@ type MatchLastAction {
 
 type MatchSyncSnapshot {
 	MatchId                       int64            `json:"match_id"`
+	ChallengeId                   int64            `json:"challenge_id,optional"`
 	Status                        int              `json:"status"`
 	ServerRevision                int64            `json:"server_revision"`
 	MatchMode                     string           `json:"match_mode,optional"`
@@ -848,7 +855,6 @@ type StartMatchReq {
 	OpponentName        string `json:"opponent_name,optional"` // 旧客户端展示字段；不得作为授权依据
 	OpponentAvatar      string `json:"opponent_avatar,optional"` // 对手头像
 	InviteToken         string `json:"invite_token,optional"` // 服务端签发的匹配邀请凭据
-	ChallengeId         int64  `json:"challenge_id,optional"` // 已接受邀约 ID
 	SnookerRulesVersion int    `json:"snooker_rules_version,optional"` // 斯诺克规则版本：旧客户端缺省为1，新客户端显式提交2
 	BestOfFrames        int    `json:"best_of_frames,optional"` // 版本2斯诺克总局数，必须为正奇数
 	SnookerFormat       string `json:"snooker_format,optional"` // legacy/free/race_to
@@ -1097,6 +1103,7 @@ type CancelMatchReq {
 // 获取进行中对局
 type CurrentMatchInfo {
 	Id                            int64            `json:"id"`
+	ChallengeId                   int64            `json:"challenge_id,optional"`
 	GameType                      int              `json:"game_type"`
 	GameTypeName                  string           `json:"game_type_name"`
 	GameMode                      string           `json:"game_mode"`
@@ -1435,6 +1442,7 @@ type MatchSummaryItem {
 
 type MatchDetailData {
 	Id                            int64              `json:"id"`
+	ChallengeId                   int64              `json:"challenge_id,optional"`
 	Player1Id                     int64              `json:"player1_id"`
 	Player2Id                     int64              `json:"player2_id"`
 	OpponentId                    int64              `json:"opponent_id,optional"`
@@ -2333,40 +2341,134 @@ service chasing_points-api {
 	get /comments (GetPostCommentsReq) returns (GetPostCommentsResp)
 }
 
-// ==================== 挑战模块 ====================
+// ==================== 约球模块 ====================
 type ChallengeInfo {
-	Id           int64  `json:"id"`
-	MatchId      int64  `json:"match_id,optional"`
-	FromUserId   int64  `json:"from_user_id"`
-	FromNickname string `json:"from_nickname"`
-	FromAvatar   string `json:"from_avatar"`
-	ToUserId     int64  `json:"to_user_id"`
-	ToNickname   string `json:"to_nickname"`
-	ToAvatar     string `json:"to_avatar"`
-	GameType     int    `json:"game_type"`
-	Message      string `json:"message"`
-	Status       int    `json:"status"`
-	CreatedAt    string `json:"created_at"`
+	Id                  int64  `json:"id"`
+	MatchId             int64  `json:"match_id,optional"`
+	FromUserId          int64  `json:"from_user_id"`
+	FromNickname        string `json:"from_nickname"`
+	FromAvatar          string `json:"from_avatar"`
+	ToUserId            int64  `json:"to_user_id"`
+	ToNickname          string `json:"to_nickname"`
+	ToAvatar            string `json:"to_avatar"`
+	GameType            int    `json:"game_type"`
+	MatchMode           string `json:"match_mode,optional"`
+	Visibility          string `json:"visibility,optional"`
+	MatchFormat         string `json:"match_format,optional"`
+	TargetWins          int    `json:"target_wins,optional"`
+	SnookerRulesVersion int    `json:"snooker_rules_version,optional"`
+	BestOfFrames        int    `json:"best_of_frames,optional"`
+	SnookerFormat       string `json:"snooker_format,optional"`
+	SnookerTargetWins   int    `json:"snooker_target_wins,optional"`
+	StartingActor       int    `json:"starting_actor,optional"`
+	Message             string `json:"message"`
+	Status              int    `json:"status"`
+	CloseReason         string `json:"close_reason,optional"`
+	WaitingUserId       int64  `json:"waiting_user_id,optional"`
+	ScheduledDate       string `json:"scheduled_date,optional"`
+	DayOffset           int    `json:"day_offset,optional"`
+	StartHour           int    `json:"start_hour,optional"`
+	EndHour             int    `json:"end_hour,optional"`
+	ExpiresAt           string `json:"expires_at,optional"`
+	CreatedAt           string `json:"created_at"`
 }
 
 type SendChallengeReq {
-	ToUserId int64  `json:"to_user_id"`
-	GameType int    `json:"game_type"`
-	Message  string `json:"message,optional"`
+	ToUserId            int64  `json:"to_user_id"`
+	GameType            int    `json:"game_type"`
+	MatchMode           string `json:"match_mode,optional"` // ranked/practice，缺省 ranked
+	Visibility          string `json:"visibility,optional"`
+	MatchFormat         string `json:"match_format,optional"`
+	TargetWins          int    `json:"target_wins,optional"`
+	SnookerRulesVersion int    `json:"snooker_rules_version,optional"`
+	BestOfFrames        int    `json:"best_of_frames,optional"`
+	SnookerFormat       string `json:"snooker_format,optional"`
+	SnookerTargetWins   int    `json:"snooker_target_wins,optional"`
+	StartingActor       int    `json:"starting_actor,optional"`
+	Message             string `json:"message,optional"`
+	DayOffset           int    `json:"day_offset"` // 0今天/1明天/2后天
+	ScheduledDate       string `json:"scheduled_date"` // 与展示一致的 YYYY-MM-DD
+	StartHour           int    `json:"start_hour"`
+	EndHour             int    `json:"end_hour"`
 }
 
 type SendChallengeResp {
-	Success     bool  `json:"success"`
-	ChallengeId int64 `json:"challenge_id"`
+	Success            bool   `json:"success"`
+	ChallengeId        int64  `json:"challenge_id"`
+	Message            string `json:"message,optional"`
+	PendingChallengeId int64  `json:"pending_challenge_id,optional"` // 被拦截时指向自己仍待回应的邀请
+}
+
+type AcceptChallengeReq {
+	ChallengeId            int64 `json:"challenge_id"`
+	ConfirmCloseOwnPending bool  `json:"confirm_close_own_pending,optional"` // 换人接受确认
+}
+
+type AcceptChallengeResp {
+	Success             bool   `json:"success"`
+	ChallengeId         int64  `json:"challenge_id"` // 主记录 ID（含重复点击/已合并重放）
+	MatchId             int64  `json:"match_id,optional"` // 已开局时指向比赛
+	Message             string `json:"message,optional"`
+	TypeConflict        bool   `json:"type_conflict,optional"` // 互邀但球种/类型不同
+	NeedConfirmCloseOwn bool   `json:"need_confirm_close_own,optional"` // 换人接受需要确认
+	PendingChallengeId  int64  `json:"pending_challenge_id,optional"` // 需要关闭的自己待回应邀请
 }
 
 type HandleChallengeReq {
 	ChallengeId int64 `json:"challenge_id"`
 }
 
+type ChallengeActionResp {
+	Success     bool   `json:"success"`
+	Message     string `json:"message,optional"`
+	ChallengeId int64  `json:"challenge_id,optional"`
+	MatchId     int64  `json:"match_id,optional"` // 已开局时返回真实比赛
+}
+
+type EnterChallengeReq {
+	ChallengeId  int64 `json:"challenge_id"`
+	ConfirmEarly bool  `json:"confirm_early,optional"` // 提前进入确认
+}
+
+type EnterChallengeResp {
+	Success      bool              `json:"success"`
+	Action       string            `json:"action,optional"` // waiting/match_created/confirm_early
+	ChallengeId  int64             `json:"challenge_id,optional"`
+	MatchId      int64             `json:"match_id,optional"`
+	Message      string            `json:"message,optional"`
+	OngoingMatch *CurrentMatchInfo `json:"ongoing_match,optional"`
+}
+
+type GetChallengeSummaryResp {
+	Success              bool           `json:"success"`
+	CurrentChallenge     *ChallengeInfo `json:"current_challenge"`
+	ReceivedPendingCount int            `json:"received_pending_count"`
+	ServerTime           string         `json:"server_time"`
+}
+
 type GetPendingChallengesResp {
 	Success bool            `json:"success"`
 	List    []ChallengeInfo `json:"list"`
+}
+
+type GetChallengeDetailReq {
+	Id int64 `form:"id"`
+}
+
+type GetChallengeDetailResp {
+	Success   bool           `json:"success"`
+	Challenge *ChallengeInfo `json:"challenge"`
+}
+
+type GetChallengeHistoryReq {
+	BeforeId int64 `form:"before_id,optional"`
+	PageSize int   `form:"page_size,optional"`
+}
+
+type GetChallengeHistoryResp {
+	Success      bool            `json:"success"`
+	List         []ChallengeInfo `json:"list"`
+	NextBeforeId int64           `json:"next_before_id,optional"`
 }
 
 @server (
@@ -2375,21 +2477,49 @@ type GetPendingChallengesResp {
 	jwt:    Auth
 )
 service chasing_points-api {
-	@doc "发起挑战"
+	@doc "发起约球"
 	@handler SendChallenge
 	post /send (SendChallengeReq) returns (SendChallengeResp)
 
-	@doc "接受挑战"
+	@doc "接受约球"
 	@handler AcceptChallenge
-	post /accept (HandleChallengeReq) returns (CommonResp)
+	post /accept (AcceptChallengeReq) returns (AcceptChallengeResp)
 
-	@doc "拒绝挑战"
+	@doc "拒绝约球"
 	@handler RejectChallenge
-	post /reject (HandleChallengeReq) returns (CommonResp)
+	post /reject (HandleChallengeReq) returns (ChallengeActionResp)
 
-	@doc "获取待处理挑战"
+	@doc "取消约球"
+	@handler CancelChallenge
+	post /cancel (HandleChallengeReq) returns (ChallengeActionResp)
+
+	@doc "放弃本次约球"
+	@handler AbandonChallenge
+	post /abandon (HandleChallengeReq) returns (ChallengeActionResp)
+
+	@doc "进入约球对局"
+	@handler EnterChallenge
+	post /enter (EnterChallengeReq) returns (EnterChallengeResp)
+
+	@doc "退出等待保留约球"
+	@handler LeaveChallenge
+	post /leave (HandleChallengeReq) returns (ChallengeActionResp)
+
+	@doc "当前约球摘要"
+	@handler GetChallengeSummary
+	get /summary returns (GetChallengeSummaryResp)
+
+	@doc "活动约球列表"
 	@handler GetPendingChallenges
 	get /pending returns (GetPendingChallengesResp)
+
+	@doc "约球详情"
+	@handler GetChallengeDetail
+	get /detail (GetChallengeDetailReq) returns (GetChallengeDetailResp)
+
+	@doc "约球历史分页"
+	@handler GetChallengeHistory
+	get /history (GetChallengeHistoryReq) returns (GetChallengeHistoryResp)
 }
 
 // ==================== 赛事模块 ====================

@@ -304,6 +304,7 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 		Success: true,
 		Match: types.MatchDetailData{
 			Id:                            match.Id,
+			ChallengeId:                   challengeIdOf(match),
 			Player1Id:                     match.UserId,
 			Player2Id:                     player2Id,
 			OpponentId:                    opponentId,

@@ -43,9 +43,25 @@
 							<text class="menu-description">控制是否在公开场景展示你的战绩</text>
 						</view>
 					</view>
-					<view class="privacy-switch" :class="{ active: isHideMatch }">
+					<view v-if="privacyReady" class="privacy-switch" :class="{ active: isHideMatch }">
 						<view class="privacy-switch-thumb" :class="{ active: isHideMatch }"></view>
 					</view>
+					<text v-else class="menu-description">{{ privacyLoading ? '读取中…' : '读取失败，点击重试' }}</text>
+				</view>
+				<view class="menu-item" @click="toggleFriendsOnlyChallenges">
+					<view class="menu-left">
+						<view class="icon-wrapper amber">
+							<uni-icons type="person-filled" size="24" color="#c69200"></uni-icons>
+						</view>
+						<view class="menu-copy">
+							<text class="menu-text">仅允许好友约球</text>
+							<text class="menu-description">开启后，非好友无法向你发送约球邀请</text>
+						</view>
+					</view>
+					<view v-if="privacyReady" class="privacy-switch" :class="{ active: isFriendsOnlyChallenges }">
+						<view class="privacy-switch-thumb" :class="{ active: isFriendsOnlyChallenges }"></view>
+					</view>
+					<text v-else class="menu-description">{{ privacyLoading ? '读取中…' : '读取失败，点击重试' }}</text>
 				</view>
 				<view class="menu-item" @click="handlePrivacy">
 					<view class="menu-left">
@@ -185,7 +201,14 @@ const defaultGameTypeOptions = DEFAULT_GAME_TYPE_OPTIONS
 const hasBoundPhone = computed(() => Boolean(userStore.userInfo?.phone))
 const defaultGameType = ref(0)
 const isHideMatch = ref(false)
+const isFriendsOnlyChallenges = ref(false)
+const privacyReady = ref(false)
+const privacyLoading = ref(false)
+const privacyOwnerId = ref(0)
+const privacyOwnerGeneration = ref(-1)
+let privacyRequestId = 0
 const hideMatchLoading = ref(false)
+const friendsOnlyLoading = ref(false)
 const privacyLoadedAt = ref(0)
 const privacyDirty = ref(true)
 const PRIVACY_CACHE_TTL = 5 * 60 * 1000
@@ -199,18 +222,39 @@ const deleteAccountSubmitting = ref(false)
 // ========== 生命周期 ==========
 onShow(() => {
 	defaultGameType.value = readDefaultGameType(uni, userStore.userId)
+	if (privacyOwnerId.value !== userStore.userId || privacyOwnerGeneration.value !== userStore.authGeneration) {
+		privacyRequestId++
+		privacyLoading.value = false
+		privacyReady.value = false
+		privacyDirty.value = true
+		privacyOwnerId.value = userStore.userId
+		privacyOwnerGeneration.value = userStore.authGeneration
+	}
 	loadUserPrivacy()
 })
 
 const loadUserPrivacy = async ({ force = false } = {}) => {
-	if (!force && !privacyDirty.value && Date.now() - privacyLoadedAt.value < PRIVACY_CACHE_TTL) return
+	if (privacyLoading.value || (!force && !privacyDirty.value && Date.now() - privacyLoadedAt.value < PRIVACY_CACHE_TTL)) return
+	const userId = userStore.userId
+	const generation = userStore.authGeneration
+	const requestId = ++privacyRequestId
+	privacyLoading.value = true
 	try {
 		const res = await getUserPrivacy()
-		isHideMatch.value = Boolean(res?.success && res.hide_match_record)
+		if (userStore.userId !== userId || userStore.authGeneration !== generation) return
+		if (!res?.success) throw new Error('读取隐私设置失败')
+		isHideMatch.value = Boolean(res.hide_match_record)
+		isFriendsOnlyChallenges.value = Boolean(res.friends_only_challenges)
+		privacyReady.value = true
 		privacyLoadedAt.value = Date.now()
 		privacyDirty.value = false
 	} catch (error) {
+		if (userStore.userId !== userId || userStore.authGeneration !== generation) return
+		privacyReady.value = false
+		privacyDirty.value = true
 		console.error('获取用户隐私设置失败:', error)
+	} finally {
+		if (privacyRequestId === requestId) privacyLoading.value = false
 	}
 }
 
@@ -225,6 +269,31 @@ const handleNotifications = () => {
 	})
 }
 
+const toggleFriendsOnlyChallenges = async () => {
+	if (friendsOnlyLoading.value) return
+	if (!privacyReady.value) return loadUserPrivacy({ force: true })
+	const nextValue = !isFriendsOnlyChallenges.value
+	const userId = userStore.userId
+	const generation = userStore.authGeneration
+	friendsOnlyLoading.value = true
+	try {
+		const res = await updateUserPrivacy({ friends_only_challenges: nextValue })
+		if (userStore.userId !== userId || userStore.authGeneration !== generation) return
+		if (!res?.success) throw new Error(res?.message || '更新失败')
+		isFriendsOnlyChallenges.value = Boolean(res.friends_only_challenges)
+		uni.showToast({
+			title: res.friends_only_challenges ? '已开启仅好友约球' : '已允许非好友约球',
+			icon: 'none'
+		})
+	} catch (error) {
+		if (userStore.userId !== userId || userStore.authGeneration !== generation) return
+		// 保存失败恢复原值并允许重试。
+		uni.showToast({ title: '保存失败，请重试', icon: 'none' })
+	} finally {
+		friendsOnlyLoading.value = false
+	}
+}
+
 const setDefaultGameType = (gameType) => {
 	defaultGameType.value = saveDefaultGameType(uni, userStore.userId, gameType)
 	uni.showToast({
@@ -235,7 +304,10 @@ const setDefaultGameType = (gameType) => {
 
 const toggleHideMatch = async () => {
 	if (hideMatchLoading.value) return
+	if (!privacyReady.value) return loadUserPrivacy({ force: true })
 
+	const userId = userStore.userId
+	const generation = userStore.authGeneration
 	const previousValue = isHideMatch.value
 	const nextValue = !previousValue
 	isHideMatch.value = nextValue
@@ -243,6 +315,7 @@ const toggleHideMatch = async () => {
 
 	try {
 		const res = await updateUserPrivacy({ hide_match_record: nextValue })
+		if (userStore.userId !== userId || userStore.authGeneration !== generation) return
 		if (!res.success) {
 			throw new Error(res.message || '更新隐私设置失败')
 		}
@@ -255,6 +328,7 @@ const toggleHideMatch = async () => {
 			icon: 'none'
 		})
 	} catch (error) {
+		if (userStore.userId !== userId || userStore.authGeneration !== generation) return
 		console.error('更新隐藏战绩失败:', error)
 		isHideMatch.value = previousValue
 		uni.showToast({

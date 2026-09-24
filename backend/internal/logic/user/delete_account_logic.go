@@ -172,6 +172,16 @@ func (l *DeleteAccountLogic) deleteAccountInTransaction(userID int64, verificati
 		if cancelErr != nil {
 			return cancelErr
 		}
+		// 被注销账号参与的比赛取消后，同步结束关联约球，另一方不残留占用。
+		for index := range closedMatches {
+			match := &closedMatches[index]
+			if match.ChallengeId == nil || *match.ChallengeId <= 0 {
+				continue
+			}
+			if _, err := l.svcCtx.ChallengeModel.MarkMatchCancelledWithTx(tx, *match.ChallengeId, model.ChallengeCloseReasonDeleted); err != nil {
+				return err
+			}
+		}
 		if err := l.svcCtx.UserDataLifecycleModel.AnonymizeRetainedAccountFactsWithTx(tx, userID); err != nil {
 			return err
 		}

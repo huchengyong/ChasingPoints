@@ -82,23 +82,6 @@ func (l *StartMatchLogic) StartMatch(req *types.StartMatchReq) (resp *types.Star
 		return &types.StartMatchResp{Success: false, Message: "请选择有效的平台对手"}, nil
 	}
 
-	var challenge *model.Challenge
-	if req.ChallengeId > 0 {
-		challenge, err = l.svcCtx.ChallengeModel.FindById(req.ChallengeId)
-		if err != nil || challenge == nil {
-			return &types.StartMatchResp{Success: false, Message: "邀约不存在或已失效"}, nil
-		}
-		if challenge.Status != 1 {
-			return &types.StartMatchResp{Success: false, Message: "邀约已处理或已关联对局"}, nil
-		}
-		if challenge.GameType != req.GameType || !challengeMatchesUsers(challenge, userId, req.OpponentId) {
-			return &types.StartMatchResp{Success: false, Message: "邀约对手或球种不匹配"}, nil
-		}
-		if challenge.MatchId != nil {
-			return l.linkedChallengeResumeResponse(userId, *challenge.MatchId), nil
-		}
-	}
-
 	var (
 		decision     startMatchDecision
 		createdMatch *model.Match
@@ -109,29 +92,6 @@ func (l *StartMatchLogic) StartMatch(req *types.StartMatchReq) (resp *types.Star
 		if err := l.svcCtx.UserModel.LockUsersForUpdate(tx, lockUserIDs); err != nil {
 			return err
 		}
-		if req.ChallengeId > 0 {
-			lockedChallenge, findErr := l.svcCtx.ChallengeModel.FindByIdForUpdateWithTx(tx, req.ChallengeId)
-			if findErr != nil {
-				return findErr
-			}
-			if lockedChallenge == nil || lockedChallenge.Status != 1 ||
-				lockedChallenge.GameType != req.GameType || !challengeMatchesUsers(lockedChallenge, userId, req.OpponentId) {
-				return gorm.ErrRecordNotFound
-			}
-			challenge = lockedChallenge
-			if lockedChallenge.MatchId != nil {
-				linkedMatch, findErr := l.svcCtx.MatchModel.FindByIdForUpdateWithTx(tx, *lockedChallenge.MatchId)
-				if findErr != nil {
-					return findErr
-				}
-				if linkedMatch == nil {
-					return gorm.ErrRecordNotFound
-				}
-				decision = startMatchDecision{Action: startMatchActionResumeExisting, Match: linkedMatch}
-				return nil
-			}
-		}
-
 		existing, findErr := l.svcCtx.MatchModel.FindCurrentByUserIdWithTx(tx, userId)
 		if findErr != nil {
 			return findErr
@@ -182,9 +142,18 @@ func (l *StartMatchLogic) StartMatch(req *types.StartMatchReq) (resp *types.Star
 		if err := l.svcCtx.MatchModel.CreateWithTx(tx, match); err != nil {
 			return err
 		}
-		if req.ChallengeId > 0 {
-			if err := l.svcCtx.ChallengeModel.LinkAcceptedWithTx(tx, req.ChallengeId, challenge.FromUserId, challenge.ToUserId, req.GameType, match.Id); err != nil {
-				return err
+		// 只有正式比赛创建成功才清除参赛双方各自的旧等待；失败则事务回滚。
+		if l.svcCtx.ChallengeModel != nil {
+			for _, participantID := range lockUserIDs {
+				waiting, err := l.svcCtx.ChallengeModel.FindOpenWaitingByUserWithTx(tx, participantID, time.Now())
+				if err != nil {
+					return err
+				}
+				if waiting != nil {
+					if _, err := l.svcCtx.ChallengeModel.ClearWaitingWithTx(tx, waiting.Id, participantID); err != nil {
+						return err
+					}
+				}
 			}
 		}
 

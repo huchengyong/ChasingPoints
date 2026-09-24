@@ -47,6 +47,7 @@ func buildMatchSyncSnapshotForUser(userId int64, match *model.Match, completedRo
 
 	return types.MatchSyncSnapshot{
 		MatchId:                       match.Id,
+		ChallengeId:                   challengeIdOf(match),
 		Status:                        match.Status,
 		ServerRevision:                match.SyncRevision,
 		MatchMode:                     model.NormalizeMatchMode(match.MatchMode),

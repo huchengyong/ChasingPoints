@@ -10,7 +10,6 @@ export const SESSION_STORAGE_KEYS = {
 }
 
 export const MATCH_START_CONTEXT_STORAGE_KEYS = [
-  'pending_match_challenge',
   'pending_match_rematch'
 ]
 

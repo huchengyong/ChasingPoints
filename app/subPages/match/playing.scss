@@ -1577,3 +1577,49 @@ $success: #1bb56b;
 		font-size: 17rpx;
 	}
 }
+
+.finish-slider {
+	position: relative;
+	width: 100%;
+	height: 96rpx;
+	border-radius: 999rpx;
+	background: rgba(224, 174, 18, 0.16);
+	overflow: hidden;
+
+	.finish-slider-thumb {
+		position: absolute;
+		left: 0;
+		top: 0;
+		width: 96rpx;
+		height: 96rpx;
+		line-height: 96rpx;
+		border-radius: 50%;
+		background: #E0AE12;
+		text-align: center;
+		z-index: 2;
+
+		text {
+			color: #ffffff;
+			font-size: 36rpx;
+			font-weight: 700;
+		}
+
+		&.dragging {
+			opacity: 0.92;
+		}
+	}
+
+	.finish-slider-track-label {
+		position: absolute;
+		left: 0;
+		right: 0;
+		top: 0;
+		height: 96rpx;
+		line-height: 96rpx;
+		text-align: center;
+		font-size: 28rpx;
+		color: #B8860B;
+		font-weight: 600;
+		pointer-events: none;
+	}
+}

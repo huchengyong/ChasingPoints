@@ -219,7 +219,7 @@ func TestUserBootstrapKeepsUserAvailableWhenOptionalModelsAreMissing(t *testing.
 	if err != nil || !resp.Success || resp.UserInfo == nil || !resp.Availability["user"] {
 		t.Fatalf("user must remain available when optional blocks fail: resp=%#v err=%v", resp, err)
 	}
-	if len(resp.PartialErrors) != 5 {
-		t.Fatalf("expected all five optional blocks marked partial: %+v", resp.PartialErrors)
+	if len(resp.PartialErrors) != 7 {
+		t.Fatalf("expected all optional blocks marked partial: %+v", resp.PartialErrors)
 	}
 }
