@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>追分 · 约一场好球 — 交互预览</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="preview.js" defer></script>
+</head>
+<body>
+  <header class="studio-header">
+    <a class="studio-brand" href="index.html" aria-label="重置追分原型"><span class="brand-ball">8</span><b>追分<span>CHASING POINTS</span></b></a>
+    <div class="studio-meta"><span class="live-dot"></span> DESIGN PREVIEW <span class="version">01 / LIGHT</span></div>
+    <a class="doc-link" href="../../prd/familiar-player-quick-start.md">需求文档 ↗</a>
+  </header>
+  <main class="studio">
+    <aside class="console">
+      <p class="eyebrow">THE NEXT GOOD GAME</p>
+      <h1>熟悉的球友，<br>下一场好球。</h1>
+      <p class="intro">提前约好，见面开打。<br>把重复操作留在场外。</p>
+      <details class="controls" open>
+        <summary>交互场景 <span>模拟数据 · 不连接服务器</span></summary>
+        <nav id="scenarios" aria-label="原型场景"></nav>
+        <div class="clock-controls">
+          <label for="demo-clock">演示时间 <span>北京时间</span></label>
+          <select id="demo-clock">
+            <option value="2026-08-25T15:00:00+08:00">8月25日 15:00 · 提前</option>
+            <option value="2026-08-25T16:00:00+08:00">8月25日 16:00 · 约定时间</option>
+            <option value="2026-08-25T18:00:00+08:00">8月25日 18:00 · 晚到</option>
+            <option value="2026-08-26T00:30:00+08:00">8月26日 00:30 · 跨午夜</option>
+            <option value="2026-08-26T07:00:00+08:00">8月26日 07:00 · 失效</option>
+          </select>
+          <button class="reset" id="reset-scene" type="button">↺ 重置当前场景</button>
+        </div>
+      </details>
+      <div class="annotation"><span class="annotation-number" id="scene-number">03</span><div><h2 id="scene-title"></h2><p id="scene-note"></p></div></div>
+      <p class="scope-note">这是一份可点击的视觉原型。账户、通知和比赛均为模拟；真实记分与结算不在本次预览范围内。</p>
+    </aside>
+    <section class="stage" aria-label="双人交互预览">
+      <div class="stage-top"><span>两个人，一次约定。</span><span class="sync-label">双端联动 <i></i></span></div>
+      <div class="mobile-roles" aria-label="切换用户"><button type="button" data-role="a" aria-pressed="true">A · 小李</button><button type="button" data-role="b" aria-pressed="false">B · 小王</button></div>
+      <div class="phones" id="phones">
+        <section class="device" data-user="a"><div class="device-label"><span class="role-mark">A</span><strong>小李的手机</strong><span>发起方视角</span></div><div class="phone"><div class="statusbar"><b class="device-time">16:00</b><div class="island"></div><span class="system-icons" aria-hidden="true">▂▄▆ <span>◔</span> ▰</span></div><div class="phone-body" id="view-a"></div><div class="home-indicator"></div></div></section>
+        <section class="device" data-user="b"><div class="device-label"><span class="role-mark alternate">B</span><strong>小王的手机</strong><span>接收方视角</span></div><div class="phone"><div class="statusbar"><b class="device-time">16:00</b><div class="island"></div><span class="system-icons" aria-hidden="true">▂▄▆ <span>◔</span> ▰</span></div><div class="phone-body" id="view-b"></div><div class="home-indicator"></div></div></section>
+      </div>
+      <footer class="stage-footer"><span><i></i> 点击手机内按钮体验完整流程</span><span id="simulation-status" aria-live="polite"></span></footer>
+    </section>
+  </main>
+</body>
+</html>
