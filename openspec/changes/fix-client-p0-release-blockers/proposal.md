@@ -34,7 +34,7 @@
 
 ## Impact
 
-- 客户端：`app/pages/`、`app/subPages/`、`app/api/`、`app/store/`、`app/utils/`、`app/manifest.json`、平台发布配置与 `app/tests/`。
+- 客户端：`uniapp/pages/`、`uniapp/subPages/`、`uniapp/api/`、`uniapp/store/`、`uniapp/utils/`、`uniapp/manifest.json`、平台发布配置与 `uniapp/tests/`。
 - 后端：`backend/chasing_points.api`、认证与用户 logic、WebSocket handler / 路由、CORS 中间件、配置、model / migration 及对应测试；若修改 `.api`，必须立即通过 goctl 重新生成代码。
 - 发布与运维：生产允许域名、第三方 OAuth 凭据、WebSocket 鉴权协商、签名材料托管与轮换、权限清单和上线检查流程。
 - 兼容性：OAuth 与 WebSocket 客户端需要与服务端协同升级；灰度期间必须避免旧客户端静默降级到不安全协议。

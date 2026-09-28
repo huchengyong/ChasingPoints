@@ -1,6 +1,6 @@
 ## Context
 
-依据 [PRD V1.3](../../../docs/prd/familiar-player-quick-start.md)、[低保真 W1.3](../../../docs/prd/familiar-player-quick-start-wireframes.md) 和[仅模拟数据的 HTML 预览](../../../docs/previews/quick-match-ui/README.md)。目前 `challenge` 仅支持好友、24 小时待回应与扫码后用 `challenge_id` 关联比赛；生产 `/api/match/start` 要求签名 `invite_token`。`StartMatchLogic` 已用双方用户行锁避免重复正式比赛，比赛结束结算集中在 `FinishMatchLogic.settleMatchWithTx`，但无裁判排位需双人确认，灵活赛制自动结束也会进入待确认。`GetUserBootstrap` / `app/store/activity.js` 已承接双主 Tab 的当前比赛。项目未上线，无旧邀约兼容要求。
+依据 [PRD V1.3](../../../docs/prd/familiar-player-quick-start.md)、[低保真 W1.3](../../../docs/prd/familiar-player-quick-start-wireframes.md) 和[仅模拟数据的 HTML 预览](../../../docs/previews/quick-match-ui/README.md)。目前 `challenge` 仅支持好友、24 小时待回应与扫码后用 `challenge_id` 关联比赛；生产 `/api/match/start` 要求签名 `invite_token`。`StartMatchLogic` 已用双方用户行锁避免重复正式比赛，比赛结束结算集中在 `FinishMatchLogic.settleMatchWithTx`，但无裁判排位需双人确认，灵活赛制自动结束也会进入待确认。`GetUserBootstrap` / `uniapp/store/activity.js` 已承接双主 Tab 的当前比赛。项目未上线，无旧邀约兼容要求。
 
 ## Goals / Non-Goals
 

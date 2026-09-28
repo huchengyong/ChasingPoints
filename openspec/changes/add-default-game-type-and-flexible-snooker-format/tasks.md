@@ -38,5 +38,5 @@
 
 - [x] 5.1 对所有修改过的 Go 文件运行 gofmt，并检查 goctl 生成后没有新增未接入的 `todo` logic 空壳
 - [x] 5.2 在 `backend/` 运行 `go test ./...`，修复新旧斯诺克规则、迁移、排位确认和 WebSocket 回归
-- [x] 5.3 在 `app/` 运行 `node --test tests/*.test.mjs`，验证默认球种、四个入口、Modal 和斯诺克赛制交互
+- [x] 5.3 在 `uniapp/` 运行 `node --test tests/*.test.mjs`，验证默认球种、四个入口、Modal 和斯诺克赛制交互
 - [x] 5.4 人工核对普通/排位、四种球种、旧斯诺克对局、自由局数平局和抢N自动结束的关键用户路径

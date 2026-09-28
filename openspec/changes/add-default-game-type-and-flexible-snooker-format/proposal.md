@@ -24,7 +24,7 @@
 
 ## Impact
 
-- 移动端：`app/components/gameTypeModal.vue`、四个发起 PK 入口、`app/subPages/user/settings.vue`、`app/subPages/match/playing.vue`、斯诺克开局与赛制纯函数及对应测试。
+- 移动端：`uniapp/components/gameTypeModal.vue`、四个发起 PK 入口、`uniapp/subPages/user/settings.vue`、`uniapp/subPages/match/playing.vue`、斯诺克开局与赛制纯函数及对应测试。
 - 后端契约：`backend/chasing_points.api` 的斯诺克创建、详情、同步快照和赛制更新接口；修改后需要立即运行 goctl 生成代码。
 - 后端业务：斯诺克创建校验、动作结算、开始下一局、正常结束、排位结束确认、WebSocket 广播与历史兼容。
 - 数据库：新增斯诺克赛制及目标胜局字段并迁移已有 `best_of_frames` 数据；Gorm 模型和前后端字段同步更新。

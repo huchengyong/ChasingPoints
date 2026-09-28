@@ -1,7 +1,7 @@
 # APP FRONTEND GUIDE
 
 ## OVERVIEW
-`app/` 是 UniApp Vue3 用户端，当前代码重点覆盖 4 个 tab 页面、12 个分包页面簇、统一请求层、主题系统、登录与绑定手机号链路、对局实时同步、战报分享和一批纯逻辑测试。
+`uniapp/` 是 UniApp Vue3 用户端，当前代码重点覆盖 4 个 tab 页面、12 个分包页面簇、统一请求层、主题系统、登录与绑定手机号链路、对局实时同步、战报分享和一批纯逻辑测试。
 
 ## GLOBAL RULES
 - 用简体中文沟通。
@@ -10,7 +10,7 @@
 
 ## STRUCTURE
 ```text
-app/
+uniapp/
 ├── App.vue                    # 全局生命周期、主题应用、Push 初始化、前台对局提醒
 ├── main.js                    # Vue3 SSR App 入口，挂载 Pinia
 ├── pages.json                 # 主包页面、tabBar、分包注册
@@ -34,10 +34,10 @@ app/
 ```
 
 ## CURRENT ARCHITECTURE
-- 入口是 [app/main.js](/Users/wisesearch/Projects/ChasingPoints/app/main.js)，使用 Pinia；状态持久化由 [app/store/index.js](/Users/wisesearch/Projects/ChasingPoints/app/store/index.js) 注册的 `pinia-plugin-persistedstate` 完成。
-- [app/App.vue](/Users/wisesearch/Projects/ChasingPoints/app/App.vue) 仍使用 Options API，因为需要承接 UniApp app 级生命周期；页面组件默认继续优先用 `script setup`。
-- [app/pages.json](/Users/wisesearch/Projects/ChasingPoints/app/pages.json) 当前注册 7 个主包页面（含 1 个旧路径兼容跳转页）和 12 个分包根目录。
-- [app/utils/runtime-config.js](/Users/wisesearch/Projects/ChasingPoints/app/utils/runtime-config.js) 负责按环境解析网络基地址；[app/utils/request.js](/Users/wisesearch/Projects/ChasingPoints/app/utils/request.js) 统一处理 token、401、业务成功判定；[app/utils/websocket.js](/Users/wisesearch/Projects/ChasingPoints/app/utils/websocket.js) 负责 match/user 两条 WS 链路。
+- 入口是 [uniapp/main.js](/Users/jerichohu/Projects/ChasingPoints/uniapp/main.js)，使用 Pinia；状态持久化由 [uniapp/store/index.js](/Users/jerichohu/Projects/ChasingPoints/uniapp/store/index.js) 注册的 `pinia-plugin-persistedstate` 完成。
+- [uniapp/App.vue](/Users/jerichohu/Projects/ChasingPoints/uniapp/App.vue) 仍使用 Options API，因为需要承接 UniApp app 级生命周期；页面组件默认继续优先用 `script setup`。
+- [uniapp/pages.json](/Users/jerichohu/Projects/ChasingPoints/uniapp/pages.json) 当前注册 7 个主包页面（含 1 个旧路径兼容跳转页）和 12 个分包根目录。
+- [uniapp/utils/runtime-config.js](/Users/jerichohu/Projects/ChasingPoints/uniapp/utils/runtime-config.js) 负责按环境解析网络基地址；[uniapp/utils/request.js](/Users/jerichohu/Projects/ChasingPoints/uniapp/utils/request.js) 统一处理 token、401、业务成功判定；[uniapp/utils/websocket.js](/Users/jerichohu/Projects/ChasingPoints/uniapp/utils/websocket.js) 负责 match/user 两条 WS 链路。
 - 页面层只能依赖 `api/*.js`；业务纯函数尽量沉到 `utils/*.js` 并在 `tests/*.test.mjs` 里覆盖。
 
 ## WHERE TO LOOK
@@ -57,7 +57,7 @@ app/
 - 这是跨平台 UniApp 项目，页面层不要直接用 `uni.request`，统一走 `api/*.js`。
 - 页面默认优先使用 `script setup` + SCSS；`App.vue` 作为 app 生命周期例外。
 - 样式优先拆到同名 `.scss` 文件；全局共享样式才放进 `App.vue` 或 `uni.scss`。
-- 列表时间展示优先复用 [app/utils/format.js](/Users/wisesearch/Projects/ChasingPoints/app/utils/format.js)。
+- 列表时间展示优先复用 [uniapp/utils/format.js](/Users/jerichohu/Projects/ChasingPoints/uniapp/utils/format.js)。
 - 对局写操作、登录漏斗、球房提交等规则，优先提炼为 `utils/*.js` 纯函数并补测试，而不是把规则散在页面里。
 - Push、主题、前台对局提醒属于 app 级行为，优先改 `App.vue`，不要把相同逻辑复制到页面。
 

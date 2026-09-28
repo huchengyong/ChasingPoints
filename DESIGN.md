@@ -1,13 +1,13 @@
 # 追分公开用户界面设计规范（DESIGN.md）
 
-> 本文件是「官网 `website/`」与「App／小程序客户端 `app/`」公开用户界面的统一视觉规范入口。
+> 本文件是「官网 `website/`」与「App／小程序客户端 `uniapp/`」公开用户界面的统一视觉规范入口。
 > 管理后台 `admin/` 不在此规范范围内；除非有独立变更扩展范围，否则后台沿用自身 Element Plus 风格。
 
 ## 1. 适用范围
 
 **适用：**
 
-- `app/`：同时输出 App、微信小程序等平台的 UniApp Vue3 客户端。
+- `uniapp/`：同时输出 App、微信小程序等平台的 UniApp Vue3 客户端。
 - `website/`：Nuxt 3 官网与公开页面。
 
 **不适用：**
@@ -67,7 +67,7 @@
 
 ### 3.3 实现映射
 
-- App：在 `app/App.vue` 的 `page` 与 `.dark-mode` 中提供 `--ui-*` CSS 变量；`app/theme.json` 负责原生主题替换；`app/utils/theme-application.js` 负责运行时导航栏与 TabBar；`app/uni.scss` 保留 UniApp 默认变量。
+- App：在 `uniapp/App.vue` 的 `page` 与 `.dark-mode` 中提供 `--ui-*` CSS 变量；`uniapp/theme.json` 负责原生主题替换；`uniapp/utils/theme-application.js` 负责运行时导航栏与 TabBar；`uniapp/uni.scss` 保留 UniApp 默认变量。
 - 官网：在 `website/assets/styles/main.css` 的 `:root` 中提供同名 `--ui-*` 变量，组件通过变量消费视觉角色。
 
 ## 4. 亮暗主题

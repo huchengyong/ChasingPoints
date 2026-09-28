@@ -4,10 +4,10 @@
 TBD - created by archiving change standardize-client-website-ui. Update Purpose after archive.
 ## Requirements
 ### Requirement: Canonical public UI standard
-The repository SHALL provide a root-level `DESIGN.md` as the canonical visual standard for `app/` and `website/`, and the document MUST explicitly exclude `admin/` unless a later change expands its scope.
+The repository SHALL provide a root-level `DESIGN.md` as the canonical visual standard for `uniapp/` and `website/`, and the document MUST explicitly exclude `admin/` unless a later change expands its scope.
 
 #### Scenario: Maintainer looks for UI guidance
-- **WHEN** a maintainer prepares a new or changed page in `app/` or `website/`
+- **WHEN** a maintainer prepares a new or changed page in `uniapp/` or `website/`
 - **THEN** the repository provides one discoverable `DESIGN.md` covering the applicable brand, token, component, responsive, theme and accessibility rules
 
 #### Scenario: Admin UI is changed independently
@@ -41,7 +41,7 @@ The public interfaces MUST use gold for ordinary primary actions, selected state
 - **THEN** the action uses the danger semantic and is not styled as a normal gold primary action
 
 ### Requirement: App and mini-program theme conformance
-Every route registered in `app/pages.json` SHALL continue to use the shared page theme mechanism and SHALL render documented page, card, text, border and control semantics in both light and dark client themes. Cool blue-black legacy colors MUST NOT serve as default page, card, input or modal surfaces after migration.
+Every route registered in `uniapp/pages.json` SHALL continue to use the shared page theme mechanism and SHALL render documented page, card, text, border and control semantics in both light and dark client themes. Cool blue-black legacy colors MUST NOT serve as default page, card, input or modal surfaces after migration.
 
 #### Scenario: Client page renders in light mode
 - **WHEN** any registered App or mini-program page is opened with the light theme

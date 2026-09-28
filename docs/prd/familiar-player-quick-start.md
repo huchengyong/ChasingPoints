@@ -252,7 +252,7 @@
 
 静态核查发现：生产扫码含签名和有效期校验；普通记分不要求对手在线；新排位无裁判时有双方结束确认；裁判和练习结束路径不同；当前取消比赛仅创建者可操作，结束异议和超时只恢复进行中。不能笼统宣称现有正式比赛退出已闭环。
 
-主要参考：`backend/internal/logic/challenge/`、`backend/internal/logic/match/` 中的 `start_match_logic.go`、`match_invite.go`、`match_viewer_context.go`、`finish_action_logic.go`、`cancel_match_logic.go`；前端 `app/subPages/social/challenges.vue`、`app/pages/match/index.vue`、`app/pages/user/index.vue`。
+主要参考：`backend/internal/logic/challenge/`、`backend/internal/logic/match/` 中的 `start_match_logic.go`、`match_invite.go`、`match_viewer_context.go`、`finish_action_logic.go`、`cancel_match_logic.go`；前端 `uniapp/subPages/social/challenges.vue`、`uniapp/pages/match/index.vue`、`uniapp/pages/user/index.vue`。
 
 - 上述双方结束确认是当前代码事实，不是本稿的新要求。新要求为任一参与者滑动结束，无需对方同意；本轮仅改HTML原型，App和后端仍需后续实现，不能只换按钮却继续等待原确认接口。
 - 记分、积分算法和争议处理不因本次交互改动重造。实际实现时保留身份、当前比赛状态及幂等校验，核对各类型与裁判路径的结束入口，并保证终态同步结束约球。

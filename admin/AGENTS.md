@@ -1,7 +1,7 @@
 # ADMIN FRONTEND GUIDE
 
 ## OVERVIEW
-`admin/` 是当前项目的管理后台，技术栈为 Vue 3 + Vite + TypeScript + Element Plus + Pinia + Vue Router。它与 `app/` 共享同一个 `backend/` 服务，但面向管理员场景，当前模块包括登录、首页统计、用户管理、对局管理、赛事情报、球馆审核。
+`admin/` 是当前项目的管理后台，技术栈为 Vue 3 + Vite + TypeScript + Element Plus + Pinia + Vue Router。它与 `uniapp/` 共享同一个 `backend/` 服务，但面向管理员场景，当前模块包括登录、首页统计、用户管理、对局管理、赛事情报、球馆审核。
 
 ## STRUCTURE
 ```text
@@ -75,6 +75,6 @@ npm run format
 - 当前仓库里没有单独的 `admin/README` 以外知识库，所以这份 `AGENTS.md` 是后台开发的主要入口。
 
 ## ANTI-PATTERNS
-- 不要把用户端 `app/` 的页面规范直接照搬到 `admin/`；这是 Vite Web 项目，不是 UniApp。
+- 不要把用户端 `uniapp/` 的页面规范直接照搬到 `admin/`；这是 Vite Web 项目，不是 UniApp。
 - 不要在页面里直接拼接 token、处理 401 或重复弹错误提示，统一交给 `src/utils/request.ts`。
-- 不要把管理后台的接口误写到 `app/api/`；`admin` 与 `app` 有独立 API 门面层。
+- 不要把管理后台的接口误写到 `uniapp/api/`；`admin` 与 `uniapp` 有独立 API 门面层。

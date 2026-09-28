@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
 // 复用仓库已有 jsdom；预览页面本身不依赖它。
-const require = createRequire(new URL('../../../app/package.json', import.meta.url));
+const require = createRequire(new URL('../../../uniapp/package.json', import.meta.url));
 const { JSDOM } = require('jsdom');
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const script = readFileSync(new URL('./preview.js', import.meta.url), 'utf8');

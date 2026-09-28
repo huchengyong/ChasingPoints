@@ -7,14 +7,14 @@
 - 用户与对局 WebSocket 均把 access token 放在 URL 查询参数，客户端在固定 5 次失败后永久停止自动重连。
 - 匹配码与裁判码的正文会被拼入 `api.qrserver.com` URL；普通匹配码还是可由客户端修改的用户资料 JSON。
 - 多个扫码入口只在 `APP-PLUS || APP-HARMONY` 编译，MP-WEIXIN 点击后无法完成同等流程。
-- `app/manifest.json` 中 Harmony 默认与 release 签名字段均非空，并含本机绝对路径；Android 权限清单包含多项没有当前用户链路依据的高敏权限。
+- `uniapp/manifest.json` 中 Harmony 默认与 release 签名字段均非空，并含本机绝对路径；Android 权限清单包含多项没有当前用户链路依据的高敏权限。
 - 客户端没有个人数据导出与账号注销入口；服务端用户模型虽支持状态和软删除，但没有面向用户的完整数据收口事务。
 - 请求层已经能区分部分错误类别，但多处页面 catch 后只记录日志，随后以空数组渲染“暂无数据”。
 
 约束如下：
 
 - API 契约以 `backend/chasing_points.api` 为唯一真源，修改后必须立即运行 goctl；生成文件不得手改。
-- 页面只能经 `app/api/*.js` 调用后端；跨端规则应进入 `app/utils/*.js` 并补 `app/tests/*.test.mjs`。
+- 页面只能经 `uniapp/api/*.js` 调用后端；跨端规则应进入 `uniapp/utils/*.js` 并补 `uniapp/tests/*.test.mjs`。
 - WebSocket 需要同时支持 App、HarmonyOS、微信小程序，并保留公开对局匿名只读观赛能力。
 - 用户级读取和导出必须认证隔离、批量有界，旧身份响应不得写入新会话。
 - 本变更不修改 `website/` 或 `admin/` 页面；共享后端 CORS 配置仍需保留正式管理端来源。
@@ -120,7 +120,7 @@ App 增加一个统一二维码渲染 wrapper，使用锁定版本、经过许�
 
 ### 10. 页面使用最小统一异步状态模型
 
-在 `app/utils` 增加纯逻辑状态 helper，状态只包含 `idle/loading/ready/empty/error/refreshing`、错误类别和是否已有旧数据。请求层继续负责构造稳定错误类别，页面负责选择文案和操作；不新增通用请求缓存。
+在 `uniapp/utils` 增加纯逻辑状态 helper，状态只包含 `idle/loading/ready/empty/error/refreshing`、错误类别和是否已有旧数据。请求层继续负责构造稳定错误类别，页面负责选择文案和操作；不新增通用请求缓存。
 
 首屏只有在成功响应且权威数据为空时进入 `empty`；首次失败进入带重试的 `error`；已有数据的刷新失败保留数据并显示非阻塞错误。`SESSION_INVALID` 或 superseded 请求不覆盖页面状态。优先覆盖报告范围内的核心数据页，并为每类页面补状态矩阵测试。
 
@@ -128,11 +128,11 @@ App 增加一个统一二维码渲染 wrapper，使用锁定版本、经过许�
 
 ### 11. 发布配置由静态契约和人工证据共同守护
 
-从 `app/manifest.json` 删除 Harmony 签名密码、证书/profile/store 路径和本机绝对路径；私密扩展名与本地签名配置进入 `.gitignore`。发布流程从 IDE 本地安全配置或 CI secret 注入，不在仓库提供可用秘密。
+从 `uniapp/manifest.json` 删除 Harmony 签名密码、证书/profile/store 路径和本机绝对路径；私密扩展名与本地签名配置进入 `.gitignore`。发布流程从 IDE 本地安全配置或 CI secret 注入，不在仓库提供可用秘密。
 
-HBuilderX 本地运行与打包通过 `app/harmony-configs/build-profile.json5` 接入本机签名：HBuilderX 会在编译前将 `harmony-configs` 覆盖到临时 Harmony 工程；该文件由受版本控制的安全模板和被忽略的 `.harmony-signing.local.json` 生成。调试运行使用 `default`，本地发布包使用 `release`。安全版 Manifest 保持空 `signingConfigs`，以免 HBuilderX 用 Manifest 中的材料覆盖本地 build profile。
+HBuilderX 本地运行与打包通过 `uniapp/harmony-configs/build-profile.json5` 接入本机签名：HBuilderX 会在编译前将 `harmony-configs` 覆盖到临时 Harmony 工程；该文件由受版本控制的安全模板和被忽略的 `.harmony-signing.local.json` 生成。调试运行使用 `default`，本地发布包使用 `release`。安全版 Manifest 保持空 `signingConfigs`，以免 HBuilderX 用 Manifest 中的材料覆盖本地 build profile。
 
-图标与启动页不是秘密，必须与签名材料分开管理。Android/iOS 沿用 Manifest 中稳定的 `unpackage/res/icons/*.png` 相对路径，并通过 Git 例外规则只提交该资源目录、继续忽略其余构建产物。Harmony 原生图标、启动页图标和背景色由 `app/harmony-configs/entry/src/main/resources/base/{media,element}` 提供，`module.json5` 引用对应资源名。发布契约测试校验所有 Manifest 图标输入和 Harmony 原生资源在干净工作区存在且尺寸正确，避免本机生成资源掩盖缺失。
+图标与启动页不是秘密，必须与签名材料分开管理。Android/iOS 沿用 Manifest 中稳定的 `unpackage/res/icons/*.png` 相对路径，并通过 Git 例外规则只提交该资源目录、继续忽略其余构建产物。Harmony 原生图标、启动页图标和背景色由 `uniapp/harmony-configs/entry/src/main/resources/base/{media,element}` 提供，`module.json5` 引用对应资源名。发布契约测试校验所有 Manifest 图标输入和 Harmony 原生资源在干净工作区存在且尺寸正确，避免本机生成资源掩盖缺失。
 
 建立 Manifest 契约测试：拒绝非空签名秘密、绝对用户路径、未批准高敏 Android 权限和未启用模块带来的权限。首轮移除没有当前链路依据的 `READ_LOGS`、`GET_ACCOUNTS`、`READ_PHONE_STATE`、`WRITE_SETTINGS`、存储挂载与网络状态修改权限；相机、网络、位置、Push 等保留项必须对应实际入口与运行时申请。
 

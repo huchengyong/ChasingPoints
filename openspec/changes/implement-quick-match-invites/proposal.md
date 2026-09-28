@@ -20,4 +20,4 @@
 
 ## Impact
 
-涉及 `backend/chasing_points.api`、`backend/migrations/`、`internal/model`、`internal/logic/challenge|match|user`、活动 Bootstrap、通知与 WS，以及 `app/api`、`app/store/activity.js`、对局/我的入口、约球与等待页面、设置和进行中/详情页面。需更新迁移、相关测试及双账号验收；仅清理开发/测试/本地的相关旧约球数据，不改 admin/website，也不将 `docs/previews/quick-match-ui/preview.js` 接入生产。
+涉及 `backend/chasing_points.api`、`backend/migrations/`、`internal/model`、`internal/logic/challenge|match|user`、活动 Bootstrap、通知与 WS，以及 `uniapp/api`、`uniapp/store/activity.js`、对局/我的入口、约球与等待页面、设置和进行中/详情页面。需更新迁移、相关测试及双账号验收；仅清理开发/测试/本地的相关旧约球数据，不改 admin/website，也不将 `docs/previews/quick-match-ui/preview.js` 接入生产。

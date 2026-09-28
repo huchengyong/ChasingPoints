@@ -21,7 +21,7 @@
 ## 自动化验证
 
 ```bash
-cd app && node --test tests/*.test.mjs
+cd uniapp && node --test tests/*.test.mjs
 cd backend && go test ./...
 cd admin && npm ci && npm run build
 cd website && npm ci && npm run test && npm run build

@@ -20,7 +20,7 @@
 仓库内的 Manifest、源码、示例配置和历史可提交文件 MUST NOT 包含非空签名密码、私钥、证书、profile 或机器绝对路径。所有曾进入仓库的现有发布签名材料 SHALL 在下一次正式发布前完成轮换，并由受控的本地或 CI 密钥存储注入。
 
 #### Scenario: 扫描当前 Harmony 签名配置
-- **WHEN** 发布门禁扫描 `app/manifest.json` 和受版本控制文件
+- **WHEN** 发布门禁扫描 `uniapp/manifest.json` 和受版本控制文件
 - **THEN** `keyPassword`、`storePassword`、私钥、证书和 profile 路径 MUST 为空、缺失或仅为不含秘密的占位说明
 
 #### Scenario: 使用旧签名材料发布
@@ -35,9 +35,9 @@
 
 #### Scenario: HBuilderX 本地运行或打包
 - **WHEN** 开发者在 HBuilderX 对 HarmonyOS 执行本地运行或打包
-- **THEN** 客户端 SHALL 从被 Git 忽略的本地签名输入生成 `app/harmony-configs/build-profile.json5`
+- **THEN** 客户端 SHALL 从被 Git 忽略的本地签名输入生成 `uniapp/harmony-configs/build-profile.json5`
 - **AND** 调试运行 SHALL 使用 `default` 签名，本地发布包 SHALL 使用 `release` 签名
-- **AND** 受版本控制的 `app/manifest.json` MUST 保持不含签名材料
+- **AND** 受版本控制的 `uniapp/manifest.json` MUST 保持不含签名材料
 
 ### Requirement: 客户端权限必须遵循最小授权
 App Manifest SHALL 只声明当前发布功能确实需要的模块、系统权限和隐私权限。高敏权限 MUST 具有可追溯使用场景、运行时提示和验收证据，否则 MUST 从发布配置移除。

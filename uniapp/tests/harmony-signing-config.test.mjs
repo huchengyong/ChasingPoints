@@ -25,8 +25,8 @@ const completeMaterial = (name) => ({
 })
 
 test('HBuilderX local signing inputs and generated build profile stay outside Git', () => {
-	assert.match(gitignore, /^app\/\.harmony-signing\.local\.json$/m)
-	assert.match(gitignore, /^app\/harmony-configs\/build-profile\.json5$/m)
+	assert.match(gitignore, /^uniapp\/\.harmony-signing\.local\.json$/m)
+	assert.match(gitignore, /^uniapp\/harmony-configs\/build-profile\.json5$/m)
 	assert.ok(Array.isArray(template.app.products))
 	assert.deepEqual(template.app.signingConfigs, [])
 	assert.equal(template.app.products.some(({ name, signingConfig }) => name === 'default' && signingConfig === 'default'), true)

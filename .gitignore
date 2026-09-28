@@ -48,13 +48,13 @@ unpackage/
 .hbuilderx/
 
 # HBuilderX 将以下图标目录作为 Manifest 的构建输入；其余 unpackage 产物仍不入库。
-!app/unpackage/
-app/unpackage/*
-!app/unpackage/res/
-app/unpackage/res/*
-!app/unpackage/res/icons/
-app/unpackage/res/icons/*
-!app/unpackage/res/icons/*.png
+!uniapp/unpackage/
+uniapp/unpackage/*
+!uniapp/unpackage/res/
+uniapp/unpackage/res/*
+!uniapp/unpackage/res/icons/
+uniapp/unpackage/res/icons/*
+!uniapp/unpackage/res/icons/*.png
 
 # Go
 bin/
@@ -78,8 +78,8 @@ coverage.out
 *.pem.enc
 signing.properties
 signing.gradle
-app/.harmony-signing.local.json
-app/harmony-configs/build-profile.json5
+uniapp/.harmony-signing.local.json
+uniapp/harmony-configs/build-profile.json5
 
 # Project-specific local backend config overrides
 backend/etc/*.local.yaml
