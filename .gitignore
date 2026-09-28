@@ -5,6 +5,8 @@ Thumbs.db
 # Editors / IDEs
 .idea/
 .vscode/
+# Xcode personal workspace and scheme state
+**/xcuserdata/
 *.iml
 *.suo
 *.user
