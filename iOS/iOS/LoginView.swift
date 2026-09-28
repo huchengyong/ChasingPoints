@@ -36,14 +36,23 @@ struct LoginView: View {
 
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("追分竞技")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(palette.textPrimary)
-                    Text("CHASING POINTS")
-                        .font(.system(size: 11, weight: .semibold))
-                        .tracking(2)
-                        .foregroundStyle(AppTheme.primary)
+                HStack(spacing: 10) {
+                    Image("BrandLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 42, height: 42)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("追分竞技")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundStyle(palette.textPrimary)
+                        Text("CHASING POINTS")
+                            .font(.system(size: 11, weight: .semibold))
+                            .tracking(2)
+                            .foregroundStyle(AppTheme.primary)
+                    }
                 }
                 .padding(.bottom, 64)
 

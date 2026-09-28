@@ -42,16 +42,16 @@ func TestCareerAchievementMigrationContainsV2Catalog(t *testing.T) {
 		if !strings.Contains(upBlock, icon) {
 			t.Fatalf("career catalog missing icon %s", icon)
 		}
-		assetPath := filepath.Join("..", "..", "app", "static", "images", "achievements", key+".png")
+		assetPath := filepath.Join("..", "..", "uniapp", "static", "images", "achievements", key+".png")
 		if _, err := os.Stat(assetPath); err != nil {
 			t.Fatalf("career icon asset %s is unavailable: %v", assetPath, err)
 		}
 	}
-	chasingIcon, err := os.ReadFile(filepath.Join("..", "..", "app", "static", "images", "achievements", "chasing_golden_break_1.png"))
+	chasingIcon, err := os.ReadFile(filepath.Join("..", "..", "uniapp", "static", "images", "achievements", "chasing_golden_break_1.png"))
 	if err != nil {
 		t.Fatalf("read chasing nine-ball icon: %v", err)
 	}
-	americanIcon, err := os.ReadFile(filepath.Join("..", "..", "app", "static", "images", "achievements", "american_golden_break_1.png"))
+	americanIcon, err := os.ReadFile(filepath.Join("..", "..", "uniapp", "static", "images", "achievements", "american_golden_break_1.png"))
 	if err != nil {
 		t.Fatalf("read american nine-ball icon: %v", err)
 	}

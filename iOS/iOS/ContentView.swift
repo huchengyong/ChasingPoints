@@ -33,33 +33,54 @@ private enum ThemeMode: String, CaseIterable {
 
 private struct MainTabs: View {
     @Environment(\.colorScheme) private var colorScheme
+    @State private var selection = 0
 
     private var palette: AppPalette { AppTheme.palette(for: colorScheme) }
 
     var body: some View {
-        TabView {
+        TabView(selection: $selection) {
             NavigationStack {
                 FeaturePlaceholder(title: "首页", symbol: "house.fill")
                     .navigationTitle("追分")
             }
-            .tabItem { Label("首页", systemImage: "house") }
+            .tabItem {
+                Image(selection == 0 ? "TabHomeSelected" : "TabHome")
+                    .renderingMode(.original)
+                Text("首页")
+            }
+            .tag(0)
 
             NavigationStack {
                 FeaturePlaceholder(title: "观赛", symbol: "play.rectangle.fill")
                     .navigationTitle("观赛")
             }
-            .tabItem { Label("观赛", systemImage: "play.rectangle") }
+            .tabItem {
+                Image(selection == 1 ? "TabWatchSelected" : "TabWatch")
+                    .renderingMode(.original)
+                Text("观赛")
+            }
+            .tag(1)
 
             NavigationStack {
                 FeaturePlaceholder(title: "赛讯", symbol: "newspaper.fill")
                     .navigationTitle("赛讯")
             }
-            .tabItem { Label("赛讯", systemImage: "newspaper") }
+            .tabItem {
+                Image(selection == 2 ? "TabNewsSelected" : "TabNews")
+                    .renderingMode(.original)
+                Text("赛讯")
+            }
+            .tag(2)
 
             NavigationStack {
                 MyPage()
             }
-            .tabItem { Label("我的", systemImage: "person.crop.circle") }
+            .tabItem {
+                Image(selection == 3 ? "TabMeSelected" : "TabMe")
+                    .renderingMode(.original)
+                Text("我的")
+            }
+            .tag(3)
         }
         .tint(AppTheme.primary)
         .toolbarBackground(palette.card, for: .tabBar)
