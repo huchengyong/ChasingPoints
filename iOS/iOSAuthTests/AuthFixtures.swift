@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 @testable import iOS
 
-/// 四个认证接口的虚构夹具，字段与 `backend/chasing_points.api` 及认证 logic 的实际响应一致。
+/// 认证与资料接口的虚构夹具，字段与 `backend/chasing_points.api` 及对应 logic 的实际响应一致。
 /// 全部为假数据，不包含真实 token、验证码或完整手机号。
 enum AuthFixtures {
     static let phone = "13800000000"
@@ -47,6 +47,16 @@ enum AuthFixtures {
 
     static func userInfoResponse(_ user: [String: Any]? = nil) -> [String: Any] {
         ["success": true, "user_info": user ?? userInfo()]
+    }
+
+    /// `POST /api/user/profile` 成功：HTTP 200 + success + 完整 user_info。
+    static func updateProfileResponse(nickname: String = "新昵称") -> [String: Any] {
+        ["success": true, "message": "更新成功", "user_info": userInfo(nickname: nickname)]
+    }
+
+    /// `POST /api/user/profile` 业务失败：HTTP 200 + success:false。
+    static func updateProfileFailure(message: String = "昵称长度需要在2-12个字符之间") -> [String: Any] {
+        ["success": false, "message": message, "user_info": NSNull()]
     }
 
     /// 后端 `httperror.Payload`：HTTP 200/401 + success:false + reason。

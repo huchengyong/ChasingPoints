@@ -9,28 +9,6 @@ struct ContentView: View {
     }
 }
 
-private enum ThemeMode: String, CaseIterable {
-    case system
-    case light
-    case dark
-
-    var title: String {
-        switch self {
-        case .system: "跟随系统"
-        case .light: "浅色"
-        case .dark: "深色"
-        }
-    }
-
-    var colorScheme: ColorScheme? {
-        switch self {
-        case .system: nil
-        case .light: .light
-        case .dark: .dark
-        }
-    }
-}
-
 private struct MainTabs: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var selection = 0
@@ -116,7 +94,6 @@ private struct FeaturePlaceholder: View {
 private struct MyPage: View {
     @EnvironmentObject private var session: SessionStore
     @Environment(\.colorScheme) private var colorScheme
-    @AppStorage("theme_mode") private var themeMode = "system"
     @State private var showLogin = false
 
     private var palette: AppPalette { AppTheme.palette(for: colorScheme) }
@@ -129,27 +106,7 @@ private struct MyPage: View {
                         .frame(maxWidth: .infinity)
                         .padding(24)
                 } else if let user = session.user {
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "person.crop.circle.fill")
-                                .font(.system(size: 40))
-                                .foregroundStyle(AppTheme.primary)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(user.nickname.isEmpty ? "追分用户" : user.nickname)
-                                    .font(.title3.bold())
-                                    .foregroundStyle(palette.textPrimary)
-                                Text(user.phone)
-                                    .font(.subheadline)
-                                    .foregroundStyle(palette.textSecondary)
-                            }
-                        }
-                        Button("退出登录", role: .destructive) {
-                            session.logout()
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20)
-                    .background(palette.card, in: RoundedRectangle(cornerRadius: 16))
+                    ProfileCard(user: user)
                 } else {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("登录追分")
@@ -187,19 +144,21 @@ private struct MyPage: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("主题模式")
-                        .font(.headline)
-                        .foregroundStyle(palette.textPrimary)
-                    Picker("主题模式", selection: $themeMode) {
-                        ForEach(ThemeMode.allCases, id: \.rawValue) { mode in
-                            Text(mode.title).tag(mode.rawValue)
+                VStack(spacing: 0) {
+                    if session.user != nil {
+                        NavigationLink {
+                            NicknameEditView()
+                        } label: {
+                            SettingsRow(title: "编辑昵称", symbol: "pencil")
                         }
+                        Divider().padding(.leading, 56)
                     }
-                    .pickerStyle(.segmented)
+                    NavigationLink {
+                        SettingsView()
+                    } label: {
+                        SettingsRow(title: "设置", symbol: "gearshape")
+                    }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
                 .background(palette.card, in: RoundedRectangle(cornerRadius: 16))
             }
             .padding(20)
@@ -229,5 +188,56 @@ private struct MyPage: View {
                 if !presented { session.acknowledgeSessionExpired() }
             }
         )
+    }
+}
+
+private struct ProfileCard: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let user: UserInfo
+
+    private var palette: AppPalette { AppTheme.palette(for: colorScheme) }
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ProfileAvatar(urlString: user.avatar)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(user.nickname.isEmpty ? "追分用户" : user.nickname)
+                    .font(.title3.bold())
+                    .foregroundStyle(palette.textPrimary)
+                Text(user.phone.isEmpty ? "未绑定手机号" : user.phone)
+                    .font(.subheadline)
+                    .foregroundStyle(palette.textSecondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+        .background(palette.card, in: RoundedRectangle(cornerRadius: 16))
+    }
+}
+
+/// 远程头像使用系统 AsyncImage：空值、无效地址与加载失败均保留底层占位图，不阻塞资料卡。
+private struct ProfileAvatar: View {
+    let urlString: String
+
+    var body: some View {
+        ZStack {
+            Circle().fill(AppTheme.primary.opacity(0.14))
+            Image(systemName: "person.crop.circle.fill")
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(AppTheme.primary)
+                .padding(8)
+            if !urlString.isEmpty, let url = URL(string: urlString) {
+                AsyncImage(url: url) { image in
+                    image.resizable().scaledToFill()
+                } placeholder: {
+                    Color.clear
+                }
+            }
+        }
+        .frame(width: 64, height: 64)
+        .clipShape(Circle())
+        .accessibilityHidden(true)
     }
 }

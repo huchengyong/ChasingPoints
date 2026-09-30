@@ -9,8 +9,31 @@ struct AppPalette {
     let border: Color
 }
 
+enum ThemeMode: String, CaseIterable {
+    case system
+    case light
+    case dark
+
+    var title: String {
+        switch self {
+        case .system: "跟随系统"
+        case .light: "浅色"
+        case .dark: "深色"
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+}
+
 enum AppTheme {
     static let primary = Color(red: 224.0 / 255, green: 174.0 / 255, blue: 18.0 / 255)
+    static let danger = Color(red: 239.0 / 255, green: 68.0 / 255, blue: 68.0 / 255)
 
     static func palette(for scheme: ColorScheme) -> AppPalette {
         if scheme == .dark {

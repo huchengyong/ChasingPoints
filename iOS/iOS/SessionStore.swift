@@ -100,15 +100,25 @@ private struct UserInfoResponse: Decodable {
     let userInfo: UserInfo?
 }
 
+private struct UpdateProfileRequest: Encodable {
+    let nickname: String
+}
+
+private struct UpdateProfileResponse: Decodable {
+    let userInfo: UserInfo?
+}
+
 private enum SessionError: LocalizedError {
     case signedOut
     case changed
     case invalidResponse
+    case invalidNickname(String)
 
     var errorDescription: String? {
         switch self {
         case .signedOut, .changed: "登录状态已变更"
         case .invalidResponse: "服务器返回的登录信息不完整"
+        case .invalidNickname(let message): message
         }
     }
 }
@@ -136,8 +146,48 @@ final class SessionStore: ObservableObject {
         credentials = self.credentialStore.load()
     }
 
+    /// 与服务端 `UpdateUserProfile` 对齐：去除两端空白后按 Unicode scalar 数量（Go rune）校验 2–12。
+    static func normalizedNickname(_ raw: String) -> String {
+        raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func nicknameValidationMessage(_ raw: String) -> String? {
+        let nickname = normalizedNickname(raw)
+        if nickname.isEmpty { return "请输入昵称" }
+        guard (2...12).contains(nickname.unicodeScalars.count) else {
+            return "昵称长度需要在2-12个字符之间"
+        }
+        return nil
+    }
+
     func sendSMS(phone: String) async throws {
         let _: SendSMSResponse = try await api.post("/api/auth/send-sms", body: SendSMSRequest(phone: phone))
+    }
+
+    /// 只提交 `nickname`，成功且返回匹配当前身份的完整资料后才回写共享会话。
+    func updateNickname(_ rawNickname: String) async throws {
+        let nickname = Self.normalizedNickname(rawNickname)
+        if let message = Self.nicknameValidationMessage(nickname) {
+            throw SessionError.invalidNickname(message)
+        }
+        guard let currentUser = user, currentUser.status == 1 else { throw SessionError.signedOut }
+        let generation = authGeneration
+        let body = try JSONEncoder().encode(UpdateProfileRequest(nickname: nickname))
+
+        do {
+            let response: UpdateProfileResponse = try await authorizedRequest(
+                "/api/user/profile", method: .post, body: body
+            )
+            guard authGeneration == generation else { throw SessionError.changed }
+            guard let updated = response.userInfo, updated.id == currentUser.id, updated.status == 1 else {
+                throw SessionError.invalidResponse
+            }
+            user = updated
+        } catch {
+            // 退出或切号后的迟到响应不能作为当前身份的反馈。
+            if authGeneration != generation { throw SessionError.changed }
+            throw error
+        }
     }
 
     func login(phone: String, code: String) async throws {
