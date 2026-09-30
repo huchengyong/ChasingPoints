@@ -11,9 +11,60 @@ struct UserInfo: Decodable {
     let createdAt: String
 }
 
-private struct Credentials: Codable, Equatable {
+struct Credentials: Codable, Equatable {
     let accessToken: String
     let refreshToken: String
+}
+
+protocol CredentialStoring {
+    func load() -> Credentials?
+    func save(_ credentials: Credentials) throws
+    func delete()
+}
+
+struct KeychainCredentialStore: CredentialStoring {
+    let service: String
+
+    init(service: String = AppConfiguration.credentialService) {
+        self.service = service
+    }
+
+    private var query: [String: Any] {
+        [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: "current",
+        ]
+    }
+
+    func load() -> Credentials? {
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(
+            query.merging([kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]) { _, new in new } as CFDictionary,
+            &result
+        )
+        guard status == errSecSuccess, let data = result as? Data else { return nil }
+        return try? JSONDecoder().decode(Credentials.self, from: data)
+    }
+
+    func save(_ credentials: Credentials) throws {
+        let data = try JSONEncoder().encode(credentials)
+        let addQuery = query.merging([
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        ]) { _, new in new }
+        var status = SecItemAdd(addQuery as CFDictionary, nil)
+        if status == errSecDuplicateItem {
+            status = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        }
+        guard status == errSecSuccess else {
+            throw APIError(message: "无法安全保存登录状态", kind: .invalidResponse)
+        }
+    }
+
+    func delete() {
+        SecItemDelete(query as CFDictionary)
+    }
 }
 
 private struct SendSMSRequest: Encodable {
@@ -67,16 +118,22 @@ final class SessionStore: ObservableObject {
     @Published private(set) var user: UserInfo?
     @Published private(set) var isRestoring = false
     @Published private(set) var restoreError: String?
+    /// 被动会话失效提示；每个认证代次最多设置一次，由界面确认后清除。
+    @Published private(set) var sessionExpiredNotice: String?
+
+    private(set) var sessionInvalidationCount = 0
 
     private let api: APIClient
+    private let credentialStore: CredentialStoring
     private var credentials: Credentials?
     private var authGeneration = 0
     private var refreshTask: Task<Credentials, Error>?
     private var didAttemptRestore = false
 
-    init(api: APIClient? = nil) {
+    init(api: APIClient? = nil, credentialStore: CredentialStoring? = nil) {
         self.api = api ?? APIClient()
-        credentials = CredentialStorage.load()
+        self.credentialStore = credentialStore ?? KeychainCredentialStore()
+        credentials = self.credentialStore.load()
     }
 
     func sendSMS(phone: String) async throws {
@@ -91,26 +148,29 @@ final class SessionStore: ObservableObject {
         )
         guard startedGeneration == authGeneration else { throw SessionError.changed }
         guard !response.accessToken.isEmpty, !response.refreshToken.isEmpty,
-              let userInfo = response.userInfo else { throw SessionError.invalidResponse }
+              let userInfo = response.userInfo, userInfo.status == 1 else {
+            throw SessionError.invalidResponse
+        }
 
+        // 先持久化再发布会话：写入失败时保持此前的会话状态。
         let next = Credentials(accessToken: response.accessToken, refreshToken: response.refreshToken)
-        try CredentialStorage.save(next)
+        try credentialStore.save(next)
         authGeneration += 1
         refreshTask?.cancel()
         refreshTask = nil
         credentials = next
         user = userInfo
         restoreError = nil
+        sessionExpiredNotice = nil
     }
 
     func logout() {
-        authGeneration += 1
-        refreshTask?.cancel()
-        refreshTask = nil
-        credentials = nil
-        user = nil
-        restoreError = nil
-        CredentialStorage.delete()
+        clearSession()
+        sessionExpiredNotice = nil
+    }
+
+    func acknowledgeSessionExpired() {
+        sessionExpiredNotice = nil
     }
 
     func restore() async {
@@ -136,12 +196,12 @@ final class SessionStore: ObservableObject {
             let value: Response = try await api.request(
                 path, method: method, body: body, bearerToken: original.accessToken
             )
-            guard generation == authGeneration else { throw SessionError.changed }
+            try ensureCurrent(generation)
             return value
         } catch let error as APIError where error.isUnauthorized {
-            guard generation == authGeneration else { throw SessionError.changed }
+            try ensureCurrent(generation)
             if error.isSessionInvalid {
-                logout()
+                invalidateSession()
                 throw error
             }
 
@@ -152,20 +212,25 @@ final class SessionStore: ObservableObject {
                 } else {
                     current = try await refresh(original, generation: generation)
                 }
-                guard generation == authGeneration else { throw SessionError.changed }
+                try ensureCurrent(generation)
                 let value: Response = try await api.request(
                     path, method: method, body: body, bearerToken: current.accessToken
                 )
-                guard generation == authGeneration else { throw SessionError.changed }
+                try ensureCurrent(generation)
                 return value
             } catch let retryError as APIError {
-                if generation == authGeneration &&
-                    (retryError.isUnauthorized || retryError.isSessionInvalid) {
-                    logout()
+                guard generation == authGeneration else { throw SessionError.changed }
+                // 刷新明确失效或重放后仍 401：清理当前会话，不再刷新或重放。
+                if retryError.isSessionInvalid || retryError.isUnauthorized {
+                    invalidateSession()
                 }
                 throw retryError
             }
         }
+    }
+
+    private func ensureCurrent(_ generation: Int) throws {
+        guard generation == authGeneration else { throw SessionError.changed }
     }
 
     private func refresh(_ old: Credentials, generation: Int) async throws -> Credentials {
@@ -186,7 +251,7 @@ final class SessionStore: ObservableObject {
                 accessToken: response.accessToken,
                 refreshToken: response.refreshToken
             )
-            try CredentialStorage.save(updated)
+            try credentialStore.save(updated)
             credentials = updated
             return updated
         }
@@ -212,46 +277,28 @@ final class SessionStore: ObservableObject {
         } catch SessionError.changed {
             return
         } catch {
+            // 暂时性故障保留凭据，仅展示可重试的错误；明确失效已由授权入口清理。
             if generation == authGeneration, credentials != nil {
                 restoreError = error.localizedDescription
             }
         }
     }
-}
 
-private enum CredentialStorage {
-    private static let query: [String: Any] = [
-        kSecClass as String: kSecClassGenericPassword,
-        kSecAttrService as String: AppConfiguration.credentialService,
-        kSecAttrAccount as String: "current"
-    ]
-
-    static func load() -> Credentials? {
-        var result: CFTypeRef?
-        let status = SecItemCopyMatching(
-            query.merging([kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]) { _, new in new } as CFDictionary,
-            &result
-        )
-        guard status == errSecSuccess, let data = result as? Data else { return nil }
-        return try? JSONDecoder().decode(Credentials.self, from: data)
+    private func clearSession() {
+        authGeneration += 1
+        refreshTask?.cancel()
+        refreshTask = nil
+        credentials = nil
+        user = nil
+        restoreError = nil
+        credentialStore.delete()
     }
 
-    static func save(_ credentials: Credentials) throws {
-        let data = try JSONEncoder().encode(credentials)
-        let addQuery = query.merging([
-            kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        ]) { _, new in new }
-        var status = SecItemAdd(addQuery as CFDictionary, nil)
-        if status == errSecDuplicateItem {
-            status = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
-        }
-        guard status == errSecSuccess else {
-            throw APIError(message: "无法安全保存登录状态", statusCode: nil, reason: nil)
-        }
-    }
-
-    static func delete() {
-        SecItemDelete(query as CFDictionary)
+    /// 仅用于明确认证失效：清理当前代次，并保证每个代次只提示一次。
+    private func invalidateSession() {
+        guard user != nil || credentials != nil else { return }
+        clearSession()
+        sessionInvalidationCount += 1
+        sessionExpiredNotice = "登录状态已失效，请重新登录"
     }
 }

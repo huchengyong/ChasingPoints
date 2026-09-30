@@ -117,6 +117,7 @@ private struct MyPage: View {
     @EnvironmentObject private var session: SessionStore
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage("theme_mode") private var themeMode = "system"
+    @State private var showLogin = false
 
     private var palette: AppPalette { AppTheme.palette(for: colorScheme) }
 
@@ -205,5 +206,28 @@ private struct MyPage: View {
         }
         .background(palette.page.ignoresSafeArea())
         .navigationTitle("我的")
+        .navigationDestination(isPresented: $showLogin) {
+            LoginView()
+        }
+        .alert("登录状态已失效", isPresented: sessionExpiredBinding) {
+            Button("重新登录") {
+                session.acknowledgeSessionExpired()
+                showLogin = true
+            }
+            Button("暂不登录", role: .cancel) {
+                session.acknowledgeSessionExpired()
+            }
+        } message: {
+            Text(session.sessionExpiredNotice ?? "请重新登录")
+        }
+    }
+
+    private var sessionExpiredBinding: Binding<Bool> {
+        Binding(
+            get: { session.sessionExpiredNotice != nil },
+            set: { presented in
+                if !presented { session.acknowledgeSessionExpired() }
+            }
+        )
     }
 }

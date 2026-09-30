@@ -9,13 +9,23 @@ import SwiftUI
 
 @main
 struct iOSApp: App {
-    @StateObject private var session = SessionStore()
-
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(session)
-                .task { await session.restore() }
+            if ProcessInfo.processInfo.environment["CHASING_POINTS_AUTH_TEST_HOST"] == "1" {
+                Color.clear
+            } else {
+                ApplicationRootView()
+            }
         }
+    }
+}
+
+private struct ApplicationRootView: View {
+    @StateObject private var session = SessionStore()
+
+    var body: some View {
+        ContentView()
+            .environmentObject(session)
+            .task { await session.restore() }
     }
 }
