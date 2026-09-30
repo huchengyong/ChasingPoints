@@ -1,80 +1,36 @@
 # ADMIN FRONTEND GUIDE
 
-## OVERVIEW
-`admin/` 是当前项目的管理后台，技术栈为 Vue 3 + Vite + TypeScript + Element Plus + Pinia + Vue Router。它与 `uniapp/` 共享同一个 `backend/` 服务，但面向管理员场景，当前模块包括登录、首页统计、用户管理、对局管理、赛事情报、球馆审核。
+适用于 `admin/`（Vue3 + Vite + TypeScript + Element Plus），同时遵循[仓库指南](../AGENTS.md)。管理后台共用 `backend/`，不复用 UniApp 页面规范或 API 门面。
 
-## STRUCTURE
-```text
-admin/
-├── public/
-├── src/
-│   ├── api/            # auth / dashboard / user / match / venue / event-news
-│   ├── layout/         # 主布局
-│   ├── router/         # 路由表和鉴权守卫
-│   ├── store/          # 当前主要是 user store
-│   ├── styles/         # 全局样式
-│   ├── utils/          # axios request 封装
-│   └── views/          # login / dashboard / users / matches / event-news / venues / error
-├── types/
-├── .env.development
-├── .env.production
-├── vite.config.ts
-└── package.json
-```
+## 关键入口
+| 任务 | 位置 |
+| --- | --- |
+| 当前路由、页面与鉴权守卫 | [src/router/index.ts](src/router/index.ts)，不在指南中维护路由副本 |
+| 布局与菜单 | [src/layout/](src/layout/)、[src/utils/complianceMode.ts](src/utils/complianceMode.ts) |
+| 登录态 | [src/store/user.ts](src/store/user.ts) |
+| API 与统一响应处理 | [src/api/](src/api/)、[src/utils/request.ts](src/utils/request.ts)、[src/utils/response.ts](src/utils/response.ts) |
+| 球馆审核 | [src/views/venues/review.vue](src/views/venues/review.vue)、[src/api/venue.ts](src/api/venue.ts) |
+| 构建与依赖版本 | [package.json](package.json)、[vite.config.ts](vite.config.ts) |
 
-## CURRENT ROUTES
-- `/login`：管理员登录页，同时承接首次初始化管理员入口。
-- `/dashboard`：首页统计。
-- `/users`：用户管理。
-- `/matches`：对局管理。
-- `/event-news`：赛事情报管理。
-- `/venues`：球馆审核。
+## 请求与页面约束
+- 页面通过 `src/api/*.ts` 请求，不直接写 axios、拼 token、处理全局 401 或重复弹错误提示。
+- token 由 `store/user.ts` 维护在 `admin-token` cookie 中，页面不自行读写 cookie；非公开路由缺 token 时由路由守卫跳登录。
+- API 基地址来自 `.env.development` / `.env.production` 的 `VITE_API_BASE_URL`；不要在页面写死环境地址。
+- 业务响应的判定与解包复用请求层及 `unwrapBusinessData`，保留 `0`、`false`、空字符串等合法 payload。
+- 新 API 返回类型在对应 `src/api/*.ts` 中声明；接口 shape 改动先核对后端 `.api` 和生成结果。
+- 新页面同时核对路由与菜单的合规开关，不因为页面文件存在就恢复被隐藏的入口。
+- 管理端保持 Element Plus 风格；[DESIGN.md](../DESIGN.md) 的公开用户端规则不直接适用。
 
-## REQUEST AND AUTH FACTS
-- 统一请求入口是 [admin/src/utils/request.ts](/Users/wisesearch/Projects/ChasingPoints/admin/src/utils/request.ts)。
-- API 基地址来自 `.env.development` / `.env.production` 的 `VITE_API_BASE_URL`。
-- token 保存在 `admin-token` cookie 中，由 [admin/src/store/user.ts](/Users/wisesearch/Projects/ChasingPoints/admin/src/store/user.ts) 维护。
-- 路由守卫在 [admin/src/router/index.ts](/Users/wisesearch/Projects/ChasingPoints/admin/src/router/index.ts)，规则是非公开路由缺 token 就跳 `/login`。
-- 页面层通过 `src/api/*.ts` 调接口，不要在页面里直接写 axios。
+## 验证与开发命令
+以下命令在 `admin/` 执行，按需选择；依赖通过 `npm install` 安装。
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| 登录与初始化管理员 | `src/views/login/index.vue`, `src/api/auth.ts` | 依赖后端 `ADMIN_SETUP_TOKEN` |
-| 首页统计 | `src/views/dashboard/index.vue`, `src/api/dashboard.ts` | 对应 admin dashboard 接口 |
-| 用户管理 | `src/views/users/index.vue`, `src/api/user.ts` | 关注分页与筛选参数 |
-| 对局管理 | `src/views/matches/index.vue`, `src/api/match.ts` | 管理员只读/审查视角 |
-| 赛事情报 | `src/views/event-news/index.vue`, `src/api/event-news.ts` | 与 backend `logic/admin` 强绑定 |
-| 球馆审核 | `src/views/venues/index.vue`, `src/api/venue.ts` | 与用户端球房提交链路联动 |
-
-## CONVENTIONS
-- 页面不要绕过 `src/api/*.ts` 直接请求后端。
-- 后端业务成功判定沿用 `code === 0 || success === true`。
-- 登录态变更统一通过 `store/user.ts`，不要在页面里手动读写 `admin-token` cookie。
-- 管理后台使用 TypeScript，新增 API 类型时优先在对应 `src/api/*.ts` 中声明返回结构。
-- 如果接口返回 shape 改动，先确认 `backend/chasing_points.api` 与 goctl 生成结果，再改前端类型。
-
-## COMMANDS
 ```bash
-# 安装依赖
-npm install
-
+# 现有测试直接导入 TypeScript；使用支持类型剥离的 Node.js（22.6+）
+node --experimental-strip-types --test tests/*.test.mjs
+# 包含 vue-tsc 类型检查与 Vite 构建
+npm run build
 # 本地开发
 npm run dev
-
-# 构建
-npm run build
-
-# 格式化
-npm run format
 ```
 
-## KNOWN FACTS
-- 构建目前可通过，但会有 Sass legacy JS API 的弃用警告。
-- 生产构建存在大体积 chunk 警告，后续如果继续扩展模块，需要关注拆包策略。
-- 当前仓库里没有单独的 `admin/README` 以外知识库，所以这份 `AGENTS.md` 是后台开发的主要入口。
-
-## ANTI-PATTERNS
-- 不要把用户端 `uniapp/` 的页面规范直接照搬到 `admin/`；这是 Vite Web 项目，不是 UniApp。
-- 不要在页面里直接拼接 token、处理 401 或重复弹错误提示，统一交给 `src/utils/request.ts`。
-- 不要把管理后台的接口误写到 `uniapp/api/`；`admin` 与 `uniapp` 有独立 API 门面层。
+`lint` / `format` scripts 会改写文件，不作为全仓无差别验证步骤；需要格式化时仅处理本次改动范围。构建警告以本次输出为准，不沿用历史“构建通过”结论。

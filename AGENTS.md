@@ -1,144 +1,47 @@
 # CHASING POINTS REPOSITORY GUIDE
 
-## Simplicity First
-**Minimum code that solves the problem. Nothing speculative.**
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
-
-## Surgical Changes
-**Touch only what you must. Clean up only your own mess.**
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-The test: Every changed line should trace directly to the user's request.
-
-## OVERVIEW
-这是一个多端台球项目仓库，当前由 4 个主要子系统组成：
-- `uniapp/`：UniApp Vue3 移动端，面向普通用户，覆盖登录、对局、动态、我的、赛事、球房、规则、赛季、通知等链路。
-- `backend/`：go-zero REST API 服务，负责业务接口、WebSocket、Redis 短信验证码、UniPush、球房地理编码任务等。
-- `admin/`：Vue 3 + Vite + TypeScript + Element Plus 管理后台，当前覆盖管理员登录、首页统计、用户管理、对局管理、赛事情报、球馆审核。
-- `website/`：Nuxt 3 官网子项目，负责品牌首页、下载页、协议页、联系页和基础 SEO。
-
-## REPOSITORY MAP
-```text
-.
-├── AGENTS.md                  # 仓库级知识库入口
-├── README.md                  # 当前仅保留项目名
-├── docs/plans/                # 设计/方案文档
-├── uniapp/                    # UniApp 前端
-│   ├── AGENTS.md
-│   ├── GEMINI.md
-│   ├── api/
-│   ├── components/
-│   ├── pages/
-│   ├── store/
-│   ├── subPages/
-│   ├── tests/
-│   └── utils/
-├── backend/                   # go-zero 后端
-│   ├── AGENTS.md
-│   ├── chasing_points.api
-│   ├── internal/
-│   ├── migrations/
-│   └── goose.sh
-├── admin/                     # Vue3 管理后台
-│   ├── AGENTS.md
-│   ├── src/
-│   └── package.json
-└── website/                   # Nuxt3 官网
-    ├── AGENTS.md
-    ├── pages/
-    ├── data/
-    └── package.json
-```
-
-## ARCHITECTURE SNAPSHOT
-- API 契约单一真源是 [backend/chasing_points.api](/Users/wisesearch/Projects/ChasingPoints/backend/chasing_points.api)。
-- 用户端页面只能调用 `uniapp/api/*.js`，不要在页面中直接写 `uni.request`。
-- 管理后台页面通过 `admin/src/api/*.ts` 调后端，统一走 [admin/src/utils/request.ts](/Users/wisesearch/Projects/ChasingPoints/admin/src/utils/request.ts)。
-- 官网公开页面由 `website/pages/*.vue` 暴露，页面文案与下载配置集中在 `website/data/*.ts`。
-- 后端主链路是 `handler -> logic -> model`，共享依赖统一从 `internal/svc/ServiceContext` 注入。
-- 实时能力走 2 条 WebSocket 路由：`/api/match/ws`、`/api/user/ws`。
-- 管理端不是独立后端，仍复用同一个 go-zero 服务中的 admin 路由。
-
-## CROSS-PROJECT RULES
+## 适用范围与阅读顺序
 - 用简体中文沟通。
-- 做功能改动时先确认自己所在子系统，再读取对应目录下的 `AGENTS.md`。
-- 不要把历史文档、旧分支记忆、旧模块列表当作当前事实；先以仓库实际文件为准。
-- 修改后端 `.api` 文件后，下一步必须立刻运行 goctl 生成代码，不要手改生成文件。
-- 当前后端接口入口 logic 已按 `backend/internal/logic/<group>/` 分组；根目录 `backend/internal/logic/*.go` 只保留共享 helper / service / protocol / payload 等公共层。重新跑 goctl 后如果出现新的 `todo` 空壳文件，只有在同步补齐真实逻辑与 handler 引用后才允许提交。
-- 修改数据库表结构时，迁移、Gorm 模型、前后端字段命名和接口响应要一起核对。
-- 新增接口时，要同时考虑 `uniapp/api` 或 `admin/src/api` 是否需要补对应门面。
-- 高频读链路必须保持服务端查询有界、GET 纯读和性能可观测；用户级客户端缓存与请求去重必须认证隔离，不得用无界扫描、N+1 或通用 GET 缓存换取短期便利。
+- 本指南适用于整个仓库。修改前先读所属子系统的 `AGENTS.md`，再读目标文件路径上更深层的指南；局部规则只细化其目录，不重复维护全仓规范。
+- 先核对当前源码、配置与调用链，不把历史文档、旧分支记忆或目录清单当成当前事实。若实现与需求冲突，先说明差异，不擅自改需求来迁就实现。
 
-## CURRENT TECH FACTS
-- `uniapp/` 当前是 JavaScript 项目，没有统一 npm scripts；现有测试通过 `node --test tests/*.test.mjs` 执行。
-- `admin/` 使用 Vite，接口基地址来自 `.env.development` / `.env.production` 的 `VITE_API_BASE_URL`。
-- `website/` 使用 Nuxt 3，正式域名通过 `NUXT_PUBLIC_SITE_URL` 注入。
-- `uniapp/` 当前通过 `utils/runtime-config.js` 按 `NODE_ENV` 解析 HTTP/WS 基地址；开发环境默认走 tunnel，生产环境默认走正式域名。
-- `backend/` 使用 go 1.25、go-zero、Gorm、Redis、Aliyun SMS、UniPush。
-- `backend/` 数据库结构现在统一由 `backend/migrations/*.sql` 管理；测试如果需要 schema，走 `backend/internal/testsupport` 显式准备。
-- `backend/` 的接口入口逻辑目录现以 `backend/internal/logic/<group>/` 为准；根目录 `backend/internal/logic/*.go` 是公共层，不再放 handler 一一对应的接口 logic。
+## 子系统入口
+| 子系统 | 职责与技术栈 | 开发指南 |
+| --- | --- | --- |
+| `backend/` | go-zero REST API、WebSocket、Gorm、Redis 与后台任务 | [backend/AGENTS.md](backend/AGENTS.md) |
+| `uniapp/` | UniApp Vue3 + JavaScript 跨平台用户端 | [uniapp/AGENTS.md](uniapp/AGENTS.md) |
+| `iOS/` | SwiftUI 原生用户端，与 UniApp 并存 | [iOS/AGENTS.md](iOS/AGENTS.md) |
+| `admin/` | Vue3 + Vite + TypeScript + Element Plus 管理后台 | [admin/AGENTS.md](admin/AGENTS.md) |
+| `website/` | Nuxt 3 官网、下载引导、协议与联系页 | [website/AGENTS.md](website/AGENTS.md) |
 
-## REVIEW HOTSPOTS
-- 移动端请求层：[uniapp/utils/request.js](/Users/jerichohu/Projects/ChasingPoints/uniapp/utils/request.js)
-- 移动端 WebSocket：[uniapp/utils/websocket.js](/Users/jerichohu/Projects/ChasingPoints/uniapp/utils/websocket.js)
-- 移动端全局状态与主题：[uniapp/store/](/Users/jerichohu/Projects/ChasingPoints/uniapp/store) 与 [uniapp/App.vue](/Users/jerichohu/Projects/ChasingPoints/uniapp/App.vue)
-- 后端依赖注入：[backend/internal/svc/service_context.go](/Users/wisesearch/Projects/ChasingPoints/backend/internal/svc/service_context.go)
-- 后端实时链路：[backend/internal/pkg/ws/](/Users/wisesearch/Projects/ChasingPoints/backend/internal/pkg/ws)
-- 后端迁移与模型一致性：[backend/migrations/](/Users/wisesearch/Projects/ChasingPoints/backend/migrations) 与 [backend/internal/model/](/Users/wisesearch/Projects/ChasingPoints/backend/internal/model)
-- 管理后台鉴权与 API：[admin/src/router/index.ts](/Users/wisesearch/Projects/ChasingPoints/admin/src/router/index.ts)、[admin/src/utils/request.ts](/Users/wisesearch/Projects/ChasingPoints/admin/src/utils/request.ts)
-- 官网页面与 SEO：[website/pages/](/Users/wisesearch/Projects/ChasingPoints/website/pages) 与 [website/composables/usePageSeo.ts](/Users/wisesearch/Projects/ChasingPoints/website/composables/usePageSeo.ts)
+管理后台与用户端共用同一个后端；各端的请求、状态与 UI 实现保持独立，不照搬其他平台的规则。
 
-## COMMANDS
-```bash
-# 移动端逻辑测试
-cd uniapp
-node --test tests/*.test.mjs
+## 改动原则
+- 只实现本次需求，优先复用现有代码、标准库和平台能力；不要为假想需求增加依赖、配置或通用框架。
+- 单次使用优先局部实现；隔离外部依赖、维护资源生命周期或保证可测试性时，可以保留必要的抽象。
+- 不添加没有依据的兜底，但不得省略信任边界校验、鉴权、网络/持久化失败处理和防止数据丢失的措施。
+- 沿用现有风格，只改任务涉及的代码；不顺手重构、全仓格式化或清理历史死代码。删除本次改动造成的无用依赖和变量。
 
-# 管理后台构建
-cd admin
-npm run build
+## 跨端契约
+- 接口字段与路由以 [backend/chasing_points.api](backend/chasing_points.api) 为契约源。修改 `.api` 后，下一步立即按后端指南运行 goctl，不手改生成产物。
+- 接口或表结构变更时，一起核对 SQL migration、Gorm 模型、DTO 与受影响客户端的字段、请求门面和响应处理；包括原生 iOS，不能只检查 UniApp/后台。
+- 服务端读取保持业务纯读、查询有界与性能可观测；客户端用户级缓存、请求去重及异步回写必须隔离身份。具体约束见各端指南。
+- 公开用户界面的品牌与可访问性遵循 [DESIGN.md](DESIGN.md)，平台专属细则只在对应平台适用。
 
-# 官网开发
-cd website
-npm run dev
+## 工作区与操作安全
+- 开始先看 `git status`；保留用户已有修改、删除和未跟踪文件。出现与本次任务重叠的未知改动时先确认，不覆盖或回滚。
+- 未经要求不提交或推送。提交时仅暂存本次明确涉及的路径，并检查暂存 diff；不要用未经核对的 `git add -A` 混入其他工作。
+- 数据库迁移、真实短信/支付、真实账号写入等操作先核对目标环境与用户授权，不作为构建或单测的隐式步骤。启动服务前检查外部依赖与后台任务副作用。
+- 不在源码、日志、夹具或文档中写入密钥、token、验证码、真实凭据；自动化使用受控数据与隔离存储，不读取或复制开发者的真实会话来补测试条件。
 
-# 官网构建与测试
-cd website
-npm run test
-npm run build
+## 验证与收尾
+- 先运行改动涉及的最小测试，再按影响范围执行子系统测试/构建；命令与工作目录见各子系统指南。业务逻辑改动应留下能复现关键边界的回归测试。
+- 纯文档改动检查链接、命令准确性与 `git diff --check`，不默认启动服务、跑迁移或全仓构建。
+- 结果区分：本次自动化执行、用户人工确认、未执行/阻塞。记录命令、环境来源和实际结果，不用模拟响应冒充真实后端验收，也不从连接设备或文件时间推断人工验收环境。
+- 完成前检查 diff，说明改动范围、验证结果和未完成项；验收历史放在 [docs/testing/](docs/testing/)，不要把某次“全部通过”写成长期开发约束。
 
-# 后端服务启动
-cd backend
-go run chasing_points.go -f etc/chasing_points-api.yaml
-
-# 后端 API 代码生成
-cd backend
-goctl api go --api chasing_points.api --dir . --style go_zero --home ~/.goctl/default
-
-# 后端测试
-cd backend
-go test ./...
-
-# 数据库迁移
-cd backend
-./goose.sh status
-./goose.sh up
-```
-
-## KNOWN PITFALLS
-- `uniapp` 没有根级 `npm test` script，默认验证命令是 `node --test tests/*.test.mjs`。
-- `backend` 的赛讯领域测试依赖显式建表；当前有效表是 `event_news_events`、`tournaments` 和 `tournament_matches`，不要再依赖已删除的阶段表或废弃的单表 `event_news`。
-- `backend` 的 MySQL 迁移要注意版本兼容：`CREATE TABLE IF NOT EXISTS` 可以用，但不要默认写 `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` 或 `DROP COLUMN IF EXISTS`，部分环境会直接报 1064。给已有表补字段时，先查 `information_schema.COLUMNS` 再决定是否执行 `ALTER TABLE`。
-- `uniapp/AGENTS.md` 与 `uniapp/GEMINI.md` 需要保持同步；仓库里当前没有 `IFLOW.md`。
-- `website` 当前下载链接、联系信息和 sitemap 仍是占位值，上线前必须替换为正式内容。
+## 规范入口与维护
+- [openspec/specs/](openspec/specs/) 保存主规格；[openspec/changes/](openspec/changes/) 保存变更及归档。涉及 OpenSpec 时读取选定变更的上下文、遵循对应工作流及确认步骤，不为普通小修复强制新建完整提案。
+- 指南保留稳定边界、关键入口和可执行验证，不穷举路由/业务模块、不复制历史方案。路由、依赖版本和脚本分别以注册文件、依赖清单与脚本定义为准。
+- Markdown 链接相对所在文件，代码块中的路径注明执行目录；不使用开发者机器的绝对路径。
+- 改动使指南不再准确时，同步修正相关条目；规则尽量只维护一处，其他入口用链接引用。

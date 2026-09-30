@@ -1,6 +1,6 @@
 # 追分公开用户界面设计规范（DESIGN.md）
 
-> 本文件是「官网 `website/`」与「App／小程序客户端 `uniapp/`」公开用户界面的统一视觉规范入口。
+> 本文件是 `uniapp/`、原生 `iOS/` 与官网 `website/` 公开用户界面的统一视觉规范入口。
 > 管理后台 `admin/` 不在此规范范围内；除非有独立变更扩展范围，否则后台沿用自身 Element Plus 风格。
 
 ## 1. 适用范围
@@ -8,6 +8,7 @@
 **适用：**
 
 - `uniapp/`：同时输出 App、微信小程序等平台的 UniApp Vue3 客户端。
+- `iOS/`：SwiftUI 原生客户端，复用品牌、颜色、状态与可访问性语义，使用原生布局和导航。
 - `website/`：Nuxt 3 官网与公开页面。
 
 **不适用：**
@@ -15,7 +16,7 @@
 - `admin/` 管理后台。
 - 后端接口、数据模型、业务流程、页面信息架构与交互流程。
 
-本规范统一的是品牌语义与组件层级，不要求官网与移动端像素级一致，也不要求两端共享组件代码。
+本规范统一品牌语义与组件层级，不要求各端像素级一致或共享组件代码。下文 App／小程序的 rpx、CSS/WXSS、UniApp 组件与 API 细则仅适用于 `uniapp/`；原生 iOS 不套用这些实现细节，具体开发边界见 [iOS/AGENTS.md](iOS/AGENTS.md)。
 
 ## 2. 品牌原则
 
@@ -67,7 +68,8 @@
 
 ### 3.3 实现映射
 
-- App：在 `uniapp/App.vue` 的 `page` 与 `.dark-mode` 中提供 `--ui-*` CSS 变量；`uniapp/theme.json` 负责原生主题替换；`uniapp/utils/theme-application.js` 负责运行时导航栏与 TabBar；`uniapp/uni.scss` 保留 UniApp 默认变量。
+- UniApp：在 `uniapp/App.vue` 的 `page` 与 `.dark-mode` 中提供 `--ui-*` CSS 变量；`uniapp/theme.json` 负责原生主题替换；`uniapp/utils/theme-application.js` 负责运行时导航栏与 TabBar；`uniapp/uni.scss` 保留 UniApp 默认变量。
+- 原生 iOS：通过 `iOS/iOS/AppTheme.swift` 的 `AppTheme` / `AppPalette` 消费颜色语义；`theme_mode` / `ThemeMode` 管理外观偏好，不引入 CSS 变量或 rpx 映射。
 - 官网：在 `website/assets/styles/main.css` 的 `:root` 中提供同名 `--ui-*` 变量，组件通过变量消费视觉角色。
 
 ## 4. 亮暗主题
@@ -75,7 +77,8 @@
 - **亮色**：暖米白页面 `#F7F4EC`、白卡片 `#FFFFFF`、暖黑主文字 `#231C0B`。
 - **客户端暗色**：暖黑页面 `#141109`、暖黑卡片 `#1E180D`、暖白主文字 `#FFF7E1`。
 - 官网首期仅亮色；若后续新增暗色，应复用同一套暗色语义。
-- App / 小程序暗色必须通过共享主题机制（`usePageTheme`）驱动，禁止用系统媒体查询绕过用户手动选择。
+- UniApp / 小程序暗色必须通过共享主题机制（`usePageTheme`）驱动，禁止用系统媒体查询绕过用户手动选择。
+- 原生 iOS 复用 `theme_mode` 的跟随系统 / 浅色 / 深色偏好，由 `ContentView` 应用 `preferredColorScheme`，各页面消费当前外观对应的 `AppPalette`。
 
 ## 5. 排版
 
@@ -162,7 +165,7 @@
 - 营销 / 重点 CTA（官网、欢迎页、高价值入口）：可用 `brand-gradient-start → brand-gradient-end` 渐变，白字。
 - 次要操作：透明或 `surface-subtle` 背景 + `border-default` + `text-secondary` / `brand-strong` 文字。
 - 破坏性操作：`danger`，不与普通主操作同形。
-- App 自定义 `button`：
+- UniApp 自定义 `button`：
   - `margin: 0`（覆盖原生 margin）。
   - 隐藏 `button::after`。
   - `line-height` 与 `height` 一致，保证文字垂直居中。
@@ -196,7 +199,7 @@
 ### 9.6 弹层 / 底部抽屉
 
 - 弹层：`surface-card` + `radius-xl` + 深色遮罩。
-- 底部抽屉覆盖 TabBar 区域时，必须处理 `env(safe-area-inset-bottom)`，或在打开时 `uni.hideTabBar`、关闭 / 卸载时 `uni.showTabBar`，避免操作与 TabBar 重叠。
+- UniApp 底部抽屉覆盖 TabBar 区域时，必须处理 `env(safe-area-inset-bottom)`，或在打开时 `uni.hideTabBar`、关闭 / 卸载时 `uni.showTabBar`，避免操作与 TabBar 重叠。
 
 ### 9.7 空态 / 加载态 / 骨架屏
 
@@ -215,34 +218,34 @@
 
 ## 11. 平台单位映射
 
-| 语义 | App / 小程序 | 官网 |
-|---|---|---|
-| 尺寸单位 | rpx | px / rem |
-| 间距 | 8rpx 基础刻度 | 4px 基础刻度 |
-| 圆角 | 12/18/24/32rpx + 999rpx | 8/12/20/28px + 999px |
-| 主题 | 亮 + 暗（共享主题机制） | 首期仅亮色 |
-| 组件 | 原生 `view` / `text` / `button` / `image` / `scroll-view` | HTML + scoped CSS |
+| 语义 | UniApp / 小程序 | 官网 | 原生 iOS |
+|---|---|---|---|
+| 尺寸单位 | rpx | px / rem | 原生 point 与系统字体样式 |
+| 间距 | 8rpx 基础刻度 | 4px 基础刻度 | 原生布局与 safe area |
+| 圆角 | 12/18/24/32rpx + 999rpx | 8/12/20/28px + 999px | 沿用现有 SwiftUI 组件层级，不换算 rpx |
+| 主题 | 亮 + 暗（共享主题机制） | 首期仅亮色 | 跟随系统 / 浅色 / 深色（AppTheme） |
+| 组件 | `view` / `text` / `button` / `image` / `scroll-view` | HTML + scoped CSS | SwiftUI 与系统导航/控件 |
 
-微信小程序 WXSS 不支持 `*` 通配选择器，会编译到 MP-WEIXIN 的 `.vue` / `.scss` 禁止使用 `*`、`*::before`、`*::after`；仅供其他端使用的规则通过 `#ifndef MP-WEIXIN` 排除。
+微信小程序 WXSS 不支持 `*` 通配选择器，会编译到 MP-WEIXIN 的 `.vue` / `.scss` 禁止使用 `*`、`*::before`、`*::after`，包括 scoped 样式中的 `.container *`；改用明确的类或组件选择器。仅供其他端使用的规则通过 `#ifndef MP-WEIXIN` 排除。
 
 ## 12. 页面验收清单
 
-新增或改动公开页面时，逐项确认：
+新增或改动公开页面时，按目标平台与本次改动逐项确认：
 
 1. 主操作使用品牌金，白字，禁用态清晰。
 2. 绿色仅用于成功 / 在线 / 进行中 / 正向 / 微信登录语义。
 3. 页面、卡片、输入框、弹层使用暖中性表面 Token。
 4. 亮暗主题均由共享主题机制驱动，暗色使用暖黑金。
 5. 圆角、间距、阴影与同层级组件一致。
-6. 自定义 button 满足 `margin: 0`、隐藏 `::after`、`line-height` 与 `height` 一致、`[disabled]` 覆盖。
+6. UniApp 自定义 button 满足 `margin: 0`、隐藏 `::after`、`line-height` 与 `height` 一致、`[disabled]` 覆盖。
 7. 底部弹层处理安全区与 TabBar。
 8. 空态 / 加载态 / 骨架屏层级统一。
 9. 官网移动端无横向溢出，交互元素有可见焦点态。
-10. 不改变路由、接口、生命周期、校验或业务数据。
+10. 仅做视觉调整时，不顺带改变路由、接口、生命周期、校验或业务数据。
 
 ## 13. 视觉 QA 矩阵
 
-| 场景 | App 亮色 | App 暗色 | 微信小程序 | 官网移动端 | 官网桌面端 |
+| 场景 | UniApp 亮色 | UniApp 暗色 | 微信小程序 | 官网移动端 | 官网桌面端 |
 |---|---|---|---|---|---|
 | 欢迎 → 登录 → 首页链路 | ✅ | ✅ | ✅ | — | — |
 | 四个主 Tab | ✅ | ✅ | ✅ | — | — |
@@ -252,4 +255,6 @@
 | 下载页 / 联系页 / 协议页 | — | — | — | ✅ | ✅ |
 | 键盘焦点 / 卡片重排 / 横向溢出 | — | — | — | ✅ | ✅ |
 
-> 自动化契约测试只覆盖可客观判定的颜色、Token、主题入口与禁用值；「是否好看」仍需按本矩阵人工验收。
+> 表中 ✅ 表示需要检查，不代表本次已验收通过。原生 iOS 对当前已迁移页面另行验证三种主题、系统导航、触控目标、安全区与可访问性，不把未迁移页面视为已覆盖。
+>
+> 自动化契约测试只覆盖可客观判定的颜色、Token、主题入口与禁用值；「是否好看」仍需按对应平台人工验收。

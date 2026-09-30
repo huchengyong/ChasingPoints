@@ -1,103 +1,45 @@
-# APP FRONTEND GUIDE
+# UNIAPP FRONTEND GUIDE
 
-## OVERVIEW
-`uniapp/` 是 UniApp Vue3 用户端，当前代码重点覆盖 4 个 tab 页面、12 个分包页面簇、统一请求层、主题系统、登录与绑定手机号链路、对局实时同步、战报分享和一批纯逻辑测试。
+适用于 `uniapp/` 跨平台用户端（Vue3 + JavaScript），同时遵循[仓库指南](../AGENTS.md)；不适用于原生 `iOS/`。规则以 [AGENTS.md](AGENTS.md) 为维护源，[GEMINI.md](GEMINI.md) 保持同内容镜像。
 
-## GLOBAL RULES
-- 用简体中文沟通。
-- `AGENTS.md` 与 `GEMINI.md` 需要保持同步；仓库里当前没有 `IFLOW.md`。
-- 任何目录说明都以当前仓库实际文件为准，不要沿用旧模块名或旧页面结构。
+## 关键入口
+| 任务 | 位置 |
+| --- | --- |
+| 主包、Tab、分包与导航注册 | [pages.json](pages.json)，以实际注册为准，不按文件目录推断页面是否开放 |
+| 应用生命周期、Push、前台提醒 | [App.vue](App.vue)、[main.js](main.js) |
+| 用户状态与持久化 | [store/user.js](store/user.js)、[store/index.js](store/index.js) |
+| HTTP 门面与认证处理 | [api/](api/)、[api/AGENTS.md](api/AGENTS.md)、[utils/request.js](utils/request.js) |
+| HTTP/WS 环境地址 | [utils/runtime-config.js](utils/runtime-config.js) |
+| 实时对局 | [utils/websocket.js](utils/websocket.js)、[utils/match-action.js](utils/match-action.js) |
+| 主题 | [store/theme.js](store/theme.js)、[theme.json](theme.json)、[utils/theme-application.js](utils/theme-application.js) |
+| 页面局部约束 | [subPages/AGENTS.md](subPages/AGENTS.md) |
 
-## STRUCTURE
-```text
-uniapp/
-├── App.vue                    # 全局生命周期、主题应用、Push 初始化、前台对局提醒
-├── main.js                    # Vue3 SSR App 入口，挂载 Pinia
-├── pages.json                 # 主包页面、tabBar、分包注册
-├── theme.json                 # UniApp 主题变量
-├── pages/                     # 主包页面
-│   ├── welcome/
-│   ├── login/
-│   ├── index/
-│   ├── match/
-│   ├── ranking/
-│   ├── tournament/
-│   └── user/
-├── subPages/                  # 分包页面
-├── api/                       # 页面唯一请求门面
-├── components/                # bindPhone、agreementConsentSheet、gameTypeModal
-├── store/                     # Pinia：user/theme/notification/friendRequest
-├── utils/                     # request、format、websocket、业务纯函数与导航 helper
-├── tests/                     # node:test 纯逻辑测试
-├── static/                    # 图片、图标、字体
-└── harmony-configs/           # HarmonyOS 配置
-```
+## 页面与请求边界
+- 页面、组件和 store 的业务 HTTP 请求统一经过 `api/*.js`，不直接调用 `uni.request` 或 `utils/request.js`。涉及请求/认证或新增 API 门面时，先读 [API 层指南](api/AGENTS.md)。
+- `App.vue` 现有 Push 上报、会话失效转接属于应用基础设施例外，不把这一例外扩大到业务页面。
+- 页面优先使用 `script setup` + SCSS，样式优先沿用同名 `.scss`；`App.vue` 保留承接 UniApp 生命周期的 Options API。共享样式放在既有主题/全局样式入口。
+- 业务规则需要复用或独立测试时优先放 `utils/*.js` 纯函数，不为简单页面操作额外造通用表单/页面框架。
+- 时间格式复用 [utils/format.js](utils/format.js)，图标优先用 `uni-icons`。Push、主题、前台提醒不要在各页面重复实现。
 
-## CURRENT ARCHITECTURE
-- 入口是 [uniapp/main.js](/Users/jerichohu/Projects/ChasingPoints/uniapp/main.js)，使用 Pinia；状态持久化由 [uniapp/store/index.js](/Users/jerichohu/Projects/ChasingPoints/uniapp/store/index.js) 注册的 `pinia-plugin-persistedstate` 完成。
-- [uniapp/App.vue](/Users/jerichohu/Projects/ChasingPoints/uniapp/App.vue) 仍使用 Options API，因为需要承接 UniApp app 级生命周期；页面组件默认继续优先用 `script setup`。
-- [uniapp/pages.json](/Users/jerichohu/Projects/ChasingPoints/uniapp/pages.json) 当前注册 7 个主包页面（含 1 个旧路径兼容跳转页）和 12 个分包根目录。
-- [uniapp/utils/runtime-config.js](/Users/jerichohu/Projects/ChasingPoints/uniapp/utils/runtime-config.js) 负责按环境解析网络基地址；[uniapp/utils/request.js](/Users/jerichohu/Projects/ChasingPoints/uniapp/utils/request.js) 统一处理 token、401、业务成功判定；[uniapp/utils/websocket.js](/Users/jerichohu/Projects/ChasingPoints/uniapp/utils/websocket.js) 负责 match/user 两条 WS 链路。
-- 页面层只能依赖 `api/*.js`；业务纯函数尽量沉到 `utils/*.js` 并在 `tests/*.test.mjs` 里覆盖。
+## 读取与状态隔离
+- 首屏优先复用聚合接口，避免 `onLoad`、`onMounted`、`onShow` 与子组件重复读取同一资源。
+- 禁止在通用请求层增加 GET 缓存；single-flight、TTL/SWR、loaded/dirty 和失效逻辑属于具体领域 Store/helper。
+- 用户级缓存与 in-flight 绑定 `userId + authGeneration`；退出、切号或认证代次变化后，旧响应不得回写当前资料、提示或导航。
+- 公共缓存只保存与访问者无关的数据，viewer 个性化字段按当前身份组装。
+- 写入成功后精确失效相关资源 scope，不用所有页面无条件强制刷新代替一致性管理。
+- 新增读取逻辑测试首次进入、重复 `onShow`、并发请求、退出/切号与迟到响应；优先参考 [tests/request-graph.test.mjs](tests/request-graph.test.mjs) 与现有领域缓存测试。
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| 页面注册、导航栏、分包 | `pages.json` | 新页面先确认主包还是分包 |
-| 全局主题、Push、前台弹窗 | `App.vue`, `theme.json`, `store/theme.js` | 主题和导航栏颜色要一起看 |
-| 登录态与用户信息 | `store/user.js`, `api/auth.js`, `components/bindPhone.vue` | `needBindPhone` 和 token 在这里汇总 |
-| 通知状态 | `store/notification.js`, `utils/notification.js`, `api/notification.js` | 有页面和 store 双向联动 |
-| 请求层 | `utils/request.js`, `utils/request-response.js` | 401、业务成功判定、静默请求都在这里 |
-| 对局实时同步 | `utils/websocket.js`, `utils/match-action.js`, `subPages/match/*.vue` | 要同时理解 revision/snapshot 和页面跳转 |
-| 首页/登录漏斗纯逻辑 | `utils/home-index.js`, `utils/entry-funnel.js`, `tests/*.test.mjs` | 很多 UI 规则已抽纯函数 |
-| 球房提交流程 | `subPages/venue/submit.vue`, `utils/venue-submit.js` | 当前只提交基础字段 |
-| 战报/分享 | `utils/posterGenerator.js`, `api/share.js`, `subPages/match/shareResult.vue`, `subPages/social/pkReport.vue` | 涉及画布和分享数据整形 |
+## UI 与平台约束
+- 品牌、主题、按钮、WXSS 选择器和安全区规则统一维护在 [DESIGN.md](../DESIGN.md)；修改 UI 时按该文档的 UniApp 细则与验收清单核对，不复制另一套规范。
+- 主题接入 `theme.json`、`App.vue` CSS 变量与 `store/theme.js` 的现有切换链路，不绕过用户主题偏好。
+- 优先系统导航栏；自定义导航栏需有明确需求，并保持正确高度与返回行为。
+- Node 测试（含 Vue SFC/jsdom 挂载）不替代 App/微信小程序编译和真机 UI 验收；跨平台改动需注明实际覆盖的平台。
 
-## FRONTEND CONSTRAINTS
-- 这是跨平台 UniApp 项目，页面层不要直接用 `uni.request`，统一走 `api/*.js`。
-- 页面默认优先使用 `script setup` + SCSS；`App.vue` 作为 app 生命周期例外。
-- 样式优先拆到同名 `.scss` 文件；全局共享样式才放进 `App.vue` 或 `uni.scss`。
-- 列表时间展示优先复用 [uniapp/utils/format.js](/Users/jerichohu/Projects/ChasingPoints/uniapp/utils/format.js)。
-- 对局写操作、登录漏斗、球房提交等规则，优先提炼为 `utils/*.js` 纯函数并补测试，而不是把规则散在页面里。
-- Push、主题、前台对局提醒属于 app 级行为，优先改 `App.vue`，不要把相同逻辑复制到页面。
+## 验证命令
+在 `uniapp/` 执行；依赖按需通过 `npm install` 安装。[package.json](package.json) 没有 npm scripts，不使用 `npm test`。
 
-## CLIENT READ GUARDRAILS
-- 页面只能通过 `api/*.js` 请求数据；首屏优先使用聚合接口，避免 `onLoad`、`onMounted`、`onShow` 和子组件重复读取同一资源。
-- 禁止在 `utils/request.js` 增加通用 GET 缓存；single-flight、TTL/SWR、loaded/dirty 和失效逻辑必须属于具体领域 Store 或 helper。
-- 用户级缓存和 in-flight 必须绑定 `userId + authGeneration`；退出、切号或认证代次变化后，旧响应不得回写当前状态。
-- 公共缓存只能保存与访问者无关的数据；排行榜等 viewer 个性化字段必须按当前身份单独组装。
-- 写操作成功后必须精确失效相关资源 scope，不得用所有页面无条件强制刷新代替一致性管理。
-- 新增首屏读取逻辑时，应测试首次进入、重复 `onShow`、并发请求、退出/切号和旧 in-flight 返回等关键请求图。
-
-## THEME AND UI CONSTRAINTS
-- 公开用户界面的品牌、颜色、间距、圆角、组件与可访问性规范统一遵循仓库根级 [DESIGN.md](/Users/wisesearch/Projects/ChasingPoints/DESIGN.md)。
-- 主题变量必须同时兼容 `theme.json`、`App.vue` 中的 CSS 变量和 `store/theme.js` 的运行时切换。
-- 主题色背景按钮文字统一使用白色 `#ffffff`。
-- 微信小程序 WXSS 不支持 `*` 通配选择器。任何会编译到 MP-WEIXIN 的 `.vue` / `.scss` 都禁止使用 `*`、`*::before`、`*::after`，包括 scoped 样式中的 `.container *`（会生成 `.container *.data-v-*` 并导致真机编译失败）；改用明确的类选择器或 `view`、`text`、`button`、`image`、`scroll-view` 等组件选择器。仅供其他端使用的规则必须通过 `#ifndef MP-WEIXIN` 排除。
-- 针对 button 等内置组件的 disabled 状态样式覆盖，必须使用属性选择器 `&[disabled]` 或者 `button[disabled]`，绝不能使用伪类 `&:disabled`（在 UniApp 编译到小程序/App 端时，伪类无法正确匹配组件，并会导致框架默认的灰色字体强行覆盖被激活）。
-- 自定义按钮必须隐藏 `button::after`。
-- 为确保按钮文字垂直居中，所有自定义 `button` 组件的 `line-height` 应设为与 `height` 相同的值（例如 `height: 88rpx; line-height: 88rpx;`）。
-- UniApp 原生 `button` 自带默认 `margin`，会在 flex/grid、筛选 chip、底部抽屉操作区中把元素推散；自定义按钮必须显式设置 `margin: 0`，并按需设置 `padding`、`width`、`height`、`box-sizing`。
-- 底部弹层、筛选抽屉、操作面板如果覆盖 tabBar 区域，必须处理底部安全区与 tabBar：优先在打开时 `uni.hideTabBar`、关闭/卸载时 `uni.showTabBar`，或明确预留 `env(safe-area-inset-bottom)`，避免确认/取消按钮与 tabBar 重叠。
-- 页面最外层容器要注意 `box-sizing: border-box` 和首屏 margin collapse，避免顶部漏白。
-- 没有明确设计要求时，优先使用系统导航栏；自定义导航栏要和系统高度、返回行为保持一致。
-
-## TEST AND COMMANDS
 ```bash
-# 安装依赖
-npm install
-
-# 运行纯逻辑测试与真实 Vue SFC/jsdom 挂载测试
 node --test tests/*.test.mjs
+# 修改本指南时同步 GEMINI.md，并检查镜像一致
+cmp AGENTS.md GEMINI.md
 ```
-
-## KNOWN FACTS
-- `package.json` 没有 `scripts`；默认不要假设可以直接 `npm test`。测试开发依赖包含 `vue`、`@vue/compiler-sfc`、`@vue/test-utils` 和 `jsdom`，用于直接编译并挂载关键 SFC。
-- 当前 HTTP 与 WebSocket 基地址由 `utils/runtime-config.js` 统一管理：开发环境默认走 tunnel，生产环境默认走正式域名。
-- `App.vue` 里会直接调用 `post('/api/user/push-token')`，这是 app 级基础设施调用，不是页面层越界。
-
-## ANTI-PATTERNS
-- 不要在 `.vue` 页面里直接 `uni.request` 或直接 import `utils/request.js`。
-- 不要把业务规则直接埋进页面生命周期，能抽纯函数就抽，并补 `tests/*.test.mjs`。
-- 不要继续引用不存在的目录或设计稿目录，例如当前仓库里没有 `design_code/`。
-- 不要把旧模块名如 `mall`、`order`、`favorites` 当成当前项目结构。
