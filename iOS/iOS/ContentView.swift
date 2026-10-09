@@ -152,6 +152,12 @@ private struct MyPage: View {
                             SettingsRow(title: "编辑昵称", symbol: "pencil")
                         }
                         Divider().padding(.leading, 56)
+                        NavigationLink {
+                            MatchHistoryView(session: session)
+                        } label: {
+                            SettingsRow(title: "对局记录", symbol: "list.bullet.rectangle")
+                        }
+                        Divider().padding(.leading, 56)
                     }
                     NavigationLink {
                         SettingsView()

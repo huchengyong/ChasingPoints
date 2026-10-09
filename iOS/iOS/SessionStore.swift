@@ -16,6 +16,12 @@ struct Credentials: Codable, Equatable {
     let refreshToken: String
 }
 
+/// 只读身份快照：异步读取据此判断结果是否仍属于发起时的账号与认证代次。
+struct SessionIdentity: Equatable {
+    let userId: Int64
+    let generation: Int
+}
+
 protocol CredentialStoring {
     func load() -> Credentials?
     func save(_ credentials: Credentials) throws
@@ -132,6 +138,12 @@ final class SessionStore: ObservableObject {
     @Published private(set) var sessionExpiredNotice: String?
 
     private(set) var sessionInvalidationCount = 0
+
+    /// 已验证资料的身份；退出、切号或重新登录都会改变代次，即使用户 ID 相同。
+    var identity: SessionIdentity? {
+        guard let user, user.status == 1 else { return nil }
+        return SessionIdentity(userId: user.id, generation: authGeneration)
+    }
 
     private let api: APIClient
     private let credentialStore: CredentialStoring

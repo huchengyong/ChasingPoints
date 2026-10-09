@@ -3,6 +3,7 @@ import Foundation
 struct RecordedRequest {
     let method: String
     let path: String
+    let query: [String: String]
     let bearerToken: String?
     let body: Data
 
@@ -84,6 +85,7 @@ final class MockHTTPServer: @unchecked Sendable {
         let recorded = RecordedRequest(
             method: request.httpMethod ?? "",
             path: request.url?.path ?? "",
+            query: Self.queryItems(in: request),
             bearerToken: Self.bearerToken(in: request),
             body: Self.readBody(request)
         )
@@ -95,6 +97,13 @@ final class MockHTTPServer: @unchecked Sendable {
             return .json(["success": false, "message": "未配置的测试请求 \(recorded.path)"], status: 500)
         }
         return rule.handler(recorded)
+    }
+
+    private static func queryItems(in request: URLRequest) -> [String: String] {
+        guard let url = request.url,
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let items = components.queryItems else { return [:] }
+        return Dictionary(items.map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { _, last in last })
     }
 
     private static func bearerToken(in request: URLRequest) -> String? {
