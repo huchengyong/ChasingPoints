@@ -2,6 +2,7 @@ package match
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"chasing_points/internal/model"
@@ -45,7 +46,8 @@ func (l *EndRoundLogic) EndRound(req *types.EndRoundReq) (resp *types.EndRoundRe
 	}
 
 	// 验证用户权限
-	if _, authorityErr := validateMatchWriteAuthority(match, userId); authorityErr != nil {
+	capabilities, authorityErr := validateMatchWriteAuthority(match, userId)
+	if authorityErr != nil {
 		if authorityErr == errMatchViewerNotParticipant {
 			l.Logger.Errorf("用户不是对局参与者: matchUserId=%d, matchOpponentId=%v, refereeUserId=%v, currentUserId=%d",
 				match.UserId, match.OpponentId, match.RefereeUserId, userId)
@@ -96,7 +98,7 @@ func (l *EndRoundLogic) EndRound(req *types.EndRoundReq) (resp *types.EndRoundRe
 		l.Logger.Errorf("查询幂等操作失败: matchId=%d, clientActionId=%s, err=%v", match.Id, req.ClientActionId, err)
 		return &types.EndRoundResp{Success: false, Accepted: false}, nil
 	}
-	if existingAction != nil {
+	if isMatchActionReplay(existingAction, "win", req.Winner, req.BaseRevision) {
 		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
 		if stateErr != nil {
 			l.Logger.Errorf("加载重放快照失败: matchId=%d, clientActionId=%s, err=%v", match.Id, req.ClientActionId, stateErr)
@@ -117,7 +119,7 @@ func (l *EndRoundLogic) EndRound(req *types.EndRoundReq) (resp *types.EndRoundRe
 			OpponentScore:             scoreView.OpponentScore,
 		}, nil
 	}
-	if err := validateMatchActionMeta(matchActionMeta{
+	if err := validateNewMatchAction(existingAction, matchActionMeta{
 		ClientActionID: req.ClientActionId,
 		BaseRevision:   req.BaseRevision,
 	}, match.SyncRevision); err != nil {
@@ -146,9 +148,24 @@ func (l *EndRoundLogic) EndRound(req *types.EndRoundReq) (resp *types.EndRoundRe
 	if match.Status != 1 {
 		return &types.EndRoundResp{Success: false}, nil
 	}
+	if req.Winner != 1 && req.Winner != 2 {
+		l.Logger.Errorf("局胜方无效: matchId=%d, winner=%d", match.Id, req.Winner)
+		return &types.EndRoundResp{Success: false, Accepted: false, ClientActionId: req.ClientActionId}, nil
+	}
+	if isNineBallMatch(match) {
+		if ruleErr := validateNineBallWin(capabilities.ViewerRole, req.Winner, req.WinType, req.Score); ruleErr != nil {
+			l.Logger.Errorf("九球追分结束一局被拒绝: matchId=%d, winner=%d, winType=%q, score=%d, err=%v",
+				match.Id, req.Winner, req.WinType, req.Score, ruleErr)
+			return &types.EndRoundResp{Success: false, Accepted: false, ClientActionId: req.ClientActionId}, nil
+		}
+	}
 
 	// 获取当前局数
-	roundCount, _ := l.svcCtx.MatchModel.GetRoundCount(match.Id)
+	roundCount, err := l.svcCtx.MatchModel.GetRoundCount(match.Id)
+	if err != nil {
+		l.Logger.Errorf("查询局数失败: matchId=%d, err=%v", match.Id, err)
+		return &types.EndRoundResp{Success: false, Accepted: false}, nil
+	}
 	newRoundNo := int(roundCount) + 1
 
 	if match.GameType == 1 && !match.CurrentFrameStarted {
@@ -161,25 +178,28 @@ func (l *EndRoundLogic) EndRound(req *types.EndRoundReq) (resp *types.EndRoundRe
 		Winner:  &req.Winner,
 		WinType: req.WinType,
 	}
-	scoreChange := req.Score
+	scoreChange := 0
 	if match.GameType == 1 {
 		finishedRound := finalizeSnookerFrame(match, req.Winner)
 		round.MyScore = finishedRound.MyScore
 		round.OpponentScore = finishedRound.OpponentScore
 		scoreChange = 1
 	} else {
-		round.MyScore = match.MyScore
-		round.OpponentScore = match.OpponentScore
+		// 操作记录只保存实际加上的分，撤销时才能按原值扣回。
 		if req.Score > 0 {
+			scoreChange = req.Score
 			if req.Winner == 1 {
-				match.MyScore += req.Score
+				match.MyScore += scoreChange
 			} else {
-				match.OpponentScore += req.Score
+				match.OpponentScore += scoreChange
 			}
 		}
+		// 局记录保存本局结束后的累计比分，与灵活赛制一致。
+		round.MyScore = match.MyScore
+		round.OpponentScore = match.OpponentScore
 	}
 
-	extraData := `{"win_type":"` + req.WinType + `"}`
+	extraData := buildWinActionExtraData(req.WinType)
 	action := &model.MatchAction{
 		MatchId:        match.Id,
 		RoundNo:        newRoundNo,
@@ -215,7 +235,7 @@ func (l *EndRoundLogic) EndRound(req *types.EndRoundReq) (resp *types.EndRoundRe
 				return &types.EndRoundResp{Success: false, Accepted: false}, nil
 			}
 			scoreView := buildMatchWriteScoreView(userId, replayState.Match)
-			if replayState.ExistingAction != nil {
+			if isMatchActionReplay(replayState.ExistingAction, "win", req.Winner, req.BaseRevision) {
 				return &types.EndRoundResp{
 					Accepted:                  true,
 					Success:                   true,
@@ -401,7 +421,7 @@ func (l *EndRoundLogic) endFlexiblePoolRound(req *types.EndRoundReq, userID int6
 			Winner:        &req.Winner,
 			WinType:       req.WinType,
 		}
-		extraData := `{"win_type":"` + req.WinType + `"}`
+		extraData := buildWinActionExtraData(req.WinType)
 		action := &model.MatchAction{
 			MatchId:        locked.Id,
 			RoundNo:        newRoundNo,
@@ -593,6 +613,14 @@ func broadcastFlexiblePoolRoundEnd(match *model.Match, view matchWriteState, rou
 			Status:               match.Status,
 		},
 	})
+}
+
+// buildWinActionExtraData 序列化局胜操作的附加信息，避免 win_type 中的引号破坏 JSON；字符串字段序列化不会失败。
+func buildWinActionExtraData(winType string) string {
+	data, _ := json.Marshal(struct {
+		WinType string `json:"win_type"`
+	}{WinType: winType})
+	return string(data)
 }
 
 func autoPoolFinishActionID(clientActionID string) string {

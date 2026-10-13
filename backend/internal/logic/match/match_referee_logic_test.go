@@ -151,58 +151,40 @@ func TestRefereeCanWriteBothFixedParticipants(t *testing.T) {
 		wantPlayer2 int
 	}{
 		{
-			name: "score player1",
-			call: func() (bool, error) {
-				resp, err := NewMatchScoreLogic(matchRefereeCtx(refereeID), svcCtx).MatchScore(&types.MatchScoreReq{MatchId: 83, Actor: 1, Score: 2, ClientActionId: "referee-score-player1", BaseRevision: 0})
-				return resp.Success, err
-			},
-			wantPlayer1: 2,
-			wantPlayer2: 0,
-		},
-		{
-			name: "score player2",
-			call: func() (bool, error) {
-				resp, err := NewMatchScoreLogic(matchRefereeCtx(refereeID), svcCtx).MatchScore(&types.MatchScoreReq{MatchId: 83, Actor: 2, Score: 3, ClientActionId: "referee-score-player2", BaseRevision: 1})
-				return resp.Success, err
-			},
-			wantPlayer1: 2,
-			wantPlayer2: 3,
-		},
-		{
 			name: "player1 foul scores player2",
 			call: func() (bool, error) {
-				resp, err := NewMatchFoulLogic(matchRefereeCtx(refereeID), svcCtx).MatchFoul(&types.MatchFoulReq{MatchId: 83, Actor: 1, Score: 1, ClientActionId: "referee-foul-player1", BaseRevision: 2})
+				resp, err := NewMatchFoulLogic(matchRefereeCtx(refereeID), svcCtx).MatchFoul(&types.MatchFoulReq{MatchId: 83, Actor: 1, Score: 1, ClientActionId: "referee-foul-player1", BaseRevision: 0})
 				return resp.Success, err
 			},
-			wantPlayer1: 2,
-			wantPlayer2: 4,
+			wantPlayer1: 0,
+			wantPlayer2: 1,
 		},
 		{
 			name: "player2 foul scores player1",
 			call: func() (bool, error) {
-				resp, err := NewMatchFoulLogic(matchRefereeCtx(refereeID), svcCtx).MatchFoul(&types.MatchFoulReq{MatchId: 83, Actor: 2, Score: 1, ClientActionId: "referee-foul-player2", BaseRevision: 3})
+				resp, err := NewMatchFoulLogic(matchRefereeCtx(refereeID), svcCtx).MatchFoul(&types.MatchFoulReq{MatchId: 83, Actor: 2, Score: 1, ClientActionId: "referee-foul-player2", BaseRevision: 1})
 				return resp.Success, err
 			},
-			wantPlayer1: 3,
-			wantPlayer2: 4,
+			wantPlayer1: 1,
+			wantPlayer2: 1,
 		},
 		{
 			name: "player1 wins round",
 			call: func() (bool, error) {
-				resp, err := NewEndRoundLogic(matchRefereeCtx(refereeID), svcCtx).EndRound(&types.EndRoundReq{MatchId: 83, Winner: 1, WinType: "normal", Score: 4, ClientActionId: "referee-win-player1", BaseRevision: 4})
+				resp, err := NewEndRoundLogic(matchRefereeCtx(refereeID), svcCtx).EndRound(&types.EndRoundReq{MatchId: 83, Winner: 1, WinType: "normal", Score: 4, ClientActionId: "referee-win-player1", BaseRevision: 2})
 				return resp.Success, err
 			},
-			wantPlayer1: 7,
-			wantPlayer2: 4,
+			wantPlayer1: 5,
+			wantPlayer2: 1,
 		},
 		{
 			name: "player2 wins round",
 			call: func() (bool, error) {
-				resp, err := NewEndRoundLogic(matchRefereeCtx(refereeID), svcCtx).EndRound(&types.EndRoundReq{MatchId: 83, Winner: 2, WinType: "small_gold", Score: 7, ClientActionId: "referee-win-player2", BaseRevision: 5})
+				resp, err := NewEndRoundLogic(matchRefereeCtx(refereeID), svcCtx).EndRound(&types.EndRoundReq{MatchId: 83, Winner: 2, WinType: "small_gold", Score: 7, ClientActionId: "referee-win-player2", BaseRevision: 3})
 				return resp.Success, err
 			},
-			wantPlayer1: 7,
-			wantPlayer2: 11,
+			wantPlayer1: 5,
+			wantPlayer2: 8,
 		},
 	}
 

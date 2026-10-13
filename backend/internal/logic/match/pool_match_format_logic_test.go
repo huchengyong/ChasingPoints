@@ -547,11 +547,18 @@ func TestFlexiblePoolRejectsScoreAndFoulBypassesAndKeepsLegacy(t *testing.T) {
 		match.GameType = 2
 		match.MatchFormat = model.MatchFormatLegacy
 	})
+	// 九球追分不适用灵活赛制：直接加分由九球规则拒绝，仍通过结束一局按4/7/10分计分。
 	nineBallScore, err := NewMatchScoreLogic(matchLogicCtx(101), svcCtx).MatchScore(&types.MatchScoreReq{
 		MatchId: nineBallChasing.Id, Actor: 1, Score: 4, ClientActionId: "nine-ball-score", BaseRevision: 0,
 	})
-	if err != nil || !nineBallScore.Success || !nineBallScore.Accepted || nineBallScore.MyScore != 4 {
-		t.Fatalf("nine-ball chasing score should keep old behavior: resp=%+v err=%v", nineBallScore, err)
+	if err != nil || nineBallScore.Success || nineBallScore.Message != errNineBallScoreUnsupported.Error() || nineBallScore.MyScore != 0 {
+		t.Fatalf("nine-ball chasing direct score should be rejected by nine-ball rules: resp=%+v err=%v", nineBallScore, err)
+	}
+	nineBallRound, err := NewEndRoundLogic(matchLogicCtx(101), svcCtx).EndRound(&types.EndRoundReq{
+		MatchId: nineBallChasing.Id, Winner: 2, WinType: "normal", Score: 4, ClientActionId: "nine-ball-round", BaseRevision: 0,
+	})
+	if err != nil || !nineBallRound.Success || !nineBallRound.Accepted || nineBallRound.OpponentScore != 4 {
+		t.Fatalf("nine-ball chasing round should keep 4/7/10 scoring: resp=%+v err=%v", nineBallRound, err)
 	}
 }
 

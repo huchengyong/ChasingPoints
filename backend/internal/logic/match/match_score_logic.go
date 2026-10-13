@@ -98,16 +98,20 @@ func (l *MatchScoreLogic) MatchScore(req *types.MatchScoreReq) (resp *types.Matc
 			Snapshot:       view.Snapshot,
 		}, nil
 	}
-	if model.IsFlexiblePoolMatch(match) {
+	if model.IsFlexiblePoolMatch(match) || isNineBallMatch(match) {
 		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
 		if stateErr != nil {
 			return &types.MatchScoreResp{Success: false, Accepted: false, Message: "加载对局快照失败"}, nil
+		}
+		message := "灵活赛制请使用结束一局记录胜负"
+		if isNineBallMatch(match) {
+			message = errNineBallScoreUnsupported.Error()
 		}
 		scoreView := buildMatchWriteScoreView(userId, match)
 		return &types.MatchScoreResp{
 			Success:                   false,
 			Accepted:                  false,
-			Message:                   "灵活赛制请使用结束一局记录胜负",
+			Message:                   message,
 			ServerRevision:            view.Snapshot.ServerRevision,
 			Snapshot:                  view.Snapshot,
 			CurrentFrameStarted:       match.CurrentFrameStarted,
@@ -129,7 +133,7 @@ func (l *MatchScoreLogic) MatchScore(req *types.MatchScoreReq) (resp *types.Matc
 		l.Logger.Errorf("查询幂等操作失败: matchId=%d, clientActionId=%s, err=%v", match.Id, req.ClientActionId, err)
 		return &types.MatchScoreResp{Success: false, Accepted: false}, nil
 	}
-	if existingAction != nil {
+	if isMatchActionReplay(existingAction, "score", req.Actor, req.BaseRevision) {
 		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
 		if stateErr != nil {
 			l.Logger.Errorf("加载重放快照失败: matchId=%d, clientActionId=%s, err=%v", match.Id, req.ClientActionId, stateErr)
@@ -154,7 +158,7 @@ func (l *MatchScoreLogic) MatchScore(req *types.MatchScoreReq) (resp *types.Matc
 			OpponentScore:                 scoreView.OpponentScore,
 		}, nil
 	}
-	if err := validateMatchActionMeta(matchActionMeta{
+	if err := validateNewMatchAction(existingAction, matchActionMeta{
 		ClientActionID: req.ClientActionId,
 		BaseRevision:   req.BaseRevision,
 	}, match.SyncRevision); err != nil {
@@ -184,7 +188,11 @@ func (l *MatchScoreLogic) MatchScore(req *types.MatchScoreReq) (resp *types.Matc
 		}, nil
 	}
 
-	roundCount, _ := l.svcCtx.MatchModel.GetRoundCount(match.Id)
+	roundCount, err := l.svcCtx.MatchModel.GetRoundCount(match.Id)
+	if err != nil {
+		l.Logger.Errorf("查询局数失败: matchId=%d, err=%v", match.Id, err)
+		return &types.MatchScoreResp{Success: false, Accepted: false}, nil
+	}
 	currentRound := int(roundCount) + 1
 	snookerState := model.SnookerRoundState{ClearedColors: make([]int, 0, 6)}
 	if match.GameType == 1 {
@@ -246,7 +254,7 @@ func (l *MatchScoreLogic) MatchScore(req *types.MatchScoreReq) (resp *types.Matc
 				return &types.MatchScoreResp{Success: false, Accepted: false}, nil
 			}
 			scoreView := buildMatchWriteScoreView(userId, replayState.Match)
-			if replayState.ExistingAction != nil {
+			if isMatchActionReplay(replayState.ExistingAction, "score", req.Actor, req.BaseRevision) {
 				return &types.MatchScoreResp{
 					Accepted:                      true,
 					Success:                       true,

@@ -78,7 +78,7 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 		l.Logger.Errorf("查询幂等操作失败: matchId=%d, clientActionId=%s, err=%v", match.Id, req.ClientActionId, err)
 		return &types.MatchUndoResp{Success: false, Accepted: false, Message: "撤销失败"}, nil
 	}
-	if existingAction != nil {
+	if isMatchActionReplay(existingAction, "undo", 0, req.BaseRevision) {
 		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
 		if stateErr != nil {
 			l.Logger.Errorf("加载重放快照失败: matchId=%d, clientActionId=%s, err=%v", match.Id, req.ClientActionId, stateErr)
@@ -99,7 +99,7 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 			Message:                   "已撤销上一步操作",
 		}, nil
 	}
-	if err := validateMatchActionMeta(matchActionMeta{
+	if err := validateNewMatchAction(existingAction, matchActionMeta{
 		ClientActionID: req.ClientActionId,
 		BaseRevision:   req.BaseRevision,
 	}, match.SyncRevision); err != nil {
@@ -124,8 +124,8 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 		}, nil
 	}
 
-	// 获取最后一条操作
-	lastAction, err := l.svcCtx.MatchModel.GetLastAction(match.Id)
+	// 获取最后一条记分操作，结束确认流程的记录不参与撤销
+	lastAction, err := l.svcCtx.MatchModel.GetLastUndoableActionWithTx(nil, match.Id)
 	if err != nil || lastAction == nil {
 		return &types.MatchUndoResp{Success: false, Message: "没有可撤销的操作"}, nil
 	}
@@ -192,6 +192,9 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 						return gorm.ErrRecordNotFound
 					}
 					reopenSnookerFrame(match, round, *round.Winner)
+					if err := undoRoundAchievementWithTx(l.svcCtx, tx, match.Id, round.WinType, lastAction.Actor); err != nil {
+						return err
+					}
 					if err := l.svcCtx.MatchModel.DeleteRoundWithTx(tx, round.Id); err != nil {
 						return err
 					}
@@ -206,6 +209,9 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 						return roundErr
 					}
 					if round != nil {
+						if err := undoRoundAchievementWithTx(l.svcCtx, tx, match.Id, round.WinType, lastAction.Actor); err != nil {
+							return err
+						}
 						if err := l.svcCtx.MatchModel.DeleteRoundWithTx(tx, round.Id); err != nil {
 							return err
 						}
@@ -251,7 +257,7 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 				return &types.MatchUndoResp{Success: false, Accepted: false, Message: "撤销失败"}, nil
 			}
 			scoreView := buildMatchWriteScoreView(userId, replayState.Match)
-			if replayState.ExistingAction != nil {
+			if isMatchActionReplay(replayState.ExistingAction, "undo", 0, req.BaseRevision) {
 				return &types.MatchUndoResp{
 					Accepted:                  true,
 					Success:                   true,
@@ -289,8 +295,7 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 		return &types.MatchUndoResp{Success: false, Accepted: false, Message: "撤销失败"}, nil
 	}
 
-	// 获取当前局数
-	roundCount, _ := l.svcCtx.MatchModel.GetRoundCount(match.Id)
+	roundCount := view.CompletedRoundCount
 	redBallCount := 0
 	snookerState := view.SnookerState
 	if match.GameType == 1 {
@@ -348,4 +353,13 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 		OpponentScore:             scoreView.OpponentScore,
 		Message:                   "已撤销上一步操作",
 	}, nil
+}
+
+// undoRoundAchievementWithTx 撤销局胜时同步回退该局记下的特殊成绩，避免结束比赛时按残留记录累计成就。
+func undoRoundAchievementWithTx(svcCtx *svc.ServiceContext, tx *gorm.DB, matchId int64, winType string, actor int) error {
+	achievementType := normalizeStoredAchievementType(winType)
+	if achievementType == "" {
+		return nil
+	}
+	return svcCtx.MatchModel.DecrementAchievementWithTx(tx, matchId, achievementType, actor)
 }

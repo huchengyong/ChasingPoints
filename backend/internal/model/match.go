@@ -1248,6 +1248,25 @@ func (m *MatchModel) GetLastActionWithTx(tx *gorm.DB, matchId int64) (*MatchActi
 	return &action, err
 }
 
+// matchFinishFlowActionTypes 是结束确认流程留下的记录，不改变比分，撤销时跳过。
+var matchFinishFlowActionTypes = []string{"finish_request", "finish_confirm", "finish_dispute", "finish_withdraw", "finish_expired"}
+
+// GetLastUndoableActionWithTx 获取最后一条可撤销的记分操作，跳过结束确认流程记录。
+func (m *MatchModel) GetLastUndoableActionWithTx(tx *gorm.DB, matchId int64) (*MatchAction, error) {
+	var action MatchAction
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	err := db.Where("match_id = ? AND is_undone = 0 AND action_type NOT IN ?", matchId, matchFinishFlowActionTypes).
+		Order("id DESC").
+		First(&action).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &action, err
+}
+
 // CountScoreActions 统计指定局内未撤销的加分操作次数
 func (m *MatchModel) CountScoreActions(matchId int64, roundNo int, scoreChange int) (int64, error) {
 	var count int64
@@ -1344,6 +1363,21 @@ func (m *MatchModel) SaveAchievementWithTx(tx *gorm.DB, matchId int64, achieveme
 		AchievementType: achievementType,
 		Count:           count,
 	}).Error
+}
+
+// DecrementAchievementWithTx 回退一次特殊成绩，计数归零时删除记录。
+func (m *MatchModel) DecrementAchievementWithTx(tx *gorm.DB, matchId int64, achievementType string, actor int) error {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	if err := db.Model(&MatchAchievement{}).
+		Where("match_id = ? AND actor = ? AND achievement_type = ? AND count > 0", matchId, actor, achievementType).
+		Update("count", gorm.Expr("count - 1")).Error; err != nil {
+		return err
+	}
+	return db.Where("match_id = ? AND actor = ? AND achievement_type = ? AND count <= 0", matchId, actor, achievementType).
+		Delete(&MatchAchievement{}).Error
 }
 
 // GetAchievements 获取对局的特殊成绩
