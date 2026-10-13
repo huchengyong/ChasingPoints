@@ -1,6 +1,6 @@
 import Foundation
 
-// 对局记录的窄解码模型：只包含列表与战报用到的字段，实时计分字段不进入模型。
+// 对局记录的窄解码模型：只包含列表与战报用到的字段，实时计分字段不进入模型（战报说明整场认输所需的 `snooker_frame_end_reason` 除外）。
 // 字段与 backend/chasing_points.api 对齐；服务端始终返回的数组按非可选解码，null 视为响应格式错误。
 
 struct MatchListItem: Decodable, Identifiable, Equatable {
@@ -56,6 +56,9 @@ struct MatchReport: Decodable, Equatable {
     let opponentName: String
     let opponentAvatar: String
     let opponentScore: Int
+    /// 本人视角的已结算结果（1 胜、2 负、3 平，未结算为 0）；旧版服务端不返回。
+    let result: Int?
+    let snookerFrameEndReason: String?
     let opponentWinRate: Double
     let opponentRankChange: Int
     let summaryHighlights: [MatchSummaryItem]?
@@ -69,6 +72,13 @@ struct MatchReport: Decodable, Equatable {
     let createdAt: String
 
     var isRefereeView: Bool { viewerRole == "referee" }
+
+    /// 已结算结果优先：整场认输时胜方可能局分较少；缺少 `result` 时按最终比分判定。
+    var outcome: MatchOutcome {
+        result.flatMap(MatchOutcome.init(result:)) ?? MatchOutcome(myScore: myScore, opponentScore: opponentScore)
+    }
+
+    var isMatchConcession: Bool { snookerFrameEndReason == "match_concession" }
 }
 
 struct MatchRewardItem: Decodable, Identifiable, Equatable {
@@ -118,7 +128,7 @@ enum MatchOutcome: Equatable {
         }
     }
 
-    /// 战报没有 `result` 字段，按最终比分判定，规则与服务端结算一致。
+    /// 战报缺少已结算 `result`（旧版服务端或未结算）时的兜底，按最终比分判定。
     init(myScore: Int, opponentScore: Int) {
         if myScore > opponentScore {
             self = .win

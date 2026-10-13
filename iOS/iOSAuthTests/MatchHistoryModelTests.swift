@@ -39,6 +39,29 @@ final class MatchHistoryModelTests: XCTestCase {
         XCTAssertEqual(MatchOutcome.draw.title, "平局")
     }
 
+    func testReportOutcomePrefersSettledResultOverFrameScore() throws {
+        // 自由局数整场认输：本人局分 2:1 领先但认输，服务端结果为负。
+        var fixture = MatchHistoryFixtures.playerDetail(myScore: 2, opponentScore: 1)
+        var match = try XCTUnwrap(fixture["match"] as? [String: Any])
+        match["result"] = 2
+        match["snooker_frame_end_reason"] = "match_concession"
+        fixture["match"] = match
+
+        let report = try decode(MatchDetailEnvelope.self, from: fixture).match
+
+        XCTAssertEqual(report.result, 2)
+        XCTAssertEqual(report.outcome, .loss)
+        XCTAssertTrue(report.isMatchConcession)
+    }
+
+    func testReportOutcomeFallsBackToScoreWithoutSettledResult() throws {
+        let report = try decode(MatchDetailEnvelope.self, from: MatchHistoryFixtures.playerDetail(myScore: 1, opponentScore: 3)).match
+
+        XCTAssertNil(report.result)
+        XCTAssertEqual(report.outcome, .loss)
+        XCTAssertFalse(report.isMatchConcession)
+    }
+
     func testPlayerReportDecodesFieldsAndNullableArrays() throws {
         let report = try decode(MatchDetailEnvelope.self, from: MatchHistoryFixtures.playerDetail()).match
 

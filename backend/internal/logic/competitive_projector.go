@@ -284,6 +284,17 @@ func inverseMatchResult(result int) int {
 	return 3
 }
 
+// ViewerMatchResult 返回查看者视角的已结算结果（1=胜 2=负 3=平），未结算返回0。
+func ViewerMatchResult(match *model.Match, viewerIsPlayer1 bool) int {
+	if match == nil || match.Result == nil {
+		return 0
+	}
+	if viewerIsPlayer1 {
+		return *match.Result
+	}
+	return inverseMatchResult(*match.Result)
+}
+
 func rankBucket(ranking *model.UserRanking) string {
 	if ranking == nil {
 		return "score_0_1000"

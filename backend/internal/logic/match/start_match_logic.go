@@ -357,7 +357,8 @@ func validateStartMatchReq(userId int64, req *types.StartMatchReq) string {
 				}
 			}
 			format, targetWins, valid := model.NormalizeSnookerFormat(req.SnookerFormat, req.SnookerTargetWins, req.BestOfFrames)
-			if !valid {
+			// 版本2没有可正常结束的 legacy 赛制，与修改赛制接口保持一致。
+			if !valid || format == model.SnookerFormatLegacy {
 				return "请选择有效的斯诺克赛制"
 			}
 			req.SnookerFormat = format

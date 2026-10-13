@@ -2001,8 +2001,9 @@ type MatchDetailData struct {
 	CanDisputeFinish              bool               `json:"can_dispute_finish,optional"`
 	CanWithdrawFinish             bool               `json:"can_withdraw_finish,optional"`
 	LastAction                    *MatchLastAction   `json:"last_action,optional"`
-	MyScore                       int                `json:"my_score"`       // 从当前用户视角的分数
-	OpponentScore                 int                `json:"opponent_score"` // 从当前用户视角的对手分数
+	MyScore                       int                `json:"my_score"`        // 从当前用户视角的分数
+	OpponentScore                 int                `json:"opponent_score"`  // 从当前用户视角的对手分数
+	Result                        int                `json:"result,optional"` // 当前用户视角的整场结果：1=胜 2=负 3=平，未结算为0；整场认输时可与局分大小不一致
 	MyName                        string             `json:"my_name"`
 	OpponentName                  string             `json:"opponent_name"`
 	MyAvatar                      string             `json:"my_avatar"`

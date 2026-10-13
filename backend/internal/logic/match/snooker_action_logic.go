@@ -248,7 +248,13 @@ func executeSnookerAction(ctx context.Context, svcCtx *svc.ServiceContext, userI
 					BaseRevision:   locked.SyncRevision,
 				}
 				finishLogic := NewFinishMatchLogic(ctx, svcCtx)
-				settlement, err := finishLogic.settleMatchWithTx(tx, locked, userID, finishReq)
+				var settlement finishMatchSettlement
+				if matchConceded {
+					// 自由局数认输不补局分，胜负只能由认输事件决定。
+					settlement, err = finishLogic.settleMatchWithWinnerTx(tx, locked, userID, finishReq, transition.State.FrameWinner)
+				} else {
+					settlement, err = finishLogic.settleMatchWithTx(tx, locked, userID, finishReq)
+				}
 				if err != nil {
 					return err
 				}

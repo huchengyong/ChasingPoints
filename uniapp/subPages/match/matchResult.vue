@@ -267,7 +267,8 @@ import {
 	buildMatchRewardHonorWallUrl,
 	MATCH_REWARD_MAX_ATTEMPTS,
 	MATCH_REWARD_RETRY_DELAY_MS,
-	resolveMatchRewardSummary
+	resolveMatchRewardSummary,
+	resolveMatchViewerWin
 } from '@/utils/match-result-page.js'
 
 const SHARE_LINK = 'https://appgallery.huawei.com/app/detail?id=hm.dianzaozao.ballmall&channelId=SHARE&source=appshare'
@@ -326,7 +327,11 @@ const systemInfo = uni.getSystemInfoSync()
 statusBarHeight.value = systemInfo.statusBarHeight || 20
 
 const isReferee = computed(() => matchData.value.viewer_role === 'referee')
-const isWin = computed(() => !isReferee.value && matchData.value.my_score > matchData.value.opponent_score)
+const isWin = computed(() => !isReferee.value && resolveMatchViewerWin({
+	result: matchData.value.result,
+	myScore: matchData.value.my_score,
+	opponentScore: matchData.value.opponent_score
+}))
 const scoreGap = computed(() => Math.abs((matchData.value.my_score || 0) - (matchData.value.opponent_score || 0)))
 
 const gameTypeName = computed(() => {
@@ -356,6 +361,10 @@ const resultTagText = computed(() => {
 
 const resultSubtitle = computed(() => {
 	if (isReferee.value) return '你已完成本场执裁，对局结果已录入系统。'
+	// 整场认输按认输事件判定胜负，局分可能与胜负方向不一致，需要明确说明。
+	if (matchData.value.snooker_frame_end_reason === 'match_concession') {
+		return isWin.value ? '对手认输整场，本场判你获胜。' : '你已认输整场，本场记为失利。'
+	}
 	if (isWin.value) {
 		if (scoreGap.value >= 3) {
 			return '整场节奏控制稳定，关键分兑现得更彻底。'

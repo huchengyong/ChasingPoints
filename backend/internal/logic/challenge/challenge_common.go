@@ -185,7 +185,8 @@ func validateChallengeMatchOptions(gameType int, matchMode, visibility, matchFor
 				}
 			}
 			formatValue, targetValue, valid := model.NormalizeSnookerFormat(snookerFormat, snookerTargetWins, bestOfFrames)
-			if !valid {
+			// 版本2没有可正常结束的 legacy 赛制，与修改赛制接口保持一致。
+			if !valid || formatValue == model.SnookerFormatLegacy {
 				return "", "", "", 0, 0, 0, 0, 0, "", fmt.Errorf("请选择有效的斯诺克赛制")
 			}
 			snookerFormat = formatValue

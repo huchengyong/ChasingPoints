@@ -295,3 +295,106 @@ func TestSnookerV2UndoFrameEndingActionDeletesRound(t *testing.T) {
 		t.Fatalf("round should be deleted: %+v", rounds)
 	}
 }
+
+func seedFreeSnookerMatchWithFrames(t *testing.T, svcCtx *svc.ServiceContext, id int64, refereeID int64, player1Frames, player2Frames int) {
+	t.Helper()
+	match := seedSnookerActionMatch(t, svcCtx, id, 0, refereeID)
+	match.SnookerFormat = model.SnookerFormatFree
+	match.MyScore = player1Frames
+	match.OpponentScore = player2Frames
+	if err := svcCtx.DB.Save(match).Error; err != nil {
+		t.Fatalf("seed free format: %v", err)
+	}
+	for roundNo := 1; roundNo <= player1Frames+player2Frames; roundNo++ {
+		winner := 1
+		if roundNo > player1Frames {
+			winner = 2
+		}
+		if err := svcCtx.DB.Create(&model.MatchRound{MatchId: id, RoundNo: roundNo, Winner: &winner, WinType: model.SnookerFrameEndClearance}).Error; err != nil {
+			t.Fatalf("seed round %d: %v", roundNo, err)
+		}
+	}
+}
+
+func TestSnookerFreeFormatMatchConcessionAwardsAcceptingPlayer(t *testing.T) {
+	for _, testCase := range []struct {
+		name          string
+		player1Frames int
+		player2Frames int
+	}{
+		{name: "领先方认输不得反成胜方", player1Frames: 2, player2Frames: 0},
+		{name: "认输后局分持平不得记为平局", player1Frames: 1, player2Frames: 0},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			svcCtx := newSnookerActionTestSvc(t)
+			seedFreeSnookerMatchWithFrames(t, svcCtx, 21, 0, testCase.player1Frames, testCase.player2Frames)
+			offer, _ := NewSnookerFrameActionLogic(matchLogicCtx(101), svcCtx).SnookerFrameAction(&types.SnookerFrameActionReq{
+				MatchId: 21, Actor: 1, Action: model.SnookerFrameActionOfferConcession, Scope: model.SnookerConcessionScopeMatch,
+				ClientActionId: "offer-match", BaseRevision: 0,
+			})
+			if offer == nil || !offer.Success {
+				t.Fatalf("offer match concession failed: %+v", offer)
+			}
+			accept, _ := NewSnookerFrameActionLogic(matchLogicCtx(202), svcCtx).SnookerFrameAction(&types.SnookerFrameActionReq{
+				MatchId: 21, Actor: 2, Action: model.SnookerFrameActionAcceptConcession,
+				ClientActionId: "accept-match", BaseRevision: offer.ServerRevision,
+			})
+			if accept == nil || !accept.Success || accept.Snapshot.Status != 2 {
+				t.Fatalf("accept match concession failed: %+v", accept)
+			}
+
+			stored, _ := svcCtx.MatchModel.FindById(21)
+			if stored.Result == nil || *stored.Result != 2 {
+				t.Fatalf("conceding player1 must lose: result=%v", stored.Result)
+			}
+			if stored.MyScore != testCase.player1Frames || stored.OpponentScore != testCase.player2Frames+1 {
+				t.Fatalf("free format must keep real frame scores: %d:%d", stored.MyScore, stored.OpponentScore)
+			}
+		})
+	}
+}
+
+func TestSnookerFreeFormatRefereeMatchAwardUsesAwardedWinner(t *testing.T) {
+	svcCtx := newSnookerActionTestSvc(t)
+	seedFreeSnookerMatchWithFrames(t, svcCtx, 22, 303, 2, 0)
+	resp, _ := NewSnookerFrameActionLogic(matchLogicCtx(303), svcCtx).SnookerFrameAction(&types.SnookerFrameActionReq{
+		MatchId: 22, Actor: 2, Action: model.SnookerFrameActionAwardFrame, Winner: 2, Scope: model.SnookerConcessionScopeMatch,
+		Reason: "裁判判整场负", ClientActionId: "award-match", BaseRevision: 0,
+	})
+	if resp == nil || !resp.Success || resp.Snapshot.Status != 2 {
+		t.Fatalf("referee match award failed: %+v", resp)
+	}
+	stored, _ := svcCtx.MatchModel.FindById(22)
+	if stored.Result == nil || *stored.Result != 2 || stored.MyScore != 2 || stored.OpponentScore != 1 {
+		t.Fatalf("referee match award must settle for player2 without faking frames: result=%v score=%d:%d", stored.Result, stored.MyScore, stored.OpponentScore)
+	}
+}
+
+func TestSnookerFinalFrameSnapshotKeepsEndedFrameState(t *testing.T) {
+	svcCtx := newSnookerActionTestSvc(t)
+	seedFreeSnookerMatchWithFrames(t, svcCtx, 23, 0, 1, 1)
+	offer, _ := NewSnookerFrameActionLogic(matchLogicCtx(101), svcCtx).SnookerFrameAction(&types.SnookerFrameActionReq{
+		MatchId: 23, Actor: 1, Action: model.SnookerFrameActionOfferConcession, Scope: model.SnookerConcessionScopeMatch,
+		ClientActionId: "offer-match", BaseRevision: 0,
+	})
+	accept, _ := NewSnookerFrameActionLogic(matchLogicCtx(202), svcCtx).SnookerFrameAction(&types.SnookerFrameActionReq{
+		MatchId: 23, Actor: 2, Action: model.SnookerFrameActionAcceptConcession,
+		ClientActionId: "accept-match", BaseRevision: offer.ServerRevision,
+	})
+	if accept == nil || !accept.Success || accept.Snapshot.Status != 2 {
+		t.Fatalf("finish by concession failed: %+v", accept)
+	}
+	if accept.Snapshot.SnookerPhase != model.SnookerPhaseEnded || accept.Snapshot.SnookerFrameEndReason != model.SnookerFrameEndMatchConcession {
+		t.Fatalf("final snapshot must describe the ended frame: %+v", accept.Snapshot)
+	}
+
+	// round_end 广播复用该状态：胜方与局号必须对应刚结束的第3局。
+	stored, _ := svcCtx.MatchModel.FindById(23)
+	view, err := loadMatchWriteState(svcCtx, 202, stored)
+	if err != nil {
+		t.Fatalf("load final write state: %v", err)
+	}
+	if view.SnookerState.RoundNo != 3 || !view.SnookerState.FrameEnded || view.SnookerState.FrameWinner != 2 {
+		t.Fatalf("unexpected final frame state: %+v", view.SnookerState)
+	}
+}

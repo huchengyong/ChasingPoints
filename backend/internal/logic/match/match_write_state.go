@@ -26,7 +26,7 @@ func loadMatchWriteState(svcCtx *svc.ServiceContext, userId int64, match *model.
 	snookerState := model.SnookerRoundState{ClearedColors: make([]int, 0, 6)}
 	if match.GameType == 1 {
 		roundNo := int(roundCount) + 1
-		if !match.CurrentFrameStarted && match.Status == 1 {
+		if !match.CurrentFrameStarted && roundCount > 0 {
 			roundNo = int(roundCount)
 		}
 		if roundNo > 0 {

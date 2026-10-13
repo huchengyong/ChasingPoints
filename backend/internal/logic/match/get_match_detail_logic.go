@@ -135,12 +135,15 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 		opponentName = player1Name
 		opponentAvatar = player1Avatar
 	}
+	resultFromPlayer1View := isPlayer1
 	if completedCore != nil {
 		viewer := completedCore.ViewerPerspective(userId)
 		myScore, opponentScore = viewer.MyScore, viewer.OpponentScore
 		myName, myAvatar = viewer.MyName, viewer.MyAvatar
 		opponentName, opponentAvatar = viewer.OpponentName, viewer.OpponentAvatar
+		resultFromPlayer1View = viewer.IsPlayer1
 	}
+	viewerResult := logicx.ViewerMatchResult(match, resultFromPlayer1View)
 	player2Id := int64(0)
 	if match.OpponentId != nil {
 		player2Id = *match.OpponentId
@@ -335,6 +338,7 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			LastAction:                    lastAction,
 			MyScore:                       myScore,
 			OpponentScore:                 opponentScore,
+			Result:                        viewerResult,
 			MyName:                        myName,
 			OpponentName:                  opponentName,
 			MyAvatar:                      myAvatar,

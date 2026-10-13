@@ -149,3 +149,16 @@ func TestSendChallengeBlockedForStranger(t *testing.T) {
 		t.Fatalf("stranger without shared match must be rejected: %#v", resp)
 	}
 }
+
+func TestValidateChallengeMatchOptionsRejectsVersion2LegacySnookerFormat(t *testing.T) {
+	_, _, _, _, _, _, _, _, _, err := validateChallengeMatchOptions(1, model.MatchModePractice, "", "", 0,
+		model.SnookerRulesVersionWPBSA, 0, 0, 1, model.SnookerFormatLegacy)
+	if err == nil || err.Error() != "请选择有效的斯诺克赛制" {
+		t.Fatalf("version 2 must reject legacy format that can never finish: %v", err)
+	}
+	_, _, _, _, _, _, snookerWins, _, snookerFormat, err := validateChallengeMatchOptions(1, model.MatchModePractice, "", "", 0,
+		model.SnookerRulesVersionWPBSA, 5, 0, 1, model.SnookerFormatLegacy)
+	if err != nil || snookerFormat != model.SnookerFormatRaceTo || snookerWins != 3 {
+		t.Fatalf("explicit legacy with best-of should still map to race-to: format=%q wins=%d err=%v", snookerFormat, snookerWins, err)
+	}
+}

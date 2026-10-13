@@ -58,3 +58,10 @@ export const resolveMatchRewardSummary = (response = {}, { attempt = 1, maxAttem
 }
 
 export const buildMatchRewardHonorWallUrl = (gameType) => buildHonorWallUrl({ gameType })
+
+// 已结算结果优先：整场认输时胜方可能局分较少；旧响应缺少 result 时按比分判断。
+export const resolveMatchViewerWin = ({ result, myScore, opponentScore } = {}) => {
+  const settled = Number(result)
+  if (settled === 1 || settled === 2 || settled === 3) return settled === 1
+  return Number(myScore || 0) > Number(opponentScore || 0)
+}

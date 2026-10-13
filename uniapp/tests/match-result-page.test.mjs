@@ -7,7 +7,8 @@ import {
   buildMatchRewardHonorWallUrl,
   MATCH_REWARD_MAX_ATTEMPTS,
   MATCH_REWARD_RETRY_DELAY_MS,
-  resolveMatchRewardSummary
+  resolveMatchRewardSummary,
+  resolveMatchViewerWin
 } from '../utils/match-result-page.js'
 
 const matchApiSource = readFileSync(new URL('../api/match.js', import.meta.url), 'utf8')
@@ -145,4 +146,15 @@ test('match result page queries the current user summary by match id and renders
   assert.ok(matchResultSource.indexOf('reward-section') < matchResultSource.indexOf('class="footer"'))
   assert.equal(MATCH_REWARD_MAX_ATTEMPTS, 3)
   assert.equal(MATCH_REWARD_RETRY_DELAY_MS, 800)
+})
+
+test('resolveMatchViewerWin prefers the settled result over frame scores', () => {
+  // 自由局数整场认输：认输方局分领先但结果为负，胜方局分落后但结果为胜。
+  assert.equal(resolveMatchViewerWin({ result: 2, myScore: 2, opponentScore: 1 }), false)
+  assert.equal(resolveMatchViewerWin({ result: 1, myScore: 1, opponentScore: 2 }), true)
+  assert.equal(resolveMatchViewerWin({ result: 3, myScore: 2, opponentScore: 1 }), false)
+  // 旧响应缺少 result 或对局未结算时按比分判断。
+  assert.equal(resolveMatchViewerWin({ myScore: 3, opponentScore: 1 }), true)
+  assert.equal(resolveMatchViewerWin({ result: 0, myScore: 1, opponentScore: 3 }), false)
+  assert.match(matchResultSource, /resolveMatchViewerWin\(\{\s*result: matchData\.value\.result/)
 })

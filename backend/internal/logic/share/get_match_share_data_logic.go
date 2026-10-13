@@ -102,13 +102,24 @@ func (l *GetMatchShareDataLogic) GetMatchShareData(req *types.GetMatchShareDataR
 		myScore, opponentScore = viewer.MyScore, viewer.OpponentScore
 	}
 
+	viewerResult := logicx.ViewerMatchResult(match, isPlayer1)
+	if viewerResult == 0 {
+		// 未结算对局沿用比分判断；已结算以结果为准，整场认输时可与局分大小不一致。
+		viewerResult = 3
+		if myScore > opponentScore {
+			viewerResult = 1
+		} else if myScore < opponentScore {
+			viewerResult = 2
+		}
+	}
 	result := "战平"
-	rankChange := 0
-	if myScore > opponentScore {
+	switch viewerResult {
+	case 1:
 		result = "胜利"
-	} else if myScore < opponentScore {
+	case 2:
 		result = "失利"
 	}
+	rankChange := 0
 
 	if match.Status == 2 {
 		if completedCore != nil {

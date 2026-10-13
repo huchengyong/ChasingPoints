@@ -159,3 +159,57 @@ func loadDetailForProfileTest(t *testing.T, svcCtx *svc.ServiceContext) types.Ma
 	}
 	return resp.Match
 }
+
+func TestGetMatchDetailReportsSettledResultFromViewerPerspective(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&model.User{}, &model.Match{}, &model.MatchRound{}, &model.MatchAction{}, &model.MatchAchievement{}, &model.UserCompetitiveStats{}); err != nil {
+		t.Fatalf("prepare detail schema: %v", err)
+	}
+	miniRedis := miniredis.RunT(t)
+	redisClient := redis.NewClient(&redis.Options{Addr: miniRedis.Addr()})
+	t.Cleanup(func() { _ = redisClient.Close() })
+	svcCtx := &svc.ServiceContext{
+		DB:                   db,
+		Redis:                redisClient,
+		UserModel:            model.NewUserModel(db),
+		MatchModel:           model.NewMatchModel(db),
+		CompetitiveReadModel: model.NewCompetitiveReadModel(db),
+		Config:               config.Config{CompetitiveReadModel: config.CompetitiveReadModelConfig{ReadMode: "enabled"}},
+	}
+	if err := db.Create(&[]model.User{{Id: 1, Nickname: "甲"}, {Id: 2, Nickname: "乙"}}).Error; err != nil {
+		t.Fatalf("seed users: %v", err)
+	}
+	opponentID := int64(2)
+	// 自由局数整场认输：选手1 局分领先但认输，结果以 result 为准。
+	result := 2
+	completedAt := time.Date(2026, 8, 12, 18, 0, 0, 0, time.UTC)
+	if err := db.Create(&model.Match{
+		Id: 30, UserId: 1, OpponentId: &opponentID, OpponentName: "乙", GameType: 1, SnookerRulesVersion: model.SnookerRulesVersionWPBSA,
+		SnookerFormat: model.SnookerFormatFree, Status: 2, Result: &result, MyScore: 2, OpponentScore: 1,
+		MatchTime: completedAt, CompletedAt: &completedAt, AchievementSyncedAt: &completedAt,
+	}).Error; err != nil {
+		t.Fatalf("seed match: %v", err)
+	}
+	seedCurrentProfiles(t, db, 5, 10, 8, 4, 10, 7)
+
+	for _, testCase := range []struct {
+		userID        int64
+		myScore       int
+		opponentScore int
+		result        int
+	}{
+		{userID: 1, myScore: 2, opponentScore: 1, result: 2},
+		{userID: 2, myScore: 1, opponentScore: 2, result: 1},
+	} {
+		resp, err := NewGetMatchDetailLogic(context.WithValue(context.Background(), "user_id", testCase.userID), svcCtx).GetMatchDetail(&types.GetMatchDetailReq{MatchId: 30})
+		if err != nil || !resp.Success {
+			t.Fatalf("get match detail for user %d: resp=%#v err=%v", testCase.userID, resp, err)
+		}
+		if resp.Match.MyScore != testCase.myScore || resp.Match.OpponentScore != testCase.opponentScore || resp.Match.Result != testCase.result {
+			t.Fatalf("user %d: unexpected score/result %d:%d result=%d", testCase.userID, resp.Match.MyScore, resp.Match.OpponentScore, resp.Match.Result)
+		}
+	}
+}

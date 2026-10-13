@@ -63,7 +63,7 @@ private struct MatchReportContent: View {
 
     private var palette: AppPalette { AppTheme.palette(for: colorScheme) }
     private var isReferee: Bool { report.isRefereeView }
-    private var outcome: MatchOutcome { MatchOutcome(myScore: report.myScore, opponentScore: report.opponentScore) }
+    private var outcome: MatchOutcome { report.outcome }
     private var scoreGap: Int { abs(report.myScore - report.opponentScore) }
     private var unit: String { MatchFormatting.scoreUnit(report.gameType) }
     private var createdAtText: String { MatchTimeFormatting.absolute(report.createdAt) }
@@ -122,6 +122,10 @@ private struct MatchReportContent: View {
 
     private var summaryText: String {
         if isReferee { return "你已完成本场执裁，对局结果已录入系统。" }
+        // 整场认输按认输事件判定胜负，局分可能与胜负方向不一致。
+        if report.isMatchConcession {
+            return outcome == .win ? "对手认输整场，本场判你获胜" : "你已认输整场，本场记为失利"
+        }
         switch outcome {
         case .win: return "领先 \(scoreGap) \(unit)收下对局"
         case .loss: return "落后 \(scoreGap) \(unit)结束对局"

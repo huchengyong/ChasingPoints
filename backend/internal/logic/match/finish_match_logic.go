@@ -574,16 +574,32 @@ func (l *FinishMatchLogic) settleMatchWithTx(tx *gorm.DB, match *model.Match, us
 	return l.settleMatchWithCompletionSourceTx(tx, match, userId, req, "")
 }
 
+// settleMatchWithWinnerTx 由规则事件（如斯诺克整场认输）直接决定胜方，不按整场比分推导胜负。
+func (l *FinishMatchLogic) settleMatchWithWinnerTx(tx *gorm.DB, match *model.Match, userId int64, req *types.FinishMatchReq, winner int) (finishMatchSettlement, error) {
+	if winner != 1 && winner != 2 {
+		return finishMatchSettlement{}, errFinishActionInvalid
+	}
+	return l.settleMatchResultTx(tx, match, userId, req, "", winner)
+}
+
 func (l *FinishMatchLogic) settleMatchWithCompletionSourceTx(tx *gorm.DB, match *model.Match, userId int64, req *types.FinishMatchReq, completionSource string) (finishMatchSettlement, error) {
+	return l.settleMatchResultTx(tx, match, userId, req, completionSource, 0)
+}
+
+// settleMatchResultTx 的 winner 为 0 时按整场比分推导胜负。
+func (l *FinishMatchLogic) settleMatchResultTx(tx *gorm.DB, match *model.Match, userId int64, req *types.FinishMatchReq, completionSource string, winner int) (finishMatchSettlement, error) {
 	if match == nil || match.Status != 1 || req == nil {
 		return finishMatchSettlement{}, errFinishActionInvalid
 	}
 
-	result := 3
-	if match.MyScore > match.OpponentScore {
-		result = 1
-	} else if match.MyScore < match.OpponentScore {
-		result = 2
+	result := winner
+	if result == 0 {
+		result = 3
+		if match.MyScore > match.OpponentScore {
+			result = 1
+		} else if match.MyScore < match.OpponentScore {
+			result = 2
+		}
 	}
 	now := time.Now()
 	match.Status = 2

@@ -155,3 +155,38 @@ func summaryValue(items []types.MatchSummaryItem, label string) string {
 	}
 	return ""
 }
+
+func TestMatchShareDataUsesSettledResultOverFrameScore(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&model.User{}, &model.Match{}, &model.MatchRound{}, &model.MatchAction{}, &model.MatchAchievement{}, &model.UserCompetitiveStats{}); err != nil {
+		t.Fatalf("prepare share schema: %v", err)
+	}
+	svcCtx := &svc.ServiceContext{
+		DB:                   db,
+		UserModel:            model.NewUserModel(db),
+		MatchModel:           model.NewMatchModel(db),
+		CompetitiveReadModel: model.NewCompetitiveReadModel(db),
+		Config:               config.Config{CompetitiveReadModel: config.CompetitiveReadModelConfig{ReadMode: "enabled"}},
+	}
+	if err := db.Create(&[]model.User{{Id: 1, Nickname: "甲"}, {Id: 2, Nickname: "乙"}}).Error; err != nil {
+		t.Fatalf("seed users: %v", err)
+	}
+	opponentID := int64(2)
+	// 自由局数整场认输：选手1 局分 2:1 领先但认输。
+	result := 2
+	completedAt := time.Date(2026, 8, 12, 19, 0, 0, 0, time.UTC)
+	if err := db.Create(&model.Match{Id: 21, UserId: 1, OpponentId: &opponentID, OpponentName: "乙", GameType: 1, Status: 2, Result: &result, MyScore: 2, OpponentScore: 1, MatchTime: completedAt, CompletedAt: &completedAt}).Error; err != nil {
+		t.Fatalf("seed match: %v", err)
+	}
+	if err := db.Create(&[]model.UserCompetitiveStats{{UserId: 1, GameType: 0}, {UserId: 1, GameType: 1}, {UserId: 2, GameType: 0}, {UserId: 2, GameType: 1}}).Error; err != nil {
+		t.Fatalf("seed profiles: %v", err)
+	}
+
+	share := loadShareForCurrentProfileTest(t, svcCtx)
+	if share.MyScore != 2 || share.OpponentScore != 1 || share.Result != "失利" {
+		t.Fatalf("share must follow settled result instead of frame score: %+v", share)
+	}
+}

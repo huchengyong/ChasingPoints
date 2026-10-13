@@ -96,6 +96,19 @@ func TestValidateStartMatchReqNegotiatesSnookerRulesVersion(t *testing.T) {
 	}
 	if message := validateStartMatchReq(100, &types.StartMatchReq{
 		GameType: 1, OpponentId: 200, SnookerRulesVersion: model.SnookerRulesVersionWPBSA,
+		SnookerFormat: model.SnookerFormatLegacy,
+	}); message != "请选择有效的斯诺克赛制" {
+		t.Fatalf("version 2 must reject legacy format that can never finish: %q", message)
+	}
+	legacyBestOf := &types.StartMatchReq{
+		GameType: 1, OpponentId: 200, SnookerRulesVersion: model.SnookerRulesVersionWPBSA,
+		SnookerFormat: model.SnookerFormatLegacy, BestOfFrames: 5, StartingActor: 1,
+	}
+	if message := validateStartMatchReq(100, legacyBestOf); message != "" || legacyBestOf.SnookerFormat != model.SnookerFormatRaceTo || legacyBestOf.SnookerTargetWins != 3 {
+		t.Fatalf("explicit legacy with best-of should still map to race-to: req=%+v message=%q", legacyBestOf, message)
+	}
+	if message := validateStartMatchReq(100, &types.StartMatchReq{
+		GameType: 1, OpponentId: 200, SnookerRulesVersion: model.SnookerRulesVersionWPBSA,
 	}); message != "斯诺克总局数必须为正奇数" {
 		t.Fatalf("unexpected invalid format message: %q", message)
 	}
