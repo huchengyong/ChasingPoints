@@ -11,7 +11,7 @@
     ['pending', '收到与发出', '收到邀请只需要回应，不提前解释开局。接收方也可以暂不处理。'],
     ['accepted', '已约好 · 双入口', '同一条约球，出现在对局与我的。点击进入后，对手才会看到你在等待。'],
     ['waiting', '一人等待 · 一人选择', '左侧没有比分，也没有比赛。右侧进入才正式开始，放弃则一起结束。'],
-    ['playing', '正式比赛与再约', '任意一方滑动结束，无需对方同意；未滑到终点会复位。结束后约球同步完成，真实积分计算不在预览范围内。'],
+    ['playing', '正式比赛与再约', '任意一方滑动结束，无需对方同意；未滑到终点会复位。排位赛对方有10分钟异议期，提出后本场不计排位积分；切换演示时间可看异议期结束。'],
     ['mutual', '同人互邀匹配', '同一个人、同一种类型，直接合并。时间不同也可以，以正在接受的邀请为准。'],
     ['different', '互邀类型不同', '类型不同不悄悄匹配。查看并处理原邀请后，再决定是否接受。'],
     ['replace', '换人接受邀请', '小李发给小王的邀请还未回应，同时收到小陈的邀请。接受前明确提示关闭旧邀请。'],
@@ -37,6 +37,7 @@
   const icon = name => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[name] || paths.ball}"/></svg>`;
   const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const DAY = 86400000;
+  const DISPUTE_MINUTES = 10, DISPUTE_WINDOW = DISPUTE_MINUTES * 60000;
   const BASE = Date.parse('2026-08-25T00:00:00+08:00');
   let now = BASE + 16 * 3600000, nextId = 1, invites = [], scene = 'accepted', abFriends = true;
   let prefs = { a: false, b: false, c: false };
@@ -51,6 +52,14 @@
   const outgoing = u => involved(u).find(r => r.from === u && r.status === 'pending');
   const incoming = u => involved(u).filter(r => r.to === u && r.status === 'pending');
   const get = id => invites.find(r => r.id === Number(id));
+  // score按发起方、接收方顺序保存；展示一律以查看者为先。
+  const scoreOf = (r, u) => r.from === u ? r.score : [r.score[1], r.score[0]];
+  function outcome(r, u) {
+    const [mine, theirs] = scoreOf(r, u);
+    return mine > theirs ? ['win', '胜', '本场获胜'] : mine < theirs ? ['loss', '负', '本场失利'] : ['draw', '平', '本场战平'];
+  }
+  // 排位被单方结束后，另一方在异议期内可提出一次异议；异议只取消本场排位积分，不恢复对局。
+  const disputeOpen = r => r.mode === '排位' && !!r.endedBy && !r.disputed && now < r.disputeUntil;
   const today = () => Math.floor((now + 8 * 3600000) / DAY) * DAY - 8 * 3600000;
   function relative(day) {
     const d = Math.round((day - today()) / DAY);
@@ -61,7 +70,8 @@
   const schedule = r => `${relative(r.day)} ${r.start}点—${r.end}点`;
   const expires = r => r.day + DAY + 7 * 3600000;
   const expiryText = r => r.status === 'expired' ? '' : `${relative(r.day + DAY)}早晨7点失效`;
-  const clockText = () => new Date(now + 8 * 3600000).toISOString().slice(11, 16);
+  const hhmm = t => new Date(t + 8 * 3600000).toISOString().slice(11, 16);
+  const clockText = () => hhmm(now);
   function newInvite(from, to, options = {}) {
     const record = { id: nextId++, from, to, game: '中式八球', mode: '排位', day: BASE, start: 16, end: 17, note: '', status: 'pending', entered: [], matchId: null, score: [0, 0], ...options };
     invites.push(record); return record;
@@ -149,9 +159,18 @@
   }
   function finish(u, id) {
     const r = get(id); if (r?.status !== 'playing' || !members(r).includes(u)) return;
-    r.status = 'completed';
+    r.status = 'completed'; r.endedBy = u;
+    if (r.mode === '排位') r.disputeUntil = now + DISPUTE_WINDOW;
     for (const p of ['a', 'b']) if (views[p].page === 'playing' && views[p].recordId === r.id) navigate(p, 'detail', id);
-    toast(u, '对局与约球均已结束'); toast(opponent(r, u), '对方已结束对局，可以再约一场');
+    const other = opponent(r, u);
+    toast(u, '对局与约球均已结束'); toast(other, `${people[u].name}结束了对局 · ${scoreOf(r, other).join(' : ')}${r.mode === '排位' ? `，${DISPUTE_MINUTES}分钟内可提出异议` : ''}`);
+  }
+  function dispute(u, id) {
+    const r = get(id);
+    if (!r || r.status !== 'completed' || !members(r).includes(u) || !r.endedBy || r.endedBy === u) return;
+    if (!disputeOpen(r)) { toast(u, r.disputed ? '本场已提出异议' : '异议期已结束，排位结果已生效'); return; }
+    r.disputed = true;
+    toast(u, '已提出异议，本场不计排位积分'); toast(r.endedBy, `${people[u].name}对本场结果提出异议，本场不计排位积分`);
   }
   function loadScene(name) {
     scene = name; now = BASE + 16 * 3600000; invites = []; nextId = 1; abFriends = true;
@@ -193,27 +212,35 @@
       action = `<div class="action-row">${button(mine ? '返回等待页面' : '进入对局 ' + icon('arrow'), 'enter', r.id)}</div>`;
       footer = (mine ? textAction('退出等待，保留约球', 'leave', r.id) : '') + textAction(theirs && !mine ? '放弃本次约球' : '取消约球', 'cancel', r.id);
     }
-    if (r.status === 'playing') { title = '继续这场好球'; action = `<div class="action-row">${button('继续对局 ' + icon('arrow'), 'enter', r.id)}</div>`; note = `${r.score[0]} : ${r.score[1]} · 正在进行`; }
+    if (r.status === 'playing') { title = '继续这场好球'; action = `<div class="action-row">${button('继续对局 ' + icon('arrow'), 'enter', r.id)}</div>`; note = `${scoreOf(r, u).join(' : ')} · 正在进行`; }
     if (!active) action = `<div class="action-row">${button(r.matchId ? '查看赛果' : '再约一场', r.matchId ? 'detail' : 'rematch', r.id, 'secondary')}</div>`;
     return `<article class="card"><div class="card-header"><h3>${title}</h3><span class="pill ${style} dot">${state}</span></div>${person(other)}${tags(r)}${timeBlock(r)}${active && r.status !== 'playing' ? `<p class="expire-copy">${expiryText(r)}</p>` : ''}${r.note ? `<p class="message-box">“${escape(r.note)}”</p>` : ''}${note ? `<p class="note">${note}</p>` : ''}${action}${footer ? `<div class="card-footer">${footer}</div>` : ''}</article>`;
   }
   function header(u, title, back = true, right = '') {
-    return `<header class="screen-head">${back ? button(icon('back') + '返回', 'back', '', 'back') : `<div><h2>${title}</h2><div class="head-sub">CHASING POINTS</div></div>`}${back ? `<h2 class="center-title">${title}</h2>` : ''}${right || (back ? '<span class="head-spacer"></span>' : button(icon('mail'), 'inbox', '', 'icon-btn', 'aria-label="收到的邀请"'))}</header>`;
+    return `<header class="screen-head">${back ? button(icon('back') + '返回', 'back', '', 'back') : `<div><h2>${title}</h2><div class="head-sub">CHASING POINTS</div></div>`}${back ? `<h2 class="center-title">${title}</h2>` : ''}${right || (back ? '<span class="head-spacer"></span>' : '')}</header>`;
   }
   function tabs(u) {
-    return `<nav class="tabs" aria-label="${people[u].name}的页面导航">${[['home', 'ball', '对局'], ['history', 'history', '记录'], ['inbox', 'mail', '邀请'], ['me', 'user', '我的']].map(([p, i, label]) => button(icon(i) + label, 'nav', p, views[u].page === p ? 'active' : '', `aria-label="${label}" ${views[u].page === p ? 'aria-current="page"' : ''}`)).join('')}</nav>`;
+    return `<nav class="tabs" aria-label="${people[u].name}的页面导航">${[['home', 'ball', '对局'], ['me', 'user', '我的']].map(([p, i, label]) => button(icon(i) + label, 'nav', p, views[u].page === p ? 'active' : '', `aria-label="${label}" ${views[u].page === p ? 'aria-current="page"' : ''}`)).join('')}</nav>`;
   }
   function recentRows(u, all = false) {
     const rows = involved(u).filter(r => r.matchId && r.status === 'completed');
-    return (all ? rows : rows.slice(-1)).reverse().map(r => `<button type="button" class="record-row" data-action="detail" data-id="${r.id}">${avatar(opponent(r, u), 'small')}<span><strong>与${people[opponent(r, u)].name}的对局</strong><small>${r.game} · ${relative(r.day)}</small></span><span class="record-score">${r.score[0]} <span style="color:var(--muted)">:</span> ${r.score[1]}</span></button>`).join('');
+    return (all ? rows : rows.slice(-1)).reverse().map(r => { const [mine, theirs] = scoreOf(r, u), [result, mark] = outcome(r, u); return `<button type="button" class="record-row" data-action="detail" data-id="${r.id}">${avatar(opponent(r, u), 'small')}<span><strong>与${people[opponent(r, u)].name}的对局</strong><small>${r.game} · ${relative(r.day)}</small></span><span class="record-score"><span class="record-result ${result}">${mark}</span>${mine} <span style="color:var(--muted)">:</span> ${theirs}</span></button>`; }).join('');
   }
   function home(u, me = false) {
-    const r = current(u) || outgoing(u), received = incoming(u), first = received[0];
-    const profile = `<div class="profile-hero">${person(u, 'ID · ' + (u === 'a' ? '100028' : '100036'), '')}<div class="profile-rank"><div><strong>${people[u].rank}</strong><p style="margin-top:5px"><small>中式八球 · 排位分 ${people[u].score}</small></p></div><span class="rank-ball">✦</span></div></div>`;
+    const r = current(u) || outgoing(u), received = incoming(u), first = !r && received[0];
+    const pendingCard = first ? `<div class="section-head"><span>待你回应</span>${me ? textAction('收到的邀请 ›', 'inbox') : ''}</div>${card(u, first)}` : '';
+    if (me) {
+      // 我的页只在原status-card位置放同一条约球，其余入口留在对局页。
+      const profile = `<div class="profile-hero">${person(u, 'ID · ' + (u === 'a' ? '100028' : '100036'), '')}<div class="profile-rank"><div><strong>${people[u].rank}</strong><p style="margin-top:5px"><small>中式八球 · 排位分 ${people[u].score}</small></p></div><span class="rank-ball">✦</span></div></div>`;
+      const metrics = `<div class="metrics"><div><strong>28</strong><small>累计对局</small></div><div><strong>64<span style="font-size:11px">%</span></strong><small>胜率</small></div><div><strong>5</strong><small>最高连胜</small></div></div>`;
+      return header(u, '我的', false, button(icon('gear'), 'settings', '', 'icon-btn', 'aria-label="设置"')) + `<div class="scroll">${profile}${r ? card(u, r) : pendingCard}${metrics}</div>${tabs(u)}`;
+    }
     const emptyHero = `<div class="hero"><p>A GOOD GAME AWAITS</p><h3>下一场，<br>和谁开杆？</h3><small>熟悉的球友，新的交锋。</small><div class="table-art" aria-hidden="true"></div></div>`;
     const quick = `<div class="quick-actions">${button(icon('scan') + '扫一扫', 'unavailable', '', '')}${button(icon('qr') + '出示二维码', 'unavailable', '', '')}</div>`;
     const invitesLink = `<button class="link-row" type="button" data-action="inbox"><span class="left">${icon('mail')}收到的邀请${received.length ? `<span class="count">${received.length}</span>` : ''}</span>${icon('chevron')}</button>`;
-    return header(u, me ? '我的' : '对局', false, me ? button(icon('gear'), 'settings', '', 'icon-btn', 'aria-label="设置"') : '') + `<div class="scroll">${me ? profile : !r ? emptyHero : `<p class="page-title">今天，约场好球。</p><p class="page-sub">把时间留给球桌，把开局变简单。</p>`}${r ? card(u, r) : ''}${!r ? `${quick}${button(icon('plus') + '发起约球', 'select', '', 'primary new-invite')}` : ''}${invitesLink}${!r && first ? `<div class="section-head">待你回应</div>${card(u, first)}` : ''}${me ? `<div class="metrics"><div><strong>28</strong><small>累计对局</small></div><div><strong>64<span style="font-size:11px">%</span></strong><small>胜率</small></div><div><strong>5</strong><small>最高连胜</small></div></div>` : ''}<div class="section-head"><span>最近交锋</span>${textAction('全部记录 ' + '›', 'history-tab', 'matches')}</div>${recentRows(u)}<button class="link-row" type="button" data-action="history"><span class="left">${icon('history')}约球记录</span>${icon('chevron')}</button>${me ? `<button class="link-row" type="button" data-action="settings"><span class="left">${icon('gear')}设置</span>${icon('chevron')}</button>` : ''}<p class="quiet-tip">每一次交锋，都值得认真记录。</p></div>${tabs(u)}`;
+    // 有待回应邀请时收起装饰头图、发起降为次要，让接受按钮留在首屏；扫码仍保持原优先级。
+    const start = `${first ? '' : emptyHero}${quick}${button(icon('plus') + '发起约球', 'select', '', `${first ? 'secondary' : 'primary'} new-invite`)}`;
+    return header(u, '对局', false) + `<div class="scroll">${r ? `<p class="page-title">今天，约场好球。</p><p class="page-sub">把时间留给球桌，把开局变简单。</p>${card(u, r)}` : start}${invitesLink}${pendingCard}<div class="section-head"><span>最近交锋</span>${textAction('全部记录 ' + '›', 'history-tab', 'matches')}</div>${recentRows(u)}<button class="link-row" type="button" data-action="history-tab" data-id="invites"><span class="left">${icon('history')}约球记录</span>${icon('chevron')}</button><p class="quiet-tip">每一次交锋，都值得认真记录。</p></div>${tabs(u)}`;
   }
   function selectView(u) {
     const friends = Object.keys(people).filter(p => p !== u && isFriend(u, p));
@@ -228,11 +255,11 @@
     return header(u, '发起约球') + `<div class="scroll"><p class="page-title">约好下一场。</p><p class="page-sub">见面时，直接进入就好。</p><div class="form-person">${person(d.to, people[d.to].rank)}${textAction('更换', 'change-person')}</div><fieldset class="form-field"><legend>打什么</legend>${choices('game', ['中式八球', '斯诺克', '美式九球'].map(x => [x, x]))}</fieldset><fieldset class="form-field"><legend>预计什么时候</legend>${choices('day', [0, 1, 2].map((n, i) => [today() + n * DAY, ['今天', '明天', '后天'][i]]))}<div class="hours">${hours('start', 0, 23)}<span>到</span>${hours('end', 1, 24)}</div><p class="field-hint">预计时间仅作提醒，不限制比赛时长</p></fieldset><fieldset class="form-field"><legend>比赛类型</legend>${choices('mode', [['排位', '排位'], ['练习', '练习']])}<p class="field-hint">${d.mode === '排位' ? '公开对局 · 影响排位积分' : '私密练习 · 不影响排位积分'} · 自由局数</p></fieldset><div class="form-field"><label for="note-${u}">附言 <span style="font-weight:400;color:var(--muted)">（选填）</span></label><input id="note-${u}" name="note" maxlength="50" data-field="note" value="${escape(d.note)}" placeholder="比如：老地方，一起打一场？"></div></div><div class="form-bottom">${views[u].error ? `<p class="form-error" role="status">${escape(views[u].error)}</p>` : ''}<p class="field-hint">${relative(d.day + DAY)}早晨7点失效</p>${button('发送约球 ' + icon('arrow'), 'send')}</div>`;
   }
   function inboxView(u) {
-    return header(u, '收到的邀请') + `<div class="scroll"><h3 class="page-title">球友的下一场，<br>想和你一起。</h3><p class="page-sub">有空就回应，也可以稍后再看。</p>${incoming(u).map(r => card(u, r)).join('') || `<div class="empty">${icon('mail')}<h3>暂时没有新邀请</h3><p>你也可以主动约一位球友。</p></div>`}</div>${tabs(u)}`;
+    return header(u, '收到的邀请') + `<div class="scroll"><h3 class="page-title">球友的下一场，<br>想和你一起。</h3><p class="page-sub">有空就回应，也可以稍后再看。</p>${incoming(u).map(r => card(u, r)).join('') || `<div class="empty">${icon('mail')}<h3>暂时没有新邀请</h3><p>你也可以主动约一位球友。</p></div>`}</div>`;
   }
   function historyView(u) {
     const mode = views[u].historyTab || 'invites';
-    return header(u, mode === 'matches' ? '对局记录' : '约球记录') + `<div class="scroll"><div class="segmented">${button('约球记录', 'history-tab', 'invites', mode === 'invites' ? 'active' : '')}${button('对局记录', 'history-tab', 'matches', mode === 'matches' ? 'active' : '')}</div>${mode === 'matches' ? recentRows(u, true) : involved(u).slice().reverse().map(r => card(u, r)).join('')}<p class="quiet-tip">${mode === 'matches' ? '只记录真实开始的比赛' : '每一次约定，都有迹可循'}</p></div>${tabs(u)}`;
+    return header(u, mode === 'matches' ? '对局记录' : '约球记录') + `<div class="scroll"><div class="segmented">${button('约球记录', 'history-tab', 'invites', mode === 'invites' ? 'active' : '')}${button('对局记录', 'history-tab', 'matches', mode === 'matches' ? 'active' : '')}</div>${mode === 'matches' ? recentRows(u, true) : involved(u).slice().reverse().map(r => card(u, r)).join('')}<p class="quiet-tip">${mode === 'matches' ? '只记录真实开始的比赛' : '每一次约定，都有迹可循'}</p></div>`;
   }
   function waitingView(u, r) {
     if (!r || r.status !== 'accepted') { navigate(u, views[u].tab); return home(u, views[u].tab === 'me'); }
@@ -241,8 +268,13 @@
   }
   function matchView(u, r, playing) {
     if (!r) return historyView(u);
-    const finishSlider = `<div class="finish-slide"><span class="finish-caption" aria-hidden="true">向右滑动结束对局 <span>››</span></span><input type="range" class="finish-slider" id="finish-${u}" data-finish-slider="${r.id}" min="0" max="100" step="1" value="0" aria-label="滑动结束对局" aria-describedby="finish-help-${u}"></div><p class="field-hint" id="finish-help-${u}">滑到终点后松手即可结束，无需对方确认。<span class="sr-only">键盘可用方向键或End键移至终点结束，Escape键复位。</span></p>`;
-    return header(u, playing ? '对局进行中' : '对局详情') + `<div class="scroll"><div class="match-banner"><p class="result-eyebrow">${playing ? 'GOOD GAME, GOOD COMPANY' : 'EVERY GAME COUNTS'}</p>${tags(r)}<div class="score-players"><div class="waiting-player">${avatar(r.from)}<strong>${people[r.from].name}</strong></div><span style="color:#b6a77d;font-size:11px">VS</span><div class="waiting-player">${avatar(r.to)}<strong>${people[r.to].name}</strong></div></div><div class="score-number">${r.score[0]} : ${r.score[1]}</div><span class="result-seal">${playing ? '进行中' : '对局已结束'}</span></div><div class="detail-rows"><div class="detail-row"><span>对局时间</span><strong>${schedule(r)}</strong></div><div class="detail-row"><span>比赛类型</span><strong>${r.mode} · 自由局数</strong></div><div class="detail-row"><span>约球状态</span><strong>${playing ? '正在进行' : '已完成'}</strong></div></div>${playing ? `<div class="card"><p style="font-size:12px;line-height:1.8">专注每一杆，享受这场交锋。</p><p class="field-hint">演示结果 ${r.score.join(' : ')} · 真实记分与结算沿用现有流程</p></div>` : `<div class="section-head">本场回顾</div><p class="page-sub">一场好球，也是下一次见面的理由。</p>${button('再约一场 ' + icon('arrow'), 'rematch', r.id)}`}<p class="quiet-tip">${playing ? '此页只模拟结束联动，不进行真实结算' : '模拟赛果 · 本次约球已同步完成'}</p></div>${playing ? `<div class="form-bottom finish-control">${finishSlider}</div>` : ''}`;
+    const other = opponent(r, u), [mine, theirs] = scoreOf(r, u), [result, , resultText] = outcome(r, u);
+    const finishNote = r.mode === '排位' ? `松手即结束，无需对方确认。按 ${mine} : ${theirs} 结算排位，对方${DISPUTE_MINUTES}分钟内可提出异议。` : '滑到终点后松手即可结束，无需对方确认。';
+    const ender = r.endedBy && (r.endedBy === u ? '你' : people[r.endedBy].name);
+    const settlement = r.mode !== '排位' || !r.endedBy ? '' : r.disputed ? '有异议 · 不计排位积分' : disputeOpen(r) ? `${hhmm(r.disputeUntil)} 生效` : '已生效';
+    const disputeBox = !playing && r.endedBy && r.endedBy !== u && disputeOpen(r) ? `<div class="dispute-box"><p>${ender}结束了本场。对结果有异议，可在 ${hhmm(r.disputeUntil)} 前提出；提出后本场不计排位积分，比分与记录保留。</p>${button('提出异议', 'dispute', r.id, 'secondary')}</div>` : '';
+    const finishSlider = `<div class="finish-slide"><span class="finish-caption" aria-hidden="true">向右滑动结束对局 <span>››</span></span><input type="range" class="finish-slider" id="finish-${u}" data-finish-slider="${r.id}" min="0" max="100" step="1" value="0" aria-label="滑动结束对局" aria-describedby="finish-help-${u}"></div><p class="finish-note" id="finish-help-${u}">${finishNote}<span class="sr-only">键盘可用方向键或End键移至终点结束，Escape键复位。</span></p>`;
+    return header(u, playing ? '对局进行中' : '对局详情') + `<div class="scroll"><div class="match-banner"><p class="result-eyebrow">${playing ? 'GOOD GAME, GOOD COMPANY' : 'EVERY GAME COUNTS'}</p>${tags(r)}<div class="score-players"><div class="waiting-player">${avatar(u)}<strong>${people[u].name}</strong></div><span style="color:#b6a77d;font-size:11px">VS</span><div class="waiting-player">${avatar(other)}<strong>${people[other].name}</strong></div></div><div class="score-number">${mine} : ${theirs}</div><span class="result-seal ${playing ? '' : result}">${playing ? '进行中' : resultText}</span></div>${disputeBox}<div class="detail-rows"><div class="detail-row"><span>对局时间</span><strong>${schedule(r)}</strong></div><div class="detail-row"><span>比赛类型</span><strong>${r.mode} · 自由局数</strong></div><div class="detail-row"><span>约球状态</span><strong>${playing ? '正在进行' : '已完成'}</strong></div>${!playing && ender ? `<div class="detail-row"><span>结束方式</span><strong>${ender}滑动结束</strong></div>` : ''}${!playing && settlement ? `<div class="detail-row"><span>排位结算</span><strong>${settlement}</strong></div>` : ''}</div>${playing ? `<div class="card"><p style="font-size:12px;line-height:1.8">专注每一杆，享受这场交锋。</p><p class="field-hint">演示比分 ${mine} : ${theirs} · 真实记分与结算沿用现有流程</p></div>` : `<div class="section-head">本场回顾</div><p class="page-sub">一场好球，也是下一次见面的理由。</p>${button('再约一场 ' + icon('arrow'), 'rematch', r.id)}`}<p class="quiet-tip">${playing ? '此页只模拟结束联动，不进行真实结算' : '模拟赛果 · 本次约球已同步完成'}</p></div>${playing ? `<div class="form-bottom finish-control">${finishSlider}</div>` : ''}`;
   }
   function settingsView(u) {
     return header(u, '设置') + `<div class="scroll"><p class="page-title">按你的习惯来。</p><p class="page-sub">留给球桌的，是舒服的相处。</p><p class="section-label">通用设置</p><div class="settings-group"><div class="setting-row"><strong>主题模式</strong><span>亮色 · 本次预览</span></div><div class="setting-row"><strong>通知管理</strong><span>沿用现有设置</span></div></div><div class="section-head">隐私与约球</div><div class="settings-group"><div class="setting-row"><div><strong>隐藏战绩</strong><p>控制是否在公开场景展示你的战绩</p></div><span>现有功能</span></div><div class="setting-row"><div><strong>仅允许好友约球</strong><p>开启后，非好友无法向你<br>发送约球邀请</p></div><button type="button" class="switch" data-action="toggle-friends" role="switch" aria-checked="${prefs[u]}" aria-label="仅允许好友约球"></button></div></div><p class="field-hint" style="padding:9px 3px">仅影响新收到的邀请，已有约球不受影响。</p><div class="settings-group"><div class="setting-row"><strong>隐私政策</strong><span>沿用现有页面</span></div><div class="setting-row"><strong>用户协议</strong><span>沿用现有页面</span></div></div><p class="quiet-tip">${scene === 'settings' ? '当前演示：小李和小王是非好友最近对手' : '演示设置仅保存在当前浏览器，不修改真实账号'}</p></div>`;
@@ -308,6 +340,7 @@
     else if (action === 'cancel' && r) modal(u, '取消本次约球？', `${people[opponent(r, u)].name}会收到提醒，本次约球将结束。\n不会产生比赛和战绩。`, '确认取消', () => endInvite(u, id, 'canceled'), '继续约球', true);
     else if (action === 'dismiss') v.dialog = null;
     else if (action === 'confirm') { const fn = v.dialog?.action; v.dialog = null; fn?.(); }
+    else if (action === 'dispute' && r) modal(u, '对本场结果提出异议？', `提出后本场不计排位积分，比分和记录保留。\n每场只能提出一次，${people[opponent(r, u)].name}会收到提醒。`, '提出异议', () => dispute(u, id), '再想想', true);
     else if (action === 'unavailable') toast(u, '扫码属于现有功能，本预览只演示约球');
     else if (action === 'toggle-friends') { prefs[u] = !prefs[u]; try { localStorage.setItem('cp-quick-preview-preferences', JSON.stringify(prefs)); } catch (_) { /* 仅模拟存储。 */ } toast(u, prefs[u] ? '已开启，仅允许好友约球' : '已关闭好友限制'); }
     render();
@@ -362,7 +395,7 @@
   document.getElementById('reset-scene').addEventListener('click', () => loadScene(scene));
   if (window.matchMedia?.('(max-width: 600px)').matches) document.querySelector('.controls').open = false;
   // 原型使用固定时钟与内存数据；真实后台校验、网络竞争和结算由应用实现负责。
-  window.Preview = { loadScene, render, send, accept, enter, leave, endInvite, finish, compose,
+  window.Preview = { loadScene, render, send, accept, enter, leave, endInvite, finish, dispute, compose,
     setTime: setDemoTime,
     state: () => ({ invites, views, prefs, now }), schedule, expiryText };
   loadScene('accepted');

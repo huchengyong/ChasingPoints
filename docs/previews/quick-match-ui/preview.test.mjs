@@ -184,3 +184,95 @@ test('再约保留对手类型、更新日期，不直接发出；表单文本�
   assert.equal(doc.querySelector('#view-a .message-box img'), null);
   assert.match(doc.querySelector('#view-a .message-box').textContent, /<img/);
 });
+
+test('收到待回应邀请时收起头图、发起降为次要，扫码仍在前；无邀请时保持原样', t => {
+  const { p, doc } = setup(t, 'pending');
+  const b = doc.querySelector('#view-b');
+  assert.equal(b.querySelector('.hero'), null);
+  assert.ok(b.querySelector('.new-invite').classList.contains('secondary'));
+  assert.ok(b.querySelector('[data-action="accept"]').classList.contains('primary'));
+  assert.ok(b.querySelector('.quick-actions').compareDocumentPosition(b.querySelector('[data-action="accept"]')) & 4, '扫码入口仍在待回应卡之前');
+  assert.equal(b.querySelector('.link-row .count').textContent, '1');
+  p.loadScene('fresh');
+  assert.ok(doc.querySelector('#view-b .hero'));
+  assert.ok(doc.querySelector('#view-b .new-invite').classList.contains('primary'));
+});
+
+test('比分与胜负按查看者展示', t => {
+  const { p, doc, click } = setup(t, 'fresh');
+  assert.match(doc.querySelector('#view-a .record-score').textContent, /胜\s*5 : 3/);
+  assert.match(doc.querySelector('#view-b .record-score').textContent, /负\s*3 : 5/);
+  click('#view-b [data-action="detail"]');
+  const b = doc.querySelector('#view-b');
+  assert.equal(b.querySelector('.score-number').textContent, '3 : 5');
+  assert.equal(b.querySelector('.score-players strong').textContent, '小王');
+  assert.ok(b.querySelector('.result-seal').classList.contains('loss'));
+  assert.match(b.querySelector('.result-seal').textContent, /失利/);
+  p.loadScene('playing');
+  assert.equal(doc.querySelector('#view-a .score-number').textContent, '5 : 3');
+  assert.equal(doc.querySelector('#view-b .score-number').textContent, '3 : 5');
+  assert.equal(doc.querySelector('#view-b .result-seal').textContent, '进行中');
+});
+
+test('底部只有对局与我的；收到的邀请、记录为带返回的二级页，我的页不重复对局页入口', t => {
+  const { p, doc, click } = setup(t, 'accepted');
+  const a = () => doc.querySelector('#view-a');
+  assert.deepEqual([...a().querySelectorAll('.tabs button')].map(el => el.textContent), ['对局', '我的']);
+  assert.equal(a().querySelectorAll('[data-action="inbox"]').length, 1);
+  click('#view-a [data-action="inbox"]');
+  assert.equal(a().querySelector('.tabs'), null); assert.ok(a().querySelector('[data-action="back"]'));
+  click('#view-a [data-action="back"]'); assert.equal(p.state().views.a.page, 'home');
+  click('#view-a .section-head [data-action="history-tab"]');
+  assert.equal(p.state().views.a.historyTab, 'matches'); assert.equal(a().querySelector('.tabs'), null);
+  click('#view-a [data-action="back"]');
+  click('#view-a .link-row[data-action="history-tab"]');
+  assert.equal(p.state().views.a.historyTab, 'invites');
+  const b = doc.querySelector('#view-b');
+  assert.equal(p.state().views.b.page, 'me');
+  assert.ok(b.querySelector('[data-action="enter"]'));
+  assert.equal(b.querySelector('.record-row, .link-row, .quick-actions'), null);
+});
+
+test('排位结束说明写在滑块旁：按当前比分结算，对方可提出异议', t => {
+  const { p, doc } = setup(t, 'playing');
+  assert.match(doc.querySelector('#view-a .finish-note').textContent, /无需对方确认。按 5 : 3 结算排位，对方10分钟内可提出异议/);
+  assert.match(doc.querySelector('#view-b .finish-note').textContent, /按 3 : 5 结算排位/);
+  live(p)[0].mode = '练习'; p.render();
+  assert.doesNotMatch(doc.querySelector('#view-a .finish-note').textContent, /异议|结算排位/);
+});
+
+test('排位单方结束：对方看到结束方与比分，异议期内可提出一次，不恢复对局也不阻止再约', t => {
+  const { p, doc, click } = setup(t, 'playing');
+  const r = live(p)[0];
+  p.finish('a', r.id); p.render();
+  assert.equal(r.status, 'completed'); assert.equal(r.endedBy, 'a');
+  const a = () => doc.querySelector('#view-a'), b = () => doc.querySelector('#view-b');
+  assert.match(b().querySelector('.toast').textContent, /小李结束了对局 · 3 : 5，10分钟内可提出异议/);
+  assert.match(a().textContent, /你滑动结束/); assert.match(a().textContent, /16:10 生效/);
+  assert.equal(a().querySelector('[data-action="dispute"]'), null);
+  assert.match(b().textContent, /小李滑动结束/);
+  p.dispute('a', r.id); assert.ok(!r.disputed, '结束方不能对自己提出异议');
+  click('#view-b [data-action="dispute"]');
+  assert.ok(!r.disputed, '先确认再提出');
+  click('#view-b [data-action="confirm"]');
+  assert.equal(r.disputed, true); assert.equal(r.status, 'completed');
+  assert.match(a().textContent, /有异议 · 不计排位积分/); assert.match(b().textContent, /有异议 · 不计排位积分/);
+  assert.equal(b().querySelector('[data-action="dispute"]'), null);
+  p.compose('a', 'b', r); assert.equal(p.state().views.a.page, 'compose');
+});
+
+test('异议期结束后排位结果生效、不能再提出；练习赛没有异议入口', t => {
+  const { p, doc } = setup(t, 'playing');
+  const r = live(p)[0];
+  p.finish('b', r.id); p.setTime('2026-08-25T18:00:00+08:00');
+  assert.equal(doc.querySelector('#view-a [data-action="dispute"]'), null);
+  assert.match(doc.querySelector('#view-a').textContent, /排位结算已生效/);
+  p.dispute('a', r.id); assert.ok(!r.disputed);
+  p.loadScene('playing');
+  const practice = live(p)[0]; practice.mode = '练习';
+  p.finish('b', practice.id); p.render();
+  assert.equal(practice.disputeUntil, undefined);
+  assert.equal(doc.querySelector('#view-a [data-action="dispute"]'), null);
+  assert.doesNotMatch(doc.querySelector('#view-a').textContent, /排位结算/);
+  assert.match(doc.querySelector('#view-a .toast').textContent, /^小王结束了对局 · 5 : 3$/);
+});
