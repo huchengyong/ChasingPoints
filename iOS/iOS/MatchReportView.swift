@@ -167,26 +167,54 @@ private struct MatchReportContent: View {
 
     private var rankCard: some View {
         ReportSection(title: "排位变化") {
-            HStack(alignment: .top, spacing: 12) {
-                RankColumn(title: "我的排位分", change: report.myRankChange)
-                RankColumn(title: "对手排位分", change: report.opponentRankChange)
+            switch report.rankSettlement {
+            case .pending(let clock):
+                unsettledRankColumns(placeholder: "待生效")
+                rankSettlementNote(clock.map { "排位积分将于 \($0) 生效。" } ?? "排位积分将在异议期结束后生效。")
+            case .voided:
+                unsettledRankColumns(placeholder: "不计分")
+                rankSettlementNote("本场已提出异议，不计排位积分。")
+            case .counted:
+                settledRankContent
             }
-            if let details = report.myRankDetails, !details.isEmpty {
-                VStack(spacing: 8) {
-                    ForEach(Array(details.enumerated()), id: \.offset) { _, detail in
-                        HStack {
-                            Text(detail.label)
-                                .font(.system(size: 14))
-                                .foregroundStyle(palette.textSecondary)
-                            Spacer()
-                            Text(signedText(detail.value))
-                                .font(.system(size: 14, weight: .semibold).monospacedDigit())
-                                .foregroundStyle(palette.textPrimary)
-                        }
+        }
+    }
+
+    /// 待生效或已作废：用文字说明状态，不显示 +0。
+    private func unsettledRankColumns(placeholder: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            RankColumn(title: "我的排位分", placeholder: placeholder)
+            RankColumn(title: "对手排位分", placeholder: placeholder)
+        }
+    }
+
+    private func rankSettlementNote(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 13))
+            .foregroundStyle(palette.textSecondary)
+    }
+
+    @ViewBuilder
+    private var settledRankContent: some View {
+        HStack(alignment: .top, spacing: 12) {
+            RankColumn(title: "我的排位分", change: report.myRankChange)
+            RankColumn(title: "对手排位分", change: report.opponentRankChange)
+        }
+        if let details = report.myRankDetails, !details.isEmpty {
+            VStack(spacing: 8) {
+                ForEach(Array(details.enumerated()), id: \.offset) { _, detail in
+                    HStack {
+                        Text(detail.label)
+                            .font(.system(size: 14))
+                            .foregroundStyle(palette.textSecondary)
+                        Spacer()
+                        Text(signedText(detail.value))
+                            .font(.system(size: 14, weight: .semibold).monospacedDigit())
+                            .foregroundStyle(palette.textPrimary)
                     }
                 }
-                .padding(.top, 4)
             }
+            .padding(.top, 4)
         }
     }
 
@@ -386,7 +414,21 @@ private struct PlayerColumn: View {
 private struct RankColumn: View {
     @Environment(\.colorScheme) private var colorScheme
     let title: String
+    /// 非 nil 时用文字代替数值，用于排位尚未生效或已作废，避免显示成 +0。
+    let placeholder: String?
     let change: Int
+
+    init(title: String, change: Int) {
+        self.title = title
+        self.placeholder = nil
+        self.change = change
+    }
+
+    init(title: String, placeholder: String) {
+        self.title = title
+        self.placeholder = placeholder
+        self.change = 0
+    }
 
     var body: some View {
         let palette = AppTheme.palette(for: colorScheme)
@@ -394,9 +436,15 @@ private struct RankColumn: View {
             Text(title)
                 .font(.system(size: 13))
                 .foregroundStyle(palette.textSecondary)
-            Text(change > 0 ? "+\(change)" : "\(change)")
-                .font(.system(size: 22, weight: .bold).monospacedDigit())
-                .foregroundStyle(change > 0 ? AppTheme.primary : palette.textPrimary)
+            if let placeholder {
+                Text(placeholder)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(palette.textSecondary)
+            } else {
+                Text(change > 0 ? "+\(change)" : "\(change)")
+                    .font(.system(size: 22, weight: .bold).monospacedDigit())
+                    .foregroundStyle(change > 0 ? AppTheme.primary : palette.textPrimary)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

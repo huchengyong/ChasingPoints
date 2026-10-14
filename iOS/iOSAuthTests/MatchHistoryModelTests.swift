@@ -74,6 +74,48 @@ final class MatchHistoryModelTests: XCTestCase {
         XCTAssertEqual(report.completionSource, "referee")
     }
 
+    func testRankSettlementPendingShowsEffectiveClockInShanghaiTime() throws {
+        let report = try decode(MatchDetailEnvelope.self, from: MatchHistoryFixtures.playerDetail(
+            rankSettlementStatus: "pending", rankSettlementDueAt: "2026-08-25T16:10:00+08:00"
+        )).match
+        XCTAssertEqual(report.rankSettlement, .pending(effectiveClock: "16:10"))
+
+        // 服务端换用其他偏移时仍按北京时间显示。
+        let utc = try decode(MatchDetailEnvelope.self, from: MatchHistoryFixtures.playerDetail(
+            rankSettlementStatus: "pending", rankSettlementDueAt: "2026-08-25T08:10:00Z"
+        )).match
+        XCTAssertEqual(utc.rankSettlement, .pending(effectiveClock: "16:10"))
+    }
+
+    func testRankSettlementPendingWithUnparsableTimeDoesNotInventAClock() throws {
+        let report = try decode(MatchDetailEnvelope.self, from: MatchHistoryFixtures.playerDetail(
+            rankSettlementStatus: "pending", rankSettlementDueAt: "不是时间"
+        )).match
+        XCTAssertEqual(report.rankSettlement, .pending(effectiveClock: nil))
+        XCTAssertNil(MatchTimeFormatting.clock(nil))
+        XCTAssertNil(MatchTimeFormatting.clock(""))
+    }
+
+    func testRankSettlementVoidedIsNotCountedAsZeroChange() throws {
+        let report = try decode(MatchDetailEnvelope.self, from: MatchHistoryFixtures.playerDetail(
+            rankSettlementStatus: "voided", rankSettlementDueAt: "2026-08-25T16:10:00+08:00"
+        )).match
+        XCTAssertEqual(report.rankSettlement, .voided)
+    }
+
+    func testRankSettlementSettledNoneAndLegacyKeepOrdinaryRankDisplay() throws {
+        for status in ["settled", "none", "未知状态"] {
+            let report = try decode(MatchDetailEnvelope.self, from: MatchHistoryFixtures.playerDetail(
+                rankSettlementStatus: status, rankSettlementDueAt: "2026-08-25T16:10:00+08:00"
+            )).match
+            XCTAssertEqual(report.rankSettlement, .counted, status)
+        }
+        // 旧版服务端不返回结算字段。
+        let legacy = try decode(MatchDetailEnvelope.self, from: MatchHistoryFixtures.playerDetail()).match
+        XCTAssertNil(legacy.rankSettlementStatus)
+        XCTAssertEqual(legacy.rankSettlement, .counted)
+    }
+
     func testRefereeReportTreatsNullArraysAsAbsent() throws {
         let report = try decode(MatchDetailEnvelope.self, from: MatchHistoryFixtures.refereeDetail()).match
 

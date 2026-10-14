@@ -64,11 +64,11 @@ enum MatchHistoryFixtures {
         myScore: Int = 3,
         opponentScore: Int = 1,
         highlights: [[String: Any]]? = nil,
-        stats: [[String: Any]]? = nil
+        stats: [[String: Any]]? = nil,
+        rankSettlementStatus: String? = nil,
+        rankSettlementDueAt: String? = nil
     ) -> [String: Any] {
-        [
-            "success": true,
-            "match": [
+        var match: [String: Any] = [
                 "id": id,
                 "player1_id": 1,
                 "player2_id": 2,
@@ -116,8 +116,11 @@ enum MatchHistoryFixtures {
                     "break_147": 0,
                 ],
                 "created_at": matchTime,
-            ],
         ]
+        // 旧版服务端不返回这两个字段；缺省时保持与旧响应一致。
+        if let rankSettlementStatus { match["rank_settlement_status"] = rankSettlementStatus }
+        if let rankSettlementDueAt { match["rank_settlement_due_at"] = rankSettlementDueAt }
+        return ["success": true, "match": match]
     }
 
     /// `GET /api/match/detail`：裁判视角，不含选手排位数据。

@@ -69,9 +69,22 @@ struct MatchReport: Decodable, Equatable {
     let refereeAvatar: String?
     let refereeDurationSeconds: Int64?
     let completionSource: String?
+    /// 约球排位结算状态（`none` / `pending` / `settled` / `voided`）；旧版服务端不返回。
+    let rankSettlementStatus: String?
+    /// 排位结算生效时刻（北京时间 RFC3339），仅走过异议期的比赛有值。
+    let rankSettlementDueAt: String?
     let createdAt: String
 
     var isRefereeView: Bool { viewerRole == "referee" }
+
+    /// 排位结算展示状态：待生效或已作废时不得把排位变化显示为 +0。
+    var rankSettlement: MatchRankSettlement {
+        switch rankSettlementStatus {
+        case "pending": .pending(effectiveClock: MatchTimeFormatting.clock(rankSettlementDueAt))
+        case "voided": .voided
+        default: .counted
+        }
+    }
 
     /// 已结算结果优先：整场认输时胜方可能局分较少；缺少 `result` 时按最终比分判定。
     var outcome: MatchOutcome {
@@ -79,6 +92,15 @@ struct MatchReport: Decodable, Equatable {
     }
 
     var isMatchConcession: Bool { snookerFrameEndReason == "match_concession" }
+}
+
+/// 战报的排位结算展示状态。已生效、无需延后与旧版服务端都按 `counted` 沿用普通排位展示。
+enum MatchRankSettlement: Equatable {
+    case counted
+    /// 异议期内排位尚未生效；`effectiveClock` 为北京时间 `HH:mm`，无法解析时为 nil。
+    case pending(effectiveClock: String?)
+    /// 对方已提出异议，本场不计排位积分。
+    case voided
 }
 
 struct MatchRewardItem: Decodable, Identifiable, Equatable {
@@ -202,6 +224,16 @@ enum MatchTimeFormatting {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
         return formatter.date(from: text)
+    }
+
+    /// 北京时间 `HH:mm`；无法解析返回 nil，不显示错误时间。
+    static func clock(_ text: String?) -> String? {
+        guard let date = parse(text) else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "Asia/Shanghai")
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
     }
 
     /// 与 UniApp 列表的相对时间规则一致：一个月内用相对时间，之后显示日期。

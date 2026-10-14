@@ -23,6 +23,21 @@ final class MatchReportModelTests: XCTestCase {
         XCTAssertEqual(server.requestCount("/api/match/reward-summary"), 1)
     }
 
+    func testPendingRankSettlementReachesTheLoadedReport() async throws {
+        let server = MockHTTPServer()
+        let session = await makeRestoredSession(server)
+        server.stub("GET", "/api/match/detail", .json(MatchHistoryFixtures.playerDetail(
+            rankSettlementStatus: "pending", rankSettlementDueAt: "2026-08-25T16:10:00+08:00"
+        )))
+        server.stub("GET", "/api/match/reward-summary", .json(MatchHistoryFixtures.rewardSummary()))
+        let model = MatchReportModel(session: session, matchId: 101)
+
+        await model.load()
+
+        guard case .loaded(let report) = model.phase else { return XCTFail("战报应加载成功：\(model.phase)") }
+        XCTAssertEqual(report.rankSettlement, .pending(effectiveClock: "16:10"))
+    }
+
     func testRefereeReportDoesNotRequestReward() async throws {
         let server = MockHTTPServer()
         let session = await makeRestoredSession(server)
