@@ -402,7 +402,7 @@ test('首次历史读取途中恢复前台，旧批次结束后去重补读', as
   }
 })
 
-test('发起页持续停留跨午夜，提交与重试使用当前日期基准', async () => {
+test('发起页持续停留跨午夜，按原实际日期提交且不额外预读时间', async () => {
   let serverNow = '2026-09-24 23:59:50'
   let timeReads = 0
   const posted = []
@@ -414,13 +414,11 @@ test('发起页持续停留跨午夜，提交与重试使用当前日期基准',
         timeReads += 1
         return { success: true, server_time: serverNow }
       },
-      // 模拟服务端：以提交时刻的北京时间校验相对日与实际日期一致。
+      // 模拟服务端：只按提交时刻的北京时间校验实际日期在今天到后天之间。
       sendChallenge: async (payload) => {
         posted.push({ ...payload })
-        return {
-          success: payload.day_offset === challengeTime.dayOffsetOfScheduledDate(serverNow, payload.scheduled_date),
-          message: '预约日期与所选相对日期不一致'
-        }
+        const offset = challengeTime.dayOffsetOfScheduledDate(serverNow, payload.scheduled_date)
+        return { success: offset >= 0 && offset <= 2, challenge_id: 79 }
       }
     },
     globals: {
@@ -432,15 +430,15 @@ test('发起页持续停留跨午夜，提交与重试使用当前日期基准',
     page.runHooks('onShow')
     await page.flushPromises()
 
-    // 页面保持打开跨过午夜：服务端日期前进，旧基准的相对日被拒绝。
+    // 页面保持打开跨过午夜：原「明天」仍按同一实际日期发送，不滚到另一天。
     serverNow = '2026-09-25 00:01:00'
     await page.wrapper.find('.submit-btn').trigger('tap')
     await page.flushPromises()
-    await page.wrapper.find('.submit-btn').trigger('tap')
-    await page.flushPromises()
 
-    assert.ok(posted.some((payload) => payload.day_offset === 0), '提交前刷新时间基准后，重试必须使用当前相对日')
-    assert.equal(timeReads, 3, '两次提交各自刷新一次时间基准')
+    assert.equal(posted.length, 1)
+    assert.equal(posted[0].scheduled_date, '2026-09-25')
+    assert.equal('day_offset' in posted[0], false, '不再提交相对日')
+    assert.equal(timeReads, 1, '提交不得额外读取时间基准')
   } finally {
     // 等待成功路径的 600ms 延迟导航触发完毕，避免清理 uni 后产生未捕获异常。
     await new Promise((resolve) => setTimeout(resolve, 650))
@@ -449,29 +447,58 @@ test('发起页持续停留跨午夜，提交与重试使用当前日期基准',
 })
 
 
-test('发起页提交链路：切号/卸载/重复点击不得发出写请求', async () => {
-  const user = { userId: 1, authGeneration: 1 }
-  let summaryReads = 0
+test('发起页只提交球种与比赛类型，不携带赛制或公开范围', async () => {
   const writes = []
-  let pendingSummary
+  const page = await mountPage({
+    file: 'subPages/match/challengeCompose.vue',
+    user: { userId: 1, authGeneration: 1 },
+    api: {
+      getChallengeSummary: async () => ({ success: true, server_time: '2026-09-24 12:00:00' }),
+      sendChallenge: async (payload) => {
+        writes.push({ ...payload })
+        return { success: false, message: '仅检查请求体' }
+      }
+    },
+    globals: {
+      uni: { showToast: () => {} }
+    }
+  })
+  try {
+    page.runHooks('onLoad', { opponent_id: 2, game_type: 3, match_mode: 'practice' })
+    page.runHooks('onShow')
+    await page.flushPromises()
+    await page.wrapper.find('.submit-btn').trigger('tap')
+    await page.flushPromises()
+
+    assert.equal(writes.length, 1)
+    assert.deepEqual(Object.keys(writes[0]).sort(), ['end_hour', 'game_type', 'match_mode', 'message', 'scheduled_date', 'start_hour', 'to_user_id'])
+    assert.equal(writes[0].match_mode, 'practice')
+  } finally {
+    await page.cleanup()
+  }
+})
+
+
+test('发起页提交链路：重复点击只发一次，切号/卸载后的旧响应不得标脏或导航', async () => {
+  const user = { userId: 1, authGeneration: 1 }
+  const writes = []
+  const toasts = []
+  const routes = []
+  let dirtyMarks = 0
+  let pendingSend
   const page = await mountPage({
     file: 'subPages/match/challengeCompose.vue',
     user,
     api: {
-      getChallengeSummary: () => {
-        summaryReads += 1
-        // 首读立即完成；提交预读挂起，模拟跨请求切号/卸载窗口。
-        return summaryReads === 1
-          ? Promise.resolve({ success: true, server_time: '2026-09-24 12:00:00' })
-          : new Promise((resolve) => { pendingSummary = resolve })
-      },
-      sendChallenge: async (payload) => {
+      getChallengeSummary: async () => ({ success: true, server_time: '2026-09-24 12:00:00' }),
+      sendChallenge: (payload) => {
         writes.push({ ...payload })
-        return { success: true, challenge_id: 77 }
+        return new Promise((resolve) => { pendingSend = resolve })
       }
     },
+    activityDirty: () => { dirtyMarks += 1 },
     globals: {
-      uni: { showToast: () => {}, switchTab: () => {} }
+      uni: { showToast: (options) => toasts.push(options), switchTab: ({ url }) => routes.push(url) }
     }
   })
   try {
@@ -479,48 +506,45 @@ test('发起页提交链路：切号/卸载/重复点击不得发出写请求', 
     page.runHooks('onShow')
     await page.flushPromises()
 
-    // 第一击进入挂起的提交前预读。
+    // 第一击发出写请求并挂起。
     await page.wrapper.find('.submit-btn').trigger('tap')
     await page.flushPromises()
-    assert.equal(page.wrapper.find('.submit-btn').attributes('disabled'), '', '提交锁必须在时间预读前禁用按钮')
-    assert.equal(summaryReads, 2)
+    assert.equal(page.wrapper.find('.submit-btn').attributes('disabled'), '', '写请求进行中必须禁用按钮')
+    assert.equal(writes.length, 1)
 
-    // 重复点击：不得再发起时间读取或 POST。
+    // 重复点击：不得再发 POST。
     await page.wrapper.find('.submit-btn').trigger('tap')
     await page.flushPromises()
-    assert.equal(summaryReads, 2, '重复点击不得绕过提交锁')
-    assert.equal(writes.length, 0)
+    assert.equal(writes.length, 1, '重复点击不得绕过提交锁')
 
-    // 卸载页面并切号后，旧预读返回：不得用新账号 Token 发出 A 的表单。
+    // 卸载页面并切号后，旧写响应返回：不得提示、标脏或导航。
     page.runHooks('onUnload')
     page.user.userId = 3
     page.user.authGeneration = 2
-    pendingSummary({ success: true, server_time: '2026-09-24 12:00:01' })
+    pendingSend({ success: true, challenge_id: 77 })
     await page.flushPromises()
-    assert.equal(writes.length, 0, '预读期间切号/卸载后不得继续发送写请求')
-  } finally {
     await new Promise((resolve) => setTimeout(resolve, 650))
+    assert.equal(dirtyMarks, 0, '旧响应不得标脏新账号的活动状态')
+    assert.deepEqual(routes, [], '旧响应不得导航')
+    assert.deepEqual(toasts, [], '旧响应不得提示')
+  } finally {
     await page.cleanup()
   }
 })
 
-test('发起页预读失败可重试且只发送一次', async () => {
+test('发起页发送失败保留输入，提交锁释放后可重试', async () => {
   const user = { userId: 1, authGeneration: 1 }
-  let summaryReads = 0
+  let sends = 0
   const writes = []
   const page = await mountPage({
     file: 'subPages/match/challengeCompose.vue',
     user,
     api: {
-      getChallengeSummary: () => {
-        summaryReads += 1
-        // 首读成功；提交预读第一次失败，重试成功。
-        if (summaryReads === 1) return Promise.resolve({ success: true, server_time: '2026-09-24 12:00:00' })
-        return summaryReads === 2 ? Promise.reject(new Error('time read failed')) : Promise.resolve({ success: true, server_time: '2026-09-24 12:00:00' })
-      },
-      sendChallenge: async (payload) => {
+      getChallengeSummary: async () => ({ success: true, server_time: '2026-09-24 12:00:00' }),
+      sendChallenge: (payload) => {
         writes.push({ ...payload })
-        return { success: true, challenge_id: 78 }
+        sends += 1
+        return sends === 1 ? Promise.reject(new Error('network failed')) : Promise.resolve({ success: true, challenge_id: 78 })
       }
     },
     globals: {
@@ -528,21 +552,19 @@ test('发起页预读失败可重试且只发送一次', async () => {
     }
   })
   try {
-    page.runHooks('onLoad', { opponent_id: 2 })
+    page.runHooks('onLoad', { opponent_id: 2, message: '老地方见' })
     page.runHooks('onShow')
     await page.flushPromises()
 
-    // 预读失败：不发送 POST，提交锁释放后可重试。
     await page.wrapper.find('.submit-btn').trigger('tap')
     await page.flushPromises()
-    assert.equal(writes.length, 0, '预读失败不得发送 POST')
-    assert.notEqual(page.wrapper.find('.submit-btn').attributes('disabled'), '', '预读失败后提交锁必须释放')
+    assert.equal(writes.length, 1)
+    assert.notEqual(page.wrapper.find('.submit-btn').attributes('disabled'), '', '发送失败后提交锁必须释放')
 
-    // 重试成功：恰好一次 POST。
     await page.wrapper.find('.submit-btn').trigger('tap')
     await page.flushPromises()
-    assert.equal(writes.length, 1, '重试应恰好发送一次')
-    assert.equal(writes[0].day_offset, 0)
+    assert.equal(writes.length, 2, '重试应恰好再发送一次')
+    assert.deepEqual(writes[1], writes[0], '重试必须沿用原输入')
   } finally {
     await new Promise((resolve) => setTimeout(resolve, 650))
     await page.cleanup()

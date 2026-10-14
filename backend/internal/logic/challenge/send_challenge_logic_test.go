@@ -16,11 +16,11 @@ func challengeSendCtx(userID int64) context.Context {
 	return context.WithValue(context.Background(), "user_id", userID)
 }
 
-func seedSendSchedule(t *testing.T) (int, string) {
+func seedSendSchedule(t *testing.T) string {
 	t.Helper()
 	tomorrow := logicx.NowUTC8().AddDate(0, 0, 1)
 	date := time.Date(tomorrow.Year(), tomorrow.Month(), tomorrow.Day(), 0, 0, 0, 0, logicx.UTC8Location)
-	return 1, date.Format("2006-01-02")
+	return date.Format("2006-01-02")
 }
 
 func TestSendChallengeBlockedWhenEitherSideHasOpenJoinedChallenge(t *testing.T) {
@@ -40,7 +40,7 @@ func TestSendChallengeBlockedWhenEitherSideHasOpenJoinedChallenge(t *testing.T) 
 			t.Fatalf("seed friendship: %v", err)
 		}
 	}
-	offset, scheduledDate := seedSendSchedule(t)
+	scheduledDate := seedSendSchedule(t)
 
 	send := func(sender, recipient int64) *types.SendChallengeResp {
 		logic := NewSendChallengeLogic(challengeSendCtx(sender), svcCtx)
@@ -48,9 +48,6 @@ func TestSendChallengeBlockedWhenEitherSideHasOpenJoinedChallenge(t *testing.T) 
 			ToUserId:      int64(recipient),
 			GameType:      3,
 			MatchMode:     model.MatchModePractice,
-			Visibility:    model.MatchVisibilityPrivate,
-			MatchFormat:   "free",
-			DayOffset:     offset,
 			ScheduledDate: scheduledDate,
 			StartHour:     16,
 			EndHour:       17,
@@ -113,10 +110,10 @@ func TestSendChallengeRechecksOccupancyAfterUserLock(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	offset, scheduledDate := seedSendSchedule(t)
+	scheduledDate := seedSendSchedule(t)
 	resp, err := NewSendChallengeLogic(challengeSendCtx(1001), svcCtx).SendChallenge(&types.SendChallengeReq{
-		ToUserId: 3003, GameType: 3, MatchMode: model.MatchModePractice, Visibility: model.MatchVisibilityPrivate,
-		MatchFormat: "free", DayOffset: offset, ScheduledDate: scheduledDate, StartHour: 16, EndHour: 17,
+		ToUserId: 3003, GameType: 3, MatchMode: model.MatchModePractice,
+		ScheduledDate: scheduledDate, StartHour: 16, EndHour: 17,
 	})
 	if err != nil || !delayed || !resp.Success {
 		t.Fatalf("用户锁等待跨过失效时刻后旧约球不得占用发送资格: resp=%+v err=%v delayed=%v", resp, err, delayed)
@@ -129,15 +126,12 @@ func TestSendChallengeBlockedForStranger(t *testing.T) {
 		model.User{Id: 1001, Nickname: "小李"},
 		model.User{Id: 2002, Nickname: "陌生人"},
 	)
-	offset, scheduledDate := seedSendSchedule(t)
+	scheduledDate := seedSendSchedule(t)
 	logic := NewSendChallengeLogic(challengeSendCtx(1001), svcCtx)
 	resp, err := logic.SendChallenge(&types.SendChallengeReq{
 		ToUserId:      2002,
 		GameType:      3,
 		MatchMode:     model.MatchModePractice,
-		Visibility:    model.MatchVisibilityPrivate,
-		MatchFormat:   "free",
-		DayOffset:     offset,
 		ScheduledDate: scheduledDate,
 		StartHour:     16,
 		EndHour:       17,
@@ -150,15 +144,41 @@ func TestSendChallengeBlockedForStranger(t *testing.T) {
 	}
 }
 
-func TestValidateChallengeMatchOptionsRejectsVersion2LegacySnookerFormat(t *testing.T) {
-	_, _, _, _, _, _, _, _, _, err := validateChallengeMatchOptions(1, model.MatchModePractice, "", "", 0,
-		model.SnookerRulesVersionWPBSA, 0, 0, 1, model.SnookerFormatLegacy)
-	if err == nil || err.Error() != "请选择有效的斯诺克赛制" {
-		t.Fatalf("version 2 must reject legacy format that can never finish: %v", err)
+func TestChallengeStartReqDerivesOptionsFromGameTypeAndMode(t *testing.T) {
+	cases := []struct {
+		name           string
+		gameType       int
+		mode           string
+		wantMode       string
+		wantVisibility string
+		wantFormat     string
+		wantSnooker    string
+		wantVersion    int
+		wantActor      int
+	}{
+		{name: "中八排位", gameType: 3, mode: model.MatchModeRanked, wantMode: model.MatchModeRanked, wantVisibility: model.MatchVisibilityPublic, wantFormat: model.MatchFormatFree, wantSnooker: model.SnookerFormatLegacy, wantVersion: model.SnookerRulesVersionLegacy},
+		{name: "美九练习", gameType: 4, mode: model.MatchModePractice, wantMode: model.MatchModePractice, wantVisibility: model.MatchVisibilityPrivate, wantFormat: model.MatchFormatFree, wantSnooker: model.SnookerFormatLegacy, wantVersion: model.SnookerRulesVersionLegacy},
+		{name: "九球追分沿用既有赛制", gameType: 2, mode: model.MatchModeRanked, wantMode: model.MatchModeRanked, wantVisibility: model.MatchVisibilityPublic, wantFormat: model.MatchFormatLegacy, wantSnooker: model.SnookerFormatLegacy, wantVersion: model.SnookerRulesVersionLegacy},
+		{name: "斯诺克自由局数", gameType: 1, mode: "", wantMode: model.MatchModeRanked, wantVisibility: model.MatchVisibilityPublic, wantFormat: model.MatchFormatLegacy, wantSnooker: model.SnookerFormatFree, wantVersion: model.SnookerRulesVersionWPBSA, wantActor: 1},
 	}
-	_, _, _, _, _, _, snookerWins, _, snookerFormat, err := validateChallengeMatchOptions(1, model.MatchModePractice, "", "", 0,
-		model.SnookerRulesVersionWPBSA, 5, 0, 1, model.SnookerFormatLegacy)
-	if err != nil || snookerFormat != model.SnookerFormatRaceTo || snookerWins != 3 {
-		t.Fatalf("explicit legacy with best-of should still map to race-to: format=%q wins=%d err=%v", snookerFormat, snookerWins, err)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req, err := challengeStartReq(1001, 2002, tc.gameType, tc.mode)
+			if err != nil {
+				t.Fatalf("challengeStartReq: %v", err)
+			}
+			if req.MatchMode != tc.wantMode || req.Visibility != tc.wantVisibility || req.MatchFormat != tc.wantFormat ||
+				req.SnookerFormat != tc.wantSnooker || req.SnookerRulesVersion != tc.wantVersion || req.StartingActor != tc.wantActor {
+				t.Fatalf("约球开局选项必须与扫码开局同一规范化结果: %+v", req)
+			}
+		})
+	}
+	for _, invalid := range []struct {
+		gameType int
+		mode     string
+	}{{gameType: 0, mode: model.MatchModeRanked}, {gameType: 5, mode: model.MatchModeRanked}, {gameType: 3, mode: "casual"}} {
+		if _, err := challengeStartReq(1001, 2002, invalid.gameType, invalid.mode); err == nil {
+			t.Fatalf("invalid game type or mode must be rejected: %+v", invalid)
+		}
 	}
 }

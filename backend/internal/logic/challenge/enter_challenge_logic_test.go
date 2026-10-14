@@ -66,8 +66,6 @@ func seedAcceptedChallengeForEnter(t *testing.T, svcCtx *svc.ServiceContext, wai
 		StartHour:     &startHour,
 		EndHour:       &endHour,
 		MatchMode:     model.MatchModeRanked,
-		Visibility:    model.MatchVisibilityPublic,
-		MatchFormat:   "free",
 		Status:        model.ChallengeStatusAccepted,
 		WaitingUserId: challengeInt64Ptr(waitingUser),
 		ExpiresAt:     time.Now().Add(12 * time.Hour),
@@ -99,7 +97,7 @@ func TestEnterChallengeCreatesSingleMatchAndSingleFinishAllowed(t *testing.T) {
 		t.Fatalf("challenge ranked match must allow single finish: %+v", created)
 	}
 	if created.MatchMode != model.MatchModeRanked || created.Visibility != model.MatchVisibilityPublic || created.MatchFormat != "free" {
-		t.Fatalf("match options must come from invite: %+v", created)
+		t.Fatalf("match options must be derived from invite game type and mode: %+v", created)
 	}
 
 	// 重试/连点：返回同一场比赛，不重复创建。
@@ -197,9 +195,8 @@ func TestFinishChallengeMatchSettlesChallengeOnce(t *testing.T) {
 	seedChallengeUsers(t, svcCtx, model.User{Id: 1001, Nickname: "小李"}, model.User{Id: 2002, Nickname: "小王"})
 	challenge := seedAcceptedChallengeForEnter(t, svcCtx, 1001)
 	// 用练习赛验证共享结算里的约球同步（排位结算依赖完整竞技模型，另有用例覆盖）。
-	if err := svcCtx.DB.Model(&model.Challenge{}).Where("id = ?", challenge.Id).Updates(map[string]interface{}{
-		"match_mode": model.MatchModePractice, "visibility": model.MatchVisibilityPrivate,
-	}).Error; err != nil {
+	if err := svcCtx.DB.Model(&model.Challenge{}).Where("id = ?", challenge.Id).
+		Update("match_mode", model.MatchModePractice).Error; err != nil {
 		t.Fatalf("switch to practice: %v", err)
 	}
 

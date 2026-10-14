@@ -3,6 +3,7 @@ package challenge
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,27 +11,13 @@ import (
 	"gorm.io/gorm"
 
 	logicx "chasing_points/internal/logic"
+	matchlogic "chasing_points/internal/logic/match"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 )
 
 // challengeStatusText 状态文案由前端负责，这里仅透传数值。
-
-func dayOffsetOf(scheduledDate *time.Time, now time.Time) int {
-	if scheduledDate == nil {
-		return 0
-	}
-	date := logicx.InUTC8(*scheduledDate)
-	today := logicx.InUTC8(now)
-	todayStart := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, logicx.UTC8Location)
-	dateStart := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, logicx.UTC8Location)
-	offset := int(dateStart.Sub(todayStart).Hours() / 24)
-	if offset < 0 {
-		return 0
-	}
-	return offset
-}
 
 func formatHourDate(t time.Time) string {
 	return logicx.InUTC8(t).Format("2006-01-02")
@@ -49,36 +36,27 @@ func buildChallengeInfo(row model.ChallengeListRow, matchID int64, now time.Time
 		matchID = row.LinkedMatchId
 	}
 	info := types.ChallengeInfo{
-		Id:                  row.Id,
-		MatchId:             matchID,
-		FromUserId:          row.FromUserId,
-		FromNickname:        row.FromNickname,
-		FromAvatar:          row.FromAvatar,
-		ToUserId:            row.ToUserId,
-		ToNickname:          row.ToNickname,
-		ToAvatar:            row.ToAvatar,
-		GameType:            row.GameType,
-		MatchMode:           row.MatchMode,
-		Visibility:          row.Visibility,
-		MatchFormat:         row.MatchFormat,
-		TargetWins:          row.TargetWins,
-		SnookerRulesVersion: row.SnookerRulesVersion,
-		BestOfFrames:        row.BestOfFrames,
-		SnookerFormat:       row.SnookerFormat,
-		SnookerTargetWins:   row.SnookerTargetWins,
-		StartingActor:       row.StartingActor,
-		Message:             row.Message,
-		Status:              row.Status,
-		CloseReason:         row.CloseReason,
-		CreatedAt:           formatTimePtr(row.CreatedAt),
-		ExpiresAt:           formatTimePtr(row.ExpiresAt),
+		Id:           row.Id,
+		MatchId:      matchID,
+		FromUserId:   row.FromUserId,
+		FromNickname: row.FromNickname,
+		FromAvatar:   row.FromAvatar,
+		ToUserId:     row.ToUserId,
+		ToNickname:   row.ToNickname,
+		ToAvatar:     row.ToAvatar,
+		GameType:     row.GameType,
+		MatchMode:    row.MatchMode,
+		Message:      row.Message,
+		Status:       row.Status,
+		CloseReason:  row.CloseReason,
+		CreatedAt:    formatTimePtr(row.CreatedAt),
+		ExpiresAt:    formatTimePtr(row.ExpiresAt),
 	}
 	if row.WaitingUserId != nil {
 		info.WaitingUserId = *row.WaitingUserId
 	}
 	if row.ScheduledDate != nil {
 		info.ScheduledDate = formatHourDate(*row.ScheduledDate)
-		info.DayOffset = dayOffsetOf(row.ScheduledDate, now)
 	}
 	if row.StartHour != nil {
 		info.StartHour = *row.StartHour
@@ -105,30 +83,21 @@ func buildChallengeInfoFromRecord(challenge *model.Challenge, now time.Time) typ
 		return types.ChallengeInfo{}
 	}
 	info := types.ChallengeInfo{
-		Id:                  challenge.Id,
-		FromUserId:          challenge.FromUserId,
-		ToUserId:            challenge.ToUserId,
-		GameType:            challenge.GameType,
-		MatchMode:           challenge.MatchMode,
-		Visibility:          challenge.Visibility,
-		MatchFormat:         challenge.MatchFormat,
-		TargetWins:          challenge.TargetWins,
-		SnookerRulesVersion: challenge.SnookerRulesVersion,
-		BestOfFrames:        challenge.BestOfFrames,
-		SnookerFormat:       challenge.SnookerFormat,
-		SnookerTargetWins:   challenge.SnookerTargetWins,
-		StartingActor:       challenge.StartingActor,
-		Message:             challenge.Message,
-		Status:              challenge.Status,
-		CloseReason:         challenge.CloseReason,
-		ExpiresAt:           formatTimePtr(challenge.ExpiresAt),
+		Id:          challenge.Id,
+		FromUserId:  challenge.FromUserId,
+		ToUserId:    challenge.ToUserId,
+		GameType:    challenge.GameType,
+		MatchMode:   challenge.MatchMode,
+		Message:     challenge.Message,
+		Status:      challenge.Status,
+		CloseReason: challenge.CloseReason,
+		ExpiresAt:   formatTimePtr(challenge.ExpiresAt),
 	}
 	if challenge.WaitingUserId != nil {
 		info.WaitingUserId = *challenge.WaitingUserId
 	}
 	if challenge.ScheduledDate != nil {
 		info.ScheduledDate = formatHourDate(*challenge.ScheduledDate)
-		info.DayOffset = dayOffsetOf(challenge.ScheduledDate, now)
 	}
 	if challenge.StartHour != nil {
 		info.StartHour = *challenge.StartHour
@@ -140,91 +109,23 @@ func buildChallengeInfoFromRecord(challenge *model.Challenge, now time.Time) typ
 	return info
 }
 
-// validateChallengeMatchOptions 服务端权威校验球种与赛制，返回规范化后的选项。
-func validateChallengeMatchOptions(gameType int, matchMode, visibility, matchFormat string, targetWins int,
-	snookerRulesVersion, bestOfFrames, snookerTargetWins, startingActor int,
-	snookerFormat string,
-) (mode, vis, format string, wins int, snookerVersion, frames, snookerWins, actor int, snookerFmt string, err error) {
-	if matchMode == "" {
-		matchMode = model.MatchModeRanked
-	}
-	if matchMode != model.MatchModePractice && matchMode != model.MatchModeRanked {
-		return "", "", "", 0, 0, 0, 0, 0, "", fmt.Errorf("请选择有效的比赛类型")
-	}
-	if visibility == "" {
-		if matchMode == model.MatchModePractice {
-			visibility = model.MatchVisibilityPrivate
-		} else {
-			visibility = model.MatchVisibilityPublic
-		}
-	}
-	if visibility != model.MatchVisibilityPrivate && visibility != model.MatchVisibilityPublic {
-		return "", "", "", 0, 0, 0, 0, 0, "", fmt.Errorf("请选择有效的公开范围")
-	}
-	if matchMode == model.MatchModeRanked && visibility != model.MatchVisibilityPublic {
-		return "", "", "", 0, 0, 0, 0, 0, "", fmt.Errorf("排位赛必须公开展示")
-	}
+// challengeStartReq 约球只保存球种与比赛类型：赛制固定为发起页展示的自由局数（九球追分沿用其既有赛制），
+// 公开范围随类型缺省。发送与第二人进入都走扫码开局的同一套规范化校验，邀请可开局且开局规则与扫码一致。
+func challengeStartReq(userId, opponentId int64, gameType int, matchMode string) (*types.StartMatchReq, error) {
 	if gameType < 1 || gameType > 4 {
-		return "", "", "", 0, 0, 0, 0, 0, "", fmt.Errorf("请选择有效的球种")
+		return nil, fmt.Errorf("请选择有效的球种")
 	}
+	req := &types.StartMatchReq{OpponentId: opponentId, GameType: gameType, MatchMode: matchMode}
 	if gameType == 1 {
-		version := snookerRulesVersion
-		if version == 0 {
-			version = model.SnookerRulesVersionLegacy
-		}
-		if version != model.SnookerRulesVersionLegacy && version != model.SnookerRulesVersionWPBSA {
-			return "", "", "", 0, 0, 0, 0, 0, "", fmt.Errorf("不支持的斯诺克规则版本")
-		}
-		if version == model.SnookerRulesVersionWPBSA {
-			if snookerFormat == "" {
-				if bestOfFrames <= 0 || bestOfFrames%2 == 0 {
-					return "", "", "", 0, 0, 0, 0, 0, "", fmt.Errorf("斯诺克总局数必须为正奇数")
-				}
-				if startingActor != 1 && startingActor != 2 {
-					return "", "", "", 0, 0, 0, 0, 0, "", fmt.Errorf("请选择首局开球方")
-				}
-			}
-			formatValue, targetValue, valid := model.NormalizeSnookerFormat(snookerFormat, snookerTargetWins, bestOfFrames)
-			// 版本2没有可正常结束的 legacy 赛制，与修改赛制接口保持一致。
-			if !valid || formatValue == model.SnookerFormatLegacy {
-				return "", "", "", 0, 0, 0, 0, 0, "", fmt.Errorf("请选择有效的斯诺克赛制")
-			}
-			snookerFormat = formatValue
-			snookerTargetWins = targetValue
-			if startingActor != 1 && startingActor != 2 {
-				startingActor = 1
-			}
-		} else {
-			bestOfFrames = 0
-			snookerFormat = model.SnookerFormatLegacy
-			snookerTargetWins = 0
-			startingActor = 0
-		}
-		matchFormat = ""
-		targetWins = 0
-	} else if gameType == 2 {
-		// 九球追分保持既有赛制，不适用灵活赛制字段。
-		matchFormat = ""
-		targetWins = 0
-		snookerFormat = ""
-		snookerTargetWins = 0
-		bestOfFrames = 0
-		startingActor = 0
-		snookerRulesVersion = model.SnookerRulesVersionLegacy
-	} else {
-		formatValue, targetValue, valid := model.NormalizePoolMatchFormat(gameType, matchFormat, targetWins)
-		if !valid {
-			return "", "", "", 0, 0, 0, 0, 0, "", fmt.Errorf("请选择有效的赛制")
-		}
-		matchFormat = formatValue
-		targetWins = targetValue
-		bestOfFrames = 0
-		startingActor = 0
-		snookerFormat = ""
-		snookerTargetWins = 0
-		snookerRulesVersion = 0
+		req.SnookerRulesVersion = model.SnookerRulesVersionWPBSA
+		req.SnookerFormat = model.SnookerFormatFree
+	} else if model.IsPoolMatchFormatGameType(gameType) {
+		req.MatchFormat = model.MatchFormatFree
 	}
-	return matchMode, visibility, matchFormat, targetWins, snookerRulesVersion, bestOfFrames, snookerTargetWins, startingActor, snookerFormat, nil
+	if message := matchlogic.NormalizeStartMatchOptions(userId, req); message != "" {
+		return nil, errors.New(message)
+	}
+	return req, nil
 }
 
 // canSendChallengeTo 服务端校验发送资格：好友或曾有真实比赛的平台对手；再按接收方好友限制判断。

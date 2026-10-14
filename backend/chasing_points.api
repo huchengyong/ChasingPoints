@@ -2344,53 +2344,35 @@ service chasing_points-api {
 
 // ==================== 约球模块 ====================
 type ChallengeInfo {
-	Id                  int64  `json:"id"`
-	MatchId             int64  `json:"match_id,optional"`
-	FromUserId          int64  `json:"from_user_id"`
-	FromNickname        string `json:"from_nickname"`
-	FromAvatar          string `json:"from_avatar"`
-	ToUserId            int64  `json:"to_user_id"`
-	ToNickname          string `json:"to_nickname"`
-	ToAvatar            string `json:"to_avatar"`
-	GameType            int    `json:"game_type"`
-	MatchMode           string `json:"match_mode,optional"`
-	Visibility          string `json:"visibility,optional"`
-	MatchFormat         string `json:"match_format,optional"`
-	TargetWins          int    `json:"target_wins,optional"`
-	SnookerRulesVersion int    `json:"snooker_rules_version,optional"`
-	BestOfFrames        int    `json:"best_of_frames,optional"`
-	SnookerFormat       string `json:"snooker_format,optional"`
-	SnookerTargetWins   int    `json:"snooker_target_wins,optional"`
-	StartingActor       int    `json:"starting_actor,optional"`
-	Message             string `json:"message"`
-	Status              int    `json:"status"`
-	CloseReason         string `json:"close_reason,optional"`
-	WaitingUserId       int64  `json:"waiting_user_id,optional"`
-	ScheduledDate       string `json:"scheduled_date,optional"`
-	DayOffset           int    `json:"day_offset,optional"`
-	StartHour           int    `json:"start_hour,optional"`
-	EndHour             int    `json:"end_hour,optional"`
-	ExpiresAt           string `json:"expires_at,optional"`
-	CreatedAt           string `json:"created_at"`
+	Id            int64  `json:"id"`
+	MatchId       int64  `json:"match_id,optional"`
+	FromUserId    int64  `json:"from_user_id"`
+	FromNickname  string `json:"from_nickname"`
+	FromAvatar    string `json:"from_avatar"`
+	ToUserId      int64  `json:"to_user_id"`
+	ToNickname    string `json:"to_nickname"`
+	ToAvatar      string `json:"to_avatar"`
+	GameType      int    `json:"game_type"`
+	MatchMode     string `json:"match_mode,optional"`
+	Message       string `json:"message"`
+	Status        int    `json:"status"`
+	CloseReason   string `json:"close_reason,optional"`
+	WaitingUserId int64  `json:"waiting_user_id,optional"`
+	ScheduledDate string `json:"scheduled_date,optional"`
+	StartHour     int    `json:"start_hour,optional"`
+	EndHour       int    `json:"end_hour,optional"`
+	ExpiresAt     string `json:"expires_at,optional"`
+	CreatedAt     string `json:"created_at"`
 }
 
 type SendChallengeReq {
-	ToUserId            int64  `json:"to_user_id"`
-	GameType            int    `json:"game_type"`
-	MatchMode           string `json:"match_mode,optional"` // ranked/practice，缺省 ranked
-	Visibility          string `json:"visibility,optional"`
-	MatchFormat         string `json:"match_format,optional"`
-	TargetWins          int    `json:"target_wins,optional"`
-	SnookerRulesVersion int    `json:"snooker_rules_version,optional"`
-	BestOfFrames        int    `json:"best_of_frames,optional"`
-	SnookerFormat       string `json:"snooker_format,optional"`
-	SnookerTargetWins   int    `json:"snooker_target_wins,optional"`
-	StartingActor       int    `json:"starting_actor,optional"`
-	Message             string `json:"message,optional"`
-	DayOffset           int    `json:"day_offset"` // 0今天/1明天/2后天
-	ScheduledDate       string `json:"scheduled_date"` // 与展示一致的 YYYY-MM-DD
-	StartHour           int    `json:"start_hour"`
-	EndHour             int    `json:"end_hour"`
+	ToUserId      int64  `json:"to_user_id"`
+	GameType      int    `json:"game_type"`
+	MatchMode     string `json:"match_mode,optional"` // ranked/practice，缺省 ranked；赛制与公开范围由球种和类型决定
+	Message       string `json:"message,optional"`
+	ScheduledDate string `json:"scheduled_date"` // 北京时间实际预约日 YYYY-MM-DD，仅限今天到后天
+	StartHour     int    `json:"start_hour"`
+	EndHour       int    `json:"end_hour"`
 }
 
 type SendChallengeResp {

@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -168,4 +169,70 @@ func TestExportPersonalDataHandlesEmptyCategoryAndUnavailableDependencies(t *tes
 
 func pointerToInt64(value int64) *int64 {
 	return &value
+}
+
+func TestExportPersonalDataChallengeReportsLinkedMatchFromMatchesTable(t *testing.T) {
+	svcCtx := newPersonalDataExportTestSvc(t)
+	if err := svcCtx.UserModel.Create(&model.User{Id: 101, Nickname: "发起人", Status: 1}); err != nil {
+		t.Fatalf("create export user: %v", err)
+	}
+	if err := svcCtx.UserModel.Create(&model.User{Id: 202, Nickname: "对手", Status: 1}); err != nil {
+		t.Fatalf("create opponent user: %v", err)
+	}
+	scheduled := time.Date(2026, 8, 25, 0, 0, 0, 0, time.UTC)
+	startHour, endHour := 16, 17
+	for _, id := range []int64{9301, 9302} {
+		if err := svcCtx.DB.Create(&model.Challenge{
+			Id:            id,
+			FromUserId:    101,
+			ToUserId:      202,
+			GameType:      3,
+			ScheduledDate: &scheduled,
+			StartHour:     &startHour,
+			EndHour:       &endHour,
+			MatchMode:     model.MatchModePractice,
+			Status:        model.ChallengeStatusStarted,
+			ExpiresAt:     time.Now().Add(time.Hour),
+		}).Error; err != nil {
+			t.Fatalf("create challenge %d: %v", id, err)
+		}
+	}
+	opponentId := int64(202)
+	challengeId := int64(9301)
+	if err := svcCtx.DB.Create(&model.Match{
+		Id:           7301,
+		UserId:       101,
+		OpponentId:   &opponentId,
+		OpponentName: "对手",
+		GameType:     3,
+		MatchMode:    model.MatchModePractice,
+		Status:       1,
+		MatchTime:    time.Now(),
+		ChallengeId:  &challengeId,
+	}).Error; err != nil {
+		t.Fatalf("create linked match: %v", err)
+	}
+
+	records, _, err := svcCtx.UserDataLifecycleModel.ListExportRecords(101, "challenges", 0, time.Now().Add(time.Hour), 10)
+	if err != nil || len(records) != 2 {
+		t.Fatalf("export challenges: records=%+v err=%v", records, err)
+	}
+	for _, record := range records {
+		if _, exists := record.Data["match_id"]; !exists {
+			t.Fatalf("export must keep match_id field: %+v", record.Data)
+		}
+		got := fmt.Sprint(record.Data["match_id"])
+		switch record.ID {
+		case 9301:
+			if got != "7301" {
+				t.Fatalf("linked challenge must export the matches.challenge_id match: got %q", got)
+			}
+		case 9302:
+			if got != "<nil>" {
+				t.Fatalf("unlinked challenge must export null match_id: got %q", got)
+			}
+		default:
+			t.Fatalf("unexpected challenge record %d", record.ID)
+		}
+	}
 }

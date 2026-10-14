@@ -7,24 +7,20 @@ import (
 	logicx "chasing_points/internal/logic"
 )
 
-const (
-	challengeDayOffsetMax = 2
-)
+// challengeMaxDaysAhead 只能约今天/明天/后天。
+const challengeMaxDaysAhead = 2
 
-// ChallengeScheduleInput 客户端提交的相对日选择与展示时的实际预约日期。
+// ChallengeScheduleInput 客户端提交的实际预约日期（北京时间）与整点区间。
 type ChallengeScheduleInput struct {
-	DayOffset     int    // 0=今天 1=明天 2=后天
 	ScheduledDate string // YYYY-MM-DD，与 App 展示一致的实际预约日期
 	StartHour     int
 	EndHour       int
 }
 
 // ValidateChallengeSchedule 校验北京时间三天整点区间并计算次晨07:00失效时刻。
-// 返回实际预约日期、失效时刻；拒绝无效、跨午夜编辑不匹配或已完全过去的区间。
+// 只按提交的实际日期校验，不做相对日换算，因此跨午夜也不会静默滚到另一天；
+// 返回实际预约日期、失效时刻；拒绝超出今天到后天、无效或已完全过去的区间。
 func ValidateChallengeSchedule(input ChallengeScheduleInput, now time.Time) (time.Time, time.Time, error) {
-	if input.DayOffset < 0 || input.DayOffset > challengeDayOffsetMax {
-		return time.Time{}, time.Time{}, fmt.Errorf("仅支持今天/明天/后天")
-	}
 	if input.StartHour < 0 || input.StartHour > 23 || input.EndHour < 1 || input.EndHour > 24 || input.EndHour <= input.StartHour {
 		return time.Time{}, time.Time{}, fmt.Errorf("请选择有效的整点区间")
 	}
@@ -37,10 +33,8 @@ func ValidateChallengeSchedule(input ChallengeScheduleInput, now time.Time) (tim
 	}
 	beijingNow := logicx.InUTC8(now)
 	today := time.Date(beijingNow.Year(), beijingNow.Month(), beijingNow.Day(), 0, 0, 0, 0, logicx.UTC8Location)
-	expected := today.AddDate(0, 0, input.DayOffset)
-	if !scheduled.Equal(expected) {
-		// 跨午夜后旧的相对选择不再成立，要求 App 重新检查，不静默滚动日期。
-		return time.Time{}, time.Time{}, fmt.Errorf("预约日期与所选相对日期不一致，请重新选择")
+	if scheduled.Before(today) || scheduled.After(today.AddDate(0, 0, challengeMaxDaysAhead)) {
+		return time.Time{}, time.Time{}, fmt.Errorf("仅支持今天/明天/后天，请重新选择")
 	}
 	// 区间不得完全过去：结束时刻（24点=次日0点）必须晚于当前北京时间。
 	endTime := scheduled.AddDate(0, 0, 1)

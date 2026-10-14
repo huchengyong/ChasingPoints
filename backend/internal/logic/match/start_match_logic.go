@@ -394,6 +394,14 @@ func validateStartMatchReq(userId int64, req *types.StartMatchReq) string {
 	return ""
 }
 
+// NormalizeStartMatchOptions 扫码开局与约球开局共用的对局类型、公开范围与赛制规范化校验。
+func NormalizeStartMatchOptions(userId int64, req *types.StartMatchReq) string {
+	if message := normalizeStartMatchOptions(req); message != "" {
+		return message
+	}
+	return validateStartMatchReq(userId, req)
+}
+
 func normalizeStartMatchOptions(req *types.StartMatchReq) string {
 	if req == nil {
 		return "请选择有效的平台对手"

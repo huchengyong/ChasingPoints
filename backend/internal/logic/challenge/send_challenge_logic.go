@@ -41,16 +41,13 @@ func (l *SendChallengeLogic) SendChallenge(req *types.SendChallengeReq) (resp *t
 		return resp, nil
 	}
 
-	mode, visibility, matchFormat, targetWins, snookerVersion, bestOfFrames, snookerTargetWins, startingActor, snookerFormat, optsErr :=
-		validateChallengeMatchOptions(req.GameType, req.MatchMode, req.Visibility, req.MatchFormat, req.TargetWins,
-			req.SnookerRulesVersion, req.BestOfFrames, req.SnookerTargetWins, req.StartingActor, req.SnookerFormat)
+	startReq, optsErr := challengeStartReq(userId, req.ToUserId, req.GameType, req.MatchMode)
 	if optsErr != nil {
 		resp.Message = optsErr.Error()
 		return resp, nil
 	}
 	// 事务外先做输入校验，无效请求不占用锁。
 	if _, _, scheduleErr := ValidateChallengeSchedule(ChallengeScheduleInput{
-		DayOffset:     req.DayOffset,
 		ScheduledDate: req.ScheduledDate,
 		StartHour:     req.StartHour,
 		EndHour:       req.EndHour,
@@ -80,7 +77,6 @@ func (l *SendChallengeLogic) SendChallenge(req *types.SendChallengeReq) (resp *t
 		now := time.Now()
 		// 锁后重新校验时段并计算失效：锁等待跨过区间结束的请求必须拒绝。
 		scheduled, expiresAt, scheduleErr := ValidateChallengeSchedule(ChallengeScheduleInput{
-			DayOffset:     req.DayOffset,
 			ScheduledDate: req.ScheduledDate,
 			StartHour:     req.StartHour,
 			EndHour:       req.EndHour,
@@ -119,24 +115,16 @@ func (l *SendChallengeLogic) SendChallenge(req *types.SendChallengeReq) (resp *t
 		}
 
 		challenge := &model.Challenge{
-			FromUserId:          userId,
-			ToUserId:            req.ToUserId,
-			GameType:            req.GameType,
-			ScheduledDate:       &scheduled,
-			StartHour:           &req.StartHour,
-			EndHour:             &req.EndHour,
-			MatchMode:           mode,
-			Visibility:          visibility,
-			MatchFormat:         matchFormat,
-			TargetWins:          targetWins,
-			SnookerRulesVersion: snookerVersion,
-			BestOfFrames:        bestOfFrames,
-			SnookerFormat:       snookerFormat,
-			SnookerTargetWins:   snookerTargetWins,
-			StartingActor:       startingActor,
-			Message:             req.Message,
-			Status:              model.ChallengeStatusPending,
-			ExpiresAt:           expiresAt,
+			FromUserId:    userId,
+			ToUserId:      req.ToUserId,
+			GameType:      req.GameType,
+			ScheduledDate: &scheduled,
+			StartHour:     &req.StartHour,
+			EndHour:       &req.EndHour,
+			MatchMode:     startReq.MatchMode,
+			Message:       req.Message,
+			Status:        model.ChallengeStatusPending,
+			ExpiresAt:     expiresAt,
 		}
 		if err := l.svcCtx.ChallengeModel.CreateWithTx(tx, challenge); err != nil {
 			return err

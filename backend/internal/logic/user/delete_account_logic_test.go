@@ -48,7 +48,7 @@ func newDeleteAccountTestSvc(t *testing.T) (*svc.ServiceContext, *gorm.DB) {
 		CREATE TABLE friend_requests (id INTEGER PRIMARY KEY, from_user_id INTEGER NOT NULL, to_user_id INTEGER NOT NULL);
 		CREATE TABLE friend_blacklists (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, blocked_user_id INTEGER NOT NULL);
 		CREATE TABLE follows (id INTEGER PRIMARY KEY, follower_id INTEGER NOT NULL, following_id INTEGER NOT NULL);
-		CREATE TABLE challenges (id INTEGER PRIMARY KEY, from_user_id INTEGER NOT NULL, to_user_id INTEGER NOT NULL, status INTEGER NOT NULL DEFAULT 0, match_id INTEGER, expires_at DATETIME NOT NULL DEFAULT '1970-01-01', merged_into_id INTEGER, close_reason TEXT NOT NULL DEFAULT '');
+		CREATE TABLE challenges (id INTEGER PRIMARY KEY, from_user_id INTEGER NOT NULL, to_user_id INTEGER NOT NULL, status INTEGER NOT NULL DEFAULT 0, expires_at DATETIME NOT NULL DEFAULT '1970-01-01', merged_into_id INTEGER, close_reason TEXT NOT NULL DEFAULT '');
 		CREATE TABLE notifications (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL);
 		CREATE TABLE user_notification_preferences (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL);
 		CREATE TABLE opponents (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, name TEXT NOT NULL DEFAULT '', avatar TEXT NOT NULL DEFAULT '', linked_user_id INTEGER);

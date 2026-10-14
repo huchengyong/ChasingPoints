@@ -14,8 +14,7 @@ const writeChallenge = (url, data) => post(url, data).catch((error) => {
 
 /**
  * 发起约球
- * @param {Object} data { to_user_id, game_type, match_mode, visibility, match_format?, target_wins?,
- *   snooker_*?, message?, day_offset, scheduled_date, start_hour, end_hour }
+ * @param {Object} data { to_user_id, game_type, match_mode, message?, scheduled_date, start_hour, end_hour }
  */
 export const sendChallenge = (data) => {
   return writeChallenge('/api/challenge/send', data)

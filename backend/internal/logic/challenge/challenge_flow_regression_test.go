@@ -240,8 +240,8 @@ func TestSendChallengeRejectsSlotEndedDuringLockWait(t *testing.T) {
 			t.Fatal(err)
 		}
 		resp, err := NewSendChallengeLogic(challengeSendCtx(1001), svcCtx).SendChallenge(&types.SendChallengeReq{
-			ToUserId: 2002, GameType: 3, MatchMode: model.MatchModePractice, Visibility: model.MatchVisibilityPrivate,
-			MatchFormat: "free", DayOffset: 0, ScheduledDate: now.Format(time.DateOnly), StartHour: now.Hour(), EndHour: now.Hour() + 1,
+			ToUserId: 2002, GameType: 3, MatchMode: model.MatchModePractice,
+			ScheduledDate: now.Format(time.DateOnly), StartHour: now.Hour(), EndHour: now.Hour() + 1,
 		})
 		if !delayed || !logicx.NowUTC8().After(slotEnd) {
 			t.Fatalf("测试必须跨过区间结束时刻: delayed=%v now=%s end=%s", delayed, logicx.NowUTC8(), slotEnd)

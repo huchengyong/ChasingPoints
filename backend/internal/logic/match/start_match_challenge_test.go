@@ -87,7 +87,6 @@ func TestStartMatchIgnoresChallengeContextAndClearsOwnWaiting(t *testing.T) {
 		GameType:      3,
 		ScheduledDate: &scheduled,
 		MatchMode:     model.MatchModePractice,
-		Visibility:    model.MatchVisibilityPrivate,
 		Status:        model.ChallengeStatusAccepted,
 		WaitingUserId: challengeInt64Ptr(1001),
 		ExpiresAt:     time.Now().Add(12 * time.Hour),
@@ -113,8 +112,8 @@ func TestStartMatchIgnoresChallengeContextAndClearsOwnWaiting(t *testing.T) {
 	if stored.Status != model.ChallengeStatusAccepted || stored.WaitingUserId != nil {
 		t.Fatalf("scan start must clear own waiting but keep challenge: %+v", stored)
 	}
-	if stored.MatchId != nil {
-		t.Fatalf("challenge must not link scan match: %+v", stored)
+	if ids, err := svcCtx.MatchModel.ListChallengeMatchIds([]int64{9101}); err != nil || len(ids) != 0 {
+		t.Fatalf("challenge must not link scan match: ids=%v err=%v", ids, err)
 	}
 }
 

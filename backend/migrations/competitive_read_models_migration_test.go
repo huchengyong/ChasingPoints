@@ -126,6 +126,8 @@ func TestPerformanceMigrationsKeepPreparedStatementsGooseCompatible(t *testing.T
 		"20260811108000_add_ordered_competitive_rebuild_checkpoint.sql",
 		"20260811109000_add_competitive_profile_fallback_indexes.sql",
 		"20260922120000_quick_match_invites.sql",
+		"20261014100000_drop_challenge_match_options.sql",
+		"20261014110000_drop_legacy_challenge_match_id.sql",
 	} {
 		content, err := os.ReadFile(path)
 		if err != nil {

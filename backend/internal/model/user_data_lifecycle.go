@@ -173,7 +173,7 @@ func (m *UserDataLifecycleModel) ListExportRecords(userID int64, category string
 			}
 		})
 	case "challenges":
-		return m.listExportRows("challenges", "id, from_user_id, to_user_id, game_type, message, status, match_id, expires_at, created_at, updated_at", "from_user_id = ? OR to_user_id = ?", []any{userID, userID}, afterID, snapshotAt, limit, nil)
+		return m.listExportRows("challenges", "id, from_user_id, to_user_id, game_type, message, status, (SELECT m.id FROM matches AS m WHERE m.challenge_id = challenges.id) AS match_id, expires_at, created_at, updated_at", "from_user_id = ? OR to_user_id = ?", []any{userID, userID}, afterID, snapshotAt, limit, nil)
 	case "notifications":
 		return m.listExportRows("notifications", "id, type, title, content, is_read, created_at", "user_id = ?", []any{userID}, afterID, snapshotAt, limit, nil)
 	case "social_posts":

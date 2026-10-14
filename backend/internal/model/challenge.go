@@ -32,32 +32,23 @@ const (
 )
 
 type Challenge struct {
-	Id                  int64      `gorm:"primarykey"`
-	FromUserId          int64      `gorm:"not null;index"`
-	ToUserId            int64      `gorm:"not null;index"`
-	GameType            int        `gorm:"not null"`
-	ScheduledDate       *time.Time `gorm:"type:date"`
-	StartHour           *int       `gorm:"type:tinyint"`
-	EndHour             *int       `gorm:"type:tinyint"`
-	MatchMode           string     `gorm:"size:20"`
-	Visibility          string     `gorm:"size:20"`
-	MatchFormat         string     `gorm:"size:20"`
-	TargetWins          int        `gorm:"not null;default:0"`
-	SnookerRulesVersion int        `gorm:"not null;default:0"`
-	BestOfFrames        int        `gorm:"not null;default:0"`
-	SnookerFormat       string     `gorm:"size:20"`
-	SnookerTargetWins   int        `gorm:"not null;default:0"`
-	StartingActor       int        `gorm:"not null;default:0"`
-	WaitingUserId       *int64     `gorm:"index"`
-	WaitingEnteredAt    *time.Time
-	MergedIntoId        *int64    `gorm:"index:idx_challenges_merged_into"`
-	CloseReason         string    `gorm:"size:50"`
-	Message             string    `gorm:"size:200"`
-	Status              int       `gorm:"not null;default:0;index:idx_challenges_status_expires,priority:1"`
-	MatchId             *int64    `gorm:"index"` // 旧字段：不再写入，权威关联见 matches.challenge_id
-	ExpiresAt           time.Time `gorm:"not null;index:idx_challenges_status_expires,priority:2"`
-	CreatedAt           time.Time `gorm:"autoCreateTime"`
-	UpdatedAt           time.Time `gorm:"autoUpdateTime"`
+	Id               int64      `gorm:"primarykey"`
+	FromUserId       int64      `gorm:"not null;index"`
+	ToUserId         int64      `gorm:"not null;index"`
+	GameType         int        `gorm:"not null"`
+	ScheduledDate    *time.Time `gorm:"type:date"`
+	StartHour        *int       `gorm:"type:tinyint"`
+	EndHour          *int       `gorm:"type:tinyint"`
+	MatchMode        string     `gorm:"size:20"`
+	WaitingUserId    *int64     `gorm:"index"`
+	WaitingEnteredAt *time.Time
+	MergedIntoId     *int64    `gorm:"index:idx_challenges_merged_into"`
+	CloseReason      string    `gorm:"size:50"`
+	Message          string    `gorm:"size:200"`
+	Status           int       `gorm:"not null;default:0;index:idx_challenges_status_expires,priority:1"`
+	ExpiresAt        time.Time `gorm:"not null;index:idx_challenges_status_expires,priority:2"`
+	CreatedAt        time.Time `gorm:"autoCreateTime"`
+	UpdatedAt        time.Time `gorm:"autoUpdateTime"`
 }
 
 func (Challenge) TableName() string {
@@ -66,35 +57,27 @@ func (Challenge) TableName() string {
 
 // ChallengeListRow 列表/详情联表行。
 type ChallengeListRow struct {
-	Id                  int64      `gorm:"column:id"`
-	FromUserId          int64      `gorm:"column:from_user_id"`
-	ToUserId            int64      `gorm:"column:to_user_id"`
-	GameType            int        `gorm:"column:game_type"`
-	ScheduledDate       *time.Time `gorm:"column:scheduled_date"`
-	StartHour           *int       `gorm:"column:start_hour"`
-	EndHour             *int       `gorm:"column:end_hour"`
-	MatchMode           string     `gorm:"column:match_mode"`
-	Visibility          string     `gorm:"column:visibility"`
-	MatchFormat         string     `gorm:"column:match_format"`
-	TargetWins          int        `gorm:"column:target_wins"`
-	SnookerRulesVersion int        `gorm:"column:snooker_rules_version"`
-	BestOfFrames        int        `gorm:"column:best_of_frames"`
-	SnookerFormat       string     `gorm:"column:snooker_format"`
-	SnookerTargetWins   int        `gorm:"column:snooker_target_wins"`
-	StartingActor       int        `gorm:"column:starting_actor"`
-	WaitingUserId       *int64     `gorm:"column:waiting_user_id"`
-	WaitingEnteredAt    *time.Time `gorm:"column:waiting_entered_at"`
-	MergedIntoId        *int64     `gorm:"column:merged_into_id"`
-	CloseReason         string     `gorm:"column:close_reason"`
-	Message             string     `gorm:"column:message"`
-	Status              int        `gorm:"column:status"`
-	ExpiresAt           time.Time  `gorm:"column:expires_at"`
-	CreatedAt           time.Time  `gorm:"column:created_at"`
-	LinkedMatchId       int64      `gorm:"column:linked_match_id"`
-	FromNickname        string     `gorm:"column:from_nickname"`
-	FromAvatar          string     `gorm:"column:from_avatar"`
-	ToNickname          string     `gorm:"column:to_nickname"`
-	ToAvatar            string     `gorm:"column:to_avatar"`
+	Id               int64      `gorm:"column:id"`
+	FromUserId       int64      `gorm:"column:from_user_id"`
+	ToUserId         int64      `gorm:"column:to_user_id"`
+	GameType         int        `gorm:"column:game_type"`
+	ScheduledDate    *time.Time `gorm:"column:scheduled_date"`
+	StartHour        *int       `gorm:"column:start_hour"`
+	EndHour          *int       `gorm:"column:end_hour"`
+	MatchMode        string     `gorm:"column:match_mode"`
+	WaitingUserId    *int64     `gorm:"column:waiting_user_id"`
+	WaitingEnteredAt *time.Time `gorm:"column:waiting_entered_at"`
+	MergedIntoId     *int64     `gorm:"column:merged_into_id"`
+	CloseReason      string     `gorm:"column:close_reason"`
+	Message          string     `gorm:"column:message"`
+	Status           int        `gorm:"column:status"`
+	ExpiresAt        time.Time  `gorm:"column:expires_at"`
+	CreatedAt        time.Time  `gorm:"column:created_at"`
+	LinkedMatchId    int64      `gorm:"column:linked_match_id"`
+	FromNickname     string     `gorm:"column:from_nickname"`
+	FromAvatar       string     `gorm:"column:from_avatar"`
+	ToNickname       string     `gorm:"column:to_nickname"`
+	ToAvatar         string     `gorm:"column:to_avatar"`
 }
 
 const (
@@ -336,8 +319,7 @@ func (m *ChallengeModel) FindCurrentSummaryByUser(userId int64, now time.Time) (
 }
 
 const challengeRowSelect = `c.id, c.from_user_id, c.to_user_id, c.game_type, c.scheduled_date, c.start_hour, c.end_hour,
-	c.match_mode, c.visibility, c.match_format, c.target_wins, c.snooker_rules_version, c.best_of_frames,
-	c.snooker_format, c.snooker_target_wins, c.starting_actor, c.waiting_user_id, c.waiting_entered_at,
+	c.match_mode, c.waiting_user_id, c.waiting_entered_at,
 	c.merged_into_id, c.close_reason, c.message, c.status, c.expires_at, c.created_at,
 	m.id AS linked_match_id,
 	f.nickname AS from_nickname, f.avatar AS from_avatar, t.nickname AS to_nickname, t.avatar AS to_avatar`

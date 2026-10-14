@@ -215,23 +215,6 @@ onUnload(() => {
 	pageGeneration += 1
 })
 
-// 提交前刷新时间基准：页面保持打开跨过午夜时服务端日期会前进，旧基准派生的相对日会被拒绝。
-// 仅当本次读取是最新且成功才返回 true；失败或被替换时终止提交，不得把旧基准当作刷新成功。
-const refreshServerTimeForSubmit = async () => {
-	const requestId = ++serverTimeRequestSeq
-	let updated = false
-	try {
-		const res = await getChallengeSummary()
-		if (requestId === serverTimeRequestSeq && res?.success && res.server_time) {
-			serverTime.value = res.server_time
-			updated = true
-		}
-	} catch (error) {
-		// 读取失败：本次提交终止，不把旧基准当作刷新成功。
-	}
-	return updated && requestId === serverTimeRequestSeq
-}
-
 const chooseOpponent = () => {
 	// 选人后回填时保留已选比赛类型、实际预约日、时段与附言，只替换对手。
 	const query = [
@@ -274,52 +257,26 @@ const submit = async () => {
 		uni.showToast({ title: '请先选择球友', icon: 'none' })
 		return
 	}
-	// 相对日由实际预约日按服务端今天派生，跨午夜不静默滚日。
+	// 只提交实际预约日：跨午夜也不会静默滚日，日期范围与时段是否已过由服务端校验。
 	if (!scheduledDate.value) {
 		uni.showToast({ title: '时间选择无效，请重试', icon: 'none' })
 		return
 	}
-	// 提交锁覆盖包括时间预读在内的整个异步流程；身份与页面世代必须在首个 await 前捕获。
+	// 身份与页面世代必须在首个 await 前捕获。
 	submitting.value = true
 	const identity = readIdentity()
 	const generation = pageGeneration
 	try {
-		// 页面保持打开跨过午夜时，旧基准派生的相对日会被服务端拒绝：提交前先刷新基准。
-		const refreshed = await refreshServerTimeForSubmit()
-		// 预读期间切号、离开页面或读取失败/被替换：终止本次提交，不得改用新账号或旧基准发送。
-		if (!refreshed || !isSameIdentity(identity) || generation !== pageGeneration) {
-			if (pageActive && isSameIdentity(identity) && generation === pageGeneration) {
-				uni.showToast({ title: '时间校验失败，请重试', icon: 'none' })
-			}
-			return
-		}
-		const dayOffsetValue = dayOffsetOfScheduledDate(serverTime.value, scheduledDate.value)
-		if (dayOffsetValue === null) {
-			uni.showToast({ title: '时间选择无效，请重试', icon: 'none' })
-			return
-		}
-		const payload = {
+		// 赛制与公开范围由服务端按球种和比赛类型生成，这里只提交选择本身。
+		const res = await sendChallenge({
 			to_user_id: opponent.value.id,
 			game_type: gameType.value,
 			match_mode: matchMode.value,
-			visibility: matchMode.value === 'practice' ? 'private' : 'public',
-			match_format: 'free',
-			target_wins: 0,
 			message: message.value,
-			day_offset: dayOffsetValue,
 			scheduled_date: scheduledDate.value,
 			start_hour: startHour.value,
 			end_hour: endHour.value
-		}
-		if (gameType.value === 1) {
-			payload.snooker_rules_version = 2
-			payload.snooker_format = 'free'
-			payload.snooker_target_wins = 0
-		} else if (gameType.value === 2) {
-			delete payload.match_format
-			delete payload.target_wins
-		}
-		const res = await sendChallenge(payload)
+		})
 		// 发送结果按发起时的身份与页面世代隔离：切号或离开后旧响应不弹窗、不标脏、不导航。
 		if (!isSameIdentity(identity) || generation !== pageGeneration) return
 		if (!res?.success) {

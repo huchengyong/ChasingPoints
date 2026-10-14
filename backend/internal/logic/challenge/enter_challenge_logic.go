@@ -320,8 +320,12 @@ func checkStartReputationBlock(svcCtx *svc.ServiceContext, userId int64) (bool, 
 	return false, "", nil
 }
 
-// createChallengeMatchWithTx 用邀请保存的选项创建比赛；排位无需双方确认。
+// createChallengeMatchWithTx 按邀请固定的球种与比赛类型创建比赛；排位无需双方确认。
 func createChallengeMatchWithTx(tx *gorm.DB, svcCtx *svc.ServiceContext, userId int64, challenge *model.Challenge, opponentId int64) (*model.Match, error) {
+	options, err := challengeStartReq(userId, opponentId, challenge.GameType, challenge.MatchMode)
+	if err != nil {
+		return nil, err
+	}
 	opponent, err := svcCtx.UserModel.FindByIdWithTx(tx, opponentId)
 	if err != nil {
 		return nil, err
@@ -337,16 +341,16 @@ func createChallengeMatchWithTx(tx *gorm.DB, svcCtx *svc.ServiceContext, userId 
 		UserId:              userId,
 		OpponentId:          &opponentIdPtr,
 		OpponentName:        opponent.Nickname,
-		GameType:            challenge.GameType,
-		SnookerRulesVersion: challenge.SnookerRulesVersion,
-		BestOfFrames:        challenge.BestOfFrames,
-		SnookerFormat:       challenge.SnookerFormat,
-		SnookerTargetWins:   challenge.SnookerTargetWins,
-		MatchFormat:         challenge.MatchFormat,
-		TargetWins:          challenge.TargetWins,
-		StartingActor:       challenge.StartingActor,
-		MatchMode:           challenge.MatchMode,
-		Visibility:          challenge.Visibility,
+		GameType:            options.GameType,
+		SnookerRulesVersion: options.SnookerRulesVersion,
+		BestOfFrames:        options.BestOfFrames,
+		SnookerFormat:       options.SnookerFormat,
+		SnookerTargetWins:   options.SnookerTargetWins,
+		MatchFormat:         options.MatchFormat,
+		TargetWins:          options.TargetWins,
+		StartingActor:       options.StartingActor,
+		MatchMode:           options.MatchMode,
+		Visibility:          options.Visibility,
 		// 约球比赛：任一参赛方单方结束，无需对方确认。
 		FinishConfirmationRequired: false,
 		FinishState:                model.FinishStateNone,
@@ -354,15 +358,6 @@ func createChallengeMatchWithTx(tx *gorm.DB, svcCtx *svc.ServiceContext, userId 
 		Status:                     1,
 		MatchTime:                  time.Now(),
 		ChallengeId:                &challenge.Id,
-	}
-	if match.SnookerRulesVersion == 0 {
-		match.SnookerRulesVersion = model.SnookerRulesVersionLegacy
-	}
-	if match.SnookerFormat == "" {
-		match.SnookerFormat = model.SnookerFormatLegacy
-	}
-	if match.MatchFormat == "" {
-		match.MatchFormat = "legacy"
 	}
 	if err := svcCtx.MatchModel.CreateWithTx(tx, match); err != nil {
 		return nil, err
