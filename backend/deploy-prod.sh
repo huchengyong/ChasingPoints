@@ -156,7 +156,7 @@ if [ "$3" != 0 ]; then
     dump="$STAGE/db-before-migrations-$(date +%Y%m%dT%H%M%S).sql"
     echo "backing up database $db to $dump"
     MYSQL_PWD="$password" mysqldump -h "${hostport%:*}" -P "${hostport##*:}" -u "$user" \
-        --single-transaction --routines --triggers "$db" > "$dump"
+        --single-transaction --no-tablespaces --routines --triggers "$db" > "$dump"
     echo "running migrations"
     if ! "$GOOSE" -dir "$STAGE/migrations" mysql "$DSN" up; then
         echo "migration failed; binary not switched. database backup: $dump" >&2
