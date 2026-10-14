@@ -1,6 +1,10 @@
 package match
 
-import "chasing_points/internal/model"
+import (
+	"time"
+
+	"chasing_points/internal/model"
+)
 
 const (
 	matchViewerRoleUnknown = ""
@@ -20,6 +24,8 @@ type matchViewerCapabilities struct {
 	CanConfirmFinish  bool
 	CanDisputeFinish  bool
 	CanWithdrawFinish bool
+	// CanDisputeResult 表示可对约球排位的单方结束结果提出异议，与旧的结束请求异议互不相关。
+	CanDisputeResult bool
 }
 
 func resolveMatchViewerCapabilities(match *model.Match, userId int64) matchViewerCapabilities {
@@ -76,6 +82,8 @@ func resolveMatchViewerCapabilities(match *model.Match, userId int64) matchViewe
 		capabilities.CanFinish = false
 		capabilities.CanRequestFinish = false
 	}
+
+	capabilities.CanDisputeResult = match.CanDisputeRankResult(userId, time.Now())
 
 	return capabilities
 }

@@ -799,6 +799,9 @@ type CurrentMatchInfo struct {
 	RefereeJoinedAt               string           `json:"referee_joined_at,optional"`
 	CompletedByUserId             int64            `json:"completed_by_user_id,optional"`
 	CompletionSource              string           `json:"completion_source,optional"`
+	RankSettlementStatus          string           `json:"rank_settlement_status,optional"`
+	RankSettlementDueAt           string           `json:"rank_settlement_due_at,optional"`
+	CanDisputeResult              bool             `json:"can_dispute_result,optional"`
 	CanScore                      bool             `json:"can_score,optional"`
 	CanUndo                       bool             `json:"can_undo,optional"`
 	CanFinish                     bool             `json:"can_finish,optional"`
@@ -1984,6 +1987,9 @@ type MatchDetailData struct {
 	RefereeDurationSeconds        int64              `json:"referee_duration_seconds,optional"`
 	CompletedByUserId             int64              `json:"completed_by_user_id,optional"`
 	CompletionSource              string             `json:"completion_source,optional"`
+	RankSettlementStatus          string             `json:"rank_settlement_status,optional"`
+	RankSettlementDueAt           string             `json:"rank_settlement_due_at,optional"`
+	CanDisputeResult              bool               `json:"can_dispute_result,optional"`
 	CanScore                      bool               `json:"can_score,optional"`
 	CanUndo                       bool               `json:"can_undo,optional"`
 	CanFinish                     bool               `json:"can_finish,optional"`
@@ -2184,6 +2190,9 @@ type MatchSyncSnapshot struct {
 	RefereeJoinedAt               string           `json:"referee_joined_at,optional"`
 	CompletedByUserId             int64            `json:"completed_by_user_id,optional"`
 	CompletionSource              string           `json:"completion_source,optional"`
+	RankSettlementStatus          string           `json:"rank_settlement_status,optional"`
+	RankSettlementDueAt           string           `json:"rank_settlement_due_at,optional"`
+	CanDisputeResult              bool             `json:"can_dispute_result,optional"`
 	RefereeDurationSeconds        int64            `json:"referee_duration_seconds,optional"`
 	CanScore                      bool             `json:"can_score,optional"`
 	CanUndo                       bool             `json:"can_undo,optional"`
@@ -2504,6 +2513,21 @@ type RankItem struct {
 	Icon      string `json:"icon"`
 	MinScore  int    `json:"min_score"`  // 晋升最低分
 	IsCurrent bool   `json:"is_current"` // 是否当前段位
+}
+
+type RankResultDisputeReq struct {
+	MatchId        int64  `json:"match_id"`
+	ClientActionId string `json:"client_action_id"`
+}
+
+type RankResultDisputeResp struct {
+	Success              bool              `json:"success"`
+	Message              string            `json:"message,optional"`
+	ClientActionId       string            `json:"client_action_id,optional"`
+	RankSettlementStatus string            `json:"rank_settlement_status,optional"`
+	RankSettlementDueAt  string            `json:"rank_settlement_due_at,optional"`
+	ServerRevision       int64             `json:"server_revision"`
+	Snapshot             MatchSyncSnapshot `json:"snapshot"`
 }
 
 type ReadPartialError struct {

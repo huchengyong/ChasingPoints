@@ -85,7 +85,8 @@ func (l *GetMatchDurationStatsLogic) getLegacyMatchDurationStats(userID int64, r
 			COALESCE(MAX(%[1]s), 0) AS longest_seconds,
 			COUNT(*) AS total_matches`, expression)).
 		Where("(user_id = ? OR opponent_id = ?) AND status = ? AND end_time IS NOT NULL", userID, userID, 2).
-		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", model.MatchModeRanked)
+		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", model.MatchModeRanked).
+		Where("rank_settlement_status NOT IN ?", []string{model.RankSettlementPending, model.RankSettlementVoided})
 	if req != nil && req.GameType > 0 {
 		query = query.Where("game_type = ?", req.GameType)
 	}

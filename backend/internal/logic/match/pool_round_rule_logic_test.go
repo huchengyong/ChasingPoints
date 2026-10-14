@@ -271,4 +271,12 @@ func TestFlexiblePoolChallengeRankedAutoFinishSkipsConfirmation(t *testing.T) {
 	if finishRequests != 0 {
 		t.Fatalf("challenge auto finish must not create a finish request, got %d", finishRequests)
 	}
+	// 赛制达标自动结束不是手动结束：立即结算，没有异议期。
+	stored, err := svcCtx.MatchModel.FindById(match.Id)
+	if err != nil || stored == nil || stored.RankSettlementStatus != model.RankSettlementSettled || stored.RankSettlementDueAt != nil {
+		t.Fatalf("auto finish must settle immediately without a dispute window: %+v err=%v", stored, err)
+	}
+	if resolveMatchViewerCapabilities(stored, 202).CanDisputeResult || resolveMatchViewerCapabilities(stored, 101).CanDisputeResult {
+		t.Fatalf("no dispute entry after an immediate settlement")
+	}
 }

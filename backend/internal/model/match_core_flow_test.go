@@ -191,3 +191,66 @@ func TestRankingReplayExcludesPracticeMatches(t *testing.T) {
 		t.Fatalf("practice match leaked into ranking replay: %#v", matches)
 	}
 }
+
+func TestRankedStatsExcludePendingAndVoidedRankSettlement(t *testing.T) {
+	db := newMatchCoreFlowTestDB(t)
+	opponentID := int64(2)
+	win := 1
+	matchTime := time.Now()
+	for index, status := range []string{RankSettlementNone, RankSettlementSettled, RankSettlementPending, RankSettlementVoided} {
+		match := Match{
+			Id: int64(51 + index), UserId: 1, OpponentId: &opponentID, OpponentName: "对手", GameType: 3,
+			MatchMode: MatchModeRanked, Visibility: MatchVisibilityPublic, Status: 2, Result: &win,
+			MatchTime: matchTime.Add(time.Duration(index) * time.Minute), RankSettlementStatus: status,
+		}
+		if err := db.Create(&match).Error; err != nil {
+			t.Fatalf("create match %s: %v", status, err)
+		}
+	}
+
+	stats, err := NewMatchModel(db).GetUserStats(1)
+	if err != nil {
+		t.Fatalf("get user stats: %v", err)
+	}
+	if stats.TotalMatches != 2 || stats.Wins != 2 {
+		t.Fatalf("only none/settled ranked matches may count, got total=%d wins=%d", stats.TotalMatches, stats.Wins)
+	}
+	for _, status := range []string{RankSettlementPending, RankSettlementVoided} {
+		if !(&Match{RankSettlementStatus: status}).RankSettlementDeferred() {
+			t.Fatalf("%s must be treated as deferred", status)
+		}
+	}
+	if (&Match{RankSettlementStatus: RankSettlementSettled}).RankSettlementDeferred() || (&Match{}).RankSettlementDeferred() {
+		t.Fatalf("settled and legacy matches are not deferred")
+	}
+}
+
+func TestRankingReplayExcludesPendingAndVoidedRankSettlement(t *testing.T) {
+	db := newMatchCoreFlowTestDB(t)
+	if err := db.AutoMigrate(&MatchRound{}); err != nil {
+		t.Fatalf("prepare match round schema: %v", err)
+	}
+	opponentID := int64(2)
+	win, winner := 1, 1
+	for index, status := range []string{RankSettlementSettled, RankSettlementPending, RankSettlementVoided} {
+		match := Match{
+			Id: int64(61 + index), UserId: 1, OpponentId: &opponentID, OpponentName: "对手", GameType: 3,
+			MatchMode: MatchModeRanked, Visibility: MatchVisibilityPublic, Status: 2, Result: &win,
+			MatchTime: time.Now(), RankSettlementStatus: status,
+		}
+		if err := db.Create(&match).Error; err != nil {
+			t.Fatalf("create match %s: %v", status, err)
+		}
+		if err := db.Create(&MatchRound{MatchId: match.Id, RoundNo: 1, Winner: &winner, WinType: "normal"}).Error; err != nil {
+			t.Fatalf("create round: %v", err)
+		}
+	}
+
+	replay, err := NewMatchModel(db).ListCompletedForRankingReplay()
+	if err != nil {
+		t.Fatalf("list replay matches: %v", err)
+	}
+	if len(replay) != 1 || replay[0].Id != 61 {
+		t.Fatalf("rebuilds must only replay settled ranked matches (pending is applied later by the worker): %+v", replay)
+	}
+}

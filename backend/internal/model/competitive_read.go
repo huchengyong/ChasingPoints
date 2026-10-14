@@ -26,8 +26,10 @@ type MatchParticipantResult struct {
 	MatchHighScore     int       `gorm:"not null" json:"match_high_score"`
 	BestBreak          int       `gorm:"not null" json:"best_break"`
 	OpponentRankBucket string    `gorm:"size:32;not null" json:"opponent_rank_bucket"`
-	CreatedAt          time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt          time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	// RankExcluded 为 true 表示该场排位结算待生效或已作废：历史仍可见，但不进入排位口径的统计、H2H 历史与趋势。
+	RankExcluded bool      `gorm:"not null;default:false" json:"rank_excluded"`
+	CreatedAt    time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt    time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }
 
 func (MatchParticipantResult) TableName() string { return "match_participant_results" }
@@ -138,6 +140,15 @@ func (m *CompetitiveReadModel) InsertParticipantIfAbsentWithTx(tx *gorm.DB, resu
 	return created.RowsAffected > 0, created.Error
 }
 
+// MarkParticipantRankCountedWithTx 在排位结算生效时把参与者行转入排位口径，并写入结算时的对手段位分档。
+// 仅当行仍处于 rank_excluded 时才更新；返回值同时是“本次是否首次应用排位统计”的幂等信号。
+func (m *CompetitiveReadModel) MarkParticipantRankCountedWithTx(tx *gorm.DB, matchId, userId int64, opponentRankBucket string) (bool, error) {
+	result := m.dbWith(tx).Model(&MatchParticipantResult{}).
+		Where("match_id = ? AND user_id = ? AND rank_excluded = ?", matchId, userId, true).
+		Updates(map[string]any{"rank_excluded": false, "opponent_rank_bucket": opponentRankBucket})
+	return result.RowsAffected > 0, result.Error
+}
+
 func (m *CompetitiveReadModel) FindParticipantByMatchAndUser(matchId, userId int64) (*MatchParticipantResult, error) {
 	var result MatchParticipantResult
 	err := m.db.Where("match_id = ? AND user_id = ?", matchId, userId).First(&result).Error
@@ -226,7 +237,7 @@ func (m *CompetitiveReadModel) ListParticipantH2HPage(
 	if limit > 100 {
 		limit = 100
 	}
-	query := m.db.Model(&MatchParticipantResult{}).Where("user_id = ? AND match_mode = ?", userId, MatchModeRanked)
+	query := m.db.Model(&MatchParticipantResult{}).Where("user_id = ? AND match_mode = ? AND rank_excluded = ?", userId, MatchModeRanked, false)
 	if opponentUserId > 0 {
 		query = query.Where("opponent_user_id = ?", opponentUserId)
 	} else {
@@ -260,7 +271,7 @@ func (m *CompetitiveReadModel) ListRecentParticipantResults(userId int64, gameTy
 	if limit > 100 {
 		limit = 100
 	}
-	query := m.db.Where("user_id = ? AND match_mode = ?", userId, MatchModeRanked)
+	query := m.db.Where("user_id = ? AND match_mode = ? AND rank_excluded = ?", userId, MatchModeRanked, false)
 	if gameType > 0 {
 		query = query.Where("game_type = ?", gameType)
 	}
@@ -278,7 +289,7 @@ func (m *CompetitiveReadModel) ListParticipantHighScores(userId int64, gameType,
 	}
 	query := m.db.Model(&MatchParticipantResult{}).
 		Select("match_id, game_type, opponent_name, completed_at, match_high_score, best_break").
-		Where("user_id = ? AND match_mode = ?", userId, MatchModeRanked)
+		Where("user_id = ? AND match_mode = ? AND rank_excluded = ?", userId, MatchModeRanked, false)
 	if gameType > 0 {
 		query = query.Where("game_type = ?", gameType)
 	}

@@ -19,6 +19,8 @@ type CompetitiveProjectionInput struct {
 	Player1After  *model.UserRanking
 	Player2Before *model.UserRanking
 	Player2After  *model.UserRanking
+	// SeasonEffectiveAt 非空时赛季归属按该时刻判断，用于延后生效的排位结算。
+	SeasonEffectiveAt *time.Time
 }
 
 type CompetitiveProjectionResult struct {
@@ -79,8 +81,11 @@ func (p *CompetitiveProjector) ProjectWithTx(tx *gorm.DB, input CompetitiveProje
 	}
 
 	participants := buildCompetitiveParticipants(match, completedAt, actions, player1, player2, input)
-	eligibleForCompetitiveStats := model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked && (*match.Result == 1 || *match.Result == 2)
+	rankedDecisive := model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked && (*match.Result == 1 || *match.Result == 2)
+	// 排位结算待生效或已作废时只写参与者行（标记 rank_excluded），排位口径统计留待生效时应用。
+	eligibleForCompetitiveStats := rankedDecisive && !match.RankSettlementDeferred()
 	for _, participant := range participants {
+		participant.result.RankExcluded = rankedDecisive && match.RankSettlementDeferred()
 		created, err := p.svcCtx.CompetitiveReadModel.InsertParticipantIfAbsentWithTx(tx, &participant.result)
 		if err != nil {
 			return out, err
@@ -95,7 +100,7 @@ func (p *CompetitiveProjector) ProjectWithTx(tx *gorm.DB, input CompetitiveProje
 		if err := p.applyParticipantStatsWithTx(tx, participant); err != nil {
 			return out, err
 		}
-		seasonID, err := p.applySeasonRecordWithTx(tx, participant)
+		seasonID, err := p.applySeasonRecordWithTx(tx, participant, participant.result.CompletedAt)
 		if err != nil {
 			return out, err
 		}
@@ -108,6 +113,80 @@ func (p *CompetitiveProjector) ProjectWithTx(tx *gorm.DB, input CompetitiveProje
 		if !eligibleForCompetitiveStats {
 			continue
 		}
+		stats, err := p.svcCtx.CompetitiveReadModel.FindStatsWithTx(tx, userID, 0)
+		if err != nil {
+			return out, err
+		}
+		if stats != nil {
+			out.CompetitiveRevisions[userID] = stats.Revision
+		}
+	}
+	return out, nil
+}
+
+// ApplyDeferredRankStatsWithTx 在延后的排位结算生效时，一次性应用此前跳过的排位口径统计、
+// H2H、对手强度与赛季记录。调用方须已把比赛置为 settled 并写入段位前后快照；
+// 以参与者行 rank_excluded 的 1→0 条件更新作为幂等信号，重复或并发调用不会重复计入。
+func (p *CompetitiveProjector) ApplyDeferredRankStatsWithTx(tx *gorm.DB, input CompetitiveProjectionInput) (CompetitiveProjectionResult, error) {
+	out := CompetitiveProjectionResult{
+		AppliedUsers:         map[int64]bool{},
+		CompetitiveRevisions: map[int64]int64{},
+	}
+	if p == nil || p.svcCtx == nil || p.svcCtx.CompetitiveReadModel == nil || p.svcCtx.UserModel == nil {
+		return out, fmt.Errorf("competitive read model infrastructure is unavailable")
+	}
+	match := input.Match
+	if match == nil || match.Status != 2 || match.Result == nil || match.RankSettlementDeferred() ||
+		model.NormalizeMatchMode(match.MatchMode) != model.MatchModeRanked || (*match.Result != 1 && *match.Result != 2) {
+		return out, nil
+	}
+
+	completedAt := resolveMatchCompletedAt(match)
+	seasonAt := completedAt
+	if input.SeasonEffectiveAt != nil {
+		seasonAt = *input.SeasonEffectiveAt
+	}
+	actions, err := p.svcCtx.MatchModel.ListActiveActionsWithTx(tx, match.Id)
+	if err != nil {
+		return out, err
+	}
+	player1, err := p.svcCtx.UserModel.FindByIdWithTx(tx, match.UserId)
+	if err != nil {
+		return out, err
+	}
+	if player1 == nil {
+		return out, fmt.Errorf("match %d owner %d is missing", match.Id, match.UserId)
+	}
+	var player2 *model.User
+	if match.OpponentId != nil && *match.OpponentId > 0 && *match.OpponentId != match.UserId {
+		player2, err = p.svcCtx.UserModel.FindByIdWithTx(tx, *match.OpponentId)
+		if err != nil {
+			return out, err
+		}
+	}
+
+	for _, participant := range buildCompetitiveParticipants(match, completedAt, actions, player1, player2, input) {
+		// 对手分档取结算前的段位快照，与即时结算口径一致。
+		counted, err := p.svcCtx.CompetitiveReadModel.MarkParticipantRankCountedWithTx(tx, match.Id, participant.result.UserId, participant.result.OpponentRankBucket)
+		if err != nil {
+			return out, err
+		}
+		if !counted {
+			continue
+		}
+		out.AppliedUsers[participant.result.UserId] = true
+		if err := p.applyParticipantStatsWithTx(tx, participant); err != nil {
+			return out, err
+		}
+		seasonID, err := p.applySeasonRecordWithTx(tx, participant, seasonAt)
+		if err != nil {
+			return out, err
+		}
+		if seasonID > 0 {
+			out.SeasonID = seasonID
+		}
+	}
+	for userID := range out.AppliedUsers {
 		stats, err := p.svcCtx.CompetitiveReadModel.FindStatsWithTx(tx, userID, 0)
 		if err != nil {
 			return out, err
@@ -236,7 +315,7 @@ func (p *CompetitiveProjector) applyParticipantStatsWithTx(tx *gorm.DB, particip
 	return nil
 }
 
-func (p *CompetitiveProjector) applySeasonRecordWithTx(tx *gorm.DB, participant competitiveParticipant) (int64, error) {
+func (p *CompetitiveProjector) applySeasonRecordWithTx(tx *gorm.DB, participant competitiveParticipant, seasonAt time.Time) (int64, error) {
 	if participant.beforeRank == nil || participant.afterRank == nil || p.svcCtx.SeasonModel == nil || p.svcCtx.SeasonRecordModel == nil {
 		return 0, nil
 	}
@@ -244,7 +323,7 @@ func (p *CompetitiveProjector) applySeasonRecordWithTx(tx *gorm.DB, participant 
 	if err != nil {
 		return 0, err
 	}
-	season, err := p.svcCtx.SeasonModel.FindByEffectiveTimeInLocationWithTx(tx, participant.result.CompletedAt, location)
+	season, err := p.svcCtx.SeasonModel.FindByEffectiveTimeInLocationWithTx(tx, seasonAt, location)
 	if err != nil || season == nil {
 		return 0, err
 	}

@@ -139,6 +139,9 @@ type MatchSyncData struct {
 	RefereeDurationSeconds        int64                  `json:"referee_duration_seconds,optional"`
 	CompletedByUserId             int64                  `json:"completed_by_user_id,optional"`
 	CompletionSource              string                 `json:"completion_source,optional"`
+	RankSettlementStatus          string                 `json:"rank_settlement_status,optional"`
+	RankSettlementDueAt           string                 `json:"rank_settlement_due_at,optional"`
+	CanDisputeResult              bool                   `json:"can_dispute_result,optional"`
 	CanScore                      bool                   `json:"can_score,optional"`
 	CanUndo                       bool                   `json:"can_undo,optional"`
 	CanFinish                     bool                   `json:"can_finish,optional"`
@@ -516,6 +519,14 @@ func InitGlobalHub() {
 	logx.Info("WebSocket Hub 已启动")
 }
 
+// rankSettlementStatusOf 返回排位结算状态，旧数据与空值按 none 处理。
+func rankSettlementStatusOf(match *model.Match) string {
+	if match == nil || match.RankSettlementStatus == "" {
+		return model.RankSettlementNone
+	}
+	return match.RankSettlementStatus
+}
+
 func buildMatchSyncData(match *model.Match, completedRoundCount int64, snookerState model.SnookerRoundState, rounds []model.MatchRound) MatchSyncData {
 	return buildMatchSyncDataForViewer(match, 0, completedRoundCount, snookerState, rounds)
 }
@@ -615,6 +626,9 @@ func buildMatchSyncDataForViewer(match *model.Match, userId int64, completedRoun
 		RefereeDurationSeconds:        refereeDurationSeconds,
 		CompletedByUserId:             completedByUserId,
 		CompletionSource:              completionSource,
+		RankSettlementStatus:          rankSettlementStatusOf(match),
+		RankSettlementDueAt:           match.FormatRankSettlementDueAt(),
+		CanDisputeResult:              match.CanDisputeRankResult(userId, time.Now()),
 		CanScore:                      canScore,
 		CanUndo:                       canUndo,
 		CanFinish:                     canFinish,

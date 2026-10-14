@@ -88,6 +88,7 @@ func (l *GetStatsByGameTypeLogic) getLegacyStatsByGameType(userID int64) (*types
 			userID, userID, userID, userID, userID, userID).
 		Where("(user_id = ? OR opponent_id = ?) AND status = ?", userID, userID, 2).
 		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", model.MatchModeRanked).
+		Where("rank_settlement_status NOT IN ?", []string{model.RankSettlementPending, model.RankSettlementVoided}).
 		Group("game_type").
 		Scan(&rows).Error
 	if err != nil {
