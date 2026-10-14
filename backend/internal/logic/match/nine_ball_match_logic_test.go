@@ -263,20 +263,23 @@ func TestNineBallClientActionIDCannotBeReusedByAnotherAction(t *testing.T) {
 }
 
 func TestLegacyEndRoundNonPositiveScoreCannotInflateOnUndo(t *testing.T) {
-	// 中式八球旧赛制同样走旧版结束一局与撤销路径。
-	svcCtx := seedNineBallTestMatch(t, 3)
-	if resp := endNineBallRound(t, svcCtx, nineBallTestPlayer1, types.EndRoundReq{Winner: 1, WinType: "normal", Score: -50}); !resp.Success {
-		t.Fatalf("legacy end round failed: %+v", resp)
-	}
-	action, err := svcCtx.MatchModel.GetLastAction(nineBallTestMatchID)
-	if err != nil || action == nil || action.ScoreChange != 0 {
-		t.Fatalf("win action must store the actually applied score, got %+v err=%v", action, err)
-	}
-	if resp := undoNineBallAction(t, svcCtx, nineBallTestPlayer1, "undo-negative"); !resp.Success {
-		t.Fatalf("undo failed: %+v", resp)
-	}
-	if match := reloadNineBallTestMatch(t, svcCtx); match.MyScore != 0 || match.OpponentScore != 0 {
-		t.Fatalf("撤销不得凭空加分, got %d:%d", match.MyScore, match.OpponentScore)
+	// 中式八球、美式九球旧赛制同样走旧版结束一局与撤销路径：非正分值的局在入口即被拒绝，撤销无从凭空加分。
+	for _, game := range []struct {
+		name     string
+		gameType int
+	}{{name: "eight-ball", gameType: 3}, {name: "american-nine-ball", gameType: 4}} {
+		t.Run(game.name, func(t *testing.T) {
+			svcCtx := seedNineBallTestMatch(t, game.gameType)
+			if resp := endNineBallRound(t, svcCtx, nineBallTestPlayer1, types.EndRoundReq{Winner: 2, WinType: "normal", Score: -50}); resp.Success || resp.Accepted {
+				t.Fatalf("non-positive legacy round must be rejected: %+v", resp)
+			}
+			if resp := undoNineBallAction(t, svcCtx, nineBallTestPlayer1, "undo-negative"); resp.Success {
+				t.Fatalf("rejected round must leave nothing to undo: %+v", resp)
+			}
+			if match := reloadNineBallTestMatch(t, svcCtx); match.MyScore != 0 || match.OpponentScore != 0 {
+				t.Fatalf("撤销不得凭空加分, got %d:%d", match.MyScore, match.OpponentScore)
+			}
+		})
 	}
 }
 

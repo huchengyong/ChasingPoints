@@ -119,6 +119,14 @@ func int64Ref(value int64) *int64 {
 	return &value
 }
 
+// poolRoundRecorder 返回按「选手只能记录对手胜局」提交该局的选手，即本局负方。
+func poolRoundRecorder(winner int) int64 {
+	if winner == 1 {
+		return 202
+	}
+	return 101
+}
+
 func TestPoolMatchFormatStartValidationAndCreation(t *testing.T) {
 	svcCtx := newPoolMatchFormatTestSvc(t)
 	seedPoolFormatUsers(t, svcCtx)
@@ -323,13 +331,13 @@ func TestFlexiblePoolFreeFinishAndRoundLimit(t *testing.T) {
 		svcCtx := newPoolMatchFormatTestSvc(t)
 		match := seedPoolFormatMatch(t, svcCtx, 731, nil)
 		first, err := NewEndRoundLogic(matchLogicCtx(101), svcCtx).EndRound(&types.EndRoundReq{
-			MatchId: match.Id, Winner: 1, WinType: "normal", Score: 1, ClientActionId: "free-tie-round-1", BaseRevision: 0,
+			MatchId: match.Id, Winner: 2, WinType: "normal", Score: 1, ClientActionId: "free-tie-round-1", BaseRevision: 0,
 		})
 		if err != nil || !first.Success || !first.Accepted || first.Snapshot.Status != 1 {
 			t.Fatalf("first free round failed: resp=%+v err=%v", first, err)
 		}
-		second, err := NewEndRoundLogic(matchLogicCtx(101), svcCtx).EndRound(&types.EndRoundReq{
-			MatchId: match.Id, Winner: 2, WinType: "normal", Score: 1, ClientActionId: "free-tie-round-2", BaseRevision: first.ServerRevision,
+		second, err := NewEndRoundLogic(matchLogicCtx(202), svcCtx).EndRound(&types.EndRoundReq{
+			MatchId: match.Id, Winner: 1, WinType: "normal", Score: 1, ClientActionId: "free-tie-round-2", BaseRevision: first.ServerRevision,
 		})
 		if err != nil || !second.Success || !second.Accepted || second.Snapshot.MyScore != 1 || second.Snapshot.OpponentScore != 1 {
 			t.Fatalf("second free round failed: resp=%+v err=%v", second, err)
@@ -352,7 +360,7 @@ func TestFlexiblePoolFreeFinishAndRoundLimit(t *testing.T) {
 			if roundNo%2 == 0 {
 				winner = 2
 			}
-			resp, err := NewEndRoundLogic(matchLogicCtx(101), svcCtx).EndRound(&types.EndRoundReq{
+			resp, err := NewEndRoundLogic(matchLogicCtx(poolRoundRecorder(winner)), svcCtx).EndRound(&types.EndRoundReq{
 				MatchId:        match.Id,
 				Winner:         winner,
 				WinType:        "normal",
@@ -366,7 +374,8 @@ func TestFlexiblePoolFreeFinishAndRoundLimit(t *testing.T) {
 			baseRevision = resp.ServerRevision
 			last = resp
 		}
-		if last.Snapshot.Status != 2 || last.Snapshot.TotalRounds != model.PoolMatchMaxCompletedRounds || last.Snapshot.MyScore != 65 || last.Snapshot.OpponentScore != 64 {
+		// 第129局由选手2记录选手1获胜，快照按选手2视角为64:65。
+		if last.Snapshot.Status != 2 || last.Snapshot.TotalRounds != model.PoolMatchMaxCompletedRounds || last.Snapshot.MyScore != 64 || last.Snapshot.OpponentScore != 65 {
 			t.Fatalf("round 129 should finish at 65:64: %+v", last.Snapshot)
 		}
 		blocked, err := NewEndRoundLogic(matchLogicCtx(101), svcCtx).EndRound(&types.EndRoundReq{
@@ -389,7 +398,7 @@ func TestFlexiblePoolRaceToBoundaryAndIdempotency(t *testing.T) {
 	for roundNo := 1; roundNo <= 2; roundNo++ {
 		resp, err := NewEndRoundLogic(matchLogicCtx(101), svcCtx).EndRound(&types.EndRoundReq{
 			MatchId:        match.Id,
-			Winner:         1,
+			Winner:         2,
 			WinType:        "normal",
 			Score:          1,
 			ClientActionId: fmt.Sprintf("race-to-round-%d", roundNo),
@@ -408,10 +417,10 @@ func TestFlexiblePoolRaceToBoundaryAndIdempotency(t *testing.T) {
 	}
 
 	targetReq := &types.EndRoundReq{
-		MatchId: match.Id, Winner: 1, WinType: "normal", Score: 1, ClientActionId: "race-to-target-round", BaseRevision: baseRevision,
+		MatchId: match.Id, Winner: 2, WinType: "normal", Score: 1, ClientActionId: "race-to-target-round", BaseRevision: baseRevision,
 	}
 	target, err := NewEndRoundLogic(matchLogicCtx(101), svcCtx).EndRound(targetReq)
-	if err != nil || !target.Success || !target.Accepted || target.Snapshot.Status != 2 || target.Snapshot.MyScore != 3 || target.Snapshot.TargetWins != 3 {
+	if err != nil || !target.Success || !target.Accepted || target.Snapshot.Status != 2 || target.Snapshot.OpponentScore != 3 || target.Snapshot.TargetWins != 3 {
 		t.Fatalf("race-to target round should auto finish: resp=%+v err=%v", target, err)
 	}
 	replay, err := NewEndRoundLogic(matchLogicCtx(101), svcCtx).EndRound(targetReq)
@@ -419,9 +428,9 @@ func TestFlexiblePoolRaceToBoundaryAndIdempotency(t *testing.T) {
 		t.Fatalf("race-to target replay should be idempotent: first=%+v replay=%+v err=%v", target, replay, err)
 	}
 	blocked, err := NewEndRoundLogic(matchLogicCtx(101), svcCtx).EndRound(&types.EndRoundReq{
-		MatchId: match.Id, Winner: 1, WinType: "normal", Score: 1, ClientActionId: "race-to-extra-round", BaseRevision: target.ServerRevision,
+		MatchId: match.Id, Winner: 2, WinType: "normal", Score: 1, ClientActionId: "race-to-extra-round", BaseRevision: target.ServerRevision,
 	})
-	if err != nil || blocked.Success || blocked.Accepted || blocked.Snapshot.MyScore != 3 {
+	if err != nil || blocked.Success || blocked.Accepted || blocked.Snapshot.OpponentScore != 3 {
 		t.Fatalf("race-to extra round should be rejected: resp=%+v err=%v", blocked, err)
 	}
 
@@ -447,13 +456,13 @@ func TestFlexiblePoolRankedConfirmationDisputeAndRefereeFinish(t *testing.T) {
 			match.MatchMode = model.MatchModeRanked
 		})
 		resp, err := NewEndRoundLogic(matchLogicCtx(101), svcCtx).EndRound(&types.EndRoundReq{
-			MatchId: match.Id, Winner: 1, WinType: "normal", Score: 1, ClientActionId: "ranked-target-round", BaseRevision: 0,
+			MatchId: match.Id, Winner: 2, WinType: "normal", Score: 1, ClientActionId: "ranked-target-round", BaseRevision: 0,
 		})
 		if err != nil || !resp.Success || !resp.Accepted || resp.Snapshot.Status != 1 || resp.Snapshot.FinishState != model.FinishStatePendingConfirmation {
 			t.Fatalf("ranked target should enter pending confirmation: resp=%+v err=%v", resp, err)
 		}
 		replay, err := NewEndRoundLogic(matchLogicCtx(101), svcCtx).EndRound(&types.EndRoundReq{
-			MatchId: match.Id, Winner: 1, WinType: "normal", Score: 1, ClientActionId: "ranked-target-round", BaseRevision: 0,
+			MatchId: match.Id, Winner: 2, WinType: "normal", Score: 1, ClientActionId: "ranked-target-round", BaseRevision: 0,
 		})
 		if err != nil || replay.Success || replay.Accepted || replay.ServerRevision != resp.ServerRevision {
 			t.Fatalf("pending confirmation replay should be rejected without advancing revision: first=%+v replay=%+v err=%v", resp, replay, err)
@@ -484,7 +493,7 @@ func TestFlexiblePoolRankedConfirmationDisputeAndRefereeFinish(t *testing.T) {
 		afterDisputeBlocked, err := NewEndRoundLogic(matchLogicCtx(101), svcCtx).EndRound(&types.EndRoundReq{
 			MatchId: match.Id, Winner: 2, WinType: "normal", Score: 1, ClientActionId: "ranked-after-dispute-extra", BaseRevision: dispute.ServerRevision,
 		})
-		if err != nil || afterDisputeBlocked.Success || afterDisputeBlocked.Accepted || afterDisputeBlocked.Snapshot.MyScore != 1 {
+		if err != nil || afterDisputeBlocked.Success || afterDisputeBlocked.Accepted || afterDisputeBlocked.Snapshot.OpponentScore != 1 {
 			t.Fatalf("dispute should not allow scoring beyond reached target: resp=%+v err=%v", afterDisputeBlocked, err)
 		}
 	})
@@ -510,12 +519,12 @@ func TestFlexiblePoolRankedConfirmationDisputeAndRefereeFinish(t *testing.T) {
 	})
 }
 
-func TestFlexiblePoolRejectsScoreAndFoulBypassesAndKeepsLegacy(t *testing.T) {
+func TestFlexiblePoolRejectsScoreAndFoulBypasses(t *testing.T) {
 	svcCtx := newPoolMatchFormatTestSvc(t)
 	flexible := seedPoolFormatMatch(t, svcCtx, 760, nil)
 
 	badRound, err := NewEndRoundLogic(matchLogicCtx(101), svcCtx).EndRound(&types.EndRoundReq{
-		MatchId: flexible.Id, Winner: 1, WinType: "normal", Score: 2, ClientActionId: "pool-bad-round-score", BaseRevision: 0,
+		MatchId: flexible.Id, Winner: 2, WinType: "normal", Score: 2, ClientActionId: "pool-bad-round-score", BaseRevision: 0,
 	})
 	if err != nil || badRound.Success || badRound.Accepted || badRound.ServerRevision != 0 {
 		t.Fatalf("flexible round score!=1 should be rejected: resp=%+v err=%v", badRound, err)
@@ -533,15 +542,7 @@ func TestFlexiblePoolRejectsScoreAndFoulBypassesAndKeepsLegacy(t *testing.T) {
 		t.Fatalf("flexible foul bypass should be rejected: resp=%+v err=%v", foul, err)
 	}
 
-	legacy := seedPoolFormatMatch(t, svcCtx, 761, func(match *model.Match) {
-		match.MatchFormat = model.MatchFormatLegacy
-	})
-	legacyScore, err := NewMatchScoreLogic(matchLogicCtx(101), svcCtx).MatchScore(&types.MatchScoreReq{
-		MatchId: legacy.Id, Actor: 1, Score: 5, ClientActionId: "legacy-score", BaseRevision: 0,
-	})
-	if err != nil || !legacyScore.Success || !legacyScore.Accepted || legacyScore.MyScore != 5 {
-		t.Fatalf("legacy pool score should keep old behavior: resp=%+v err=%v", legacyScore, err)
-	}
+	// legacy 中八/美九的同类拒绝由 TestPoolRoundRejectsScoreFoulAndNextRound 覆盖。
 
 	nineBallChasing := seedPoolFormatMatch(t, svcCtx, 762, func(match *model.Match) {
 		match.GameType = 2
@@ -602,7 +603,7 @@ func TestFlexiblePoolSnapshotsExposeFormatAndViewerPermissions(t *testing.T) {
 	}
 
 	round, err := NewEndRoundLogic(matchLogicCtx(101), svcCtx).EndRound(&types.EndRoundReq{
-		MatchId: match.Id, Winner: 1, WinType: "normal", Score: 1, ClientActionId: "snapshot-lock-round", BaseRevision: 0,
+		MatchId: match.Id, Winner: 2, WinType: "normal", Score: 1, ClientActionId: "snapshot-lock-round", BaseRevision: 0,
 	})
 	if err != nil || !round.Success || round.Snapshot.MatchFormat != model.MatchFormatFree || round.Snapshot.CanChangeMatchFormat {
 		t.Fatalf("round response should lock format in authoritative snapshot: resp=%+v err=%v", round, err)

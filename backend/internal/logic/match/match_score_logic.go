@@ -98,12 +98,12 @@ func (l *MatchScoreLogic) MatchScore(req *types.MatchScoreReq) (resp *types.Matc
 			Snapshot:       view.Snapshot,
 		}, nil
 	}
-	if model.IsFlexiblePoolMatch(match) || isNineBallMatch(match) {
+	if isPoolRoundMatch(match) || isNineBallMatch(match) {
 		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
 		if stateErr != nil {
 			return &types.MatchScoreResp{Success: false, Accepted: false, Message: "加载对局快照失败"}, nil
 		}
-		message := "灵活赛制请使用结束一局记录胜负"
+		message := errPoolRoundScoreUnsupported.Error()
 		if isNineBallMatch(match) {
 			message = errNineBallScoreUnsupported.Error()
 		}

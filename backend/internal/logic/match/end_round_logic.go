@@ -159,6 +159,13 @@ func (l *EndRoundLogic) EndRound(req *types.EndRoundReq) (resp *types.EndRoundRe
 			return &types.EndRoundResp{Success: false, Accepted: false, ClientActionId: req.ClientActionId}, nil
 		}
 	}
+	if isPoolRoundMatch(match) {
+		if ruleErr := validatePoolRoundWin(match.GameType, capabilities.ViewerRole, req.Winner, req.WinType, req.Score); ruleErr != nil {
+			l.Logger.Errorf("中八/美九结束一局被拒绝: matchId=%d, gameType=%d, winner=%d, winType=%q, score=%d, err=%v",
+				match.Id, match.GameType, req.Winner, req.WinType, req.Score, ruleErr)
+			return &types.EndRoundResp{Success: false, Accepted: false, ClientActionId: req.ClientActionId}, nil
+		}
+	}
 
 	// 获取当前局数
 	roundCount, err := l.svcCtx.MatchModel.GetRoundCount(match.Id)
@@ -361,7 +368,8 @@ func (l *EndRoundLogic) endFlexiblePoolRound(req *types.EndRoundReq, userID int6
 			result.FailureMessage = "对局不存在"
 			return nil
 		}
-		if _, authorityErr := validateMatchWriteAuthority(locked, userID); authorityErr != nil {
+		capabilities, authorityErr := validateMatchWriteAuthority(locked, userID)
+		if authorityErr != nil {
 			result.FailureMessage = authorityErr.Error()
 			return nil
 		}
@@ -394,8 +402,8 @@ func (l *EndRoundLogic) endFlexiblePoolRound(req *types.EndRoundReq, userID int6
 			result.FailureMessage = "局胜方只能是选手1或选手2"
 			return nil
 		}
-		if req.Score != 1 {
-			result.FailureMessage = "灵活赛制每局只能计1胜"
+		if ruleErr := validatePoolRoundWin(locked.GameType, capabilities.ViewerRole, req.Winner, req.WinType, req.Score); ruleErr != nil {
+			result.FailureMessage = ruleErr.Error()
 			return nil
 		}
 		roundCount, countErr := l.svcCtx.MatchModel.GetRoundCountWithTx(tx, locked.Id)
@@ -450,7 +458,7 @@ func (l *EndRoundLogic) endFlexiblePoolRound(req *types.EndRoundReq, userID int6
 		result.Round = round
 
 		if poolMatchFormatLimitReached(locked) {
-			if locked.FinishConfirmationRequired && model.NormalizeMatchMode(locked.MatchMode) == model.MatchModeRanked && locked.RefereeUserId == nil {
+			if shouldRequestRankedFinish(locked, userID) {
 				requestRevision := locked.SyncRevision
 				locked.FinishState = model.FinishStatePendingConfirmation
 				locked.FinishRequestedBy = &userID

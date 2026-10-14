@@ -27,25 +27,11 @@ func isNineBallMatch(match *model.Match) bool {
 	return match != nil && match.GameType == 2
 }
 
-// nineBallViewerMayTarget 判断记分对象是否允许：胜局的胜方、犯规的犯规方都必须是对手，裁判不受限。
-func nineBallViewerMayTarget(viewerRole string, actor int) bool {
-	switch viewerRole {
-	case matchViewerRoleReferee:
-		return actor == 1 || actor == 2
-	case matchViewerRolePlayer1:
-		return actor == 2
-	case matchViewerRolePlayer2:
-		return actor == 1
-	default:
-		return false
-	}
-}
-
 func validateNineBallWin(viewerRole string, winner int, winType string, score int) error {
 	if expected, ok := nineBallWinScores[winType]; !ok || score != expected {
 		return errNineBallInvalidWin
 	}
-	if !nineBallViewerMayTarget(viewerRole, winner) {
+	if !viewerMayTargetActor(viewerRole, winner) {
 		return errNineBallOpponentOnly
 	}
 	return nil
@@ -56,7 +42,7 @@ func resolveNineBallFoulScore(viewerRole string, foulActor int, score int) (int,
 	if score != 0 && score != nineBallFoulScore {
 		return 0, errNineBallInvalidFoulScore
 	}
-	if !nineBallViewerMayTarget(viewerRole, foulActor) {
+	if !viewerMayTargetActor(viewerRole, foulActor) {
 		return 0, errNineBallOpponentOnly
 	}
 	return nineBallFoulScore, nil

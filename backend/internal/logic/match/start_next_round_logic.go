@@ -132,8 +132,18 @@ func (l *StartNextRoundLogic) StartNextRound(req *types.StartNextRoundReq) (resp
 		return &types.StartNextRoundResp{Success: false}, nil
 	}
 
+	// 中八/美九按结束一局逐局记录，没有开局动作；写入 round_start 只会产生可被撤销的空操作。
+	if isPoolRoundMatch(match) {
+		l.Logger.Errorf("当前球种不支持开始下一局: matchId=%d, gameType=%d", match.Id, match.GameType)
+		return &types.StartNextRoundResp{Success: false, Accepted: false}, nil
+	}
+
 	// 获取当前局数
-	roundCount, _ := l.svcCtx.MatchModel.GetRoundCount(match.Id)
+	roundCount, err := l.svcCtx.MatchModel.GetRoundCount(match.Id)
+	if err != nil {
+		l.Logger.Errorf("查询局数失败: matchId=%d, err=%v", match.Id, err)
+		return &types.StartNextRoundResp{Success: false, Accepted: false}, nil
+	}
 	newRoundNo := int(roundCount) + 1
 
 	if match.GameType == 1 {

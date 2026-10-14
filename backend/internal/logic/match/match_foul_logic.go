@@ -99,7 +99,7 @@ func (l *MatchFoulLogic) MatchFoul(req *types.MatchFoulReq) (resp *types.MatchSc
 			Snapshot:       view.Snapshot,
 		}, nil
 	}
-	if model.IsFlexiblePoolMatch(match) {
+	if isPoolRoundMatch(match) {
 		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
 		if stateErr != nil {
 			return &types.MatchScoreResp{Success: false, Accepted: false, Message: "加载对局快照失败"}, nil
@@ -108,7 +108,7 @@ func (l *MatchFoulLogic) MatchFoul(req *types.MatchFoulReq) (resp *types.MatchSc
 		return &types.MatchScoreResp{
 			Success:                   false,
 			Accepted:                  false,
-			Message:                   "灵活赛制请使用结束一局记录胜负",
+			Message:                   errPoolRoundScoreUnsupported.Error(),
 			ServerRevision:            view.Snapshot.ServerRevision,
 			Snapshot:                  view.Snapshot,
 			CurrentFrameStarted:       match.CurrentFrameStarted,

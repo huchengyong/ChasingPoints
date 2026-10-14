@@ -25,3 +25,17 @@ func validateMatchWriteAuthority(match *model.Match, userId int64) (matchViewerC
 	}
 	return capabilities, nil
 }
+
+// viewerMayTargetActor 判断记分对象是否允许：胜局的胜方、犯规的犯规方都必须是对手，裁判不受限。
+func viewerMayTargetActor(viewerRole string, actor int) bool {
+	switch viewerRole {
+	case matchViewerRoleReferee:
+		return actor == 1 || actor == 2
+	case matchViewerRolePlayer1:
+		return actor == 2
+	case matchViewerRolePlayer2:
+		return actor == 1
+	default:
+		return false
+	}
+}

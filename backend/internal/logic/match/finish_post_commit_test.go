@@ -90,7 +90,7 @@ func TestFinishReplayConflictRejectsMismatchedAction(t *testing.T) {
 		}
 		injected = true
 		response, err := NewEndRoundLogic(startReputationCtx(1001), svcCtx).EndRound(&types.EndRoundReq{
-			MatchId: m.Id, Winner: 1, WinType: "normal", Score: 1, ClientActionId: key, BaseRevision: 0,
+			MatchId: m.Id, Winner: 2, WinType: "normal", Score: 1, ClientActionId: key, BaseRevision: 0,
 		})
 		if err != nil || response == nil || !response.Success {
 			t.Fatalf("concurrent round failed: %+v err=%v", response, err)
@@ -131,7 +131,7 @@ func TestAutoFinishReloadFailureUsesCommittedMatchForSideEffects(t *testing.T) {
 		t.Fatal(err)
 	}
 	response, err := NewEndRoundLogic(startReputationCtx(1001), svcCtx).EndRound(&types.EndRoundReq{
-		MatchId: m.Id, Winner: 1, WinType: "normal", Score: 1, ClientActionId: "v9-reload", BaseRevision: 0,
+		MatchId: m.Id, Winner: 2, WinType: "normal", Score: 1, ClientActionId: "v9-reload", BaseRevision: 0,
 	})
 	stored, readErr := svcCtx.MatchModel.FindById(m.Id)
 	linked, linkErr := svcCtx.ChallengeModel.FindById(*m.ChallengeId)
@@ -164,7 +164,7 @@ func TestAutoFinishSideEffectsSurviveSnapshotAssemblyFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	response, err := NewEndRoundLogic(startReputationCtx(1001), svcCtx).EndRound(&types.EndRoundReq{
-		MatchId: m.Id, Winner: 1, WinType: "normal", Score: 1, ClientActionId: "v9-postcommit", BaseRevision: 0,
+		MatchId: m.Id, Winner: 2, WinType: "normal", Score: 1, ClientActionId: "v9-postcommit", BaseRevision: 0,
 	})
 	stored, readErr := svcCtx.MatchModel.FindById(m.Id)
 	if err != nil || readErr != nil || !failed || stored == nil || stored.Status != 2 {
@@ -192,7 +192,7 @@ func TestAutoFinishSideEffectsSurviveSnapshotAssemblyFailure(t *testing.T) {
 func TestAutoFinishPostCommitHealthyControl(t *testing.T) {
 	svcCtx, m, hub := reviewV9PostCommitFixture(t, true)
 	response, err := NewEndRoundLogic(startReputationCtx(1001), svcCtx).EndRound(&types.EndRoundReq{
-		MatchId: m.Id, Winner: 1, WinType: "normal", Score: 1, ClientActionId: "v9-control", BaseRevision: 0,
+		MatchId: m.Id, Winner: 2, WinType: "normal", Score: 1, ClientActionId: "v9-control", BaseRevision: 0,
 	})
 	stored, readErr := svcCtx.MatchModel.FindById(m.Id)
 	var notifications int64

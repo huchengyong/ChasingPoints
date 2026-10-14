@@ -149,7 +149,7 @@ func TestAutoFinishInvalidationSurvivesPostCommitSnapshotFailure(t *testing.T) {
 	}
 
 	resp, err := NewEndRoundLogic(startReputationCtx(1001), svcCtx).EndRound(&types.EndRoundReq{
-		MatchId: match.Id, Winner: 1, Score: 1, WinType: "normal", ClientActionId: "auto-invalidation", BaseRevision: 0,
+		MatchId: match.Id, Winner: 2, Score: 1, WinType: "normal", ClientActionId: "auto-invalidation", BaseRevision: 0,
 	})
 	stored, storedErr := svcCtx.MatchModel.FindById(match.Id)
 	linked, linkedErr := svcCtx.ChallengeModel.FindById(challengeID)
