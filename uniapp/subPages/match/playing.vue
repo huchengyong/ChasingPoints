@@ -531,6 +531,7 @@
 					</view>
 					<text class="finish-slider-track-label">向右滑动结束对局 ››</text>
 				</view>
+				<text v-if="isChallengeMatchFinishSlider" class="finish-slider-note">{{ finishSlideNote }}</text>
 				<button v-if="!isChallengeMatchFinishSlider && viewerUi.showFinishButton" class="footer-btn btn-primary full-width" @click="handleFinishMatch">{{ finishButtonLabel }}</button>
 				<button v-if="!isChallengeMatchFinishSlider && viewerUi.showFinishRequestButton" class="footer-btn btn-primary full-width" @click="handleRequestFinish">{{ finishRequestButtonLabel }}</button>
 			</view>
@@ -572,6 +573,7 @@ import { useActivityStore } from '@/store/activity.js'
 import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import { matchScore, endRound, startNextRound, matchFoul, matchUndo, finishMatch, requestFinishMatch, confirmFinishMatch, disputeFinishMatch, withdrawFinishMatch, getMatchDetail, getCurrentMatch, getMatchRefereeQRCode, snookerStroke, snookerFrameAction, updateSnookerFormat, updateMatchFormat } from '@/api/match.js'
 import { isSlideFinishKey, isSlideResetKey, shouldCommitOnRelease, slideProgress } from '@/utils/slide-to-confirm.js'
+import { buildFinishSlideNote } from '@/utils/rank-settlement.js'
 import { consumeResultNavigationGuard, getMatchHistoryPageUrl, getMatchHistoryTabUrl, shouldLeavePlayingPage } from '@/utils/match-navigation.js'
 import { buildMatchActionPayload } from '@/utils/match-action.js'
 import { renderLocalQRCode } from '@/utils/local-qrcode.js'
@@ -1490,6 +1492,13 @@ const saveMatchFormat = async () => {
 
 // ========== 滑动结束（约球比赛） ==========
 const isChallengeMatchFinishSlider = computed(() => challengeId.value > 0 && viewerUi.value.showFinishButton && !viewerUi.value.showFinishRequestButton)
+// 写明无需对方确认；排位胜负结果还写明按当前比分结算及对方的异议期。
+const finishSlideNote = computed(() => buildFinishSlideNote({
+	challengeId: challengeId.value,
+	matchMode: matchMode.value,
+	myScore: myScore.value,
+	opponentScore: opponentScore.value
+}))
 const slideTrackMaxPx = ref(0)
 const slideThumbOffsetPx = computed(() => Math.round(slideProgressRatio.value * slideTrackMaxPx.value))
 
