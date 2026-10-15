@@ -96,8 +96,7 @@ func (l *GetRecentTrendLogic) getLegacyRecentTrend(userID int64, req *types.GetR
 	query := l.svcCtx.DB.WithContext(l.ctx).Table("matches").
 		Select("id, user_id, match_time, result").
 		Where("(user_id = ? OR opponent_id = ?) AND status = ?", userID, userID, 2).
-		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", model.MatchModeRanked).
-		Where("rank_settlement_status NOT IN ?", []string{model.RankSettlementPending, model.RankSettlementVoided})
+		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", model.MatchModeRanked)
 	if gameType > 0 {
 		query = query.Where("game_type = ?", gameType)
 	}

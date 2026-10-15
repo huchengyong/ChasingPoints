@@ -83,7 +83,6 @@ func main() {
 	go logicx.NewSeasonRolloverWorker(svcCtx).Start(context.Background())
 	go logicx.NewChallengeExpiryWorker(svcCtx).Start(context.Background())
 	go matchlogic.NewFinishRequestExpiryWorker(svcCtx).Start(context.Background())
-	go matchlogic.NewRankSettlementWorker(svcCtx).Start(context.Background())
 	go matchlogic.NewAchievementSyncWorker(svcCtx).Start(context.Background())
 	go tournamentlogic.NewTournamentBracketGenerationWorker(svcCtx).Start(context.Background())
 

@@ -24,7 +24,7 @@ func TestPendingFinishIsReturnedByCurrentAndDetailWithViewerCapabilities(t *test
 		model.User{Id: requesterID, Nickname: "发起人"},
 		model.User{Id: opponentID, Nickname: "对手"},
 	)
-	requestedAt := time.Now().Add(-time.Hour)
+	requestedAt := time.Now().Add(-5 * time.Second)
 	if err := svcCtx.MatchModel.Create(&model.Match{
 		Id:                         9010,
 		UserId:                     requesterID,
@@ -58,6 +58,10 @@ func TestPendingFinishIsReturnedByCurrentAndDetailWithViewerCapabilities(t *test
 	if current.Match.ViewerRole != "player2" || !current.Match.CanConfirmFinish || !current.Match.CanDisputeFinish || current.Match.CanScore {
 		t.Fatalf("unexpected current capabilities: %+v", current.Match)
 	}
+	wantExpiresAt := requestedAt.Add(model.FinishRequestTTL).Format(time.RFC3339)
+	if current.Match.FinishRequestExpiresAt != wantExpiresAt || current.Match.FinishRequestRemainingSeconds < 24 || current.Match.FinishRequestRemainingSeconds > 25 {
+		t.Fatalf("current countdown = %q/%d, want %q and about 25s", current.Match.FinishRequestExpiresAt, current.Match.FinishRequestRemainingSeconds, wantExpiresAt)
+	}
 
 	detail, err := NewGetMatchDetailLogic(finishReputationCtx(opponentID), svcCtx).GetMatchDetail(&types.GetMatchDetailReq{MatchId: 9010})
 	if err != nil || !detail.Success {
@@ -69,13 +73,20 @@ func TestPendingFinishIsReturnedByCurrentAndDetailWithViewerCapabilities(t *test
 	if detail.Match.ViewerRole != "player2" || !detail.Match.CanConfirmFinish || !detail.Match.CanDisputeFinish || detail.Match.CanScore {
 		t.Fatalf("unexpected detail capabilities: %+v", detail.Match)
 	}
+	if detail.Match.FinishRequestExpiresAt != wantExpiresAt || detail.Match.FinishRequestRemainingSeconds < 24 || detail.Match.FinishRequestRemainingSeconds > 25 {
+		t.Fatalf("detail countdown = %q/%d, want %q and about 25s", detail.Match.FinishRequestExpiresAt, detail.Match.FinishRequestRemainingSeconds, wantExpiresAt)
+	}
 }
 
-func TestExpiredFinishRequestReadIsPureUntilWorkerRestoresState(t *testing.T) {
+func TestExpiredFinishRequestReadIsPureUntilWorkerCompletesMatch(t *testing.T) {
 	svcCtx := newFinishMatchReputationTestSvc(t)
 	opponentID := int64(2002)
 	requesterID := int64(1001)
-	requestedAt := time.Now().Add(-25 * time.Hour)
+	seedFinishReputationUsers(t, svcCtx,
+		model.User{Id: requesterID, Nickname: "发起人"},
+		model.User{Id: opponentID, Nickname: "对手"},
+	)
+	requestedAt := time.Now().Add(-model.FinishRequestTTL - time.Second)
 	if err := svcCtx.MatchModel.Create(&model.Match{
 		Id:                         9011,
 		UserId:                     requesterID,
@@ -90,9 +101,11 @@ func TestExpiredFinishRequestReadIsPureUntilWorkerRestoresState(t *testing.T) {
 		FinishRequestedAt:          &requestedAt,
 		FinishRequestRevision:      6,
 		Status:                     1,
+		MyScore:                    5,
+		OpponentScore:              3,
 		SyncRevision:               6,
 		CurrentFrameStarted:        true,
-		MatchTime:                  time.Now().Add(-26 * time.Hour),
+		MatchTime:                  time.Now().Add(-time.Hour),
 	}); err != nil {
 		t.Fatalf("create expired pending match: %v", err)
 	}
@@ -105,41 +118,52 @@ func TestExpiredFinishRequestReadIsPureUntilWorkerRestoresState(t *testing.T) {
 	ws.GlobalHub = hub
 	t.Cleanup(func() { ws.GlobalHub = previousHub })
 
-	current, err := NewGetCurrentMatchLogic(finishReputationCtx(requesterID), svcCtx).GetCurrentMatch()
-	if err != nil || !current.Success || current.Match == nil {
-		t.Fatalf("expired current match should be restored: resp=%#v err=%v", current, err)
-	}
-	if current.Match.FinishState != model.FinishStateNone || current.Match.ServerRevision != 6 {
-		t.Fatalf("expired read must expose an effective non-pending view without changing revision, got %+v", current.Match)
+	// 到期未处理：读取仍如实返回待确认、剩余0秒且无任何操作权限，不被改写成已取消。
+	for _, viewer := range []int64{requesterID, opponentID} {
+		current, err := NewGetCurrentMatchLogic(finishReputationCtx(viewer), svcCtx).GetCurrentMatch()
+		if err != nil || !current.Success || current.Match == nil {
+			t.Fatalf("expired current match for %d: resp=%#v err=%v", viewer, current, err)
+		}
+		m := current.Match
+		if m.FinishState != model.FinishStatePendingConfirmation || m.ServerRevision != 6 || m.FinishRequestRemainingSeconds != 0 || m.FinishRequestExpiresAt == "" {
+			t.Fatalf("expired read must stay pending with 0 seconds left, got %+v", m)
+		}
+		if m.CanWithdrawFinish || m.CanConfirmFinish || m.CanDisputeFinish || m.CanScore {
+			t.Fatalf("expired read must not offer finish actions, got %+v", m)
+		}
 	}
 	if writes := recorder.Writes(); len(writes) != 0 {
 		t.Fatalf("current match GET must not issue writes: %q", writes)
 	}
-	stored, err := svcCtx.MatchModel.FindById(9011)
-	if err != nil || stored == nil || stored.FinishState != model.FinishStatePendingConfirmation || stored.SyncRevision != 6 {
-		t.Fatalf("GET must not write the expired finish request: stored=%+v err=%v", stored, err)
-	}
+
 	if err := NewFinishRequestExpiryWorker(svcCtx).RunOnce(context.Background()); err != nil {
 		t.Fatalf("expire finish request worker: %v", err)
 	}
-	expiredMessage := readFinishBroadcast(t, hub)
-	if expiredMessage.Type != "match_finish_expired" {
-		t.Fatalf("unexpected expiry broadcast type: %q", expiredMessage.Type)
+	timeoutMessage := readFinishBroadcast(t, hub)
+	if timeoutMessage.Type != "match_finish_timeout" {
+		t.Fatalf("unexpected timeout broadcast type: %q", timeoutMessage.Type)
 	}
-	expiredData := expiredMessage.Data.(map[string]interface{})
-	if expiredData["server_revision"].(float64) != 7 || expiredData["finish_state"] != model.FinishStateNone {
-		t.Fatalf("unexpected expiry broadcast data: %#v", expiredData)
+	stored, err := svcCtx.MatchModel.FindById(9011)
+	if err != nil || stored == nil || stored.Status != 2 || stored.Result == nil || *stored.Result != 1 || stored.FinishState != model.FinishStateNone {
+		t.Fatalf("worker must complete the match with the frozen score: stored=%+v err=%v", stored, err)
 	}
-	stored, err = svcCtx.MatchModel.FindById(9011)
-	if err != nil || stored == nil || stored.FinishState != model.FinishStateNone || stored.FinishRequestedBy != nil || stored.SyncRevision != 7 {
-		t.Fatalf("worker must persist expired state: stored=%+v err=%v", stored, err)
+	if stored.CompletionSource != model.CompletionSourceFinishTimeout || stored.CompletedByUserId == nil || *stored.CompletedByUserId != requesterID {
+		t.Fatalf("timeout completion attribution = %q/%v, want finish_timeout by requester", stored.CompletionSource, stored.CompletedByUserId)
 	}
-	var expiredActionCount int64
-	if err := svcCtx.DB.Model(&model.MatchAction{}).Where("match_id = ? AND action_type = ?", 9011, "finish_expired").Count(&expiredActionCount).Error; err != nil {
-		t.Fatalf("count expired action: %v", err)
+	var timeoutActions, rankLogs int64
+	svcCtx.DB.Model(&model.MatchAction{}).Where("match_id = ? AND action_type = ?", 9011, finishTimeoutActionType).Count(&timeoutActions)
+	svcCtx.DB.Model(&model.RankChangeLog{}).Where("match_id = ?", 9011).Count(&rankLogs)
+	if timeoutActions != 1 || rankLogs != 2 {
+		t.Fatalf("timeout must write one finish_timeout action and settle rank for both players immediately, actions=%d rankLogs=%d", timeoutActions, rankLogs)
 	}
-	if expiredActionCount != 1 {
-		t.Fatalf("expected one finish_expired action, got %d", expiredActionCount)
+
+	// 重复运行不重复结算。
+	if err := NewFinishRequestExpiryWorker(svcCtx).RunOnce(context.Background()); err != nil {
+		t.Fatalf("second worker run: %v", err)
+	}
+	svcCtx.DB.Model(&model.RankChangeLog{}).Where("match_id = ?", 9011).Count(&rankLogs)
+	if rankLogs != 2 {
+		t.Fatalf("second worker run must not settle again, rankLogs=%d", rankLogs)
 	}
 }
 

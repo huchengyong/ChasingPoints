@@ -96,7 +96,7 @@ func (l *FinishMatchLogic) finishMatchImmediately(req *types.FinishMatchReq, for
 		if existingAction.ActionType != "match_end" || existingAction.Actor != resolveFinishActionActor(match, userId) || existingAction.BaseRevision != req.BaseRevision {
 			return &types.FinishMatchResp{Success: false, Accepted: false, ClientActionId: req.ClientActionId}, nil
 		}
-		if model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked && !match.RankSettlementDeferred() {
+		if model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked {
 			l.awardMemberGrowthForMatch(match.Id, match.UserId, match.OpponentId)
 		}
 		l.syncAchievementProgressForCompletedMatch(match)
@@ -207,7 +207,7 @@ func (l *FinishMatchLogic) finishMatchImmediately(req *types.FinishMatchReq, for
 	var settlement finishMatchSettlement
 	err = l.svcCtx.DB.Transaction(func(tx *gorm.DB) error {
 		var err error
-		settlement, err = l.settleMatchManualTx(tx, match, userId, req)
+		settlement, err = l.settleMatchWithTx(tx, match, userId, req)
 		return err
 	})
 	if err != nil {
@@ -241,7 +241,7 @@ func (l *FinishMatchLogic) finishMatchImmediately(req *types.FinishMatchReq, for
 						OpponentScore:  scoreView.OpponentScore,
 					}, nil
 				}
-				if model.NormalizeMatchMode(replayState.Match.MatchMode) == model.MatchModeRanked && !replayState.Match.RankSettlementDeferred() {
+				if model.NormalizeMatchMode(replayState.Match.MatchMode) == model.MatchModeRanked {
 					l.awardMemberGrowthForMatch(replayState.Match.Id, replayState.Match.UserId, replayState.Match.OpponentId)
 				}
 				l.syncAchievementProgressForCompletedMatch(replayState.Match)
@@ -279,14 +279,14 @@ func (l *FinishMatchLogic) finishMatchImmediately(req *types.FinishMatchReq, for
 }
 
 func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, userId int64, match *model.Match, result int, competitiveRevisions map[int64]int64, seasonID int64) (*types.FinishMatchResp, error) {
-	if model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked && !match.RankSettlementDeferred() {
+	if model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked {
 		l.applyMatchReputation(match)
 	}
 	// 失效与排名广播紧跟已提交的事务结果：响应快照组装失败也不能漏发。
 	broadcastRankInfoUpdated(match, result)
 	broadcastUserDataUpdated(match, result, competitiveRevisions)
 	l.invalidateCompetitiveSharedReads(match, result, seasonID)
-	// 约球比赛被参赛方结束时，另一方收到“X结束了对局 · 比分”，不再重复发送结果通知。
+	// 约球比赛被参赛方直接结束时，另一方收到“X结束了对局 · 比分”，不再重复发送结果通知。
 	challengeNoticeSent := l.dispatchChallengeFinishNotices(match)
 	if result != 3 {
 		resultText := "胜利"
@@ -336,7 +336,7 @@ func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, user
 			}
 		}
 	}
-	if model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked && !match.RankSettlementDeferred() {
+	if model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked {
 		l.awardMemberGrowthForMatch(match.Id, match.UserId, match.OpponentId)
 	}
 	l.syncAchievementProgressForCompletedMatch(match)
@@ -381,6 +381,50 @@ func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, user
 		MyScore:        scoreView.MyScore,
 		OpponentScore:  scoreView.OpponentScore,
 	}, nil
+}
+
+// dispatchChallengeFinishNotices 在约球比赛由参赛方直接结束（练习赛）后，通知另一名参赛方“X结束了对局 · 比分”。
+// 排位赛经确认或超时完成，沿用普通结果通知。返回已收到该提醒的用户，调用方据此跳过重复的结果通知。
+func (l *FinishMatchLogic) dispatchChallengeFinishNotices(match *model.Match) map[int64]bool {
+	sent := map[int64]bool{}
+	if match == nil || match.ChallengeId == nil || *match.ChallengeId <= 0 || match.CompletedByUserId == nil ||
+		match.CompletionSource != model.CompletionSourcePlayerDirect || match.OpponentId == nil || *match.OpponentId <= 0 || l.svcCtx.UserModel == nil {
+		return sent
+	}
+	finisherID := *match.CompletedByUserId
+	if finisherID != match.UserId && finisherID != *match.OpponentId {
+		return sent
+	}
+	recipientID := match.UserId
+	recipientScore, otherScore := match.MyScore, match.OpponentScore
+	if finisherID == match.UserId {
+		recipientID = *match.OpponentId
+		recipientScore, otherScore = match.OpponentScore, match.MyScore
+	}
+	name := "对方"
+	if user, err := l.svcCtx.UserModel.FindById(finisherID); err == nil && user != nil && user.Nickname != "" {
+		name = user.Nickname
+	}
+	content := fmt.Sprintf("%s结束了对局 · %d:%d", name, recipientScore, otherScore)
+	if err := logicx.DispatchNotification(l.svcCtx, logicx.NotificationDispatchInput{
+		UserId:      recipientID,
+		Type:        "match_result",
+		DedupeKey:   fmt.Sprintf("match:%d", match.Id),
+		Title:       "对局已结束",
+		Content:     content,
+		Data:        buildNotificationPayload("/subPages/match/matchResult", match.Id, 0),
+		PushTitle:   "对局已结束",
+		PushContent: content,
+		PushData: map[string]interface{}{
+			"url": fmt.Sprintf("/subPages/match/matchResult?match_id=%d", match.Id),
+		},
+		WSCategory: "match_result",
+	}); err != nil {
+		l.Logger.Errorf("分发约球结束提醒失败: matchId=%d userId=%d err=%v", match.Id, recipientID, err)
+		return sent
+	}
+	sent[recipientID] = true
+	return sent
 }
 
 // degradedMatchEndSnapshot 快照组装失败时，match_end 与响应仍携带比赛对象上的权威字段，
@@ -485,7 +529,7 @@ func broadcastUserDataUpdated(match *model.Match, result int, competitiveRevisio
 		// 约球比赛终态已在同一事务同步结束关联约球，双方主 Tab 活动卡需要失效。
 		scopes = append(scopes, "challenge")
 	}
-	if rankAffecting(match, result) {
+	if result != 3 && model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked {
 		scopes = append(scopes, "rank", "stats", "honor", "season", "leaderboard")
 	}
 	userIDs := []int64{match.UserId}
@@ -503,7 +547,7 @@ func broadcastUserDataUpdated(match *model.Match, result int, competitiveRevisio
 }
 
 func (l *FinishMatchLogic) invalidateCompetitiveSharedReads(match *model.Match, result int, seasonID int64) {
-	if l == nil || l.svcCtx == nil || l.svcCtx.Redis == nil || !rankAffecting(match, result) {
+	if l == nil || l.svcCtx == nil || l.svcCtx.Redis == nil || match == nil || result == 3 || model.NormalizeMatchMode(match.MatchMode) != model.MatchModeRanked {
 		return
 	}
 	if err := publiclogic.BumpLeaderboardCacheVersion(l.ctx, l.svcCtx, match.GameType); err != nil {
@@ -531,7 +575,7 @@ func (l *FinishMatchLogic) invalidateCompetitiveSharedReads(match *model.Match, 
 }
 
 func broadcastRankInfoUpdated(match *model.Match, result int) {
-	if ws.GlobalHub == nil || !rankAffecting(match, result) {
+	if ws.GlobalHub == nil || match == nil || result == 3 || model.NormalizeMatchMode(match.MatchMode) != model.MatchModeRanked {
 		return
 	}
 
@@ -590,17 +634,8 @@ func (l *FinishMatchLogic) settleMatchWithCompletionSourceTx(tx *gorm.DB, match 
 	return l.settleMatchResultTx(tx, match, userId, req, completionSource, 0)
 }
 
-// settleMatchManualTx 用于参赛方通过结束接口手动结束；约球排位据此延后排位结算。
-func (l *FinishMatchLogic) settleMatchManualTx(tx *gorm.DB, match *model.Match, userId int64, req *types.FinishMatchReq) (finishMatchSettlement, error) {
-	return l.settleMatchResultWithOptionsTx(tx, match, userId, req, "", 0, settleOptions{manualFinish: true})
-}
-
 // settleMatchResultTx 的 winner 为 0 时按整场比分推导胜负。
 func (l *FinishMatchLogic) settleMatchResultTx(tx *gorm.DB, match *model.Match, userId int64, req *types.FinishMatchReq, completionSource string, winner int) (finishMatchSettlement, error) {
-	return l.settleMatchResultWithOptionsTx(tx, match, userId, req, completionSource, winner, settleOptions{})
-}
-
-func (l *FinishMatchLogic) settleMatchResultWithOptionsTx(tx *gorm.DB, match *model.Match, userId int64, req *types.FinishMatchReq, completionSource string, winner int, opts settleOptions) (finishMatchSettlement, error) {
 	if match == nil || match.Status != 1 || req == nil {
 		return finishMatchSettlement{}, errFinishActionInvalid
 	}
@@ -620,9 +655,6 @@ func (l *FinishMatchLogic) settleMatchResultWithOptionsTx(tx *gorm.DB, match *mo
 	match.EndTime = &now
 	match.CompletedAt = &now
 	clearFinishRequest(match)
-	rankPlan := planRankSettlement(match, result, userId, opts, now)
-	match.RankSettlementStatus = rankPlan.status
-	match.RankSettlementDueAt = rankPlan.dueAt
 
 	// 比赛正常完成同步结束关联约球（仅本场比赛，条件更新不触碰其他约球）。
 	if match.ChallengeId != nil && *match.ChallengeId > 0 {
@@ -681,14 +713,33 @@ func (l *FinishMatchLogic) settleMatchResultWithOptionsTx(tx *gorm.DB, match *mo
 		}
 	}
 
-	rankedDecisive := result != 3 && model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked
-	deferRank := match.RankSettlementStatus == model.RankSettlementPending
-	var facts rankSettlementFacts
-	if rankedDecisive && !deferRank {
-		var factsErr error
-		facts, factsErr = l.loadRankSettlementFactsTx(tx, match, result)
-		if factsErr != nil {
-			return finishMatchSettlement{}, factsErr
+	player1Win := result == 1
+	player1RawAchievementScore := 0
+	player2RawAchievementScore := 0
+	completedRounds := 0
+	if result != 3 && model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked {
+		rewardMap, err := l.getAchievementRewardMap(match.GameType)
+		if err != nil {
+			return finishMatchSettlement{}, err
+		}
+		rounds, err := l.svcCtx.MatchModel.ListCompletedRoundsWithTx(tx, match.Id)
+		if err != nil {
+			return finishMatchSettlement{}, err
+		}
+		completedRounds = len(rounds)
+		actions, err := l.svcCtx.MatchModel.ListActiveActionsWithTx(tx, match.Id)
+		if err != nil {
+			return finishMatchSettlement{}, err
+		}
+		player1RawAchievementScore, player2RawAchievementScore, err = resolveReplayAchievementScoresStrict(
+			match.GameType,
+			rounds,
+			actions,
+			nil,
+			rewardMap,
+		)
+		if err != nil {
+			return finishMatchSettlement{}, err
 		}
 	}
 
@@ -708,7 +759,7 @@ func (l *FinishMatchLogic) settleMatchResultWithOptionsTx(tx *gorm.DB, match *mo
 		return finishMatchSettlement{}, err
 	}
 
-	if result == 3 || model.NormalizeMatchMode(match.MatchMode) == model.MatchModePractice || deferRank {
+	if result == 3 || model.NormalizeMatchMode(match.MatchMode) == model.MatchModePractice {
 		projection, err := projectCompetitiveReadModelWithTx(tx, l.svcCtx, logicx.CompetitiveProjectionInput{Match: match})
 		if err != nil {
 			return finishMatchSettlement{}, err
@@ -721,92 +772,11 @@ func (l *FinishMatchLogic) settleMatchResultWithOptionsTx(tx *gorm.DB, match *mo
 		}, nil
 	}
 
-	outcome, err := l.applyRankSettlementTx(tx, match, resolveRankChangeEffectiveAt(match), facts)
-	if err != nil {
-		return finishMatchSettlement{}, err
-	}
-	projection, err := projectCompetitiveReadModelWithTx(tx, l.svcCtx, logicx.CompetitiveProjectionInput{
-		Match:         match,
-		Player1Before: outcome.Player1Before,
-		Player1After:  outcome.Player1After,
-		Player2Before: outcome.Player2Before,
-		Player2After:  outcome.Player2After,
-	})
-	if err != nil {
-		return finishMatchSettlement{}, err
-	}
-	return finishMatchSettlement{
-		Result:               result,
-		ServerRevision:       serverRevision,
-		CompetitiveRevisions: projection.CompetitiveRevisions,
-		SeasonID:             projection.SeasonID,
-	}, nil
-}
-
-// rankSettlementFacts 是排位结算依赖、可由已完成比赛重放得到的事实。
-type rankSettlementFacts struct {
-	player1Win      bool
-	player1Raw      int
-	player2Raw      int
-	completedRounds int
-}
-
-// loadRankSettlementFactsTx 重放对局得到成就加分与完赛局数；仅用于有胜负的排位结算。
-func (l *FinishMatchLogic) loadRankSettlementFactsTx(tx *gorm.DB, match *model.Match, result int) (rankSettlementFacts, error) {
-	facts := rankSettlementFacts{player1Win: result == 1}
-	rewardMap, err := l.getAchievementRewardMap(match.GameType)
-	if err != nil {
-		return rankSettlementFacts{}, err
-	}
-	rounds, err := l.svcCtx.MatchModel.ListCompletedRoundsWithTx(tx, match.Id)
-	if err != nil {
-		return rankSettlementFacts{}, err
-	}
-	facts.completedRounds = len(rounds)
-	actions, err := l.svcCtx.MatchModel.ListActiveActionsWithTx(tx, match.Id)
-	if err != nil {
-		return rankSettlementFacts{}, err
-	}
-	// 延后结算重放时 match_end 已写入；即时结算计算时它尚未存在，保持输入一致。
-	actions = withoutMatchEndAction(actions)
-	facts.player1Raw, facts.player2Raw, err = resolveReplayAchievementScoresStrict(
-		match.GameType,
-		rounds,
-		actions,
-		nil,
-		rewardMap,
-	)
-	if err != nil {
-		return rankSettlementFacts{}, err
-	}
-	return facts, nil
-}
-
-func withoutMatchEndAction(actions []model.MatchAction) []model.MatchAction {
-	filtered := make([]model.MatchAction, 0, len(actions))
-	for _, action := range actions {
-		if action.ActionType != "match_end" {
-			filtered = append(filtered, action)
-		}
-	}
-	return filtered
-}
-
-// rankSettlementOutcome 记录一次排位结算前后的段位快照，供竞技读模型投影使用。
-type rankSettlementOutcome struct {
-	Player1Before *model.UserRanking
-	Player1After  *model.UserRanking
-	Player2Before *model.UserRanking
-	Player2After  *model.UserRanking
-}
-
-// applyRankSettlementTx 写入双方段位快照与段位变更日志。effectiveAt 为结算实际生效时刻：
-// 即时结算等于结束时刻，延后结算为异议期结束后的生效时刻。
-func (l *FinishMatchLogic) applyRankSettlementTx(tx *gorm.DB, match *model.Match, effectiveAt time.Time, facts rankSettlementFacts) (rankSettlementOutcome, error) {
 	settlementService := NewRankSettlementService(l.svcCtx.RankingModel)
+	effectiveAt := resolveRankChangeEffectiveAt(match)
 	player1Ranking, err := l.svcCtx.RankingModel.FindOrCreateWithTx(tx, match.UserId, match.GameType)
 	if err != nil {
-		return rankSettlementOutcome{}, err
+		return finishMatchSettlement{}, err
 	}
 	player1OpponentScore := -1
 	var player2Ranking *model.UserRanking
@@ -814,7 +784,7 @@ func (l *FinishMatchLogic) applyRankSettlementTx(tx *gorm.DB, match *model.Match
 	if match.OpponentId != nil && *match.OpponentId > 0 {
 		player2Ranking, err = l.svcCtx.RankingModel.FindOrCreateWithTx(tx, *match.OpponentId, match.GameType)
 		if err != nil {
-			return rankSettlementOutcome{}, err
+			return finishMatchSettlement{}, err
 		}
 		player1OpponentScore = player2Ranking.RankScore
 		player2OpponentScore = player1Ranking.RankScore
@@ -828,22 +798,22 @@ func (l *FinishMatchLogic) applyRankSettlementTx(tx *gorm.DB, match *model.Match
 		match.GameType,
 		effectiveAt,
 		match.Id,
-		facts.completedRounds,
+		completedRounds,
 		player1OpponentScore,
 	)
 	if err != nil {
-		return rankSettlementOutcome{}, err
+		return finishMatchSettlement{}, err
 	}
 	player1AchievementScore := 0
 	if player1Policy.MemberActive {
-		player1AchievementScore = calculateMemberAchievementRankingScoreWithPercent(facts.player1Raw, facts.player1Win, true, player1Policy.MemberMultiplierPercent)
-	} else if player1Policy.OrdinaryUserAchievementEnabled && facts.player1Win {
-		player1AchievementScore = facts.player1Raw
+		player1AchievementScore = calculateMemberAchievementRankingScoreWithPercent(player1RawAchievementScore, player1Win, true, player1Policy.MemberMultiplierPercent)
+	} else if player1Policy.OrdinaryUserAchievementEnabled && player1Win {
+		player1AchievementScore = player1RawAchievementScore
 	}
-	player1Settlement := settlementService.SettleWithPolicy(player1Ranking, facts.player1Win, player1AchievementScore, player1Policy)
+	player1Settlement := settlementService.SettleWithPolicy(player1Ranking, player1Win, player1AchievementScore, player1Policy)
 	applySettlementToRanking(player1Ranking, player1Settlement)
 	if err := l.svcCtx.RankingModel.UpdateRankingSnapshot(tx, player1Ranking); err != nil {
-		return rankSettlementOutcome{}, err
+		return finishMatchSettlement{}, err
 	}
 
 	player1BeforeProjection := &model.UserRanking{
@@ -856,7 +826,7 @@ func (l *FinishMatchLogic) applyRankSettlementTx(tx *gorm.DB, match *model.Match
 	}
 	var player2BeforeProjection, player2AfterProjection *model.UserRanking
 	changeLogs := []model.RankChangeLog{
-		buildRankChangeLog(match.Id, match.UserId, match.GameType, resultLabel(facts.player1Win, false), effectiveAt, player1Settlement),
+		buildRankChangeLog(match.Id, match.UserId, match.GameType, resultLabel(player1Win, false), effectiveAt, player1Settlement),
 	}
 	if match.OpponentId != nil && *match.OpponentId > 0 {
 		player2Policy, err := buildRankSettlementPolicy(
@@ -867,19 +837,19 @@ func (l *FinishMatchLogic) applyRankSettlementTx(tx *gorm.DB, match *model.Match
 			match.GameType,
 			effectiveAt,
 			match.Id,
-			facts.completedRounds,
+			completedRounds,
 			player2OpponentScore,
 		)
 		if err != nil {
-			return rankSettlementOutcome{}, err
+			return finishMatchSettlement{}, err
 		}
 		player2AchievementScore := 0
 		if player2Policy.MemberActive {
-			player2AchievementScore = calculateMemberAchievementRankingScoreWithPercent(facts.player2Raw, !facts.player1Win, true, player2Policy.MemberMultiplierPercent)
-		} else if player2Policy.OrdinaryUserAchievementEnabled && !facts.player1Win {
-			player2AchievementScore = facts.player2Raw
+			player2AchievementScore = calculateMemberAchievementRankingScoreWithPercent(player2RawAchievementScore, !player1Win, true, player2Policy.MemberMultiplierPercent)
+		} else if player2Policy.OrdinaryUserAchievementEnabled && !player1Win {
+			player2AchievementScore = player2RawAchievementScore
 		}
-		player2Settlement := settlementService.SettleWithPolicy(player2Ranking, !facts.player1Win, player2AchievementScore, player2Policy)
+		player2Settlement := settlementService.SettleWithPolicy(player2Ranking, !player1Win, player2AchievementScore, player2Policy)
 		player2BeforeProjection = &model.UserRanking{
 			UserId: *match.OpponentId, GameType: match.GameType,
 			RankScore: player2Settlement.BeforeScore, RankLevel: player2Settlement.BeforeLevel,
@@ -890,18 +860,28 @@ func (l *FinishMatchLogic) applyRankSettlementTx(tx *gorm.DB, match *model.Match
 		}
 		applySettlementToRanking(player2Ranking, player2Settlement)
 		if err := l.svcCtx.RankingModel.UpdateRankingSnapshot(tx, player2Ranking); err != nil {
-			return rankSettlementOutcome{}, err
+			return finishMatchSettlement{}, err
 		}
-		changeLogs = append(changeLogs, buildRankChangeLog(match.Id, *match.OpponentId, match.GameType, resultLabel(!facts.player1Win, false), effectiveAt, player2Settlement))
+		changeLogs = append(changeLogs, buildRankChangeLog(match.Id, *match.OpponentId, match.GameType, resultLabel(!player1Win, false), effectiveAt, player2Settlement))
 	}
 	if err := l.svcCtx.RankingModel.CreateRankChangeLogs(tx, changeLogs); err != nil {
-		return rankSettlementOutcome{}, err
+		return finishMatchSettlement{}, err
 	}
-	return rankSettlementOutcome{
+	projection, err := projectCompetitiveReadModelWithTx(tx, l.svcCtx, logicx.CompetitiveProjectionInput{
+		Match:         match,
 		Player1Before: player1BeforeProjection,
 		Player1After:  player1AfterProjection,
 		Player2Before: player2BeforeProjection,
 		Player2After:  player2AfterProjection,
+	})
+	if err != nil {
+		return finishMatchSettlement{}, err
+	}
+	return finishMatchSettlement{
+		Result:               result,
+		ServerRevision:       serverRevision,
+		CompetitiveRevisions: projection.CompetitiveRevisions,
+		SeasonID:             projection.SeasonID,
 	}, nil
 }
 
@@ -967,13 +947,6 @@ func (l *FinishMatchLogic) syncAchievementProgressForCompletedMatchWithError(mat
 	}
 	if l.svcCtx == nil || l.svcCtx.DB == nil || l.svcCtx.MatchModel == nil {
 		return fmt.Errorf("achievement sync infrastructure is unavailable")
-	}
-	// 成就进度依赖已结算的段位：待生效的排位延后到结算提交后同步；已作废的按非排位处理，不产生排位成就事件。
-	if match.RankSettlementStatus == model.RankSettlementPending {
-		return nil
-	}
-	if match.RankSettlementStatus == model.RankSettlementVoided {
-		return l.markAchievementSyncComplete(match)
 	}
 	if match.Result == nil {
 		return fmt.Errorf("completed match %d has no result", match.Id)

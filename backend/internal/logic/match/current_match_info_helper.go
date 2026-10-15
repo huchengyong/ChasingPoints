@@ -130,6 +130,7 @@ func buildCurrentMatchInfoWithKnownUser(svcCtx *svc.ServiceContext, userId int64
 	completedByUserId := resolveCompletedByUserId(match)
 	snookerFormat, snookerTargetWins := normalizedSnookerFormat(match)
 	matchFormat, targetWins := normalizedPoolMatchFormat(match)
+	finishRequestExpiresAt, finishRequestRemainingSeconds := match.FinishRequestCountdown(time.Now())
 
 	return &types.CurrentMatchInfo{
 		Id:                            match.Id,
@@ -141,6 +142,8 @@ func buildCurrentMatchInfoWithKnownUser(svcCtx *svc.ServiceContext, userId int64
 		Visibility:                    model.NormalizeMatchVisibility(match.Visibility, match.MatchMode),
 		FinishState:                   model.NormalizeFinishState(match.FinishState),
 		FinishRequestedBy:             resolveFinishRequestedBy(match),
+		FinishRequestExpiresAt:        finishRequestExpiresAt,
+		FinishRequestRemainingSeconds: finishRequestRemainingSeconds,
 		ViewerRole:                    capabilities.ViewerRole,
 		RefereeBound:                  capabilities.RefereeBound,
 		RefereeUserId:                 capabilities.RefereeUserId,
@@ -150,9 +153,6 @@ func buildCurrentMatchInfoWithKnownUser(svcCtx *svc.ServiceContext, userId int64
 		RefereeDurationSeconds:        refereeDurationSeconds,
 		CompletedByUserId:             completedByUserId,
 		CompletionSource:              resolveCompletionSource(match),
-		RankSettlementStatus:          resolveRankSettlementStatus(match),
-		RankSettlementDueAt:           match.FormatRankSettlementDueAt(),
-		CanDisputeResult:              capabilities.CanDisputeResult,
 		CanScore:                      capabilities.CanScore,
 		CanUndo:                       capabilities.CanUndo,
 		CanFinish:                     capabilities.CanFinish,

@@ -130,6 +130,8 @@ type MatchSyncData struct {
 	Visibility                    string                 `json:"visibility,optional"`
 	FinishState                   string                 `json:"finish_state,optional"`
 	FinishRequestedBy             int64                  `json:"finish_requested_by,optional"`
+	FinishRequestExpiresAt        string                 `json:"finish_request_expires_at,optional"`
+	FinishRequestRemainingSeconds int                    `json:"finish_request_remaining_seconds,optional"`
 	ViewerRole                    string                 `json:"viewer_role,optional"`
 	RefereeBound                  bool                   `json:"referee_bound,optional"`
 	RefereeUserId                 int64                  `json:"referee_user_id,optional"`
@@ -139,9 +141,6 @@ type MatchSyncData struct {
 	RefereeDurationSeconds        int64                  `json:"referee_duration_seconds,optional"`
 	CompletedByUserId             int64                  `json:"completed_by_user_id,optional"`
 	CompletionSource              string                 `json:"completion_source,optional"`
-	RankSettlementStatus          string                 `json:"rank_settlement_status,optional"`
-	RankSettlementDueAt           string                 `json:"rank_settlement_due_at,optional"`
-	CanDisputeResult              bool                   `json:"can_dispute_result,optional"`
 	CanScore                      bool                   `json:"can_score,optional"`
 	CanUndo                       bool                   `json:"can_undo,optional"`
 	CanFinish                     bool                   `json:"can_finish,optional"`
@@ -519,14 +518,6 @@ func InitGlobalHub() {
 	logx.Info("WebSocket Hub 已启动")
 }
 
-// rankSettlementStatusOf 返回排位结算状态，旧数据与空值按 none 处理。
-func rankSettlementStatusOf(match *model.Match) string {
-	if match == nil || match.RankSettlementStatus == "" {
-		return model.RankSettlementNone
-	}
-	return match.RankSettlementStatus
-}
-
 func buildMatchSyncData(match *model.Match, completedRoundCount int64, snookerState model.SnookerRoundState, rounds []model.MatchRound) MatchSyncData {
 	return buildMatchSyncDataForViewer(match, 0, completedRoundCount, snookerState, rounds)
 }
@@ -545,6 +536,7 @@ func buildMatchSyncDataForViewer(match *model.Match, userId int64, completedRoun
 		myScore, opponentScore = opponentScore, myScore
 		currentFrameMyScore, currentFrameOpponentScore = currentFrameOpponentScore, currentFrameMyScore
 	}
+	finishRequestExpiresAt, finishRequestRemainingSeconds := match.FinishRequestCountdown(time.Now())
 	refereeJoinedAt := ""
 	refereeDurationSeconds := int64(0)
 	if match.RefereeJoinedAt != nil {
@@ -619,6 +611,8 @@ func buildMatchSyncDataForViewer(match *model.Match, userId int64, completedRoun
 		Visibility:                    model.NormalizeMatchVisibility(match.Visibility, match.MatchMode),
 		FinishState:                   model.NormalizeFinishState(match.FinishState),
 		FinishRequestedBy:             resolveFinishRequestedBy(match),
+		FinishRequestExpiresAt:        finishRequestExpiresAt,
+		FinishRequestRemainingSeconds: finishRequestRemainingSeconds,
 		ViewerRole:                    viewerRole,
 		RefereeBound:                  refereeBound,
 		RefereeUserId:                 refereeUserId,
@@ -626,9 +620,6 @@ func buildMatchSyncDataForViewer(match *model.Match, userId int64, completedRoun
 		RefereeDurationSeconds:        refereeDurationSeconds,
 		CompletedByUserId:             completedByUserId,
 		CompletionSource:              completionSource,
-		RankSettlementStatus:          rankSettlementStatusOf(match),
-		RankSettlementDueAt:           match.FormatRankSettlementDueAt(),
-		CanDisputeResult:              match.CanDisputeRankResult(userId, time.Now()),
 		CanScore:                      canScore,
 		CanUndo:                       canUndo,
 		CanFinish:                     canFinish,
@@ -688,17 +679,19 @@ func resolveMatchSyncCapabilities(match *model.Match, userId int64) (string, boo
 	}
 	mode := model.NormalizeMatchMode(match.MatchMode)
 	pending := model.NormalizeFinishState(match.FinishState) == model.FinishStatePendingConfirmation
-	// 约球创建的比赛：任一参赛方在合法结束点单方结束；非约球比赛仍不得绕过裁判。
+	// 约球创建且绑定裁判时参赛方仍可直接结束；未绑定裁判的约球排位与扫码排位一样走结束确认。
 	challengeMatch := match.ChallengeId != nil && *match.ChallengeId > 0
 	canScore := !refereeBound && !pending
 	canUndo := !refereeBound && !pending
 	canFinish := match.Status == 1 && !pending &&
-		((!refereeBound && (mode == model.MatchModePractice || !match.FinishConfirmationRequired)) || challengeMatch)
+		((!refereeBound && (mode == model.MatchModePractice || !match.FinishConfirmationRequired)) || (challengeMatch && refereeBound))
 	canRequestFinish := !refereeBound && match.FinishConfirmationRequired && mode == model.MatchModeRanked && !pending && match.Status == 1
 	requestedBy := resolveFinishRequestedBy(match)
-	canConfirmFinish := !refereeBound && pending && requestedBy > 0 && requestedBy != userId
+	// 确认期满后只等服务端按冻结比分结束，不再提供撤回、确认或异议。
+	answerable := !refereeBound && pending && !match.FinishRequestExpired(time.Now())
+	canConfirmFinish := answerable && requestedBy > 0 && requestedBy != userId
 	canDisputeFinish := canConfirmFinish
-	canWithdrawFinish := !refereeBound && pending && requestedBy == userId
+	canWithdrawFinish := answerable && requestedBy == userId
 	if match.GameType == 1 && match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA && !pending && !snookerNormalFinishEligibleForSync(match) {
 		canFinish = false
 		canRequestFinish = false
@@ -838,14 +831,6 @@ func (c *Client) sendMatchSync() {
 	if err != nil || match == nil {
 		logx.Errorf("获取对局同步快照失败: matchId=%d, err=%v", c.MatchId, err)
 		return
-	}
-	if match.FinishState == model.FinishStatePendingConfirmation && match.FinishRequestedAt != nil && !match.FinishRequestedAt.Add(model.FinishRequestTTL).After(time.Now()) {
-		effective := *match
-		effective.FinishState = model.FinishStateNone
-		effective.FinishRequestedBy = nil
-		effective.FinishRequestedAt = nil
-		effective.FinishRequestRevision = 0
-		match = &effective
 	}
 
 	roundCount, err := c.SvcCtx.MatchModel.GetRoundCount(c.MatchId)

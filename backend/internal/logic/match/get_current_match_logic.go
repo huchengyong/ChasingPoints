@@ -2,7 +2,6 @@ package match
 
 import (
 	"context"
-	"time"
 
 	"chasing_points/internal/requestctx"
 	"chasing_points/internal/svc"
@@ -48,7 +47,6 @@ func (l *GetCurrentMatchLogic) GetCurrentMatch() (resp *types.GetCurrentMatchRes
 			Match:   nil,
 		}, nil
 	}
-	match = effectiveMatchForRead(match, time.Now())
 
 	return &types.GetCurrentMatchResp{
 		Success: true,

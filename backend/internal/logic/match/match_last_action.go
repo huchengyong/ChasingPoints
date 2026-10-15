@@ -54,12 +54,6 @@ func buildMatchLastActionFromAction(userId int64, match *model.Match, action *mo
 		result.Description = fmt.Sprintf("%s确认结束", actorName)
 	case "finish_dispute":
 		result.Description = fmt.Sprintf("%s提出异议", actorName)
-	case rankResultDisputeActionType:
-		result.Description = fmt.Sprintf("%s对本场结果提出异议", actorName)
-	case rankSettledActionType:
-		result.Description = "排位结果已生效"
-	case rankVoidedActionType:
-		result.Description = "本场不计排位积分"
 	case "finish_withdraw":
 		result.Description = fmt.Sprintf("%s撤回结束请求", actorName)
 	case model.MatchActionTypeSnookerStroke:

@@ -295,7 +295,7 @@ func (s *CompetitiveReadModelRebuildService) buildProjectionInput(match *model.M
 }
 
 func isEligibleCompetitiveProjection(match *model.Match) bool {
-	return match != nil && !match.RankSettlementDeferred() && match.Result != nil && model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked && (*match.Result == 1 || *match.Result == 2)
+	return match != nil && match.Result != nil && model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked && (*match.Result == 1 || *match.Result == 2)
 }
 
 func opponentID(match *model.Match) int64 {

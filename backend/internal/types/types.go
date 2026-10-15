@@ -791,6 +791,8 @@ type CurrentMatchInfo struct {
 	Visibility                    string           `json:"visibility,optional"`
 	FinishState                   string           `json:"finish_state,optional"`
 	FinishRequestedBy             int64            `json:"finish_requested_by,optional"`
+	FinishRequestExpiresAt        string           `json:"finish_request_expires_at,optional"`        // 结束确认截止时刻（RFC3339），无待确认请求时为空
+	FinishRequestRemainingSeconds int              `json:"finish_request_remaining_seconds,optional"` // 按服务端时间计算的确认剩余秒数，最小为 0
 	ViewerRole                    string           `json:"viewer_role,optional"`
 	RefereeBound                  bool             `json:"referee_bound,optional"`
 	RefereeUserId                 int64            `json:"referee_user_id,optional"`
@@ -799,9 +801,6 @@ type CurrentMatchInfo struct {
 	RefereeJoinedAt               string           `json:"referee_joined_at,optional"`
 	CompletedByUserId             int64            `json:"completed_by_user_id,optional"`
 	CompletionSource              string           `json:"completion_source,optional"`
-	RankSettlementStatus          string           `json:"rank_settlement_status,optional"`
-	RankSettlementDueAt           string           `json:"rank_settlement_due_at,optional"`
-	CanDisputeResult              bool             `json:"can_dispute_result,optional"`
 	CanScore                      bool             `json:"can_score,optional"`
 	CanUndo                       bool             `json:"can_undo,optional"`
 	CanFinish                     bool             `json:"can_finish,optional"`
@@ -1975,7 +1974,9 @@ type MatchDetailData struct {
 	Visibility                    string             `json:"visibility,optional"`
 	FinishState                   string             `json:"finish_state,optional"`
 	FinishRequestedBy             int64              `json:"finish_requested_by,optional"`
-	Status                        int                `json:"status"` // 1=进行中 2=已完成 3=已取消
+	FinishRequestExpiresAt        string             `json:"finish_request_expires_at,optional"`        // 结束确认截止时刻（RFC3339），无待确认请求时为空
+	FinishRequestRemainingSeconds int                `json:"finish_request_remaining_seconds,optional"` // 按服务端时间计算的确认剩余秒数，最小为 0
+	Status                        int                `json:"status"`                                    // 1=进行中 2=已完成 3=已取消
 	ServerRevision                int64              `json:"server_revision"`
 	IsPlayer1                     bool               `json:"is_player1"` // 当前用户是否是创建者(用于视角判断)
 	ViewerRole                    string             `json:"viewer_role,optional"`
@@ -1987,9 +1988,6 @@ type MatchDetailData struct {
 	RefereeDurationSeconds        int64              `json:"referee_duration_seconds,optional"`
 	CompletedByUserId             int64              `json:"completed_by_user_id,optional"`
 	CompletionSource              string             `json:"completion_source,optional"`
-	RankSettlementStatus          string             `json:"rank_settlement_status,optional"`
-	RankSettlementDueAt           string             `json:"rank_settlement_due_at,optional"`
-	CanDisputeResult              bool               `json:"can_dispute_result,optional"`
 	CanScore                      bool               `json:"can_score,optional"`
 	CanUndo                       bool               `json:"can_undo,optional"`
 	CanFinish                     bool               `json:"can_finish,optional"`
@@ -2182,6 +2180,8 @@ type MatchSyncSnapshot struct {
 	Visibility                    string           `json:"visibility,optional"`
 	FinishState                   string           `json:"finish_state,optional"`
 	FinishRequestedBy             int64            `json:"finish_requested_by,optional"`
+	FinishRequestExpiresAt        string           `json:"finish_request_expires_at,optional"`        // 结束确认截止时刻（RFC3339），无待确认请求时为空
+	FinishRequestRemainingSeconds int              `json:"finish_request_remaining_seconds,optional"` // 按服务端时间计算的确认剩余秒数，最小为 0
 	ViewerRole                    string           `json:"viewer_role,optional"`
 	RefereeBound                  bool             `json:"referee_bound,optional"`
 	RefereeUserId                 int64            `json:"referee_user_id,optional"`
@@ -2190,9 +2190,6 @@ type MatchSyncSnapshot struct {
 	RefereeJoinedAt               string           `json:"referee_joined_at,optional"`
 	CompletedByUserId             int64            `json:"completed_by_user_id,optional"`
 	CompletionSource              string           `json:"completion_source,optional"`
-	RankSettlementStatus          string           `json:"rank_settlement_status,optional"`
-	RankSettlementDueAt           string           `json:"rank_settlement_due_at,optional"`
-	CanDisputeResult              bool             `json:"can_dispute_result,optional"`
 	RefereeDurationSeconds        int64            `json:"referee_duration_seconds,optional"`
 	CanScore                      bool             `json:"can_score,optional"`
 	CanUndo                       bool             `json:"can_undo,optional"`
@@ -2513,21 +2510,6 @@ type RankItem struct {
 	Icon      string `json:"icon"`
 	MinScore  int    `json:"min_score"`  // 晋升最低分
 	IsCurrent bool   `json:"is_current"` // 是否当前段位
-}
-
-type RankResultDisputeReq struct {
-	MatchId        int64  `json:"match_id"`
-	ClientActionId string `json:"client_action_id"`
-}
-
-type RankResultDisputeResp struct {
-	Success              bool              `json:"success"`
-	Message              string            `json:"message,optional"`
-	ClientActionId       string            `json:"client_action_id,optional"`
-	RankSettlementStatus string            `json:"rank_settlement_status,optional"`
-	RankSettlementDueAt  string            `json:"rank_settlement_due_at,optional"`
-	ServerRevision       int64             `json:"server_revision"`
-	Snapshot             MatchSyncSnapshot `json:"snapshot"`
 }
 
 type ReadPartialError struct {

@@ -351,8 +351,8 @@ func createChallengeMatchWithTx(tx *gorm.DB, svcCtx *svc.ServiceContext, userId 
 		StartingActor:       options.StartingActor,
 		MatchMode:           options.MatchMode,
 		Visibility:          options.Visibility,
-		// 约球比赛：任一参赛方单方结束，无需对方确认。
-		FinishConfirmationRequired: false,
+		// 约球排位与扫码排位一致：结束进入30秒确认，对方确认或期满即完成；练习赛直接结束。
+		FinishConfirmationRequired: model.NormalizeMatchMode(options.MatchMode) == model.MatchModeRanked,
 		FinishState:                model.FinishStateNone,
 		CurrentFrameStarted:        true,
 		Status:                     1,

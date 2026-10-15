@@ -16,20 +16,13 @@ import (
 	"gorm.io/gorm"
 )
 
-const finishRequestTTL = model.FinishRequestTTL
-
 var (
 	errFinishActionInvalid        = errors.New("当前无法处理结束请求")
-	errFinishActionExpired        = errors.New("结束请求已过期")
 	errFinishActionNotParticipant = errors.New("用户不是对局参与者")
 )
 
 func shouldRequestRankedFinish(match *model.Match, userId int64) bool {
 	if match == nil || match.Status != 1 || userId <= 0 || !match.FinishConfirmationRequired || model.NormalizeMatchMode(match.MatchMode) != model.MatchModeRanked {
-		return false
-	}
-	if match.ChallengeId != nil && *match.ChallengeId > 0 {
-		// 约球比赛由任一参赛方单方结束。
 		return false
 	}
 	if match.RefereeUserId != nil && *match.RefereeUserId > 0 {
@@ -76,12 +69,10 @@ func handleConfirmedFinishAction(ctx context.Context, svcCtx *svc.ServiceContext
 	if findErr != nil || current == nil {
 		return &types.FinishMatchActionResp{Success: false, Accepted: false, ClientActionId: req.ClientActionId, Message: "对局不存在"}, nil
 	}
-	if isFinishRequestExpired(current, time.Now()) {
-		return buildFinishActionFailureResponse(svcCtx, userId, effectiveMatchForRead(current, time.Now()), req.ClientActionId, "结束请求已过期，对局已恢复进行中"), nil
-	}
 
 	var match *model.Match
 	var settlement finishMatchSettlement
+	var timedOut *expiredFinishCompletion
 	replayed := false
 	err = svcCtx.DB.Transaction(func(tx *gorm.DB) error {
 		locked, findErr := svcCtx.MatchModel.FindByIdForUpdateWithTx(tx, req.MatchId)
@@ -107,14 +98,16 @@ func handleConfirmedFinishAction(ctx context.Context, svcCtx *svc.ServiceContext
 			replayed = true
 			return nil
 		}
+		// 确认期已满：先按冻结比分完成并提交，再拒绝本次确认。
+		if expired, err := completeExpiredFinishRequestTx(ctx, svcCtx, tx, locked, time.Now()); err != nil || expired != nil {
+			timedOut = expired
+			return err
+		}
 		if err := validateMatchActionMeta(matchActionMeta{ClientActionID: req.ClientActionId, BaseRevision: req.BaseRevision}, locked.SyncRevision); err != nil {
 			return err
 		}
 		if locked.Status != 1 || !locked.FinishConfirmationRequired || model.NormalizeMatchMode(locked.MatchMode) != model.MatchModeRanked || locked.RefereeUserId != nil {
 			return errFinishActionInvalid
-		}
-		if isFinishRequestExpired(locked, time.Now()) {
-			return errFinishActionExpired
 		}
 		requestedBy := resolveFinishRequestedBy(locked)
 		if locked.FinishState != model.FinishStatePendingConfirmation || !capabilities.CanConfirmFinish || requestedBy == userId {
@@ -155,6 +148,10 @@ func handleConfirmedFinishAction(ctx context.Context, svcCtx *svc.ServiceContext
 		}
 		fresh, _ := svcCtx.MatchModel.FindById(req.MatchId)
 		return buildFinishActionFailureResponse(svcCtx, userId, fresh, req.ClientActionId, message), nil
+	}
+	if timedOut != nil {
+		finishExpiredRequestPostCommit(ctx, svcCtx, timedOut)
+		return buildFinishActionFailureResponse(svcCtx, userId, timedOut.match, req.ClientActionId, errFinishRequestTimedOut.Error()), nil
 	}
 	if match == nil {
 		return &types.FinishMatchActionResp{Success: false, Accepted: false, ClientActionId: req.ClientActionId, Message: "当前无法处理结束请求"}, nil
@@ -239,6 +236,7 @@ func handleFinishAction(ctx context.Context, svcCtx *svc.ServiceContext, req *ty
 	var match *model.Match
 	var revision int64
 	var actionMessage string
+	var timedOut *expiredFinishCompletion
 	err = svcCtx.DB.Transaction(func(tx *gorm.DB) error {
 		locked, findErr := svcCtx.MatchModel.FindByIdForUpdateWithTx(tx, req.MatchId)
 		if findErr != nil {
@@ -252,17 +250,10 @@ func handleFinishAction(ctx context.Context, svcCtx *svc.ServiceContext, req *ty
 		if capabilities.ViewerRole == matchViewerRoleUnknown {
 			return errFinishActionNotParticipant
 		}
-		if locked.FinishState == model.FinishStatePendingConfirmation && locked.FinishRequestedAt != nil && time.Since(*locked.FinishRequestedAt) >= finishRequestTTL {
-			clearFinishRequest(locked)
-			revision, err = svcCtx.MatchModel.BumpMatchRevisionWithTx(tx, locked)
-			if err != nil {
-				return err
-			}
-			match = locked
-			if actionType != "request" {
-				return errFinishActionExpired
-			}
-			revision = 0
+		// 确认期已满：先按冻结比分完成并提交，再拒绝本次撤回、异议或发起。
+		if expired, err := completeExpiredFinishRequestTx(ctx, svcCtx, tx, locked, time.Now()); err != nil || expired != nil {
+			timedOut = expired
+			return err
 		}
 		if existing, findErr := svcCtx.MatchModel.FindActionByClientActionIDWithTx(tx, locked.Id, req.ClientActionId); findErr != nil {
 			return findErr
@@ -333,8 +324,6 @@ func handleFinishAction(ctx context.Context, svcCtx *svc.ServiceContext, req *ty
 	if err != nil {
 		message := "当前无法处理结束请求"
 		switch {
-		case errors.Is(err, errFinishActionExpired):
-			message = "结束请求已过期，对局已恢复进行中"
 		case errors.Is(err, errFinishActionNotParticipant):
 			message = "你不是本场对局参与者"
 		case errors.Is(err, errRevisionConflict):
@@ -348,20 +337,25 @@ func handleFinishAction(ctx context.Context, svcCtx *svc.ServiceContext, req *ty
 		view, _ := loadMatchWriteState(svcCtx, userId, match)
 		return &types.FinishMatchActionResp{Success: false, Accepted: false, Message: message, ClientActionId: req.ClientActionId, ServerRevision: view.Snapshot.ServerRevision, FinishState: view.Snapshot.FinishState, FinishRequestedBy: view.Snapshot.FinishRequestedBy, Snapshot: view.Snapshot}, nil
 	}
+	if timedOut != nil {
+		finishExpiredRequestPostCommit(ctx, svcCtx, timedOut)
+		return buildFinishActionFailureResponse(svcCtx, userId, timedOut.match, req.ClientActionId, errFinishRequestTimedOut.Error()), nil
+	}
 
 	view, viewErr := loadMatchWriteState(svcCtx, userId, match)
 	if viewErr != nil {
 		return &types.FinishMatchActionResp{Success: false, Accepted: false, Message: "加载对局快照失败"}, nil
 	}
 	if recipientId := resolveFinishNotificationRecipient(match, userId); actionType == "request" && recipientId > 0 {
+		content := buildFinishRequestNotice(svcCtx, match, userId, recipientId)
 		logic.DispatchNotification(svcCtx, logic.NotificationDispatchInput{
 			UserId:      recipientId,
 			Type:        "match_finish_confirmation",
-			Title:       "请确认对局结果",
-			Content:     "对手已发起排位结束确认，请核对比分后处理",
+			Title:       "对方申请结束对局",
+			Content:     content,
 			Data:        buildNotificationPayload("/subPages/match/playing", match.Id, 0),
-			PushTitle:   "请确认对局结果",
-			PushContent: "请打开对局处理结束确认",
+			PushTitle:   "对方申请结束对局",
+			PushContent: content,
 			PushData:    map[string]interface{}{"url": "/subPages/match/playing?match_id=" + formatMatchID(match.Id)},
 			WSCategory:  "match_finish_confirmation",
 		})
@@ -393,6 +387,21 @@ func resolveFinishNotificationRecipient(match *model.Match, requesterId int64) i
 		return match.UserId
 	}
 	return 0
+}
+
+// buildFinishRequestNotice 生成发给另一方的结束确认提醒：“X申请结束对局 · 比分，30秒内确认或提出异议”，比分按收件人视角。
+func buildFinishRequestNotice(svcCtx *svc.ServiceContext, match *model.Match, requesterID, recipientID int64) string {
+	name := "对方"
+	if svcCtx.UserModel != nil {
+		if user, err := svcCtx.UserModel.FindById(requesterID); err == nil && user != nil && user.Nickname != "" {
+			name = user.Nickname
+		}
+	}
+	mine, theirs := match.MyScore, match.OpponentScore
+	if recipientID != match.UserId {
+		mine, theirs = theirs, mine
+	}
+	return fmt.Sprintf("%s申请结束对局 · %d:%d，%d秒内确认或提出异议", name, mine, theirs, int(model.FinishRequestTTL.Seconds()))
 }
 
 func clearFinishRequest(match *model.Match) {

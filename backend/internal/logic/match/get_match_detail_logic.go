@@ -42,7 +42,6 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 		l.Logger.Errorf("对局不存在: %v", err)
 		return &types.GetMatchDetailResp{Success: false}, nil
 	}
-	match = effectiveMatchForRead(match, time.Now())
 
 	// 验证用户权限（对局双方和裁判都可以查看）
 	capabilities := resolveMatchViewerCapabilities(match, userId)
@@ -302,6 +301,7 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 	l.Logger.Infof("用户 %d 获取对局 %d 详情, isPlayer1=%v", userId, match.Id, isPlayer1)
 	snookerFormat, snookerTargetWins := normalizedSnookerFormat(match)
 	matchFormat, targetWins := normalizedPoolMatchFormat(match)
+	finishRequestExpiresAt, finishRequestRemainingSeconds := match.FinishRequestCountdown(time.Now())
 
 	return &types.GetMatchDetailResp{
 		Success: true,
@@ -316,6 +316,8 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			Visibility:                    model.NormalizeMatchVisibility(match.Visibility, match.MatchMode),
 			FinishState:                   model.NormalizeFinishState(match.FinishState),
 			FinishRequestedBy:             resolveFinishRequestedBy(match),
+			FinishRequestExpiresAt:        finishRequestExpiresAt,
+			FinishRequestRemainingSeconds: finishRequestRemainingSeconds,
 			Status:                        match.Status,
 			ServerRevision:                match.SyncRevision,
 			IsPlayer1:                     isPlayer1,
@@ -328,9 +330,6 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			RefereeDurationSeconds:        refereeDurationSeconds,
 			CompletedByUserId:             completedByUserId,
 			CompletionSource:              resolveCompletionSource(match),
-			RankSettlementStatus:          resolveRankSettlementStatus(match),
-			RankSettlementDueAt:           match.FormatRankSettlementDueAt(),
-			CanDisputeResult:              capabilities.CanDisputeResult,
 			CanScore:                      capabilities.CanScore,
 			CanUndo:                       capabilities.CanUndo,
 			CanFinish:                     capabilities.CanFinish,

@@ -725,12 +725,6 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: match.GetMatchRefereeQRCodeHandler(serverCtx),
 			},
 			{
-				// 对约球排位结果提出异议
-				Method:  http.MethodPost,
-				Path:    "/result-dispute",
-				Handler: match.DisputeRankResultHandler(serverCtx),
-			},
-			{
 				// 获取本场新解锁荣誉
 				Method:  http.MethodGet,
 				Path:    "/reward-summary",

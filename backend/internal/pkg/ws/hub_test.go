@@ -155,7 +155,7 @@ func TestMatchWebSocketPayloadKeepsFalseFormatCapabilities(t *testing.T) {
 	}
 }
 
-func TestSendMatchSyncReturnsEffectiveExpiredFinishViewWithoutWriting(t *testing.T) {
+func TestSendMatchSyncKeepsExpiredFinishPendingWithoutWriting(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite db: %v", err)
@@ -166,7 +166,7 @@ func TestSendMatchSyncReturnsEffectiveExpiredFinishViewWithoutWriting(t *testing
 	svcCtx := &svc.ServiceContext{DB: db, MatchModel: model.NewMatchModel(db)}
 	requesterID := int64(1001)
 	opponentID := int64(2002)
-	requestedAt := time.Now().Add(-25 * time.Hour)
+	requestedAt := time.Now().Add(-model.FinishRequestTTL - time.Second)
 	if err := svcCtx.MatchModel.Create(&model.Match{
 		Id: 199, UserId: requesterID, OpponentId: &opponentID, OpponentName: "对手", GameType: 3,
 		MatchMode: model.MatchModeRanked, Visibility: model.MatchVisibilityPublic, FinishConfirmationRequired: true,
@@ -192,8 +192,11 @@ func TestSendMatchSyncReturnsEffectiveExpiredFinishViewWithoutWriting(t *testing
 		t.Fatal("timed out waiting for sync message")
 	}
 	snapshot := syncMessage.Data.(map[string]interface{})
-	if syncMessage.Type != "sync" || snapshot["finish_state"] != model.FinishStateNone || snapshot["server_revision"].(float64) != 4 || snapshot["can_score"].(bool) != true {
-		t.Fatalf("unexpected effective sync snapshot: %#v", syncMessage)
+	// 到期未处理：如实返回待确认、剩余0秒，且不再提供撤回、确认、异议或记分，等待服务端按冻结比分结束。
+	if syncMessage.Type != "sync" || snapshot["finish_state"] != model.FinishStatePendingConfirmation || snapshot["server_revision"].(float64) != 4 ||
+		snapshot["finish_request_remaining_seconds"].(float64) != 0 || snapshot["finish_request_expires_at"] == "" ||
+		snapshot["can_score"].(bool) || snapshot["can_withdraw_finish"].(bool) || snapshot["can_confirm_finish"].(bool) || snapshot["can_dispute_finish"].(bool) {
+		t.Fatalf("unexpected expired sync snapshot: %#v", syncMessage)
 	}
 
 	second.sendMatchSync()
@@ -203,7 +206,7 @@ func TestSendMatchSyncReturnsEffectiveExpiredFinishViewWithoutWriting(t *testing
 	case <-time.After(30 * time.Millisecond):
 	}
 	var actionCount int64
-	if err := db.Model(&model.MatchAction{}).Where("match_id = ? AND action_type = ?", 199, "finish_expired").Count(&actionCount).Error; err != nil {
+	if err := db.Model(&model.MatchAction{}).Where("match_id = ? AND action_type IN ?", 199, []string{"finish_expired", "finish_timeout"}).Count(&actionCount).Error; err != nil {
 		t.Fatalf("count expiry actions: %v", err)
 	}
 	if actionCount != 0 {

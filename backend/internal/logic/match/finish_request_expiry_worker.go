@@ -11,7 +11,8 @@ import (
 
 const (
 	finishRequestExpiryWorkerBatchSize = 100
-	finishRequestExpiryWorkerInterval  = time.Minute
+	// 确认期只有30秒，按秒级扫描让期满后的结算延迟控制在数秒内；沿用 idx_matches_finish_request_expiry。
+	finishRequestExpiryWorkerInterval = 2 * time.Second
 )
 
 type FinishRequestExpiryWorker struct {
@@ -48,13 +49,15 @@ func (w *FinishRequestExpiryWorker) RunOnce(ctx context.Context) error {
 		default:
 		}
 	}
-	if w == nil || w.svcCtx == nil || w.svcCtx.MatchModel == nil {
+	if w == nil || w.svcCtx == nil || w.svcCtx.MatchModel == nil || w.svcCtx.DB == nil {
 		return nil
 	}
 	ids, err := w.svcCtx.MatchModel.ListStaleFinishRequestIDs(finishRequestExpiryWorkerBatchSize, time.Now())
 	if err != nil {
 		return err
 	}
+	completed := 0
+	var oldestDeadline time.Time
 	for _, matchID := range ids {
 		if ctx != nil {
 			select {
@@ -63,12 +66,23 @@ func (w *FinishRequestExpiryWorker) RunOnce(ctx context.Context) error {
 			default:
 			}
 		}
-		match, expired, _, err := w.svcCtx.MatchModel.ExpireStaleFinishRequest(matchID)
+		// 单场失败只记录并继续，避免一条异常数据挡住整批到期请求。
+		completion, err := completeExpiredFinishRequest(ctx, w.svcCtx, matchID, time.Now())
 		if err != nil {
-			return err
+			logx.Errorf("确认期满结算失败: matchId=%d err=%v", matchID, err)
+			continue
 		}
-		if expired && match != nil {
-			broadcastFinishActionState(w.svcCtx, match, "match_finish_expired")
+		if completion != nil {
+			completed++
+			if oldestDeadline.IsZero() || completion.deadline.Before(oldestDeadline) {
+				oldestDeadline = completion.deadline
+			}
+		}
+	}
+	if len(ids) > 0 {
+		logx.Infof("确认期满结算: 到期 %d 场，完成 %d 场，最早截止 %s", len(ids), completed, oldestDeadline.Format(time.RFC3339))
+		if len(ids) == finishRequestExpiryWorkerBatchSize {
+			logx.Errorf("确认期满结算达到单批上限 %d，可能仍有积压", finishRequestExpiryWorkerBatchSize)
 		}
 	}
 	return nil

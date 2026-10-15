@@ -96,8 +96,7 @@ func (l *GetOpponentStrengthLogic) getLegacyOpponentStrength(userID int64, req *
 			SUM(CASE WHEN (m.user_id = ? AND m.result = 1) OR (m.opponent_id = ? AND m.result = 2) THEN 1 ELSE 0 END) AS wins`, userID, userID).
 		Joins("LEFT JOIN user_ranking ur ON ur.user_id = CASE WHEN m.user_id = ? THEN m.opponent_id ELSE m.user_id END AND ur.game_type = m.game_type", userID).
 		Where("(m.user_id = ? OR m.opponent_id = ?) AND m.status = ?", userID, userID, 2).
-		Where("m.match_mode = ? OR m.match_mode = '' OR m.match_mode IS NULL", model.MatchModeRanked).
-		Where("m.rank_settlement_status NOT IN ?", []string{model.RankSettlementPending, model.RankSettlementVoided})
+		Where("m.match_mode = ? OR m.match_mode = '' OR m.match_mode IS NULL", model.MatchModeRanked)
 	if req != nil && req.GameType > 0 {
 		query = query.Where("m.game_type = ?", req.GameType)
 	}

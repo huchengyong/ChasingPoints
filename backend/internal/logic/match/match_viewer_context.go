@@ -24,8 +24,6 @@ type matchViewerCapabilities struct {
 	CanConfirmFinish  bool
 	CanDisputeFinish  bool
 	CanWithdrawFinish bool
-	// CanDisputeResult 表示可对约球排位的单方结束结果提出异议，与旧的结束请求异议互不相关。
-	CanDisputeResult bool
 }
 
 func resolveMatchViewerCapabilities(match *model.Match, userId int64) matchViewerCapabilities {
@@ -34,7 +32,7 @@ func resolveMatchViewerCapabilities(match *model.Match, userId int64) matchViewe
 		return capabilities
 	}
 
-	// 约球创建的比赛：任一参赛方可在合法结束点单方结束，无需对方确认。
+	// 约球创建且已绑定裁判的比赛：参赛方仍可在合法结束点直接结束；未绑定裁判的约球排位与扫码排位一样走结束确认。
 	challengeMatch := match.ChallengeId != nil && *match.ChallengeId > 0
 
 	if match.RefereeUserId != nil && *match.RefereeUserId > 0 {
@@ -52,20 +50,21 @@ func resolveMatchViewerCapabilities(match *model.Match, userId int64) matchViewe
 		capabilities.ViewerRole = matchViewerRolePlayer1
 		capabilities.CanScore = !capabilities.RefereeBound && match.FinishState != model.FinishStatePendingConfirmation
 		capabilities.CanUndo = !capabilities.RefereeBound && match.FinishState != model.FinishStatePendingConfirmation
-		// 约球创建的比赛：任一参赛方在合法结束点单方结束；非约球比赛仍不得绕过裁判。
+		// 约球创建且绑定裁判时参赛方仍可直接结束；非约球比赛不得绕过裁判。
 		capabilities.CanFinish = match.Status == 1 && match.FinishState != model.FinishStatePendingConfirmation &&
-			((!capabilities.RefereeBound && (model.NormalizeMatchMode(match.MatchMode) == model.MatchModePractice || !match.FinishConfirmationRequired)) || challengeMatch)
+			((!capabilities.RefereeBound && (model.NormalizeMatchMode(match.MatchMode) == model.MatchModePractice || !match.FinishConfirmationRequired)) || (challengeMatch && capabilities.RefereeBound))
 		capabilities.CanRequestFinish = !capabilities.RefereeBound && match.FinishConfirmationRequired && model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked && match.FinishState != model.FinishStatePendingConfirmation && match.Status == 1
 	case match.OpponentId != nil && *match.OpponentId == userId:
 		capabilities.ViewerRole = matchViewerRolePlayer2
 		capabilities.CanScore = !capabilities.RefereeBound && match.FinishState != model.FinishStatePendingConfirmation
 		capabilities.CanUndo = !capabilities.RefereeBound && match.FinishState != model.FinishStatePendingConfirmation
 		capabilities.CanFinish = match.Status == 1 && match.FinishState != model.FinishStatePendingConfirmation &&
-			((!capabilities.RefereeBound && (model.NormalizeMatchMode(match.MatchMode) == model.MatchModePractice || !match.FinishConfirmationRequired)) || challengeMatch)
+			((!capabilities.RefereeBound && (model.NormalizeMatchMode(match.MatchMode) == model.MatchModePractice || !match.FinishConfirmationRequired)) || (challengeMatch && capabilities.RefereeBound))
 		capabilities.CanRequestFinish = !capabilities.RefereeBound && match.FinishConfirmationRequired && model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked && match.FinishState != model.FinishStatePendingConfirmation && match.Status == 1
 	}
 
-	if !capabilities.RefereeBound && match.FinishState == model.FinishStatePendingConfirmation && capabilities.ViewerRole != matchViewerRoleReferee {
+	// 确认期满后只等服务端按冻结比分结束，读取与写入都不再提供撤回、确认或异议。
+	if !capabilities.RefereeBound && match.FinishState == model.FinishStatePendingConfirmation && capabilities.ViewerRole != matchViewerRoleReferee && !isFinishRequestExpired(match, time.Now()) {
 		requestedBy := int64(0)
 		if match.FinishRequestedBy != nil {
 			requestedBy = *match.FinishRequestedBy
@@ -82,8 +81,6 @@ func resolveMatchViewerCapabilities(match *model.Match, userId int64) matchViewe
 		capabilities.CanFinish = false
 		capabilities.CanRequestFinish = false
 	}
-
-	capabilities.CanDisputeResult = match.CanDisputeRankResult(userId, time.Now())
 
 	return capabilities
 }

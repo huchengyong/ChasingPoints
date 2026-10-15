@@ -76,7 +76,7 @@ func seedAcceptedChallengeForEnter(t *testing.T, svcCtx *svc.ServiceContext, wai
 	return challenge
 }
 
-func TestEnterChallengeCreatesSingleMatchAndSingleFinishAllowed(t *testing.T) {
+func TestEnterChallengeCreatesSingleMatchAndRankedFinishNeedsConfirmation(t *testing.T) {
 	svcCtx := newChallengeLogicTestSvc(t)
 	seedChallengeUsers(t, svcCtx, model.User{Id: 1001, Nickname: "小李"}, model.User{Id: 2002, Nickname: "小王"})
 	challenge := seedAcceptedChallengeForEnter(t, svcCtx, 1001)
@@ -93,8 +93,8 @@ func TestEnterChallengeCreatesSingleMatchAndSingleFinishAllowed(t *testing.T) {
 	if created.ChallengeId == nil || *created.ChallengeId != challenge.Id {
 		t.Fatalf("match must link challenge: %+v", created)
 	}
-	if created.FinishConfirmationRequired {
-		t.Fatalf("challenge ranked match must allow single finish: %+v", created)
+	if !created.FinishConfirmationRequired {
+		t.Fatalf("challenge ranked match must use the 30s finish confirmation: %+v", created)
 	}
 	if created.MatchMode != model.MatchModeRanked || created.Visibility != model.MatchVisibilityPublic || created.MatchFormat != "free" {
 		t.Fatalf("match options must be derived from invite game type and mode: %+v", created)
@@ -123,11 +123,39 @@ func TestEnterChallengeCreatesSingleMatchAndSingleFinishAllowed(t *testing.T) {
 		t.Fatalf("end round: %v", err)
 	}
 
-	// 参赛方 can_finish：约球排位单方可结束；非参与者不可见本局。
+	// 约球排位与扫码排位一致：任一参赛方可发起结束确认，不能跳过对方直接结束。
 	for _, userID := range []int64{1001, 2002} {
 		view, err := matchlogic.NewGetCurrentMatchLogic(challengeTestCtx(userID), svcCtx).GetCurrentMatch()
-		if err != nil || view.Match == nil || !view.Match.CanFinish {
-			t.Fatalf("player %d must be able to finish: view=%#v err=%v", userID, view, err)
+		if err != nil || view.Match == nil || !view.Match.CanRequestFinish || view.Match.CanFinish {
+			t.Fatalf("player %d must request finish instead of finishing directly: view=%#v err=%v", userID, view, err)
+		}
+	}
+}
+
+func TestEnterChallengePracticeMatchFinishesDirectly(t *testing.T) {
+	svcCtx := newChallengeLogicTestSvc(t)
+	seedChallengeUsers(t, svcCtx, model.User{Id: 1001, Nickname: "小李"}, model.User{Id: 2002, Nickname: "小王"})
+	challenge := seedAcceptedChallengeForEnter(t, svcCtx, 1001)
+	if err := svcCtx.DB.Model(&model.Challenge{}).Where("id = ?", challenge.Id).Update("match_mode", model.MatchModePractice).Error; err != nil {
+		t.Fatalf("switch challenge to practice: %v", err)
+	}
+	resp, err := NewEnterChallengeLogic(challengeTestCtx(2002), svcCtx).EnterChallenge(&types.EnterChallengeReq{ChallengeId: challenge.Id})
+	if err != nil || !resp.Success || resp.MatchId <= 0 {
+		t.Fatalf("second enter must create match: resp=%#v err=%v", resp, err)
+	}
+	created, err := svcCtx.MatchModel.FindById(resp.MatchId)
+	if err != nil || created == nil || created.FinishConfirmationRequired || created.MatchMode != model.MatchModePractice {
+		t.Fatalf("challenge practice match must finish without confirmation: %+v err=%v", created, err)
+	}
+	if _, err := matchlogic.NewEndRoundLogic(challengeTestCtx(1001), svcCtx).EndRound(&types.EndRoundReq{
+		MatchId: resp.MatchId, Winner: 1, WinType: "normal", Score: 1, ClientActionId: "practice-round-1",
+	}); err != nil {
+		t.Fatalf("end round: %v", err)
+	}
+	for _, userID := range []int64{1001, 2002} {
+		view, err := matchlogic.NewGetCurrentMatchLogic(challengeTestCtx(userID), svcCtx).GetCurrentMatch()
+		if err != nil || view.Match == nil || !view.Match.CanFinish || view.Match.CanRequestFinish {
+			t.Fatalf("practice player %d must finish directly: view=%#v err=%v", userID, view, err)
 		}
 	}
 }

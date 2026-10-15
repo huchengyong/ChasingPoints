@@ -6,20 +6,7 @@ import (
 	"chasing_points/internal/model"
 )
 
-func effectiveMatchForRead(match *model.Match, now time.Time) *model.Match {
-	if match == nil {
-		return nil
-	}
-	view := *match
-	if isFinishRequestExpired(&view, now) {
-		clearFinishRequest(&view)
-	}
-	return &view
-}
-
+// isFinishRequestExpired 判断待确认的结束请求是否已到确认期截止时刻（按服务端时间）。
 func isFinishRequestExpired(match *model.Match, now time.Time) bool {
-	return match != nil &&
-		match.FinishState == model.FinishStatePendingConfirmation &&
-		match.FinishRequestedAt != nil &&
-		!match.FinishRequestedAt.Add(finishRequestTTL).After(now)
+	return match.FinishRequestExpired(now)
 }

@@ -44,6 +44,7 @@ func buildMatchSyncSnapshotForUser(userId int64, match *model.Match, completedRo
 
 	snookerFormat, snookerTargetWins := normalizedSnookerFormat(match)
 	matchFormat, targetWins := normalizedPoolMatchFormat(match)
+	finishRequestExpiresAt, finishRequestRemainingSeconds := match.FinishRequestCountdown(time.Now())
 
 	return types.MatchSyncSnapshot{
 		MatchId:                       match.Id,
@@ -54,14 +55,13 @@ func buildMatchSyncSnapshotForUser(userId int64, match *model.Match, completedRo
 		Visibility:                    model.NormalizeMatchVisibility(match.Visibility, match.MatchMode),
 		FinishState:                   model.NormalizeFinishState(match.FinishState),
 		FinishRequestedBy:             resolveFinishRequestedBy(match),
+		FinishRequestExpiresAt:        finishRequestExpiresAt,
+		FinishRequestRemainingSeconds: finishRequestRemainingSeconds,
 		ViewerRole:                    capabilities.ViewerRole,
 		RefereeBound:                  capabilities.RefereeBound,
 		RefereeUserId:                 capabilities.RefereeUserId,
 		CompletedByUserId:             resolveCompletedByUserId(match),
 		CompletionSource:              resolveCompletionSource(match),
-		RankSettlementStatus:          resolveRankSettlementStatus(match),
-		RankSettlementDueAt:           match.FormatRankSettlementDueAt(),
-		CanDisputeResult:              capabilities.CanDisputeResult,
 		RefereeDurationSeconds:        refereeDurationSeconds,
 		CanScore:                      capabilities.CanScore,
 		CanUndo:                       capabilities.CanUndo,

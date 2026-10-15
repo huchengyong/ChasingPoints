@@ -1,6 +1,7 @@
 package match
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -237,7 +238,7 @@ func TestPoolRoundRejectsScoreFoulAndNextRound(t *testing.T) {
 }
 
 // 约球比赛由任一参赛方单方结束：自动达到抢N目标时与手动结束一致，直接结算而不进入双方确认。
-func TestFlexiblePoolChallengeRankedAutoFinishSkipsConfirmation(t *testing.T) {
+func TestFlexiblePoolChallengeRankedAutoFinishEntersConfirmationAndCompletesOnTimeout(t *testing.T) {
 	svcCtx := newPoolMatchFormatTestSvc(t)
 	if err := svcCtx.DB.AutoMigrate(&model.Challenge{}); err != nil {
 		t.Fatalf("prepare challenge schema: %v", err)
@@ -256,27 +257,34 @@ func TestFlexiblePoolChallengeRankedAutoFinishSkipsConfirmation(t *testing.T) {
 		match.MatchMode = model.MatchModeRanked
 		match.ChallengeId = &challengeID
 	})
-	if !match.FinishConfirmationRequired {
-		t.Fatalf("fixture must require confirmation to exercise the challenge exemption")
+
+	// 约球排位与扫码排位一致：达标自动进入30秒确认，发起方为记下最后一局的参赛者。
+	resp := endPoolRound(t, svcCtx, match.Id, 101, 2, "normal", 1, "challenge-target-round")
+	if !resp.Success || !resp.Accepted || resp.Snapshot.Status != 1 || resp.Snapshot.FinishState != model.FinishStatePendingConfirmation || resp.Snapshot.FinishRequestedBy != 101 {
+		t.Fatalf("challenge ranked target should enter finish confirmation: %+v", resp.Snapshot)
+	}
+	if resp.Snapshot.FinishRequestRemainingSeconds != int(model.FinishRequestTTL.Seconds()) {
+		t.Fatalf("fresh request should report the full countdown, got %d", resp.Snapshot.FinishRequestRemainingSeconds)
+	}
+	challenge, err := svcCtx.ChallengeModel.FindById(challengeID)
+	if err != nil || challenge == nil || challenge.Status != model.ChallengeStatusStarted {
+		t.Fatalf("challenge must stay started while confirming: %+v err=%v", challenge, err)
 	}
 
-	resp := endPoolRound(t, svcCtx, match.Id, 101, 2, "normal", 1, "challenge-target-round")
-	if !resp.Success || !resp.Accepted || resp.Snapshot.Status != 2 || resp.Snapshot.FinishState != model.FinishStateNone {
-		t.Fatalf("challenge ranked target should complete directly: %+v", resp)
+	expiredAt := time.Now().Add(-model.FinishRequestTTL - time.Second)
+	if err := svcCtx.DB.Model(&model.Match{}).Where("id = ?", match.Id).Update("finish_requested_at", expiredAt).Error; err != nil {
+		t.Fatalf("age finish request: %v", err)
 	}
-	var finishRequests int64
-	if err := svcCtx.DB.Model(&model.MatchAction{}).Where("match_id = ? AND action_type = ?", match.Id, "finish_request").Count(&finishRequests).Error; err != nil {
-		t.Fatalf("count finish requests: %v", err)
+	completion, err := completeExpiredFinishRequest(context.Background(), svcCtx, match.Id, time.Now())
+	if err != nil || completion == nil {
+		t.Fatalf("expired confirmation should complete the match: completion=%+v err=%v", completion, err)
 	}
-	if finishRequests != 0 {
-		t.Fatalf("challenge auto finish must not create a finish request, got %d", finishRequests)
-	}
-	// 赛制达标自动结束不是手动结束：立即结算，没有异议期。
 	stored, err := svcCtx.MatchModel.FindById(match.Id)
-	if err != nil || stored == nil || stored.RankSettlementStatus != model.RankSettlementSettled || stored.RankSettlementDueAt != nil {
-		t.Fatalf("auto finish must settle immediately without a dispute window: %+v err=%v", stored, err)
+	if err != nil || stored.Status != 2 || stored.CompletionSource != model.CompletionSourceFinishTimeout {
+		t.Fatalf("timeout must complete the challenge match: %+v err=%v", stored, err)
 	}
-	if resolveMatchViewerCapabilities(stored, 202).CanDisputeResult || resolveMatchViewerCapabilities(stored, 101).CanDisputeResult {
-		t.Fatalf("no dispute entry after an immediate settlement")
+	challenge, err = svcCtx.ChallengeModel.FindById(challengeID)
+	if err != nil || challenge == nil || challenge.Status != model.ChallengeStatusCompleted {
+		t.Fatalf("timeout must complete the linked challenge in the same transaction: %+v err=%v", challenge, err)
 	}
 }

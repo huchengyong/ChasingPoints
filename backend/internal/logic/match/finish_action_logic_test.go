@@ -544,9 +544,10 @@ func TestFinishRequestNotificationTargetsTheOtherPlayer(t *testing.T) {
 		name        string
 		requesterID int64
 		recipientID int64
+		wantContent string
 	}{
-		{name: "player1 requests", requesterID: 1001, recipientID: 2002},
-		{name: "player2 requests", requesterID: 2002, recipientID: 1001},
+		{name: "player1 requests", requesterID: 1001, recipientID: 2002, wantContent: "选手甲申请结束对局 · 3:5，30秒内确认或提出异议"},
+		{name: "player2 requests", requesterID: 2002, recipientID: 1001, wantContent: "选手乙申请结束对局 · 5:3，30秒内确认或提出异议"},
 	}
 
 	for index, tt := range tests {
@@ -561,7 +562,7 @@ func TestFinishRequestNotificationTargetsTheOtherPlayer(t *testing.T) {
 			if err := svcCtx.MatchModel.Create(&model.Match{
 				Id: matchID, UserId: 1001, OpponentId: &opponentID, OpponentName: "选手乙", GameType: 3,
 				MatchMode: model.MatchModeRanked, Visibility: model.MatchVisibilityPublic, FinishConfirmationRequired: true,
-				FinishState: model.FinishStateNone, Status: 1, CurrentFrameStarted: true, MatchTime: time.Now(),
+				FinishState: model.FinishStateNone, Status: 1, MyScore: 5, OpponentScore: 3, CurrentFrameStarted: true, MatchTime: time.Now(),
 			}); err != nil {
 				t.Fatalf("create match: %v", err)
 			}
@@ -577,6 +578,9 @@ func TestFinishRequestNotificationTargetsTheOtherPlayer(t *testing.T) {
 			}
 			if len(notifications) != 1 || notifications[0].UserId != tt.recipientID {
 				t.Fatalf("expected only user %d to be notified, got %#v", tt.recipientID, notifications)
+			}
+			if notifications[0].Content != tt.wantContent {
+				t.Fatalf("notice content = %q, want %q (score from the recipient's side)", notifications[0].Content, tt.wantContent)
 			}
 		})
 	}

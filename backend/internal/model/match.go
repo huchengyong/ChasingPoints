@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 	"time"
 
@@ -21,20 +22,15 @@ const (
 
 	FinishStateNone                = "none"
 	FinishStatePendingConfirmation = "pending_confirmation"
-	FinishRequestTTL               = 24 * time.Hour
+	// FinishRequestTTL 排位结束确认期：期内对方可确认或异议、发起方可撤回，期满按冻结比分完成结算。
+	FinishRequestTTL = 30 * time.Second
 
 	CompletionSourceReferee         = "referee"
 	CompletionSourcePlayerDirect    = "player_direct"
 	CompletionSourcePlayerConfirmed = "player_confirmed"
-	CompletionSourceUnknown         = "unknown"
-
-	// 约球排位手动结束后的延后排位结算；none 表示无需延后（含存量与非约球比赛）。
-	RankSettlementNone    = "none"
-	RankSettlementPending = "pending"
-	RankSettlementSettled = "settled"
-	RankSettlementVoided  = "voided"
-	// RankDisputeWindow 为约球排位手动结束后另一方可提出异议的时长。
-	RankDisputeWindow = 10 * time.Minute
+	// CompletionSourceFinishTimeout 结束确认期满无人处理，由服务端按冻结比分完成；完成人记为发起方。
+	CompletionSourceFinishTimeout = "finish_timeout"
+	CompletionSourceUnknown       = "unknown"
 
 	SnookerRulesVersionLegacy = 1
 	SnookerRulesVersionWPBSA  = 2
@@ -90,9 +86,7 @@ type Match struct {
 	RefereeJoinedAt            *time.Time     `json:"referee_joined_at"`
 	ChallengeId                *int64         `gorm:"uniqueIndex:uk_matches_challenge_id" json:"challenge_id"`
 	CompletedByUserId          *int64         `gorm:"index" json:"completed_by_user_id"`
-	CompletionSource           string         `gorm:"size:20;not null;default:unknown" json:"completion_source"` // referee/player_direct/player_confirmed/unknown
-	RankSettlementStatus       string         `gorm:"size:20;not null;default:none;index:idx_matches_rank_settlement,priority:1" json:"rank_settlement_status"`
-	RankSettlementDueAt        *time.Time     `gorm:"index:idx_matches_rank_settlement,priority:2" json:"rank_settlement_due_at"`
+	CompletionSource           string         `gorm:"size:20;not null;default:unknown" json:"completion_source"` // referee/player_direct/player_confirmed/finish_timeout/unknown
 	MyScore                    int            `gorm:"not null;default:0" json:"my_score"`
 	OpponentScore              int            `gorm:"not null;default:0" json:"opponent_score"`
 	CurrentFrameMyScore        int            `gorm:"not null;default:0" json:"current_frame_my_score"`
@@ -114,35 +108,6 @@ type Match struct {
 func (Match) TableName() string {
 	return "matches"
 }
-
-// RankSettlementDeferred 表示排位结算尚未生效或已被异议作废；此时该场不得计入排位口径数据。
-func (m *Match) RankSettlementDeferred() bool {
-	return m != nil && (m.RankSettlementStatus == RankSettlementPending || m.RankSettlementStatus == RankSettlementVoided)
-}
-
-// CanDisputeRankResult 判断 userId 此刻能否对本场约球排位结果提出异议：
-// 排位结算待生效且未过生效时刻，并且请求者是不同于结束方的参赛方。
-func (m *Match) CanDisputeRankResult(userId int64, now time.Time) bool {
-	if m == nil || m.Status != 2 || m.RankSettlementStatus != RankSettlementPending || m.RankSettlementDueAt == nil {
-		return false
-	}
-	if !now.Before(*m.RankSettlementDueAt) {
-		return false
-	}
-	isPlayer := userId > 0 && (m.UserId == userId || (m.OpponentId != nil && *m.OpponentId == userId))
-	return isPlayer && m.CompletedByUserId != nil && *m.CompletedByUserId != userId
-}
-
-// FormatRankSettlementDueAt 以北京时间 RFC3339 返回排位结算生效时刻；未设置返回空串。
-func (m *Match) FormatRankSettlementDueAt() string {
-	if m == nil || m.RankSettlementDueAt == nil || m.RankSettlementDueAt.IsZero() {
-		return ""
-	}
-	return m.RankSettlementDueAt.In(time.FixedZone("CST", 8*3600)).Format(time.RFC3339)
-}
-
-// unsettledRankStatuses 是不得计入排位口径数据的结算状态：待生效尚未结算，已作废永不结算。
-var unsettledRankStatuses = []string{RankSettlementPending, RankSettlementVoided}
 
 // MatchRound 局记录
 type MatchRound struct {
@@ -256,45 +221,37 @@ func (m *MatchModel) FindByIdForUpdateWithTx(tx *gorm.DB, id int64) (*Match, err
 	return &match, err
 }
 
-func (m *MatchModel) ExpireStaleFinishRequest(matchId int64) (*Match, bool, int64, error) {
-	var refreshed *Match
-	var expiredRevision int64
-	err := m.db.Transaction(func(tx *gorm.DB) error {
-		locked, err := m.FindByIdForUpdateWithTx(tx, matchId)
-		if err != nil {
-			return err
-		}
-		if locked == nil {
-			return gorm.ErrRecordNotFound
-		}
-		if locked.FinishState != FinishStatePendingConfirmation || locked.FinishRequestedAt == nil || time.Since(*locked.FinishRequestedAt) < FinishRequestTTL {
-			refreshed = locked
-			return nil
-		}
-
-		requestRevision := locked.FinishRequestRevision
-		locked.FinishState = FinishStateNone
-		locked.FinishRequestedBy = nil
-		locked.FinishRequestedAt = nil
-		locked.FinishRequestRevision = 0
-		revision, err := m.BumpMatchRevisionWithTx(tx, locked)
-		if err != nil {
-			return err
-		}
-		expiredRevision = revision
-		if err := m.CreateActionWithRevisionWithTx(tx, &MatchAction{
-			MatchId:      locked.Id,
-			RoundNo:      0,
-			ActionType:   "finish_expired",
-			Actor:        0,
-			BaseRevision: requestRevision,
-		}, revision); err != nil {
-			return err
-		}
-		refreshed = locked
+// FinishRequestExpiresAt 返回待确认结束请求的截止时刻；没有待确认请求时返回 nil。
+func (m *Match) FinishRequestExpiresAt() *time.Time {
+	if m == nil || m.FinishState != FinishStatePendingConfirmation || m.FinishRequestedAt == nil {
 		return nil
-	})
-	return refreshed, expiredRevision > 0, expiredRevision, err
+	}
+	expiresAt := m.FinishRequestedAt.Add(FinishRequestTTL)
+	return &expiresAt
+}
+
+// FinishRequestExpired 判断待确认的结束请求是否已到确认期截止时刻（按服务端时间）；缺少请求时刻的旧数据视为未到期。
+func (m *Match) FinishRequestExpired(now time.Time) bool {
+	expiresAt := m.FinishRequestExpiresAt()
+	return expiresAt != nil && !expiresAt.After(now)
+}
+
+// FinishRequestRemainingSeconds 按服务端时间返回结束确认的剩余秒数（向上取整，最小为 0）。
+func (m *Match) FinishRequestRemainingSeconds(now time.Time) int {
+	expiresAt := m.FinishRequestExpiresAt()
+	if expiresAt == nil || !expiresAt.After(now) {
+		return 0
+	}
+	return int(math.Ceil(expiresAt.Sub(now).Seconds()))
+}
+
+// FinishRequestCountdown 返回读取用的确认截止时刻（RFC3339）与剩余秒数；无待确认请求时为空串和 0。
+func (m *Match) FinishRequestCountdown(now time.Time) (string, int) {
+	expiresAt := m.FinishRequestExpiresAt()
+	if expiresAt == nil {
+		return "", 0
+	}
+	return expiresAt.Format(time.RFC3339), m.FinishRequestRemainingSeconds(now)
 }
 
 func (m *MatchModel) ListStaleFinishRequestIDs(limit int, now time.Time) ([]int64, error) {
@@ -313,36 +270,6 @@ func (m *MatchModel) ListStaleFinishRequestIDs(limit int, now time.Time) ([]int6
 	return ids, err
 }
 
-// ListDueRankSettlementIDs 返回已到生效时刻、仍待结算的比赛，按到期先后有界返回。
-func (m *MatchModel) ListDueRankSettlementIDs(limit int, now time.Time) ([]int64, error) {
-	if limit <= 0 {
-		limit = 100
-	}
-	if limit > 1000 {
-		limit = 1000
-	}
-	var ids []int64
-	err := m.db.Model(&Match{}).
-		Where("rank_settlement_status = ? AND rank_settlement_due_at <= ?", RankSettlementPending, now).
-		Order("rank_settlement_due_at ASC, id ASC").
-		Limit(limit).
-		Pluck("id", &ids).Error
-	return ids, err
-}
-
-// RankSettlementBacklog 返回已到期仍未结算的比赛数量与最早到期时刻，用于观测 worker 积压。
-func (m *MatchModel) RankSettlementBacklog(now time.Time) (int64, *time.Time, error) {
-	var row struct {
-		Total    int64
-		Earliest *time.Time
-	}
-	err := m.db.Model(&Match{}).
-		Select("COUNT(*) AS total, MIN(rank_settlement_due_at) AS earliest").
-		Where("rank_settlement_status = ? AND rank_settlement_due_at <= ?", RankSettlementPending, now).
-		Scan(&row).Error
-	return row.Total, row.Earliest, err
-}
-
 func (m *MatchModel) ListCompletedPendingAchievementSync(limit int) ([]Match, error) {
 	if limit <= 0 {
 		limit = 100
@@ -351,7 +278,7 @@ func (m *MatchModel) ListCompletedPendingAchievementSync(limit int) ([]Match, er
 		limit = 1000
 	}
 	var matches []Match
-	err := m.db.Where("status = ? AND achievement_synced_at IS NULL AND rank_settlement_status <> ?", 2, RankSettlementPending).
+	err := m.db.Where("status = ? AND achievement_synced_at IS NULL", 2).
 		Order("id ASC").
 		Limit(limit).
 		Find(&matches).Error
@@ -495,7 +422,6 @@ func completedRankedMatchScope(db *gorm.DB) *gorm.DB {
 	return db.
 		Where("status = ? AND deleted_at IS NULL", 2).
 		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", MatchModeRanked).
-		Where("rank_settlement_status NOT IN ?", unsettledRankStatuses).
 		Where("result IN ?", []int{1, 2}).
 		Where("opponent_id IS NOT NULL AND opponent_id > 0 AND opponent_id <> user_id").
 		Where("EXISTS (SELECT 1 FROM match_rounds WHERE match_rounds.match_id = matches.id AND winner IS NOT NULL AND (win_type IS NULL OR win_type <> ?))", "start")
@@ -579,7 +505,6 @@ func (m *MatchModel) CountCompletedMatchesBetweenUsersByGameTypeBetween(
 	query := db.Model(&Match{}).
 		Where("status = ? AND game_type = ?", 2, gameType).
 		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", MatchModeRanked).
-		Where("rank_settlement_status NOT IN ?", unsettledRankStatuses).
 		Where("((user_id = ? AND opponent_id = ?) OR (user_id = ? AND opponent_id = ?))", userA, userB, userB, userA).
 		Where("((end_time IS NOT NULL AND end_time >= ? AND end_time < ?) OR (end_time IS NULL AND match_time >= ? AND match_time < ?))",
 			start, end, start, end)
@@ -1578,7 +1503,6 @@ func (m *MatchModel) ListCompetitiveScoreCandidates(userId int64, gameType, limi
 		Select("id AS match_id, game_type, my_score AS score, match_time, completed_at").
 		Where("user_id = ? AND game_type = ? AND status = ?", userId, gameType, 2).
 		Where("match_mode = ?", MatchModeRanked).
-		Where("rank_settlement_status NOT IN ?", unsettledRankStatuses).
 		Where("result IN ?", []int{1, 2}).
 		Order("my_score DESC, completed_at DESC, id DESC").
 		Limit(limit).
@@ -1594,7 +1518,6 @@ func (m *MatchModel) ListCompetitiveScoreCandidates(userId int64, gameType, limi
 		Select("id AS match_id, game_type, opponent_score AS score, match_time, completed_at").
 		Where("opponent_id = ? AND user_id <> ? AND game_type = ? AND status = ?", userId, userId, gameType, 2).
 		Where("match_mode = ?", MatchModeRanked).
-		Where("rank_settlement_status NOT IN ?", unsettledRankStatuses).
 		Where("result IN ?", []int{1, 2}).
 		Order("opponent_score DESC, completed_at DESC, id DESC").
 		Limit(limit).
@@ -1639,7 +1562,6 @@ func (m *MatchModel) GetUserStats(userId int64) (*UserStats, error) {
 		Select("user_id, result").
 		Where("(user_id = ? OR opponent_id = ?) AND status = 2", userId, userId).
 		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", MatchModeRanked).
-		Where("rank_settlement_status NOT IN ?", unsettledRankStatuses).
 		Scan(&matches).Error
 	if err != nil {
 		return nil, err
@@ -1693,7 +1615,6 @@ func (m *MatchModel) calculateMaxWinStreak(userId int64) int {
 		Select("user_id, result, match_time").
 		Where("(user_id = ? OR opponent_id = ?) AND status = 2", userId, userId).
 		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", MatchModeRanked).
-		Where("rank_settlement_status NOT IN ?", unsettledRankStatuses).
 		Order("match_time ASC").
 		Scan(&matches).Error
 	if err != nil {
@@ -1892,7 +1813,6 @@ func (m *MatchModel) ListOpponentsWithStats(
 		Joins("LEFT JOIN users u ON matches.user_id = u.id").
 		Where("(matches.user_id = ? OR matches.opponent_id = ?) AND matches.status = 2 AND matches.deleted_at IS NULL", userId, userId).
 		Where("matches.match_mode = ? OR matches.match_mode = '' OR matches.match_mode IS NULL", MatchModeRanked).
-		Where("matches.rank_settlement_status NOT IN ?", unsettledRankStatuses).
 		Scan(&matches).Error
 	if err != nil {
 		return nil, 0, err
@@ -2063,7 +1983,6 @@ func (m *MatchModel) GetOverallOpponentStats(userId int64) (totalOpponents, tota
 		Joins("LEFT JOIN users u ON matches.user_id = u.id").
 		Where("(matches.user_id = ? OR matches.opponent_id = ?) AND matches.status = 2 AND matches.deleted_at IS NULL", userId, userId).
 		Where("matches.match_mode = ? OR matches.match_mode = '' OR matches.match_mode IS NULL", MatchModeRanked).
-		Where("matches.rank_settlement_status NOT IN ?", unsettledRankStatuses).
 		Scan(&matches).Error
 	if err != nil {
 		return 0, 0, err
@@ -2121,7 +2040,6 @@ func (m *MatchModel) GetMaxSingleScore(userId int64) (int, error) {
 		Joins("INNER JOIN matches m ON mr.match_id = m.id").
 		Where("m.user_id = ? AND m.status = 2 AND m.deleted_at IS NULL", userId).
 		Where("m.match_mode = ? OR m.match_mode = '' OR m.match_mode IS NULL", MatchModeRanked).
-		Where("m.rank_settlement_status NOT IN ?", unsettledRankStatuses).
 		Select("COALESCE(MAX(mr.my_score), 0)").
 		Scan(&player1MaxScore).Error
 	if err != nil {
@@ -2134,7 +2052,6 @@ func (m *MatchModel) GetMaxSingleScore(userId int64) (int, error) {
 		Joins("INNER JOIN matches m ON mr.match_id = m.id").
 		Where("m.opponent_id = ? AND m.status = 2 AND m.deleted_at IS NULL", userId).
 		Where("m.match_mode = ? OR m.match_mode = '' OR m.match_mode IS NULL", MatchModeRanked).
-		Where("m.rank_settlement_status NOT IN ?", unsettledRankStatuses).
 		Select("COALESCE(MAX(mr.opponent_score), 0)").
 		Scan(&player2MaxScore).Error
 	if err != nil {
