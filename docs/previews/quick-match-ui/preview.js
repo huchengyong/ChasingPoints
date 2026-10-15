@@ -11,7 +11,7 @@
     ['pending', '收到与发出', '收到邀请只需要回应，不提前解释开局。接收方也可以暂不处理。'],
     ['accepted', '已约好 · 双入口', '同一条约球，出现在对局与我的。点击进入后，对手才会看到你在等待。'],
     ['waiting', '一人等待 · 一人选择', '左侧没有比分，也没有比赛。右侧进入才正式开始，放弃则一起结束。'],
-    ['playing', '正式比赛与再约', '任意一方滑动结束，无需对方同意；未滑到终点会复位。排位赛对方有10分钟异议期，提出后本场不计排位积分；切换演示时间可看异议期结束。'],
+    ['playing', '正式比赛与再约', '排位赛一方滑动结束后进入30秒确认：对方滑动确认立即结束，有异议则继续比赛，发起方也可撤销；30秒无人处理按当前比分自动结束，之后不能再异议。练习赛滑动即结束。'],
     ['mutual', '同人互邀匹配', '同一个人、同一种类型，直接合并。时间不同也可以，以正在接受的邀请为准。'],
     ['different', '互邀类型不同', '类型不同不悄悄匹配。查看并处理原邀请后，再决定是否接受。'],
     ['replace', '换人接受邀请', '小李发给小王的邀请还未回应，同时收到小陈的邀请。接受前明确提示关闭旧邀请。'],
@@ -37,7 +37,7 @@
   const icon = name => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[name] || paths.ball}"/></svg>`;
   const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const DAY = 86400000;
-  const DISPUTE_MINUTES = 10, DISPUTE_WINDOW = DISPUTE_MINUTES * 60000;
+  const CONFIRM_SECONDS = 30, CONFIRM_WINDOW = CONFIRM_SECONDS * 1000;
   const BASE = Date.parse('2026-08-25T00:00:00+08:00');
   let now = BASE + 16 * 3600000, nextId = 1, invites = [], scene = 'accepted', abFriends = true;
   let prefs = { a: false, b: false, c: false };
@@ -58,8 +58,9 @@
     const [mine, theirs] = scoreOf(r, u);
     return mine > theirs ? ['win', '胜', '本场获胜'] : mine < theirs ? ['loss', '负', '本场失利'] : ['draw', '平', '本场战平'];
   }
-  // 排位被单方结束后，另一方在异议期内可提出一次异议；异议只取消本场排位积分，不恢复对局。
-  const disputeOpen = r => r.mode === '排位' && !!r.endedBy && !r.disputed && now < r.disputeUntil;
+  // 排位一方滑动结束后比分冻结，进入30秒确认；期间发起方可撤销、对方可确认或提出异议，期满按冻结比分结束。
+  const pendingFinish = r => r?.status === 'playing' && r.finishRequest ? r.finishRequest : null;
+  const secondsLeft = r => Math.max(0, Math.ceil((r.finishRequest.until - now) / 1000));
   const today = () => Math.floor((now + 8 * 3600000) / DAY) * DAY - 8 * 3600000;
   function relative(day) {
     const d = Math.round((day - today()) / DAY);
@@ -157,20 +158,49 @@
     const r = get(id); if (r?.status !== 'accepted') { toast(u, '对局已开始，请查看当前比赛'); return; }
     r.entered = r.entered.filter(p => p !== u); navigate(u, views[u].tab); toast(u, '已退出等待，约球仍保留');
   }
-  function finish(u, id) {
-    const r = get(id); if (r?.status !== 'playing' || !members(r).includes(u)) return;
-    r.status = 'completed'; r.endedBy = u;
-    if (r.mode === '排位') r.disputeUntil = now + DISPUTE_WINDOW;
-    for (const p of ['a', 'b']) if (views[p].page === 'playing' && views[p].recordId === r.id) navigate(p, 'detail', id);
-    const other = opponent(r, u);
-    toast(u, '对局与约球均已结束'); toast(other, `${people[u].name}结束了对局 · ${scoreOf(r, other).join(' : ')}${r.mode === '排位' ? `，${DISPUTE_MINUTES}分钟内可提出异议` : ''}`);
+  // way：direct 练习滑动即结束；confirmed 对方确认；timeout 30秒无人处理自动结束。
+  function complete(r, by, way) {
+    r.status = 'completed'; r.endedBy = by; r.endWay = way; delete r.finishRequest;
+    for (const p of ['a', 'b']) if (views[p].page === 'playing' && views[p].recordId === r.id) navigate(p, 'detail', r.id);
+    const other = opponent(r, by);
+    if (way === 'direct') { toast(by, '对局与约球均已结束'); toast(other, `${people[by].name}结束了对局 · ${scoreOf(r, other).join(' : ')}`); }
+    else if (way === 'confirmed') { toast(other, '对局与约球均已结束'); toast(by, `${people[other].name}已确认，对局结束`); }
+    else for (const p of [by, other]) toast(p, `30秒未处理，对局已按 ${scoreOf(r, p).join(' : ')} 结束`);
   }
-  function dispute(u, id) {
-    const r = get(id);
-    if (!r || r.status !== 'completed' || !members(r).includes(u) || !r.endedBy || r.endedBy === u) return;
-    if (!disputeOpen(r)) { toast(u, r.disputed ? '本场已提出异议' : '异议期已结束，排位结果已生效'); return; }
-    r.disputed = true;
-    toast(u, '已提出异议，本场不计排位积分'); toast(r.endedBy, `${people[u].name}对本场结果提出异议，本场不计排位积分`);
+  function expireFinishRequests() {
+    for (const r of invites) if (pendingFinish(r) && now >= r.finishRequest.until) complete(r, r.finishRequest.by, 'timeout');
+  }
+  function finish(u, id) {
+    expireFinishRequests();
+    const r = get(id); if (r?.status !== 'playing' || !members(r).includes(u) || pendingFinish(r)) return;
+    if (r.mode !== '排位') { complete(r, u, 'direct'); return; }
+    r.finishRequest = { by: u, until: now + CONFIRM_WINDOW };
+    // 对方正在看本场时由确认弹窗告知，不再叠加被遮罩挡住的提示。
+    const other = opponent(r, u);
+    if (!(views[other].page === 'playing' && views[other].recordId === r.id)) toast(other, `${people[u].name}申请结束对局，请在${CONFIRM_SECONDS}秒内处理`);
+  }
+  function confirmFinish(u, id) {
+    expireFinishRequests();
+    const r = get(id), req = pendingFinish(r);
+    if (!req || req.by === u || !members(r).includes(u)) return;
+    complete(r, req.by, 'confirmed');
+  }
+  // 发起方撤销与对方提出异议都让对局恢复进行中，比分不变，之后任一方可再次发起结束。
+  function undoFinish(u, id) {
+    expireFinishRequests();
+    const r = get(id), req = pendingFinish(r);
+    if (!req || !members(r).includes(u)) return;
+    delete r.finishRequest;
+    const other = opponent(r, u), mine = req.by === u;
+    toast(u, mine ? '已撤销结束，对局继续' : '已提出异议，对局继续');
+    toast(other, mine ? `${people[u].name}撤销了结束，对局继续` : `${people[u].name}有异议，对局继续`);
+  }
+  // 演示时钟只在确认期间按秒推进；每秒只更新倒计时数字，避免重绘打断正在拖动的确认滑块。
+  function tick() {
+    if (!invites.some(pendingFinish)) return;
+    now += 1000;
+    if (invites.some(r => pendingFinish(r) && now >= r.finishRequest.until)) { render(); return; }
+    document.querySelectorAll('[data-countdown]').forEach(el => { const r = get(el.dataset.countdown); if (pendingFinish(r)) el.textContent = String(secondsLeft(r)); });
   }
   function loadScene(name) {
     scene = name; now = BASE + 16 * 3600000; invites = []; nextId = 1; abFriends = true;
@@ -212,7 +242,7 @@
       action = `<div class="action-row">${button(mine ? '返回等待页面' : '进入对局 ' + icon('arrow'), 'enter', r.id)}</div>`;
       footer = (mine ? textAction('退出等待，保留约球', 'leave', r.id) : '') + textAction(theirs && !mine ? '放弃本次约球' : '取消约球', 'cancel', r.id);
     }
-    if (r.status === 'playing') { title = '继续这场好球'; action = `<div class="action-row">${button('继续对局 ' + icon('arrow'), 'enter', r.id)}</div>`; note = `${scoreOf(r, u).join(' : ')} · 正在进行`; }
+    if (r.status === 'playing') { title = '继续这场好球'; action = `<div class="action-row">${button('继续对局 ' + icon('arrow'), 'enter', r.id)}</div>`; note = `${scoreOf(r, u).join(' : ')} · ${pendingFinish(r) ? '结束确认中' : '正在进行'}`; }
     if (!active) action = `<div class="action-row">${button(r.matchId ? '查看赛果' : '再约一场', r.matchId ? 'detail' : 'rematch', r.id, 'secondary')}</div>`;
     return `<article class="card"><div class="card-header"><h3>${title}</h3><span class="pill ${style} dot">${state}</span></div>${person(other)}${tags(r)}${timeBlock(r)}${active && r.status !== 'playing' ? `<p class="expire-copy">${expiryText(r)}</p>` : ''}${r.note ? `<p class="message-box">“${escape(r.note)}”</p>` : ''}${note ? `<p class="note">${note}</p>` : ''}${action}${footer ? `<div class="card-footer">${footer}</div>` : ''}</article>`;
   }
@@ -269,18 +299,25 @@
   function matchView(u, r, playing) {
     if (!r) return historyView(u);
     const other = opponent(r, u), [mine, theirs] = scoreOf(r, u), [result, , resultText] = outcome(r, u);
-    const finishNote = r.mode === '排位' ? `松手即结束，无需对方确认。按 ${mine} : ${theirs} 结算排位，对方${DISPUTE_MINUTES}分钟内可提出异议。` : '滑到终点后松手即可结束，无需对方确认。';
-    const ender = r.endedBy && (r.endedBy === u ? '你' : people[r.endedBy].name);
-    const settlement = r.mode !== '排位' || !r.endedBy ? '' : r.disputed ? '有异议 · 不计排位积分' : disputeOpen(r) ? `${hhmm(r.disputeUntil)} 生效` : '已生效';
-    const disputeBox = !playing && r.endedBy && r.endedBy !== u && disputeOpen(r) ? `<div class="dispute-box"><p>${ender}结束了本场。对结果有异议，可在 ${hhmm(r.disputeUntil)} 前提出；提出后本场不计排位积分，比分与记录保留。</p>${button('提出异议', 'dispute', r.id, 'secondary')}</div>` : '';
-    const finishSlider = `<div class="finish-slide"><span class="finish-caption" aria-hidden="true">向右滑动结束对局 <span>››</span></span><input type="range" class="finish-slider" id="finish-${u}" data-finish-slider="${r.id}" min="0" max="100" step="1" value="0" aria-label="滑动结束对局" aria-describedby="finish-help-${u}"></div><p class="finish-note" id="finish-help-${u}">${finishNote}<span class="sr-only">键盘可用方向键或End键移至终点结束，Escape键复位。</span></p>`;
-    return header(u, playing ? '对局进行中' : '对局详情') + `<div class="scroll"><div class="match-banner"><p class="result-eyebrow">${playing ? 'GOOD GAME, GOOD COMPANY' : 'EVERY GAME COUNTS'}</p>${tags(r)}<div class="score-players"><div class="waiting-player">${avatar(u)}<strong>${people[u].name}</strong></div><span style="color:#b6a77d;font-size:11px">VS</span><div class="waiting-player">${avatar(other)}<strong>${people[other].name}</strong></div></div><div class="score-number">${mine} : ${theirs}</div><span class="result-seal ${playing ? '' : result}">${playing ? '进行中' : resultText}</span></div>${disputeBox}<div class="detail-rows"><div class="detail-row"><span>对局时间</span><strong>${schedule(r)}</strong></div><div class="detail-row"><span>比赛类型</span><strong>${r.mode} · 自由局数</strong></div><div class="detail-row"><span>约球状态</span><strong>${playing ? '正在进行' : '已完成'}</strong></div>${!playing && ender ? `<div class="detail-row"><span>结束方式</span><strong>${ender}滑动结束</strong></div>` : ''}${!playing && settlement ? `<div class="detail-row"><span>排位结算</span><strong>${settlement}</strong></div>` : ''}</div>${playing ? `<div class="card"><p style="font-size:12px;line-height:1.8">专注每一杆，享受这场交锋。</p><p class="field-hint">演示比分 ${mine} : ${theirs} · 真实记分与结算沿用现有流程</p></div>` : `<div class="section-head">本场回顾</div><p class="page-sub">一场好球，也是下一次见面的理由。</p>${button('再约一场 ' + icon('arrow'), 'rematch', r.id)}`}<p class="quiet-tip">${playing ? '此页只模拟结束联动，不进行真实结算' : '模拟赛果 · 本次约球已同步完成'}</p></div>${playing ? `<div class="form-bottom finish-control">${finishSlider}</div>` : ''}`;
+    const req = playing && pendingFinish(r), left = req ? secondsLeft(r) : 0;
+    const name = p => p === u ? '你' : people[p].name;
+    const finishNote = r.mode === '排位' ? `松手后需${people[other].name}在${CONFIRM_SECONDS}秒内确认，期间你可撤销；无人处理则按 ${mine} : ${theirs} 自动结束，之后不能再提出异议。` : '滑到终点后松手即可结束，无需对方确认。';
+    const endText = !r.endedBy ? '' : r.endWay === 'confirmed' ? `${name(r.endedBy)}发起 · ${name(opponent(r, r.endedBy))}确认` : r.endWay === 'timeout' ? `${name(r.endedBy)}发起 · ${CONFIRM_SECONDS}秒未处理，自动结束` : '';
+    const slider = (kind, caption, label) => `<div class="finish-slide"><span class="finish-caption" aria-hidden="true">${caption} <span>››</span></span><input type="range" class="finish-slider" id="${kind}-${u}" data-finish-slider="${r.id}" data-slider-kind="${kind}" min="0" max="100" step="1" value="0" aria-label="${label}" aria-describedby="${kind}-help-${u}"></div>`;
+    const countdown = `<span class="countdown" data-countdown="${r.id}">${left}</span>`;
+    const keyboardHint = '<span class="sr-only">键盘可用方向键或End键移至终点，Escape键复位。</span>';
+    let bottom = '';
+    if (playing && !req) bottom = `${slider('finish', '向右滑动结束对局', '滑动结束对局')}<p class="finish-note" id="finish-help-${u}">${finishNote}${keyboardHint}</p>`;
+    else if (req && req.by === u) bottom = `<div class="finish-wait" role="status"><strong>等待${people[other].name}确认 · ${countdown} 秒</strong><p>${CONFIRM_SECONDS}秒内无人处理，将按 ${mine} : ${theirs} 自动结束，之后不能再提出异议。</p></div>${button('撤销结束', 'undo-finish', r.id, 'secondary')}`;
+    // 对方的确认弹窗：滑动确认立即结束；有异议则撤掉结束、继续比赛。
+    const confirmDialog = req && req.by !== u ? `<div class="overlay"><section class="modal finish-confirm" role="dialog" aria-modal="true" aria-labelledby="confirm-title-${u}" aria-describedby="confirm-help-${u}"><div class="modal-symbol">${icon('clock')}</div><h3 id="confirm-title-${u}">${people[req.by].name}申请结束对局</h3><p id="confirm-help-${u}">比分 ${mine} : ${theirs}。${countdown} 秒内未处理，将按此比分自动结束，结束后不能再提出异议。${keyboardHint}</p>${slider('confirm', '向右滑动确认结束', '滑动确认结束对局')}${button('有异议，继续比赛', 'undo-finish', r.id, 'secondary')}</section></div>` : '';
+    return header(u, playing ? '对局进行中' : '对局详情') + `<div class="scroll"><div class="match-banner"><p class="result-eyebrow">${playing ? 'GOOD GAME, GOOD COMPANY' : 'EVERY GAME COUNTS'}</p>${tags(r)}<div class="score-players"><div class="waiting-player">${avatar(u)}<strong>${people[u].name}</strong></div><span style="color:#b6a77d;font-size:11px">VS</span><div class="waiting-player">${avatar(other)}<strong>${people[other].name}</strong></div></div><div class="score-number">${mine} : ${theirs}</div><span class="result-seal ${playing ? '' : result}">${req ? '结束确认中' : playing ? '进行中' : resultText}</span></div><div class="detail-rows"><div class="detail-row"><span>对局时间</span><strong>${schedule(r)}</strong></div><div class="detail-row"><span>比赛类型</span><strong>${r.mode} · 自由局数</strong></div><div class="detail-row"><span>约球状态</span><strong>${playing ? '正在进行' : '已完成'}</strong></div>${!playing && endText ? `<div class="detail-row"><span>结束方式</span><strong>${endText}</strong></div>` : ''}</div>${playing ? `<div class="card"><p style="font-size:12px;line-height:1.8">${req ? '比分已冻结，等待结束确认。' : '专注每一杆，享受这场交锋。'}</p><p class="field-hint">演示比分 ${mine} : ${theirs} · 真实记分与结算沿用现有流程</p></div>` : `<div class="section-head">本场回顾</div><p class="page-sub">一场好球，也是下一次见面的理由。</p>${button('再约一场 ' + icon('arrow'), 'rematch', r.id)}`}<p class="quiet-tip">${playing ? '此页只模拟结束联动，不进行真实结算' : '模拟赛果 · 本次约球已同步完成'}</p></div>${bottom ? `<div class="form-bottom finish-control">${bottom}</div>` : ''}${confirmDialog}`;
   }
   function settingsView(u) {
     return header(u, '设置') + `<div class="scroll"><p class="page-title">按你的习惯来。</p><p class="page-sub">留给球桌的，是舒服的相处。</p><p class="section-label">通用设置</p><div class="settings-group"><div class="setting-row"><strong>主题模式</strong><span>亮色 · 本次预览</span></div><div class="setting-row"><strong>通知管理</strong><span>沿用现有设置</span></div></div><div class="section-head">隐私与约球</div><div class="settings-group"><div class="setting-row"><div><strong>隐藏战绩</strong><p>控制是否在公开场景展示你的战绩</p></div><span>现有功能</span></div><div class="setting-row"><div><strong>仅允许好友约球</strong><p>开启后，非好友无法向你<br>发送约球邀请</p></div><button type="button" class="switch" data-action="toggle-friends" role="switch" aria-checked="${prefs[u]}" aria-label="仅允许好友约球"></button></div></div><p class="field-hint" style="padding:9px 3px">仅影响新收到的邀请，已有约球不受影响。</p><div class="settings-group"><div class="setting-row"><strong>隐私政策</strong><span>沿用现有页面</span></div><div class="setting-row"><strong>用户协议</strong><span>沿用现有页面</span></div></div><p class="quiet-tip">${scene === 'settings' ? '当前演示：小李和小王是非好友最近对手' : '演示设置仅保存在当前浏览器，不修改真实账号'}</p></div>`;
   }
   function render() {
-    expireRecords();
+    expireRecords(); expireFinishRequests();
     document.querySelectorAll('.device-time').forEach(el => el.textContent = clockText());
     const idx = scenes.findIndex(s => s[0] === scene), meta = scenes[idx];
     document.getElementById('scenarios').innerHTML = scenes.map(([id, title], i) => `<button type="button" class="scene-btn ${scene === id ? 'active' : ''}" data-scene="${id}" aria-pressed="${scene === id}"><span class="num">${String(i + 1).padStart(2, '0')}</span>${title}</button>`).join('');
@@ -340,7 +377,7 @@
     else if (action === 'cancel' && r) modal(u, '取消本次约球？', `${people[opponent(r, u)].name}会收到提醒，本次约球将结束。\n不会产生比赛和战绩。`, '确认取消', () => endInvite(u, id, 'canceled'), '继续约球', true);
     else if (action === 'dismiss') v.dialog = null;
     else if (action === 'confirm') { const fn = v.dialog?.action; v.dialog = null; fn?.(); }
-    else if (action === 'dispute' && r) modal(u, '对本场结果提出异议？', `提出后本场不计排位积分，比分和记录保留。\n每场只能提出一次，${people[opponent(r, u)].name}会收到提醒。`, '提出异议', () => dispute(u, id), '再想想', true);
+    else if (action === 'undo-finish') undoFinish(u, id);
     else if (action === 'unavailable') toast(u, '扫码属于现有功能，本预览只演示约球');
     else if (action === 'toggle-friends') { prefs[u] = !prefs[u]; try { localStorage.setItem('cp-quick-preview-preferences', JSON.stringify(prefs)); } catch (_) { /* 仅模拟存储。 */ } toast(u, prefs[u] ? '已开启，仅允许好友约球' : '已关闭好友限制'); }
     render();
@@ -369,7 +406,8 @@
     const slider = e.target.closest('[data-finish-slider]');
     if (slider) {
       if (Number(slider.value) === 100 && ['pointer', 'keyboard'].includes(slider.dataset.inputKind)) {
-        finish(slider.closest('[data-user]').dataset.user, slider.dataset.finishSlider); render();
+        const u = slider.closest('[data-user]').dataset.user;
+        (slider.dataset.sliderKind === 'confirm' ? confirmFinish : finish)(u, slider.dataset.finishSlider); render();
       } else if (slider.dataset.inputKind !== 'keyboard') resetFinishSlider(slider);
       return;
     }
@@ -395,8 +433,9 @@
   document.getElementById('reset-scene').addEventListener('click', () => loadScene(scene));
   if (window.matchMedia?.('(max-width: 600px)').matches) document.querySelector('.controls').open = false;
   // 原型使用固定时钟与内存数据；真实后台校验、网络竞争和结算由应用实现负责。
-  window.Preview = { loadScene, render, send, accept, enter, leave, endInvite, finish, dispute, compose,
+  window.Preview = { loadScene, render, send, accept, enter, leave, endInvite, finish, confirmFinish, undoFinish, tick, compose,
     setTime: setDemoTime,
     state: () => ({ invites, views, prefs, now }), schedule, expiryText };
+  setInterval(tick, 1000);
   loadScene('accepted');
 })();

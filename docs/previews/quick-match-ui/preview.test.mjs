@@ -32,43 +32,66 @@ test('双方接受不建比赛；共同进入唯一开局，任一方结束同�
   p.enter('a', r.id); p.enter('b', r.id);
   assert.equal(r.matchId, id); assert.equal(live(p).length, 1);
   p.finish('c', r.id); assert.equal(r.status, 'playing');
-  p.finish('a', r.id); assert.equal(r.status, 'completed');
+  p.finish('a', r.id); assert.equal(r.status, 'playing'); assert.equal(r.finishRequest.by, 'a');
+  p.confirmFinish('b', r.id); assert.equal(r.status, 'completed');
   assert.equal(p.state().views.b.page, 'detail');
   p.finish('b', r.id); assert.equal(live(p).length, 0);
   p.compose('a', 'b', r); assert.equal(p.state().views.a.page, 'compose');
 });
 
-test('滑动结束：误点、半途松手和触摸取消不结束，任一方滑到底才结束', t => {
+function gestures(doc, window, selector) {
+  const slider = doc.querySelector(selector);
+  assert.ok(slider, selector);
+  return {
+    slider,
+    start: x => slider.dispatchEvent(new window.MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0, clientX: x })),
+    move: value => { slider.value = String(value); slider.dispatchEvent(new window.Event('input', { bubbles: true })); },
+    release: () => slider.dispatchEvent(new window.Event('change', { bubbles: true })),
+    cancel: () => slider.dispatchEvent(new window.Event('pointercancel', { bubbles: true }))
+  };
+}
+
+test('结束与确认滑块：误点、半途松手和触摸取消都不生效，滑到底松手才发起或确认', t => {
   for (const user of ['a', 'b']) {
+    const other = user === 'a' ? 'b' : 'a';
     const { p, doc, window } = setup(t, 'playing');
     const r = live(p)[0];
-    const slider = doc.querySelector(`#view-${user} [data-finish-slider]`);
-    const start = x => slider.dispatchEvent(new window.MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0, clientX: x }));
-    const move = value => { slider.value = String(value); slider.dispatchEvent(new window.Event('input', { bubbles: true })); };
-    const release = () => slider.dispatchEvent(new window.Event('change', { bubbles: true }));
-    assert.equal(start(200), false); move(100); release();
-    assert.equal(r.status, 'playing'); assert.equal(slider.value, '0');
-    start(10); move(60); release();
-    assert.equal(r.status, 'playing'); assert.equal(slider.value, '0');
-    start(10); move(100);
-    assert.equal(r.status, 'playing', '到终点但未松手不能结束');
-    slider.dispatchEvent(new window.Event('pointercancel', { bubbles: true })); release();
-    assert.equal(r.status, 'playing'); assert.equal(slider.value, '0');
-    start(10); move(100); release();
-    assert.equal(r.status, 'completed');
+    for (const [selector, done] of [
+      [`#view-${user} [data-slider-kind="finish"]`, () => r.finishRequest?.by === user],
+      [`#view-${other} .finish-confirm [data-slider-kind="confirm"]`, () => r.status === 'completed']
+    ]) {
+      const g = gestures(doc, window, selector);
+      assert.equal(g.start(200), false); g.move(100); g.release();
+      assert.ok(!done()); assert.equal(g.slider.value, '0');
+      g.start(10); g.move(60); g.release();
+      assert.ok(!done()); assert.equal(g.slider.value, '0');
+      g.start(10); g.move(100);
+      assert.ok(!done(), '到终点但未松手不能生效');
+      g.cancel(); g.release();
+      assert.ok(!done()); assert.equal(g.slider.value, '0');
+      g.start(10); g.move(100); g.release();
+      assert.ok(done());
+    }
+    assert.equal(r.endWay, 'confirmed');
     assert.equal(p.state().views.a.page, 'detail'); assert.equal(p.state().views.b.page, 'detail');
-    assert.doesNotMatch(doc.body.textContent, /等待结束确认|申请结束|撤回结束请求/);
   }
 });
 
-test('结束滑块可用键盘操作，Escape复位，End结束不需要对方确认', t => {
+test('结束与确认滑块可用键盘操作，Escape复位，End完成', t => {
   const { p, doc, window } = setup(t, 'playing');
-  const slider = doc.querySelector('#view-b [data-finish-slider]');
-  const key = name => slider.dispatchEvent(new window.KeyboardEvent('keydown', { key: name, bubbles: true }));
-  key('ArrowRight'); slider.value = '40'; slider.dispatchEvent(new window.Event('change', { bubbles: true }));
-  assert.equal(live(p)[0].status, 'playing');
-  key('Escape'); assert.equal(slider.value, '0');
-  key('End'); slider.value = '100'; slider.dispatchEvent(new window.Event('change', { bubbles: true }));
+  const r = live(p)[0];
+  const keyboard = selector => {
+    const slider = doc.querySelector(selector);
+    return { slider, key: name => slider.dispatchEvent(new window.KeyboardEvent('keydown', { key: name, bubbles: true })), set: value => { slider.value = String(value); slider.dispatchEvent(new window.Event('change', { bubbles: true })); } };
+  };
+  const finish = keyboard('#view-b [data-slider-kind="finish"]');
+  finish.key('ArrowRight'); finish.set(40);
+  assert.equal(r.finishRequest, undefined);
+  finish.key('Escape'); assert.equal(finish.slider.value, '0');
+  finish.key('End'); finish.set(100);
+  assert.equal(r.status, 'playing'); assert.equal(r.finishRequest.by, 'b');
+  const confirm = keyboard('#view-a [data-slider-kind="confirm"]');
+  confirm.key('End'); confirm.set(100);
   assert.equal(live(p).length, 0); assert.equal(p.state().views.a.page, 'detail');
 });
 
@@ -233,46 +256,83 @@ test('底部只有对局与我的；收到的邀请、记录为带返回的二�
   assert.equal(b.querySelector('.record-row, .link-row, .quick-actions'), null);
 });
 
-test('排位结束说明写在滑块旁：按当前比分结算，对方可提出异议', t => {
+test('排位结束说明写在滑块旁：对方30秒内确认，期间可撤销，超时按当前比分结束', t => {
   const { p, doc } = setup(t, 'playing');
-  assert.match(doc.querySelector('#view-a .finish-note').textContent, /无需对方确认。按 5 : 3 结算排位，对方10分钟内可提出异议/);
-  assert.match(doc.querySelector('#view-b .finish-note').textContent, /按 3 : 5 结算排位/);
+  assert.match(doc.querySelector('#view-a .finish-note').textContent, /松手后需小王在30秒内确认，期间你可撤销；无人处理则按 5 : 3 自动结束，之后不能再提出异议/);
+  assert.match(doc.querySelector('#view-b .finish-note').textContent, /按 3 : 5 自动结束/);
   live(p)[0].mode = '练习'; p.render();
-  assert.doesNotMatch(doc.querySelector('#view-a .finish-note').textContent, /异议|结算排位/);
+  assert.match(doc.querySelector('#view-a .finish-note').textContent, /^滑到终点后松手即可结束，无需对方确认。/);
+  assert.doesNotMatch(doc.querySelector('#view-a .finish-note').textContent, /30秒|撤销|异议/);
 });
 
-test('排位单方结束：对方看到结束方与比分，异议期内可提出一次，不恢复对局也不阻止再约', t => {
+test('排位发起后比分冻结：发起方看到倒计时和撤销，对方滑动确认立即结束', t => {
   const { p, doc, click } = setup(t, 'playing');
   const r = live(p)[0];
-  p.finish('a', r.id); p.render();
-  assert.equal(r.status, 'completed'); assert.equal(r.endedBy, 'a');
   const a = () => doc.querySelector('#view-a'), b = () => doc.querySelector('#view-b');
-  assert.match(b().querySelector('.toast').textContent, /小李结束了对局 · 3 : 5，10分钟内可提出异议/);
-  assert.match(a().textContent, /你滑动结束/); assert.match(a().textContent, /16:10 生效/);
-  assert.equal(a().querySelector('[data-action="dispute"]'), null);
-  assert.match(b().textContent, /小李滑动结束/);
-  p.dispute('a', r.id); assert.ok(!r.disputed, '结束方不能对自己提出异议');
-  click('#view-b [data-action="dispute"]');
-  assert.ok(!r.disputed, '先确认再提出');
-  click('#view-b [data-action="confirm"]');
-  assert.equal(r.disputed, true); assert.equal(r.status, 'completed');
-  assert.match(a().textContent, /有异议 · 不计排位积分/); assert.match(b().textContent, /有异议 · 不计排位积分/);
-  assert.equal(b().querySelector('[data-action="dispute"]'), null);
+  click('#view-b [data-action="back"]');
+  p.finish('a', r.id); p.render();
+  assert.equal(r.status, 'playing');
+  assert.match(a().querySelector('.finish-wait').textContent, /等待小王确认 · 30 秒/);
+  assert.match(a().querySelector('.finish-wait').textContent, /按 5 : 3 自动结束，之后不能再提出异议/);
+  assert.ok(a().querySelector('[data-action="undo-finish"]'));
+  assert.equal(a().querySelector('[data-slider-kind="finish"]'), null);
+  assert.equal(a().querySelector('.finish-confirm'), null, '发起方不弹确认框');
+  assert.match(a().querySelector('.result-seal').textContent, /结束确认中/);
+  assert.match(b().querySelector('.toast').textContent, /小李申请结束对局，请在30秒内处理/, '不在对局页时提示');
+  assert.match(b().querySelector('.card .note').textContent, /3 : 5 · 结束确认中/);
+  click('#view-b [data-action="enter"]');
+  const dialog = b().querySelector('.finish-confirm');
+  assert.match(dialog.textContent, /小李申请结束对局/); assert.match(dialog.textContent, /比分 3 : 5。30 秒内未处理/);
+  p.finish('b', r.id); assert.equal(r.finishRequest.by, 'a', '确认期间不能重复发起');
+  p.confirmFinish('a', r.id); assert.equal(r.status, 'playing', '发起方不能自己确认');
+  p.confirmFinish('c', r.id); assert.equal(r.status, 'playing', '非参赛者不能确认');
+  p.confirmFinish('b', r.id); p.render();
+  assert.equal(r.status, 'completed'); assert.equal(r.endWay, 'confirmed');
+  assert.match(a().textContent, /你发起 · 小王确认/); assert.match(b().textContent, /小李发起 · 你确认/);
+  assert.match(a().querySelector('.toast').textContent, /小王已确认，对局结束/);
+  assert.doesNotMatch(b().textContent, /异议/);
   p.compose('a', 'b', r); assert.equal(p.state().views.a.page, 'compose');
 });
 
-test('异议期结束后排位结果生效、不能再提出；练习赛没有异议入口', t => {
+test('发起方撤销或对方有异议都恢复对局，比分不变且可再次发起', t => {
+  const { p, doc, click } = setup(t, 'playing');
+  const r = live(p)[0];
+  p.finish('a', r.id); p.render();
+  assert.equal(doc.querySelector('#view-b .toast'), null, '对方正在看本场时由弹窗告知，不叠加提示');
+  click('#view-a [data-action="undo-finish"]');
+  assert.equal(r.status, 'playing'); assert.equal(r.finishRequest, undefined); assert.equal(r.score.join(':'), '5:3');
+  assert.match(doc.querySelector('#view-b .toast').textContent, /小李撤销了结束，对局继续/);
+  assert.ok(doc.querySelector('#view-a [data-slider-kind="finish"]'));
+  assert.equal(doc.querySelector('#view-b .finish-confirm'), null);
+  p.finish('b', r.id); p.render();
+  click('#view-a .finish-confirm [data-action="undo-finish"]');
+  assert.equal(r.status, 'playing'); assert.equal(r.finishRequest, undefined); assert.equal(r.score.join(':'), '5:3');
+  assert.match(doc.querySelector('#view-a .toast').textContent, /已提出异议，对局继续/);
+  assert.match(doc.querySelector('#view-b .toast').textContent, /小李有异议，对局继续/);
+  p.undoFinish('a', r.id); assert.equal(r.status, 'playing');
+  p.finish('a', r.id); assert.equal(r.finishRequest.by, 'a', '恢复后可再次发起');
+});
+
+test('30秒无人处理按冻结比分自动结束，之后不能再撤销或异议；练习赛滑动即结束', t => {
   const { p, doc } = setup(t, 'playing');
   const r = live(p)[0];
-  p.finish('b', r.id); p.setTime('2026-08-25T18:00:00+08:00');
-  assert.equal(doc.querySelector('#view-a [data-action="dispute"]'), null);
-  assert.match(doc.querySelector('#view-a').textContent, /排位结算已生效/);
-  p.dispute('a', r.id); assert.ok(!r.disputed);
+  p.finish('b', r.id); p.render();
+  for (let i = 0; i < 29; i++) p.tick();
+  assert.equal(r.status, 'playing');
+  assert.equal(doc.querySelector('#view-b .finish-wait .countdown').textContent, '1');
+  assert.equal(doc.querySelector('#view-a .finish-confirm .countdown').textContent, '1');
+  p.tick();
+  assert.equal(r.status, 'completed'); assert.equal(r.endWay, 'timeout');
+  assert.match(doc.querySelector('#view-a').textContent, /小王发起 · 30秒未处理，自动结束/);
+  assert.match(doc.querySelector('#view-a .toast').textContent, /30秒未处理，对局已按 5 : 3 结束/);
+  assert.match(doc.querySelector('#view-b .toast').textContent, /30秒未处理，对局已按 3 : 5 结束/);
+  p.undoFinish('a', r.id); p.confirmFinish('a', r.id);
+  assert.equal(r.status, 'completed'); assert.equal(r.endWay, 'timeout');
+  assert.equal(doc.querySelector('#view-a [data-action="undo-finish"]'), null);
   p.loadScene('playing');
   const practice = live(p)[0]; practice.mode = '练习';
   p.finish('b', practice.id); p.render();
-  assert.equal(practice.disputeUntil, undefined);
-  assert.equal(doc.querySelector('#view-a [data-action="dispute"]'), null);
-  assert.doesNotMatch(doc.querySelector('#view-a').textContent, /排位结算/);
+  assert.equal(practice.status, 'completed'); assert.equal(practice.endWay, 'direct'); assert.equal(practice.finishRequest, undefined);
   assert.match(doc.querySelector('#view-a .toast').textContent, /^小王结束了对局 · 5 : 3$/);
+  assert.doesNotMatch(doc.querySelector('#view-a').textContent, /结束方式/, '练习的手动与达标结束无法区分，赛果页不标注');
 });
