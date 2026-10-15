@@ -48,5 +48,5 @@
   - 排位赛果页的结束方式。
 - [ ] 5.3 双账号走查 PRD V1.5 第9节的新增行：确认、撤销、异议、30秒超时与离线、并发、练习不受影响。结果记录到 `docs/testing/`，与自动化结果分开。
 - [ ] 5.4 按“后端（本版不含迁移）→ UniApp”的顺序发布，确认测试服与生产稳定。
-- [ ] 5.5 新后端稳定后另行提交迁移，删除 `idx_matches_rank_settlement`、`matches.rank_settlement_status`、`matches.rank_settlement_due_at` 与 `match_participant_results.rank_excluded`（先查 `information_schema`，含 Down）。先在测试服实跑 Up/Down，再随下一次生产发布执行。
+- [x] 5.5 新后端稳定后另行提交迁移，删除 `idx_matches_rank_settlement`、`matches.rank_settlement_status`、`matches.rank_settlement_due_at` 与 `match_participant_results.rank_excluded`（先查 `information_schema`，含 Down）。先在测试服实跑 Up/Down，再随下一次生产发布执行。（2026-10-15：迁移 `20261015170000` 已在测试服实跑 Up/Down/Up，并在生产执行 Up，执行前均已备份。）
 - [ ] 5.6 删除被取代且未归档的 `add-quick-match-ranked-dispute-window` 变更目录；在 `implement-quick-match-invites` 归档后归档本变更。（变更目录已删除；归档待 `implement-quick-match-invites` 归档后进行。）
