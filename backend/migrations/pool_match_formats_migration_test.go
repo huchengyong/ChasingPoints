@@ -64,3 +64,48 @@ func TestMatchRankSettlementStateMigrationIsCompatibleAndBoundedBackfill(t *test
 		t.Fatal("migration must remain compatible with older MySQL")
 	}
 }
+
+func TestDropMatchRankSettlementStateMigrationIsGuardedAndReversible(t *testing.T) {
+	content, err := os.ReadFile("20261015170000_drop_match_rank_settlement_state.sql")
+	if err != nil {
+		t.Fatalf("read migration: %v", err)
+	}
+	up, down, found := strings.Cut(string(content), "-- +goose Down")
+	if !found || !strings.HasPrefix(up, "-- +goose Up") {
+		t.Fatal("migration must contain goose Up then Down")
+	}
+	// Up 只删除异议期留下的列与索引，且每一步都先查 information_schema，可重复执行。
+	for _, snippet := range []string{
+		"information_schema.COLUMNS",
+		"information_schema.STATISTICS",
+		"DROP COLUMN `rank_excluded`",
+		"DROP INDEX `idx_matches_rank_settlement`",
+		"DROP COLUMN `rank_settlement_due_at`",
+		"DROP COLUMN `rank_settlement_status`",
+	} {
+		if !strings.Contains(up, snippet) {
+			t.Fatalf("Up missing %q", snippet)
+		}
+	}
+	if strings.Contains(up, "ADD ") {
+		t.Fatal("Up must only drop the dispute-window columns")
+	}
+	// Down 恢复列、索引与仅限约球比赛的回填，供回滚到异议期版本。
+	for _, snippet := range []string{
+		"ADD COLUMN `rank_settlement_status`",
+		"ADD COLUMN `rank_settlement_due_at`",
+		"ADD INDEX `idx_matches_rank_settlement`",
+		"ADD COLUMN `rank_excluded`",
+		"WHERE `challenge_id` IS NOT NULL",
+	} {
+		if !strings.Contains(down, snippet) {
+			t.Fatalf("Down missing %q", snippet)
+		}
+	}
+	if strings.Contains(down, "DROP ") {
+		t.Fatal("Down must only restore the dropped schema")
+	}
+	if strings.Contains(string(content), "ADD COLUMN IF NOT EXISTS") || strings.Contains(string(content), "DROP COLUMN IF EXISTS") {
+		t.Fatal("migration must remain compatible with older MySQL")
+	}
+}
