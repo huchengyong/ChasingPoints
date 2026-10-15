@@ -1495,6 +1495,68 @@ $success: #1bb56b;
 	&--primary { background: #e0ae12; color: #ffffff; }
 }
 
+.finish-countdown {
+	color: #a16207;
+	font-variant-numeric: tabular-nums;
+}
+
+.finish-slider-note {
+	display: block;
+	width: 100%;
+	margin-top: 16rpx;
+	text-align: center;
+	font-size: 24rpx;
+	line-height: 1.6;
+	color: #6E6242;
+}
+
+.finish-confirm-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 120;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 40rpx;
+	background: rgba(0, 0, 0, 0.55);
+}
+
+.finish-confirm-dialog {
+	width: 100%;
+	max-width: 640rpx;
+	display: flex;
+	flex-direction: column;
+	gap: 24rpx;
+	padding: 40rpx 36rpx;
+	border-radius: 32rpx;
+	background: #1d180f;
+	box-shadow: 0 24rpx 80rpx rgba(0, 0, 0, 0.32);
+
+	&__title {
+		font-size: 34rpx;
+		font-weight: 700;
+		color: #fff7e1;
+	}
+
+	&__desc {
+		font-size: 26rpx;
+		line-height: 1.7;
+		color: rgba(255, 247, 225, 0.75);
+	}
+
+	&__dispute {
+		margin: 0;
+		width: 100%;
+		height: 88rpx;
+		line-height: 88rpx;
+		border-radius: 999rpx;
+		background: rgba(255, 255, 255, 0.1);
+		color: #fff7e1;
+		font-size: 28rpx;
+		&::after { display: none; }
+	}
+}
+
 @media (max-width: 768px) {
 	.scoreboard-compact {
 		grid-template-columns: 1fr;
@@ -1626,14 +1688,4 @@ $success: #1bb56b;
 		font-weight: 600;
 		pointer-events: none;
 	}
-}
-
-.finish-slider-note {
-	display: block;
-	width: 100%;
-	margin-top: 16rpx;
-	text-align: center;
-	font-size: 24rpx;
-	line-height: 1.6;
-	color: #6E6242;
 }

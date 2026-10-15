@@ -145,14 +145,6 @@ export const withdrawFinishMatch = (data) => {
 }
 
 /**
- * 对约球排位的单方结束结果提出异议（仅被结束的一方、异议期内一次）
- * @param {Object} data { match_id, client_action_id }
- */
-export const disputeRankResult = (data) => {
-  return post('/api/match/result-dispute', data)
-}
-
-/**
  * 获取交锋统计
  * @param {Object} params 查询参数
  * @returns {Promise}

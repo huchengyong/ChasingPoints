@@ -83,13 +83,11 @@
 					<text class="last-action-banner__label">最近操作</text>
 					<text class="last-action-banner__text">{{ lastAction.description }}</text>
 				</view>
-				<view v-if="finishState === 'pending_confirmation'" class="finish-confirmation-panel">
-					<text class="finish-confirmation-panel__title">排位赛等待确认</text>
-					<text class="finish-confirmation-panel__desc">比分已冻结，请核对后确认或提出异议。</text>
-					<view class="finish-confirmation-panel__actions">
-						<button v-if="canConfirmFinish" class="finish-action finish-action--primary" @click="handleConfirmFinish">确认结束</button>
-						<button v-if="canDisputeFinish" class="finish-action" @click="handleDisputeFinish">提出异议</button>
-						<button v-if="canWithdrawFinish" class="finish-action" @click="handleWithdrawFinish">撤回请求</button>
+				<view v-if="showFinishConfirmPanel" class="finish-confirmation-panel" role="status">
+					<text class="finish-confirmation-panel__title">{{ finishConfirmView.title }}<text v-if="!finishConfirmView.finishing" class="finish-countdown"> · {{ finishConfirmView.secondsLeft }} 秒</text></text>
+					<text class="finish-confirmation-panel__desc">{{ finishConfirmView.desc }}</text>
+					<view v-if="finishConfirmView.showWithdraw" class="finish-confirmation-panel__actions">
+						<button class="finish-action" :disabled="finishActionBusy" @click="handleWithdrawFinish">撤销结束</button>
 					</view>
 				</view>
 				<view v-if="gameType === 1" class="snooker-frame-summary">
@@ -538,6 +536,41 @@
 			<button v-if="viewerUi.showUndoButton" class="undo-btn" @click="handleUndo">撤销</button>
 		</view>
 
+		<view v-if="showFinishConfirmDialog" class="finish-confirm-overlay">
+			<view class="finish-confirm-dialog" role="dialog" aria-modal="true">
+				<text class="finish-confirm-dialog__title">{{ finishConfirmView.title }}</text>
+				<text class="finish-confirm-dialog__desc">{{ finishConfirmView.desc }}</text>
+				<view
+					v-if="finishConfirmView.showConfirm"
+					class="finish-slider finish-slider--confirm"
+					:class="{ committed: slideCommitted }"
+				>
+					<view
+						class="finish-slider-thumb"
+						:class="{ dragging: slideDragging }"
+						:style="{ transform: `translateX(${slideThumbOffsetPx}px)` }"
+						tabindex="0"
+						aria-label="滑动确认结束对局"
+						@touchstart="handleSlideTouchStart"
+						@touchmove.stop.prevent="handleSlideTouchMove"
+						@touchend="handleSlideTouchEnd"
+						@touchcancel="handleSlideTouchCancel"
+						@mousedown="handleSlideMouseDown"
+						@keydown="handleSlideKeydown"
+					>
+						<text>→</text>
+					</view>
+					<text class="finish-slider-track-label">向右滑动确认结束 ››</text>
+				</view>
+				<button
+					v-if="finishConfirmView.showDispute"
+					class="finish-confirm-dialog__dispute"
+					:disabled="finishActionBusy"
+					@click="handleDisputeFinish"
+				>有异议，继续比赛</button>
+			</view>
+		</view>
+
 		<view v-if="showRefereeQrModal" class="referee-modal-overlay" @click="closeRefereeQrModal">
 			<view class="referee-modal-container" @click.stop>
 				<text class="referee-modal-title">邀请裁判扫码</text>
@@ -565,7 +598,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { onHide, onLoad, onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { useRankStore } from '@/store/rank.js'
@@ -573,7 +606,15 @@ import { useActivityStore } from '@/store/activity.js'
 import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import { matchScore, endRound, startNextRound, matchFoul, matchUndo, finishMatch, requestFinishMatch, confirmFinishMatch, disputeFinishMatch, withdrawFinishMatch, getMatchDetail, getCurrentMatch, getMatchRefereeQRCode, snookerStroke, snookerFrameAction, updateSnookerFormat, updateMatchFormat } from '@/api/match.js'
 import { isSlideFinishKey, isSlideResetKey, shouldCommitOnRelease, slideProgress } from '@/utils/slide-to-confirm.js'
-import { buildFinishSlideNote } from '@/utils/rank-settlement.js'
+import {
+	FINISH_SETTLE_GRACE_MS,
+	buildFinishSlideNote,
+	captureFinishSession,
+	createFinishCountdownAnchor,
+	finishCountdownSecondsLeft,
+	isSameFinishSession,
+	resolveFinishConfirmView
+} from '@/utils/finish-countdown.js'
 import { consumeResultNavigationGuard, getMatchHistoryPageUrl, getMatchHistoryTabUrl, shouldLeavePlayingPage } from '@/utils/match-navigation.js'
 import { buildMatchActionPayload } from '@/utils/match-action.js'
 import { renderLocalQRCode } from '@/utils/local-qrcode.js'
@@ -1017,6 +1058,7 @@ onMounted(async () => {
 	matchWS.on(WS_MESSAGE_TYPES.MATCH_FINISH_DISPUTE, handleFinishStateUpdate)
 	matchWS.on(WS_MESSAGE_TYPES.MATCH_FINISH_WITHDRAW, handleFinishStateUpdate)
 	matchWS.on(WS_MESSAGE_TYPES.MATCH_FINISH_EXPIRED, handleFinishStateUpdate)
+	matchWS.on(WS_MESSAGE_TYPES.MATCH_FINISH_TIMEOUT, handleFinishStateUpdate)
 	matchWS.on(WS_MESSAGE_TYPES.SYNC, handleSync)
 
 	const canStayOnPlayingPage = await loadMatchInfo()
@@ -1063,6 +1105,8 @@ onUnmounted(() => {
 	matchWS.off(WS_MESSAGE_TYPES.MATCH_FINISH_DISPUTE, handleFinishStateUpdate)
 	matchWS.off(WS_MESSAGE_TYPES.MATCH_FINISH_WITHDRAW, handleFinishStateUpdate)
 	matchWS.off(WS_MESSAGE_TYPES.MATCH_FINISH_EXPIRED, handleFinishStateUpdate)
+	matchWS.off(WS_MESSAGE_TYPES.MATCH_FINISH_TIMEOUT, handleFinishStateUpdate)
+	clearFinishCountdownTimers()
 	matchWS.off(WS_MESSAGE_TYPES.SYNC, handleSync)
 	// 断开WebSocket
 	matchWS.disconnect()
@@ -1130,6 +1174,10 @@ const applyViewerCapabilities = (payload = {}) => {
 	}
 	if (payload.finish_requested_by !== undefined) {
 		finishRequestedBy.value = Number(payload.finish_requested_by || 0)
+	}
+	if (payload.finish_request_remaining_seconds !== undefined) {
+		finishCountdownAnchor.value = createFinishCountdownAnchor(payload.finish_request_remaining_seconds, Date.now())
+		finishCountdownNow.value = Date.now()
 	}
 	if (payload.last_action !== undefined) {
 		lastAction.value = payload.last_action || null
@@ -1491,14 +1539,64 @@ const saveMatchFormat = async () => {
 }
 
 // ========== 滑动结束（约球比赛） ==========
-const isChallengeMatchFinishSlider = computed(() => challengeId.value > 0 && viewerUi.value.showFinishButton && !viewerUi.value.showFinishRequestButton)
-// 写明无需对方确认；排位胜负结果还写明按当前比分结算及对方的异议期。
+// 约球比赛统一用滑块：练习松手即结束；排位松手发起30秒结束确认，滑动本身即确认，不再弹窗。
+const isChallengeMatchFinishSlider = computed(() => challengeId.value > 0 &&
+	finishState.value !== 'pending_confirmation' &&
+	(viewerUi.value.showFinishButton || viewerUi.value.showFinishRequestButton))
 const finishSlideNote = computed(() => buildFinishSlideNote({
-	challengeId: challengeId.value,
-	matchMode: matchMode.value,
+	ranked: canRequestFinish.value,
+	opponentName: opponentInfo.value?.nickname,
 	myScore: myScore.value,
 	opponentScore: opponentScore.value
 }))
+
+// ========== 排位30秒结束确认 ==========
+const finishCountdownAnchor = ref(null)
+const finishCountdownNow = ref(Date.now())
+const finishActionBusy = ref(false)
+let finishCountdownTimer = null
+let finishSettleTimer = null
+const finishSecondsLeft = computed(() => finishCountdownSecondsLeft(finishCountdownAnchor.value, finishCountdownNow.value))
+const finishConfirmView = computed(() => resolveFinishConfirmView({
+	finishState: finishState.value,
+	secondsLeft: finishSecondsLeft.value,
+	isRequester: finishRequestedBy.value > 0 && finishRequestedBy.value === Number(userStore.userId),
+	opponentName: opponentInfo.value?.nickname,
+	myScore: myScore.value,
+	opponentScore: opponentScore.value,
+	canWithdrawFinish: canWithdrawFinish.value,
+	canConfirmFinish: canConfirmFinish.value,
+	canDisputeFinish: canDisputeFinish.value
+}))
+const showFinishConfirmDialog = computed(() => finishConfirmView.value.visible && finishConfirmView.value.role === 'responder' && !finishConfirmView.value.finishing)
+const showFinishConfirmPanel = computed(() => finishConfirmView.value.visible && !showFinishConfirmDialog.value)
+
+const clearFinishCountdownTimers = () => {
+	if (finishCountdownTimer) clearInterval(finishCountdownTimer)
+	if (finishSettleTimer) clearTimeout(finishSettleTimer)
+	finishCountdownTimer = null
+	finishSettleTimer = null
+}
+
+watch(finishState, (state) => {
+	clearFinishCountdownTimers()
+	if (state !== 'pending_confirmation') return
+	finishCountdownNow.value = Date.now()
+	finishCountdownTimer = setInterval(() => {
+		finishCountdownNow.value = Date.now()
+	}, 1000)
+})
+
+// 倒计时归零后等待服务端按冻结比分结束；若数秒内未收到结束消息，则回源读取权威状态。
+watch(finishSecondsLeft, (left) => {
+	if (left > 0 || finishState.value !== 'pending_confirmation' || finishSettleTimer) return
+	finishSettleTimer = setTimeout(() => {
+		finishSettleTimer = null
+		if (finishState.value === 'pending_confirmation' && !isLeavingPlayingPage.value) {
+			loadMatchInfo()
+		}
+	}, FINISH_SETTLE_GRACE_MS)
+})
 const slideTrackMaxPx = ref(0)
 const slideThumbOffsetPx = computed(() => Math.round(slideProgressRatio.value * slideTrackMaxPx.value))
 
@@ -1510,7 +1608,7 @@ const resetSlide = () => {
 const commitSlide = () => {
 	if (slideCommitted.value) return
 	slideCommitted.value = true
-	executeChallengeSlideFinish().finally(() => {
+	executeSlideCommit().finally(() => {
 		slideCommitted.value = false
 		slideProgressRatio.value = 0
 		slideDragging.value = false
@@ -1598,6 +1696,25 @@ const handleSlideKeydown = (event) => {
 	} else if (isSlideResetKey(key)) {
 		resetSlide()
 	}
+}
+
+// 同一时刻只有一个滑块：确认弹窗里的滑块确认结束；底部滑块对排位发起确认、对练习直接结束。
+const executeSlideCommit = async () => {
+	if (showFinishConfirmDialog.value && finishConfirmView.value.showConfirm) {
+		await handleConfirmFinish()
+		return
+	}
+	if (canRequestFinish.value) {
+		await executeChallengeSlideRequest()
+		return
+	}
+	await executeChallengeSlideFinish()
+}
+
+const executeChallengeSlideRequest = async () => {
+	if (isPoolMatchFormatVisible.value && matchFormat.value === POOL_MATCH_FORMAT_FREE && !canFinishCurrentFreePoolMatch.value) return
+	if (!ensureViewerCapability(canRequestFinish.value, '当前无法发起结束确认')) return
+	await submitFinishAction(requestFinishMatch, '已发起结束，等待对方确认', '发起结束失败')
 }
 
 const executeChallengeSlideFinish = async () => {
@@ -2479,6 +2596,8 @@ const handleFinishActionResponse = (res, successMessage) => {
 	if (!res?.success) {
 		applyWriteResponse(res)
 		uni.showToast({ title: res?.message || '操作失败', icon: 'none' })
+		// 确认期已满被拒时，服务端已按冻结比分结束本场，直接进入赛果。
+		if (res?.snapshot?.status === 2) navigateToResultOnce()
 		return false
 	}
 	applyWriteResponse(res)
@@ -2490,76 +2609,55 @@ const handleFinishActionResponse = (res, successMessage) => {
 	return true
 }
 
+// 结束确认相关动作：提交中防重；响应只在账号与认证代次未变时回写，失败时保留入口并以返回的权威状态刷新。
+const submitFinishAction = async (apiFn, successMessage, failureMessage) => {
+	if (!matchId.value || finishActionBusy.value) return false
+	finishActionBusy.value = true
+	const session = captureFinishSession(userStore)
+	showSyncLoading()
+	try {
+		const res = await apiFn(buildActionRequest({ match_id: matchId.value }))
+		if (!isSameFinishSession(session, userStore)) return false
+		return handleFinishActionResponse(res, successMessage)
+	} catch (error) {
+		if (isSameFinishSession(session, userStore)) {
+			uni.showToast({ title: failureMessage, icon: 'none' })
+		}
+		return false
+	} finally {
+		hideSyncLoading()
+		finishActionBusy.value = false
+	}
+}
+
 const handleRequestFinish = () => {
 	if (isPoolMatchFormatVisible.value && matchFormat.value === POOL_MATCH_FORMAT_FREE && !canFinishCurrentFreePoolMatch.value) return
 	if (!ensureViewerCapability(canRequestFinish.value, '当前无法发起结束确认')) return
 	uni.showModal({
 		title: '发起结束确认',
-		content: '比分将暂时冻结，等待对手确认后才会完成排位结算。',
-		confirmText: '发起请求',
+		content: '比分将冻结，对手需在30秒内确认；期间你可撤销，无人处理则按当前比分自动结束，之后不能再提出异议。',
+		confirmText: '发起结束',
 		success: async ({ confirm }) => {
-			if (!confirm || !matchId.value) return
-			showSyncLoading()
-			try {
-				const res = await requestFinishMatch(buildActionRequest({ match_id: matchId.value }))
-				hideSyncLoading()
-				handleFinishActionResponse(res, '已发起结束确认')
-			} catch (error) {
-				hideSyncLoading()
-				uni.showToast({ title: '发起结束确认失败', icon: 'none' })
-			}
+			if (!confirm) return
+			await submitFinishAction(requestFinishMatch, '已发起结束，等待对方确认', '发起结束失败')
 		}
 	})
 }
 
 const handleConfirmFinish = async () => {
 	if (!ensureViewerCapability(canConfirmFinish.value, '当前没有可确认的结束请求')) return
-	if (!matchId.value) return
-	showSyncLoading()
-	try {
-		const res = await confirmFinishMatch(buildActionRequest({ match_id: matchId.value }))
-		hideSyncLoading()
-		handleFinishActionResponse(res, '已确认结束并完成结算')
-	} catch (error) {
-		hideSyncLoading()
-		uni.showToast({ title: '确认结束失败', icon: 'none' })
-	}
+	await submitFinishAction(confirmFinishMatch, '已确认结束并完成结算', '确认结束失败')
 }
 
+// 有异议或撤销都只是让比赛继续，比分不变，不需要二次确认。
 const handleDisputeFinish = async () => {
 	if (!ensureViewerCapability(canDisputeFinish.value, '当前没有可异议的结束请求')) return
-	if (!matchId.value) return
-	uni.showModal({
-		title: '提出异议',
-		content: '提出异议后会恢复记分，请确认比分仍需继续调整。',
-		confirmText: '提出异议',
-		success: async ({ confirm }) => {
-			if (!confirm) return
-			showSyncLoading()
-			try {
-				const res = await disputeFinishMatch(buildActionRequest({ match_id: matchId.value }))
-				hideSyncLoading()
-				handleFinishActionResponse(res, '已提出异议，对局恢复进行中')
-			} catch (error) {
-				hideSyncLoading()
-				uni.showToast({ title: '提出异议失败', icon: 'none' })
-			}
-		}
-	})
+	await submitFinishAction(disputeFinishMatch, '已提出异议，对局继续', '提出异议失败')
 }
 
 const handleWithdrawFinish = async () => {
-	if (!ensureViewerCapability(canWithdrawFinish.value, '当前没有可撤回的结束请求')) return
-	if (!matchId.value) return
-	showSyncLoading()
-	try {
-		const res = await withdrawFinishMatch(buildActionRequest({ match_id: matchId.value }))
-		hideSyncLoading()
-		handleFinishActionResponse(res, '已撤回结束请求')
-	} catch (error) {
-		hideSyncLoading()
-		uni.showToast({ title: '撤回失败', icon: 'none' })
-	}
+	if (!ensureViewerCapability(canWithdrawFinish.value, '当前没有可撤销的结束请求')) return
+	await submitFinishAction(withdrawFinishMatch, '已撤销结束，对局继续', '撤销失败')
 }
 
 /**

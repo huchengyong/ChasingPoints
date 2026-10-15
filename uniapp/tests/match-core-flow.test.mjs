@@ -73,10 +73,10 @@ test('match core pages keep the full launch, confirmation, and post-match exits'
   assert.doesNotMatch(matchPage, /challenges\?mode=select/)
   assert.match(matchPage, /buildFinishedMatchDetailRoute/)
 
-  assert.match(playingPage, /排位赛等待确认/)
-  assert.match(playingPage, /确认结束/)
-  assert.match(playingPage, /提出异议/)
-  assert.match(playingPage, /撤回请求/)
+  assert.match(playingPage, /finishConfirmView\.title/)
+  assert.match(playingPage, /向右滑动确认结束/)
+  assert.match(playingPage, /有异议，继续比赛/)
+  assert.match(playingPage, /撤销结束/)
   assert.match(playingPage, /lastAction\?\.description/)
   assert.match(playingPage, /requestFinishMatch.*confirmFinishMatch.*disputeFinishMatch.*withdrawFinishMatch/s)
 

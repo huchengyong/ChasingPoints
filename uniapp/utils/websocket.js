@@ -28,6 +28,7 @@ export const WS_MESSAGE_TYPES = {
   MATCH_FINISH_DISPUTE: 'match_finish_dispute',
   MATCH_FINISH_WITHDRAW: 'match_finish_withdraw',
   MATCH_FINISH_EXPIRED: 'match_finish_expired',
+  MATCH_FINISH_TIMEOUT: 'match_finish_timeout',
   NOTIFICATION_UPDATE: 'notification_update',
   RANK_INFO_UPDATED: 'rank_info_updated',
   USER_DATA_UPDATED: 'user_data_updated',

@@ -72,6 +72,7 @@
 								<text class="meta-value">{{ item.value }}</text>
 							</view>
 						</view>
+						<text v-if="finishMethodText" class="finish-method-note">结束方式：{{ finishMethodText }}</text>
 					</view>
 
 					<view class="rank-section" v-if="refereeViewConfig.showRankChange">
@@ -84,10 +85,8 @@
 						<view class="rank-grid">
 							<view class="rank-card mine">
 								<text class="rank-card-label">我的排位分</text>
-								<text v-if="settlementView.hideRankChange" class="rank-card-value is-zero is-compact">{{ settlementView.rankValueText }}</text>
-								<text v-else :class="['rank-card-value', myRankScoreClass]">{{ formatRankScore(matchData.my_rank_change) }}</text>
-								<text v-if="settlementView.hideRankChange" class="rank-note">{{ settlementView.rankNote }}</text>
-								<view v-else-if="rankDetailRows.length" class="rank-detail-list">
+								<text :class="['rank-card-value', myRankScoreClass]">{{ formatRankScore(matchData.my_rank_change) }}</text>
+								<view v-if="rankDetailRows.length" class="rank-detail-list">
 									<view v-for="detail in rankDetailRows" :key="detail.label" class="rank-detail-row">
 										<text class="rank-detail-label">{{ detail.label }}</text>
 										<text class="rank-detail-value">{{ formatRankScore(detail.value) }}</text>
@@ -98,26 +97,8 @@
 
 							<view class="rank-card opponent">
 								<text class="rank-card-label">对手排位分</text>
-								<text v-if="settlementView.hideRankChange" class="rank-card-value is-zero is-compact">{{ settlementView.rankValueText }}</text>
-								<text v-else :class="['rank-card-value', opponentRankScoreClass]">{{ formatRankScore(matchData.opponent_rank_change) }}</text>
-								<text class="rank-note">{{ settlementView.hideRankChange ? settlementView.rankNote : opponentRankNote }}</text>
-							</view>
-						</view>
-
-						<view v-if="settlementView.visible" class="settlement-box">
-							<view class="settlement-row">
-								<text class="settlement-label">排位结算</text>
-								<text class="settlement-value">{{ settlementView.statusText }}</text>
-							</view>
-							<view v-if="settlementView.finisherText" class="settlement-row">
-								<text class="settlement-label">结束方式</text>
-								<text class="settlement-value">{{ settlementView.finisherText }}</text>
-							</view>
-							<view v-if="settlementView.canDispute" class="dispute-box">
-								<text class="dispute-hint">{{ settlementView.disputeHint }}</text>
-								<button class="dispute-btn" :disabled="disputeSubmitting" @click="handleDispute">
-									{{ disputeSubmitting ? '提交中...' : '提出异议' }}
-								</button>
+								<text :class="['rank-card-value', opponentRankScoreClass]">{{ formatRankScore(matchData.opponent_rank_change) }}</text>
+								<text class="rank-note">{{ opponentRankNote }}</text>
 							</view>
 						</view>
 					</view>
@@ -276,15 +257,13 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
-import { disputeRankResult, getMatchDetail, getMatchRewardSummary } from '@/api/match.js'
-import { createMatchActionId } from '@/utils/match-action.js'
-import { resolveRankSettlementView } from '@/utils/rank-settlement.js'
+import { getMatchDetail, getMatchRewardSummary } from '@/api/match.js'
 import { formatDateTime, formatRelativeTime } from '@/utils/format.js'
 import { usePageTheme } from '@/utils/page-theme.js'
-import { useUserStore } from '@/store/user.js'
 import { resolveMatchRankingRightsSummary } from '@/utils/member-ranking-rights.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import { buildRematchContext } from '@/utils/match-core-flow.js'
+import { resolveFinishMethodText } from '@/utils/finish-countdown.js'
 import { resolveRefereeIdentityCard, resolveRefereeResultViewConfig, resolveCompletionSourceLabel } from '@/utils/match-referee-view.js'
 import {
 	buildMatchRewardHonorWallUrl,
@@ -345,6 +324,8 @@ const refereeViewConfig = computed(() => resolveRefereeResultViewConfig({
 }))
 
 const completionLabel = computed(() => resolveCompletionSourceLabel(matchData.value.completion_source))
+// 排位赛写明“X发起 · Y确认”或“X发起 · 30秒未处理，自动结束”；练习赛无法区分手动与达标结束，不显示。
+const finishMethodText = computed(() => resolveFinishMethodText(matchData.value))
 
 const systemInfo = uni.getSystemInfoSync()
 statusBarHeight.value = systemInfo.statusBarHeight || 20
@@ -429,10 +410,6 @@ const heroMetaItems = computed(() => [
 	{ label: '结束时间', value: createdAtFullText.value }
 ])
 
-const userStore = useUserStore()
-const settlementView = computed(() => resolveRankSettlementView(matchData.value))
-const disputeSubmitting = ref(false)
-
 const myRankScoreClass = computed(() => getRankClass(matchData.value.my_rank_change))
 const opponentRankScoreClass = computed(() => getRankClass(matchData.value.opponent_rank_change))
 
@@ -504,14 +481,13 @@ onUnload(() => {
 	if (rewardRetryTimer) clearTimeout(rewardRetryTimer)
 })
 
-const loadMatchData = async ({ silent = false } = {}) => {
+const loadMatchData = async () => {
 	if (!matchId.value) {
 		loading.value = false
 		return
 	}
 
-	// 异议后的回源刷新不重新展示整页加载态，避免页面闪烁。
-	if (!silent) loading.value = true
+	loading.value = true
 
 	try {
 		const res = await getMatchDetail({ match_id: matchId.value })
@@ -535,37 +511,6 @@ const loadMatchData = async ({ silent = false } = {}) => {
 	} finally {
 		loading.value = false
 	}
-}
-
-// 异议：一次确认后提交；失败保留入口并回源，成功后以服务端状态刷新，不在本地推断。
-const handleDispute = () => {
-	if (disputeSubmitting.value || !settlementView.value.canDispute || !matchId.value) return
-	uni.showModal({
-		title: '对本场结果提出异议？',
-		content: '提出后本场不计排位积分，比分和记录保留。每场只能提出一次。',
-		confirmText: '提出异议',
-		cancelText: '再想想',
-		success: async ({ confirm }) => {
-			if (!confirm) return
-			disputeSubmitting.value = true
-			const requestedMatchId = matchId.value
-			// 退出或切号后，旧身份的响应不得提示或回写当前页面。
-			const identity = { userId: userStore.userId, authGeneration: userStore.authGeneration }
-			const isSameIdentity = () => userStore.userId === identity.userId && userStore.authGeneration === identity.authGeneration
-			try {
-				const res = await disputeRankResult({ match_id: requestedMatchId, client_action_id: createMatchActionId() })
-				if (isSameIdentity()) {
-					uni.showToast({ title: res?.message || (res?.success ? '已提出异议' : '暂时无法提出异议'), icon: 'none' })
-				}
-			} catch (error) {
-				console.error('提出异议失败:', error)
-				if (isSameIdentity()) uni.showToast({ title: '网络异常，请稍后重试', icon: 'none' })
-			} finally {
-				disputeSubmitting.value = false
-				if (isSameIdentity() && matchId.value === requestedMatchId) await loadMatchData({ silent: true })
-			}
-		}
-	})
 }
 
 const loadRewardSummary = async (attempt = 1) => {

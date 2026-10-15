@@ -47,4 +47,5 @@ test('ordinary referee copy remains neutral and known completion labels stay saf
   assert.equal(card.neutralLabel, '本场裁判')
   assert.equal(card.completionLabel, '裁判结算')
   assert.equal(resolveCompletionSourceLabel('player_cancelled'), '未知')
+  assert.equal(resolveCompletionSourceLabel('finish_timeout'), '确认超时自动完成')
 })

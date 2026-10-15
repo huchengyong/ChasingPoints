@@ -16,6 +16,8 @@ export const resolveCompletionSourceLabel = (source) => {
       return '选手直接完成'
     case 'player_confirmed':
       return '双方确认完成'
+    case 'finish_timeout':
+      return '确认超时自动完成'
     case 'unknown':
     default:
       return '未知'
