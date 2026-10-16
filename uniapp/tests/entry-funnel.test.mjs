@@ -21,6 +21,7 @@ import {
   resolveWechatPostLoginState,
   shouldClearEntryFunnelAgreementSession,
   resolveWelcomeActions,
+  resolveWelcomeHeaderLayout,
   shouldClearPendingPostLoginIntent
 } from '../utils/entry-funnel.js'
 
@@ -158,6 +159,29 @@ test('resolveWelcomeActions makes a slow WeChat request visible without changing
 
   assert.equal(result.primaryText, '网络稍慢，正在继续…')
   assert.equal(result.primaryDisabled, true)
+})
+
+test('resolveWelcomeHeaderLayout places the brand row below the mini program capsule', () => {
+  const result = resolveWelcomeHeaderLayout({
+    statusBarHeight: 47,
+    menuButton: { top: 51, height: 32, left: 281, right: 368, bottom: 83, width: 87 }
+  })
+
+  assert.deepEqual(result, { top: 95, minHeight: 0 })
+})
+
+test('resolveWelcomeHeaderLayout places the brand row below the status bar without a capsule', () => {
+  assert.deepEqual(resolveWelcomeHeaderLayout({ statusBarHeight: 47 }), { top: 47, minHeight: 44 })
+  assert.deepEqual(resolveWelcomeHeaderLayout({}), { top: 0, minHeight: 44 })
+})
+
+test('resolveWelcomeHeaderLayout ignores an empty capsule rect instead of overlapping the status bar', () => {
+  const result = resolveWelcomeHeaderLayout({
+    statusBarHeight: 24,
+    menuButton: { top: 0, height: 0, left: 0, right: 0, bottom: 0, width: 0 }
+  })
+
+  assert.deepEqual(result, { top: 24, minHeight: 44 })
 })
 
 test('isPhoneValid accepts mainland mobile numbers', () => {

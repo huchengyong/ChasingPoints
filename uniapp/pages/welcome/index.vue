@@ -1,11 +1,11 @@
 <template>
 	<view v-if="shouldShow" class="welcome-container" :class="{ 'dark-mode': isDarkMode }">
 		<view class="content">
-			<view class="brand-row">
+			<view class="brand-row" :style="{ marginTop: `${headerLayout.top}px`, minHeight: `${headerLayout.minHeight}px` }">
 				<image class="brand-logo" src="/static/logo.png" mode="aspectFit"></image>
 				<view class="brand-copy">
 					<text class="brand-name">追分竞技</text>
-					<text class="brand-en">CHASING POINTS</text>
+					<text class="brand-en">ZHUIFEN</text>
 				</view>
 			</view>
 
@@ -13,11 +13,30 @@
 				<text class="eyebrow">台球竞技记录</text>
 				<text class="main-title">每一杆，</text>
 				<text class="main-title">都值得被记录</text>
-				<text class="sub-title">记录战绩、生成战报，找到真正旗鼓相当的对手。</text>
-				<view class="benefit-list">
-					<text>对局记录</text>
-					<text>竞技排名</text>
-					<text>战报分享</text>
+				<view class="sub-title">
+					<text>记录战绩、生成战报，</text>
+					<text>找到真正旗鼓相当的对手。</text>
+				</view>
+			</view>
+
+			<view class="preview-section">
+				<view class="preview-card" aria-hidden="true">
+					<text class="preview-badge">示例数据</text>
+					<view
+						v-for="(item, index) in previewStats"
+						:key="item.title"
+						class="preview-row"
+						:class="{ 'with-divider': index > 0 }"
+					>
+						<view class="preview-icon">
+							<uni-icons :type="item.icon" size="20" :color="isDarkMode ? '#F0C542' : '#C69200'"></uni-icons>
+						</view>
+						<view class="preview-copy">
+							<text class="preview-title">{{ item.title }}</text>
+							<text class="preview-detail">{{ item.detail }}</text>
+						</view>
+						<text class="preview-value">{{ item.value }}</text>
+					</view>
 				</view>
 			</view>
 
@@ -115,8 +134,16 @@ import {
 	resolveEntryFunnelAgreementState,
 	resolveWechatPostLoginState,
 	resolveWelcomeActions,
+	resolveWelcomeHeaderLayout,
 	shouldClearEntryFunnelAgreementSession
 } from '@/utils/entry-funnel.js'
+
+// 示例数据沿用官网 Hero 预览卡片，仅作产品展示，不读取当前用户战绩。
+const previewStats = [
+	{ icon: 'medal', title: '今日战绩', value: '12 胜 5 负', detail: '最近 7 天稳定输出' },
+	{ icon: 'fire', title: '精彩战报', value: '3 份', detail: '刚结束的强强对局' },
+	{ icon: 'staff', title: '常约对手', value: '8 位', detail: '常一起较量的球友' }
+]
 
 const WELCOME_PAGE_VIEWED_KEY = 'welcome_page_viewed'
 const ENTRY_FUNNEL_AGREEMENT_KEY = 'entry_funnel_agreement_accepted'
@@ -128,9 +155,16 @@ isHarmonyPlatform = true
 // #endif
 
 let isWechatMiniProgram = false
+let menuButtonRect = null
 // #ifdef MP-WEIXIN
 isWechatMiniProgram = true
+menuButtonRect = uni.getMenuButtonBoundingClientRect()
 // #endif
+
+const headerLayout = resolveWelcomeHeaderLayout({
+	statusBarHeight: uni.getSystemInfoSync().statusBarHeight,
+	menuButton: menuButtonRect
+})
 
 const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()

@@ -137,6 +137,10 @@ test('welcome page matches the ivory light and warm dark login visual', () => {
 	assert.doesNotMatch(welcomeSource, /bg-image|action-panel/)
 })
 
+test('welcome page labels the hard-coded preview card as sample data', () => {
+	assert.match(welcomeSource, /<view class="preview-card"[^>]*>\s*<text class="preview-badge">示例数据<\/text>/)
+})
+
 test('login page renders one login mode at a time and honors the phone route parameter', () => {
   assert.match(loginSource, /const authMode = ref/)
   assert.match(loginSource, /onLoad\(\(options\) => \{[\s\S]*?resolveLoginMode\(\{[\s\S]*?requestedMethod: options\?\.method/)

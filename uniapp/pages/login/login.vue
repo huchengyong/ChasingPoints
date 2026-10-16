@@ -5,7 +5,7 @@
 				<image class="brand-logo" src="/static/logo.png" mode="aspectFit"></image>
 				<view class="brand-copy">
 					<text class="brand-name">追分竞技</text>
-					<text class="brand-en">CHASING POINTS</text>
+					<text class="brand-en">ZHUIFEN</text>
 				</view>
 			</view>
 
