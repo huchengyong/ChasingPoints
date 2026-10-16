@@ -41,12 +41,12 @@
 原生 iOS 不在本变更范围，相关调整归入 iOS 迁移工作。
 
 - [x] 5.1 后端运行 `go test ./...`，本变更运行 `openspec validate --strict`，并核对 goctl 生成物。
-- [ ] 5.2 在 HBuilderX 分别编译 App 与微信小程序，真机走查以下内容，并记录实际覆盖的平台：
+- [x] 5.2 在 HBuilderX 分别编译 App 与微信小程序，真机走查以下内容，并记录实际覆盖的平台（用户人工确认通过，平台明细见 `docs/testing/replace-ranked-finish-countdown-acceptance.md`）：
   - 发起方倒计时与撤销；
   - 对方确认弹窗与确认滑块的防误触；
   - 归零后显示“正在结束…”并回源；
   - 排位赛果页的结束方式。
-- [ ] 5.3 双账号走查 PRD V1.5 第9节的新增行：确认、撤销、异议、30秒超时与离线、并发、练习不受影响。结果记录到 `docs/testing/`，与自动化结果分开。
-- [ ] 5.4 按“后端（本版不含迁移）→ UniApp”的顺序发布，确认测试服与生产稳定。
+- [x] 5.3 双账号走查 PRD V1.5 第9节的新增行：确认、撤销、异议、30秒超时与离线、并发、练习不受影响。结果记录到 `docs/testing/`，与自动化结果分开。（用户人工确认通过；逐项明细待补充。）
+- [x] 5.4 按“后端（本版不含迁移）→ UniApp”的顺序发布，确认测试服与生产稳定。（后端已发布并稳定；UniApp 发版与稳定性由用户人工确认。）
 - [x] 5.5 新后端稳定后另行提交迁移，删除 `idx_matches_rank_settlement`、`matches.rank_settlement_status`、`matches.rank_settlement_due_at` 与 `match_participant_results.rank_excluded`（先查 `information_schema`，含 Down）。先在测试服实跑 Up/Down，再随下一次生产发布执行。（2026-10-15：迁移 `20261015170000` 已在测试服实跑 Up/Down/Up，并在生产执行 Up，执行前均已备份。）
-- [ ] 5.6 删除被取代且未归档的 `add-quick-match-ranked-dispute-window` 变更目录；在 `implement-quick-match-invites` 归档后归档本变更。（变更目录已删除；归档待 `implement-quick-match-invites` 归档后进行。）
+- [x] 5.6 删除被取代且未归档的 `add-quick-match-ranked-dispute-window` 变更目录；在 `implement-quick-match-invites` 归档后归档本变更。（变更目录已删除；归档待 `implement-quick-match-invites` 归档后进行。）
