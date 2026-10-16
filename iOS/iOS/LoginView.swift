@@ -48,9 +48,9 @@ struct LoginView: View {
                         Text("追分竞技")
                             .font(.system(size: 24, weight: .bold))
                             .foregroundStyle(palette.textPrimary)
-                        Text("CHASING POINTS")
+                        Text("ZHUIFEN")
                             .font(.system(size: 11, weight: .semibold))
-                            .tracking(2)
+                            .tracking(4)
                             .foregroundStyle(AppTheme.primary)
                     }
                 }
