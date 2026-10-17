@@ -1,70 +1,28 @@
 <template>
   <view class="tournament-page" :class="{ 'dark-mode': isDarkMode }">
-    <view class="hero-card">
-      <view class="hero-copy">
-        <text class="hero-eyebrow">赛讯</text>
-        <text class="hero-title">官方赛事信息集中看</text>
-        <text class="hero-desc">第一时间掌握各大赛事的赛程与赛况</text>
-      </view>
-    </view>
-
-    <view class="filter-bar">
-      <view class="filter-chip" @tap="openYearSheet">
-        <text class="filter-chip-text">{{ filter.year }}年</text>
-        <view class="filter-chip-icon"><uni-icons type="bottom" size="14" :color="isDarkMode ? '#9f926e' : '#a16207'"></uni-icons></view>
-      </view>
-      <view class="filter-chip" @tap="openDatePresetSheet">
-        <text class="filter-chip-text">{{ filterDateLabel }}</text>
-        <view class="filter-chip-icon"><uni-icons type="bottom" size="14" :color="isDarkMode ? '#9f926e' : '#a16207'"></uni-icons></view>
-      </view>
-      <view class="filter-chip" @tap="openFilterSheet">
-        <text class="filter-chip-text" :class="{ 'filter-chip-text--active': activeFilterCount > 0 }">{{ filterChipLabel }}</text>
-        <view class="filter-chip-icon"><uni-icons type="bottom" size="14" :color="isDarkMode ? '#9f926e' : '#a16207'"></uni-icons></view>
-      </view>
-    </view>
-
-    <view v-if="showFilterSheet" class="filter-sheet-backdrop" @tap="closeFilterSheet">
-      <view class="filter-sheet" @tap.stop>
-        <view class="filter-sheet-header">
-          <text class="filter-sheet-title">筛选</text>
-          <text class="filter-sheet-close" @tap="closeFilterSheet">完成</text>
-        </view>
-        <view class="filter-sheet-body">
-          <picker :range="GAME_TYPE_OPTIONS" range-key="label" @change="onGameTypeChange">
-            <view class="filter-sheet-row">
-              <text class="filter-sheet-row-label">球种</text>
-              <view class="filter-sheet-row-value">
-                <text>{{ selectedGameType.label }}</text>
-                <uni-icons type="right" size="16" :color="isDarkMode ? '#9f926e' : '#a16207'"></uni-icons>
-              </view>
-            </view>
-          </picker>
-          <picker :range="STATUS_OPTIONS" range-key="label" @change="onStatusChange">
-            <view class="filter-sheet-row">
-              <text class="filter-sheet-row-label">状态</text>
-              <view class="filter-sheet-row-value">
-                <text>{{ selectedStatus.label }}</text>
-                <uni-icons type="right" size="16" :color="isDarkMode ? '#9f926e' : '#a16207'"></uni-icons>
-              </view>
-            </view>
-          </picker>
+    <view class="list-header">
+      <view class="status-tabs">
+        <view
+          v-for="tab in STATUS_TABS"
+          :key="tab.value"
+          class="status-tab"
+          :class="{ 'status-tab--active': filter.status === tab.value }"
+          @tap="selectStatus(tab.value)"
+        >
+          <text class="status-tab-text">{{ tab.label }}</text>
         </view>
       </view>
-    </view>
-
-    <view v-if="showCustomDateEditor" class="custom-date-card">
-      <picker mode="date" :value="customDateDraft.from" @change="onCustomFromChange">
-        <view class="custom-date-field">
-          <text class="custom-date-label">开始日期</text>
-          <text class="custom-date-value">{{ customDateDraft.from }}</text>
+      <view class="filter-row">
+        <view class="filter-trigger" @tap="openYearSheet">
+          <text class="filter-trigger-text">{{ filter.year }}年</text>
+          <uni-icons type="bottom" size="12" :color="mutedIconColor"></uni-icons>
         </view>
-      </picker>
-      <picker mode="date" :value="customDateDraft.to" @change="onCustomToChange">
-        <view class="custom-date-field">
-          <text class="custom-date-label">结束日期</text>
-          <text class="custom-date-value">{{ customDateDraft.to }}</text>
+        <view class="filter-trigger" @tap="openGameTypeSheet">
+          <text class="filter-trigger-text" :class="{ 'filter-trigger-text--active': filter.gameType !== 0 }">{{ selectedGameType.label }}</text>
+          <uni-icons type="bottom" size="12" :color="mutedIconColor"></uni-icons>
         </view>
-      </picker>
+        <text v-if="total > 0" class="filter-count">共 {{ total }} 项赛事</text>
+      </view>
     </view>
 
     <scroll-view
@@ -74,55 +32,97 @@
       :refresher-triggered="refreshing"
       @refresherrefresh="onRefresh"
       @scrolltolower="loadMore"
-	  >
-	    <view v-if="loading" class="state-block">
-        <uni-icons type="spinner-cycle" size="34" color="#E0AE12"></uni-icons>
-        <text class="state-text">加载中...</text>
-      </view>
-
-	    <view v-else-if="list.length > 0" class="post-list">
-	      <view v-if="eventNewsRefreshError" class="refresh-error-banner">
-	        <text>{{ eventNewsRefreshError.description }}</text>
-	        <text class="refresh-error-action" @tap="retryEventNews">重试</text>
-	      </view>
-	      <view v-for="item in list" :key="item.id" class="post-card" @tap="openDetail(item.id)">
-          <image class="post-cover" :src="item.coverImage" mode="aspectFill"></image>
-          <view class="post-overlay"></view>
-          <view class="post-body">
-            <view class="post-topline">
-              <text class="post-date">{{ item.dateText }}</text>
-              <view class="post-status" :class="'status-' + item.status">
-                <text>{{ item.statusText }}</text>
-              </view>
-            </view>
-            <view class="post-content-block">
-              <text class="post-eyebrow">{{ item.gameTypeText }}</text>
-              <text class="post-title">{{ item.title }}</text>
-            </view>
-          </view>
+    >
+      <view v-if="loading" class="skeleton-list">
+        <view v-for="index in 3" :key="index" class="skeleton-card">
+          <view class="skeleton-line skeleton-line--title"></view>
+          <view class="skeleton-line"></view>
+          <view class="skeleton-line skeleton-line--short"></view>
         </view>
       </view>
 
-	    <view v-else-if="eventNewsPageError" class="state-block error-state">
-	      <uni-icons type="info" size="48" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
-	      <text class="state-title">{{ eventNewsPageError.title }}</text>
-	      <text class="state-text">{{ eventNewsPageError.description }}</text>
-	      <button class="retry-btn" @tap="handleEventNewsErrorAction">{{ eventNewsPageError.actionText }}</button>
-	    </view>
+      <view v-else-if="list.length > 0" class="feed">
+        <view v-if="eventNewsRefreshError" class="refresh-error-banner">
+          <text>{{ eventNewsRefreshError.description }}</text>
+          <text class="refresh-error-action" @tap="retryEventNews">重试</text>
+        </view>
 
-	    <view v-else-if="eventNewsState.status === ASYNC_PAGE_STATUS.EMPTY" class="state-block">
-        <text class="state-icon">🗓️</text>
-        <text class="state-title">暂时还没有可看的赛讯</text>
-        <text class="state-text">官方赛事内容更新中，稍后再来刷新看看。</text>
+        <view v-for="section in sections" :key="section.key" class="feed-section">
+          <view class="feed-section-head">
+            <text class="feed-section-title">{{ section.title }}</text>
+            <text v-if="section.caption" class="feed-section-caption">{{ section.caption }}</text>
+          </view>
+
+          <view v-for="item in section.items" :key="item.id" class="feed-item">
+            <view v-if="item.isFeatured" class="feature-card" @tap="openDetail(item.id)">
+              <view class="feature-media">
+                <image v-if="item.hasCover" class="feature-cover" :src="item.coverImage" mode="aspectFill"></image>
+                <view class="feature-scrim"></view>
+                <view class="feature-badge" :class="'feature-badge--' + item.statusTone">
+                  <view v-if="item.statusTone === 'live'" class="status-dot"></view>
+                  <text>{{ item.statusLabel }}</text>
+                </view>
+                <view class="feature-copy">
+                  <text class="feature-title">{{ item.title }}</text>
+                  <text class="feature-meta">{{ item.metaText }}</text>
+                </view>
+              </view>
+              <view class="feature-strip">
+                <text v-if="item.highlight && item.highlight.label" class="feature-strip-label">{{ item.highlight.label }}</text>
+                <text class="feature-strip-text">{{ item.highlight ? item.highlight.primary : item.matchCountText }}</text>
+                <uni-icons type="right" size="14" :color="mutedIconColor"></uni-icons>
+              </view>
+            </view>
+
+            <view v-else class="event-card" @tap="openDetail(item.id)">
+              <view class="event-main">
+                <view class="event-copy">
+                  <text class="event-title">{{ item.title }}</text>
+                  <text class="event-meta">{{ item.metaText }}</text>
+                </view>
+                <view v-if="item.statusTone === 'canceled'" class="status-badge status-badge--canceled">
+                  <text>{{ item.statusLabel }}</text>
+                </view>
+                <uni-icons v-else type="right" size="14" :color="mutedIconColor"></uni-icons>
+              </view>
+              <view v-if="item.highlight" class="champion-row">
+                <view class="champion-tag">
+                  <uni-icons type="medal-filled" size="13" :color="brandStrongColor"></uni-icons>
+                  <text class="champion-tag-text">{{ item.highlight.label }}</text>
+                </view>
+                <text class="champion-name">{{ item.highlight.primary }}</text>
+                <text class="champion-detail">{{ item.highlight.secondary }}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <view v-if="hasMore" class="load-more">
+          <text>{{ loadingMore ? '正在加载...' : '上拉加载更多' }}</text>
+        </view>
+        <view v-else class="load-more">
+          <view class="load-more-line"></view>
+          <text>已展示全部赛事</text>
+          <view class="load-more-line"></view>
+        </view>
       </view>
 
-      <view v-if="hasMore && list.length > 0" class="load-more">
-        <text>{{ loadingMore ? '加载更多...' : '上拉加载更多' }}</text>
+      <view v-else-if="eventNewsPageError" class="state-block">
+        <view class="state-icon">
+          <uni-icons type="info" size="30" :color="mutedIconColor"></uni-icons>
+        </view>
+        <text class="state-title">{{ eventNewsPageError.title }}</text>
+        <text class="state-text">{{ eventNewsPageError.description }}</text>
+        <button class="state-btn" @tap="handleEventNewsErrorAction">{{ eventNewsPageError.actionText }}</button>
       </view>
-      <view v-if="!hasMore && list.length > 0" class="load-more">
-        <view class="load-more-line"></view>
-        <text>已展示全部赛事</text>
-        <view class="load-more-line"></view>
+
+      <view v-else-if="eventNewsState.status === ASYNC_PAGE_STATUS.EMPTY" class="state-block">
+        <view class="state-icon">
+          <uni-icons type="calendar" size="30" :color="brandStrongColor"></uni-icons>
+        </view>
+        <text class="state-title">{{ emptyCopy.title }}</text>
+        <text class="state-text">{{ emptyCopy.desc }}</text>
+        <button v-if="hasNarrowFilter" class="state-btn" @tap="resetNarrowFilter">查看全部赛事</button>
       </view>
     </scroll-view>
   </view>
@@ -134,15 +134,12 @@ import { onShow } from '@dcloudio/uni-app'
 
 import { usePublicReadStore } from '@/store/publicRead.js'
 import { usePageTheme } from '@/utils/page-theme.js'
-import { normalizeSaiXunCard } from '@/utils/saixun.js'
+import { buildSaiXunListSections, normalizeSaiXunCard } from '@/utils/saixun.js'
 import {
-  SAIXUN_DATE_PRESETS,
   buildCurrentYearFilter,
-  buildCustomDateRange,
   buildEventNewsListParams,
-  buildPresetDateRange,
-  buildYearOptions,
-  formatSaiXunFilterLabel
+  buildYearDateRange,
+  buildYearOptions
 } from '@/utils/saixun-filter.js'
 import {
   ASYNC_PAGE_STATUS,
@@ -158,19 +155,24 @@ import { createRequestError } from '@/utils/request-errors.js'
 const { isDarkMode } = usePageTheme()
 const publicReadStore = usePublicReadStore()
 
+const STATUS_TABS = [
+  { label: '全部', value: -1 },
+  { label: '进行中', value: 1 },
+  { label: '即将开始', value: 0 },
+  { label: '已结束', value: 2 }
+]
 const GAME_TYPE_OPTIONS = [
   { label: '全部球种', value: 0 },
   { label: '斯诺克', value: 1 },
   { label: '中式八球', value: 3 },
   { label: '中式九球', value: 2 }
 ]
-const STATUS_OPTIONS = [
-  { label: '全部状态', value: -1 },
-  { label: '即将开始', value: 0 },
-  { label: '进行中', value: 1 },
-  { label: '已结束', value: 2 },
-  { label: '已取消', value: 3 }
-]
+const EMPTY_COPY = {
+  [-1]: { title: '这一年还没有赛讯', desc: '换个年份看看，或稍后下拉刷新。' },
+  1: { title: '当前没有进行中的赛事', desc: '可以先看看即将开始的赛事。' },
+  0: { title: '暂无即将开始的赛事', desc: '新赛程公布后会第一时间更新。' },
+  2: { title: '暂无已结束的赛事', desc: '换个年份或球种看看。' }
+}
 
 const loading = ref(true)
 const loadingMore = ref(false)
@@ -187,35 +189,15 @@ const filter = ref({
   gameType: 0,
   status: -1
 })
-const customDateDraft = ref({
-  from: filter.value.from,
-  to: filter.value.to
-})
 
+const mutedIconColor = computed(() => (isDarkMode.value ? '#9F926E' : '#9A8C67'))
+const brandStrongColor = computed(() => (isDarkMode.value ? '#F0C542' : '#C69200'))
 const selectedGameType = computed(() => (
   GAME_TYPE_OPTIONS.find((item) => item.value === filter.value.gameType) || GAME_TYPE_OPTIONS[0]
 ))
-const selectedStatus = computed(() => (
-  STATUS_OPTIONS.find((item) => item.value === filter.value.status) || STATUS_OPTIONS[0]
-))
-
-const activeFilterCount = computed(() => {
-  let count = 0
-  if (filter.value.gameType !== 0) count++
-  if (filter.value.status !== -1) count++
-  return count
-})
-
-const filterChipLabel = computed(() => {
-  if (activeFilterCount.value > 0) return `筛选·${activeFilterCount.value}`
-  return '筛选'
-})
-
-const showFilterSheet = ref(false)
-
-const filterDateLabel = computed(() => formatSaiXunFilterLabel(filter.value))
-const yearOptions = computed(() => buildYearOptions(filter.value.year))
-const showCustomDateEditor = computed(() => filter.value.preset === 'custom')
+const sections = computed(() => buildSaiXunListSections(list.value))
+const hasNarrowFilter = computed(() => filter.value.status !== -1 || filter.value.gameType !== 0)
+const emptyCopy = computed(() => EMPTY_COPY[filter.value.status] || EMPTY_COPY[-1])
 const eventNewsPageError = computed(() => (
   eventNewsState.value.status === ASYNC_PAGE_STATUS.ERROR
     ? resolveAsyncPageErrorFeedback(eventNewsState.value.error, { resource: '赛讯' })
@@ -228,53 +210,47 @@ const eventNewsRefreshError = computed(() => (
 ))
 
 const fetchData = async ({ replace = false, force = false } = {}) => {
-	if (eventNewsState.value.status === ASYNC_PAGE_STATUS.LOADING || eventNewsState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
-	const requestedPage = page.value
-	const nextState = beginAsyncPageLoad(eventNewsState.value, { emptyData: [] })
-	const pageRequest = getAsyncPageRequest(nextState)
-	eventNewsState.value = nextState
-	loading.value = nextState.status === ASYNC_PAGE_STATUS.LOADING
+  if (eventNewsState.value.status === ASYNC_PAGE_STATUS.LOADING || eventNewsState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
+  const requestedPage = page.value
+  const nextState = beginAsyncPageLoad(eventNewsState.value, { emptyData: [] })
+  const pageRequest = getAsyncPageRequest(nextState)
+  eventNewsState.value = nextState
+  loading.value = nextState.status === ASYNC_PAGE_STATUS.LOADING
   try {
     const listRes = await publicReadStore.loadEventNews(
       buildEventNewsListParams(filter.value, page.value, pageSize),
       { force }
     )
-		if (eventNewsState.value.requestId !== pageRequest.requestId) return
+    if (eventNewsState.value.requestId !== pageRequest.requestId) return
     if (!listRes?.success) throw createRequestError({ message: listRes?.message || '加载赛讯失败', category: 'business' })
     const nextList = Array.isArray(listRes.list) ? listRes.list.map((item) => normalizeSaiXunCard(item)) : []
     list.value = replace ? nextList : [...list.value, ...nextList]
     total.value = Number(listRes.total || 0)
     hasMore.value = list.value.length < total.value
     hasLoadedOnce.value = true
-		eventNewsState.value = resolveAsyncPageLoad(eventNewsState.value, pageRequest, { data: list.value })
+    eventNewsState.value = resolveAsyncPageLoad(eventNewsState.value, pageRequest, { data: list.value })
   } catch (error) {
-		if (eventNewsState.value.requestId !== pageRequest.requestId) return
-		if (!replace && requestedPage > 1) page.value = requestedPage - 1
-		eventNewsState.value = rejectAsyncPageLoad(eventNewsState.value, pageRequest, error)
+    if (eventNewsState.value.requestId !== pageRequest.requestId) return
+    if (!replace && requestedPage > 1) page.value = requestedPage - 1
+    eventNewsState.value = rejectAsyncPageLoad(eventNewsState.value, pageRequest, error)
   } finally {
-		if (eventNewsState.value.requestId !== pageRequest.requestId) return
+    if (eventNewsState.value.requestId !== pageRequest.requestId) return
     loading.value = false
     loadingMore.value = false
     refreshing.value = false
   }
 }
 
-const applyFilter = async (nextFilter, { syncDraft = true } = {}) => {
+const applyFilter = async (nextFilter) => {
   filter.value = {
     ...filter.value,
     ...nextFilter
   }
-  if (syncDraft) {
-    customDateDraft.value = {
-      from: filter.value.from,
-      to: filter.value.to
-    }
-  }
   page.value = 1
-	list.value = []
-	total.value = 0
-	hasMore.value = false
-	resetEventNewsList()
+  list.value = []
+  total.value = 0
+  hasMore.value = false
+  resetEventNewsList()
   await fetchData({ replace: true })
 }
 
@@ -284,38 +260,38 @@ const refreshData = async ({ force = false } = {}) => {
 }
 
 const onRefresh = async () => {
-	if (eventNewsState.value.status === ASYNC_PAGE_STATUS.LOADING || eventNewsState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
+  if (eventNewsState.value.status === ASYNC_PAGE_STATUS.LOADING || eventNewsState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
   refreshing.value = true
   await refreshData({ force: true })
 }
 
 const loadMore = async () => {
-	if (eventNewsState.value.status === ASYNC_PAGE_STATUS.LOADING || eventNewsState.value.status === ASYNC_PAGE_STATUS.REFRESHING || loadingMore.value || !hasMore.value) return
+  if (eventNewsState.value.status === ASYNC_PAGE_STATUS.LOADING || eventNewsState.value.status === ASYNC_PAGE_STATUS.REFRESHING || loadingMore.value || !hasMore.value) return
   loadingMore.value = true
   page.value += 1
   await fetchData({ replace: false })
 }
 
 const resetEventNewsList = () => {
-	eventNewsState.value = {
-		...eventNewsState.value,
-		status: ASYNC_PAGE_STATUS.IDLE,
-		requestId: eventNewsState.value.requestId + 1,
-		data: [],
-		hasData: false,
-		error: null,
-		refreshError: null
-	}
+  eventNewsState.value = {
+    ...eventNewsState.value,
+    status: ASYNC_PAGE_STATUS.IDLE,
+    requestId: eventNewsState.value.requestId + 1,
+    data: [],
+    hasData: false,
+    error: null,
+    refreshError: null
+  }
 }
 
 const retryEventNews = () => refreshData({ force: true })
 
 const handleEventNewsErrorAction = () => {
-	if (eventNewsState.value.error?.category === 'permission' || eventNewsState.value.error?.category === 'not-found') {
-		uni.navigateBack({ delta: 1 })
-		return
-	}
-	retryEventNews()
+  if (eventNewsState.value.error?.category === 'permission' || eventNewsState.value.error?.category === 'not-found') {
+    uni.navigateBack({ delta: 1 })
+    return
+  }
+  retryEventNews()
 }
 
 const openDetail = (id) => {
@@ -323,96 +299,41 @@ const openDetail = (id) => {
   uni.navigateTo({ url: `/subPages/tournament/detail?id=${id}` })
 }
 
+const selectStatus = (status) => {
+  if (status === filter.value.status) return
+  applyFilter({ status })
+}
+
+const resetNarrowFilter = () => {
+  applyFilter({ status: -1, gameType: 0 })
+}
+
 const openYearSheet = () => {
-  const options = yearOptions.value
+  const options = buildYearOptions(filter.value.year)
   if (!options.length) return
 
   uni.showActionSheet({
     itemList: options.map((item) => `${item}年`),
-    success: async (res) => {
+    success: (res) => {
       const selectedYear = options[res.tapIndex]
       if (!selectedYear || selectedYear === filter.value.year) return
-      await applyFilter({
+      applyFilter({
         year: selectedYear,
-        ...buildPresetDateRange(selectedYear, 'full_year')
+        ...buildYearDateRange(selectedYear)
       })
     }
   })
 }
 
-const openDatePresetSheet = () => {
+const openGameTypeSheet = () => {
   uni.showActionSheet({
-    itemList: SAIXUN_DATE_PRESETS.map((item) => item.label),
-    success: async (res) => {
-      const selected = SAIXUN_DATE_PRESETS[res.tapIndex]
-      if (!selected) return
-
-      if (selected.key === 'custom') {
-        filter.value = {
-          ...filter.value,
-          preset: 'custom'
-        }
-        customDateDraft.value = {
-          from: filter.value.from,
-          to: filter.value.to
-        }
-        return
-      }
-
-      await applyFilter({
-        year: filter.value.year,
-        ...buildPresetDateRange(filter.value.year, selected.key)
-      })
+    itemList: GAME_TYPE_OPTIONS.map((item) => item.label),
+    success: (res) => {
+      const next = GAME_TYPE_OPTIONS[res.tapIndex]
+      if (!next || next.value === filter.value.gameType) return
+      applyFilter({ gameType: next.value })
     }
   })
-}
-
-const openFilterSheet = () => {
-  showFilterSheet.value = true
-  uni.hideTabBar()
-}
-
-const closeFilterSheet = () => {
-  showFilterSheet.value = false
-  uni.showTabBar()
-}
-
-const onGameTypeChange = (e) => {
-  const next = GAME_TYPE_OPTIONS[e.detail.value]
-  if (!next || next.value === filter.value.gameType) {
-    closeFilterSheet()
-    return
-  }
-  applyFilter({ gameType: next.value }).then(() => closeFilterSheet())
-}
-
-const onStatusChange = (e) => {
-  const next = STATUS_OPTIONS[e.detail.value]
-  if (!next || next.value === filter.value.status) {
-    closeFilterSheet()
-    return
-  }
-  applyFilter({ status: next.value }).then(() => closeFilterSheet())
-}
-
-const onCustomFromChange = async (event) => {
-  const nextFrom = event?.detail?.value || customDateDraft.value.from
-  const nextFilter = buildCustomDateRange(filter.value.year, nextFrom, customDateDraft.value.to)
-  customDateDraft.value = {
-    from: nextFilter.from,
-    to: nextFilter.to
-  }
-  await applyFilter(nextFilter, { syncDraft: true })
-}
-
-const onCustomToChange = async (event) => {
-  const nextTo = event?.detail?.value || customDateDraft.value.to
-  const nextFilter = buildCustomDateRange(filter.value.year, customDateDraft.value.from, nextTo)
-  customDateDraft.value = {
-    from: nextFilter.from,
-    to: nextFilter.to
-  }
-  await applyFilter(nextFilter, { syncDraft: true })
 }
 
 onShow(() => {

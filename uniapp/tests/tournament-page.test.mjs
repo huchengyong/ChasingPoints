@@ -18,19 +18,24 @@ test('tournament page reapplies theme on show for the native navigation bar', ()
   assert.doesNotMatch(pageSource, /useThemeStore|THEME_CHANGE_EVENT|applyNavigationBarTheme/)
 })
 
-test('tournament page dark hero keeps light text on a dark card', () => {
-  assert.match(
-    styleSource,
-    /&\.dark-mode\s*\{[\s\S]*\.hero-card\s*\{[\s\S]*background:\s*linear-gradient\(135deg,\s*#241d10 0%,\s*#1a1408 100%\);[\s\S]*border-color:\s*#3a2e16;/
-  )
-  assert.match(
-    styleSource,
-    /&\.dark-mode\s*\{[\s\S]*\.hero-desc,[\s\S]*color:\s*#d7c89b;/
-  )
-  assert.match(
-    styleSource,
-    /&\.dark-mode\s*\{[\s\S]*\.hero-title,[\s\S]*color:\s*#fff7e1;/
-  )
+test('tournament list and detail share the warm theme tokens with a dark-mode override', () => {
+  const themeSource = readFileSync(new URL('../pages/tournament/saixun-theme.scss', import.meta.url), 'utf8')
+  const detailStyleSource = readFileSync(new URL('../subPages/tournament/detail.scss', import.meta.url), 'utf8')
+
+  assert.match(themeSource, /@mixin saixun-theme-vars\s*\{[\s\S]*--sx-page:\s*#F7F4EC;/)
+  assert.match(themeSource, /@mixin saixun-dark-theme-vars\s*\{[\s\S]*--sx-page:\s*#141109;[\s\S]*--sx-text:\s*#FFF7E1;/)
+  assert.match(styleSource, /@import '\.\/saixun-theme\.scss';[\s\S]*\.tournament-page\s*\{\s*@include saixun-theme-vars;[\s\S]*&\.dark-mode\s*\{\s*@include saixun-dark-theme-vars;/)
+  assert.match(detailStyleSource, /@import '\.\.\/\.\.\/pages\/tournament\/saixun-theme\.scss';[\s\S]*\.detail-page\s*\{\s*@include saixun-theme-vars;[\s\S]*&\.dark-mode\s*\{\s*@include saixun-dark-theme-vars;/)
+  // 微信小程序 WXSS 不支持通配选择器
+  assert.doesNotMatch(`${themeSource}${styleSource}${detailStyleSource}`, /(^|[\s,{])\*(\s|,|\{|::)/m)
+})
+
+test('tournament list filters by status tabs and action sheets without a custom bottom sheet', () => {
+  assert.match(pageSource, /v-for="tab in STATUS_TABS"[\s\S]*@tap="selectStatus\(tab\.value\)"/)
+  assert.match(pageSource, /const openYearSheet[\s\S]*uni\.showActionSheet/)
+  assert.match(pageSource, /const openGameTypeSheet[\s\S]*uni\.showActionSheet/)
+  assert.doesNotMatch(pageSource, /hideTabBar|showTabBar|SAIXUN_DATE_PRESETS|custom-date/)
+  assert.match(pageSource, /buildSaiXunListSections\(list\.value\)/)
 })
 
 test('tournament list is the only tabbar registration and retired paths are gone', () => {
@@ -72,6 +77,19 @@ test('filter change resets pagination to page 1', () => {
   assert.match(pageSource, /list\.value\s*=\s*\[\]/)
   assert.match(pageSource, /total\.value\s*=\s*0/)
   assert.match(pageSource, /hasMore\.value\s*=\s*false/)
+})
+
+test('detail page offers round tabs and forced pull-down refresh', () => {
+  const detailSource = readFileSync(new URL('../subPages/tournament/detail.vue', import.meta.url), 'utf8')
+  const pagesConfig = JSON.parse(readFileSync(new URL('../pages.json', import.meta.url), 'utf8'))
+  const tournamentPkg = pagesConfig.subPackages.find((pkg) => pkg.root === 'subPages/tournament')
+  const detailConfig = tournamentPkg.pages.find((page) => page.path === 'detail')
+
+  assert.equal(detailConfig.style.enablePullDownRefresh, true)
+  assert.match(detailSource, /onPullDownRefresh\(async \(\) => \{\s*await fetchDetail\(\{ force: true \}\)\s*uni\.stopPullDownRefresh\(\)/)
+  assert.match(detailSource, /publicReadStore\.loadEventNewsView\(\{ event_id: eventNewsId\.value \}, \{ force \}\)/)
+  assert.match(detailSource, /v-for="\(round, index\) in eventView\.rounds"[\s\S]*@tap="selectRound\(round\.key\)"/)
+  assert.match(detailSource, /v-for="day in activeRound\.days"/)
 })
 
 test('detail back preserves filter and scroll state via onShow guard', () => {

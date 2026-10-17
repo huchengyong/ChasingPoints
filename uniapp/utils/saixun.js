@@ -7,8 +7,9 @@ export const DEFAULT_PLAYER_AVATAR = DEFAULT_USER_AVATAR
 // 官方赛讯球员无头像时的中性占位图（WST 官方风格剪影），不用平台自定义台球头像
 export const OFFICIAL_PLAYER_AVATAR_PLACEHOLDER = '/static/images/wst-player-placeholder.png'
 
-const MATCH_ACTIVE_STATUSES = new Set([0, 1])
 const MATCH_LIVE_FALLBACK_WINDOW_MS = 12 * 60 * 60 * 1000
+const DAY_MS = 24 * 60 * 60 * 1000
+const WEEKDAY_LABELS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 const CJK_PATTERN = /[\u3400-\u9fff]/
 const YEAR_PATTERN = /\b(19|20)\d{2}\b/g
 const ROUND_NAME_ALIASES = Object.freeze({
@@ -92,12 +93,21 @@ const TOURNAMENT_SERIES_TRANSLATIONS = Object.freeze([
   { pattern: /\bWelsh Open\b/i, zh: '威尔士公开赛' },
   { pattern: /\bWorld Open\b/i, zh: '世界公开赛' },
   { pattern: /\bWuhan Open\b/i, zh: '武汉公开赛' },
+  { pattern: /\bShenzhen Open\b/i, zh: '深圳公开赛' },
   { pattern: /\bChina Open\b/i, zh: '中国公开赛' },
   { pattern: /\bXi'an Grand Prix\b/i, zh: '西安大奖赛' },
-  { pattern: /\bAsia\s*&\s*Oceania Q School\b/i, zh: '亚洲及大洋洲 Q School' },
+  { pattern: /\bWorld Mixed Doubles\b/i, zh: '世界混双赛' },
+  { pattern: /\bWorld Masters of Snooker\b/i, zh: '世界斯诺克大师赛' },
+  { pattern: /\bAsia\s*[&-]\s*Oceania Q School\b/i, zh: '亚洲及大洋洲 Q School' },
   { pattern: /\bQ School\b/i, zh: 'Q School' },
   { pattern: /\bShoot Out\b/i, zh: '单局限时赛' },
   { pattern: /\bMasters\b/i, zh: '大师赛' }
+])
+
+// 资格赛 / 正赛阶段与主赛事同名，翻译时必须保留后缀，避免列表出现两张同名卡片
+const TOURNAMENT_PHASE_SUFFIXES = Object.freeze([
+  { pattern: /\s+Qualifiers?$/i, zh: '资格赛' },
+  { pattern: /\s+Final Stages?$/i, zh: '决赛阶段' }
 ])
 
 const toTitleWithYearAndSuffix = (label, year, suffix) => {
@@ -144,7 +154,9 @@ const localizeLeagueStageSuffix = (value) => {
     .replace(/\bStage One\b/gi, '第一阶段')
     .replace(/\bStage Two\b/gi, '第二阶段')
     .replace(/\bStage Three\b/gi, '第三阶段')
-    .replace(/\bWK\s*(\d+)\b/gi, '第$1周')
+    .replace(/\bW(?:EE)?K\s*(\d+)\b/gi, '第$1周')
+    .replace(/\bWinners Group\b/gi, '胜者组')
+    .replace(/\bGroup\s+(\d+)\b/gi, '第$1组')
     .replace(/\s*&\s*Final\b/gi, '及决赛')
     .replace(/\s*\/\s*/g, ' / ')
     .replace(/\s{2,}/g, ' ')
@@ -163,19 +175,19 @@ export const localizeTournamentTitle = (value) => {
   const title = String(value || '').trim()
   if (!title || CJK_PATTERN.test(title)) return title
 
-  const championshipLeagueMatch = title.match(/^(?:.+?\s+)?Championship League Snooker\s+(\d{4})\s+\(([^)]+)\)$/i)
+  const championshipLeagueMatch = title.match(/^(?:.+?\s+)?Championship League Snooker(?:\s+Invitational)?\s+(\d{4})\s+\(([^)]+)\)$/i)
   if (championshipLeagueMatch) {
     const [, year, suffix] = championshipLeagueMatch
     return toTitleWithYearAndSuffix('冠军联赛', year, localizeLeagueStageSuffix(suffix))
   }
 
-  const groupMatch = title.match(/^Championship League Group\s+(.+)$/i)
+  const groupMatch = title.match(/^(?:.+?\s+)?Championship League Group\s+(.+)$/i)
   if (groupMatch) {
     const groupNumber = normalizeOrdinalToken(groupMatch[1])
     return groupNumber ? `冠军联赛第${groupNumber}组` : '冠军联赛小组赛'
   }
 
-  if (/^Championship League Winners Group$/i.test(title)) {
+  if (/^(?:.+?\s+)?Championship League Winners Group$/i.test(title)) {
     return '冠军联赛胜者组'
   }
 
@@ -185,12 +197,15 @@ export const localizeTournamentTitle = (value) => {
     return `Q School ${year} - 第${eventNo}站`
   }
 
-  const year = extractTournamentYear(title)
-  const titleWithoutYear = stripYearFromTitle(title, year)
+  const phase = TOURNAMENT_PHASE_SUFFIXES.find(({ pattern }) => pattern.test(title))
+  const titleWithoutPhase = phase ? title.replace(phase.pattern, '') : title
+  const year = extractTournamentYear(titleWithoutPhase)
+  const titleWithoutYear = stripYearFromTitle(titleWithoutPhase, year)
   const seriesTitle = localizeTournamentSeries(titleWithoutYear)
 
   if (seriesTitle) {
-    return toTitleWithYearAndSuffix(seriesTitle, year, '')
+    const localized = toTitleWithYearAndSuffix(seriesTitle, year, '')
+    return phase ? `${localized} ${phase.zh}` : localized
   }
 
   return title
@@ -225,11 +240,33 @@ const normalizeRoundKey = (value) => {
     .replace(/^_+|_+$/g, '')
 }
 
+const localizeRoundQualifier = (value) => {
+  const text = String(value || '').trim()
+  if (/^held over$/i.test(text)) return '保留赛'
+  return localizeLeagueStageSuffix(text)
+}
+
 export const standardizeRoundText = (value) => {
   const text = String(value || '').trim()
   if (!text) return ''
 
-  return ROUND_NAME_ALIASES[normalizeRoundKey(text)] || text
+  const alias = ROUND_NAME_ALIASES[normalizeRoundKey(text)]
+  if (alias) return alias
+
+  const roundMatch = text.match(/^Round\s+(\d+)(?:\s*\(([^)]+)\))?$/i)
+  if (roundMatch) {
+    const [, roundNo, qualifier] = roundMatch
+    return qualifier ? `第${roundNo}轮（${localizeRoundQualifier(qualifier)}）` : `第${roundNo}轮`
+  }
+
+  const lastMatch = text.match(/^Last\s+(\d+)$/i)
+  if (lastMatch) return `${lastMatch[1]}强`
+
+  const leagueMatch = text.match(/^League Phase\s*\(([^)]+)\)$/i)
+  if (leagueMatch) return `联赛阶段（${localizeLeagueStageSuffix(leagueMatch[1])}）`
+
+  if (CJK_PATTERN.test(text)) return text
+  return localizeLeagueStageSuffix(text)
 }
 
 export const formatEventDateRange = (startDate, endDate) => {
@@ -262,30 +299,145 @@ export const buildEventLocationText = (item = {}) => {
   return city || venue || ''
 }
 
+export const buildEventRegionText = (item = {}) => {
+  const parts = [localizeCountryName(item.country), item.city, item.venue]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+  return Array.from(new Set(parts)).join(' · ')
+}
+
+const toTimeValue = (now) => (typeof now === 'string' ? new Date(now).getTime() : Number(now))
+
+const diffLocalDays = (date, now) => {
+  const nowDate = new Date(toTimeValue(now))
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
+  const today = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime()
+  return Math.round((target - today) / DAY_MS)
+}
+
+export const formatEventCountdownText = (startDate, now = Date.now()) => {
+  const start = parseDateOnly(startDate)
+  if (!start) return '即将开始'
+
+  const diffDays = diffLocalDays(start, now)
+  if (diffDays < 0) return '即将开始'
+  if (diffDays === 0) return '今天开赛'
+  if (diffDays === 1) return '明天开赛'
+  if (diffDays <= 30) return `${diffDays}天后开赛`
+  return `${formatMonthDay(start)}开赛`
+}
+
+const SUMMARY_SCORE_PATTERN = /^(.+?)\s+(\d+)\s+-\s+(\d+)\s+(.+)$/
+const SUMMARY_PAIR_PATTERN = /^(.+?)\s+-\s+(.+)$/
+
+// 后端 latest_result_text 形如 "主队 9 - 6 客队"（已开赛）或 "主队 - 客队"（未开赛）
+const parseMatchSummaryText = (value) => {
+  const text = String(value || '').trim()
+  const scored = text.match(SUMMARY_SCORE_PATTERN)
+  if (scored) {
+    return { home: scored[1], away: scored[4], homeScore: Number(scored[2]), awayScore: Number(scored[3]), hasScore: true }
+  }
+  const pair = text.match(SUMMARY_PAIR_PATTERN)
+  if (pair) return { home: pair[1], away: pair[2], hasScore: false }
+  return null
+}
+
+const buildSaiXunCardHighlight = (status, roundText, latestResultText) => {
+  const summary = parseMatchSummaryText(latestResultText)
+  if (!summary) return null
+
+  if (status === 2) {
+    if (roundText !== '决赛' || !summary.hasScore || summary.homeScore === summary.awayScore) return null
+    const homeWon = summary.homeScore > summary.awayScore
+    return {
+      type: 'champion',
+      label: '冠军',
+      primary: homeWon ? summary.home : summary.away,
+      secondary: `决赛 ${Math.max(summary.homeScore, summary.awayScore)}-${Math.min(summary.homeScore, summary.awayScore)} 胜 ${homeWon ? summary.away : summary.home}`
+    }
+  }
+
+  if (status !== 0 && status !== 1) return null
+  return {
+    type: status === 1 ? 'live' : 'upcoming',
+    label: roundText,
+    primary: summary.hasScore
+      ? `${summary.home} ${summary.homeScore} - ${summary.awayScore} ${summary.away}`
+      : `${summary.home} vs ${summary.away}`,
+    secondary: ''
+  }
+}
+
+const SAIXUN_STATUS_TONES = Object.freeze({ 0: 'upcoming', 1: 'live', 2: 'ended', 3: 'canceled' })
+
 export const normalizeSaiXunCard = (item = {}, now = Date.now()) => {
+  const status = Number(item.status)
   const currentRoundText = standardizeRoundText(item.current_round_text)
   const matchCount = Number(item.match_count || 0)
   const timeText = formatEventTimeRange(item.start_time, item.end_time, now)
   const rawTitle = item.tournament_name || item.title || '赛事情报'
+  const title = localizeTournamentTitle(rawTitle) || rawTitle
+  const dateText = formatEventDateRange(item.start_date, item.end_date)
+  const regionText = buildEventRegionText(item)
 
   return {
     ...item,
     id: item.id,
-    title: localizeTournamentTitle(rawTitle) || rawTitle,
+    title,
+    originalTitle: title !== rawTitle ? rawTitle : '',
     summary: item.summary || item.latest_result_text || '官方赛讯持续更新中',
     statusText: getEventNewsStatusText(item.status, '赛讯更新中'),
+    statusTone: SAIXUN_STATUS_TONES[status] || 'ended',
+    statusLabel: status === 0 ? formatEventCountdownText(item.start_date, now) : getEventNewsStatusText(item.status, '赛讯更新中'),
+    isFeatured: status === 0 || status === 1,
     gameTypeText: getGameTypeLabel(item.game_type, '台球'),
-    dateText: formatEventDateRange(item.start_date, item.end_date),
+    dateText,
     timeText,
     showTime: Boolean(timeText),
     locationText: buildEventLocationText(item),
+    regionText,
+    metaText: [dateText, regionText].filter(Boolean).join(' · '),
     currentRoundText: currentRoundText || '轮次待更新',
     resultText: item.latest_result_text || '',
+    highlight: buildSaiXunCardHighlight(status, currentRoundText, item.latest_result_text),
     matchCount,
     matchCountText: matchCount > 0 ? `${matchCount} 场比赛` : '比赛待更新',
     sourceText: typeof item.source_name === 'string' ? item.source_name.trim() : '',
+    hasCover: Boolean(item.cover_image),
     coverImage: item.cover_image || DEFAULT_EVENT_COVER
   }
+}
+
+const resolveSaiXunSection = (item = {}) => {
+  const status = Number(item.status)
+  if (status === 1) return { key: 'live', title: '进行中', caption: '' }
+  if (status === 0) return { key: 'upcoming', title: '即将开始', caption: '' }
+  if (status === 3) return { key: 'canceled', title: '已取消', caption: '' }
+
+  const start = parseDateOnly(item.start_date)
+  if (!start) return { key: 'ended', title: '已结束', caption: '' }
+  return { key: `ended-${start.getFullYear()}-${start.getMonth() + 1}`, title: `${start.getMonth() + 1}月`, caption: '已结束' }
+}
+
+// 列表按后端顺序（进行中 → 即将开始 → 已结束按时间倒序）切分分组，只合并相邻同组项
+export const buildSaiXunListSections = (list = []) => {
+  const sections = []
+  list.forEach((item) => {
+    const section = resolveSaiXunSection(item)
+    const last = sections[sections.length - 1]
+    if (last && last.groupKey === section.key) {
+      last.items.push(item)
+      return
+    }
+    sections.push({
+      key: `${section.key}-${sections.length}`,
+      groupKey: section.key,
+      title: section.title,
+      caption: section.caption,
+      items: [item]
+    })
+  })
+  return sections
 }
 
 export const buildSaiXunHeroStats = (list = []) => ({
@@ -325,17 +477,35 @@ const resolvePlayerTextParts = (firstName, lastName, fullName) => {
   return splitDisplayName(fullName)
 }
 
-const buildMatchMetaText = (match) => {
-  const parts = []
-  if (Number(match.best_of || 0) > 0) parts.push(`Best of ${Number(match.best_of || 0)}`)
-  if (match.is_placeholder) parts.push('占位赛程')
-  return parts.join(' · ') || '等待比赛开始'
+// 中文赛制习惯写作"9局5胜"；偶数局制（如冠军联赛小组赛）可能打平，只标总局数
+export const formatBestOfText = (bestOf) => {
+  const frames = Number(bestOf || 0)
+  if (!Number.isInteger(frames) || frames <= 0) return ''
+  if (frames % 2 === 0) return `共${frames}局`
+  return `${frames}局${Math.ceil(frames / 2)}胜`
+}
+
+// 只按源数据状态判断比分是否可信，按开赛时间推断出的进行中不展示 0:0
+const isMatchScoreReady = (match) => {
+  const status = Number(match.status || 0)
+  return status === 1 || status === 2 || Number(match.home_score || 0) > 0 || Number(match.away_score || 0) > 0
 }
 
 const buildScoreText = (match) => {
-  const status = Number(match.status || 0)
-  const scoreReady = status === 1 || status === 2 || Number(match.home_score || 0) > 0 || Number(match.away_score || 0) > 0
-  return scoreReady ? `${Number(match.home_score || 0)} : ${Number(match.away_score || 0)}` : '-'
+  return isMatchScoreReady(match) ? `${Number(match.home_score || 0)} : ${Number(match.away_score || 0)}` : '-'
+}
+
+const pad2 = (value) => String(value).padStart(2, '0')
+
+const buildDayKey = (date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`
+
+const formatMatchDayLabel = (date, now) => {
+  const base = `${date.getMonth() + 1}月${date.getDate()}日 ${WEEKDAY_LABELS[date.getDay()]}`
+  const diffDays = diffLocalDays(date, now)
+  if (diffDays === 0) return `${base} · 今天`
+  if (diffDays === 1) return `${base} · 明天`
+  if (diffDays === -1) return `${base} · 昨天`
+  return base
 }
 
 const buildPlayerResultText = (winnerSide, side) => {
@@ -371,6 +541,7 @@ const normalizeSaiXunMatch = (match = {}, now = Date.now()) => {
   const playerAvatarFallback = match.source_type === 'official'
     ? OFFICIAL_PLAYER_AVATAR_PLACEHOLDER
     : DEFAULT_PLAYER_AVATAR
+  const showScore = isMatchScoreReady(match)
   return {
     id: match.id,
     roundName: standardizeRoundText(match.round_name) || '轮次待更新',
@@ -378,8 +549,12 @@ const normalizeSaiXunMatch = (match = {}, now = Date.now()) => {
     matchOrder: Number(match.match_order || 0),
     status: effectiveStatus,
     statusText: getEventNewsStatusText(effectiveStatus, '待更新'),
+    isLive: effectiveStatus === 1,
     startAt,
     startTimeText: startAt ? formatEventNewsTime(startAt.getTime(), now) : '时间待定',
+    clockText: startAt ? `${pad2(startAt.getHours())}:${pad2(startAt.getMinutes())}` : '时间待定',
+    dayKey: startAt ? buildDayKey(startAt) : 'unscheduled',
+    dayLabel: startAt ? formatMatchDayLabel(startAt, now) : '时间待定',
     homePlayerName: match.home_player_name || '待定',
     homePlayerFirstName: homePlayerParts.firstName,
     homePlayerLastName: homePlayerParts.lastName,
@@ -402,49 +577,54 @@ const normalizeSaiXunMatch = (match = {}, now = Date.now()) => {
     ),
     awayPlayerAvatar: match.away_player_avatar || playerAvatarFallback,
     awayResultText: buildPlayerResultText(match.winner_side, 2),
+    showScore,
+    homeScore: Number(match.home_score || 0),
+    awayScore: Number(match.away_score || 0),
     scoreText: buildScoreText(match),
     winnerSide: Number(match.winner_side || 0),
-    metaText: buildMatchMetaText(match),
+    metaText: formatBestOfText(match.best_of),
     isPlaceholder: Boolean(match.is_placeholder)
   }
 }
 
+const getMatchStartValue = (match) => match.startAt?.getTime() ?? Number.POSITIVE_INFINITY
+
+// 轮次内按开赛时间排列，便于按比赛日分组浏览
 const compareSaiXunMatches = (left, right) => {
-  const leftStatus = Number(left.status || 0)
-  const rightStatus = Number(right.status || 0)
-
-  if (leftStatus !== rightStatus) {
-    const priority = { 1: 0, 0: 1, 2: 2, 3: 3 }
-    return (priority[leftStatus] ?? 9) - (priority[rightStatus] ?? 9)
-  }
-
-  const leftTime = left.startAt?.getTime() ?? Number.POSITIVE_INFINITY
-  const rightTime = right.startAt?.getTime() ?? Number.POSITIVE_INFINITY
-
-  if (MATCH_ACTIVE_STATUSES.has(leftStatus)) {
-    if (leftTime !== rightTime) return leftTime - rightTime
-  } else if (leftStatus === 2 || leftStatus === 3) {
-    if (leftTime !== rightTime) return rightTime - leftTime
-  }
-
-  if (left.roundOrder !== right.roundOrder) return right.roundOrder - left.roundOrder
+  const leftTime = getMatchStartValue(left)
+  const rightTime = getMatchStartValue(right)
+  if (leftTime !== rightTime) return leftTime - rightTime
   if (left.matchOrder !== right.matchOrder) return left.matchOrder - right.matchOrder
   return Number(left.id || 0) - Number(right.id || 0)
 }
 
-export const buildSaiXunDetailRounds = (matches = [], now = Date.now()) => {
-  const normalized = matches.map((item) => normalizeSaiXunMatch(item, now))
-  const activeRoundOrders = normalized
-    .filter((item) => MATCH_ACTIVE_STATUSES.has(item.status))
-    .map((item) => item.roundOrder)
-    .filter((value) => value > 0)
-  const maxVisibleRoundOrder = activeRoundOrders.length ? Math.min(...activeRoundOrders) : Number.POSITIVE_INFINITY
-  const visibleMatches = normalized
-    .filter((item) => item.roundOrder <= maxVisibleRoundOrder)
-    .sort(compareSaiXunMatches)
+const compareSaiXunRounds = (left, right) => {
+  if (left.roundOrder !== right.roundOrder) return left.roundOrder - right.roundOrder
+  return getMatchStartValue(left.matches[0]) - getMatchStartValue(right.matches[0])
+}
 
+const groupMatchesByDay = (matches) => {
+  const days = []
+  matches.forEach((match) => {
+    const last = days[days.length - 1]
+    if (last && last.key === match.dayKey) {
+      last.matches.push(match)
+      return
+    }
+    days.push({ key: match.dayKey, label: match.dayLabel, matches: [match] })
+  })
+  return days
+}
+
+const resolveRoundMetaText = (matches) => {
+  const formats = new Set(matches.map((match) => match.metaText).filter(Boolean))
+  return formats.size === 1 ? Array.from(formats)[0] : ''
+}
+
+// 按轮次先后（含 round_order 相同的保留赛）返回全部轮次；全部为占位对阵的轮次没有可看信息，不展示
+export const buildSaiXunDetailRounds = (matches = [], now = Date.now()) => {
   const roundMap = new Map()
-  visibleMatches.forEach((item) => {
+  matches.map((item) => normalizeSaiXunMatch(item, now)).forEach((item) => {
     const key = `${item.roundOrder}-${item.roundName}`
     if (!roundMap.has(key)) {
       roundMap.set(key, {
@@ -458,6 +638,47 @@ export const buildSaiXunDetailRounds = (matches = [], now = Date.now()) => {
   })
 
   return Array.from(roundMap.values())
+    .filter((round) => round.matches.some((match) => !match.isPlaceholder))
+    .map((round) => {
+      const sortedMatches = [...round.matches].sort(compareSaiXunMatches)
+      return {
+        ...round,
+        matches: sortedMatches,
+        matchCount: sortedMatches.length,
+        hasLive: sortedMatches.some((match) => match.isLive),
+        metaText: resolveRoundMetaText(sortedMatches),
+        days: groupMatchesByDay(sortedMatches)
+      }
+    })
+    .sort(compareSaiXunRounds)
+}
+
+// 默认展示最值得看的轮次：有直播的最新轮次 → 下一轮待赛 → 最后一轮（通常是决赛）
+export const resolveSaiXunFocusRoundKey = (rounds = []) => {
+  if (!rounds.length) return ''
+
+  const liveRound = [...rounds].reverse().find((round) => round.hasLive)
+  if (liveRound) return liveRound.key
+
+  const upcomingRound = rounds.find((round) => round.matches.some((match) => match.status === 0 && !match.isPlaceholder))
+  if (upcomingRound) return upcomingRound.key
+
+  return rounds[rounds.length - 1].key
+}
+
+export const resolveSaiXunChampion = (rounds = []) => {
+  const finalRound = rounds.find((round) => round.roundName === '决赛')
+  const finalMatch = finalRound?.matches.find((match) => match.status === 2 && (match.winnerSide === 1 || match.winnerSide === 2))
+  if (!finalMatch) return null
+
+  const homeWon = finalMatch.winnerSide === 1
+  return {
+    name: homeWon ? finalMatch.homePlayerName : finalMatch.awayPlayerName,
+    avatar: homeWon ? finalMatch.homePlayerAvatar : finalMatch.awayPlayerAvatar,
+    flag: homeWon ? finalMatch.homePlayerFlag : finalMatch.awayPlayerFlag,
+    opponentName: homeWon ? finalMatch.awayPlayerName : finalMatch.homePlayerName,
+    scoreText: `${Math.max(finalMatch.homeScore, finalMatch.awayScore)}-${Math.min(finalMatch.homeScore, finalMatch.awayScore)}`
+  }
 }
 
 export const localizeCountryName = (name) => {

@@ -1,0 +1,84 @@
+// 赛讯列表与详情共用：页面级颜色变量（取值对应 DESIGN.md 语义 Token）与赛事状态徽标。
+// 页面根节点引入亮色变量，并在自身的 &.dark-mode 中引入暗色变量。
+@mixin saixun-theme-vars {
+  --sx-page: #F7F4EC;
+  --sx-card: #FFFFFF;
+  --sx-subtle: #FAF8F2;
+  --sx-text: #231C0B;
+  --sx-text-secondary: #6E6242;
+  --sx-text-muted: #9A8C67;
+  --sx-border: #E9E2CF;
+  --sx-brand: #E0AE12;
+  --sx-brand-strong: #C69200;
+  --sx-brand-tint: rgba(224, 174, 18, 0.14);
+  --sx-success: #18B05B;
+  --sx-success-tint: rgba(24, 176, 91, 0.12);
+  --sx-info: #3B82F6;
+  --sx-info-tint: rgba(59, 130, 246, 0.12);
+  --sx-danger: #EF4444;
+  --sx-danger-tint: rgba(239, 68, 68, 0.12);
+  --sx-shadow: 0 2rpx 8rpx rgba(31, 26, 16, 0.05);
+}
+
+@mixin saixun-dark-theme-vars {
+  --sx-page: #141109;
+  --sx-card: #1E180D;
+  --sx-subtle: #241D10;
+  --sx-text: #FFF7E1;
+  --sx-text-secondary: #D7C89B;
+  --sx-text-muted: #9F926E;
+  --sx-border: #3A2E16;
+  --sx-brand-strong: #F0C542;
+  --sx-brand-tint: rgba(224, 174, 18, 0.2);
+  --sx-success: #22C55E;
+  --sx-success-tint: rgba(34, 197, 94, 0.16);
+  --sx-info: #60A5FA;
+  --sx-info-tint: rgba(96, 165, 250, 0.16);
+  --sx-danger-tint: rgba(239, 68, 68, 0.18);
+  --sx-shadow: none;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 40rpx;
+  padding: 0 14rpx;
+  border-radius: 999rpx;
+  font-size: 20rpx;
+  font-weight: 600;
+  line-height: 40rpx;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.status-dot {
+  width: 10rpx;
+  height: 10rpx;
+  margin-right: 8rpx;
+  border-radius: 50%;
+}
+
+.status-badge--live {
+  background: var(--sx-success-tint);
+  color: var(--sx-success);
+
+  .status-dot {
+    background: var(--sx-success);
+  }
+}
+
+.status-badge--upcoming {
+  background: var(--sx-info-tint);
+  color: var(--sx-info);
+}
+
+.status-badge--ended {
+  background: var(--sx-subtle);
+  color: var(--sx-text-muted);
+}
+
+.status-badge--canceled {
+  background: var(--sx-danger-tint);
+  color: var(--sx-danger);
+}
