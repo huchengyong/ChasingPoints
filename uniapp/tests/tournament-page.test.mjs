@@ -58,13 +58,12 @@ test('old social compat page is a lightweight redirect to the tournament tab', (
   assert.doesNotMatch(compatSource, /loadEventNews|fetchData|saixun/)
 })
 
-test('home and user entries open the tournament tab via switchTab', () => {
+test('home opens the tournament tab via switchTab and the user tab does not duplicate it', () => {
   const homeSource = readFileSync(new URL('../pages/index/index.vue', import.meta.url), 'utf8')
   assert.match(homeSource, /goTo\('\/pages\/tournament\/index', true\)/)
   assert.doesNotMatch(homeSource, /subPages\/tournament\/index/)
 
   const userSource = readFileSync(new URL('../pages/user/index.vue', import.meta.url), 'utf8')
-  assert.match(userSource, /openRoute\('\/pages\/tournament\/index', true\)/)
   assert.doesNotMatch(userSource, /pages\/social\/index|subPages\/tournament\/index/)
 })
 

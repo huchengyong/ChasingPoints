@@ -8,18 +8,15 @@ const unapprovedQrDomainPattern = new RegExp(unapprovedQrDomain.replace(/\./g, '
 
 const apiSource = read('../api/match.js')
 const startPayloadSource = read('../utils/start-match.js')
-const userPageSource = read('../pages/user/index.vue')
 const matchPageSource = read('../pages/match/index.vue')
 const homePageSource = read('../pages/index/index.vue')
 const playingPageSource = read('../subPages/match/playing.vue')
 const scanSources = [
   homePageSource,
   matchPageSource,
-  read('../pages/ranking/index.vue'),
-  userPageSource
+  read('../pages/ranking/index.vue')
 ]
 const qrSources = [
-  userPageSource,
   matchPageSource,
   homePageSource,
   playingPageSource
@@ -52,13 +49,9 @@ test('all match and referee QR displays render locally without a third-party QR 
 })
 
 test('local QR displays expose loading, failure, and refresh states', () => {
-  assert.match(userPageSource, /qrcodeLoading/)
-  assert.match(userPageSource, /qrcodeError/)
-  assert.match(userPageSource, /@click="generateQRCode"/)
-  assert.match(userPageSource, /v-if="qrcodeLoading"/)
-  assert.match(userPageSource, /v-else-if="qrcodeError"/)
-  assert.match(userPageSource, /v-else class="qrcode-display"/)
-  assert.match(userPageSource, /qrcodeLoading\.value = false\s+await nextTick\(\)\s+renderLocalQRCode/)
+  assert.match(homePageSource, /v-if="matchQrLoading"/)
+  assert.match(homePageSource, /matchQrFailed/)
+  assert.match(homePageSource, /@tap="loadMyMatchQRCode"/)
 
   assert.match(matchPageSource, /matchQrLoading/)
   assert.match(matchPageSource, /matchQrFailed/)

@@ -1,127 +1,81 @@
 <template>
 	<view class="user-container" :class="{ 'dark-mode': isDarkMode }">
-		<view class="main-content">
+		<view class="main-content" :class="{ 'has-float-reward': floatRewardVisible }">
 			<template v-if="!isLoggedIn">
-				<view class="guest-hero">
-					<text class="guest-eyebrow">{{ guestHeroCopy.eyebrow }}</text>
-					<text class="guest-title">{{ guestHeroCopy.title }}</text>
-					<text class="guest-description">{{ guestHeroCopy.description }}</text>
-					<view class="guest-actions">
-						<button class="hero-btn hero-btn-primary" @click="handleGoLogin">
-							<text>{{ guestHeroCopy.primaryActionText }}</text>
-						</button>
-						<button class="hero-btn hero-btn-secondary" @click="handleGuestStartPK">
-							<text>{{ guestHeroCopy.secondaryActionText }}</text>
-						</button>
-					</view>
-				</view>
-
 				<view class="guest-card">
-					<text class="guest-card-title">登录后解锁</text>
-					<view class="guest-benefits">
-						<view v-for="item in guestBenefits" :key="item.title" class="guest-benefit">
-							<view class="guest-benefit-icon">
-								<uni-icons :type="item.icon" size="20" color="#E0AE12"></uni-icons>
-							</view>
-							<text class="guest-benefit-title">{{ item.title }}</text>
-							<text class="guest-benefit-desc">{{ item.desc }}</text>
+					<view class="guest-head">
+						<view class="guest-avatar">
+							<uni-icons type="person-filled" size="30" :color="mutedIconColor"></uni-icons>
+						</view>
+						<view class="profile-copy">
+							<text class="profile-name">未登录</text>
+							<text class="guest-sub">登录后同步你的段位、战绩和好友</text>
 						</view>
 					</view>
+					<view class="guest-benefits">
+						<view v-for="item in guestBenefits" :key="item" class="guest-benefit">
+							<uni-icons type="checkmarkempty" size="16" :color="accentIconColor"></uni-icons>
+							<text>{{ item }}</text>
+						</view>
+					</view>
+					<button class="login-btn" @click="handleGoLogin">登录 / 注册</button>
 				</view>
 
-				<view class="guest-card guest-links-card">
-					<text class="guest-card-title">游客也能继续看</text>
-					<view class="guest-link" @click="openRoute('/pages/ranking/index')">
-						<view class="guest-link-copy">
-							<text class="guest-link-title">排行榜</text>
-							<text class="guest-link-desc">查看平台高手的段位与积分</text>
+				<view class="list-card">
+					<view v-for="item in guestLinks" :key="item.title" class="list-row" @click="item.handler">
+						<view class="row-icon">
+							<uni-icons :type="item.icon" size="20" :color="accentIconColor"></uni-icons>
 						</view>
-						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
-					</view>
-					<view class="guest-link" @click="openRoute('/pages/match/index', true)">
-						<view class="guest-link-copy">
-							<text class="guest-link-title">正在进行的对局</text>
-							<text class="guest-link-desc">围观实时比赛与比分进展</text>
+						<view class="row-copy">
+							<text class="row-title">{{ item.title }}</text>
+							<text class="row-desc">{{ item.desc }}</text>
 						</view>
-						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
-					</view>
-					<view class="guest-link" @click="openRoute('/pages/tournament/index', true)">
-						<view class="guest-link-copy">
-							<text class="guest-link-title">赛讯</text>
-							<text class="guest-link-desc">查看赛事资讯和赛程更新</text>
-						</view>
-						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
-					</view>
-					<view class="guest-link guest-support-link" @click="handleHelp">
-						<view class="guest-link-copy">
-							<text class="guest-link-title">帮助、投诉与举报</text>
-							<text class="guest-link-desc">无需登录即可提交问题与反馈</text>
-						</view>
-						<uni-icons type="right" size="18" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
+						<uni-icons type="right" size="16" :color="mutedIconColor"></uni-icons>
 					</view>
 				</view>
 			</template>
 
 			<template v-else>
 				<view class="profile-header">
-					<view class="profile-avatar" :class="{ 'has-rank-frame': rankAvatarFrame }" @click="handleEditProfile">
-						<image class="profile-avatar-image" :src="userInfo.avatar" mode="aspectFill"></image>
-						<image v-if="rankAvatarFrame" class="profile-avatar-frame" :src="rankAvatarFrame" mode="aspectFit"></image>
-					</view>
-					<view class="profile-copy">
-						<text class="profile-name">{{ userInfo.nickname }}</text>
-						<view class="profile-chips">
-							<view class="profile-chip" @click="handleOpenMemberCenter">
-								<text>{{ profileLevelText }}</text>
-							</view>
-							<view class="profile-chip" @click="handleOpenReputation">
-								<text>{{ reputationEntryStatusText }}</text>
+					<view class="profile-main" @click="handleEditProfile">
+						<view class="profile-avatar" :class="{ 'has-rank-frame': rankAvatarFrame }">
+							<image class="profile-avatar-image" :src="userInfo.avatar" mode="aspectFill"></image>
+							<image v-if="rankAvatarFrame" class="profile-avatar-frame" :src="rankAvatarFrame" mode="aspectFit"></image>
+						</view>
+						<view class="profile-copy">
+							<text class="profile-name">{{ userInfo.nickname }}</text>
+							<view class="profile-chips">
+								<view
+									class="profile-chip"
+									:class="{ 'profile-chip--vip': memberEntry.state === 'active' }"
+									@click.stop="handleOpenMemberCenter"
+								>
+									<text>{{ profileLevelText }}</text>
+								</view>
+								<view
+									class="profile-chip"
+									:class="{ 'profile-chip--danger': reputationChip.restricted }"
+									@click.stop="handleOpenReputation"
+								>
+									<text>{{ reputationChip.text }}</text>
+								</view>
 							</view>
 						</view>
 					</view>
 					<view class="profile-actions">
 						<button class="icon-btn" @click="handleNotificationCenter">
-							<uni-icons type="notification-filled" size="20" :color="isDarkMode ? '#f7e7a8' : '#6E6242'"></uni-icons>
+							<uni-icons type="notification-filled" size="20" :color="secondaryIconColor"></uni-icons>
 							<view v-if="pendingTotal > 0" class="icon-btn-badge">
 								<text>{{ pendingBadgeText }}</text>
 							</view>
 						</button>
 						<button class="icon-btn" @click="handleSettings">
-							<uni-icons type="gear" size="21" :color="isDarkMode ? '#f7e7a8' : '#6E6242'"></uni-icons>
+							<uni-icons type="gear" size="21" :color="secondaryIconColor"></uni-icons>
 						</button>
 					</view>
 				</view>
 
-				<view class="identity-card" :class="{ 'member-active': isActiveMember }">
-					<view
-						v-if="memberHeroStrip.visible"
-						class="member-hero-strip"
-						:class="`member-${memberHeroStrip.state}`"
-						@click="handleOpenMemberCenter"
-					>
-						<view class="member-hero-copy">
-							<text class="member-hero-title">{{ memberHeroStrip.title }}</text>
-							<text class="member-hero-level">{{ memberHeroStrip.levelText }}</text>
-						</view>
-						<text class="member-hero-description">{{ memberHeroStrip.description }}</text>
-					</view>
-
-					<view v-if="!hasRankCache && (coreDataLoading || rankLoading)" class="rank-skeleton">
-						<view class="skeleton-circle"></view>
-						<view class="rank-skeleton-copy">
-							<view class="skeleton-line skeleton-line-wide"></view>
-							<view class="skeleton-line skeleton-line-short"></view>
-						</view>
-					</view>
-					<view v-else class="rank-row" @click="handleRankExplain">
-						<image class="rank-icon" :src="displayRank.icon" mode="aspectFit"></image>
-						<view class="rank-copy">
-							<text class="rank-title">{{ currentRankGameLabel }} · {{ displayRank.name }}</text>
-							<text class="rank-meta">排位分 {{ displayRank.score }} · {{ rankProgressText }}</text>
-						</view>
-						<uni-icons type="right" size="18" color="#ffffff"></uni-icons>
-					</view>
-
+				<view class="rank-card">
 					<view class="rank-tabs">
 						<view
 							v-for="item in rankGameTabs"
@@ -133,127 +87,87 @@
 							<text>{{ item.label }}</text>
 						</view>
 					</view>
-				</view>
 
-				<view class="challenge-status-strip" v-if="currentChallenge" @click="openChallengeFromHome">
-					<view class="challenge-strip-copy">
-						<text class="challenge-strip-title">{{ challengeStripTitle }}</text>
-						<text class="challenge-strip-sub">{{ challengeStripSub }}</text>
+					<view v-if="!hasRankCache && (coreDataLoading || rankLoading)" class="rank-skeleton">
+						<view class="skeleton-circle"></view>
+						<view class="rank-skeleton-copy">
+							<view class="skeleton-line skeleton-line-wide"></view>
+							<view class="skeleton-line skeleton-line-short"></view>
+						</view>
 					</view>
-					<view class="challenge-strip-action">
-						<text>{{ Number(currentChallenge.status) === 6 && currentChallenge.match_id > 0 ? '继续比赛' : '进入' }}</text>
+					<view v-else class="rank-body" @click="handleRankExplain">
+						<view class="rank-main">
+							<image class="rank-icon" :src="rankView.icon" mode="aspectFit"></image>
+							<view class="rank-copy">
+								<text class="rank-name">{{ rankView.name }}</text>
+								<text v-if="rankView.ranked" class="rank-score">排位分 {{ rankView.score }}</text>
+							</view>
+							<view class="rank-more">
+								<text>段位说明</text>
+								<uni-icons type="right" size="14" color="rgba(255, 255, 255, 0.72)"></uni-icons>
+							</view>
+						</view>
+						<view v-if="rankView.ranked" class="rank-progress">
+							<view class="rank-progress-fill" :style="{ width: `${rankView.progress}%` }"></view>
+						</view>
+						<text class="rank-hint">{{ rankView.hint }}</text>
 					</view>
 				</view>
-				<view class="challenge-status-unavailable" v-if="isLoggedIn && !activityStore.challengeAvailable" @click="retryChallengeActivity">
-					<text class="challenge-status-unavailable__text">约球状态读取失败，点击重试</text>
-				</view>
-				<view class="status-card" :class="{ ongoing: statusCard.type === 'ongoing', loading: statusCard.loading }">
-					<template v-if="statusCard.loading">
-						<view class="status-skeleton-head">
-							<view class="skeleton-line skeleton-line-medium"></view>
-							<view class="skeleton-pill"></view>
+
+				<view class="me-section">
+					<view class="section-header">
+						<view class="section-title-row">
+							<text class="section-title">生涯数据</text>
+							<text class="section-caption">全部球种</text>
 						</view>
-						<view class="status-skeleton-body">
-							<view class="skeleton-circle skeleton-player"></view>
-							<view class="skeleton-score"></view>
-							<view class="skeleton-circle skeleton-player"></view>
+						<view class="section-more" @click="handleStatsDetail">
+							<text>竞技分析</text>
+							<uni-icons type="right" size="14" :color="mutedIconColor"></uni-icons>
 						</view>
-						<view class="skeleton-button"></view>
-					</template>
-
-					<template v-else>
-						<view class="status-heading">
-							<text class="status-title">{{ statusCard.title }}</text>
-							<view v-if="statusCard.statusText" class="status-pill" :class="{ referee: homepageMode === 'ongoing-referee' }">
-								<text>{{ statusCard.statusText }}</text>
-							</view>
+					</view>
+					<view v-if="careerState === 'empty'" class="career-empty">
+						<text class="empty-title">还没有对局记录</text>
+						<text class="empty-desc">打完第一场，场次、胜率和连胜都会记在这里</text>
+						<view class="empty-action" @click="goStartFirstMatch">
+							<text>去发起对局</text>
 						</view>
-
-						<template v-if="statusCard.type === 'ongoing'">
-							<view class="match-participants">
-								<view class="match-player">
-									<image class="match-player-avatar" :src="statusPlayers[0].avatar" mode="aspectFill"></image>
-									<text class="match-player-name">{{ statusPlayers[0].name }}</text>
-								</view>
-								<text class="match-score">{{ statusCard.scoreText }}</text>
-								<view class="match-player match-player-right">
-									<image class="match-player-avatar" :src="statusPlayers[1].avatar" mode="aspectFill"></image>
-									<text class="match-player-name">{{ statusPlayers[1].name }}</text>
-								</view>
-							</view>
-							<text class="status-description status-match-description">{{ statusCard.description }}</text>
-							<button class="status-action-btn status-action-primary" @click="handleStatusAction(statusCard.action)">
-								<text>{{ statusCard.actionText }}</text>
-							</button>
-						</template>
-
-						<template v-else>
-							<view class="empty-status-copy">
-								<text class="status-eyebrow">{{ statusCard.eyebrow }}</text>
-								<text class="status-description">{{ statusCard.description }}</text>
-							</view>
-							<view class="status-actions">
-								<button
-									v-if="showPrimaryStatusAction"
-									class="status-action-btn status-action-primary"
-									@click="handleStatusAction(statusCard.action)"
-								>
-									<text>{{ statusCard.actionText }}</text>
-								</button>
-								<button
-									v-if="showSecondaryStatusAction"
-									class="status-action-btn status-action-secondary"
-									@click="handleStatusAction(statusCard.secondaryAction)"
-								>
-									<text>{{ statusCard.secondaryActionText }}</text>
-								</button>
-							</view>
-						</template>
-					</template>
-				</view>
-
-				<view class="metrics-card">
-					<view v-for="item in metricCards" :key="item.key" class="metric-item">
-						<text class="metric-value" :class="{ accent: item.key === 'win-rate' }">{{ item.value }}</text>
-						<text class="metric-label">{{ item.label }}</text>
+					</view>
+					<view v-else class="metrics-card" @click="handleStatsDetail">
+						<view v-for="item in metricCards" :key="item.key" class="metric-item">
+							<text class="metric-value" :class="{ accent: item.key === 'win-rate' }">{{ item.value }}</text>
+							<text class="metric-label">{{ item.label }}</text>
+						</view>
+					</view>
+					<view v-if="careerState === 'error'" class="career-error" @click="retryHomepageData">
+						<text>生涯数据读取失败，点击重试</text>
 					</view>
 				</view>
 
 				<view class="shortcuts-card">
-					<text class="section-title">{{ sectionTitles.quickActions }}</text>
-					<view class="shortcut-grid">
-						<view v-for="item in quickActions" :key="item.label" class="shortcut-item" @click="item.handler">
-							<view class="shortcut-icon" :class="item.iconClass">
-								<uni-icons :type="item.icon" size="22" :color="item.iconColor"></uni-icons>
-							</view>
-							<text class="shortcut-label">{{ item.label }}</text>
+					<view v-for="item in quickActions" :key="item.label" class="shortcut-item" @click="item.handler">
+						<view class="shortcut-icon">
+							<uni-icons :type="item.icon" size="22" :color="accentIconColor"></uni-icons>
 						</view>
+						<text class="shortcut-label">{{ item.label }}</text>
 					</view>
 				</view>
 
 				<view v-if="compactRewardEntry.inline" class="reward-entry">
-					<view class="reward-entry-copy">
-						<view class="reward-entry-heading">
-							<text class="reward-entry-title">{{ compactRewardEntry.title }}</text>
-							<view class="status-pill">
-								<text>{{ compactRewardEntry.statusText }}</text>
-							</view>
-						</view>
-						<text class="reward-entry-description">{{ compactRewardEntry.description }}</text>
+					<view class="reward-entry-heading">
+						<text class="reward-entry-title">{{ compactRewardEntry.title }}</text>
+						<text class="reward-entry-status">{{ compactRewardEntry.statusText }}</text>
 					</view>
+					<text class="reward-entry-description">{{ compactRewardEntry.description }}</text>
 				</view>
 
-				<view class="services-card">
-					<view class="section-heading">
-						<text class="section-title">{{ sectionTitles.secondaryServices }}</text>
-						<text class="section-hint">按需查看</text>
-					</view>
-					<view class="service-grid">
-						<view class="service-item" @click="handleStatsDetail"><text>竞技分析</text></view>
-						<view class="service-item" @click="openRoute('/subPages/rules/index')"><text>规则百科</text></view>
-						<view class="service-item" @click="openRoute('/subPages/season/index')"><text>赛季档案</text></view>
-						<view class="service-item" @click="openRoute('/subPages/venue/index')"><text>附近球馆</text></view>
-						<view class="service-item" @click="openRoute('/pages/tournament/index', true)"><text>赛事情报</text></view>
+				<view class="list-card">
+					<view v-for="item in serviceLinks" :key="item.title" class="list-row" @click="item.handler">
+						<view class="row-icon">
+							<uni-icons :type="item.icon" size="20" :color="accentIconColor"></uni-icons>
+						</view>
+						<text class="row-title">{{ item.title }}</text>
+						<text v-if="item.value" class="row-value">{{ item.value }}</text>
+						<uni-icons type="right" size="16" :color="mutedIconColor"></uni-icons>
 					</view>
 				</view>
 			</template>
@@ -268,86 +182,37 @@
 				<view class="float-reward-action">
 					<text>{{ compactRewardEntry.actionText }}</text>
 					<view class="float-reward-close" @click.stop="handleFloatRewardClose">
-						<uni-icons type="closeempty" size="14" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
+						<uni-icons type="closeempty" size="14" :color="mutedIconColor"></uni-icons>
 					</view>
 				</view>
 			</view>
 		</view>
-
-		<view v-if="showQrCodeModal" class="qrcode-modal-overlay" @click="closeQrCodeModal">
-			<view class="qrcode-modal-container" @click.stop>
-				<view class="qrcode-modal-header">
-					<text class="qrcode-modal-title">{{ qrCodeModalCopy.title }}</text>
-					<view class="qrcode-modal-close" @click="closeQrCodeModal">
-						<uni-icons type="closeempty" size="24" :color="isDarkMode ? '#9f926e' : '#6E6242'"></uni-icons>
-					</view>
-				</view>
-				<view class="qrcode-modal-body">
-					<view v-if="qrcodeLoading" class="qrcode-loading">
-						<uni-icons type="spinner-cycle" size="48" color="#E0AE12"></uni-icons>
-						<text class="qrcode-loading-text">生成中...</text>
-					</view>
-					<view v-else-if="qrcodeError" class="qrcode-loading">
-						<text class="qrcode-loading-text">{{ qrcodeError }}</text>
-						<text class="qrcode-helper" @click="generateQRCode">点击刷新</text>
-					</view>
-					<view v-else class="qrcode-display">
-						<canvas
-							v-if="qrcodeContent"
-							canvas-id="user-match-invite-qrcode"
-							id="user-match-invite-qrcode"
-							class="qrcode-image"
-							:width="240"
-							:height="240"
-						/>
-						<uni-icons v-else type="checkbox" size="160" color="#27272a"></uni-icons>
-					</view>
-				</view>
-				<view class="qrcode-modal-footer">
-					<text class="qrcode-hint">{{ qrCodeModalCopy.hint }}</text>
-					<text class="qrcode-helper">{{ qrCodeModalCopy.helper }}</text>
-				</view>
-			</view>
-		</view>
-
-		<gameTypeModal v-model:visible="showGameTypeModal" :default-type="defaultGameType" @confirm="handleGameTypeConfirm" />
 	</view>
 </template>
 
 <script setup>
-import { ref, reactive, computed, nextTick, onUnmounted } from 'vue'
-import { onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app'
+import { ref, reactive, computed } from 'vue'
+import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useActivityStore } from '@/store/activity.js'
 import { useUserOverviewStore } from '@/store/userOverview.js'
 import { useUserStore } from '@/store/user.js'
 import { usePageTheme } from '@/utils/page-theme.js'
-import { getMatchQRCode, previewMatchInvite, startMatch } from '@/api/match.js'
-import { renderLocalQRCode } from '@/utils/local-qrcode.js'
 import { useRankStore } from '@/store/rank.js'
-import { userWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import {
-	resolveGuestHeroCopy,
+	resolveCompactRewardEntry,
+	resolveCoreMetrics,
+	resolveMemberEntry,
 	resolveMemberRankAvatarFrame,
-	resolveSectionTitles,
-	resolveStatusActionVisibility,
-	resolveUserHomepageModel
+	resolveRankCardView,
+	resolveReputationChip
 } from '@/utils/user-homepage.js'
-import { resolveQrCodeModalCopy } from '@/utils/pk-entry-actions.js'
-import gameTypeModal from '@/components/gameTypeModal.vue'
 import { useNotificationStore } from '@/store/notification.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
-import { GAME_TYPE_LABEL_MAP, GAME_TYPE_TABS } from '@/utils/game-types.js'
+import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { markAsRead } from '@/api/notification.js'
 import { buildHonorWallUrl, presentLatestSeasonRollover } from '@/utils/honor-wall.js'
-import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
-import { buildStartMatchPayload } from '@/utils/start-match.js'
-import { readDefaultGameType, saveDefaultGameType } from '@/utils/game-type-preference.js'
+import { readDefaultGameType } from '@/utils/game-type-preference.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
-import {
-	POST_LOGIN_ACTIONS,
-	consumePostLoginIntent,
-	setPostLoginIntent
-} from '@/utils/post-login-intent.js'
 import {
 	getFavoriteVenueRewardPopupStorageKey,
 	getFavoriteVenueRewardFloatSnoozeKey,
@@ -356,7 +221,6 @@ import {
 	resolveFavoriteVenueRewardFloatSnoozeMigration
 } from '@/utils/favorite-venue-reward.js'
 import { resolveMemberGrowthCard } from '@/utils/member-center.js'
-import { scanAndResolveMatchCode } from '@/utils/match-scan.js'
 
 const userStore = useUserStore()
 const activityStore = useActivityStore()
@@ -366,69 +230,26 @@ const { isDarkMode } = usePageTheme()
 const notificationStore = useNotificationStore()
 const friendRequestStore = useFriendRequestStore()
 
-const guestBenefits = [
-	{ icon: 'flag-filled', title: '真实比分', desc: '沉淀每一场 PK 记录' },
-	{ icon: 'star-filled', title: '段位成长', desc: '持续追踪段位与积分' },
-	{ icon: 'bars', title: '竞技画像', desc: '查看胜率、连胜和对手' },
-	{ icon: 'chat', title: '集中提醒', desc: '不错过好友和比赛消息' }
-]
+const guestBenefits = ['记录每一局真实比分', '四个球种分别积累排位分', '查看胜率、连胜和过往对手']
 
-const guestHeroCopy = resolveGuestHeroCopy()
-const sectionTitles = resolveSectionTitles()
-const qrCodeModalCopy = resolveQrCodeModalCopy()
+const accentIconColor = computed(() => (isDarkMode.value ? '#F0C542' : '#C69200'))
+const secondaryIconColor = computed(() => (isDarkMode.value ? '#D7C89B' : '#6E6242'))
+const mutedIconColor = computed(() => (isDarkMode.value ? '#9F926E' : '#9A8C67'))
 
-const showGameTypeModal = ref(false)
-const showQrCodeModal = ref(false)
-const qrcodeLoading = ref(false)
-const qrcodeContent = ref('')
-const qrcodeError = ref('')
-const selectedGameType = ref(null)
-const defaultGameType = ref(0)
-const currentRankGameType = ref(3)
-const currentUserId = computed(() => Number(userStore.userId) || 0)
-const currentMatch = computed(() => (isLoggedIn.value ? activityStore.currentMatch : null))
-const currentChallenge = computed(() => (isLoggedIn.value ? activityStore.currentChallenge : null))
-const challengeStripTitle = computed(() => {
-	const item = currentChallenge.value
-	if (!item) return ''
-	if (Number(item.status) === 6) return '对局进行中'
-	if (Number(item.status) === 1) {
-		if (Number(item.waiting_user_id) === currentUserId.value) return '你已进入，等待对方'
-		if (Number(item.waiting_user_id) > 0) return '对方已进入，等你开始'
-		return '已约好，待进入'
-	}
-	if (Number(item.status) === 0) return item.from_user_id === currentUserId.value ? '等待对方回应' : '收到约球邀请'
-	return ''
-})
-const challengeStripSub = computed(() => {
-	const item = currentChallenge.value
-	if (!item) return ''
-	const opponentName = item.from_user_id === currentUserId.value ? item.to_nickname : item.from_nickname
-	return `${opponentName || '球友'} · ${GAME_TYPE_LABEL_MAP[item.game_type] || '台球'}`
-})
-const openChallengeFromHome = () => {
-	const item = currentChallenge.value
-	if (!item) return
-	if (Number(item.status) === 6 && item.match_id > 0) {
-		uni.navigateTo({ url: `/subPages/match/playing?match_id=${item.match_id}` })
-		return
-	}
-	uni.navigateTo({ url: `/subPages/match/challengeWaiting?challenge_id=${item.id}` })
-}
-
-const retryChallengeActivity = () => {
-	if (!isLoggedIn.value) return
-	activityStore.fetch(getReadIdentity(), { force: true, silent: true })
-}
+const rankGameTabs = GAME_TYPE_TABS
+// 段位卡默认展示用户在设置里选的常用球种。
+const currentRankGameType = ref(readDefaultGameType(uni, userStore.userId) || rankGameTabs[0].value)
 const rankInfo = computed(() => rankStore.rankInfoMap[currentRankGameType.value] || null)
+const rankView = computed(() => resolveRankCardView(rankInfo.value))
 const favoriteVenueRewardStatus = ref(null)
 const memberStatus = ref(null)
 const floatRewardVisible = ref(false)
 const reputationStatus = ref(null)
 const coreDataLoading = ref(false)
 const homepageLoading = ref(false)
+const statsReady = ref(false)
+const statsFailed = ref(false)
 const rankLoading = computed(() => rankStore.loading)
-const rankGameTabs = GAME_TYPE_TABS
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const hasRankCache = computed(() => (
@@ -447,45 +268,18 @@ const userStats = reactive({
 	totalMatches: 0,
 	wins: 0,
 	winRate: 0,
-	maxStreak: 0,
-	loading: false
+	maxStreak: 0
 })
 
-const memberGrowthCard = computed(() => resolveMemberGrowthCard(memberStatus.value || {}, new Date()))
-const memberLevelText = computed(() => memberGrowthCard.value.levelLabel || 'Lv1')
-const profileLevelText = computed(() => coreDataLoading.value ? '等级同步中' : memberLevelText.value)
-const reputationEntryStatusText = computed(() => {
-	if (reputationStatus.value?.status_text) return reputationStatus.value.status_text
-	return coreDataLoading.value ? '信誉同步中' : '信誉暂不可用'
+const memberEntry = computed(() => resolveMemberEntry(memberStatus.value || {}, new Date()))
+const memberLevelText = computed(() => resolveMemberGrowthCard(memberStatus.value || {}, new Date()).levelLabel || 'Lv1')
+// 已有缓存时刷新不闪「同步中」，只有首次读取才显示占位文案。
+const profileLevelText = computed(() => {
+	if (!memberStatus.value && coreDataLoading.value) return '等级同步中'
+	return memberEntry.value.state === 'active' ? `VIP · ${memberLevelText.value}` : memberLevelText.value
 })
-
-const displayRank = computed(() => ({
-	name: rankInfo.value?.name || '未定级',
-	icon: rankInfo.value?.icon || '/static/images/ranks/rank_bronze.png',
-	score: rankInfo.value?.rank_score || 0,
-	progress: rankInfo.value?.progress || 0,
-	nextName: rankInfo.value?.next_name || '下一段位',
-	nextScore: rankInfo.value?.next_score || 0
-}))
-const currentRankGameLabel = computed(() => rankGameTabs.find(item => item.value === currentRankGameType.value)?.label || '中式八球')
-
-const homepageModel = computed(() => resolveUserHomepageModel({
-	isLoggedIn: isLoggedIn.value,
-	isLoading: coreDataLoading.value,
-	currentMatch: currentMatch.value,
-	currentUser: userInfo.value,
-	stats: userStats,
-	rankInfo: rankInfo.value,
-	memberStatus: memberStatus.value,
-	memberLevelText: memberLevelText.value,
-	rewardStatus: favoriteVenueRewardStatus.value
-}))
-const homepageMode = computed(() => homepageModel.value.mode)
-const statusCard = computed(() => homepageModel.value.statusCard)
-const metricCards = computed(() => homepageModel.value.metrics)
-const memberHeroStrip = computed(() => homepageModel.value.memberHeroStrip)
-const compactRewardEntry = computed(() => homepageModel.value.rewardEntry)
-const isActiveMember = computed(() => memberHeroStrip.value.state === 'active')
+const reputationChip = computed(() => resolveReputationChip(reputationStatus.value, coreDataLoading.value))
+const compactRewardEntry = computed(() => resolveCompactRewardEntry(favoriteVenueRewardStatus.value || {}))
 const rankAvatarFrame = computed(() => resolveMemberRankAvatarFrame({
 	isLoggedIn: isLoggedIn.value,
 	memberStatus: memberStatus.value,
@@ -493,45 +287,44 @@ const rankAvatarFrame = computed(() => resolveMemberRankAvatarFrame({
 	rankLoading: rankLoading.value && !hasRankCache.value,
 	now: new Date()
 }))
-const statusPlayers = computed(() => statusCard.value.players.map(player => ({
-	...player,
-	avatar: resolveAvatarUrl(player.avatar, player.id)
-})))
-const statusActionVisibility = computed(() => resolveStatusActionVisibility({ statusCard: statusCard.value }))
-const showPrimaryStatusAction = computed(() => statusActionVisibility.value.showPrimary)
-const showSecondaryStatusAction = computed(() => statusActionVisibility.value.showSecondary)
 
-const rankProgressText = computed(() => {
-	if (rankInfo.value?.level >= 6) return '已达到最高段位'
-	if (!rankInfo.value) return '完成首场比赛后开始定级'
-	return `进度 ${displayRank.value.progress}% · 下一段位 ${displayRank.value.nextName}`
+const careerState = computed(() => {
+	if (statsReady.value) return userStats.totalMatches > 0 ? 'ready' : 'empty'
+	return statsFailed.value && !coreDataLoading.value ? 'error' : 'loading'
 })
+const metricCards = computed(() => resolveCoreMetrics({
+	stats: userStats,
+	isLoading: !statsReady.value
+}))
 
-const quickActions = computed(() => ([
-	{ label: '比赛记录', icon: 'list', iconColor: '#b77908', iconClass: 'gold', handler: handleMatchHistory },
-	{ label: '过往对手', icon: 'contact', iconColor: '#2563eb', iconClass: 'blue', handler: handleOpponentRecord },
-	{ label: '荣誉墙', icon: 'medal', iconColor: '#7c3aed', iconClass: 'purple', handler: handleAchievement },
-	{ label: '好友', icon: 'person-filled', iconColor: '#0f766e', iconClass: 'teal', handler: handleFriendList }
+const quickActions = [
+	{ label: '比赛记录', icon: 'list', handler: () => openRoute('/subPages/user/matchHistory') },
+	{ label: '过往对手', icon: 'contact', handler: () => openRoute('/subPages/user/opponentRecord') },
+	{ label: '荣誉墙', icon: 'medal', handler: () => handleAchievement() },
+	{ label: '好友', icon: 'person', handler: () => openRoute('/subPages/social/friendList') }
+]
+
+const serviceLinks = computed(() => ([
+	{ title: '会员中心', icon: 'vip', value: memberEntry.value.text, handler: handleOpenMemberCenter },
+	{ title: '赛季档案', icon: 'calendar', value: '', handler: () => openRoute('/subPages/season/index') },
+	{ title: '规则百科', icon: 'help', value: '', handler: () => openRoute('/subPages/rules/index') },
+	{ title: '附近球馆', icon: 'location', value: '', handler: () => openRoute('/subPages/venue/index') }
 ]))
+
+const guestLinks = [
+	{ title: '排行榜', desc: '各球种高手的段位与积分', icon: 'medal', handler: () => openRoute('/pages/ranking/index') },
+	{ title: '规则百科', desc: '常见台球规则与术语', icon: 'help', handler: () => openRoute('/subPages/rules/index') },
+	{ title: '帮助、投诉与举报', desc: '无需登录即可提交问题与反馈', icon: 'chatbubble', handler: () => handleHelp() }
+]
 
 onShow(() => {
 	if (isLoggedIn.value) {
 		Promise.resolve(loadHomepageData()).finally(showLatestSeasonRollover)
-		connectUserWS()
-		handlePendingPostLoginIntent()
 	} else {
 		resetHomepageState()
 		notificationStore.clearUnread()
 		friendRequestStore.clearPendingCount()
 	}
-})
-
-onHide(() => {
-	unsubscribeUserWS()
-})
-
-onUnmounted(() => {
-	unsubscribeUserWS()
 })
 
 const getReadIdentity = () => ({
@@ -541,6 +334,8 @@ const getReadIdentity = () => ({
 
 const applyUserOverview = (overview = {}) => {
 	const stats = overview.stats?.success ? overview.stats : null
+	statsReady.value = Boolean(stats)
+	statsFailed.value = !stats
 	userStats.totalMatches = stats?.total_matches || 0
 	userStats.wins = stats?.wins || 0
 	userStats.winRate = stats?.win_rate || 0
@@ -557,7 +352,6 @@ const loadHomepageData = async ({ force = false } = {}) => {
 
 	homepageLoading.value = true
 	coreDataLoading.value = true
-	userStats.loading = true
 	const identity = getReadIdentity()
 	try {
 		const [, overviewResult] = await Promise.allSettled([
@@ -572,12 +366,15 @@ const loadHomepageData = async ({ force = false } = {}) => {
 		}
 	} finally {
 		coreDataLoading.value = false
-		userStats.loading = false
 		homepageLoading.value = false
 	}
 
 	migrateFavoriteVenueRewardFloatSnooze()
 	syncFloatRewardVisibility()
+}
+
+const retryHomepageData = () => {
+	loadHomepageData({ force: true })
 }
 
 const resetHomepageState = () => {
@@ -590,6 +387,8 @@ const resetHomepageState = () => {
 	floatRewardVisible.value = false
 	coreDataLoading.value = false
 	homepageLoading.value = false
+	statsReady.value = false
+	statsFailed.value = false
 	userStats.totalMatches = 0
 	userStats.wins = 0
 	userStats.winRate = 0
@@ -665,36 +464,6 @@ const handleFloatRewardClose = () => {
 	floatRewardVisible.value = false
 }
 
-const connectUserWS = async () => {
-	try {
-		await userWS.connect()
-		userWS.off(WS_MESSAGE_TYPES.MATCH_START, handleMatchStart)
-		userWS.on(WS_MESSAGE_TYPES.MATCH_START, handleMatchStart)
-	} catch (error) {
-		console.error('[UserPage] 用户WS连接失败:', error)
-	}
-}
-
-const unsubscribeUserWS = () => {
-	userWS.off(WS_MESSAGE_TYPES.MATCH_START, handleMatchStart)
-}
-
-const handleMatchStart = (data) => {
-	if (showQrCodeModal.value) showQrCodeModal.value = false
-
-	uni.showToast({
-		title: `${data.opponent_name || '对手'} 向你发起了对局`,
-		icon: 'none',
-		duration: 2000
-	})
-
-	setTimeout(() => {
-		uni.navigateTo({
-			url: `/subPages/match/playing?match_id=${data.match_id}&game_type=${data.game_type}&opponent_name=${encodeURIComponent(data.opponent_name || '对手')}&opponent_avatar=${encodeURIComponent(data.opponent_avatar || '')}`
-		})
-	}, 1000)
-}
-
 const openRoute = (url, isTab = false) => {
 	if (isTab) {
 		uni.switchTab({ url })
@@ -703,142 +472,13 @@ const openRoute = (url, isTab = false) => {
 	uni.navigateTo({ url })
 }
 
-const handleStatusAction = (action) => {
-	if (action === 'continue') {
-		handleContinueCurrentMatch()
-		return
-	}
-	if (action === 'show_pk_code') {
-		handleQrCode()
-		return
-	}
-	handleStartPK()
-}
-
-const handleGoLogin = (postLoginAction = '') => {
-	setPostLoginIntent(postLoginAction)
+const handleGoLogin = () => {
 	uni.navigateTo({ url: '/pages/login/login' })
 }
 
-const handleGuestStartPK = () => {
-	handleGoLogin(POST_LOGIN_ACTIONS.START_PK)
-}
-
-const handlePendingPostLoginIntent = () => {
-	const pendingIntent = consumePostLoginIntent()
-
-	if (pendingIntent === POST_LOGIN_ACTIONS.START_PK) {
-		handleStartPK()
-		return
-	}
-
-	if (pendingIntent === POST_LOGIN_ACTIONS.SHOW_PK_CODE) handleQrCode()
-}
-
-const handleStartPK = () => {
-	if (!isLoggedIn.value) {
-		handleGoLogin()
-		return
-	}
-	defaultGameType.value = readDefaultGameType(uni, userStore.userId)
-	showGameTypeModal.value = true
-}
-
-const handleGameTypeConfirm = ({ gameType, setAsDefault } = {}) => {
-	if (setAsDefault) {
-		defaultGameType.value = saveDefaultGameType(uni, userStore.userId, gameType)
-	}
-	selectedGameType.value = gameType
-	handleScanCode()
-}
-
-const handleScanCode = async () => {
-	const scanAction = await scanAndResolveMatchCode({
-		uniApi: uni,
-		previewMatchInvite
-	})
-	if (scanAction.type === 'cancelled') return
-	if (scanAction.type === 'error') {
-		uni.showToast({ title: scanAction.message || '扫码失败', icon: 'none' })
-		return
-	}
-	if (scanAction.type !== 'start_match') {
-		uni.showToast({ title: '请扫描匹配二维码发起对局', icon: 'none' })
-		return
-	}
-	await handleMatchResult(scanAction)
-}
-
-const handleMatchResult = async (scanAction) => {
-	try {
-		const opponentData = scanAction.opponent
-
-		uni.showLoading({ title: '匹配中...', mask: true })
-		const res = await startMatch(buildStartMatchPayload({
-			gameType: selectedGameType.value,
-			opponent: opponentData,
-			inviteToken: scanAction.inviteToken
-		}))
-		uni.hideLoading()
-
-		handleStartMatchOutcome(resolveStartMatchGuardAction({
-			response: res,
-			selectedGameType: selectedGameType.value,
-			scannedOpponent: opponentData
-		}))
-	} catch (error) {
-		uni.hideLoading()
-		console.error('处理匹配结果失败:', error)
-		uni.showToast({ title: '匹配失败', icon: 'none' })
-	}
-}
-
-const navigateToPlayingMatch = (match) => {
-	uni.navigateTo({ url: buildPlayingRoute(match) })
-}
-
-const handleStartMatchOutcome = (outcome) => {
-	if (outcome.type === 'navigate' || outcome.type === 'resume') {
-		navigateToPlayingMatch(outcome.match)
-		return
-	}
-
-	if (outcome.type === 'prompt_self_ongoing') {
-		uni.showModal({
-			title: '你有未结束的对局',
-			content: outcome.message,
-			confirmText: '进入该对局',
-			cancelText: '稍后处理',
-			success: ({ confirm }) => {
-				if (confirm) navigateToPlayingMatch(outcome.match)
-			}
-		})
-		return
-	}
-
-	uni.showToast({ title: outcome.message || '创建对局失败', icon: 'none' })
-}
-
-const handleContinueCurrentMatch = () => {
-	if (!currentMatch.value) {
-		handleStartPK()
-		return
-	}
-
-	navigateToPlayingMatch({
-		match_id: currentMatch.value.id,
-		game_type: currentMatch.value.game_type || 3,
-		opponent_name: currentMatch.value.opponent_name || '对手',
-		opponent_avatar: currentMatch.value.opponent_avatar || ''
-	})
-}
-
-const handleMatchHistory = () => {
-	uni.navigateTo({ url: '/subPages/user/matchHistory' })
-}
-
-const handleOpponentRecord = () => {
-	uni.navigateTo({ url: '/subPages/user/opponentRecord' })
+// 发起对局统一放在首页与观赛页，「我的」只在没有战绩时引导过去。
+const goStartFirstMatch = () => {
+	openRoute('/pages/index/index', true)
 }
 
 const handleRankExplain = () => {
@@ -859,10 +499,6 @@ const showLatestSeasonRollover = () => {
 			notificationStore.decrementUnread(getReadIdentity())
 		}
 	}).catch(error => console.error('展示换季结果失败:', error))
-}
-
-const handleFriendList = () => {
-	uni.navigateTo({ url: '/subPages/social/friendList' })
 }
 
 const handleStatsDetail = () => {
@@ -915,47 +551,6 @@ const handleOpenMemberCenter = () => {
 
 const handleOpenReputation = () => {
 	uni.navigateTo({ url: '/subPages/user/reputation' })
-}
-
-const handleQrCode = () => {
-	showQrCodeModal.value = true
-	generateQRCode()
-}
-
-const closeQrCodeModal = () => {
-	showQrCodeModal.value = false
-	qrcodeLoading.value = false
-	qrcodeContent.value = ''
-	qrcodeError.value = ''
-}
-
-const generateQRCode = async () => {
-	if (!isLoggedIn.value) return
-
-	qrcodeLoading.value = true
-	qrcodeContent.value = ''
-	qrcodeError.value = ''
-	try {
-		const res = await getMatchQRCode()
-		if (res.success && res.qrcode_data) {
-			qrcodeContent.value = res.qrcode_data
-			qrcodeLoading.value = false
-			await nextTick()
-			renderLocalQRCode({
-				canvasId: 'user-match-invite-qrcode',
-				content: qrcodeContent.value,
-				size: 240,
-				uniApi: uni
-			})
-		} else {
-			qrcodeLoading.value = false
-			qrcodeError.value = res?.message || '二维码生成失败，请点击刷新'
-		}
-	} catch (error) {
-		console.error('生成本地二维码失败:', error)
-		qrcodeLoading.value = false
-		qrcodeError.value = '二维码生成失败，请点击刷新'
-	}
 }
 </script>
 

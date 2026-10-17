@@ -41,46 +41,6 @@ const toSafeText = (value, fallback = '') => {
   return typeof value === 'string' && value.trim() ? value.trim() : fallback
 }
 
-export const resolveGuestHeroCopy = () => ({
-  eyebrow: '个人竞技主页',
-  title: '登录后，解锁你的个人竞技主页',
-  description: '记录比分、查看段位变化、沉淀每一场对局，挑战和消息也会集中在这里。',
-  primaryActionText: '登录/注册',
-  secondaryActionText: '登录后发起 PK'
-})
-
-export const resolveSectionTitles = () => ({
-  stats: '核心指标',
-  quickActions: '常用入口',
-  secondaryServices: '竞技服务',
-  settings: '设置与支持'
-})
-
-export const resolveUserHomepageMode = ({
-  isLoggedIn = false,
-  isLoading = false,
-  currentMatch = null,
-  hasCurrentMatch = false,
-  totalMatches = 0,
-  hasRecentMatch = false
-} = {}) => {
-  if (!isLoggedIn) return 'guest'
-  if (isLoading) return 'loading'
-
-  if (currentMatch || hasCurrentMatch) {
-    return currentMatch?.viewer_role === 'referee' ? 'ongoing-referee' : 'ongoing-player'
-  }
-
-  return toSafeNumber(totalMatches) > 0 || hasRecentMatch ? 'idle' : 'newcomer'
-}
-
-export const resolvePrimaryAction = (mode) => {
-  if (mode === 'ongoing-player' || mode === 'ongoing-referee') return 'continue'
-  if (mode === 'guest') return 'login'
-  if (mode === 'loading') return ''
-  return 'start'
-}
-
 const resolveMatchParticipants = (match = {}, currentUser = {}) => {
   const safeCurrentUser = currentUser || {}
   const viewerRole = match.viewer_role || 'player1'
@@ -202,27 +162,59 @@ export const resolveStatusCardContent = ({ mode, currentMatch = null, currentUse
   }
 }
 
-export const resolveStatusActionVisibility = ({ statusCard = {} } = {}) => {
+// 生涯数据统计全部球种；段位分随球种切换，只放在段位卡里，不在这里重复。
+export const resolveCoreMetrics = ({ stats = {}, isLoading = false } = {}) => {
+  const safeStats = stats || {}
+  const loadingValue = isLoading ? '—' : null
+  const totalMatches = toSafeNumber(safeStats.totalMatches ?? safeStats.total_matches)
+  const wins = toSafeNumber(safeStats.wins)
+  const winRate = toSafeNumber(safeStats.winRate ?? safeStats.win_rate)
+  const maxStreak = toSafeNumber(safeStats.maxStreak ?? safeStats.max_win_streak)
+
+  return [
+    { key: 'total', label: '场次', value: loadingValue ?? totalMatches },
+    { key: 'wins', label: '胜场', value: loadingValue ?? wins },
+    { key: 'win-rate', label: '胜率', value: loadingValue ?? `${winRate}%` },
+    { key: 'max-streak', label: '最高连胜', value: loadingValue ?? maxStreak }
+  ]
+}
+
+const DEFAULT_RANK_ICON = '/static/images/ranks/rank_bronze.png'
+
+// 段位卡：next_score 是下一段位的起始分；6 级（王者）为最高段位。
+export const resolveRankCardView = (rankInfo = null) => {
+  if (!rankInfo) {
+    return { ranked: false, name: '未定级', icon: DEFAULT_RANK_ICON, score: 0, progress: 0, hint: '完成首场排位赛后开始定级' }
+  }
+
+  const isMaxLevel = toSafeNumber(rankInfo.level) >= 6
+  const score = toSafeNumber(rankInfo.rank_score)
+  const nextScore = toSafeNumber(rankInfo.next_score)
+  const progress = isMaxLevel ? 100 : Math.min(100, Math.max(0, toSafeNumber(rankInfo.progress)))
+  let hint = `晋级进度 ${progress}%`
+  if (isMaxLevel) {
+    hint = '已达到最高段位'
+  } else if (nextScore > 0) {
+    hint = `距${toSafeText(rankInfo.next_name, '下一段位')}还差 ${Math.max(0, nextScore - score)} 分`
+  }
+
   return {
-    showPrimary: Boolean(statusCard.actionText),
-    showSecondary: Boolean(statusCard.secondaryActionText)
+    ranked: true,
+    name: toSafeText(rankInfo.name, '未定级'),
+    icon: toSafeText(rankInfo.icon, DEFAULT_RANK_ICON),
+    score,
+    progress,
+    hint
   }
 }
 
-export const resolveCoreMetrics = ({ stats = {}, rankInfo = null, isLoading = false } = {}) => {
-  const safeStats = stats || {}
-  const loadingValue = isLoading ? '—' : null
-  const winRate = toSafeNumber(safeStats.winRate ?? safeStats.win_rate)
-  const wins = toSafeNumber(safeStats.wins)
-  const maxStreak = toSafeNumber(safeStats.maxStreak ?? safeStats.max_win_streak)
-  const rankScore = toSafeNumber(rankInfo?.rankScore ?? rankInfo?.rank_score)
-
-  return [
-    { key: 'win-rate', label: '胜率', value: loadingValue ?? `${winRate}%`, loading: isLoading },
-    { key: 'wins', label: '胜场', value: loadingValue ?? wins, loading: isLoading },
-    { key: 'max-streak', label: '最高连胜', value: loadingValue ?? maxStreak, loading: isLoading },
-    { key: 'rank-score', label: '段位分', value: loadingValue ?? rankScore, loading: isLoading }
-  ]
+export const resolveReputationChip = (reputation = null, isLoading = false) => {
+  const statusText = toSafeText(reputation?.status_text)
+  if (!statusText) {
+    return { text: isLoading ? '信誉同步中' : '信誉暂不可用', restricted: false }
+  }
+  const restricted = reputation.status === 'restricted'
+  return { text: restricted ? statusText : `信誉${statusText}`, restricted }
 }
 
 const parseMemberExpiresAt = (value) => {
@@ -264,24 +256,16 @@ export const resolveMemberRankAvatarFrame = ({
   return resolveRankAvatarFramePath(rankInfo.level)
 }
 
-export const resolveMemberHeroStrip = (memberStatus = {}, now = new Date(), memberLevelText = '') => {
+// 会员中心入口的右侧状态：从未开通时不提示，避免把入口做成推销位。
+export const resolveMemberEntry = (memberStatus = {}, now = new Date()) => {
   const expiresAtText = toSafeText(memberStatus?.member_expires_at)
-  if (!expiresAtText) {
-    return { visible: false, state: 'none', statusText: '', title: '', description: '', levelText: '' }
-  }
+  if (!expiresAtText) return { state: 'none', text: '' }
 
   const expiresAt = parseMemberExpiresAt(expiresAtText)
   const isActive = Boolean(memberStatus?.is_active) && (!expiresAt || expiresAt.getTime() > now.getTime())
-  const levelText = toSafeText(memberLevelText) || `Lv${Math.max(1, toSafeNumber(memberStatus?.growth_level) || 1)}`
-
-  return {
-    visible: true,
-    state: isActive ? 'active' : 'expired',
-    statusText: isActive ? 'VIP中' : '已到期',
-    title: isActive ? 'VIP权益已生效' : 'VIP权益已到期',
-    description: isActive ? `有效期至 ${expiresAtText}` : `上次有效期至 ${expiresAtText}`,
-    levelText
-  }
+  return isActive
+    ? { state: 'active', text: `${expiresAtText.slice(0, 10)} 到期` }
+    : { state: 'expired', text: '已到期' }
 }
 
 export const resolveCompactRewardEntry = (rewardStatus = {}) => {
@@ -306,34 +290,6 @@ export const resolveCompactRewardEntry = (rewardStatus = {}) => {
     statusText: card.statusText,
     action: floatable ? 'favorite-venue' : '',
     actionText: floatable ? card.actionText : ''
-  }
-}
-
-export const resolveUserHomepageModel = ({
-  isLoggedIn = false,
-  isLoading = false,
-  currentMatch = null,
-  currentUser = {},
-  stats = {},
-  rankInfo = null,
-  memberStatus = null,
-  memberLevelText = '',
-  rewardStatus = null,
-  now = new Date()
-} = {}) => {
-  const mode = resolveUserHomepageMode({
-    isLoggedIn,
-    isLoading,
-    currentMatch,
-    totalMatches: stats?.totalMatches ?? stats?.total_matches
-  })
-
-  return {
-    mode,
-    memberHeroStrip: resolveMemberHeroStrip(memberStatus || {}, now, memberLevelText),
-    statusCard: resolveStatusCardContent({ mode, currentMatch, currentUser }),
-    metrics: resolveCoreMetrics({ stats, rankInfo, isLoading: mode === 'loading' }),
-    rewardEntry: resolveCompactRewardEntry(rewardStatus || {})
   }
 }
 

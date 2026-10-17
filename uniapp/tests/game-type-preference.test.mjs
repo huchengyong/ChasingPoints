@@ -70,7 +70,7 @@ test('settings and all direct PK entries use the shared preference helper', () =
   assert.match(settings, /每次询问/)
   assert.match(settings, /saveDefaultGameType/)
 
-	for (const path of ['../pages/index/index.vue', '../pages/match/index.vue', '../pages/ranking/index.vue', '../pages/user/index.vue']) {
+	for (const path of ['../pages/index/index.vue', '../pages/match/index.vue', '../pages/ranking/index.vue']) {
 		const page = readFileSync(new URL(path, import.meta.url), 'utf8')
 		assert.match(page, /:default-type="defaultGameType"/)
 		assert.match(page, /readDefaultGameType/)

@@ -19,9 +19,8 @@ test('对局首页回源必须经过活动 Store 的 dirty 与 TTL 判断', () =
   assert.doesNotMatch(source, /activityStore\.dirty\)/)
 })
 
-test('约球区块读取失败时两个主 Tab 提供重试入口', () => {
+test('约球区块读取失败时观赛 Tab 提供重试入口', () => {
   assert.match(readAppFile('pages/match/index.vue'), /challenge-unavailable[\s\S]*?retryChallengeActivity/)
-  assert.match(readAppFile('pages/user/index.vue'), /challenge-status-unavailable[\s\S]*?retryChallengeActivity/)
   assert.match(readAppFile('store/activity.js'), /challengeAvailable/)
 })
 
