@@ -209,13 +209,8 @@ import {
 	resolvePostLoginNavigation,
 	resolveSmsFeedback,
 	resolveWechatPostLoginState,
-	shouldClearEntryFunnelAgreementSession,
-	shouldClearPendingPostLoginIntent
+	shouldClearEntryFunnelAgreementSession
 } from '@/utils/entry-funnel.js'
-import {
-	clearPostLoginIntent,
-	getPostLoginIntent
-} from '@/utils/post-login-intent.js'
 import { buildHuaweiOAuthLoginPayload } from '@/utils/oauth-login.js'
 
 const WELCOME_PAGE_VIEWED_KEY = 'welcome_page_viewed'
@@ -289,7 +284,6 @@ const sendCodeText = computed(() => {
 
 let countdownTimer = null
 let authSlowFeedbackTimer = null
-let completedLoginFlow = false
 
 const startAuthFeedback = () => {
 	isSlowLogging.value = false
@@ -345,17 +339,7 @@ const startCountdown = () => {
 }
 
 const navigateAfterLogin = () => {
-	const pages = getCurrentPages()
-	const pendingAction = getPostLoginIntent()
-	const action = resolvePostLoginNavigation({
-		pageCount: pages.length,
-		pendingAction
-	})
-
-	if (action === 'intent') {
-		uni.switchTab({ url: '/pages/user/index' })
-		return
-	}
+	const action = resolvePostLoginNavigation({ pageCount: getCurrentPages().length })
 
 	if (action === 'back') {
 		uni.navigateBack({
@@ -432,7 +416,6 @@ const handleLogin = async () => {
 
 		userStore.login(res)
 		uni.setStorageSync(WELCOME_PAGE_VIEWED_KEY, true)
-		completedLoginFlow = true
 		navigateAfterLogin()
 		uni.showToast({
 			title: '登录成功',
@@ -477,7 +460,6 @@ const handleWechatMiniLogin = async () => {
 		if (!authGate.value.shouldHandleResult) return
 		userStore.login(response)
 		uni.setStorageSync(WELCOME_PAGE_VIEWED_KEY, true)
-		completedLoginFlow = true
 		const postLoginState = resolveWechatPostLoginState({
 			needBindPhone: response.need_bind_phone
 		})
@@ -544,7 +526,6 @@ const handleHuaweiLogin = async () => {
 			return
 		}
 
-		completedLoginFlow = true
 		navigateAfterLogin()
 		uni.showToast({
 			title: '登录成功',
@@ -595,7 +576,6 @@ const handleBindPhoneSuccess = (payload) => {
 		return
 	}
 
-	completedLoginFlow = true
 	navigateAfterLogin()
 	uni.showToast({
 		title: payload?.message || '绑定成功',
@@ -605,7 +585,6 @@ const handleBindPhoneSuccess = (payload) => {
 
 const handleBindPhoneClose = () => {
 	showBindPhoneModal.value = false
-	completedLoginFlow = true
 	const postLoginState = resolveWechatPostLoginState({
 		needBindPhone: userStore.needBindPhone,
 		bindingSkipped: true
@@ -660,13 +639,6 @@ onUnload(() => {
 	})) {
 		uni.removeStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY)
 		uni.removeStorageSync(ENTRY_FUNNEL_SESSION_KEY)
-	}
-
-	if (shouldClearPendingPostLoginIntent({
-		hasPendingIntent: getPostLoginIntent(),
-		completedLoginFlow
-	})) {
-		clearPostLoginIntent()
 	}
 })
 

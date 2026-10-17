@@ -53,7 +53,6 @@ export default {
 
 const realModuleReplacements = {
   '@/utils/entry-funnel.js': '../utils/entry-funnel.js',
-  '@/utils/post-login-intent.js': '../utils/post-login-intent.js',
   '@/utils/oauth-login.js': '../utils/oauth-login.js'
 }
 

@@ -64,7 +64,6 @@ test('rank card puts the game tabs above the rank, score, and promotion progress
 test('match launching lives on home and match tabs, not on the profile tab', () => {
   assert.doesNotMatch(source, /status-card|challenge-status-strip|qrcode-modal|gameTypeModal/)
   assert.doesNotMatch(source, /scanAndResolveMatchCode|startMatch|getMatchQRCode|userWS/)
-  assert.doesNotMatch(source, /consumePostLoginIntent|setPostLoginIntent/)
   assert.match(source, /const goStartFirstMatch = \(\) => \{\s*openRoute\('\/pages\/index\/index', true\)/)
 })
 
