@@ -46,7 +46,7 @@
 
 | 构建 | 后端地址 | Keychain service |
 | --- | --- | --- |
-| Debug | `https://dev-api.kekemate.cn` | `ChasingPoints.Session.development` |
+| Debug | `https://api-zhuifen.kekemate.cn` | `ChasingPoints.Session.development` |
 | Release | `https://api.zhuifen.cn` | `ChasingPoints.Session.production` |
 
 Debug 二进制仅含开发地址与服务，Release 二进制仅含正式地址与服务；客户端不包含短信供应商密钥或 JWT 签名密钥。
@@ -60,7 +60,7 @@ Debug 二进制仅含开发地址与服务，Release 二进制仅含正式地址
 | Debug 测试构建 | `xcodebuild build-for-testing -project iOS.xcodeproj -scheme iOS -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.1' -derivedDataPath <临时目录>` | 通过 |
 | Release 编译 | `xcodebuild build -project iOS.xcodeproj -scheme iOS -configuration Release -destination 'generic/platform=iOS Simulator' -derivedDataPath <临时目录> CODE_SIGNING_ALLOWED=NO` | 通过 |
 | 最低部署目标 | `xcodebuild -showBuildSettings ... \| grep IPHONEOS_DEPLOYMENT_TARGET` | 17.0 |
-| 环境隔离 | `strings` 检查 Debug 应用与 Release 二进制 | Debug 仅含 `dev-api.kekemate.cn` / `ChasingPoints.Session.development`；Release 仅含 `api.zhuifen.cn` / `ChasingPoints.Session.production` |
+| 环境隔离 | `strings` 检查 Debug 应用与 Release 二进制 | Debug 仅含 `api-zhuifen.kekemate.cn` / `ChasingPoints.Session.development`；Release 仅含 `api.zhuifen.cn` / `ChasingPoints.Session.production` |
 
 ### 4.2 可控原生测试（通过）
 
@@ -101,7 +101,7 @@ xcodebuild test-without-building -xctestrun <构建产物>.xctestrun \
 
 ## 5. 人工/真实后端验收结果（已执行）
 
-执行时间：2026-09-30；执行方式：用户人工操作；环境：iPhone 16 Pro 模拟器（iOS 18.1），Debug 构建（开发后端 `https://dev-api.kekemate.cn`）。
+执行时间：2026-09-30；执行方式：用户人工操作；环境：iPhone 16 Pro 模拟器（iOS 18.1），Debug 构建（开发后端 `https://api-zhuifen.kekemate.cn`）。
 
 ### 5.1 模拟器界面人工验收（对应任务 4.2）— 通过
 

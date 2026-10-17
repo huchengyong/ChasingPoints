@@ -82,7 +82,7 @@
 
 ### 5. 维持环境隔离和本机退出语义
 
-Debug 当前为 `https://dev-api.kekemate.cn` + `ChasingPoints.Session.development`；Release 为 `https://api.zhuifen.cn` + `ChasingPoints.Session.production`。验证配置及存储命名空间隔离，真实短信/失效实验仅在指定开发环境执行。客户端不需要短信供应商密钥或 JWT 签名密钥。
+Debug 当前为 `https://api-zhuifen.kekemate.cn` + `ChasingPoints.Session.development`；Release 为 `https://api.zhuifen.cn` + `ChasingPoints.Session.production`。验证配置及存储命名空间隔离，真实短信/失效实验仅在指定开发环境执行。客户端不需要短信供应商密钥或 JWT 签名密钥。
 
 退出的范围是清空本机用户状态与本环境 Keychain 凭据，不承诺撤销其他设备会话或尚未过期的服务端令牌。验收使用杀进程/重启，不能用卸载重装代替 Keychain 清理验证。
 

@@ -44,7 +44,7 @@
 
 | 构建 | 后端地址 | Keychain service |
 | --- | --- | --- |
-| Debug | `https://dev-api.kekemate.cn` | `ChasingPoints.Session.development` |
+| Debug | `https://api-zhuifen.kekemate.cn` | `ChasingPoints.Session.development` |
 | Release | `https://api.zhuifen.cn` | `ChasingPoints.Session.production` |
 
 客户端不包含短信供应商密钥或 JWT 签名密钥。
@@ -58,7 +58,7 @@
 | Debug 编译 | `xcodebuild build -project iOS.xcodeproj -scheme iOS -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.1'` | 通过 |
 | Release 编译 | `xcodebuild build -project iOS.xcodeproj -scheme iOS -configuration Release -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO` | 通过 |
 | 最低部署目标 | `xcodebuild -showBuildSettings ... \| grep IPHONEOS_DEPLOYMENT_TARGET` | Debug/Release 均为 17.0 |
-| 环境隔离 | `strings` 检查 Debug `iOS.debug.dylib` 与 Release `iOS` 二进制 | Debug 仅含 `dev-api.kekemate.cn` / `ChasingPoints.Session.development`；Release 仅含 `api.zhuifen.cn` / `ChasingPoints.Session.production` |
+| 环境隔离 | `strings` 检查 Debug `iOS.debug.dylib` 与 Release `iOS` 二进制 | Debug 仅含 `api-zhuifen.kekemate.cn` / `ChasingPoints.Session.development`；Release 仅含 `api.zhuifen.cn` / `ChasingPoints.Session.production` |
 
 运行系统版本（iOS 18.1）与最低支持版本（iOS 17.0）分别记录，不互相替代。
 
@@ -170,7 +170,7 @@ xcodebuild build -project iOS.xcodeproj -scheme iOS -configuration Release \
 清理记录：
 
 - 本地短 TTL 实例已停止，临时配置 `etc/chasing_points-api.short-ttl.yaml` 已删除。
-- App 已恢复 Debug 配置 `https://dev-api.kekemate.cn` + `ChasingPoints.Session.development`，重建后二进制核对无测试地址与测试 service。
+- App 已恢复 Debug 配置 `https://api-zhuifen.kekemate.cn` + `ChasingPoints.Session.development`，重建后二进制核对无测试地址与测试 service。
 - 测试 Keychain service `ChasingPoints.Session.test.short-ttl` 已通过 App 退出登录清空。
 - 本地实例日志只含方法/状态码/时间，无 token、验证码或完整手机号。
 
