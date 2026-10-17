@@ -73,6 +73,7 @@ type ServiceContext struct {
 	MemberGrowthLogModel            *model.MemberGrowthLogModel
 	MemberRightsConfigModel         *model.MemberRightsConfigModel
 	ReputationConfigModel           *model.ReputationConfigModel
+	LlmConfigModel                  *model.LlmConfigModel
 	UserReputationProfileModel      *model.UserReputationProfileModel
 	UserReputationLogModel          *model.UserReputationLogModel
 	FeedbackTicketModel             *model.FeedbackTicketModel
@@ -141,6 +142,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		MemberGrowthLogModel:            models.MemberGrowthLogModel,
 		MemberRightsConfigModel:         models.MemberRightsConfigModel,
 		ReputationConfigModel:           models.ReputationConfigModel,
+		LlmConfigModel:                  models.LlmConfigModel,
 		UserReputationProfileModel:      models.UserReputationProfileModel,
 		UserReputationLogModel:          models.UserReputationLogModel,
 		FeedbackTicketModel:             models.FeedbackTicketModel,
@@ -203,6 +205,7 @@ type serviceModels struct {
 	MemberGrowthLogModel            *model.MemberGrowthLogModel
 	MemberRightsConfigModel         *model.MemberRightsConfigModel
 	ReputationConfigModel           *model.ReputationConfigModel
+	LlmConfigModel                  *model.LlmConfigModel
 	UserReputationProfileModel      *model.UserReputationProfileModel
 	UserReputationLogModel          *model.UserReputationLogModel
 	FeedbackTicketModel             *model.FeedbackTicketModel
@@ -272,6 +275,7 @@ func (s *ServiceContext) WithContext(ctx context.Context) *ServiceContext {
 	scoped.MemberGrowthLogModel = models.MemberGrowthLogModel
 	scoped.MemberRightsConfigModel = models.MemberRightsConfigModel
 	scoped.ReputationConfigModel = models.ReputationConfigModel
+	scoped.LlmConfigModel = models.LlmConfigModel
 	scoped.UserReputationProfileModel = models.UserReputationProfileModel
 	scoped.UserReputationLogModel = models.UserReputationLogModel
 	scoped.FeedbackTicketModel = models.FeedbackTicketModel
@@ -345,6 +349,7 @@ func newServiceModels(db *gorm.DB) serviceModels {
 	memberGrowthLogModel := model.NewMemberGrowthLogModel(db)
 	memberRightsConfigModel := model.NewMemberRightsConfigModel(db)
 	reputationConfigModel := model.NewReputationConfigModel(db)
+	llmConfigModel := model.NewLlmConfigModel(db)
 	userReputationProfileModel := model.NewUserReputationProfileModel(db)
 	userReputationLogModel := model.NewUserReputationLogModel(db)
 
@@ -386,6 +391,7 @@ func newServiceModels(db *gorm.DB) serviceModels {
 		MemberGrowthLogModel:            memberGrowthLogModel,
 		MemberRightsConfigModel:         memberRightsConfigModel,
 		ReputationConfigModel:           reputationConfigModel,
+		LlmConfigModel:                  llmConfigModel,
 		UserReputationProfileModel:      userReputationProfileModel,
 		UserReputationLogModel:          userReputationLogModel,
 		FeedbackTicketModel:             model.NewFeedbackTicketModel(db),

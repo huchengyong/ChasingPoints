@@ -133,6 +133,11 @@ func TestModelConstructorsDoNotAutoMigrate(t *testing.T) {
 			tableName: "season_settlements",
 			construct: func(db *gorm.DB) { NewSeasonSettlementModel(db) },
 		},
+		{
+			name:      "llm config model",
+			tableName: "llm_configs",
+			construct: func(db *gorm.DB) { NewLlmConfigModel(db) },
+		},
 	}
 
 	for _, tc := range testCases {

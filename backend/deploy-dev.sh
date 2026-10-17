@@ -94,4 +94,4 @@ curl --fail --silent --show-error --retry 10 --retry-delay 1 --retry-connrefused
 printf 'Deployed %s\n' "$release_id"
 REMOTE
 
-printf 'Deployment complete: https://dev-api.kekemate.cn\n'
+printf 'Deployment complete: https://api-zhuifen.kekemate.cn\n'

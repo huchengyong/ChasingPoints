@@ -3932,6 +3932,27 @@ type AdminReputationLogListResp {
 	List    []AdminReputationLogItem `json:"list"`
 }
 
+// ==================== Admin 大模型配置 ====================
+type AdminLlmConfigResp {
+	Code         int    `json:"code"`
+	Success      bool   `json:"success"`
+	Message      string `json:"message"`
+	ApiFormat    string `json:"api_format"` // anthropic:Anthropic Messages；openai:OpenAI 兼容 Chat Completions；未配置时为空
+	EndpointUrl  string `json:"endpoint_url"`
+	HasApiKey    bool   `json:"has_api_key"`
+	ApiKeyMasked string `json:"api_key_masked"`
+	Model        string `json:"model"`
+	MaxTokens    int    `json:"max_tokens"`
+}
+
+type AdminLlmConfigUpdateReq {
+	ApiFormat   string `json:"api_format"` // anthropic / openai
+	EndpointUrl string `json:"endpoint_url"`
+	ApiKey      string `json:"api_key,optional"` // 留空表示沿用已保存的 API Key
+	Model       string `json:"model"`
+	MaxTokens   int    `json:"max_tokens"`
+}
+
 // ==================== Admin 动态审核 ====================
 type AdminSocialPostListReq {
 	Page     int `form:"page,default=1"`
@@ -4072,6 +4093,21 @@ service chasing_points-api {
 	@doc "获取信誉变更日志列表"
 	@handler AdminGetReputationLogList
 	get /logs (AdminReputationLogListReq) returns (AdminReputationLogListResp)
+}
+
+@server (
+	prefix: /api/admin/llm
+	group:  admin
+	jwt:    Auth
+)
+service chasing_points-api {
+	@doc "获取大模型调用配置"
+	@handler AdminGetLlmConfig
+	get /config returns (AdminLlmConfigResp)
+
+	@doc "更新大模型调用配置"
+	@handler AdminUpdateLlmConfig
+	post /config (AdminLlmConfigUpdateReq) returns (AdminWriteResp)
 }
 
 @server (

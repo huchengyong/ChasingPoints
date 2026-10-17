@@ -277,6 +277,41 @@ func TestReputationMigrationCreatesConfigProfileAndLogTables(t *testing.T) {
 	}
 }
 
+func TestLlmConfigsMigrationCreatesConfigTableWithoutCharsetOverride(t *testing.T) {
+	content, err := os.ReadFile("20261016100000_create_llm_configs.sql")
+	if err != nil {
+		t.Fatalf("read llm configs migration: %v", err)
+	}
+
+	text := string(content)
+	requiredSnippets := []string{
+		"-- +goose Up",
+		"-- +goose Down",
+		"CREATE TABLE IF NOT EXISTS `llm_configs`",
+		"`config_key` VARCHAR(64) NOT NULL",
+		"`api_format` VARCHAR(32) NOT NULL",
+		"`endpoint_url` VARCHAR(512) NOT NULL",
+		"`api_key` VARCHAR(512) NOT NULL",
+		"`model` VARCHAR(128) NOT NULL",
+		"`max_tokens` INT NOT NULL",
+		"`updated_by`",
+		"UNIQUE KEY `uniq_llm_configs_key` (`config_key`)",
+		"DROP TABLE IF EXISTS `llm_configs`",
+	}
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(text, snippet) {
+			t.Fatalf("expected llm configs migration to contain %q", snippet)
+		}
+	}
+
+	upper := strings.ToUpper(text)
+	for _, forbidden := range []string{"CHARSET", "CHARACTER SET", "COLLATE"} {
+		if strings.Contains(upper, forbidden) {
+			t.Fatalf("llm configs migration must not specify %s, keep the database default", forbidden)
+		}
+	}
+}
+
 func TestAchievementTitleClosedLoopMigrationContainsClosedLoopSchema(t *testing.T) {
 	content, err := os.ReadFile("20260423110000_achievement_title_closed_loop.sql")
 	if err != nil {

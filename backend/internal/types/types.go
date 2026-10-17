@@ -250,6 +250,26 @@ type AdminInitResp struct {
 	Message string `json:"message"`
 }
 
+type AdminLlmConfigResp struct {
+	Code         int    `json:"code"`
+	Success      bool   `json:"success"`
+	Message      string `json:"message"`
+	ApiFormat    string `json:"api_format"` // anthropic:Anthropic Messages；openai:OpenAI 兼容 Chat Completions；未配置时为空
+	EndpointUrl  string `json:"endpoint_url"`
+	HasApiKey    bool   `json:"has_api_key"`
+	ApiKeyMasked string `json:"api_key_masked"`
+	Model        string `json:"model"`
+	MaxTokens    int    `json:"max_tokens"`
+}
+
+type AdminLlmConfigUpdateReq struct {
+	ApiFormat   string `json:"api_format"` // anthropic / openai
+	EndpointUrl string `json:"endpoint_url"`
+	ApiKey      string `json:"api_key,optional"` // 留空表示沿用已保存的 API Key
+	Model       string `json:"model"`
+	MaxTokens   int    `json:"max_tokens"`
+}
+
 type AdminLoginReq struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`

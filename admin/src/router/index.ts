@@ -101,6 +101,12 @@ const routes = [
         name: 'ReputationSettings',
         component: () => import('@/views/config/reputation.vue'),
         meta: { title: '信誉制度配置', parent: '/settings' }
+      },
+      {
+        path: 'settings/llm',
+        name: 'LlmSettings',
+        component: () => import('@/views/config/llm.vue'),
+        meta: { title: '大模型配置', parent: '/settings' }
       }
     // 合规收口：动态审核入口暂时隐藏，页面文件保留以便后续持证后快速恢复。
     ].concat(socialReviewRoutes)

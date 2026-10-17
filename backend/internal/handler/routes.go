@@ -266,6 +266,25 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
+				// 获取大模型调用配置
+				Method:  http.MethodGet,
+				Path:    "/config",
+				Handler: admin.AdminGetLlmConfigHandler(serverCtx),
+			},
+			{
+				// 更新大模型调用配置
+				Method:  http.MethodPost,
+				Path:    "/config",
+				Handler: admin.AdminUpdateLlmConfigHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/admin/llm"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
 				// 获取动态列表（管理员）
 				Method:  http.MethodGet,
 				Path:    "/posts",

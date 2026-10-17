@@ -10,7 +10,7 @@
 
 ## 开发环境部署
 
-开发接口地址：<https://dev-api.kekemate.cn>
+开发接口地址：<https://api-zhuifen.kekemate.cn>
 
 本机需要先在 `~/.ssh/config` 配置 `chasingpoints-dev`，对应 Oracle Ubuntu 服务器，并确保该用户可以执行免密 `sudo`。私钥内容和服务端环境变量不得写入仓库。
 

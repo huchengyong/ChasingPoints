@@ -100,7 +100,8 @@ const menuList = [
     icon: 'Setting',
     children: [
       { path: '/settings/member-rewards', title: 'VIP奖励配置' },
-      { path: '/settings/member-ranking-rights', title: 'VIP排位权益配置' }
+      { path: '/settings/member-ranking-rights', title: 'VIP排位权益配置' },
+      { path: '/settings/llm', title: '大模型配置' }
     ]
   },
   // 合规收口：动态审核菜单暂时隐藏，页面文件保留以便后续持证后快速恢复。

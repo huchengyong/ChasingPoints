@@ -223,7 +223,7 @@ final class APIClientTests: XCTestCase {
 
     func testDebugConfigurationUsesDevelopmentEnvironment() {
         #if DEBUG
-        XCTAssertEqual(AppConfiguration.apiBaseURL.absoluteString, "https://dev-api.kekemate.cn")
+        XCTAssertEqual(AppConfiguration.apiBaseURL.absoluteString, "https://api-zhuifen.kekemate.cn")
         XCTAssertEqual(AppConfiguration.credentialService, "ChasingPoints.Session.development")
         #else
         XCTAssertEqual(AppConfiguration.apiBaseURL.absoluteString, "https://api.zhuifen.cn")

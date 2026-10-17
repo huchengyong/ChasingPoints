@@ -77,8 +77,8 @@ WechatMiniProgram:
   MessagePushEncodingAESKey: ${WECHAT_MINI_MESSAGE_PUSH_ENCODING_AES_KEY}
 
 Security:
-  HTTPAllowedOrigins: https://www.zhuifen.cn,https://api.zhuifen.cn,https://ws.zhuifen.cn
-  WebSocketAllowedOrigins: https://www.zhuifen.cn,https://api.zhuifen.cn,https://ws.zhuifen.cn,https://dev-api.kekemate.cn
+  HTTPAllowedOrigins: https://www.zhuifen.cn,https://api.zhuifen.cn,https://ws.zhuifen.cn,https://admin.zhuifen.cn,https://admin-zhuifen.kekemate.cn
+  WebSocketAllowedOrigins: https://www.zhuifen.cn,https://api.zhuifen.cn,https://ws.zhuifen.cn,https://api-zhuifen.kekemate.cn
   AllowNativeMissingOrigin: true
   HuaweiOAuth:
     Enabled: false
@@ -97,7 +97,6 @@ Geocode:
   MaxAttempts: 5
   BatchSize: 5
   AutoPublish: true
-  EncryptSecret: ${GEOCODE_ENCRYPT_SECRET}
 
 WSTSync:
   Enabled: true

@@ -14,8 +14,8 @@ test('runtime environment uses the NODE_ENV expression recognized by the UniApp 
 
 test('resolveNetworkConfig uses development hosts', () => {
   assert.deepEqual(resolveNetworkConfig({ env: 'development' }), {
-    httpBaseUrl: 'https://dev-api.kekemate.cn',
-    wsBaseUrl: 'wss://dev-api.kekemate.cn'
+    httpBaseUrl: 'https://api-zhuifen.kekemate.cn',
+    wsBaseUrl: 'wss://api-zhuifen.kekemate.cn'
   })
 })
 
