@@ -1,3 +1,7 @@
+import { formatDuration, resolveStatusCardContent } from './user-homepage.js'
+
+const MATCH_MODE_TEXT = { ranked: '排位', practice: '练习' }
+
 export const resolveMatchHomePrimaryAction = ({ currentMatch = null } = {}) => {
   if (currentMatch?.finish_state === 'pending_confirmation') {
     return { type: 'confirm', label: '处理结束确认' }
@@ -6,6 +10,32 @@ export const resolveMatchHomePrimaryAction = ({ currentMatch = null } = {}) => {
     return { type: 'continue', label: '继续对局' }
   }
   return { type: 'start', label: '发起对局' }
+}
+
+// 「我的对局」卡：双方按 player1/player2 固定顺序展示，裁判视角不标记「我」。
+export const buildOngoingMatchCard = (match, currentUser = {}) => {
+  const action = resolveMatchHomePrimaryAction({ currentMatch: match })
+  if (!match || action.type === 'start') return null
+
+  const isReferee = match.viewer_role === 'referee'
+  const isPending = action.type === 'confirm'
+  const viewerIndex = match.viewer_role === 'player2' ? 1 : 0
+  const { players } = resolveStatusCardContent({
+    mode: isReferee ? 'ongoing-referee' : 'ongoing-player',
+    currentMatch: match,
+    currentUser
+  })
+
+  return {
+    id: Number(match.id) || 0,
+    isReferee,
+    isPending,
+    statusText: isPending ? '待确认结束' : isReferee ? '执裁中' : '进行中',
+    metaText: [match.game_type_name || '台球', MATCH_MODE_TEXT[match.match_mode]].filter(Boolean).join(' · '),
+    durationText: formatDuration(match.duration_seconds),
+    players: players.map((player, index) => ({ ...player, isMe: !isReferee && index === viewerIndex })),
+    actionLabel: isPending ? '处理结束确认' : isReferee ? '进入裁判记分' : '继续对局'
+  }
 }
 
 export const resolveFinishAction = (capabilities = {}) => {

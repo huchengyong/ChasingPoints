@@ -1,14 +1,23 @@
-import { GAME_TYPE_LABEL_MAP } from './game-types.js'
+import { formatRelativeTime } from './format.js'
+import { GAME_TYPE_LABEL_MAP, getGameTypeLabel } from './game-types.js'
 
-export const SPECTATOR_SCOPES = [
-  { value: 'hall', label: '大厅' },
-  { value: 'friends', label: '好友' }
+// 观赛列表标签：「好友」看好友与自己的对局（含进行中和已结束），「进行中/已结束」看公开大厅。
+export const SPECTATOR_LOBBY_TABS = [
+  { value: 'friends', label: '好友', scope: 'friends', status: 0, requiresLogin: true },
+  { value: 'live', label: '进行中', scope: 'hall', status: 1, requiresLogin: false },
+  { value: 'finished', label: '已结束', scope: 'hall', status: 2, requiresLogin: false }
 ]
 
-export const SPECTATOR_STATUS_OPTIONS = [
-  { value: 1, label: '进行中' },
-  { value: 2, label: '已结束' }
-]
+export const resolveSpectatorLobbyTabs = (isLoggedIn = false) => (
+  SPECTATOR_LOBBY_TABS.filter((tab) => isLoggedIn || !tab.requiresLogin)
+)
+
+export const resolveSpectatorLobbyQuery = (tabValue = 'live') => {
+  const tab = SPECTATOR_LOBBY_TABS.find((item) => item.value === tabValue) || SPECTATOR_LOBBY_TABS[1]
+  return { scope: tab.scope, status: tab.status }
+}
+
+const MATCH_MODE_TEXT = { ranked: '排位', practice: '练习' }
 
 export const buildSpectatorMatchListParams = ({
   scope = 'hall',
@@ -59,6 +68,51 @@ export const getSpectatorMatchStatusText = ({
   return `进行中 ${formatSpectatorDuration(durationSeconds)}`
 }
 
+// 列表卡片：双方各占一行；已结束时按比分标记胜负，平局与进行中不标记。
+export const normalizeSpectatorMatch = (match = {}, { userId = 0 } = {}) => {
+  const viewerId = Number(userId) || 0
+  const isLive = Number(match.status) !== 2
+  const scores = [Number(match.player1_score) || 0, Number(match.player2_score) || 0]
+  const players = [1, 2].map((side, index) => {
+    const id = Number(match[`player${side}_id`]) || 0
+    const score = scores[index]
+    const otherScore = scores[1 - index]
+    let outcome = ''
+    if (!isLive && score !== otherScore) outcome = score > otherScore ? 'winner' : 'loser'
+    return {
+      id,
+      name: match[`player${side}_name`] || `选手${side}`,
+      avatar: match[`player${side}_avatar`] || '',
+      score,
+      isMe: viewerId > 0 && id === viewerId,
+      outcome
+    }
+  })
+  const endedAgo = !isLive && match.end_time ? formatRelativeTime(match.end_time) : ''
+
+  return {
+    ...match,
+    isLive,
+    isMine: players.some((player) => player.isMe),
+    metaText: [match.game_type_name || getGameTypeLabel(match.game_type), MATCH_MODE_TEXT[match.match_mode]].filter(Boolean).join(' · '),
+    statusText: endedAgo
+      ? `${endedAgo}结束`
+      : getSpectatorMatchStatusText({ status: match.status || 1, durationSeconds: match.duration_seconds || 0 }),
+    players
+  }
+}
+
+// 好友标签混合两种状态，按「进行中 / 已结束」分组；大厅标签只有一种状态，不加分组标题。
+export const buildSpectatorSections = (list = [], tabValue = 'live') => {
+  if (tabValue !== 'friends') {
+    return list.length ? [{ key: tabValue, title: '', items: list }] : []
+  }
+  return [
+    { key: 'live', title: '进行中', items: list.filter((item) => item.isLive) },
+    { key: 'finished', title: '已结束', items: list.filter((item) => !item.isLive) }
+  ].filter((section) => section.items.length > 0)
+}
+
 export const getSpectatorEmptyState = ({
   scope = 'hall',
   status = 1,
@@ -91,7 +145,7 @@ export const getSpectatorEmptyState = ({
 
   return {
     title: '暂无正在进行的对局',
-    subtitle: '可以先发起 PK，或稍后回来观赛'
+    subtitle: '公开对局开打后会出现在这里'
   }
 }
 

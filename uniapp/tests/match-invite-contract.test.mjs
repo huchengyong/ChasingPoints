@@ -10,9 +10,10 @@ const apiSource = read('../api/match.js')
 const startPayloadSource = read('../utils/start-match.js')
 const userPageSource = read('../pages/user/index.vue')
 const matchPageSource = read('../pages/match/index.vue')
+const homePageSource = read('../pages/index/index.vue')
 const playingPageSource = read('../subPages/match/playing.vue')
 const scanSources = [
-  read('../pages/index/index.vue'),
+  homePageSource,
   matchPageSource,
   read('../pages/ranking/index.vue'),
   userPageSource
@@ -20,6 +21,7 @@ const scanSources = [
 const qrSources = [
   userPageSource,
   matchPageSource,
+  homePageSource,
   playingPageSource
 ]
 

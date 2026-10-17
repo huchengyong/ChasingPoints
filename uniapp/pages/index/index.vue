@@ -6,11 +6,17 @@
       <view class="header-content">
         <view class="header-copy">
           <text class="title">追分</text>
-          <text class="subtitle">{{ headerSubtitle }}</text>
+          <!-- #ifdef MP-WEIXIN -->
+          <text v-if="notificationStore.unreadCount > 0" class="subtitle subtitle--link" @tap="goNotification">{{ unreadText }}</text>
+          <text v-else class="subtitle">{{ greetingText }}</text>
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
+          <text class="subtitle">{{ greetingText }}</text>
+          <!-- #endif -->
         </view>
         <!-- #ifndef MP-WEIXIN -->
         <view class="header-right" @tap="goNotification">
-          <uni-icons type="chat" size="22" :color="isDarkMode ? '#3A2E16' : '#231C0B'"></uni-icons>
+          <uni-icons type="chat" size="22" :color="isDarkMode ? '#FFF7E1' : '#231C0B'"></uni-icons>
           <view v-if="notificationStore.unreadCount > 0" class="header-badge">
             <text>{{ notificationStore.unreadCount > 99 ? '99+' : notificationStore.unreadCount }}</text>
           </view>
@@ -28,185 +34,215 @@
     >
       <view class="page-body">
         <view v-if="homePageError && !hasContent" class="home-load-error">
-          <uni-icons type="info" size="48" :color="isDarkMode ? '#d7c89b' : '#9A8C67'"></uni-icons>
+          <uni-icons type="info" size="48" :color="mutedIconColor"></uni-icons>
           <text class="home-load-error__title">{{ homePageError.title }}</text>
           <text class="home-load-error__desc">{{ homePageError.description }}</text>
           <button class="home-load-error__action" @tap="handleHomeErrorAction">{{ homePageError.actionText }}</button>
         </view>
 
-        <view v-else-if="homeLoading && !hasContent" class="hero-skeleton">
-          <view class="skeleton-line skeleton-title"></view>
-          <view class="skeleton-line skeleton-subtitle"></view>
-          <view class="skeleton-actions">
+        <template v-else>
+          <!-- 我的对局 / 开局：首页唯一的主操作 -->
+          <view v-if="playCardLoading" class="play-card play-skeleton">
+            <view class="skeleton-line skeleton-line--title"></view>
+            <view class="skeleton-line"></view>
             <view class="skeleton-btn"></view>
-            <view class="skeleton-btn skeleton-btn-secondary"></view>
           </view>
-        </view>
 
-        <view v-else class="home-hero">
-          <view class="hero-main">
-            <view class="hero-copy">
-              <text class="hero-eyebrow">{{ heroEyebrow }}</text>
-              <text class="hero-title">{{ heroTitle }}</text>
-              <text class="hero-subtitle">{{ heroSubtitle }}</text>
-            </view>
-            <view class="hero-actions">
-              <view class="hero-btn hero-btn-primary" @tap="handlePrimaryAction">
-                <text>{{ heroPrimaryText }}</text>
+          <view v-else-if="ongoingCard" class="play-card play-card--ongoing">
+            <view class="play-match" @tap="handleContinueCurrentMatch">
+              <view class="play-head">
+                <view class="state-chip" :class="ongoingCard.isPending ? 'state-chip--pending' : 'state-chip--live'">
+                  <view class="state-chip-dot"></view>
+                  <text>{{ ongoingCard.statusText }}</text>
+                </view>
+                <text class="play-meta">{{ ongoingCard.metaText }}</text>
+                <text class="play-duration">{{ ongoingCard.durationText }}</text>
               </view>
-              <view class="hero-btn hero-btn-secondary" @tap="handleSecondaryAction">
-                <text>{{ heroSecondaryText }}</text>
+              <view class="versus">
+                <view class="versus-player">
+                  <image class="versus-avatar" :src="resolveAvatarUrl(ongoingCard.players[0].avatar, ongoingCard.players[0].id)" mode="aspectFill"></image>
+                  <view class="versus-name-row">
+                    <text class="versus-name">{{ ongoingCard.players[0].name }}</text>
+                    <text v-if="ongoingCard.players[0].isMe" class="me-tag">我</text>
+                  </view>
+                </view>
+                <text class="versus-score">{{ ongoingCard.players[0].score }} : {{ ongoingCard.players[1].score }}</text>
+                <view class="versus-player">
+                  <image class="versus-avatar" :src="resolveAvatarUrl(ongoingCard.players[1].avatar, ongoingCard.players[1].id)" mode="aspectFill"></image>
+                  <view class="versus-name-row">
+                    <text class="versus-name">{{ ongoingCard.players[1].name }}</text>
+                    <text v-if="ongoingCard.players[1].isMe" class="me-tag">我</text>
+                  </view>
+                </view>
               </view>
             </view>
-          </view>
-          <view class="hero-meta">
-            <view v-for="tag in heroMetaTags" :key="tag" class="hero-meta-tag">
-              <text>{{ tag }}</text>
-            </view>
-          </view>
-        </view>
-
-        <view v-if="homeRefreshError || (homePageError && hasContent)" class="home-refresh-error">
-          <text>{{ (homeRefreshError || homePageError).description }}</text>
-          <text class="home-refresh-error__action" @tap="retryHomeData">重试</text>
-        </view>
-
-        <view v-if="!homePageError || hasContent" class="summary-grid">
-          <view class="summary-card" @tap="handleSummaryAction('match')">
-            <view class="summary-head">
-              <text class="summary-label">最近状态</text>
-              <uni-icons type="right" size="14" :color="isDarkMode ? '#9F926E' : '#6E6242'"></uni-icons>
-            </view>
-            <text class="summary-value">{{ recentMatchSummary.value }}</text>
-            <text class="summary-desc">{{ recentMatchSummary.desc }}</text>
-            <text class="summary-cta">{{ recentMatchSummary.cta }}</text>
+            <button class="play-btn" @tap="handleContinueCurrentMatch">{{ ongoingCard.actionLabel }}</button>
           </view>
 
-          <view class="summary-card" @tap="handleSummaryAction('ranking')">
-            <view class="summary-head">
-              <text class="summary-label">当前排名</text>
-              <uni-icons type="right" size="14" :color="isDarkMode ? '#9F926E' : '#6E6242'"></uni-icons>
-            </view>
-            <text class="summary-value">{{ rankingSummary.value }}</text>
-            <text class="summary-desc">{{ rankingSummary.desc }}</text>
-            <text class="summary-cta">{{ rankingSummary.cta }}</text>
-          </view>
-        </view>
-
-        <view v-if="!homePageError || hasContent" class="focus-section">
-          <view class="section-header">
-            <text class="section-title">赛事情报</text>
-            <view class="section-more" @tap="goTo('/pages/tournament/index', true)">
-              <text>全部情报</text>
-              <uni-icons type="right" size="14" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
+          <view v-else-if="isLoggedIn" class="play-card">
+            <text class="play-title">来一局</text>
+            <text class="play-desc">扫码或选择球友开局，比分实时同步给双方</text>
+            <view class="play-actions">
+              <button class="play-btn" @tap="handleStartMatch">发起对局</button>
+              <button class="play-btn play-btn--ghost" @tap="goTo('/subPages/match/challengeCompose')">约球</button>
             </view>
           </view>
 
-          <view v-if="eventNewsError" class="section-empty section-error">
-            <text class="empty-title">{{ eventNewsError.title }}</text>
-            <text class="empty-desc">{{ eventNewsError.description }}</text>
-            <text class="section-error__action" @tap="retryHomeData">重试</text>
+          <view v-else class="play-card">
+            <text class="play-title">登录后开始记分</text>
+            <text class="play-desc">发起对局、约球，排位赛成绩自动计入排行榜</text>
+            <button class="play-btn" @tap="goLogin">登录 / 注册</button>
           </view>
-          <view v-else-if="topEventNews" class="focus-card" @tap="goTo(`/subPages/tournament/detail?id=${topEventNews.id}`)">
-            <view class="focus-card-top">
-              <text class="focus-pill">{{ topEventNews.statusText }}</text>
-              <text class="focus-aside">{{ topEventNews.showTime ? topEventNews.timeText : topEventNews.dateText }}</text>
-            </view>
-            <text class="focus-title">{{ topEventNews.title }}</text>
-            <text class="focus-desc">{{ topEventNews.summary }}</text>
-            <view class="focus-footer">
-              <text>{{ topEventNews.gameTypeText }}</text>
-              <text>{{ topEventNews.locationText || topEventNews.sourceText || '赛事情报' }}</text>
-            </view>
-          </view>
-          <view v-else class="section-empty">
-            <text class="empty-title">还没有可看的赛事情报</text>
-            <text class="empty-desc">先去看看最近的赛讯更新，稍后再来刷新。</text>
-          </view>
-        </view>
 
-        <view v-if="!homePageError || hasContent" class="focus-section">
-          <view class="section-header">
-            <text class="section-title">排行焦点</text>
-            <view class="section-more" @tap="goTo('/pages/ranking/index')">
-              <text>完整榜单</text>
-              <uni-icons type="right" size="14" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
+          <view
+            v-if="challengeCard"
+            class="challenge-card"
+            :class="{ 'challenge-card--action': challengeCard.needsAction }"
+            @tap="goTo(challengeCard.url)"
+          >
+            <view class="challenge-copy">
+              <text class="challenge-title">{{ challengeCard.title }}</text>
+              <text class="challenge-sub">{{ challengeCard.subText }}</text>
+            </view>
+            <view class="challenge-action">
+              <text>{{ challengeCard.actionLabel }}</text>
             </view>
           </view>
 
-          <view v-if="leaderboardError" class="section-empty section-error">
-            <text class="empty-title">{{ leaderboardError.title }}</text>
-            <text class="empty-desc">{{ leaderboardError.description }}</text>
-            <text class="section-error__action" @tap="retryHomeData">重试</text>
+          <view v-if="homeRefreshError || homePageError" class="home-refresh-error">
+            <text>{{ (homeRefreshError || homePageError).description }}</text>
+            <text class="home-refresh-error__action" @tap="retryHomeData">重试</text>
           </view>
-          <view v-else-if="leaderboardTopThree.length" class="ranking-card">
-            <view v-for="item in leaderboardTopThree" :key="item.user_id || item.rank" class="ranking-row">
-              <view class="ranking-left">
-                <text class="ranking-rank">#{{ item.rank }}</text>
+
+          <!-- 赛事 -->
+          <view class="home-section">
+            <view class="section-header">
+              <text class="section-title">赛事</text>
+              <view class="section-more" @tap="goTo('/pages/tournament/index', true)">
+                <text>全部赛讯</text>
+                <uni-icons type="right" size="14" :color="mutedIconColor"></uni-icons>
+              </view>
+            </view>
+
+            <view v-if="eventNewsError" class="section-empty">
+              <text class="empty-title">{{ eventNewsError.title }}</text>
+              <text class="empty-desc">{{ eventNewsError.description }}</text>
+              <text class="section-error__action" @tap="retryHomeData">重试</text>
+            </view>
+            <view v-else-if="topEventNews" class="event-card" @tap="goTo(`/subPages/tournament/detail?id=${topEventNews.id}`)">
+              <view class="event-media">
+                <image v-if="topEventNews.hasCover" class="event-cover" :src="topEventNews.coverImage" mode="aspectFill"></image>
+                <view class="event-scrim"></view>
+                <view class="event-badge" :class="'event-badge--' + topEventNews.statusTone">
+                  <view v-if="topEventNews.statusTone === 'live'" class="event-badge-dot"></view>
+                  <text>{{ topEventNews.statusLabel }}</text>
+                </view>
+                <view class="event-copy">
+                  <text class="event-title">{{ topEventNews.title }}</text>
+                  <text class="event-meta">{{ topEventNews.metaText }}</text>
+                </view>
+              </view>
+              <view v-if="topEventNews.highlight" class="event-strip">
+                <text v-if="topEventNews.highlight.label" class="event-strip-label">{{ topEventNews.highlight.label }}</text>
+                <text class="event-strip-text">{{ topEventNews.highlight.primary }}</text>
+                <text v-if="topEventNews.highlight.secondary" class="event-strip-detail">{{ topEventNews.highlight.secondary }}</text>
+              </view>
+            </view>
+            <view v-else-if="homeLoading" class="skeleton-card skeleton-card--event"></view>
+            <view v-else class="section-empty">
+              <text class="empty-title">暂时没有赛讯</text>
+              <text class="empty-desc">新的职业赛事公布后会出现在这里。</text>
+            </view>
+          </view>
+
+          <!-- 排行榜 -->
+          <view class="home-section">
+            <view class="section-header">
+              <view class="section-title-row">
+                <text class="section-title">排行榜</text>
+                <text class="section-caption">中式八球</text>
+              </view>
+              <view class="section-more" @tap="goTo('/pages/ranking/index')">
+                <text>完整榜单</text>
+                <uni-icons type="right" size="14" :color="mutedIconColor"></uni-icons>
+              </view>
+            </view>
+
+            <view v-if="leaderboardError" class="section-empty">
+              <text class="empty-title">{{ leaderboardError.title }}</text>
+              <text class="empty-desc">{{ leaderboardError.description }}</text>
+              <text class="section-error__action" @tap="retryHomeData">重试</text>
+            </view>
+            <view v-else-if="leaderboardTopThree.length" class="ranking-card">
+              <view v-for="item in leaderboardTopThree" :key="item.user_id || item.rank" class="ranking-row">
+                <text class="ranking-medal" :class="'ranking-medal--' + item.rank">{{ item.rank }}</text>
                 <image class="ranking-avatar" :src="resolveAvatarUrl(item.avatar, item.user_id)" mode="aspectFill"></image>
                 <view class="ranking-copy">
                   <text class="ranking-name">{{ item.nickname || '球手' }}</text>
                   <text class="ranking-meta">{{ item.rank_name || '冲榜中' }}</text>
                 </view>
+                <text class="ranking-score">{{ item.rank_score || 0 }}<text class="ranking-score-unit">分</text></text>
               </view>
-              <text class="ranking-score">{{ item.rank_score || 0 }}分</text>
+              <view v-if="isLoggedIn" class="ranking-mine" @tap="goTo('/pages/ranking/index')">
+                <text class="ranking-mine-label">我</text>
+                <text class="ranking-mine-text">{{ myRankingText }}</text>
+                <uni-icons type="right" size="14" :color="mutedIconColor"></uni-icons>
+              </view>
             </view>
-          </view>
-          <view v-else class="section-empty">
-            <text class="empty-title">排行榜还在准备中</text>
-            <text class="empty-desc">打一局 PK 之后，你的成绩也会出现在这里。</text>
-          </view>
-        </view>
-
-        <view v-if="!homePageError || hasContent" class="focus-section nearby-venue-section">
-          <view class="section-header">
-            <text class="section-title">附近球房</text>
-            <view class="section-more" @tap="goTo('/subPages/venue/index')">
-              <text>查看球房</text>
-              <uni-icons type="right" size="14" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
+            <view v-else-if="homeLoading" class="skeleton-card skeleton-card--ranking"></view>
+            <view v-else class="section-empty">
+              <text class="empty-title">排行榜还在准备中</text>
+              <text class="empty-desc">打一场排位赛，你的成绩也会出现在这里。</text>
             </view>
           </view>
 
-          <view v-if="nearbyVenueFeedback" class="section-empty section-error">
-            <text class="empty-title">{{ nearbyVenueFeedback.title }}</text>
-            <text class="empty-desc">{{ nearbyVenueFeedback.description }}</text>
-            <text class="section-error__action" @tap="retryNearbyVenues">重试</text>
-          </view>
+          <!-- 附近球房 -->
+          <view class="home-section nearby-venue-section">
+            <view class="section-header">
+              <text class="section-title">附近球房</text>
+              <view class="section-more" @tap="goTo('/subPages/venue/index')">
+                <text>查看球房</text>
+                <uni-icons type="right" size="14" :color="mutedIconColor"></uni-icons>
+              </view>
+            </view>
 
-          <view v-else-if="nearbyVenueLoading && nearbyVenues.length === 0" class="section-empty">
-            <text class="empty-title">正在寻找附近球房</text>
-            <text class="empty-desc">定位成功后，会优先展示 5km 内最适合马上开局的球房。</text>
-          </view>
+            <view v-if="nearbyVenueFeedback" class="section-empty">
+              <text class="empty-title">{{ nearbyVenueFeedback.title }}</text>
+              <text class="empty-desc">{{ nearbyVenueFeedback.description }}</text>
+              <text class="section-error__action" @tap="retryNearbyVenues">重试</text>
+            </view>
 
-          <view v-else-if="nearbyVenues.length > 0" class="venue-preview-list">
-            <view
-              v-for="item in nearbyVenues"
-              :key="item.id"
-              class="venue-preview-card"
-              @tap="goToVenueDetail(item.id)"
-            >
-              <view class="venue-preview-main">
-                <text class="venue-preview-name">{{ item.name || '球房' }}</text>
-                <text class="venue-preview-address">{{ item.address || item.city || '地址待补充' }}</text>
-                <view class="venue-preview-tags">
-                  <text v-if="item.distance" class="venue-preview-tag accent">{{ formatVenueDistance(item.distance) }}</text>
-                  <text v-if="item.table_count" class="venue-preview-tag">{{ item.table_count }}台</text>
-                  <text v-if="item.price_range" class="venue-preview-tag">{{ item.price_range }}</text>
-                  <text v-if="item.checkin_count" class="venue-preview-tag">{{ item.checkin_count }}人签到</text>
+            <view v-else-if="nearbyVenueLoading && nearbyVenues.length === 0" class="skeleton-card skeleton-card--venue"></view>
+
+            <view v-else-if="nearbyVenues.length > 0" class="venue-card">
+              <view
+                v-for="item in nearbyVenues"
+                :key="item.id"
+                class="venue-row"
+                @tap="goToVenueDetail(item.id)"
+              >
+                <view class="venue-main">
+                  <text class="venue-name">{{ item.name || '球房' }}</text>
+                  <text class="venue-address">{{ item.address || item.city || '地址待补充' }}</text>
+                  <view class="venue-tags">
+                    <text v-if="item.table_count" class="venue-tag">{{ item.table_count }}台</text>
+                    <text v-if="item.price_range" class="venue-tag">{{ item.price_range }}</text>
+                    <text v-if="item.checkin_count" class="venue-tag">{{ item.checkin_count }}人签到</text>
+                  </view>
                 </view>
+                <text v-if="item.distance" class="venue-distance">{{ formatVenueDistance(item.distance) }}</text>
               </view>
-              <uni-icons type="right" size="18" :color="isDarkMode ? '#8b7a50' : '#9A8C67'"></uni-icons>
             </view>
-          </view>
 
-          <view v-else class="section-empty venue-empty-card">
-            <text class="empty-title">附近暂无球房</text>
-            <text class="empty-desc">{{ homeVenueEmptyAction.desc }}</text>
-            <view class="empty-action" @tap="goTo(homeVenueEmptyAction.url)">
-              <text>{{ homeVenueEmptyAction.text }}</text>
+            <view v-else class="section-empty venue-empty-card">
+              <text class="empty-title">附近暂无球房</text>
+              <text class="empty-desc">{{ homeVenueEmptyAction.desc }}</text>
+              <view class="empty-action" @tap="goTo(homeVenueEmptyAction.url)">
+                <text>{{ homeVenueEmptyAction.text }}</text>
+              </view>
             </view>
           </view>
-        </view>
+        </template>
 
         <view class="page-spacer"></view>
       </view>
@@ -217,31 +253,70 @@
       :default-type="defaultGameType"
       @confirm="handleGameTypeConfirm"
     />
+
+    <view v-if="showMatchQrModal" class="qr-mask" @tap="closeMatchQrModal">
+      <view class="qr-panel" @tap.stop>
+        <view class="qr-header">
+          <view>
+            <text class="qr-title">出示我的匹配二维码</text>
+            <text class="qr-subtitle">请让对手使用发起对局扫码入口识别</text>
+          </view>
+          <button class="qr-close" @tap="closeMatchQrModal">
+            <uni-icons type="closeempty" size="22" :color="mutedIconColor"></uni-icons>
+          </button>
+        </view>
+        <view class="qr-body">
+          <view v-if="matchQrLoading" class="qr-state">
+            <uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
+            <text>二维码生成中...</text>
+          </view>
+          <view v-if="!matchQrLoading && matchQrFailed" class="qr-state">
+            <text class="qr-error">二维码加载失败</text>
+            <button class="qr-retry" @tap="loadMyMatchQRCode">重试</button>
+          </view>
+          <canvas
+            v-if="matchQrContent && !matchQrFailed"
+            canvas-id="home-match-invite-qrcode"
+            id="home-match-invite-qrcode"
+            class="qr-image"
+            :class="{ 'is-loading': matchQrLoading }"
+            :width="240"
+            :height="240"
+          />
+        </view>
+        <button class="qr-done" @tap="closeMatchQrModal">关闭</button>
+      </view>
+    </view>
   </view>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, nextTick, onUnmounted, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useActivityStore } from '@/store/activity.js'
 import { useNotificationStore } from '@/store/notification.js'
 import { usePublicReadStore } from '@/store/publicRead.js'
 import { useUserOverviewStore } from '@/store/userOverview.js'
 import { useUserStore } from '@/store/user.js'
-import { previewMatchInvite, startMatch } from '@/api/match.js'
+import { getMatchQRCode, previewMatchInvite, startMatch } from '@/api/match.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
-import { getGameTypeLabel } from '@/utils/game-types.js'
 import { normalizeSaiXunCard } from '@/utils/saixun.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import {
   buildHomeNearbyVenueParams,
+  formatHomeMyRanking,
   formatHomeVenueDistance,
-  resolveHomeVenueEmptyAction
+  resolveHomeGreeting,
+  resolveHomeVenueEmptyAction,
+  shouldReloadHomeNearbyVenues
 } from '@/utils/home-index.js'
+import { buildOngoingMatchCard } from '@/utils/match-core-flow.js'
+import { resolveChallengeQuickCard } from '@/utils/challenge-view.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
-import { buildStartMatchPayload } from '@/utils/start-match.js'
+import { START_MATCH_MODE_OPTIONS, buildStartMatchPayload } from '@/utils/start-match.js'
 import { readDefaultGameType, saveDefaultGameType } from '@/utils/game-type-preference.js'
 import { getCurrentLocation } from '@/utils/permission-helper.js'
+import { renderLocalQRCode } from '@/utils/local-qrcode.js'
 import { scanAndResolveMatchCode } from '@/utils/match-scan.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import {
@@ -266,6 +341,7 @@ const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const userId = computed(() => userStore.userId)
 const userName = computed(() => userStore.nickname || '球友')
+const greetingHour = ref(new Date().getHours())
 
 const refreshing = ref(false)
 const homeState = ref(createAsyncPageState({
@@ -285,6 +361,12 @@ const homeRefreshError = computed(() => (
 const showGameTypeModal = ref(false)
 const selectedGameType = ref(null)
 const defaultGameType = ref(0)
+const startMatchMode = ref('practice')
+const startMatchVisibility = ref('private')
+const showMatchQrModal = ref(false)
+const matchQrLoading = ref(false)
+const matchQrFailed = ref(false)
+const matchQrContent = ref('')
 const currentMatch = computed(() => (isLoggedIn.value ? activityStore.currentMatch : null))
 const leaderboardTopThree = ref([])
 const myRanking = ref(null)
@@ -292,6 +374,7 @@ const topEventNews = ref(null)
 const nearbyVenues = ref([])
 const nearbyVenueLoading = ref(false)
 const nearbyVenueError = ref(null)
+const nearbyVenueAttemptAt = ref(0)
 const favoriteVenueRewardStatus = ref(null)
 const homeSectionErrors = ref({ leaderboard: null, eventNews: null })
 const leaderboardError = computed(() => (
@@ -304,127 +387,49 @@ const eventNewsError = computed(() => (
     ? resolveAsyncPageErrorFeedback(homeSectionErrors.value.eventNews, { resource: '赛事情报' })
     : null
 ))
-const nearbyVenueFeedback = computed(() => (
-  nearbyVenueError.value
+const nearbyVenueLocationIssue = ref('')
+const nearbyVenueFeedback = computed(() => {
+  if (nearbyVenueLocationIssue.value === 'denied') {
+    return { title: '未开启定位权限', description: '开启定位权限后可查看附近球房' }
+  }
+  if (nearbyVenueLocationIssue.value === 'unavailable') {
+    return { title: '暂时无法获取位置', description: '请检查定位服务后重试' }
+  }
+  return nearbyVenueError.value
     ? resolveAsyncPageErrorFeedback(nearbyVenueError.value, { resource: '附近球房' })
     : null
-))
+})
 
 const hasContent = computed(() => {
   return Boolean(currentMatch.value || topEventNews.value || leaderboardTopThree.value.length || nearbyVenues.value.length)
 })
 
 const homeVenueEmptyAction = computed(() => resolveHomeVenueEmptyAction(favoriteVenueRewardStatus.value))
+const mutedIconColor = computed(() => (isDarkMode.value ? '#9F926E' : '#9A8C67'))
 
-const headerSubtitle = computed(() => {
-  if (notificationStore.unreadCount > 0) {
-    return `你有 ${notificationStore.unreadCount > 99 ? '99+' : notificationStore.unreadCount} 条未读互动`
-  }
-  if (currentMatch.value) {
-    return '你的对局还在继续'
-  }
-  if (isLoggedIn.value) {
-    return '今天适合来一场 PK'
-  }
-  return '记录比分、生成战报、冲击排行榜'
+const greetingText = computed(() => (
+  isLoggedIn.value ? `${resolveHomeGreeting(greetingHour.value)}，${userName.value}` : '记录每一局真实比分'
+))
+const unreadText = computed(() => {
+  const count = notificationStore.unreadCount
+  return `${count > 99 ? '99+' : count} 条未读消息`
 })
 
-const heroMode = computed(() => {
-  if (currentMatch.value) return 'ongoing'
-  if (isLoggedIn.value) return 'ready'
-  return 'guest'
+// 活动状态首次返回前不确定是否有进行中的对局，先占位，避免「来一局」闪成「继续对局」
+const playCardLoading = computed(() => isLoggedIn.value && !activityStore.loaded && homeLoading.value)
+const ongoingCard = computed(() => buildOngoingMatchCard(currentMatch.value, userStore.userInfo || {}))
+const challengeCard = computed(() => {
+  const card = resolveChallengeQuickCard(isLoggedIn.value ? activityStore.currentChallenge : null, {
+    userId: userId.value,
+    serverTime: activityStore.challengeServerTime
+  })
+  if (!card || !ongoingCard.value) return card
+  // 约球已开局时由「我的对局」卡承接，不重复展示
+  const sameMatch = card.matchId > 0 && card.matchId === ongoingCard.value.id
+  const sameChallenge = card.challengeId > 0 && card.challengeId === Number(currentMatch.value?.challenge_id || 0)
+  return sameMatch || sameChallenge ? null : card
 })
-
-const heroEyebrow = computed(() => {
-  if (heroMode.value === 'ongoing') return '继续你的比赛节奏'
-  if (heroMode.value === 'ready') return `${userName.value}，准备开始了吗`
-  return '对局驱动的台球首页'
-})
-
-const heroTitle = computed(() => {
-  if (heroMode.value === 'ongoing') return '你的对局还在继续'
-  if (heroMode.value === 'ready') return '开始今天的第一场 PK'
-  return '登录后立即开始对局'
-})
-
-const heroSubtitle = computed(() => {
-  if (heroMode.value === 'ongoing' && currentMatch.value) {
-    return `当前比分 ${getCurrentMatchScore(currentMatch.value)}，${getCurrentMatchOpponentName(currentMatch.value)} 还在等你继续。`
-  }
-  if (heroMode.value === 'ready') {
-    if (myRanking.value?.rank > 0) {
-      return `你目前排在第 ${myRanking.value.rank} 名，再赢一场还能继续冲榜。`
-    }
-    return '记录每一场真实比分，把战绩、排行榜和战报串成你的竞技成长线。'
-  }
-  return '登录后可以发起 PK、记录比分、生成战报并参与排行榜。'
-})
-
-const heroPrimaryText = computed(() => {
-  if (heroMode.value === 'ongoing') return '继续对局'
-  if (heroMode.value === 'ready') return '发起 PK'
-  return '发起 PK'
-})
-
-const heroSecondaryText = computed(() => {
-  if (heroMode.value === 'ongoing') return '查看 PK 记录'
-  if (heroMode.value === 'ready') return '查看排行榜'
-  return '出示 PK 码'
-})
-
-const heroMetaTags = computed(() => {
-  if (heroMode.value === 'ongoing' && currentMatch.value) {
-    return [
-      getGameTypeLabel(currentMatch.value.game_type, '自由对局'),
-      `进行中 ${formatDuration(currentMatch.value.duration_seconds)}`
-    ]
-  }
-
-  if (heroMode.value === 'ready') {
-    const tags = []
-    if (myRanking.value?.rank > 0) {
-      tags.push(`当前第 ${myRanking.value.rank} 名`)
-    }
-    if (myRanking.value?.rank_score) {
-      tags.push(`排位分 ${myRanking.value.rank_score}`)
-    }
-    return tags.length ? tags : ['准备开始', '生成战报']
-  }
-
-  return ['支持排行', '支持战报']
-})
-
-const recentMatchSummary = computed(() => {
-  if (currentMatch.value) {
-    return {
-      value: getCurrentMatchScore(currentMatch.value),
-      desc: `${getCurrentMatchOpponentName(currentMatch.value)} · ${formatDuration(currentMatch.value.duration_seconds)}`,
-      cta: '继续这一局'
-    }
-  }
-
-  return {
-    value: isLoggedIn.value ? '还没有最近战绩' : '登录后查看最近战绩',
-    desc: isLoggedIn.value ? '打一场 PK 之后，这里会显示你的最新比分和结果。' : '登录后可查看自己的最近比分、对手和战报。',
-    cta: isLoggedIn.value ? '去发起 PK' : '去登录'
-  }
-})
-
-const rankingSummary = computed(() => {
-  if (myRanking.value?.rank > 0) {
-    return {
-      value: `第 ${myRanking.value.rank} 名`,
-      desc: `${myRanking.value.rank_name || '冲榜中'} · ${myRanking.value.rank_score || 0} 分`,
-      cta: '查看完整榜单'
-    }
-  }
-
-  return {
-    value: isLoggedIn.value ? '暂未上榜' : '榜单随时可看',
-    desc: isLoggedIn.value ? '打一局真实 PK 后，你的成绩会开始累积。' : '先看看平台高手成绩，再决定你的第一场 PK。',
-    cta: '去排行榜'
-  }
-})
+const myRankingText = computed(() => formatHomeMyRanking(myRanking.value))
 
 const getActivityIdentity = () => ({
   userId: userStore.userId,
@@ -459,7 +464,7 @@ const loadData = async ({ force = false } = {}) => {
   homeSectionErrors.value = { leaderboard: null, eventNews: null }
 
   try {
-    const nearbyVenueRequest = loadNearbyVenues({ force })
+    const nearbyVenueRequest = loadNearbyVenues({ force, passive: !force })
     const requests = [
       publicReadStore.loadLeaderboardSummary({ game_type: 3 }, {
         force,
@@ -525,45 +530,35 @@ const loadData = async ({ force = false } = {}) => {
   }
 }
 
-const getHomeLocation = async () => {
-  const result = await getCurrentLocation({
-    uniApi: uni,
-    action: '查看附近球房',
-    onPermissionDenied: (permission) => {
-      if (permission.reason === 'denied') {
-        uni.showToast({
-          title: '定位权限未开启，请开启后重试',
-          icon: 'none'
-        })
-      } else {
-        uni.showToast({
-          title: '获取定位失败，请稍后重试',
-          icon: 'none'
-        })
-      }
-    }
-  })
-
-  return result
-}
-
-const loadNearbyVenues = async ({ force = false } = {}) => {
+// passive：页面自动加载时不弹定位提示，结果只体现在区块内；用户点「重试」或下拉刷新才提示
+const loadNearbyVenues = async ({ force = false, passive = false } = {}) => {
   if (nearbyVenueLoading.value) return
+  if (!shouldReloadHomeNearbyVenues({ force, lastAttemptAt: nearbyVenueAttemptAt.value })) return
 
   nearbyVenueLoading.value = true
   nearbyVenueError.value = null
+  nearbyVenueLocationIssue.value = ''
+  nearbyVenueAttemptAt.value = Date.now()
   try {
-    const locationResult = await getHomeLocation()
+    // 定位接口在部分平台不可用时会直接抛错，统一按「无法获取位置」展示，不暴露原始报错
+    const locationResult = await getCurrentLocation({
+      uniApi: uni,
+      action: '查看附近球房',
+      onPermissionDenied: (permission) => {
+        if (passive) return
+        uni.showToast({
+          title: permission.reason === 'denied' ? '定位权限未开启，请开启后重试' : '获取定位失败，请稍后重试',
+          icon: 'none'
+        })
+      }
+    }).catch(() => null)
     if (!locationResult?.success) {
-      nearbyVenueError.value = createRequestError({
-        message: locationResult?.reason === 'denied' ? '请开启定位权限后查看附近球房' : '暂时无法获取当前位置',
-        category: locationResult?.reason === 'denied' ? 'permission' : 'network'
-      })
+      nearbyVenueLocationIssue.value = locationResult?.permission?.reason === 'denied' ? 'denied' : 'unavailable'
       return
     }
     const params = buildHomeNearbyVenueParams(locationResult.location || {})
     if (!params) {
-      nearbyVenueError.value = createRequestError({ message: '暂时无法获取当前位置', category: 'network' })
+      nearbyVenueLocationIssue.value = 'unavailable'
       return
     }
 
@@ -593,44 +588,6 @@ const onRefresh = async () => {
   refreshing.value = true
   await loadData({ force: true })
   refreshing.value = false
-}
-
-const formatDuration = (durationSeconds) => {
-	if (!durationSeconds || durationSeconds < 0) return '0分'
-
-	const totalMinutes = Math.floor(durationSeconds / 60)
-
-	if (totalMinutes < 1) {
-		return `${durationSeconds}秒`
-	}
-
-	if (totalMinutes < 60) {
-		return `${totalMinutes}分`
-	}
-
-	const hours = Math.floor(totalMinutes / 60)
-	const remainMinutes = totalMinutes % 60
-
-	if (hours < 24) {
-		if (remainMinutes > 0) {
-			return `${hours}小时${remainMinutes}分`
-		}
-		return `${hours}小时`
-	}
-
-	const days = Math.floor(hours / 24)
-	const remainHours = hours % 24
-
-	if (remainHours > 0) {
-		return `${days}天${remainHours}小时`
-	}
-	return `${days}天`
-}
-
-const getCurrentMatchScore = (match) => {
-  const leftScore = match.my_score ?? match.player1_score ?? 0
-  const rightScore = match.opponent_score ?? match.player2_score ?? 0
-  return `${leftScore} : ${rightScore}`
 }
 
 const getCurrentMatchOpponentName = (match) => {
@@ -670,70 +627,51 @@ const goToVenueDetail = (id) => {
 
 const formatVenueDistance = (meters) => formatHomeVenueDistance(meters)
 
-const handlePrimaryAction = () => {
-  if (heroMode.value === 'ongoing' && currentMatch.value) {
-    handleContinueMatch(currentMatch.value)
-    return
-  }
-
-  if (heroMode.value === 'ready') {
-    handleStartPK()
-    return
-  }
-
-  goLogin()
+const handleContinueCurrentMatch = () => {
+  if (currentMatch.value) handleContinueMatch(currentMatch.value)
 }
 
-const handleSecondaryAction = () => {
-  if (heroMode.value === 'ongoing') {
-    goTo('/subPages/social/challenges')
-    return
-  }
-
-  if (heroMode.value === 'ready') {
-    goTo('/pages/ranking/index')
-    return
-  }
-
-  goLogin()
-}
-
-const handleSummaryAction = (type) => {
-  if (type === 'match') {
-    if (currentMatch.value) {
-      handleContinueMatch(currentMatch.value)
-      return
-    }
-
-    if (isLoggedIn.value) {
-      handleStartPK()
-      return
-    }
-
+// 与观赛页一致的三种开局方式
+const handleStartMatch = () => {
+  if (!isLoggedIn.value) {
     goLogin()
     return
   }
-
-  goTo('/pages/ranking/index')
+  uni.showActionSheet({
+    itemList: ['扫描对手二维码', '出示我的二维码', '选择好友或最近对手'],
+    success: ({ tapIndex }) => {
+      if (tapIndex === 0) {
+        defaultGameType.value = readDefaultGameType(uni, userId.value)
+        showGameTypeModal.value = true
+        return
+      }
+      if (tapIndex === 1) {
+        showMyMatchQRCode()
+        return
+      }
+      goTo('/subPages/match/opponentSelector')
+    }
+  })
 }
 
-const handleStartPK = () => {
-  if (!isLoggedIn.value) {
-    uni.showToast({ title: '请先登录后再发起PK', icon: 'none' })
-    setTimeout(() => goLogin(), 1200)
-    return
-  }
-
-  defaultGameType.value = readDefaultGameType(uni, userId.value)
-  showGameTypeModal.value = true
-}
-
-const handleGameTypeConfirm = async ({ gameType, setAsDefault } = {}) => {
+const handleGameTypeConfirm = ({ gameType, setAsDefault } = {}) => {
   if (setAsDefault) {
     defaultGameType.value = saveDefaultGameType(uni, userId.value, gameType)
   }
   selectedGameType.value = gameType
+  uni.showActionSheet({
+    itemList: START_MATCH_MODE_OPTIONS.map((item) => item.label),
+    success: ({ tapIndex }) => {
+      const option = START_MATCH_MODE_OPTIONS[tapIndex]
+      if (!option) return
+      startMatchMode.value = option.matchMode
+      startMatchVisibility.value = option.visibility
+      scanToStartMatch()
+    }
+  })
+}
 
+const scanToStartMatch = async () => {
   const scanAction = await scanAndResolveMatchCode({
     uniApi: uni,
     previewMatchInvite
@@ -758,6 +696,8 @@ const handleMatchResult = async (scanAction) => {
     const res = await startMatch(buildStartMatchPayload({
       gameType: selectedGameType.value,
       opponent: opponentData,
+      matchMode: startMatchMode.value,
+      visibility: startMatchVisibility.value,
       inviteToken: scanAction.inviteToken
     }))
     uni.hideLoading()
@@ -770,6 +710,46 @@ const handleMatchResult = async (scanAction) => {
     uni.hideLoading()
     uni.showToast({ title: '匹配失败', icon: 'none' })
   }
+}
+
+const showMyMatchQRCode = async () => {
+  showMatchQrModal.value = true
+  uni.hideTabBar({ animation: true })
+  await loadMyMatchQRCode()
+}
+
+const loadMyMatchQRCode = async () => {
+  matchQrLoading.value = true
+  matchQrFailed.value = false
+  matchQrContent.value = ''
+  try {
+    const res = await getMatchQRCode()
+    if (!res?.success || !res.qrcode_data) {
+      matchQrLoading.value = false
+      matchQrFailed.value = true
+      return
+    }
+    matchQrContent.value = res.qrcode_data
+    await nextTick()
+    renderLocalQRCode({
+      canvasId: 'home-match-invite-qrcode',
+      content: matchQrContent.value,
+      size: 240,
+      uniApi: uni
+    })
+    matchQrLoading.value = false
+  } catch (error) {
+    matchQrLoading.value = false
+    matchQrFailed.value = true
+  }
+}
+
+const closeMatchQrModal = () => {
+  showMatchQrModal.value = false
+  matchQrLoading.value = false
+  matchQrFailed.value = false
+  matchQrContent.value = ''
+  uni.showTabBar({ animation: true })
 }
 
 const navigateToPlayingMatch = (match) => {
@@ -815,7 +795,12 @@ const handleContinueMatch = (match) => {
 }
 
 onShow(() => {
+  greetingHour.value = new Date().getHours()
   loadData()
+})
+
+onUnmounted(() => {
+  if (showMatchQrModal.value) uni.showTabBar({ animation: false })
 })
 </script>
 

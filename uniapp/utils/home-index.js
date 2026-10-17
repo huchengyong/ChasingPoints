@@ -128,3 +128,25 @@ export const resolveHomeVenueEmptyAction = (rewardStatus) => {
     url: '/subPages/venue/submit'
   }
 }
+
+// 首页问候语按本地小时划分时段
+export const resolveHomeGreeting = (hour = new Date().getHours()) => {
+  const value = Number(hour)
+  if (value >= 5 && value < 11) return '早上好'
+  if (value >= 11 && value < 13) return '中午好'
+  if (value >= 13 && value < 18) return '下午好'
+  return '晚上好'
+}
+
+// 附近球房只在首次进入、超过刷新间隔或用户主动刷新时重新定位，避免每次切回首页都申请定位
+export const HOME_NEARBY_VENUE_REFRESH_MS = 3 * 60 * 1000
+
+export const shouldReloadHomeNearbyVenues = ({ force = false, lastAttemptAt = 0, now = Date.now() } = {}) => {
+  if (force || !lastAttemptAt) return true
+  return now - lastAttemptAt >= HOME_NEARBY_VENUE_REFRESH_MS
+}
+
+export const formatHomeMyRanking = (ranking) => {
+  if (!ranking || !(Number(ranking.rank) > 0)) return '暂未上榜，打一场排位赛开始积分'
+  return [`第 ${ranking.rank} 名`, ranking.rank_name, `${Number(ranking.rank_score) || 0} 分`].filter(Boolean).join(' · ')
+}

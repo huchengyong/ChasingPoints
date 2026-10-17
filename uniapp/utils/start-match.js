@@ -94,6 +94,13 @@ export const normalizePendingMatchContext = (storageKey = '', raw = '') => {
   }
 }
 
+// 扫码开局前的模式选择，观赛页与首页共用：练习赛可私密，排位赛必须公开。
+export const START_MATCH_MODE_OPTIONS = [
+  { label: '练习赛（默认私密，不影响竞技权益）', matchMode: 'practice', visibility: 'private' },
+  { label: '练习赛（公开展示，不影响竞技权益）', matchMode: 'practice', visibility: 'public' },
+  { label: '排位赛（公开展示，需结束确认）', matchMode: 'ranked', visibility: 'public' }
+]
+
 export const buildStartMatchPayload = ({
   gameType,
   opponent = {},

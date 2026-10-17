@@ -5,8 +5,12 @@ import { readFileSync } from 'node:fs'
 import {
   buildSpectatorFinishedMatchDetailUrl,
   buildSpectatorMatchListParams,
+  buildSpectatorSections,
   getSpectatorEmptyState,
   getSpectatorMatchStatusText,
+  normalizeSpectatorMatch,
+  resolveSpectatorLobbyQuery,
+  resolveSpectatorLobbyTabs,
   shouldOpenPlayingForSpectatorMatch
 } from '../utils/spectator-lobby.js'
 
@@ -52,7 +56,7 @@ test('getSpectatorEmptyState separates hall, finished, friend and game type copy
     getSpectatorEmptyState({ scope: 'hall', status: 1, gameType: 0 }),
     {
       title: '暂无正在进行的对局',
-      subtitle: '可以先发起 PK，或稍后回来观赛'
+      subtitle: '公开对局开打后会出现在这里'
     }
   )
 
@@ -155,33 +159,95 @@ test('buildSpectatorFinishedMatchDetailUrl routes finished spectator matches to 
   )
 })
 
-test('match tab exposes spectator lobby controls and tab text', () => {
+test('lobby tabs hide friends for guests and map to scope and status queries', () => {
+  assert.deepEqual(resolveSpectatorLobbyTabs(false).map((tab) => tab.label), ['进行中', '已结束'])
+  assert.deepEqual(resolveSpectatorLobbyTabs(true).map((tab) => tab.label), ['好友', '进行中', '已结束'])
+  assert.deepEqual(resolveSpectatorLobbyQuery('friends'), { scope: 'friends', status: 0 })
+  assert.deepEqual(resolveSpectatorLobbyQuery('live'), { scope: 'hall', status: 1 })
+  assert.deepEqual(resolveSpectatorLobbyQuery('finished'), { scope: 'hall', status: 2 })
+  assert.deepEqual(resolveSpectatorLobbyQuery('unknown'), { scope: 'hall', status: 1 })
+})
+
+test('normalizeSpectatorMatch marks the viewer and only finished winners', () => {
+  const live = normalizeSpectatorMatch({
+    id: 1,
+    status: 1,
+    game_type: 3,
+    game_type_name: '中式八球',
+    match_mode: 'ranked',
+    player1_id: 18,
+    player1_name: '我',
+    player1_score: 4,
+    player2_id: 20,
+    player2_name: '阿杰',
+    player2_score: 2,
+    duration_seconds: 65
+  }, { userId: 18 })
+
+  assert.equal(live.isLive, true)
+  assert.equal(live.isMine, true)
+  assert.equal(live.metaText, '中式八球 · 排位')
+  assert.equal(live.statusText, '进行中 1分')
+  assert.deepEqual(live.players.map((player) => [player.name, player.score, player.isMe, player.outcome]), [
+    ['我', 4, true, ''],
+    ['阿杰', 2, false, '']
+  ])
+
+  const finished = normalizeSpectatorMatch({
+    id: 2,
+    status: 2,
+    game_type: 1,
+    match_mode: 'practice',
+    player1_id: 30,
+    player1_score: 3,
+    player2_id: 31,
+    player2_name: '球友 B',
+    player2_score: 5
+  }, { userId: 18 })
+
+  assert.equal(finished.isLive, false)
+  assert.equal(finished.isMine, false)
+  assert.equal(finished.metaText, '斯诺克 · 练习')
+  assert.equal(finished.statusText, '已结束')
+  assert.deepEqual(finished.players.map((player) => [player.name, player.outcome]), [
+    ['选手1', 'loser'],
+    ['球友 B', 'winner']
+  ])
+
+  const draw = normalizeSpectatorMatch({ id: 3, status: 2, player1_score: 2, player2_score: 2 })
+  assert.deepEqual(draw.players.map((player) => player.outcome), ['', ''])
+})
+
+test('buildSpectatorSections groups only the mixed friends tab', () => {
+  const live = { id: 1, isLive: true }
+  const ended = { id: 2, isLive: false }
+
+  assert.deepEqual(buildSpectatorSections([ended, live], 'friends').map((section) => [section.title, section.items.map((item) => item.id)]), [
+    ['进行中', [1]],
+    ['已结束', [2]]
+  ])
+  assert.deepEqual(buildSpectatorSections([ended], 'friends').map((section) => section.key), ['finished'])
+  assert.deepEqual(buildSpectatorSections([live], 'live'), [{ key: 'live', title: '', items: [live] }])
+  assert.deepEqual(buildSpectatorSections([], 'live'), [])
+})
+
+test('match tab uses status tabs, an action-sheet game filter and paged loading', () => {
   const pageSource = readFileSync(new URL('../pages/match/index.vue', import.meta.url), 'utf8')
-  const styleSource = readFileSync(new URL('../pages/match/index.scss', import.meta.url), 'utf8')
-  const helperSource = readFileSync(new URL('../utils/spectator-lobby.js', import.meta.url), 'utf8')
   const pagesJson = readFileSync(new URL('../pages.json', import.meta.url), 'utf8')
 
-  assert.match(pageSource, /SPECTATOR_SCOPES/)
-  assert.match(helperSource, /大厅/)
-  assert.match(helperSource, /好友/)
+  assert.match(pageSource, /const lobbyTabs = computed\(\(\) => resolveSpectatorLobbyTabs\(userStore\.isLoggedIn\)\)/)
+  assert.match(pageSource, /v-for="tab in lobbyTabs"[\s\S]*@tap="selectLobbyTab\(tab\.value\)"/)
+  assert.match(pageSource, /const openGameTypeSheet[\s\S]*uni\.showActionSheet/)
   assert.match(pageSource, /GAME_TYPE_FILTER_OPTIONS_WITH_ALL/)
-  assert.match(pageSource, /class="lobby-toolbar-row"[\s\S]*class="scope-tabs"[\s\S]*class="filter-button"/)
-  assert.doesNotMatch(pageSource, /<view v-if="currentScope === 'hall'" class="status-tabs">/)
-  assert.doesNotMatch(pageSource, /<scroll-view class="game-type-filter" scroll-x>/)
-  assert.match(pageSource, /showFilterPanel/)
-  assert.match(pageSource, /confirmSpectatorFilters/)
-  assert.match(pageSource, /buildSpectatorFinishedMatchDetailUrl/)
-  assert.match(pageSource, /uni\.hideTabBar/)
-  assert.match(pageSource, /uni\.showTabBar/)
-  assert.match(pageSource, /class="status-segmented"/)
-  assert.match(pageSource, /class="game-type-choice-list"/)
-  assert.match(pageSource, /class="game-type-choice"/)
-  assert.match(pageSource, /type="checkmarkempty"/)
-  assert.doesNotMatch(pageSource, /class="filter-option"/)
-  assert.match(styleSource, /\.status-segmented\s*\{[\s\S]*display:\s*grid;[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/)
-  assert.match(styleSource, /\.game-type-choice-list\s*\{[\s\S]*display:\s*flex;[\s\S]*flex-direction:\s*column;/)
-  assert.match(styleSource, /\.game-type-choice\s*\{[\s\S]*margin:\s*0;/)
-  assert.match(styleSource, /\.filter-cancel,[\s\S]*\.filter-confirm\s*\{[\s\S]*margin:\s*0;/)
+  assert.match(pageSource, /onReachBottom\(\(\) => \{\s*loadMore\(\)/)
+  assert.match(pageSource, /page: nextPage/)
+  // 切换标签先作废在途请求并清空旧列表
+  assert.match(pageSource, /const reloadLobby = \(\) => \{[\s\S]*requestId: lobbyState\.value\.requestId \+ 1[\s\S]*spectatorMatches\.value = \[\]/)
+  // 「我的对局」只在顶部卡片出现，列表按 id 排除
+  assert.match(pageSource, /const lobbyItems = computed[\s\S]*Number\(match\.id\) !== currentId/)
+  // 扫码执裁入口常驻，不再只出现在空态
+  assert.match(pageSource, /class="challenge-entry-btn" @tap="handleScanAsReferee"/)
+  assert.doesNotMatch(pageSource, /showFilterPanel|confirmSpectatorFilters|status-segmented|game-type-choice/)
   assert.match(pagesJson, /"navigationBarTitleText":\s*"观赛"/)
   assert.match(pagesJson, /"text":\s*"观赛"/)
 })

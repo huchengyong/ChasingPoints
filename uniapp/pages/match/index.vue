@@ -1,182 +1,179 @@
 <template>
-	<view class="match-container" :class="{ 'dark-mode': isDarkMode }">
-		<!-- 主内容区 -->
-		<view class="main-content">
-			<view class="match-primary-action" v-if="lobbyState.status !== ASYNC_PAGE_STATUS.EMPTY">
-				<view class="match-primary-action__copy">
-					<text class="match-primary-action__eyebrow">双人对局</text>
-					<text class="match-primary-action__title">{{ homePrimaryAction.label }}</text>
-					<text class="match-primary-action__desc">{{ homePrimaryAction.type === 'start' ? '扫描、出示二维码或从邀约继续' : '你的待处理对局始终显示在这里' }}</text>
-				</view>
-				<button class="match-primary-action__button" @click="handlePrimaryAction">{{ homePrimaryAction.label }}</button>
-			</view>
-			<view class="challenge-quick-card" v-if="currentChallenge" @click="openChallengeWaiting">
-				<view class="challenge-quick-copy">
-					<text class="challenge-quick-title">{{ challengeQuickTitle }}</text>
-					<text class="challenge-quick-sub">{{ challengeQuickSub }}</text>
-				</view>
-				<view class="challenge-quick-action">
-					<text>{{ challengeQuickActionLabel }}</text>
-				</view>
-			</view>
-			<view class="challenge-entry-row">
-				<button class="challenge-entry-btn" @click="goChallengeCompose"><text>发起约球</text></button>
-				<button class="challenge-entry-btn ghost" @click="goChallenges('history')"><text>约球记录</text></button>
-				<button class="challenge-entry-btn ghost" @click="goChallenges('received')">
-					<text>收到的邀请{{ receivedChallengeCount > 0 ? '(' + receivedChallengeCount + ')' : '' }}</text>
-				</button>
-			</view>
-			<view class="challenge-unavailable" v-if="userStore.isLoggedIn && !activityStore.challengeAvailable" @click="retryChallengeActivity">
-				<text class="challenge-unavailable__text">约球状态读取失败，点击重试</text>
-			</view>
-			<view class="lobby-toolbar">
-				<view class="lobby-toolbar-row">
-					<view class="scope-tabs">
-						<button
-							v-for="item in scopeOptions"
-							:key="item.value"
-							class="scope-tab"
-							:class="{ active: currentScope === item.value }"
-							@click="handleScopeChange(item.value)"
-						>
-							<text>{{ item.label }}</text>
-						</button>
+	<view class="match-page" :class="{ 'dark-mode': isDarkMode }">
+		<!-- 我的对局 / 开局：同一场对局只在这里出现一次 -->
+		<view class="play-card match-primary-action">
+			<template v-if="myMatchCard">
+				<view class="play-match" @tap="handlePrimaryAction">
+					<view class="play-head">
+						<view class="state-chip" :class="myMatchCard.isPending ? 'state-chip--pending' : 'state-chip--live'">
+							<view class="state-chip-dot"></view>
+							<text>{{ myMatchCard.statusText }}</text>
+						</view>
+						<text class="play-meta">{{ myMatchCard.metaText }}</text>
+						<text class="play-duration">{{ myMatchCard.durationText }}</text>
 					</view>
-					<button class="filter-button" :class="{ active: isSpectatorFilterActive }" @click="openFilterPanel">
-						<uni-icons type="tune-filled" size="20" :color="isSpectatorFilterActive ? '#ffffff' : (isDarkMode ? '#d7c89b' : '#6E6242')"></uni-icons>
-					</button>
-				</view>
-			</view>
-
-			<!-- 加载状态 -->
-			<view v-if="showPageLoading" class="loading-container">
-					<uni-icons type="spinner-cycle" size="48" color="#E0AE12"></uni-icons>
-				<text class="loading-text">加载中...</text>
-			</view>
-
-			<view v-else-if="pageError" class="empty-state error-state">
-				<uni-icons type="info" size="72" color="#9A8C67" class="empty-icon"></uni-icons>
-				<text class="empty-title">{{ pageError.title }}</text>
-				<text class="empty-subtitle">{{ pageError.description }}</text>
-				<button class="start-button" @click="handlePageErrorAction">{{ pageError.actionText }}</button>
-			</view>
-
-			<!-- 空数据状态 -->
-			<view v-else-if="lobbyState.status === ASYNC_PAGE_STATUS.EMPTY" class="empty-state">
-				<uni-icons type="medal" size="128" color="#6E6242" class="empty-icon"></uni-icons>
-				<text class="empty-title">{{ emptyState.title }}</text>
-				<text class="empty-subtitle">{{ emptyState.subtitle }}</text>
-				<button class="start-button" @click="handleStartMatch">
-					<text>发起好友对局</text>
-				</button>
-				<button class="secondary-link" @click="handleScanAsReferee">
-					<text>专业比赛需要裁判？扫码进入</text>
-					<uni-icons type="arrowright" size="16" :color="isDarkMode ? '#9f926e' : '#6E6242'"></uni-icons>
-				</button>
-			</view>
-
-			<!-- 对局列表 -->
-			<view v-else class="match-list">
-				<view v-if="refreshError" class="refresh-error-banner">
-					<text>{{ refreshError.description }}</text>
-					<text class="refresh-error-action" @tap="retryLobby">重试</text>
-				</view>
-				<!-- 进行中的对局 -->
-				<view v-if="visibleCurrentMatch" class="match-card my-match" @click="handleContinueMatch(visibleCurrentMatch)">
-					<!-- MY MATCH 标签 -->
-					<view class="my-match-badge">我的对局</view>
-					<view v-if="visibleCurrentMatch.viewer_role === 'referee'" class="referee-match-info">
-						<text class="referee-match-info__title">你正在担任本场裁判</text>
-						<text class="referee-match-info__score">{{ visibleCurrentMatch.my_score }} : {{ visibleCurrentMatch.opponent_score }}</text>
-						<text class="referee-match-info__hint">点击进入裁判记分页</text>
-					</view>
-					<view v-else class="match-info">
-						<!-- 我方玩家 -->
-						<view class="player">
-							<view class="avatar me-avatar" :class="{ winner: visibleCurrentMatch.my_score > visibleCurrentMatch.opponent_score }">
-								<image :src="userAvatar" mode="aspectFill" />
-								<view class="me-badge">我</view>
+					<view class="versus">
+						<view class="versus-player">
+							<image class="versus-avatar" :src="resolveAvatarUrl(myMatchCard.players[0].avatar, myMatchCard.players[0].id)" mode="aspectFill"></image>
+							<view class="versus-name-row">
+								<text class="versus-name">{{ myMatchCard.players[0].name }}</text>
+								<text v-if="myMatchCard.players[0].isMe" class="me-tag">我</text>
 							</view>
-							<text class="name">{{ userName }}</text>
 						</view>
-
-						<!-- 比分 -->
-						<view class="score-area">
-							<text class="score">{{ visibleCurrentMatch.my_score }} : {{ visibleCurrentMatch.opponent_score }}</text>
-							<text class="vs-text">VS</text>
-						</view>
-
-						<!-- 对手玩家 -->
-						<view class="player">
-							<view class="avatar" :class="{ winner: visibleCurrentMatch.opponent_score > visibleCurrentMatch.my_score }">
-								<image :src="getMatchAvatar(visibleCurrentMatch, 'opponent')" mode="aspectFill" />
+						<text class="versus-score">{{ myMatchCard.players[0].score }} : {{ myMatchCard.players[1].score }}</text>
+						<view class="versus-player">
+							<image class="versus-avatar" :src="resolveAvatarUrl(myMatchCard.players[1].avatar, myMatchCard.players[1].id)" mode="aspectFill"></image>
+							<view class="versus-name-row">
+								<text class="versus-name">{{ myMatchCard.players[1].name }}</text>
+								<text v-if="myMatchCard.players[1].isMe" class="me-tag">我</text>
 							</view>
-							<text class="name">{{ visibleCurrentMatch.opponent_name }}</text>
-						</view>
-					</view>
-
-					<!-- 底部信息 -->
-					<view class="match-footer">
-						<view :class="['game-type-tag', getGameTypeClass(visibleCurrentMatch.game_type)]">
-							{{ visibleCurrentMatch.game_type_name }}
-						</view>
-						<view class="match-status">
-							<uni-icons type="circle" size="14" color="#22c55e"></uni-icons>
-							<text>{{ getStatusText(visibleCurrentMatch) }}</text>
 						</view>
 					</view>
 				</view>
+				<button class="play-btn" @tap="handlePrimaryAction">{{ myMatchCard.actionLabel }}</button>
+			</template>
+			<template v-else>
+				<view class="play-intro">
+					<text class="play-title">来一局</text>
+					<text class="play-desc">扫码或选择球友开局，比分实时同步给双方</text>
+				</view>
+				<button class="play-btn" @tap="handlePrimaryAction">{{ userStore.isLoggedIn ? '发起对局' : '登录后发起对局' }}</button>
+			</template>
 
-				<!-- 公开观赛对局列表 -->
+			<view v-if="userStore.isLoggedIn" class="play-entries">
+				<view class="challenge-entry-btn" @tap="goChallengeCompose">
+					<uni-icons type="calendar" size="22" :color="entryIconColor"></uni-icons>
+					<text class="entry-label">发起约球</text>
+				</view>
+				<view class="challenge-entry-btn" @tap="goChallenges('received')">
+					<view class="entry-icon">
+						<uni-icons type="email" size="22" :color="entryIconColor"></uni-icons>
+						<text v-if="receivedChallengeCount > 0" class="entry-badge">{{ receivedChallengeCount > 99 ? '99+' : receivedChallengeCount }}</text>
+					</view>
+					<text class="entry-label">收到的邀请</text>
+				</view>
+				<view class="challenge-entry-btn" @tap="goChallenges('history')">
+					<uni-icons type="list" size="22" :color="entryIconColor"></uni-icons>
+					<text class="entry-label">约球记录</text>
+				</view>
+				<view class="challenge-entry-btn" @tap="handleScanAsReferee">
+					<uni-icons type="scan" size="22" :color="entryIconColor"></uni-icons>
+					<text class="entry-label">扫码执裁</text>
+				</view>
+			</view>
+		</view>
+
+		<view
+			v-if="challengeCard"
+			class="challenge-quick-card"
+			:class="{ 'challenge-quick-card--action': challengeCard.needsAction }"
+			@tap="openChallengeWaiting"
+		>
+			<view class="challenge-quick-copy">
+				<text class="challenge-quick-title">{{ challengeCard.title }}</text>
+				<text class="challenge-quick-sub">{{ challengeCard.subText }}</text>
+			</view>
+			<view class="challenge-quick-action">
+				<text>{{ challengeCard.actionLabel }}</text>
+			</view>
+		</view>
+		<view class="challenge-unavailable" v-if="userStore.isLoggedIn && !activityStore.challengeAvailable" @tap="retryChallengeActivity">
+			<text class="challenge-unavailable__text">约球状态读取失败，点击重试</text>
+		</view>
+
+		<!-- 观赛列表 -->
+		<view class="lobby-bar">
+			<view class="lobby-tabs">
 				<view
-					v-for="match in spectatorMatches"
-					:key="match.id"
-					:class="['match-card', { 'my-match': isMyMatch(match) }]"
-					@click="handleMatchClick(match)"
+					v-for="tab in lobbyTabs"
+					:key="tab.value"
+					class="lobby-tab"
+					:class="{ 'lobby-tab--active': lobbyTab === tab.value }"
+					@tap="selectLobbyTab(tab.value)"
 				>
-					<!-- 我的对局标签 -->
-					<view v-if="isMyMatch(match)" class="my-match-badge">我的对局</view>
-					<view class="match-info">
-						<!-- 玩家1 -->
-						<view class="player">
-							<view
-								:class="['avatar', { winner: match.player1_score > match.player2_score, 'me-avatar': isPlayer1Me(match) }]"
-							>
-								<image :src="getMatchAvatar(match, 'player1')" mode="aspectFill" />
-								<view v-if="isPlayer1Me(match)" class="me-badge">我</view>
-							</view>
-							<text class="name">{{ match.player1_name }}</text>
-						</view>
+					<text class="lobby-tab-text">{{ tab.label }}</text>
+				</view>
+			</view>
+			<view class="lobby-filter" @tap="openGameTypeSheet">
+				<text class="lobby-filter-text" :class="{ 'lobby-filter-text--active': currentGameType !== 0 }">{{ selectedGameTypeLabel }}</text>
+				<uni-icons type="bottom" size="12" :color="mutedIconColor"></uni-icons>
+			</view>
+		</view>
 
-						<!-- 比分 -->
-						<view class="score-area">
-							<text class="score">{{ match.player1_score }} : {{ match.player2_score }}</text>
-							<text class="vs-text">VS</text>
-						</view>
+		<view v-if="showPageLoading" class="lobby-skeleton">
+			<view v-for="index in 3" :key="index" class="skeleton-card">
+				<view class="skeleton-line skeleton-line--short"></view>
+				<view class="skeleton-row">
+					<view class="skeleton-avatar"></view>
+					<view class="skeleton-line"></view>
+				</view>
+				<view class="skeleton-row">
+					<view class="skeleton-avatar"></view>
+					<view class="skeleton-line"></view>
+				</view>
+			</view>
+		</view>
 
-						<!-- 玩家2 -->
-						<view class="player">
-							<view
-								:class="['avatar', { winner: match.player2_score > match.player1_score, 'me-avatar': isPlayer2Me(match) }]"
-							>
-								<image :src="getMatchAvatar(match, 'player2')" mode="aspectFill" />
-								<view v-if="isPlayer2Me(match)" class="me-badge">我</view>
-							</view>
-							<text class="name">{{ match.player2_name }}</text>
+		<view v-else-if="pageError" class="state-block">
+			<view class="state-icon">
+				<uni-icons type="info" size="30" :color="mutedIconColor"></uni-icons>
+			</view>
+			<text class="state-title">{{ pageError.title }}</text>
+			<text class="state-text">{{ pageError.description }}</text>
+			<button class="state-btn" @tap="handlePageErrorAction">{{ pageError.actionText }}</button>
+		</view>
+
+		<view v-else-if="lobbyItems.length === 0" class="state-block">
+			<view class="state-icon">
+				<uni-icons type="eye" size="30" :color="brandStrongColor"></uni-icons>
+			</view>
+			<text class="state-title">{{ emptyState.title }}</text>
+			<text class="state-text">{{ emptyState.subtitle }}</text>
+			<button v-if="currentGameType !== 0" class="state-btn state-btn--ghost" @tap="resetGameType">查看全部球种</button>
+			<button v-else-if="lobbyTab === 'friends'" class="state-btn state-btn--ghost" @tap="selectLobbyTab('live')">看看大厅对局</button>
+		</view>
+
+		<view v-else class="match-list">
+			<view v-if="refreshError" class="refresh-error-banner">
+				<text>{{ refreshError.description }}</text>
+				<text class="refresh-error-action" @tap="retryLobby">重试</text>
+			</view>
+			<view v-for="section in lobbySections" :key="section.key" class="lobby-section">
+				<text v-if="section.title" class="lobby-section-title">{{ section.title }}</text>
+				<view
+					v-for="match in section.items"
+					:key="match.id"
+					class="match-card"
+					:class="{ 'match-card--mine': match.isMine }"
+					@tap="handleMatchClick(match)"
+				>
+					<view class="match-card-head">
+						<text class="match-card-meta">{{ match.metaText }}</text>
+						<view class="match-state" :class="match.isLive ? 'match-state--live' : 'match-state--ended'">
+							<view v-if="match.isLive" class="match-state-dot"></view>
+							<text>{{ match.statusText }}</text>
 						</view>
 					</view>
-
-					<!-- 底部信息 -->
-					<view class="match-footer">
-						<view :class="['game-type-tag', getGameTypeClass(match.game_type)]">
-							{{ match.game_type_name }}
-						</view>
-						<view class="match-status" :class="{ finished: match.status === 2 }">
-							<uni-icons type="circle" size="14" :color="match.status === 2 ? '#9A8C67' : '#22c55e'"></uni-icons>
-							<text>{{ getStatusText(match) }}</text>
-						</view>
+					<view
+						v-for="(player, index) in match.players"
+						:key="index"
+						class="match-player"
+						:class="player.outcome ? 'is-' + player.outcome : ''"
+					>
+						<image class="match-player-avatar" :src="resolveAvatarUrl(player.avatar, player.id)" mode="aspectFill"></image>
+						<text class="match-player-name">{{ player.name }}</text>
+						<text v-if="player.isMe" class="me-tag">我</text>
+						<text class="match-player-score">{{ player.score }}</text>
 					</view>
 				</view>
+			</view>
+			<view v-if="hasMore" class="load-more">
+				<text>{{ loadingMore ? '正在加载...' : '上拉加载更多' }}</text>
+			</view>
+			<view v-else-if="total > PAGE_SIZE" class="load-more">
+				<view class="load-more-line"></view>
+				<text>没有更多对局了</text>
+				<view class="load-more-line"></view>
 			</view>
 		</view>
 
@@ -187,62 +184,6 @@
 			@confirm="handleGameTypeConfirm"
 		/>
 
-		<view v-if="showFilterPanel" class="filter-panel-mask" @click="closeFilterPanel">
-			<view class="filter-panel" @click.stop>
-				<view class="filter-panel-header">
-					<text class="filter-panel-title">筛选对局</text>
-					<button class="filter-close" @click="closeFilterPanel">
-						<uni-icons type="closeempty" size="20" :color="isDarkMode ? '#d7c89b' : '#6E6242'"></uni-icons>
-					</button>
-				</view>
-
-				<view v-if="currentScope === 'hall'" class="filter-group">
-					<text class="filter-group-title">状态</text>
-					<view class="status-segmented">
-						<button
-							v-for="item in statusOptions"
-							:key="item.value"
-							class="status-segmented-item"
-							:class="{ active: draftStatus === item.value }"
-							@click="draftStatus = item.value"
-						>
-							<text>{{ item.label }}</text>
-						</button>
-					</view>
-				</view>
-
-				<view class="filter-group">
-					<text class="filter-group-title">球种</text>
-					<view class="game-type-choice-list">
-						<view
-							v-for="item in gameTypeOptions"
-							:key="item.value"
-							class="game-type-choice"
-							:class="{ active: draftGameType === item.value }"
-							@click="draftGameType = item.value"
-						>
-							<text class="game-type-choice-label">{{ item.label }}</text>
-							<uni-icons
-								v-if="draftGameType === item.value"
-								type="checkmarkempty"
-								size="18"
-								color="#E0AE12"
-							></uni-icons>
-						</view>
-					</view>
-				</view>
-
-				<view class="filter-actions">
-					<button class="filter-cancel" @click="closeFilterPanel">
-						<text>取消</text>
-					</button>
-					<button class="filter-confirm" @click="confirmSpectatorFilters">
-						<text>确定</text>
-					</button>
-				</view>
-			</view>
-		</view>
-
 		<view v-if="showMatchQrModal" class="match-qr-mask" @click="closeMatchQrModal">
 			<view class="match-qr-panel" @click.stop>
 				<view class="match-qr-header">
@@ -251,7 +192,7 @@
 						<text class="match-qr-subtitle">请让对手使用发起对局扫码入口识别</text>
 					</view>
 					<button class="match-qr-close" @click="closeMatchQrModal">
-						<uni-icons type="closeempty" size="22" color="#6E6242"></uni-icons>
+						<uni-icons type="closeempty" size="22" :color="mutedIconColor"></uni-icons>
 					</button>
 				</view>
 				<view class="match-qr-body">
@@ -320,7 +261,7 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 
-import { onLoad, onShow, onPullDownRefresh } from '@dcloudio/uni-app'
+import { onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
 import { useActivityStore } from '@/store/activity.js'
 import { useUserStore } from '@/store/user.js'
 import { usePageTheme } from '@/utils/page-theme.js'
@@ -331,17 +272,18 @@ import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import { GAME_TYPE_FILTER_OPTIONS_WITH_ALL } from '@/utils/game-types.js'
 import {
-	SPECTATOR_SCOPES,
-	SPECTATOR_STATUS_OPTIONS,
-	buildSpectatorFinishedMatchDetailUrl,
 	buildSpectatorMatchListParams,
+	buildSpectatorSections,
 	getSpectatorEmptyState,
-	getSpectatorMatchStatusText,
+	normalizeSpectatorMatch,
+	resolveSpectatorLobbyQuery,
+	resolveSpectatorLobbyTabs,
 	shouldOpenPlayingForSpectatorMatch
 } from '@/utils/spectator-lobby.js'
-import { buildFinishedMatchDetailRoute, resolveMatchHomePrimaryAction } from '@/utils/match-core-flow.js'
-import { GAME_TYPE_LABEL_MAP } from '@/utils/game-types.js'
+import { buildFinishedMatchDetailRoute, buildOngoingMatchCard } from '@/utils/match-core-flow.js'
+import { resolveChallengeQuickCard } from '@/utils/challenge-view.js'
 import {
+	START_MATCH_MODE_OPTIONS,
 	buildStartMatchPayload,
 	normalizePendingMatchContext
 } from '@/utils/start-match.js'
@@ -352,11 +294,15 @@ import {
 	beginAsyncPageLoad,
 	createAsyncPageState,
 	getAsyncPageRequest,
+	isAsyncPageRequestCurrent,
 	rejectAsyncPageLoad,
 	resolveAsyncPageErrorFeedback,
-	resolveAsyncPageLoad
+	resolveAsyncPageLoad,
+	shouldIgnoreAsyncPageError
 } from '@/utils/async-page-state.js'
 import { createRequestError } from '@/utils/request-errors.js'
+
+const PAGE_SIZE = 20
 
 // ========== 状态管理 ==========
 const userStore = useUserStore()
@@ -370,6 +316,9 @@ const lobbyState = ref(createAsyncPageState({
 }))
 const currentMatch = computed(() => (userStore.isLoggedIn ? activityStore.currentMatch : null))
 const spectatorMatches = ref([])
+const page = ref(1)
+const total = ref(0)
+const loadingMore = ref(false)
 const showGameTypeModal = ref(false)
 const selectedGameType = ref(null)
 const defaultGameType = ref(0)
@@ -388,13 +337,11 @@ const refereeJoining = ref(false)
 const refereePreview = ref(null)
 const refereePreviewError = ref('')
 const pendingRefereeJoin = ref(null)
-const showFilterPanel = ref(false)
-const currentScope = ref(userStore.isLoggedIn ? 'friends' : 'hall')
-const currentStatus = ref(1)
+const lobbyTab = ref(userStore.isLoggedIn ? 'friends' : 'live')
 const currentGameType = ref(0)
-const draftStatus = ref(1)
-const draftGameType = ref(0)
-const showPageLoading = computed(() => lobbyState.value.status === ASYNC_PAGE_STATUS.LOADING)
+const showPageLoading = computed(() => (
+	lobbyState.value.status === ASYNC_PAGE_STATUS.LOADING || lobbyState.value.status === ASYNC_PAGE_STATUS.IDLE
+))
 const pageError = computed(() => {
 	if (lobbyState.value.status !== ASYNC_PAGE_STATUS.ERROR) return null
 	return resolveAsyncPageErrorFeedback(lobbyState.value.error, { resource: '对局大厅' })
@@ -404,55 +351,45 @@ const refreshError = computed(() => (
 		? resolveAsyncPageErrorFeedback(lobbyState.value.refreshError, { resource: '对局大厅' })
 		: null
 ))
-const scopeOptions = SPECTATOR_SCOPES
-const statusOptions = SPECTATOR_STATUS_OPTIONS
 const gameTypeOptions = GAME_TYPE_FILTER_OPTIONS_WITH_ALL
-const isSpectatorFilterActive = computed(() => {
-	return currentGameType.value > 0 || (currentScope.value === 'hall' && currentStatus.value !== 1)
-})
+const lobbyTabs = computed(() => resolveSpectatorLobbyTabs(userStore.isLoggedIn))
+const lobbyQuery = computed(() => resolveSpectatorLobbyQuery(lobbyTab.value))
+const selectedGameTypeLabel = computed(() => (
+	(gameTypeOptions.find((item) => item.value === currentGameType.value) || gameTypeOptions[0]).label
+))
+const hasMore = computed(() => page.value * PAGE_SIZE < total.value)
+const mutedIconColor = computed(() => (isDarkMode.value ? '#9F926E' : '#9A8C67'))
+const brandStrongColor = computed(() => (isDarkMode.value ? '#F0C542' : '#C69200'))
+const entryIconColor = computed(() => (isDarkMode.value ? '#D7C89B' : '#6E6242'))
 
 // 用户信息
-const userName = computed(() => userStore.userInfo?.nickname || '我')
 const userId = computed(() => userStore.userInfo?.id || 0)
-const userAvatar = computed(() => resolveAvatarUrl(userStore.userInfo?.avatar, userId.value))
-const visibleCurrentMatch = computed(() => {
-	if (!currentMatch.value) return null
-	if (Number(currentMatch.value.status) === 1 || currentMatch.value.finish_state === 'pending_confirmation') return currentMatch.value
-	if (currentScope.value !== 'hall' || currentStatus.value !== 1) return null
-	if (currentGameType.value > 0 && Number(currentMatch.value.game_type) !== Number(currentGameType.value)) return null
-	return currentMatch.value
-})
-const homePrimaryAction = computed(() => resolveMatchHomePrimaryAction({ currentMatch: currentMatch.value }))
+const myMatchCard = computed(() => buildOngoingMatchCard(currentMatch.value, userStore.userInfo || {}))
 const currentChallenge = computed(() => (userStore.isLoggedIn ? activityStore.currentChallenge : null))
 const receivedChallengeCount = computed(() => activityStore.receivedChallengeCount || 0)
-const challengeQuickTitle = computed(() => {
-	const item = currentChallenge.value
-	if (!item) return ''
-	if (Number(item.status) === 6) return '对局进行中'
-	if (Number(item.status) === 1) {
-		if (Number(item.waiting_user_id) === Number(userId.value)) return '你已进入，等待对方'
-		if (Number(item.waiting_user_id) > 0) return '对方已进入，等你开始'
-		return '已约好，待进入'
-	}
-	if (Number(item.status) === 0) return item.from_user_id === userId.value ? '等待对方回应' : '收到约球邀请'
-	return ''
+const challengeCard = computed(() => {
+	const card = resolveChallengeQuickCard(currentChallenge.value, {
+		userId: userId.value,
+		serverTime: activityStore.challengeServerTime
+	})
+	if (!card || !myMatchCard.value) return card
+	// 约球已开局时由上方「我的对局」卡承接，不重复展示
+	const sameMatch = card.matchId > 0 && card.matchId === myMatchCard.value.id
+	const sameChallenge = card.challengeId > 0 && card.challengeId === Number(currentMatch.value?.challenge_id || 0)
+	return sameMatch || sameChallenge ? null : card
 })
-const challengeQuickSub = computed(() => {
-	const item = currentChallenge.value
-	if (!item) return ''
-	const opponentName = item.from_user_id === userId.value ? item.to_nickname : item.from_nickname
-	return `${opponentName || '球友'} · ${GAME_TYPE_LABEL_MAP[item.game_type] || '台球'}${item.match_mode === 'practice' ? ' · 练习' : ' · 排位'}`
+// 「我的对局」已在顶部展示，列表中不再重复出现
+const lobbyItems = computed(() => {
+	const currentId = myMatchCard.value?.id || 0
+	return spectatorMatches.value
+		.filter((match) => !currentId || Number(match.id) !== currentId)
+		.map((match) => normalizeSpectatorMatch(match, { userId: userId.value }))
 })
-const challengeQuickActionLabel = computed(() => (currentChallenge.value && Number(currentChallenge.value.status) === 6 && currentChallenge.value.match_id > 0 ? '继续比赛' : '进入'))
+const lobbySections = computed(() => buildSpectatorSections(lobbyItems.value, lobbyTab.value))
 
 const openChallengeWaiting = () => {
-	const item = currentChallenge.value
-	if (!item) return
-	if (Number(item.status) === 6 && item.match_id > 0) {
-		uni.navigateTo({ url: `/subPages/match/playing?match_id=${item.match_id}` })
-		return
-	}
-	uni.navigateTo({ url: `/subPages/match/challengeWaiting?challenge_id=${item.id}` })
+	if (!challengeCard.value) return
+	uni.navigateTo({ url: challengeCard.value.url })
 }
 
 const goChallengeCompose = () => {
@@ -465,22 +402,9 @@ const goChallenges = (tab) => {
 	uni.navigateTo({ url: `/subPages/social/challenges${query}` })
 }
 const emptyState = computed(() => getSpectatorEmptyState({
-	scope: currentScope.value,
-	status: currentStatus.value,
+	...lobbyQuery.value,
 	gameType: currentGameType.value
 }))
-
-/**
- * 判断是否是当前用户参与的对局
- */
-const isMyMatch = (match) => {
-	if (!userStore.isLoggedIn || !userId.value) return false
-	// CurrentMatchInfo 结构：必然是当前用户的对局
-	if (match.player1_id === undefined && match.player2_id === undefined) {
-		return match.opponent_id !== undefined
-	}
-	return match.player1_id === userId.value || match.player2_id === userId.value
-}
 
 /**
  * 判断玩家1是否是当前用户
@@ -488,31 +412,6 @@ const isMyMatch = (match) => {
 const isPlayer1Me = (match) => {
 	if (!userStore.isLoggedIn || !userId.value) return false
 	return match.player1_id === userId.value
-}
-
-/**
- * 判断玩家2是否是当前用户
- */
-const isPlayer2Me = (match) => {
-	if (!userStore.isLoggedIn || !userId.value) return false
-	return match.player2_id === userId.value
-}
-
-const getMatchAvatar = (match = {}, side) => {
-	if (side === 'opponent') {
-		if (match.opponent_id && match.opponent_avatar) return resolveAvatarUrl(match.opponent_avatar, match.opponent_id)
-		if (match.player1_id === userId.value) return resolveAvatarUrl(match.player2_avatar, match.player2_id)
-		if (match.player2_id === userId.value) return resolveAvatarUrl(match.player1_avatar, match.player1_id)
-		return resolveAvatarUrl(match.opponent_avatar, match.opponent_id)
-	}
-	const idKey = side === 'player1' ? 'player1_id' : 'player2_id'
-	const avatarKey = side === 'player1' ? 'player1_avatar' : 'player2_avatar'
-	return resolveAvatarUrl(match[avatarKey], match[idKey])
-}
-
-const filteredSpectatorList = (list = []) => {
-	if (!visibleCurrentMatch.value) return list
-	return list.filter(match => match.id !== visibleCurrentMatch.value.id)
 }
 
 // ========== 生命周期 ==========
@@ -529,8 +428,18 @@ onPullDownRefresh(async () => {
 	}
 })
 
+onReachBottom(() => {
+	loadMore()
+})
+
 onShow(() => {
 	consumePendingMatchContext()
+	// 退出登录后「好友」标签不再可用，回到公开大厅
+	if (!userStore.isLoggedIn && lobbyTab.value === 'friends') {
+		lobbyTab.value = 'live'
+		reloadLobby()
+		return
+	}
 	if (!hasLoadedOnce.value) {
 		loadData()
 		return
@@ -601,11 +510,10 @@ const loadData = async ({ forceActivity = false } = {}) => {
 
 	try {
 		const publicMatchesRequest = getPublicMatches(buildSpectatorMatchListParams({
-			scope: currentScope.value,
-			status: currentStatus.value,
+			...lobbyQuery.value,
 			gameType: currentGameType.value,
 			page: 1,
-			pageSize: 20
+			pageSize: PAGE_SIZE
 		}))
 
 		const activityRequest = userStore.isLoggedIn
@@ -621,32 +529,75 @@ const loadData = async ({ forceActivity = false } = {}) => {
 			),
 			activityRequest.catch(() => null)
 		])
-		if (lobbyState.value.authGeneration !== request.authGeneration || lobbyState.value.requestId !== request.requestId) return
+		if (!isAsyncPageRequestCurrent(lobbyState.value, request)) return
 		if (matchResult.error || !matchResult.value?.success) {
 			const error = matchResult.error || createRequestError({
 				message: matchResult.value?.message || '加载对局大厅失败',
 				category: 'business'
 			})
-			if (currentMatch.value) {
-				lobbyState.value = resolveAsyncPageLoad(lobbyState.value, request, {
-					data: [currentMatch.value]
-				})
-			}
 			lobbyState.value = rejectAsyncPageLoad(lobbyState.value, request, error)
 			return
 		}
 
-		const list = matchResult.value.list || []
-		spectatorMatches.value = userStore.isLoggedIn
-			? filteredSpectatorList(list)
-			: list
+		spectatorMatches.value = matchResult.value.list || []
+		total.value = Number(matchResult.value.total) || 0
+		page.value = 1
 		lobbyState.value = resolveAsyncPageLoad(lobbyState.value, request, {
-			data: [currentMatch.value, ...spectatorMatches.value].filter(Boolean)
+			data: spectatorMatches.value
 		})
 		hasLoadedOnce.value = true
 	} catch (error) {
 		lobbyState.value = rejectAsyncPageLoad(lobbyState.value, request, error)
 	}
+}
+
+const loadMore = async () => {
+	if (!hasMore.value || loadingMore.value) return
+	if (lobbyState.value.status !== ASYNC_PAGE_STATUS.READY) return
+	const request = getAsyncPageRequest(lobbyState.value)
+	const nextPage = page.value + 1
+	loadingMore.value = true
+	try {
+		const res = await getPublicMatches(buildSpectatorMatchListParams({
+			...lobbyQuery.value,
+			gameType: currentGameType.value,
+			page: nextPage,
+			pageSize: PAGE_SIZE
+		}))
+		if (!isAsyncPageRequestCurrent(lobbyState.value, request)) return
+		if (!res?.success) {
+			throw createRequestError({ message: res?.message || '加载更多对局失败', category: 'business' })
+		}
+		// 翻页期间新开局会让后续页出现重复对局，按 id 去重
+		const knownIds = new Set(spectatorMatches.value.map((match) => match.id))
+		const nextList = (res.list || []).filter((match) => !knownIds.has(match.id))
+		spectatorMatches.value = [...spectatorMatches.value, ...nextList]
+		total.value = Number(res.total) || 0
+		page.value = nextPage
+	} catch (error) {
+		if (isAsyncPageRequestCurrent(lobbyState.value, request) && !shouldIgnoreAsyncPageError(error)) {
+			uni.showToast({ title: '加载失败，请上拉重试', icon: 'none' })
+		}
+	} finally {
+		loadingMore.value = false
+	}
+}
+
+// 切换标签或球种：清空旧列表并作废在途请求，避免新标签下短暂显示旧数据。
+const reloadLobby = () => {
+	lobbyState.value = {
+		...lobbyState.value,
+		status: ASYNC_PAGE_STATUS.IDLE,
+		requestId: lobbyState.value.requestId + 1,
+		data: [],
+		hasData: false,
+		error: null,
+		refreshError: null
+	}
+	spectatorMatches.value = []
+	total.value = 0
+	page.value = 1
+	loadData()
 }
 
 const retryLobby = () => loadData({ forceActivity: true })
@@ -659,67 +610,34 @@ const handlePageErrorAction = () => {
 	retryLobby()
 }
 
-const handleScopeChange = (scope) => {
-	if (currentScope.value === scope) return
-	currentScope.value = scope
-	showFilterPanel.value = false
-	loadData()
+const selectLobbyTab = (value) => {
+	if (lobbyTab.value === value) return
+	lobbyTab.value = value
+	reloadLobby()
 }
 
-const openFilterPanel = () => {
-	draftStatus.value = currentStatus.value
-	draftGameType.value = currentGameType.value
-	showFilterPanel.value = true
-	uni.hideTabBar({ animation: true })
+const openGameTypeSheet = () => {
+	uni.showActionSheet({
+		itemList: gameTypeOptions.map((item) => item.label),
+		success: ({ tapIndex }) => {
+			const next = gameTypeOptions[tapIndex]
+			if (!next || next.value === currentGameType.value) return
+			currentGameType.value = next.value
+			reloadLobby()
+		}
+	})
 }
 
-const closeFilterPanel = () => {
-	showFilterPanel.value = false
-	uni.showTabBar({ animation: true })
-}
-
-const confirmSpectatorFilters = () => {
-	const nextStatus = currentScope.value === 'hall' ? draftStatus.value : currentStatus.value
-	const nextGameType = draftGameType.value
-	const changed = currentStatus.value !== nextStatus || currentGameType.value !== nextGameType
-
-	currentStatus.value = nextStatus
-	currentGameType.value = nextGameType
-	closeFilterPanel()
-
-	if (changed) {
-		loadData()
-	}
+const resetGameType = () => {
+	currentGameType.value = 0
+	reloadLobby()
 }
 
 onUnmounted(() => {
-	if (showFilterPanel.value || showMatchQrModal.value || showRefereePreview.value) {
+	if (showMatchQrModal.value || showRefereePreview.value) {
 		uni.showTabBar({ animation: false })
 	}
 })
-
-/**
- * 获取游戏类型样式类
- */
-const getGameTypeClass = (gameType) => {
-	switch (gameType) {
-		case 1:
-			return 'snooker'
-		case 2:
-		case 4:
-			return 'american-9ball'
-		case 3:
-		default:
-			return 'chinese-8ball'
-	}
-}
-
-const getStatusText = (match) => {
-	return getSpectatorMatchStatusText({
-		status: match.status || 1,
-		durationSeconds: match.duration_seconds || 0
-	})
-}
 
 /**
  * 开始对战 - 打开选择比赛类型弹框
@@ -758,11 +676,11 @@ const handleStartMatch = () => {
 }
 
 const handlePrimaryAction = () => {
-	if (homePrimaryAction.value.type === 'start') {
-		handleStartMatch()
+	if (myMatchCard.value && currentMatch.value) {
+		handleContinueMatch(currentMatch.value)
 		return
 	}
-	if (visibleCurrentMatch.value) handleContinueMatch(visibleCurrentMatch.value)
+	handleStartMatch()
 }
 
 const showMyMatchQRCode = async () => {
@@ -895,10 +813,12 @@ const handleGameTypeConfirm = ({ gameType, setAsDefault } = {}) => {
 	}
 	selectedGameType.value = gameType
 	uni.showActionSheet({
-		itemList: ['练习赛（默认私密，不影响竞技权益）', '练习赛（公开展示，不影响竞技权益）', '排位赛（公开展示，需结束确认）'],
+		itemList: START_MATCH_MODE_OPTIONS.map((item) => item.label),
 		success: ({ tapIndex }) => {
-			startMatchMode.value = tapIndex === 2 ? 'ranked' : 'practice'
-			startMatchVisibility.value = tapIndex === 1 || tapIndex === 2 ? 'public' : 'private'
+			const option = START_MATCH_MODE_OPTIONS[tapIndex]
+			if (!option) return
+			startMatchMode.value = option.matchMode
+			startMatchVisibility.value = option.visibility
 			handleScanCode()
 		}
 	})

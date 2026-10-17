@@ -6,12 +6,16 @@ import {
   buildHomeNearbyVenueParams,
   buildFeaturedPostTarget,
   formatEventNewsTime,
+  formatHomeMyRanking,
   formatHomeVenueDistance,
   getEventNewsStatusText,
   HOME_NEARBY_VENUE_LIMIT,
   HOME_NEARBY_VENUE_RADIUS_METERS,
+  HOME_NEARBY_VENUE_REFRESH_MS,
+  resolveHomeGreeting,
   resolveHomeVenueEmptyAction,
   resolveHomeToolNavigation,
+  shouldReloadHomeNearbyVenues,
   shouldShowHomeToolEdgeMask
 } from '../utils/home-index.js'
 import { shouldFetchAuthState } from '../utils/auth-guards.js'
@@ -421,4 +425,46 @@ test('home page exposes nearby venues preview and configurable add venue CTA', (
   assert.match(homeIndexVueSource, /homeVenueEmptyAction\.url/)
   assert.match(homeIndexScssSource, /\.venue-empty-card\s*\{[\s\S]*text-align:\s*center;/)
   assert.match(homeIndexScssSource, /\.venue-empty-card\s*\{[\s\S]*\.empty-action\s*\{[\s\S]*align-self:\s*center;/)
+})
+
+test('home greeting follows local time of day', () => {
+  assert.equal(resolveHomeGreeting(7), '早上好')
+  assert.equal(resolveHomeGreeting(12), '中午好')
+  assert.equal(resolveHomeGreeting(15), '下午好')
+  assert.equal(resolveHomeGreeting(21), '晚上好')
+  assert.equal(resolveHomeGreeting(2), '晚上好')
+})
+
+test('home nearby venues relocate only on first load, after the refresh interval or when forced', () => {
+  const now = 1_000_000
+  assert.equal(shouldReloadHomeNearbyVenues({ lastAttemptAt: 0, now }), true)
+  assert.equal(shouldReloadHomeNearbyVenues({ lastAttemptAt: now - 1000, now }), false)
+  assert.equal(shouldReloadHomeNearbyVenues({ lastAttemptAt: now - HOME_NEARBY_VENUE_REFRESH_MS, now }), true)
+  assert.equal(shouldReloadHomeNearbyVenues({ force: true, lastAttemptAt: now, now }), true)
+})
+
+test('home my-ranking line covers ranked and unranked viewers', () => {
+  assert.equal(formatHomeMyRanking({ rank: 128, rank_name: '黄金', rank_score: 1320 }), '第 128 名 · 黄金 · 1320 分')
+  assert.equal(formatHomeMyRanking({ rank: 0 }), '暂未上榜，打一场排位赛开始积分')
+  assert.equal(formatHomeMyRanking(null), '暂未上榜，打一场排位赛开始积分')
+})
+
+test('home keeps one primary card and drops duplicated summary and filler tags', () => {
+  assert.doesNotMatch(homeIndexVueSource, /summary-grid|hero-meta|heroMetaTags|recentMatchSummary|rankingSummary/)
+  assert.match(homeIndexVueSource, /const ongoingCard = computed\(\(\) => buildOngoingMatchCard\(currentMatch\.value/)
+  assert.match(homeIndexVueSource, /const challengeCard = computed[\s\S]*resolveChallengeQuickCard/)
+  assert.match(homeIndexVueSource, /formatHomeMyRanking\(myRanking\.value\)/)
+})
+
+test('home start flow offers the same entries and mode choice as the match tab', () => {
+  assert.match(homeIndexVueSource, /扫描对手二维码.*出示我的二维码.*选择好友或最近对手/)
+  assert.match(homeIndexVueSource, /START_MATCH_MODE_OPTIONS\.map\(\(item\) => item\.label\)/)
+  assert.match(homeIndexVueSource, /matchMode: startMatchMode\.value,\s*visibility: startMatchVisibility\.value/)
+  assert.match(homeIndexVueSource, /canvas-id="home-match-invite-qrcode"/)
+})
+
+test('home nearby venues load passively without repeated permission toasts', () => {
+  assert.match(homeIndexVueSource, /loadNearbyVenues\(\{ force, passive: !force \}\)/)
+  assert.match(homeIndexVueSource, /onPermissionDenied: \(permission\) => \{\s*if \(passive\) return/)
+  assert.match(homeIndexVueSource, /shouldReloadHomeNearbyVenues\(\{ force, lastAttemptAt: nearbyVenueAttemptAt\.value \}\)/)
 })
