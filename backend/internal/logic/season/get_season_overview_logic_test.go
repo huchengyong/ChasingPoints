@@ -58,6 +58,34 @@ func TestSeasonOverviewReturnsCurrentWindowRecordAndFirstLeaderboardPage(t *test
 	}
 }
 
+func TestSeasonOverviewReadsSeasonRecordsWhenCompetitiveReadModelDisabled(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&model.Season{}, &model.SeasonRecord{}, &model.User{}, &model.UserCompetitiveStats{}); err != nil {
+		t.Fatalf("prepare season overview schema: %v", err)
+	}
+	now := time.Now()
+	if err := db.Create(&model.Season{Id: 1, Name: "当前赛季", StartDate: now.AddDate(0, -1, 0), EndDate: now.AddDate(0, 1, 0), Status: 1}).Error; err != nil {
+		t.Fatalf("seed season: %v", err)
+	}
+	if err := db.Create(&model.User{Id: 1, Nickname: "我"}).Error; err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	if err := db.Create(&model.SeasonRecord{SeasonId: 1, UserId: 1, GameType: 3, EndRankScore: 1000, PeakRankScore: 1100, MatchesPlayed: 5, Wins: 3}).Error; err != nil {
+		t.Fatalf("seed season record: %v", err)
+	}
+	svcCtx := &svc.ServiceContext{SeasonModel: model.NewSeasonModel(db), SeasonRecordModel: model.NewSeasonRecordModel(db), CompetitiveReadModel: model.NewCompetitiveReadModel(db), Config: config.Config{CompetitiveReadModel: config.CompetitiveReadModelConfig{ReadMode: "disabled"}}}
+	resp, err := NewGetSeasonOverviewLogic(context.WithValue(context.Background(), "user_id", int64(1)), svcCtx).GetSeasonOverview(&types.GetSeasonOverviewReq{GameType: 3})
+	if err != nil || !resp.Success || resp.Season == nil || resp.Record == nil || len(resp.Leaderboard) != 1 {
+		t.Fatalf("disabled read mode must keep season records readable: resp=%#v err=%v", resp, err)
+	}
+	if !resp.Availability["record"] || !resp.Availability["leaderboard"] || resp.Availability["competitive_revision"] || len(resp.PartialErrors) != 1 || resp.PartialErrors[0].Scope != "competitive_revision" {
+		t.Fatalf("only competitive revision may be gated by read mode: availability=%v partial=%+v", resp.Availability, resp.PartialErrors)
+	}
+}
+
 func TestSeasonOverviewKeepsSeasonAvailableWhenOptionalModelsAreMissing(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {

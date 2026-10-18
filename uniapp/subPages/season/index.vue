@@ -56,6 +56,11 @@
 					</view>
 				</view>
 
+				<view v-if="recordUnavailable" class="section-error">
+					<text>我的赛季数据暂时无法加载</text>
+					<text class="section-error-action" @tap="retrySeason">重试</text>
+				</view>
+
 				<!-- 我的赛季数据 -->
 				<view class="my-record-card" v-if="myRecord">
 				<text class="card-title">我的赛季数据</text>
@@ -90,7 +95,11 @@
 						<text>赛季报告</text>
 					</view>
 				</view>
-				<view v-if="leaderboard.length > 0" class="leaderboard-list">
+				<view v-if="leaderboardUnavailable" class="section-error">
+					<text>赛季榜单暂时无法加载</text>
+					<text class="section-error-action" @tap="retrySeason">重试</text>
+				</view>
+				<view v-else-if="leaderboard.length > 0" class="leaderboard-list">
 					<view
 						v-for="(item, idx) in leaderboard"
 						:key="item.user_id"
@@ -163,6 +172,8 @@ const season = ref(null)
 const seasonState = ref('not_started')
 const myRecord = ref(null)
 const leaderboard = ref([])
+const recordUnavailable = ref(false)
+const leaderboardUnavailable = ref(false)
 const loading = ref(false)
 const page = ref(1)
 const hasMore = ref(true)
@@ -208,6 +219,8 @@ const loadSeasonOverview = async () => {
 		seasonState.value = 'not_started'
 		myRecord.value = null
 		leaderboard.value = []
+		recordUnavailable.value = false
+		leaderboardUnavailable.value = false
 		page.value = 1
 		hasMore.value = false
 		hasLoadedOnce.value = false
@@ -226,15 +239,13 @@ const loadSeasonOverview = async () => {
 		if (!res?.success) throw createRequestError({ message: res?.message || '获取赛季概览失败', category: 'business' })
 		const nextSeason = res.season || null
 		const nextSeasonState = res.season_state || (nextSeason ? 'active' : 'not_started')
-		const hasNextActiveSeason = nextSeasonState === 'active' && Boolean(nextSeason)
-		if (hasNextActiveSeason && (res.availability?.record === false || res.availability?.leaderboard === false)) {
-			throw createRequestError({ message: '赛季数据暂时不完整，请稍后重试', category: 'business' })
-		}
 		season.value = nextSeason
 		seasonState.value = nextSeasonState
 		if (!hasActiveSeason.value) {
 			myRecord.value = null
 			leaderboard.value = []
+			recordUnavailable.value = false
+			leaderboardUnavailable.value = false
 			hasMore.value = false
 			hasLoadedOnce.value = true
 			loadedIdentityKey.value = requestIdentityKey
@@ -245,10 +256,12 @@ const loadSeasonOverview = async () => {
 			})
 			return
 		}
-		myRecord.value = res.record || null
-		leaderboard.value = res.leaderboard || []
+		recordUnavailable.value = res.availability?.record === false
+		leaderboardUnavailable.value = res.availability?.leaderboard === false
+		myRecord.value = recordUnavailable.value ? null : (res.record || null)
+		leaderboard.value = leaderboardUnavailable.value ? [] : (res.leaderboard || [])
 		page.value = 1
-		hasMore.value = leaderboard.value.length >= 20
+		hasMore.value = !leaderboardUnavailable.value && leaderboard.value.length >= 20
 		hasLoadedOnce.value = true
 		loadedIdentityKey.value = requestIdentityKey
 		loadedSeasonScopeVersion.value = currentSeasonScopeVersion()
@@ -329,6 +342,8 @@ const resetSeasonData = () => {
 	seasonState.value = 'not_started'
 	myRecord.value = null
 	leaderboard.value = []
+	recordUnavailable.value = false
+	leaderboardUnavailable.value = false
 	hasLoadedOnce.value = false
 	seasonPageState.value = {
 		...seasonPageState.value,
@@ -382,6 +397,8 @@ onShow(() => {
 .retry-btn::after { display: none; }
 .refresh-error-banner { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-bottom: 20rpx; padding: 18rpx 22rpx; border-radius: 14rpx; background: rgba(224, 174, 18, 0.12); color: #8a5b00; font-size: 24rpx; }
 .refresh-error-action { flex-shrink: 0; color: #a86f00; font-weight: 600; }
+.section-error { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-bottom: 20rpx; padding: 18rpx 22rpx; border-radius: 14rpx; border: 1rpx solid #EF4444; background: rgba(239, 68, 68, 0.06); color: #b91c1c; font-size: 24rpx; }
+.section-error-action { flex-shrink: 0; padding: 8rpx 0 8rpx 16rpx; font-weight: 600; }
 .season-content {
 	padding: 20rpx 24rpx;
 }
@@ -588,6 +605,11 @@ onShow(() => {
 	.empty-list,
 	.no-more {
 		color: #9f926e;
+	}
+
+	.section-error {
+		background: rgba(239, 68, 68, 0.12);
+		color: #fca5a5;
 	}
 
 	.game-type-tab.active {

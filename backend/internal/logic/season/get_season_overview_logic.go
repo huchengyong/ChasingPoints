@@ -45,16 +45,11 @@ func (l *GetSeasonOverviewLogic) GetSeasonOverview(req *types.GetSeasonOverviewR
 	}
 	result.Season = buildSeasonInfo(l.svcCtx, season)
 	result.Availability["season"] = true
-	if !l.svcCtx.CompetitiveReadModelsEnabled() {
-		appendSeasonOverviewPartial(result, "record", "竞技读模型尚未切换")
-		appendSeasonOverviewPartial(result, "leaderboard", "竞技读模型尚未切换")
-		appendSeasonOverviewPartial(result, "competitive_revision", "竞技读模型尚未切换")
-		return result, nil
-	}
 	gameType := 3
 	if req != nil && req.GameType > 0 {
 		gameType = req.GameType
 	}
+	// season_records 由结算事务直接维护，与旧榜单接口同源，不受竞技读模型切读开关约束。
 	if l.svcCtx.SeasonRecordModel == nil {
 		appendSeasonOverviewPartial(result, "record", "赛季记录服务不可用")
 		appendSeasonOverviewPartial(result, "leaderboard", "赛季榜单服务不可用")
@@ -74,6 +69,8 @@ func (l *GetSeasonOverviewLogic) GetSeasonOverview(req *types.GetSeasonOverviewR
 	}
 	if l.svcCtx.CompetitiveReadModel == nil {
 		appendSeasonOverviewPartial(result, "competitive_revision", "竞技快照服务不可用")
+	} else if !l.svcCtx.CompetitiveReadModelsEnabled() {
+		appendSeasonOverviewPartial(result, "competitive_revision", "竞技读模型尚未切换")
 	} else if stats, statsErr := l.svcCtx.CompetitiveReadModel.FindStats(userID, 0); statsErr != nil {
 		appendSeasonOverviewPartial(result, "competitive_revision", "竞技版本读取失败")
 	} else {

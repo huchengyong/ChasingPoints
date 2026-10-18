@@ -33,7 +33,7 @@ const mountSeasonPageSetup = ({ getSeasonOverview }) => {
     'resolveSeasonTimeline', 'usePageTheme', 'resolveAvatarUrl',
     'ASYNC_PAGE_STATUS', 'beginAsyncPageLoad', 'createAsyncPageState', 'getAsyncPageRequest',
     'rejectAsyncPageLoad', 'resolveAsyncPageErrorFeedback', 'resolveAsyncPageLoad', 'createRequestError',
-    `${setup}\nreturn { loading, hasLoadedOnce, loadSeasonOverview }`
+    `${setup}\nreturn { loading, hasLoadedOnce, loadSeasonOverview, seasonPageError, season, myRecord, leaderboard, hasMore, recordUnavailable, leaderboardUnavailable }`
   )(
     ref,
     computed,
@@ -105,4 +105,27 @@ test('season page setup mounts with one overview request on first entry', async 
   await shown[0]()
   assert.equal(overviewCalls, 1)
   assert.equal(component.loading.value, false)
+})
+
+test('season page keeps the active season visible when optional overview blocks are unavailable', async () => {
+  const { component, mounted } = mountSeasonPageSetup({
+    getSeasonOverview: async () => ({
+      success: true,
+      season: { id: 2, name: 'S3', status: 1 },
+      season_state: 'active',
+      availability: { season: true, record: false, leaderboard: false, competitive_revision: false },
+      record: { matches_played: 9 },
+      leaderboard: [{ user_id: 1 }]
+    })
+  })
+
+  await mounted[0]()
+  assert.equal(component.seasonPageError.value, null)
+  assert.equal(component.season.value.name, 'S3')
+  assert.equal(component.recordUnavailable.value, true)
+  assert.equal(component.leaderboardUnavailable.value, true)
+  assert.equal(component.myRecord.value, null, 'unavailable record must not render as real data')
+  assert.deepEqual(component.leaderboard.value, [], 'unavailable leaderboard must not render as real data')
+  assert.equal(component.hasMore.value, false)
+  assert.equal(component.hasLoadedOnce.value, true)
 })

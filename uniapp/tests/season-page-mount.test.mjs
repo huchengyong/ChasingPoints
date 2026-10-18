@@ -144,7 +144,15 @@ test('season page compiles and mounts with one overview request on first entry',
       versionOf: () => scopeVersion,
       getSeasonOverview: () => {
         overviewCalls += 1
-        return firstOverview
+        if (overviewCalls === 1) return firstOverview
+        return Promise.resolve({
+          success: true,
+          season: { id: 1, name: '真实挂载测试赛季', status: 1, start_date: '2026-08-01', end_date: '2026-09-01' },
+          season_state: 'active',
+          availability: { season: true, record: false, leaderboard: false },
+          record: null,
+          leaderboard: []
+        })
       },
       getSeasonLeaderboard: async () => ({ success: true, list: [], total: 0 })
     }
@@ -198,6 +206,11 @@ test('season page compiles and mounts with one overview request on first entry',
     globalThis.__SEASON_PAGE_MOUNT__.shown[0]()
     await flushPromises()
     assert.equal(overviewCalls, 2, 'season scope invalidation must trigger one refresh')
+    await nextTick()
+    assert.match(wrapper.text(), /真实挂载测试赛季/, 'partial overview must keep the season card')
+    assert.match(wrapper.text(), /我的赛季数据暂时无法加载/)
+    assert.match(wrapper.text(), /赛季榜单暂时无法加载/)
+    assert.doesNotMatch(wrapper.text(), /暂无排行数据/, 'unavailable leaderboard must not look empty')
   } finally {
     wrapper?.unmount()
     delete globalThis.__SEASON_PAGE_MOUNT__
