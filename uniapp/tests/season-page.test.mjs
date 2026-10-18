@@ -33,7 +33,7 @@ const mountSeasonPageSetup = ({ getSeasonOverview }) => {
     'resolveSeasonTimeline', 'usePageTheme', 'resolveAvatarUrl',
     'ASYNC_PAGE_STATUS', 'beginAsyncPageLoad', 'createAsyncPageState', 'getAsyncPageRequest',
     'rejectAsyncPageLoad', 'resolveAsyncPageErrorFeedback', 'resolveAsyncPageLoad', 'createRequestError',
-    `${setup}\nreturn { loading, hasLoadedOnce, loadSeasonOverview, seasonPageError, season, myRecord, leaderboard, hasMore, recordUnavailable, leaderboardUnavailable }`
+    `${setup}\nreturn { loading, hasLoadedOnce, loadSeasonOverview, seasonPageError, season, myRecord, leaderboard, hasMore, recordUnavailable, leaderboardUnavailable, myRank, myRankAvailable }`
   )(
     ref,
     computed,
@@ -128,4 +128,48 @@ test('season page keeps the active season visible when optional overview blocks 
   assert.deepEqual(component.leaderboard.value, [], 'unavailable leaderboard must not render as real data')
   assert.equal(component.hasMore.value, false)
   assert.equal(component.hasLoadedOnce.value, true)
+})
+
+test('season page shows live rank from overview and keeps record when rank is unavailable', async () => {
+  const responses = [
+    {
+      success: true,
+      season: { id: 2, name: 'S3', status: 1 },
+      season_state: 'active',
+      availability: { season: true, record: true, leaderboard: true, my_rank: true },
+      record: { matches_played: 4, wins: 3, final_rank: 0 },
+      my_rank: 7,
+      leaderboard: []
+    },
+    {
+      success: true,
+      season: { id: 2, name: 'S3', status: 1 },
+      season_state: 'active',
+      availability: { season: true, record: true, leaderboard: true, my_rank: false },
+      record: { matches_played: 4, wins: 3, final_rank: 0 },
+      my_rank: 0,
+      leaderboard: []
+    }
+  ]
+  const { component, mounted } = mountSeasonPageSetup({
+    getSeasonOverview: async () => responses.shift()
+  })
+
+  await mounted[0]()
+  assert.equal(component.myRankAvailable.value, true)
+  assert.equal(component.myRank.value, 7)
+
+  await component.loadSeasonOverview()
+  assert.equal(component.myRankAvailable.value, false, 'rank partial must not be shown as rank 0')
+  assert.equal(component.myRank.value, 0)
+  assert.equal(component.myRecord.value.matches_played, 4, 'rank partial must keep the record')
+  assert.equal(component.seasonPageError.value, null)
+})
+
+test('season page replaces the unreachable report button with a history entry', () => {
+  assert.doesNotMatch(source, /season\.status === 2/)
+  assert.doesNotMatch(source, /goReport/)
+  assert.doesNotMatch(source, /myRecord\.final_rank/, 'active season must not rely on settlement-only final_rank')
+  assert.match(source, /url: `\/subPages\/season\/history\?game_type=\$\{currentGameType\.value\}`/)
+  assert.match(source, /<view class="history-entry" @tap="goHistory">/)
 })

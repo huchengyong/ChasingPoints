@@ -374,6 +374,70 @@ func TestSeasonRolloverNotificationsUseBoundedBatchQueries(t *testing.T) {
 	}
 }
 
+func TestSeasonRolloverNotificationsTargetSeasonReportForRankedUsers(t *testing.T) {
+	svcCtx := newSeasonSettlementTestSvc(t)
+	if err := svcCtx.DB.Create(&[]model.User{{Id: 1, Nickname: "多球种"}, {Id: 2, Nickname: "同场次"}, {Id: 3, Nickname: "只做挑战"}}).Error; err != nil {
+		t.Fatalf("seed notification users: %v", err)
+	}
+	records := []model.SeasonRecord{
+		{SeasonId: 9, UserId: 1, GameType: 3, MatchesPlayed: 5, FinalRank: 1},
+		{SeasonId: 9, UserId: 1, GameType: 1, MatchesPlayed: 8, FinalRank: 4},
+		{SeasonId: 9, UserId: 2, GameType: 4, MatchesPlayed: 4, FinalRank: 1},
+		{SeasonId: 9, UserId: 2, GameType: 3, MatchesPlayed: 4, FinalRank: 2},
+	}
+	snapshots := []model.SeasonChallengeSnapshot{{SeasonId: 9, UserId: 3, GameType: 3, ChallengeKey: "season_matches_10", Progress: 2}}
+	service := NewSeasonSettlementService(svcCtx)
+	persist := func() []seasonRolloverRealtimeNotice {
+		t.Helper()
+		var notices []seasonRolloverRealtimeNotice
+		if err := svcCtx.DB.Transaction(func(tx *gorm.DB) error {
+			var err error
+			notices, err = service.persistRolloverNotificationsWithTx(tx, model.Season{Id: 9, Name: "S9"}, &model.Season{Id: 10, Name: "S10"}, records, snapshots)
+			return err
+		}); err != nil {
+			t.Fatalf("persist rollover notifications: %v", err)
+		}
+		return notices
+	}
+
+	notices := persist()
+	want := map[int64]struct {
+		url      string
+		gameType int
+	}{
+		1: {url: "/subPages/season/report?id=9&game_type=1", gameType: 1},
+		2: {url: "/subPages/season/report?id=9&game_type=3", gameType: 3},
+		3: {url: "/subPages/achievement/index?tab=season", gameType: 0},
+	}
+	if len(notices) != len(want) {
+		t.Fatalf("expected %d realtime notices, got %+v", len(want), notices)
+	}
+	for _, notice := range notices {
+		expected := want[notice.UserId]
+		if notice.Data.Url != expected.url || notice.Data.ReportGameType != expected.gameType {
+			t.Fatalf("user %d notice target = %q/%d, want %q/%d", notice.UserId, notice.Data.Url, notice.Data.ReportGameType, expected.url, expected.gameType)
+		}
+	}
+
+	persist()
+	var notifications []model.Notification
+	if err := svcCtx.DB.Where("type = ?", seasonRolloverNotificationType).Order("user_id ASC").Find(&notifications).Error; err != nil {
+		t.Fatalf("find rollover notifications: %v", err)
+	}
+	if len(notifications) != len(want) {
+		t.Fatalf("repeated persistence must not duplicate notifications: %+v", notifications)
+	}
+	for _, notification := range notifications {
+		var payload seasonRolloverNotificationData
+		if notification.Data == nil || json.Unmarshal([]byte(*notification.Data), &payload) != nil {
+			t.Fatalf("decode rollover payload: %+v", notification)
+		}
+		if payload.Url != want[notification.UserId].url || payload.ReportGameType != want[notification.UserId].gameType {
+			t.Fatalf("persisted payload target mismatch for user %d: %+v", notification.UserId, payload)
+		}
+	}
+}
+
 func TestSeasonSettlementRealtimeFailureDoesNotRollbackOrDuplicate(t *testing.T) {
 	svcCtx := newSeasonSettlementTestSvc(t)
 	season, _, now := seedSeasonSettlementScenario(t, svcCtx, false)

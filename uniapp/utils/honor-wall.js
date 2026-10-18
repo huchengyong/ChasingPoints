@@ -1,3 +1,5 @@
+import { SEASON_REPORT_PATH } from './season-history.js'
+
 const SUPPORTED_GAME_TYPES = new Set([1, 2, 3, 4])
 
 const honorSourceLabels = {
@@ -243,7 +245,7 @@ export const findLatestUnreadSeasonRollover = (list = []) => {
   return unread[0] || null
 }
 
-export const buildSeasonRolloverModal = (notification = {}) => {
+export const buildSeasonRolloverModal = (notification = {}, { allowReport = true } = {}) => {
   const data = parseData(notification.data)
   const fromName = data.from_season_name || '上一赛季'
   const toName = data.to_season_name || ''
@@ -258,11 +260,14 @@ export const buildSeasonRolloverModal = (notification = {}) => {
   } else {
     lines.push(`${toName || '新赛季'} 已自动开启，赛季挑战从零开始。`)
   }
+  const reportUrl = allowReport && typeof data.url === 'string' && data.url.startsWith(`${SEASON_REPORT_PATH}?`) ? data.url : ''
   return {
     title: intermission ? `${fromName} 已结算` : `${toName || '新赛季'} 已开启`,
     content: lines.join('\n'),
-    confirmText: '知道了',
-    showCancel: false
+    confirmText: reportUrl ? '查看回顾' : '知道了',
+    cancelText: '知道了',
+    showCancel: Boolean(reportUrl),
+    reportUrl
   }
 }
 
@@ -273,7 +278,8 @@ export const presentLatestSeasonRollover = ({
   getNotificationList,
   markAsRead,
   showModal,
-  onRead
+  onRead,
+  navigateTo
 } = {}) => {
   if (rolloverPresentationPromise) return rolloverPresentationPromise
   if (typeof markAsRead !== 'function' || typeof showModal !== 'function') {
@@ -295,8 +301,8 @@ export const presentLatestSeasonRollover = ({
     }
     if (!notification) return null
 
-    const modal = buildSeasonRolloverModal(notification)
-    await new Promise(resolve => {
+    const { reportUrl, ...modal } = buildSeasonRolloverModal(notification, { allowReport: typeof navigateTo === 'function' })
+    const result = await new Promise(resolve => {
       showModal({
         ...modal,
         complete: resolve
@@ -304,6 +310,7 @@ export const presentLatestSeasonRollover = ({
     })
     await markAsRead({ notification_id: notification.id })
     if (typeof onRead === 'function') await onRead(notification)
+    if (reportUrl && result?.confirm) navigateTo(reportUrl)
     return notification
   })().finally(() => {
     rolloverPresentationPromise = null

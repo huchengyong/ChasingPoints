@@ -1049,6 +1049,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
+				// 获取历届已结算赛季
+				Method:  http.MethodGet,
+				Path:    "/history",
+				Handler: season.GetSeasonHistoryHandler(serverCtx),
+			},
+			{
 				// 获取我的赛季记录
 				Method:  http.MethodGet,
 				Path:    "/my-record",

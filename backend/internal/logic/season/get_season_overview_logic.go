@@ -53,12 +53,22 @@ func (l *GetSeasonOverviewLogic) GetSeasonOverview(req *types.GetSeasonOverviewR
 	if l.svcCtx.SeasonRecordModel == nil {
 		appendSeasonOverviewPartial(result, "record", "赛季记录服务不可用")
 		appendSeasonOverviewPartial(result, "leaderboard", "赛季榜单服务不可用")
+		appendSeasonOverviewPartial(result, "my_rank", "赛季名次服务不可用")
 	} else {
 		if record, recordErr := l.svcCtx.SeasonRecordModel.FindBySeasonAndUserAndGameType(season.Id, userID, gameType); recordErr != nil {
 			appendSeasonOverviewPartial(result, "record", "赛季记录读取失败")
+			appendSeasonOverviewPartial(result, "my_rank", "赛季名次读取失败")
 		} else {
 			result.Record = buildSeasonRecordInfo(record, season.Name)
 			result.Availability["record"] = true
+			if record == nil {
+				result.Availability["my_rank"] = true
+			} else if ahead, rankErr := l.svcCtx.SeasonRecordModel.CountAheadInSeason(record); rankErr != nil {
+				appendSeasonOverviewPartial(result, "my_rank", "赛季名次读取失败")
+			} else {
+				result.MyRank = int(ahead) + 1
+				result.Availability["my_rank"] = true
+			}
 		}
 		if leaderboard, leaderboardErr := loadSeasonLeaderboardPage(l.ctx, l.svcCtx, season.Id, gameType, 1, 20, result.Season); leaderboardErr != nil {
 			appendSeasonOverviewPartial(result, "leaderboard", "赛季榜单读取失败")

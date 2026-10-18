@@ -285,6 +285,24 @@ func (m *SeasonModel) FindLatest() (*Season, error) {
 	return &season, err
 }
 
+func (m *SeasonModel) CountSettled() (int64, error) {
+	var total int64
+	err := m.db.Model(&Season{}).Where("status = ?", 2).Count(&total).Error
+	return total, err
+}
+
+// ListSettledPage 按结束时间从近到远分页读取已发布结算的赛季。
+func (m *SeasonModel) ListSettledPage(page, pageSize int) ([]Season, error) {
+	page, pageSize = normalizePage(page, pageSize)
+	var seasons []Season
+	err := m.db.Where("status = ?", 2).
+		Order("end_date DESC, id DESC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&seasons).Error
+	return seasons, err
+}
+
 func (m *SeasonModel) ListAll() ([]Season, error) {
 	return m.ListAllWithTx(nil)
 }
@@ -312,6 +330,22 @@ func (m *SeasonRecordModel) FindBySeasonAndUserAndGameType(seasonId, userId int6
 		return nil, nil
 	}
 	return &record, err
+}
+
+// FindByUserAndGameTypeInSeasons 批量读取本人在指定赛季中的记录，按赛季 ID 索引。
+func (m *SeasonRecordModel) FindByUserAndGameTypeInSeasons(userId int64, gameType int, seasonIds []int64) (map[int64]SeasonRecord, error) {
+	result := make(map[int64]SeasonRecord, len(seasonIds))
+	if len(seasonIds) == 0 {
+		return result, nil
+	}
+	var records []SeasonRecord
+	if err := m.db.Where("season_id IN ? AND user_id = ? AND game_type = ?", seasonIds, userId, normalizeSeasonGameType(gameType)).Find(&records).Error; err != nil {
+		return nil, err
+	}
+	for _, record := range records {
+		result[record.SeasonId] = record
+	}
+	return result, nil
 }
 
 func (m *SeasonRecordModel) FindLeaderboard(seasonId int64, page, pageSize int) ([]SeasonRecord, int64, error) {
@@ -375,6 +409,23 @@ func (m *SeasonRecordModel) FindLeaderboardWithProfilesByGameType(seasonId int64
 		Limit(pageSize).
 		Scan(&records).Error
 	return records, total, err
+}
+
+// CountAheadInSeason 统计同赛季同球种中排在该记录之前的人数，排序与榜单、结算一致。
+func (m *SeasonRecordModel) CountAheadInSeason(record *SeasonRecord) (int64, error) {
+	if record == nil {
+		return 0, nil
+	}
+	var ahead int64
+	err := m.db.Model(&SeasonRecord{}).
+		Where("season_id = ? AND game_type = ?", record.SeasonId, normalizeSeasonGameType(record.GameType)).
+		Where("(end_rank_score > ?) OR (end_rank_score = ? AND wins > ?) OR (end_rank_score = ? AND wins = ? AND id > ?)",
+			record.EndRankScore,
+			record.EndRankScore, record.Wins,
+			record.EndRankScore, record.Wins, record.Id,
+		).
+		Count(&ahead).Error
+	return ahead, err
 }
 
 const defaultSeasonGameType = 3

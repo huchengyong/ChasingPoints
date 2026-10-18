@@ -162,3 +162,97 @@ func TestSeasonReportWinQueryUsesIncrementalSeasonRecords(t *testing.T) {
 		t.Fatalf("season report must read incremental wins only: wins=%+v err=%v", wins, err)
 	}
 }
+
+func TestSeasonRecordCountAheadMatchesLeaderboardOrder(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&SeasonRecord{}); err != nil {
+		t.Fatalf("migrate season records: %v", err)
+	}
+	records := []SeasonRecord{
+		{Id: 1, SeasonId: 1, UserId: 11, GameType: 3, EndRankScore: 1200, Wins: 5},
+		{Id: 2, SeasonId: 1, UserId: 12, GameType: 3, EndRankScore: 1100, Wins: 6},
+		{Id: 3, SeasonId: 1, UserId: 13, GameType: 3, EndRankScore: 1100, Wins: 4},
+		{Id: 4, SeasonId: 1, UserId: 14, GameType: 3, EndRankScore: 1100, Wins: 4},
+		{Id: 5, SeasonId: 1, UserId: 15, GameType: 3, EndRankScore: 1000, Wins: 9},
+		{Id: 6, SeasonId: 1, UserId: 16, GameType: 1, EndRankScore: 2000, Wins: 9},
+		{Id: 7, SeasonId: 2, UserId: 17, GameType: 3, EndRankScore: 2000, Wins: 9},
+		{Id: 8, SeasonId: 2, UserId: 18, GameType: 3, EndRankScore: 1100, Wins: 4},
+		{Id: 9, SeasonId: 1, UserId: 19, GameType: 1, EndRankScore: 1100, Wins: 6},
+	}
+	if err := db.Create(&records).Error; err != nil {
+		t.Fatalf("seed season records: %v", err)
+	}
+	model := NewSeasonRecordModel(db)
+	leaderboard, _, err := model.FindLeaderboardByGameType(1, 3, 1, 20)
+	if err != nil || len(leaderboard) != 5 {
+		t.Fatalf("load leaderboard: rows=%d err=%v", len(leaderboard), err)
+	}
+	for position, item := range leaderboard {
+		ahead, err := model.CountAheadInSeason(&item)
+		if err != nil {
+			t.Fatalf("count ahead for record %d: %v", item.Id, err)
+		}
+		if ahead != int64(position) {
+			t.Fatalf("record %d ahead=%d, want leaderboard position %d", item.Id, ahead, position)
+		}
+	}
+	if leaderboard[2].Id != 4 || leaderboard[3].Id != 3 {
+		t.Fatalf("same score and wins must order by id desc: %+v", leaderboard)
+	}
+}
+
+func TestSeasonModelPagesSettledSeasonsByEndDate(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&Season{}, &SeasonRecord{}); err != nil {
+		t.Fatalf("migrate seasons: %v", err)
+	}
+	month := func(m time.Month) time.Time { return time.Date(2026, m, 1, 0, 0, 0, 0, time.UTC) }
+	if err := db.Create(&[]Season{
+		{Id: 1, Name: "S1", StartDate: month(6), EndDate: month(7).AddDate(0, 0, -1), Status: 2},
+		{Id: 2, Name: "S2", StartDate: month(7), EndDate: month(8).AddDate(0, 0, -1), Status: 2},
+		{Id: 3, Name: "S3", StartDate: month(8), EndDate: month(9).AddDate(0, 0, -1), Status: 2},
+		{Id: 4, Name: "S4", StartDate: month(9), EndDate: month(10).AddDate(0, 0, -1), Status: 1},
+		{Id: 5, Name: "S5", StartDate: month(10), EndDate: month(11).AddDate(0, 0, -1), Status: 0},
+	}).Error; err != nil {
+		t.Fatalf("seed seasons: %v", err)
+	}
+	model := NewSeasonModel(db)
+	total, err := model.CountSettled()
+	if err != nil || total != 3 {
+		t.Fatalf("count settled seasons: total=%d err=%v", total, err)
+	}
+	first, err := model.ListSettledPage(1, 2)
+	if err != nil || len(first) != 2 || first[0].Id != 3 || first[1].Id != 2 {
+		t.Fatalf("first settled page must be newest first: %+v err=%v", first, err)
+	}
+	second, err := model.ListSettledPage(2, 2)
+	if err != nil || len(second) != 1 || second[0].Id != 1 {
+		t.Fatalf("second settled page: %+v err=%v", second, err)
+	}
+
+	if err := db.Create(&[]SeasonRecord{
+		{SeasonId: 1, UserId: 7, GameType: 3, MatchesPlayed: 4, FinalRank: 2},
+		{SeasonId: 3, UserId: 7, GameType: 3, MatchesPlayed: 9, FinalRank: 1},
+		{SeasonId: 3, UserId: 7, GameType: 1, MatchesPlayed: 1, FinalRank: 5},
+		{SeasonId: 3, UserId: 8, GameType: 3, MatchesPlayed: 2, FinalRank: 3},
+	}).Error; err != nil {
+		t.Fatalf("seed season records: %v", err)
+	}
+	records, err := NewSeasonRecordModel(db).FindByUserAndGameTypeInSeasons(7, 3, []int64{1, 2, 3})
+	if err != nil || len(records) != 2 || records[1].FinalRank != 2 || records[3].FinalRank != 1 {
+		t.Fatalf("viewer records must be keyed by season and filtered by game type: %+v err=%v", records, err)
+	}
+	if _, ok := records[2]; ok {
+		t.Fatalf("season without viewer record must be absent: %+v", records)
+	}
+	empty, err := NewSeasonRecordModel(db).FindByUserAndGameTypeInSeasons(7, 3, nil)
+	if err != nil || len(empty) != 0 {
+		t.Fatalf("empty season page must not query records: %+v err=%v", empty, err)
+	}
+}

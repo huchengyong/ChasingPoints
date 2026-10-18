@@ -46,6 +46,7 @@ type seasonRolloverNotificationData struct {
 	SeasonTitleCount            int    `json:"season_title_count"`
 	CareerAchievementsPreserved bool   `json:"career_achievements_preserved"`
 	Intermission                bool   `json:"intermission"`
+	ReportGameType              int    `json:"report_game_type,omitempty"`
 	Url                         string `json:"url"`
 }
 
@@ -536,6 +537,7 @@ func (s *SeasonSettlementService) persistRolloverNotificationsWithTx(
 	for _, snapshot := range snapshots {
 		userSet[snapshot.UserId] = struct{}{}
 	}
+	reportGameTypeByUser := seasonReportGameTypes(records)
 	userIds := make([]int64, 0, len(userSet))
 	for userId := range userSet {
 		userIds = append(userIds, userId)
@@ -565,6 +567,11 @@ func (s *SeasonSettlementService) persistRolloverNotificationsWithTx(
 	notices := make([]seasonRolloverRealtimeNotice, 0, len(userIds))
 	notifications := make([]model.Notification, 0, len(userIds))
 	for _, userId := range userIds {
+		url := "/subPages/achievement/index?tab=season"
+		reportGameType := reportGameTypeByUser[userId]
+		if reportGameType > 0 {
+			url = fmt.Sprintf("/subPages/season/report?id=%d&game_type=%d", from.Id, reportGameType)
+		}
 		payload := seasonRolloverNotificationData{
 			FromSeasonId:                from.Id,
 			FromSeasonName:              from.Name,
@@ -575,7 +582,8 @@ func (s *SeasonSettlementService) persistRolloverNotificationsWithTx(
 			SeasonTitleCount:            titleCountByUser[userId],
 			CareerAchievementsPreserved: true,
 			Intermission:                to == nil,
-			Url:                         "/subPages/achievement/index?tab=season",
+			ReportGameType:              reportGameType,
+			Url:                         url,
 		}
 		raw, err := json.Marshal(payload)
 		if err != nil {
@@ -629,6 +637,22 @@ func (s *SeasonSettlementService) defaultSendRealtime(notice seasonRolloverRealt
 		})
 	}
 	return nil
+}
+
+// seasonReportGameTypes 为每个用户选出该届场次最多的球种（场次相同取较小球种），作为换季回顾的默认球种。
+func seasonReportGameTypes(records []model.SeasonRecord) map[int64]int {
+	best := make(map[int64]model.SeasonRecord, len(records))
+	for _, record := range records {
+		current, ok := best[record.UserId]
+		if !ok || record.MatchesPlayed > current.MatchesPlayed || (record.MatchesPlayed == current.MatchesPlayed && record.GameType < current.GameType) {
+			best[record.UserId] = record
+		}
+	}
+	result := make(map[int64]int, len(best))
+	for userID, record := range best {
+		result[userID] = record.GameType
+	}
+	return result
 }
 
 func seasonRolloverDedupeKey(fromSeasonId, toSeasonId int64) string {

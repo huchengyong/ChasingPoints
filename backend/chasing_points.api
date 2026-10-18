@@ -3070,10 +3070,28 @@ type GetSeasonOverviewResp {
 	SeasonState         string                  `json:"season_state"`
 	Season              *SeasonInfo             `json:"season"`
 	Record              *SeasonRecordInfo       `json:"record"`
+	MyRank              int                     `json:"my_rank"` // 本人当前赛季实时名次，0 表示尚无记录
 	Leaderboard         []SeasonLeaderboardItem `json:"leaderboard"`
 	CompetitiveRevision int64                   `json:"competitive_revision"`
 	Availability        map[string]bool         `json:"availability"`
 	PartialErrors       []ReadPartialError      `json:"partial_errors"`
+}
+
+type GetSeasonHistoryReq {
+	GameType int `form:"game_type,optional,default=3"`
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=10"`
+}
+
+type SeasonHistoryItem {
+	Season *SeasonInfo       `json:"season"`
+	Record *SeasonRecordInfo `json:"record"` // 本人未参加该球种排位时为 null
+}
+
+type GetSeasonHistoryResp {
+	Success bool                `json:"success"`
+	Total   int64               `json:"total"`
+	List    []SeasonHistoryItem `json:"list"`
 }
 
 @server (
@@ -3093,6 +3111,10 @@ service chasing_points-api {
 	@doc "获取赛季报告"
 	@handler GetSeasonReport
 	get /report (GetSeasonReportReq) returns (GetSeasonReportResp)
+
+	@doc "获取历届已结算赛季"
+	@handler GetSeasonHistory
+	get /history (GetSeasonHistoryReq) returns (GetSeasonHistoryResp)
 }
 
 // ==================== 球馆模块 ====================

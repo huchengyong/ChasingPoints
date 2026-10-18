@@ -380,3 +380,77 @@ test('new client removes the title-management route while keeping existing title
   assert.match(achievementApiSource, /export const equipTitle/)
   assert.match(achievementApiSource, /\/api\/achievement\/title\/equip/)
 })
+
+test('rollover modal offers a season review only for report targets', () => {
+  const reportNotification = {
+    data: { from_season_id: 3, from_season_name: 'S3', to_season_id: 4, to_season_name: 'S4', url: '/subPages/season/report?id=3&game_type=1' }
+  }
+  const review = buildSeasonRolloverModal(reportNotification)
+  assert.equal(review.confirmText, '查看回顾')
+  assert.equal(review.cancelText, '知道了')
+  assert.equal(review.showCancel, true)
+  assert.equal(review.reportUrl, '/subPages/season/report?id=3&game_type=1')
+
+  const withoutNavigation = buildSeasonRolloverModal(reportNotification, { allowReport: false })
+  assert.equal(withoutNavigation.showCancel, false)
+  assert.equal(withoutNavigation.confirmText, '知道了')
+  assert.equal(withoutNavigation.reportUrl, '')
+
+  const legacy = buildSeasonRolloverModal({ data: { from_season_name: 'S2', to_season_id: 3, url: '/subPages/achievement/index?tab=season' } })
+  assert.equal(legacy.showCancel, false)
+  assert.equal(legacy.reportUrl, '')
+})
+
+test('presentLatestSeasonRollover marks read before opening the season review', async () => {
+  const notification = {
+    id: 21,
+    type: 'season_rollover',
+    is_read: false,
+    data: { from_season_id: 3, from_season_name: 'S3', to_season_id: 4, url: '/subPages/season/report?id=3&game_type=3' }
+  }
+  const present = async (modalResult, overrides = {}) => {
+    const calls = []
+    await presentLatestSeasonRollover({
+      notification,
+      showModal: (options) => {
+        calls.push(['modal', options.confirmText, options.showCancel, Object.hasOwn(options, 'reportUrl')])
+        options.complete(modalResult)
+      },
+      markAsRead: async (payload) => calls.push(['read', payload.notification_id]),
+      onRead: async () => calls.push(['onRead']),
+      navigateTo: (url) => calls.push(['navigate', url]),
+      ...overrides
+    })
+    return calls
+  }
+
+  assert.deepEqual(await present({ confirm: true }), [
+    ['modal', '查看回顾', true, false],
+    ['read', 21],
+    ['onRead'],
+    ['navigate', '/subPages/season/report?id=3&game_type=3']
+  ])
+  assert.deepEqual(await present({ confirm: false, cancel: true }), [
+    ['modal', '查看回顾', true, false],
+    ['read', 21],
+    ['onRead']
+  ])
+  assert.deepEqual(await present({ confirm: true }, { navigateTo: undefined }), [
+    ['modal', '知道了', false, false],
+    ['read', 21],
+    ['onRead']
+  ], 'callers without navigation keep the single acknowledge button')
+
+  const navigations = []
+  await assert.rejects(presentLatestSeasonRollover({
+    notification,
+    showModal: (options) => options.complete({ confirm: true }),
+    markAsRead: async () => { throw new Error('mark failed') },
+    navigateTo: (url) => navigations.push(url)
+  }), /mark failed/)
+  assert.deepEqual(navigations, [], 'failed read marking must not navigate')
+})
+
+test('user tab passes navigation to the rollover review', () => {
+  assert.match(userTabSource, /navigateTo: url => uni\.navigateTo\(\{ url \}\)/)
+})

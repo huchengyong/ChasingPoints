@@ -497,7 +497,8 @@ const showLatestSeasonRollover = () => {
 		onRead: () => {
 			activityStore.setLatestSeasonRollover(null)
 			notificationStore.decrementUnread(getReadIdentity())
-		}
+		},
+		navigateTo: url => uni.navigateTo({ url })
 	}).catch(error => console.error('展示换季结果失败:', error))
 }
 

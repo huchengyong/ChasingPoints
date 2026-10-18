@@ -414,6 +414,12 @@
 						"navigationBarTitleText": "赛季报告",
 						"navigationStyle": "custom"
 					}
+				},
+				{
+					"path": "history",
+					"style": {
+						"navigationBarTitleText": "历届赛季"
+					}
 				}
 			]
 		}

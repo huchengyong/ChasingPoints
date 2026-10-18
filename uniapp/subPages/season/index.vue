@@ -43,6 +43,14 @@
 				<text class="no-season-description">{{ seasonEmptyState.description }}</text>
 			</view>
 
+			<view class="history-entry" @tap="goHistory">
+				<text class="history-entry-title">历届赛季</text>
+				<view class="history-entry-action">
+					<text>回顾往届排名与报告</text>
+					<uni-icons type="right" size="14" :color="isDarkMode ? '#9f926e' : '#9A8C67'"></uni-icons>
+				</view>
+			</view>
+
 			<template v-if="hasActiveSeason">
 				<view class="game-type-tabs">
 					<view
@@ -82,18 +90,20 @@
 						<text class="stat-label">峰值分</text>
 					</view>
 				</view>
-				<view class="record-rank" v-if="myRecord.final_rank > 0">
-					<text>当前排名：第 {{ myRecord.final_rank }} 名</text>
+				<view class="record-rank" v-if="myRankAvailable && myRank > 0">
+					<text>当前排名：第 {{ myRank }} 名</text>
 				</view>
 			</view>
+
+				<view v-if="!recordUnavailable && !myRecord" class="unranked-card">
+					<text class="unranked-title">本赛季还没有排位记录</text>
+					<text class="unranked-description">完成一场{{ currentGameTypeLabel }}排位即可上榜</text>
+				</view>
 
 				<!-- 赛季排行榜 -->
 				<view class="leaderboard-card">
 				<view class="card-header">
 					<text class="card-title">赛季排行榜</text>
-					<view class="report-btn" v-if="season && season.status === 2" @tap="goReport">
-						<text>赛季报告</text>
-					</view>
 				</view>
 				<view v-if="leaderboardUnavailable" class="section-error">
 					<text>赛季榜单暂时无法加载</text>
@@ -174,6 +184,8 @@ const myRecord = ref(null)
 const leaderboard = ref([])
 const recordUnavailable = ref(false)
 const leaderboardUnavailable = ref(false)
+const myRank = ref(0)
+const myRankAvailable = ref(false)
 const loading = ref(false)
 const page = ref(1)
 const hasMore = ref(true)
@@ -189,6 +201,7 @@ const seasonPageState = ref(createAsyncPageState({
 const seasonEmptyState = computed(() => resolveCurrentSeasonState(season.value, seasonState.value))
 const hasActiveSeason = computed(() => seasonState.value === 'active' && Boolean(season.value))
 const seasonTimeline = computed(() => resolveSeasonTimeline(season.value))
+const currentGameTypeLabel = computed(() => gameTypeTabs.find(item => item.value === currentGameType.value)?.label || '该球种')
 
 const winRate = computed(() => {
 	if (!myRecord.value || myRecord.value.matches_played === 0) return 0
@@ -221,6 +234,8 @@ const loadSeasonOverview = async () => {
 		leaderboard.value = []
 		recordUnavailable.value = false
 		leaderboardUnavailable.value = false
+		myRank.value = 0
+		myRankAvailable.value = false
 		page.value = 1
 		hasMore.value = false
 		hasLoadedOnce.value = false
@@ -246,6 +261,8 @@ const loadSeasonOverview = async () => {
 			leaderboard.value = []
 			recordUnavailable.value = false
 			leaderboardUnavailable.value = false
+			myRank.value = 0
+			myRankAvailable.value = false
 			hasMore.value = false
 			hasLoadedOnce.value = true
 			loadedIdentityKey.value = requestIdentityKey
@@ -259,6 +276,8 @@ const loadSeasonOverview = async () => {
 		recordUnavailable.value = res.availability?.record === false
 		leaderboardUnavailable.value = res.availability?.leaderboard === false
 		myRecord.value = recordUnavailable.value ? null : (res.record || null)
+		myRankAvailable.value = !recordUnavailable.value && res.availability?.my_rank !== false
+		myRank.value = myRankAvailable.value ? (Number(res.my_rank) || 0) : 0
 		leaderboard.value = leaderboardUnavailable.value ? [] : (res.leaderboard || [])
 		page.value = 1
 		hasMore.value = !leaderboardUnavailable.value && leaderboard.value.length >= 20
@@ -322,10 +341,8 @@ const loadMoreLeaderboard = () => {
 	fetchLeaderboard(false, true)
 }
 
-const goReport = () => {
-	if (hasActiveSeason.value) {
-		uni.navigateTo({ url: `/subPages/season/report?id=${season.value.id}&game_type=${currentGameType.value}` })
-	}
+const goHistory = () => {
+	uni.navigateTo({ url: `/subPages/season/history?game_type=${currentGameType.value}` })
 }
 
 const handleGameTypeChange = async (gameType) => {
@@ -344,6 +361,8 @@ const resetSeasonData = () => {
 	leaderboard.value = []
 	recordUnavailable.value = false
 	leaderboardUnavailable.value = false
+	myRank.value = 0
+	myRankAvailable.value = false
 	hasLoadedOnce.value = false
 	seasonPageState.value = {
 		...seasonPageState.value,
@@ -476,6 +495,30 @@ onShow(() => {
 	.no-season-text { font-size: 28rpx; color: #9A8C67; }
 	.no-season-description { margin-top: 12rpx; font-size: 24rpx; color: #9A8C67; text-align: center; line-height: 1.6; }
 }
+.history-entry {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	min-height: 88rpx;
+	margin-bottom: 20rpx;
+	padding: 0 28rpx;
+	border-radius: 20rpx;
+	background: #fff;
+	box-sizing: border-box;
+	.history-entry-title { font-size: 28rpx; font-weight: 600; color: #231C0B; }
+	.history-entry-action { display: flex; align-items: center; gap: 8rpx; font-size: 24rpx; color: #9A8C67; }
+}
+.unranked-card {
+	display: flex;
+	flex-direction: column;
+	gap: 8rpx;
+	margin-bottom: 20rpx;
+	padding: 28rpx 32rpx;
+	border-radius: 20rpx;
+	background: #fff;
+	.unranked-title { font-size: 28rpx; font-weight: 600; color: #231C0B; }
+	.unranked-description { font-size: 24rpx; color: #9A8C67; }
+}
 .my-record-card {
 	background: #fff;
 	border-radius: 20rpx;
@@ -508,13 +551,6 @@ onShow(() => {
 		justify-content: space-between;
 		align-items: center;
 		margin-bottom: 20rpx;
-			.report-btn {
-				padding: 8rpx 20rpx;
-				background: #e0ae12;
-				border-radius: 8rpx;
-				font-size: 24rpx;
-				color: #231c0b;
-			}
 		}
 }
 .card-title {
@@ -590,6 +626,8 @@ onShow(() => {
 
 	.game-type-tab,
 	.no-season-card,
+	.history-entry,
+	.unranked-card,
 	.my-record-card,
 	.leaderboard-card {
 		background: #1e180d;
@@ -600,6 +638,8 @@ onShow(() => {
 	.loading-text,
 	.no-season-text,
 	.no-season-description,
+	.history-entry-action,
+	.unranked-description,
 	.stat-label,
 	.rank-score,
 	.empty-list,
@@ -622,6 +662,8 @@ onShow(() => {
 	}
 
 	.card-title,
+	.history-entry-title,
+	.unranked-title,
 	.my-record-card .record-stats .stat-value,
 	.rank-item .rank-info .rank-name {
 		color: #fff7e1;

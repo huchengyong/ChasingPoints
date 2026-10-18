@@ -85,6 +85,18 @@ func TestMySQLHotReadPlans(t *testing.T) {
 			query: "SELECT s.id FROM seasons s WHERE s.status IN (0,1) AND s.start_date>='2020-01-01' AND s.end_date<'2060-01-01' AND NOT EXISTS (SELECT 1 FROM season_settlements ss WHERE ss.season_id=s.id AND ss.status='completed') ORDER BY s.end_date,s.id LIMIT 20",
 		},
 		{
+			name: "season live rank count", table: "season_records", expectedKey: "idx_season_game_rank",
+			query: "SELECT COUNT(*) FROM season_records WHERE (season_id=1 AND game_type=3) AND ((end_rank_score>2000) OR (end_rank_score=2000 AND wins>10) OR (end_rank_score=2000 AND wins=10 AND id>5000))",
+		},
+		{
+			name: "settled season history", table: "seasons", expectedKey: "idx_seasons_end_id_status_start", rejectFilesort: true,
+			query: "SELECT id,name,start_date,end_date,status FROM seasons WHERE status=2 ORDER BY end_date DESC,id DESC LIMIT 10 OFFSET 10",
+		},
+		{
+			name: "season history viewer records", table: "season_records", expectedKey: "uk_season_user_game",
+			query: "SELECT season_id,end_rank_score,final_rank FROM season_records WHERE season_id IN (1,2,3,4,5,6,7,8,9,10) AND user_id=1 AND game_type=3",
+		},
+		{
 			name: "season challenge archive", table: "achievement_progress_events", expectedKey: "idx_achievement_events_season_archive",
 			query: "SELECT user_id,game_type FROM achievement_progress_events FORCE INDEX (idx_achievement_events_season_archive) WHERE metric_key IN ('matches_total','wins_total','tournament_finish_total') AND occurred_at>='2025-01-01' AND occurred_at<'2026-01-01' GROUP BY user_id,game_type ORDER BY user_id,game_type LIMIT 500",
 		},
@@ -146,6 +158,7 @@ func seedMySQLExplainData(t *testing.T, db *sql.DB) {
 		"INSERT INTO friend_requests (id,from_user_id,to_user_id,status,message) SELECT n,MOD(n,9999)+1,IF(MOD(n,10)=0,1,MOD(n+1,10000)+1),MOD(n,2),'' FROM verify_numbers",
 		"INSERT INTO challenges (id,from_user_id,to_user_id,game_type,message,status,expires_at) SELECT n,MOD(n,9999)+1,IF(MOD(n,10)=0,1,MOD(n+1,10000)+1),3,'',MOD(n,3),DATE_ADD('2025-01-01',INTERVAL n MINUTE) FROM verify_numbers",
 		"INSERT INTO seasons (id,name,start_date,end_date,status) SELECT n,CONCAT('S',n),DATE_ADD('2020-01-01',INTERVAL (n-1)*30 DAY),DATE_ADD('2020-01-01',INTERVAL n*30-1 DAY),IF(MOD(n,100)=0,1,0) FROM verify_numbers WHERE n<=500",
+		"INSERT INTO seasons (id,name,start_date,end_date,status) SELECT n,CONCAT('S',n),DATE_ADD('2020-01-01',INTERVAL (n-1)*30 DAY),DATE_ADD('2020-01-01',INTERVAL n*30-1 DAY),2 FROM verify_numbers WHERE n>500 AND n<=1000",
 		"INSERT INTO season_settlements (season_id,status,completed_at,last_error) SELECT n,IF(MOD(n,2)=0,'completed','running'),IF(MOD(n,2)=0,DATE_ADD('2020-01-01',INTERVAL n*30 DAY),NULL),'' FROM verify_numbers WHERE n<=400",
 		"INSERT INTO season_records (season_id,user_id,game_type,start_rank_score,end_rank_score,peak_rank_score,matches_played,wins,final_rank) SELECT 1,n,3,1000,1000+MOD(n,3000),1100+MOD(n,3000),20,MOD(n,20),0 FROM verify_numbers WHERE n<=10000",
 		"INSERT INTO achievement_progress_events (id,user_id,source_type,source_id,game_type,metric_key,metric_value,occurred_at) SELECT n,MOD(n,10000)+1,'match',n,3,CASE MOD(n,3) WHEN 0 THEN 'matches_total' WHEN 1 THEN 'wins_total' ELSE 'tournament_finish_total' END,1,DATE_ADD('2025-01-01',INTERVAL n MINUTE) FROM verify_numbers",

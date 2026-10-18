@@ -2,7 +2,9 @@ package season
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -56,6 +58,61 @@ func TestSeasonOverviewReturnsCurrentWindowRecordAndFirstLeaderboardPage(t *test
 	if legacyErr != nil || !legacy.Success || len(legacy.List) != len(resp.Leaderboard) || legacy.List[0].UserId != resp.Leaderboard[0].UserId || legacy.List[0].RankScore != resp.Leaderboard[0].RankScore {
 		t.Fatalf("overview and legacy season leaderboard must share records: overview=%+v legacy=%+v err=%v", resp.Leaderboard, legacy, legacyErr)
 	}
+	legacyPosition := 0
+	for _, item := range legacy.List {
+		if item.UserId == 1 {
+			legacyPosition = item.Rank
+		}
+	}
+	if resp.MyRank != 2 || resp.MyRank != legacyPosition || !resp.Availability["my_rank"] {
+		t.Fatalf("my rank must match leaderboard position: my_rank=%d legacy=%d availability=%v", resp.MyRank, legacyPosition, resp.Availability)
+	}
+
+	newcomer, err := NewGetSeasonOverviewLogic(context.WithValue(context.Background(), "user_id", int64(3)), svcCtx).GetSeasonOverview(&types.GetSeasonOverviewReq{GameType: 3})
+	if err != nil || !newcomer.Success || newcomer.Record != nil || newcomer.MyRank != 0 || !newcomer.Availability["record"] || !newcomer.Availability["my_rank"] {
+		t.Fatalf("user without season record must get my_rank 0 without partial: resp=%#v err=%v", newcomer, err)
+	}
+}
+
+func TestSeasonOverviewKeepsRecordWhenRankCountFails(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&model.Season{}, &model.SeasonRecord{}, &model.User{}); err != nil {
+		t.Fatalf("prepare season overview schema: %v", err)
+	}
+	now := time.Now()
+	if err := db.Create(&model.Season{Id: 1, Name: "当前赛季", StartDate: now.AddDate(0, -1, 0), EndDate: now.AddDate(0, 1, 0), Status: 1}).Error; err != nil {
+		t.Fatalf("seed season: %v", err)
+	}
+	if err := db.Create(&model.SeasonRecord{SeasonId: 1, UserId: 1, GameType: 3, EndRankScore: 1000, MatchesPlayed: 2, Wins: 1}).Error; err != nil {
+		t.Fatalf("seed season record: %v", err)
+	}
+	if err := db.Callback().Query().Before("gorm:query").Register("fail_season_rank_count", func(tx *gorm.DB) {
+		if where, ok := tx.Statement.Clauses["WHERE"]; ok && strings.Contains(fmt.Sprintf("%v", where.Expression), "wins >") {
+			_ = tx.AddError(errors.New("rank count failed"))
+		}
+	}); err != nil {
+		t.Fatalf("register failing callback: %v", err)
+	}
+	svcCtx := &svc.ServiceContext{SeasonModel: model.NewSeasonModel(db), SeasonRecordModel: model.NewSeasonRecordModel(db)}
+	resp, err := NewGetSeasonOverviewLogic(context.WithValue(context.Background(), "user_id", int64(1)), svcCtx).GetSeasonOverview(&types.GetSeasonOverviewReq{GameType: 3})
+	if err != nil || !resp.Success || resp.Record == nil || len(resp.Leaderboard) != 1 || !resp.Availability["record"] || !resp.Availability["leaderboard"] {
+		t.Fatalf("rank count failure must keep record and leaderboard: resp=%#v err=%v", resp, err)
+	}
+	if resp.MyRank != 0 || resp.Availability["my_rank"] || !hasSeasonOverviewPartial(resp, "my_rank") {
+		t.Fatalf("rank count failure must be an explicit partial: my_rank=%d availability=%v partial=%+v", resp.MyRank, resp.Availability, resp.PartialErrors)
+	}
+}
+
+func hasSeasonOverviewPartial(resp *types.GetSeasonOverviewResp, scope string) bool {
+	for _, item := range resp.PartialErrors {
+		if item.Scope == scope {
+			return true
+		}
+	}
+	return false
 }
 
 func TestSeasonOverviewReadsSeasonRecordsWhenCompetitiveReadModelDisabled(t *testing.T) {
@@ -81,7 +138,7 @@ func TestSeasonOverviewReadsSeasonRecordsWhenCompetitiveReadModelDisabled(t *tes
 	if err != nil || !resp.Success || resp.Season == nil || resp.Record == nil || len(resp.Leaderboard) != 1 {
 		t.Fatalf("disabled read mode must keep season records readable: resp=%#v err=%v", resp, err)
 	}
-	if !resp.Availability["record"] || !resp.Availability["leaderboard"] || resp.Availability["competitive_revision"] || len(resp.PartialErrors) != 1 || resp.PartialErrors[0].Scope != "competitive_revision" {
+	if resp.MyRank != 1 || !resp.Availability["my_rank"] || !resp.Availability["record"] || !resp.Availability["leaderboard"] || resp.Availability["competitive_revision"] || len(resp.PartialErrors) != 1 || resp.PartialErrors[0].Scope != "competitive_revision" {
 		t.Fatalf("only competitive revision may be gated by read mode: availability=%v partial=%+v", resp.Availability, resp.PartialErrors)
 	}
 }
@@ -99,7 +156,7 @@ func TestSeasonOverviewKeepsSeasonAvailableWhenOptionalModelsAreMissing(t *testi
 		t.Fatalf("seed season: %v", err)
 	}
 	resp, err := NewGetSeasonOverviewLogic(context.WithValue(context.Background(), "user_id", int64(1)), &svc.ServiceContext{SeasonModel: model.NewSeasonModel(db)}).GetSeasonOverview(&types.GetSeasonOverviewReq{GameType: 3})
-	if err != nil || !resp.Success || resp.Season == nil || !resp.Availability["season"] || resp.Availability["record"] || resp.Availability["leaderboard"] || resp.Availability["competitive_revision"] {
+	if err != nil || !resp.Success || resp.Season == nil || !resp.Availability["season"] || resp.Availability["record"] || resp.Availability["leaderboard"] || resp.Availability["my_rank"] || resp.Availability["competitive_revision"] {
 		t.Fatalf("optional season blocks must fail independently: resp=%#v err=%v", resp, err)
 	}
 }
@@ -121,8 +178,8 @@ func TestSeasonOverviewStopsAfterUnavailableSeason(t *testing.T) {
 func TestSeasonOverviewUsesFixedQueryCountForOneAndHundredRows(t *testing.T) {
 	one := seasonOverviewQueryCount(t, 1)
 	hundred := seasonOverviewQueryCount(t, 100)
-	if one != 5 || hundred != 5 {
-		t.Fatalf("season overview must use five fixed queries: one=%d hundred=%d", one, hundred)
+	if one != 6 || hundred != 6 {
+		t.Fatalf("season overview must use six fixed queries: one=%d hundred=%d", one, hundred)
 	}
 }
 

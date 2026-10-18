@@ -1565,6 +1565,18 @@ type GetRuleContentResp struct {
 	List    []RuleContentItem `json:"list"`
 }
 
+type GetSeasonHistoryReq struct {
+	GameType int `form:"game_type,optional,default=3"`
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=10"`
+}
+
+type GetSeasonHistoryResp struct {
+	Success bool                `json:"success"`
+	Total   int64               `json:"total"`
+	List    []SeasonHistoryItem `json:"list"`
+}
+
 type GetSeasonLeaderboardReq struct {
 	SeasonId int64 `form:"season_id,optional"`
 	GameType int   `form:"game_type,optional,default=3"`
@@ -1588,6 +1600,7 @@ type GetSeasonOverviewResp struct {
 	SeasonState         string                  `json:"season_state"`
 	Season              *SeasonInfo             `json:"season"`
 	Record              *SeasonRecordInfo       `json:"record"`
+	MyRank              int                     `json:"my_rank"` // 本人当前赛季实时名次，0 表示尚无记录
 	Leaderboard         []SeasonLeaderboardItem `json:"leaderboard"`
 	CompetitiveRevision int64                   `json:"competitive_revision"`
 	Availability        map[string]bool         `json:"availability"`
@@ -2685,6 +2698,11 @@ type SeasonChallengeInfo struct {
 	Threshold   int    `json:"threshold"`
 	Progress    int    `json:"progress"`
 	Completed   bool   `json:"completed"`
+}
+
+type SeasonHistoryItem struct {
+	Season *SeasonInfo       `json:"season"`
+	Record *SeasonRecordInfo `json:"record"` // 本人未参加该球种排位时为 null
 }
 
 type SeasonInfo struct {

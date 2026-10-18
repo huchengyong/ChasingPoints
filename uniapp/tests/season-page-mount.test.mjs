@@ -135,6 +135,36 @@ test('season page compiles and mounts with one overview request on first entry',
 
     let overviewCalls = 0
     let scopeVersion = 0
+    const navigations = []
+    const activeSeason = { id: 1, name: '真实挂载测试赛季', status: 1, start_date: '2026-08-01', end_date: '2026-09-01' }
+    const followUpOverviews = [
+      {
+        success: true,
+        season: activeSeason,
+        season_state: 'active',
+        availability: { season: true, record: false, leaderboard: false, my_rank: false },
+        record: null,
+        my_rank: 0,
+        leaderboard: []
+      },
+      {
+        success: true,
+        season: activeSeason,
+        season_state: 'active',
+        availability: { season: true, record: true, leaderboard: true, my_rank: true },
+        record: null,
+        my_rank: 0,
+        leaderboard: []
+      },
+      {
+        success: true,
+        season: null,
+        season_state: 'not_started',
+        availability: { season: true },
+        record: null,
+        leaderboard: []
+      }
+    ]
     let resolveOverview
     const firstOverview = new Promise((resolve) => {
       resolveOverview = resolve
@@ -145,18 +175,11 @@ test('season page compiles and mounts with one overview request on first entry',
       getSeasonOverview: () => {
         overviewCalls += 1
         if (overviewCalls === 1) return firstOverview
-        return Promise.resolve({
-          success: true,
-          season: { id: 1, name: '真实挂载测试赛季', status: 1, start_date: '2026-08-01', end_date: '2026-09-01' },
-          season_state: 'active',
-          availability: { season: true, record: false, leaderboard: false },
-          record: null,
-          leaderboard: []
-        })
+        return Promise.resolve(followUpOverviews[overviewCalls - 2])
       },
       getSeasonLeaderboard: async () => ({ success: true, list: [], total: 0 })
     }
-    globalThis.uni = { navigateTo: () => {} }
+    globalThis.uni = { navigateTo: (options) => navigations.push(options.url) }
 
     const [{ mount, flushPromises }, { nextTick }] = await Promise.all([
       import('@vue/test-utils'),
@@ -187,8 +210,9 @@ test('season page compiles and mounts with one overview request on first entry',
         end_date: '2026-09-01'
       },
       season_state: 'active',
-      availability: { record: true, leaderboard: true },
+      availability: { record: true, leaderboard: true, my_rank: true },
       record: { matches_played: 2, wins: 1, peak_rank_score: 1200, final_rank: 0 },
+      my_rank: 2,
       leaderboard: []
     })
     await flushPromises()
@@ -196,6 +220,9 @@ test('season page compiles and mounts with one overview request on first entry',
 
     assert.doesNotMatch(wrapper.text(), /加载中/)
     assert.match(wrapper.text(), /真实挂载测试赛季/)
+    assert.match(wrapper.text(), /当前排名：第 2 名/, 'active season must show live rank instead of final_rank')
+    assert.match(wrapper.text(), /历届赛季/)
+    assert.doesNotMatch(wrapper.text(), /赛季报告/, 'unreachable report button must be removed')
     assert.equal(overviewCalls, 1)
 
     globalThis.__SEASON_PAGE_MOUNT__.shown[0]()
@@ -211,6 +238,26 @@ test('season page compiles and mounts with one overview request on first entry',
     assert.match(wrapper.text(), /我的赛季数据暂时无法加载/)
     assert.match(wrapper.text(), /赛季榜单暂时无法加载/)
     assert.doesNotMatch(wrapper.text(), /暂无排行数据/, 'unavailable leaderboard must not look empty')
+    assert.doesNotMatch(wrapper.text(), /当前排名|本赛季还没有排位记录/, 'unavailable rank must not look unranked')
+
+    scopeVersion = 2
+    globalThis.__SEASON_PAGE_MOUNT__.shown[0]()
+    await flushPromises()
+    await nextTick()
+    assert.equal(overviewCalls, 3)
+    assert.match(wrapper.text(), /本赛季还没有排位记录/)
+    assert.match(wrapper.text(), /完成一场中式八球排位即可上榜/)
+    assert.doesNotMatch(wrapper.text(), /当前排名/)
+
+    scopeVersion = 3
+    globalThis.__SEASON_PAGE_MOUNT__.shown[0]()
+    await flushPromises()
+    await nextTick()
+    assert.equal(overviewCalls, 4)
+    assert.match(wrapper.text(), /暂无赛季/)
+    assert.match(wrapper.text(), /历届赛季/, 'history entry must stay reachable without an active season')
+    await wrapper.find('.history-entry').trigger('tap')
+    assert.deepEqual(navigations, ['/subPages/season/history?game_type=3'])
   } finally {
     wrapper?.unmount()
     delete globalThis.__SEASON_PAGE_MOUNT__

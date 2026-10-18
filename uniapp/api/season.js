@@ -37,3 +37,11 @@ export const getSeasonOverview = (params = {}) => {
 export const getSeasonReport = (params) => {
   return get('/api/season/report', params)
 }
+
+/**
+ * 获取历届已结算赛季
+ * @param {Object} params { game_type, page, page_size }
+ */
+export const getSeasonHistory = (params) => {
+  return get('/api/season/history', params)
+}
