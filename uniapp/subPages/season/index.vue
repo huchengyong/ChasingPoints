@@ -64,13 +64,27 @@
 					</view>
 				</view>
 
-				<view v-if="recordUnavailable" class="section-error">
-					<text>我的赛季数据暂时无法加载</text>
-					<text class="section-error-action" @tap="retrySeason">重试</text>
+				<!-- 记录与榜单同时缺失时只提示一次，避免整页堆叠失败提示 -->
+				<view v-if="seasonDataUnavailable" class="notice-card">
+					<view class="section-notice">
+						<text class="section-notice-title">赛季数据暂时没加载出来</text>
+						<text class="section-notice-desc">排位成绩会照常记录，稍后重试即可</text>
+						<text class="section-notice-action" @tap="retrySeason">重试</text>
+					</view>
+				</view>
+
+				<template v-else>
+				<view v-if="recordUnavailable" class="my-record-card">
+					<text class="card-title">我的赛季数据</text>
+					<view class="section-notice">
+						<text class="section-notice-title">数据暂时没加载出来</text>
+						<text class="section-notice-desc">排位成绩会照常记录，稍后重试即可</text>
+						<text class="section-notice-action" @tap="retrySeason">重试</text>
+					</view>
 				</view>
 
 				<!-- 我的赛季数据 -->
-				<view class="my-record-card" v-if="myRecord">
+				<view class="my-record-card" v-else-if="myRecord">
 				<text class="card-title">我的赛季数据</text>
 				<view class="record-stats">
 					<view class="stat-item">
@@ -95,7 +109,7 @@
 				</view>
 			</view>
 
-				<view v-if="!recordUnavailable && !myRecord" class="unranked-card">
+				<view v-else class="unranked-card">
 					<text class="unranked-title">本赛季还没有排位记录</text>
 					<text class="unranked-description">完成一场{{ currentGameTypeLabel }}排位即可上榜</text>
 				</view>
@@ -105,9 +119,10 @@
 				<view class="card-header">
 					<text class="card-title">赛季排行榜</text>
 				</view>
-				<view v-if="leaderboardUnavailable" class="section-error">
-					<text>赛季榜单暂时无法加载</text>
-					<text class="section-error-action" @tap="retrySeason">重试</text>
+				<view v-if="leaderboardUnavailable" class="section-notice">
+					<text class="section-notice-title">榜单暂时没加载出来</text>
+					<text class="section-notice-desc">稍后重试即可查看最新排名</text>
+					<text class="section-notice-action" @tap="retrySeason">重试</text>
 				</view>
 				<view v-else-if="leaderboard.length > 0" class="leaderboard-list">
 					<view
@@ -144,6 +159,7 @@
 					<text>没有更多了</text>
 				</view>
 				</view>
+				</template>
 			</template>
 		</view>
 	</view>
@@ -202,6 +218,7 @@ const seasonEmptyState = computed(() => resolveCurrentSeasonState(season.value, 
 const hasActiveSeason = computed(() => seasonState.value === 'active' && Boolean(season.value))
 const seasonTimeline = computed(() => resolveSeasonTimeline(season.value))
 const currentGameTypeLabel = computed(() => gameTypeTabs.find(item => item.value === currentGameType.value)?.label || '该球种')
+const seasonDataUnavailable = computed(() => recordUnavailable.value && leaderboardUnavailable.value)
 
 const winRate = computed(() => {
 	if (!myRecord.value || myRecord.value.matches_played === 0) return 0
@@ -416,8 +433,11 @@ onShow(() => {
 .retry-btn::after { display: none; }
 .refresh-error-banner { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-bottom: 20rpx; padding: 18rpx 22rpx; border-radius: 14rpx; background: rgba(224, 174, 18, 0.12); color: #8a5b00; font-size: 24rpx; }
 .refresh-error-action { flex-shrink: 0; color: #a86f00; font-weight: 600; }
-.section-error { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-bottom: 20rpx; padding: 18rpx 22rpx; border-radius: 14rpx; border: 1rpx solid #EF4444; background: rgba(239, 68, 68, 0.06); color: #b91c1c; font-size: 24rpx; }
-.section-error-action { flex-shrink: 0; padding: 8rpx 0 8rpx 16rpx; font-weight: 600; }
+.notice-card { margin-bottom: 20rpx; padding: 32rpx; border-radius: 20rpx; background: #fff; }
+.section-notice { display: flex; flex-direction: column; align-items: center; gap: 8rpx; padding: 24rpx 0 8rpx; text-align: center; }
+.section-notice-title { font-size: 28rpx; font-weight: 600; color: #231C0B; }
+.section-notice-desc { font-size: 24rpx; line-height: 1.6; color: #9A8C67; }
+.section-notice-action { margin-top: 8rpx; padding: 8rpx 24rpx; font-size: 26rpx; font-weight: 600; color: #C69200; }
 .season-content {
 	padding: 20rpx 24rpx;
 }
@@ -628,6 +648,7 @@ onShow(() => {
 	.no-season-card,
 	.history-entry,
 	.unranked-card,
+	.notice-card,
 	.my-record-card,
 	.leaderboard-card {
 		background: #1e180d;
@@ -640,6 +661,7 @@ onShow(() => {
 	.no-season-description,
 	.history-entry-action,
 	.unranked-description,
+	.section-notice-desc,
 	.stat-label,
 	.rank-score,
 	.empty-list,
@@ -647,9 +669,8 @@ onShow(() => {
 		color: #9f926e;
 	}
 
-	.section-error {
-		background: rgba(239, 68, 68, 0.12);
-		color: #fca5a5;
+	.section-notice-action {
+		color: #f0c542;
 	}
 
 	.game-type-tab.active {
@@ -664,6 +685,7 @@ onShow(() => {
 	.card-title,
 	.history-entry-title,
 	.unranked-title,
+	.section-notice-title,
 	.my-record-card .record-stats .stat-value,
 	.rank-item .rank-info .rank-name {
 		color: #fff7e1;

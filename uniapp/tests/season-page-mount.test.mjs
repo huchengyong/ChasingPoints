@@ -151,6 +151,15 @@ test('season page compiles and mounts with one overview request on first entry',
         success: true,
         season: activeSeason,
         season_state: 'active',
+        availability: { season: true, record: true, leaderboard: false, my_rank: true },
+        record: { matches_played: 3, wins: 2, peak_rank_score: 1260, final_rank: 0 },
+        my_rank: 5,
+        leaderboard: []
+      },
+      {
+        success: true,
+        season: activeSeason,
+        season_state: 'active',
         availability: { season: true, record: true, leaderboard: true, my_rank: true },
         record: null,
         my_rank: 0,
@@ -235,9 +244,9 @@ test('season page compiles and mounts with one overview request on first entry',
     assert.equal(overviewCalls, 2, 'season scope invalidation must trigger one refresh')
     await nextTick()
     assert.match(wrapper.text(), /真实挂载测试赛季/, 'partial overview must keep the season card')
-    assert.match(wrapper.text(), /我的赛季数据暂时无法加载/)
-    assert.match(wrapper.text(), /赛季榜单暂时无法加载/)
-    assert.doesNotMatch(wrapper.text(), /暂无排行数据/, 'unavailable leaderboard must not look empty')
+    assert.match(wrapper.text(), /赛季数据暂时没加载出来/)
+    assert.equal(wrapper.findAll('.section-notice').length, 1, 'record and leaderboard failures must collapse into one notice')
+    assert.doesNotMatch(wrapper.text(), /赛季排行榜|暂无排行数据/, 'unavailable leaderboard must not look empty')
     assert.doesNotMatch(wrapper.text(), /当前排名|本赛季还没有排位记录/, 'unavailable rank must not look unranked')
 
     scopeVersion = 2
@@ -245,15 +254,27 @@ test('season page compiles and mounts with one overview request on first entry',
     await flushPromises()
     await nextTick()
     assert.equal(overviewCalls, 3)
-    assert.match(wrapper.text(), /本赛季还没有排位记录/)
-    assert.match(wrapper.text(), /完成一场中式八球排位即可上榜/)
-    assert.doesNotMatch(wrapper.text(), /当前排名/)
+    assert.match(wrapper.text(), /当前排名：第 5 名/, 'record must stay visible when only the leaderboard fails')
+    assert.match(wrapper.text(), /赛季排行榜/)
+    assert.match(wrapper.text(), /榜单暂时没加载出来/)
+    assert.equal(wrapper.findAll('.section-notice').length, 1)
+    assert.doesNotMatch(wrapper.text(), /赛季数据暂时没加载出来|暂无排行数据/)
 
     scopeVersion = 3
     globalThis.__SEASON_PAGE_MOUNT__.shown[0]()
     await flushPromises()
     await nextTick()
     assert.equal(overviewCalls, 4)
+    assert.match(wrapper.text(), /本赛季还没有排位记录/)
+    assert.match(wrapper.text(), /完成一场中式八球排位即可上榜/)
+    assert.doesNotMatch(wrapper.text(), /当前排名/)
+    assert.equal(wrapper.findAll('.section-notice').length, 0)
+
+    scopeVersion = 4
+    globalThis.__SEASON_PAGE_MOUNT__.shown[0]()
+    await flushPromises()
+    await nextTick()
+    assert.equal(overviewCalls, 5)
     assert.match(wrapper.text(), /暂无赛季/)
     assert.match(wrapper.text(), /历届赛季/, 'history entry must stay reachable without an active season')
     await wrapper.find('.history-entry').trigger('tap')
