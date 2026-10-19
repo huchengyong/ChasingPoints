@@ -3,15 +3,15 @@
 		<view class="page-intro">
 			<view class="intro-copy">
 				<text class="intro-eyebrow">绑定常玩球馆</text>
-				<text class="intro-title">限时领取1个月VIP</text>
-				<text class="intro-desc">填写球馆真实的位置信息，审核通过后会自动发放VIP。虚假信息将不予通过。</text>
+				<text class="intro-title">{{ introCopy.title }}</text>
+				<text class="intro-desc">{{ introCopy.desc }}</text>
 			</view>
 		</view>
 
 		<view class="form-section">
 			<view class="section-head">
 				<text class="section-title">常玩球馆资料</text>
-				<text class="section-tip">请填写球馆名称、地区和详细地址，审核通过后会自动发放VIP。</text>
+				<text class="section-tip">{{ introCopy.sectionTip }}</text>
 			</view>
 			<view class="form-group" :class="getFieldClass('name')">
 				<view class="label-row">
@@ -76,15 +76,25 @@
 import { computed, onMounted, ref } from 'vue'
 import { createVenue, getVenueAreaOptions } from '@/api/venue.js'
 import { usePublicReadStore } from '@/store/publicRead.js'
+import { useUserOverviewStore } from '@/store/userOverview.js'
+import { useUserStore } from '@/store/user.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import {
 	buildVenueRegionSelection,
 	buildVenueSubmitPayload,
-	resolveVenueSubmitCopy
+	resolveVenueSubmitCopy,
+	resolveVenueSubmitIntro
 } from '@/utils/venue-submit.js'
 
 const { isDarkMode } = usePageTheme()
 const publicReadStore = usePublicReadStore()
+const userOverviewStore = useUserOverviewStore()
+const userStore = useUserStore()
+
+const getReadIdentity = () => ({
+	userId: userStore.userId,
+	authGeneration: userStore.authGeneration
+})
 
 const createAreaPlaceholderOption = (name = '暂无数据') => ({
 	area_id: 0,
@@ -128,7 +138,9 @@ const requiredFieldStatus = computed(() => ({
 }))
 const missingRequiredKeys = computed(() => requiredFieldOrder.filter(key => !requiredFieldStatus.value[key]))
 const missingRequiredLabels = computed(() => missingRequiredKeys.value.map(key => requiredFieldLabelMap[key]))
-const submitBarCopy = computed(() => resolveVenueSubmitCopy(missingRequiredLabels.value))
+const rewardStatus = computed(() => userOverviewStore.favoriteVenueRewardStatus || {})
+const introCopy = computed(() => resolveVenueSubmitIntro(rewardStatus.value))
+const submitBarCopy = computed(() => resolveVenueSubmitCopy(missingRequiredLabels.value, rewardStatus.value))
 
 const getFieldClass = (key) => ({
 	'is-complete': requiredFieldStatus.value[key],
@@ -268,7 +280,8 @@ const handleSubmit = async () => {
 		const data = buildVenueSubmitPayload(form.value)
 		const res = await createVenue(data)
 		if (res.success) {
-			uni.showToast({ title: res.message || '已提交，审核通过后VIP将自动到账', icon: 'success' })
+			userOverviewStore.markDirty()
+			uni.showToast({ title: res.message || '已提交，审核通过后会展示给附近球友', icon: 'success' })
 			setTimeout(() => {
 				uni.navigateBack()
 			}, 1500)
@@ -284,6 +297,7 @@ const handleSubmit = async () => {
 
 onMounted(() => {
 	hydrateAreaColumns().catch(() => {})
+	userOverviewStore.fetch(getReadIdentity(), { silent: true }).catch(() => {})
 })
 </script>
 

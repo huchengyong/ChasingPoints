@@ -81,7 +81,7 @@ func TestBuildCreateVenueRespUsesAsyncMessage(t *testing.T) {
 	if resp.Message == "" {
 		t.Fatal("expected async message, got empty string")
 	}
-	if resp.Message != "已提交，审核通过后VIP将自动到账" {
+	if resp.Message != "已提交，审核通过后会展示给附近球友" {
 		t.Fatalf("unexpected success message %q", resp.Message)
 	}
 }

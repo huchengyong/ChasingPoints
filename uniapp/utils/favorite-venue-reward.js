@@ -1,10 +1,13 @@
-const formatRewardDuration = (rewardDays = 30) => {
+export const formatRewardDuration = (rewardDays = 30) => {
   if (rewardDays % 30 === 0) {
     const months = rewardDays / 30
     return `${months} 个月VIP`
   }
   return `${rewardDays} 天VIP`
 }
+
+// 活动开启且本人尚未获得奖励时，才能对外承诺审核通过后发放VIP。
+export const isFavoriteVenueRewardClaimable = (rewardStatus = {}) => rewardStatus?.enabled === true && rewardStatus?.status !== 'reward_granted'
 
 const parseRewardTime = (rawValue) => {
   if (typeof rawValue !== 'string') return null
@@ -77,6 +80,7 @@ export const resolveFavoriteVenueRewardPopupCopy = (rewardStatus = {}) => {
 
 export const resolveFavoriteVenueRewardTaskCard = (rewardStatus = {}) => {
   const rewardText = formatRewardDuration(rewardStatus.reward_days || 30)
+  const claimable = isFavoriteVenueRewardClaimable(rewardStatus)
   const status = rewardStatus.status || 'not_started'
   const submittedVenueName = typeof rewardStatus.submitted_venue_name === 'string' ? rewardStatus.submitted_venue_name.trim() : ''
   const rejectReason = typeof rewardStatus.reject_reason === 'string' ? rewardStatus.reject_reason.trim() : ''
@@ -93,10 +97,11 @@ export const resolveFavoriteVenueRewardTaskCard = (rewardStatus = {}) => {
   }
 
   if (status === 'pending_review') {
+    const reviewOutcome = claimable ? '通过后会自动发放VIP。' : '审核通过后会展示给附近球友。'
     return {
       visible: true,
       title: '常玩球馆审核中',
-      description: submittedVenueName ? `${submittedVenueName} 正在审核中，通过后会自动发放VIP。` : '球馆信息审核中，通过后会自动发放VIP。',
+      description: submittedVenueName ? `${submittedVenueName} 正在审核中，${reviewOutcome}` : `球馆信息审核中，${reviewOutcome}`,
       actionText: '',
       statusText: '审核中'
     }
@@ -115,7 +120,7 @@ export const resolveFavoriteVenueRewardTaskCard = (rewardStatus = {}) => {
   if (status === 'rejected') {
     return {
       visible: true,
-      title: '补充信息后可重新领取VIP',
+      title: claimable ? '补充信息后可重新领取VIP' : '补充信息后可重新提交',
       description: rejectReason ? `本次未通过：${rejectReason}` : '本次提交未通过，补充完整后可重新提交。',
       actionText: '重新提交',
       statusText: '未通过'

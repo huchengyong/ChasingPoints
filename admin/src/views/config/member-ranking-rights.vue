@@ -60,7 +60,7 @@
           type="warning"
           :closable="false"
           show-icon
-          title="排位规则 V2 生效后（后端配置 RANKING_RATING_V2_START_DATE），排位分只看胜负与对手实力：下方除「每日总正向上限」外的特殊战绩分、倍率与开关都只影响生效前结算的对局。"
+          title="排位规则 V2 生效后（后端配置 RANKING_RATING_V2_START_AT 或 RANKING_RATING_V2_START_DATE），排位分只看胜负与对手实力：下方除「每日总正向上限」外的特殊战绩分、倍率与开关都只影响生效前结算的对局。"
         />
         <div class="config-grid">
           <el-form-item label="普通用户计入特殊战绩">
@@ -147,7 +147,7 @@
           <el-alert
             type="info"
             :closable="false"
-            title="VIP特殊战绩排位分默认仅胜方可得，且只有单日上限，没有单场上限。"
+            title="VIP特殊战绩排位分仅胜方可得，且只有单日上限，没有单场上限。"
           />
         </div>
 

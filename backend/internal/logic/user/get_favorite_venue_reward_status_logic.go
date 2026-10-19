@@ -49,9 +49,10 @@ func (l *GetFavoriteVenueRewardStatusLogic) GetFavoriteVenueRewardStatus() (resp
 		return &types.FavoriteVenueRewardStatusResp{Success: false}, nil
 	}
 
+	// 与审核发放使用同一套活动窗口判断：未开始或已结束的活动不对外展示为可领取。
 	resp = &types.FavoriteVenueRewardStatusResp{
 		Success:           true,
-		Enabled:           config.Enabled,
+		Enabled:           model.FavoriteVenueRewardConfigIsActive(config, logicx.NowUTC8()),
 		PopupEnabled:      config.PopupEnabled,
 		RewardDays:        config.RewardDays,
 		NewUserWindowDays: config.NewUserWindowDays,

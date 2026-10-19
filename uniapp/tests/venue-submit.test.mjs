@@ -4,7 +4,8 @@ import assert from 'node:assert/strict'
 import {
   buildVenueRegionSelection,
   buildVenueSubmitPayload,
-  resolveVenueSubmitCopy
+  resolveVenueSubmitCopy,
+  resolveVenueSubmitIntro
 } from '../utils/venue-submit.js'
 
 test('buildVenueSubmitPayload only keeps basic venue fields', () => {
@@ -28,16 +29,32 @@ test('buildVenueSubmitPayload only keeps basic venue fields', () => {
   })
 })
 
-test('resolveVenueSubmitCopy describes the basics-only flow', () => {
-  assert.deepEqual(resolveVenueSubmitCopy([]), {
+test('resolveVenueSubmitCopy only promises VIP while the venue reward is claimable', () => {
+  assert.deepEqual(resolveVenueSubmitCopy([], { enabled: true, reward_days: 30, status: 'not_started' }), {
     title: '确认常玩球馆后提交',
     tip: '首次有效补充并审核通过，送 1 个月VIP。'
   })
 
-  assert.deepEqual(resolveVenueSubmitCopy(['球馆名称', '详细地址']), {
+  assert.deepEqual(resolveVenueSubmitCopy([]), {
+    title: '确认常玩球馆后提交',
+    tip: '审核通过后会展示给附近球友。'
+  })
+
+  assert.deepEqual(resolveVenueSubmitCopy([], { enabled: true, reward_days: 30, status: 'reward_granted' }), {
+    title: '确认常玩球馆后提交',
+    tip: '审核通过后会展示给附近球友。'
+  })
+
+  assert.deepEqual(resolveVenueSubmitCopy(['球馆名称', '详细地址'], { enabled: true, reward_days: 30 }), {
     title: '还有 2 项未填写',
     tip: '请先填写：球馆名称、详细地址'
   })
+})
+
+test('resolveVenueSubmitIntro uses the configured reward duration only when claimable', () => {
+  assert.deepEqual(resolveVenueSubmitIntro({ enabled: true, reward_days: 14, status: 'not_started' }).title, '免费领取 14 天VIP')
+  assert.equal(resolveVenueSubmitIntro({ enabled: false, reward_days: 30, status: 'not_started' }).title, '提交常去球馆')
+  assert.doesNotMatch(resolveVenueSubmitIntro({ enabled: true, reward_days: 30, status: 'reward_granted' }).sectionTip, /VIP/)
 })
 
 test('buildVenueRegionSelection maps province city district path into display and payload fields', () => {

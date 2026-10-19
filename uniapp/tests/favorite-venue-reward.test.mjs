@@ -113,6 +113,25 @@ test('resolveFavoriteVenueRewardTaskCard hides untouched tasks when activity is 
   assert.equal(card.visible, false)
 })
 
+test('resolveFavoriteVenueRewardTaskCard drops VIP promises from review and retry copy when activity is disabled', () => {
+  const pending = resolveFavoriteVenueRewardTaskCard({
+    enabled: false,
+    reward_days: 30,
+    status: 'pending_review',
+    submitted_venue_name: '南山台球会'
+  })
+  assert.equal(pending.visible, true)
+  assert.equal(pending.description, '南山台球会 正在审核中，审核通过后会展示给附近球友。')
+
+  const rejected = resolveFavoriteVenueRewardTaskCard({
+    enabled: false,
+    reward_days: 30,
+    status: 'rejected',
+    reject_reason: '地址信息不完整'
+  })
+  assert.equal(rejected.title, '补充信息后可重新提交')
+})
+
 test('resolveFavoriteVenueRewardPopupCopy uses reward duration in the title', () => {
   const copy = resolveFavoriteVenueRewardPopupCopy({
     reward_days: 30

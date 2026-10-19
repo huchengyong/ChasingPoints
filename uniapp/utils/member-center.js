@@ -254,9 +254,9 @@ export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date(), 
     }
 
     return {
-      statusText: '待发放',
-      title: 'VIP权益等待发放',
-      description: '新用户注册奖励或活动奖励到账后，无需订阅或支付，会自动更新这里的状态。',
+      statusText: '暂无权益',
+      title: '暂未获得VIP权益',
+      description: '活动奖励到账后，无需订阅或支付，会自动更新这里的状态。',
       primaryActionText: '查看权益'
     }
   }

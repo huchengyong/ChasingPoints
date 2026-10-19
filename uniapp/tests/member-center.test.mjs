@@ -11,6 +11,15 @@ import {
   shouldTreatMemberOrderAsPaid
 } from '../utils/member-center.js'
 
+test('resolveMemberCenterSummary keeps compliance copy neutral before any reward is granted', () => {
+  const summary = resolveMemberCenterSummary({ is_active: false }, new Date('2026-10-19T10:00:00+08:00'), {
+    complianceMode: true
+  })
+
+  assert.equal(summary.statusText, '暂无权益')
+  assert.doesNotMatch(summary.description, /注册/)
+})
+
 test('resolveMemberEntryCard returns unopened copy when user has never subscribed', () => {
   const card = resolveMemberEntryCard({}, new Date('2026-03-31T10:00:00+08:00'))
 

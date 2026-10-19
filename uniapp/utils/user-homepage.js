@@ -1,4 +1,4 @@
-import { resolveFavoriteVenueRewardTaskCard } from './favorite-venue-reward.js'
+import { formatRewardDuration, resolveFavoriteVenueRewardTaskCard } from './favorite-venue-reward.js'
 import { GAME_TYPE_TABS } from './game-types.js'
 
 export const formatDuration = (durationSeconds = 0) => {
@@ -304,8 +304,8 @@ export const resolveCompactRewardEntry = (rewardStatus = {}) => {
 
   let { title, description } = card
   if (status === 'not_started') {
-    title = '免费VIP限时赠送'
-    description = '绑定你常去的球馆，可免费领取1个月VIP'
+    title = '免费VIP赠送'
+    description = `绑定你常去的球馆，审核通过后可免费领取 ${formatRewardDuration(rewardStatus?.reward_days || 30)}`
   }
 
   return {

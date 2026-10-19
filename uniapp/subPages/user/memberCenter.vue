@@ -130,11 +130,11 @@
 					<text class="member-section-title">{{ isComplianceMode ? '权益说明' : '订阅说明' }}</text>
 				</view>
 				<view class="tips-card">
-					<text v-if="isComplianceMode" class="tips-item">新用户注册会直接获赠VIP奖励，前台会自动同步VIP状态。</text>
-					<text v-if="isComplianceMode" class="tips-item">补充常玩球馆并审核通过后，还可继续获赠VIP，无需订阅或支付。</text>
+					<text v-if="isComplianceMode" class="tips-item">VIP权益由活动发放，到账后会自动同步到这里，无需订阅或支付。</text>
+					<text v-if="isComplianceMode && venueRewardClaimable" class="tips-item">补充常玩球馆并审核通过后，可获得 {{ venueRewardText }}，无需订阅或支付。</text>
 					<text v-if="!isComplianceMode" class="tips-item">支付成功后会自动更新VIP状态。</text>
 					<text v-if="!isComplianceMode" class="tips-item">如果你当前VIP仍在有效期内，续费会在现有到期时间基础上顺延。</text>
-					<text class="tips-item">VIP成长只统计真实完赛对局，每完成 1 场记 1 点成长，每天最多计入 5 场。</text>
+					<text class="tips-item">VIP成长只统计真实完赛对局，每天最多计入 {{ growthCard.dailyCap }} 场。</text>
 					<text class="tips-item">VIP到期后成长会冻结但保留，续开VIP后会从原进度继续成长。</text>
 					<template v-if="!rankingRightsCard.retired">
 						<text class="tips-item">普通用户高光会保留记录但不计入排位；VIP按当前等级倍率计入特殊战绩排位分。</text>
@@ -168,6 +168,7 @@ import { usePublicReadStore } from '@/store/publicRead.js'
 import { useUserOverviewStore } from '@/store/userOverview.js'
 import { useUserStore } from '@/store/user.js'
 import { APP_COMPLIANCE_MODE } from '@/utils/compliance-mode.js'
+import { formatRewardDuration, isFavoriteVenueRewardClaimable } from '@/utils/favorite-venue-reward.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import {
 	createMemberPaymentRequest,
@@ -203,6 +204,9 @@ const summary = computed(() => resolveMemberCenterSummary(memberStatus.value || 
 const growthCard = computed(() => resolveMemberGrowthCard(memberStatus.value || {}, new Date()))
 const rankingRightsCard = computed(() => resolveMemberRankingRightsCard(memberStatus.value || {}, new Date(), rankRulesMeta.value))
 const planCards = computed(() => resolveMemberPlanCards(plans.value, selectedPlanCode.value))
+const venueRewardStatus = computed(() => userOverviewStore.favoriteVenueRewardStatus || {})
+const venueRewardClaimable = computed(() => isFavoriteVenueRewardClaimable(venueRewardStatus.value))
+const venueRewardText = computed(() => formatRewardDuration(venueRewardStatus.value.reward_days || 30))
 
 onShow(() => {
 	loadData()

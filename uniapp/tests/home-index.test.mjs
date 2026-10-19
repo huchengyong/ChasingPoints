@@ -311,6 +311,11 @@ test('home nearby venue empty action mentions member reward only when activity i
     desc: '你可以提交常去球馆，审核通过后会展示给附近球友。',
     url: '/subPages/venue/submit'
   })
+  assert.deepEqual(resolveHomeVenueEmptyAction({ enabled: true, status: 'reward_granted' }), {
+    text: '添加附近球馆',
+    desc: '你可以提交常去球馆，审核通过后会展示给附近球友。',
+    url: '/subPages/venue/submit'
+  })
   assert.deepEqual(resolveHomeVenueEmptyAction(null), {
     text: '添加附近球馆',
     desc: '你可以提交常去球馆，审核通过后会展示给附近球友。',

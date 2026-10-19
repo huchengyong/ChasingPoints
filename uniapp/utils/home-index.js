@@ -1,3 +1,5 @@
+import { isFavoriteVenueRewardClaimable } from './favorite-venue-reward.js'
+
 const REPORT_POST_TYPE = 1
 const LOGIN_REQUIRED_TOOL_URLS = new Set([
   '/subPages/user/statsDetail'
@@ -120,11 +122,11 @@ export const formatHomeVenueDistance = (meters = 0) => {
 }
 
 export const resolveHomeVenueEmptyAction = (rewardStatus) => {
-  const rewardEnabled = rewardStatus?.enabled === true
+  const rewardClaimable = isFavoriteVenueRewardClaimable(rewardStatus)
 
   return {
-    text: rewardEnabled ? '添加球馆领取VIP' : '添加附近球馆',
-    desc: rewardEnabled ? '你可以提交常玩球馆，审核通过后VIP会自动到账。' : '你可以提交常去球馆，审核通过后会展示给附近球友。',
+    text: rewardClaimable ? '添加球馆领取VIP' : '添加附近球馆',
+    desc: rewardClaimable ? '你可以提交常玩球馆，审核通过后VIP会自动到账。' : '你可以提交常去球馆，审核通过后会展示给附近球友。',
     url: '/subPages/venue/submit'
   }
 }
