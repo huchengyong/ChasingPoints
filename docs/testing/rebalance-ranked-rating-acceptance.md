@@ -31,3 +31,39 @@
 - 未做 App 与微信小程序编译及真机检查：段位说明页（规则版本、定级提示）、赛季页（达标进度、未达标标注、本季净变化）、历届赛季与报告的"未达标"、战报高光卡片、会员中心排位权益区，浅色/深色都需要人工确认。
 - 原生 iOS 无改动、未构建：战报按 `label/value` 通用渲染排位明细，新增字段不参与解码。
 - 上线后首日需在目标环境执行 `-mode=audit` 并确认 `differences=0`。
+
+## 4. 线上库版本与 MySQL 5.7 兼容验证
+
+- 线上库为 MySQL 5.7.44（只读确认）。开发库为 8.0.45，前面第 2 节的 8.0 验收不能代替 5.7 验收。
+- 本地演练：`mysql:5.7` 容器（5.7.44，默认 sql_mode，仅绑定 127.0.0.1），goose 使用发布脚本同款 v3.28.0。
+- 从空库迁移到线上当前版本 `20261016100000`：成功，说明整条迁移链在 5.7 上可执行。
+- 执行 `20261019120000`：成功。结构核对通过：`user_ranking.rating_version`（默认 1）、`rated_matches`（默认 0）、`season_records.distinct_opponents` 与 `qualified`、`idx_season_game_qualified_rank` 存在且 `idx_season_game_rank` 已删除、`rank_rating_seeds` 存在、`seasons.rank_reset_ratio` 默认 1.00。
+- `down` 后结构恢复（`rating_version` 列消失、`idx_season_game_rank` 恢复、`rank_reset_ratio` 默认回到 0.70）；再次 `up` 成功。
+- 仓库 MySQL 验收测试在 5.7 上的结果：
+  - `TestMySQLRatingV2SettlementQualificationAndAudit`：通过。
+  - `TestMySQLCompetitiveReadRebuildCheckpointAndAudit`：通过。
+  - `TestMySQLHotReadPlans`：失败在造数据步骤。该测试的造数据使用 `cte_max_recursion_depth` 与 `WITH RECURSIVE`，这是 MySQL 8.0 语法，5.7 无法执行；HEAD（53eb244）中已存在，不是本次引入。
+- 5.7 上的执行计划（1 万行合成数据，造数据不使用递归 CTE，手工 EXPLAIN）：
+  - 赛季榜单（`ORDER BY qualified DESC, end_rank_score DESC, wins DESC, id DESC LIMIT 20`）：`idx_season_game_qualified_rank`，无 filesort。
+  - 名次计数：`idx_season_game_qualified_rank` 范围扫描，`Using index`。
+  - 待切换段位行（`rating_version<2 ORDER BY rating_version, id LIMIT 1`）：`idx_user_ranking_rating_version`，读取 1 行。
+  - 历届赛季本人记录：`idx_user_id`（按用户有界，合成数据中每人 1 条）。
+
+## 5. 测试环境（开发服务器）发布与即时切换演练
+
+- 发布：`backend/deploy-dev.sh`，发布目录对应源码 `a8600cb`，迁移 `20261019120000` 执行成功（360 ms），健康检查 200。
+- 发布前备份：开发库 mysqldump（约 2.4 MB，61 张表），存放在服务器备份目录，权限 600。
+- 切换演练：在共享 `.env` 写入 `RANKING_RATING_V2_START_AT=2026-10-19T16:08:34+08:00` 并重启服务；切换前为旧规则（`rules_version=1`）。
+  - 种子预览：重放 0 场（开发库无比赛记录），写入 0 条种子。
+  - 切换时刻到达后：`rules_version=2`，12/12 段位行切到 V2（分数 1250，已计分 0），每行一条 `rating_reset` 记录，共 12 条。
+  - 只读审计：`differences=0`。
+  - 公开接口（排行榜、排行榜摘要、配置、赛季、健康检查）返回 200；未登录访问受保护接口返回 401。
+  - 切换前后没有新增排位相关错误日志。
+- 局限：开发库没有比赛数据，HTTP 层面的 V2 结算未在开发环境触发。该路径由第 4 节的 MySQL 验收测试覆盖（8.0 与 5.7 均通过）。
+
+## 6. 正式环境（待执行）
+
+- 线上当前版本 `53eb244`。本次发布的后端变更为提交 `097c06d`。
+- 发布前预检（只读）：待执行迁移 1 个（`20261019120000`）；线上库 4 个用户、1 场已完成的排位赛、0 场进行中。
+- 发布脚本在人工确认处暂停，需人工输入 `yes` 才会继续：备份数据库 → 执行迁移 → 替换二进制 → 重启并验证（失败时自动恢复旧二进制，迁移不自动回滚）。
+- 即时切换需要在发布后另行执行：写入 `RANKING_RATING_V2_START_AT`、重启、种子预览与写入（种子预览结果需确认）、切换后核对与审计。
