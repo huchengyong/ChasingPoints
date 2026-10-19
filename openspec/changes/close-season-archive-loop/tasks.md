@@ -47,7 +47,7 @@
 ## 8. 验证与收尾
 
 - [x] 8.1 在 `backend/` 运行 `go test ./internal/logic/season/ ./internal/logic/ ./internal/model/` 后运行 `go test ./...` 与 `go build .`，并清理构建产物。
-- [ ] 8.2 在已授权的隔离 MySQL 运行 EXPLAIN 回归；无条件时如实标记为未执行。
+- [x] 8.2 在已授权的隔离 MySQL 运行 EXPLAIN 回归；记录见 `docs/testing/season-archive-loop-mysql-explain.md`。
 - [x] 8.3 在 `uniapp/` 运行 `node --test tests/*.test.mjs`。
 - [ ] 8.4 App 与微信小程序编译、真机检查赛季档案、历届赛季、报告跳转与换季弹窗（浅色/深色），结果按「自动化 / 人工确认 / 未执行」记录到 `docs/testing/`。
 - [x] 8.5 核对原生 iOS 不受新增字段影响，`git diff --check` 通过，并确认改动未使指南失效。
