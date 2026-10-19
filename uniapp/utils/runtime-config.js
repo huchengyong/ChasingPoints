@@ -11,13 +11,8 @@ const NETWORK_CONFIG_BY_ENV = {
 
 const normalizeBaseUrl = (value = '') => value.replace(/\/+$/, '')
 
-const resolveAppEnv = () => {
-  if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') {
-    return 'production'
-  }
-
-  return 'development'
-}
+// process.env.NODE_ENV 由 UniApp 编译器在构建期替换；小程序与 App 运行时通常没有 process 全局，不能用 typeof 守卫。
+const resolveAppEnv = () => (process.env.NODE_ENV === 'production' ? 'production' : 'development')
 
 export const resolveNetworkConfig = ({ env = resolveAppEnv(), override = {} } = {}) => {
   const envConfig = NETWORK_CONFIG_BY_ENV[env] || NETWORK_CONFIG_BY_ENV.development

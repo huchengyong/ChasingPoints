@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { runInNewContext } from 'node:vm'
 
 import {
   resolveNetworkConfig
@@ -23,6 +24,32 @@ test('resolveNetworkConfig uses production host in production', () => {
   assert.deepEqual(resolveNetworkConfig({ env: 'production' }), {
     httpBaseUrl: 'https://api.zhuifen.cn',
     wsBaseUrl: 'wss://ws.zhuifen.cn'
+  })
+})
+
+// 模拟小程序/App 构建产物：编译器替换 NODE_ENV，运行环境中不存在 process 全局。
+const runCompiledRuntimeConfig = (nodeEnv) => {
+  const compiled = runtimeConfigSource
+    .replace(/process\.env\.NODE_ENV/g, JSON.stringify(nodeEnv))
+    .replace(/^export /gm, '')
+    .concat('\nresult = NETWORK_CONFIG\n')
+  const sandbox = { result: null }
+  runInNewContext(compiled, sandbox)
+  // 沙箱内创建的对象原型不同，转成普通对象再比较
+  return JSON.parse(JSON.stringify(sandbox.result))
+}
+
+test('production bundle without a process global still uses the production hosts', () => {
+  assert.deepEqual(runCompiledRuntimeConfig('production'), {
+    httpBaseUrl: 'https://api.zhuifen.cn',
+    wsBaseUrl: 'wss://ws.zhuifen.cn'
+  })
+})
+
+test('development bundle without a process global keeps the development hosts', () => {
+  assert.deepEqual(runCompiledRuntimeConfig('development'), {
+    httpBaseUrl: 'https://api-zhuifen.kekemate.cn',
+    wsBaseUrl: 'wss://api-zhuifen.kekemate.cn'
   })
 })
 
