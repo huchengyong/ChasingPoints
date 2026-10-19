@@ -2,7 +2,9 @@ package public
 
 import (
 	"context"
+	"time"
 
+	"chasing_points/internal/ranking"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -34,13 +36,16 @@ func (l *GetLeaderboardSummaryLogic) GetLeaderboardSummary(req *types.GetLeaderb
 	if req != nil && req.GameType > 0 {
 		gameType = req.GameType
 	}
-	shared, err := loadLeaderboardShared(l.ctx, l.svcCtx, "summary", gameType, 0, 3, func() (*leaderboardSharedPayload, error) {
+	rules := ranking.RulesFor(l.svcCtx.Config)
+	now := time.Now()
+	scope := rules.LeaderboardScopeAt(now)
+	shared, err := loadLeaderboardShared(l.ctx, l.svcCtx, "summary", rules.VersionAt(now), gameType, 0, 3, func() (*leaderboardSharedPayload, error) {
 		configs, loadErr := l.svcCtx.RankingModel.GetAllRankConfigs()
 		if loadErr != nil {
 			return nil, loadErr
 		}
 		_, rankNames, version := buildRankConfigItems(configs)
-		topThree, loadErr := l.svcCtx.RankingModel.GetTopThreeByGameType(gameType)
+		topThree, loadErr := l.svcCtx.RankingModel.GetTopThreeByGameType(gameType, scope)
 		if loadErr != nil {
 			return nil, loadErr
 		}
@@ -55,7 +60,7 @@ func (l *GetLeaderboardSummaryLogic) GetLeaderboardSummary(req *types.GetLeaderb
 		return result, nil
 	}
 	userID, _ := utils.GetUserIDFromCtx(l.ctx)
-	myRanking, rankErr := loadViewerLeaderboardItem(l.svcCtx, userID, gameType, shared.RankNames, false)
+	myRanking, rankErr := loadViewerLeaderboardItem(l.svcCtx, userID, gameType, shared.RankNames, false, now)
 	if rankErr != nil {
 		l.Logger.Errorf("获取当前用户排名失败: %v", rankErr)
 	}

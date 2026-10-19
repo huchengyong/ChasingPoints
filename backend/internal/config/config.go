@@ -80,6 +80,8 @@ type Config struct {
 
 	SeasonLifecycle SeasonLifecycleConfig
 
+	Ranking RankingConfig
+
 	Observability ObservabilityConfig
 
 	CompetitiveReadModel CompetitiveReadModelConfig
@@ -137,6 +139,14 @@ type SeasonLifecycleConfig struct {
 	InitialNumber int    `json:",env=SEASON_LIFECYCLE_INITIAL_NUMBER,default=1"`
 	CycleMonths   int    `json:",env=SEASON_LIFECYCLE_CYCLE_MONTHS,default=1"`
 	Timezone      string `json:",env=SEASON_LIFECYCLE_TIMEZONE,default=Asia/Shanghai"`
+}
+
+type RankingConfig struct {
+	// RatingV2StartDate 为排位规则 V2 的生效日期（YYYY-MM-DD，按赛季业务时区的 00:00），必须是赛季起点。
+	RatingV2StartDate string `json:",env=RANKING_RATING_V2_START_DATE,optional"`
+	// RatingV2StartAt 为排位规则 V2 的即时生效时刻（RFC3339，如 2026-10-20T18:00:00+08:00），与生效日期二选一。
+	// 即时生效不要求对齐赛季起点：切换时点之前的当前赛季仍按旧赛季口径结算。两项都留空则保持旧规则。
+	RatingV2StartAt string `json:",env=RANKING_RATING_V2_START_AT,optional"`
 }
 
 type ObservabilityConfig struct {

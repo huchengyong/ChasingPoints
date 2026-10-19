@@ -48,8 +48,8 @@ func TestHonorWallAndRewardSummaryAPIContract(t *testing.T) {
 		"type GetCurrentSeasonResp",
 		"SeasonState string      `json:\"season_state\"`",
 		"type SeasonInfo",
-		"StartAt        string  `json:\"start_at\"`",
-		"EndAtExclusive string  `json:\"end_at_exclusive\"`",
+		"StartAt             string  `json:\"start_at\"`",
+		"EndAtExclusive      string  `json:\"end_at_exclusive\"`",
 	}
 
 	for _, snippet := range requiredSnippets {

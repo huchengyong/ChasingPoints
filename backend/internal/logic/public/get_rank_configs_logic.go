@@ -2,8 +2,10 @@ package public
 
 import (
 	"context"
+	"time"
 
 	"chasing_points/internal/logic/staticread"
+	"chasing_points/internal/ranking"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -42,5 +44,12 @@ func (l *GetRankConfigsLogic) GetRankConfigs() (resp *types.GetRankConfigsResp, 
 		l.Logger.Errorf("获取段位配置失败: %v", err)
 		return result, nil
 	}
-	return &cached, nil
+	// 规则版本随时间切换，不能进入 24 小时的静态缓存，每次按当前时间组装。
+	out := cached
+	rules := ranking.RulesFor(l.svcCtx.Config)
+	out.RulesVersion = rules.VersionAt(time.Now())
+	if rules.V2Configured() {
+		out.RulesEffectiveAt = rules.V2StartAt().Format(time.RFC3339)
+	}
+	return &out, nil
 }

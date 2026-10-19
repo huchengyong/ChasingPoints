@@ -90,11 +90,17 @@ func TestSeasonRecordUsesMigratedUniqueIndexName(t *testing.T) {
 }
 
 func TestLeaderboardEligibilityConditionFiltersUsersWithoutMatches(t *testing.T) {
-	got := leaderboardEligibilityCondition("ur")
+	got := leaderboardEligibilityCondition("ur", LeaderboardScope{})
 	want := "(ur.total_wins + ur.total_losses) > 0"
 
 	if got != want {
 		t.Fatalf("expected leaderboard eligibility condition %q, got %q", want, got)
+	}
+
+	gotV2 := leaderboardEligibilityCondition("ur", LeaderboardScope{RatingV2: true})
+	wantV2 := "(ur.rating_version = 2 AND ur.rated_matches > 0)"
+	if gotV2 != wantV2 {
+		t.Fatalf("expected rating V2 eligibility condition %q, got %q", wantV2, gotV2)
 	}
 }
 

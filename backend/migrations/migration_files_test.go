@@ -485,3 +485,55 @@ func TestHonorWallSeasonAchievementsMigrationContainsRequiredSchema(t *testing.T
 		}
 	}
 }
+
+func TestRebalanceRankedRatingMigrationIsGuardedAndKeepsDefaultCharset(t *testing.T) {
+	content, err := os.ReadFile("20261019120000_rebalance_ranked_rating.sql")
+	if err != nil {
+		t.Fatalf("read rebalance ranked rating migration: %v", err)
+	}
+
+	text := string(content)
+	upIndex := strings.Index(text, "-- +goose Up")
+	downIndex := strings.Index(text, "-- +goose Down")
+	if upIndex < 0 || downIndex < upIndex {
+		t.Fatal("expected goose up and down blocks")
+	}
+	up, down := text[upIndex:downIndex], text[downIndex:]
+	for _, snippet := range []string{
+		"COLUMN_NAME = 'rating_version'",
+		"ADD COLUMN `rating_version` TINYINT NOT NULL DEFAULT 1",
+		"ADD COLUMN `rated_matches` INT NOT NULL DEFAULT 0",
+		"ADD KEY `idx_user_ranking_rating_version` (`rating_version`, `id`)",
+		"CREATE TABLE IF NOT EXISTS `rank_rating_seeds`",
+		"UNIQUE KEY `uk_rank_rating_seed_user_game` (`user_id`, `game_type`)",
+		"ADD COLUMN `distinct_opponents` INT NOT NULL DEFAULT 0",
+		"ADD COLUMN `qualified` TINYINT NOT NULL DEFAULT 0",
+		"ADD KEY `idx_season_game_qualified_rank` (`season_id`, `game_type`, `qualified`, `end_rank_score`, `wins`, `id`)",
+		"DROP INDEX `idx_season_game_rank`",
+		"ALTER COLUMN `rank_reset_ratio` SET DEFAULT 1.00",
+	} {
+		if !strings.Contains(up, snippet) {
+			t.Fatalf("expected up migration to contain %q", snippet)
+		}
+	}
+	for _, snippet := range []string{
+		"ADD KEY `idx_season_game_rank` (`season_id`, `game_type`, `end_rank_score`, `wins`, `id`)",
+		"DROP INDEX `idx_season_game_qualified_rank`",
+		"DROP TABLE IF EXISTS `rank_rating_seeds`",
+		"DROP COLUMN `rating_version`",
+	} {
+		if !strings.Contains(down, snippet) {
+			t.Fatalf("expected down migration to contain %q", snippet)
+		}
+	}
+	if strings.Contains(up, "ADD COLUMN IF NOT EXISTS") || strings.Contains(down, "DROP COLUMN IF EXISTS") {
+		t.Fatal("MySQL column changes must be guarded through information_schema")
+	}
+
+	upper := strings.ToUpper(text)
+	for _, forbidden := range []string{"CHARSET", "CHARACTER SET", "COLLATE"} {
+		if strings.Contains(upper, forbidden) {
+			t.Fatalf("rebalance ranked rating migration must not specify %s, keep the database default", forbidden)
+		}
+	}
+}

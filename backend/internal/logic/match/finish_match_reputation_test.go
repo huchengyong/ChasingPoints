@@ -50,6 +50,8 @@ func newFinishMatchReputationTestSvc(t *testing.T) *svc.ServiceContext {
 			total_losses INTEGER NOT NULL DEFAULT 0,
 			current_streak INTEGER NOT NULL DEFAULT 0,
 			max_streak INTEGER NOT NULL DEFAULT 0,
+			rating_version INTEGER NOT NULL DEFAULT 1,
+			rated_matches INTEGER NOT NULL DEFAULT 0,
 			created_at DATETIME NOT NULL,
 			updated_at DATETIME NOT NULL,
 			UNIQUE(user_id, game_type)

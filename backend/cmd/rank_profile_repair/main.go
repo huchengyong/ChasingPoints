@@ -4,9 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"time"
 
 	"chasing_points/internal/config"
 	"chasing_points/internal/model"
+	"chasing_points/internal/ranking"
 	"chasing_points/internal/svc"
 
 	"github.com/joho/godotenv"
@@ -52,7 +54,7 @@ func main() {
 			}
 			repaired++
 			if !*dryRun {
-				if _, err := svcCtx.RankingModel.FindOrCreateByGameTypes(userID); err != nil {
+				if _, err := svcCtx.RankingModel.FindOrCreateByGameTypes(userID, ranking.RulesFor(c).DefaultsAt(time.Now())); err != nil {
 					log.Fatalf("补齐用户段位失败: user=%d err=%v", userID, err)
 				}
 			}

@@ -523,11 +523,31 @@ func (m *CompetitiveReadModel) ListRecentOpponentStats(userId int64, gameType, l
 }
 
 func (m *CompetitiveReadModel) ListOpponentStrengthBuckets(userId int64, gameType int) ([]UserOpponentStrengthBucket, error) {
+	return m.ListOpponentStrengthBucketsWithPrefix(userId, gameType, "")
+}
+
+// ListOpponentStrengthBucketsWithPrefix 只读取指定前缀的分档；排位规则 V2 后只展示相对分档。
+func (m *CompetitiveReadModel) ListOpponentStrengthBucketsWithPrefix(userId int64, gameType int, prefix string) ([]UserOpponentStrengthBucket, error) {
+	query := m.db.Where("user_id = ? AND game_type = ?", userId, gameType)
+	if prefix != "" {
+		query = query.Where("rank_bucket LIKE ?", prefix+"%")
+	}
 	var buckets []UserOpponentStrengthBucket
-	err := m.db.Where("user_id = ? AND game_type = ?", userId, gameType).
-		Order("rank_bucket ASC").
-		Find(&buckets).Error
+	err := query.Order("rank_bucket ASC").Find(&buckets).Error
 	return buckets, err
+}
+
+// HasRankedMatchAgainstWithTx 判断用户在 [start, end) 内是否已与该注册对手完成过本球种的有效排位（不含 excludeMatchId），
+// 走 idx_mpr_user_opponent_game_completed，用于维护赛季不同对手数。
+func (m *CompetitiveReadModel) HasRankedMatchAgainstWithTx(tx *gorm.DB, userId, opponentUserId int64, gameType int, start, end time.Time, excludeMatchId int64) (bool, error) {
+	var ids []int64
+	err := m.dbWith(tx).Model(&MatchParticipantResult{}).
+		Where("user_id = ? AND opponent_user_id = ? AND game_type = ?", userId, opponentUserId, gameType).
+		Where("completed_at >= ? AND completed_at < ?", start, end).
+		Where("match_id <> ? AND match_mode = ? AND result IN ?", excludeMatchId, MatchModeRanked, []int{1, 2}).
+		Limit(1).
+		Pluck("id", &ids).Error
+	return len(ids) > 0, err
 }
 
 func (m *CompetitiveReadModel) IncrementOpponentStrengthBucketWithTx(tx *gorm.DB, delta OpponentStrengthBucketDelta) error {

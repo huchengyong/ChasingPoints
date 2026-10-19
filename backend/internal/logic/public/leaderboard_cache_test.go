@@ -78,7 +78,7 @@ func TestLeaderboardCacheRepairsCorruptJSONAndCollapsesColdMisses(t *testing.T) 
 	client := redis.NewClient(&redis.Options{Addr: miniRedis.Addr()})
 	t.Cleanup(func() { _ = client.Close() })
 	ResetLeaderboardCacheForTest()
-	key := "leaderboard:page:v0:game:3:page:1:size:20"
+	key := "leaderboard:page:r1:v0:game:3:page:1:size:20"
 	if err := client.Set(context.Background(), key, "{bad-json", time.Minute).Err(); err != nil {
 		t.Fatalf("seed corrupt leaderboard cache: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestLeaderboardCacheRepairsCorruptJSONAndCollapsesColdMisses(t *testing.T) 
 		go func() {
 			defer wait.Done()
 			<-start
-			value, err := loadLeaderboardShared(context.Background(), &svc.ServiceContext{Redis: client}, "page", 3, 1, 20, loader)
+			value, err := loadLeaderboardShared(context.Background(), &svc.ServiceContext{Redis: client}, "page", 1, 3, 1, 20, loader)
 			if err != nil || value.Total != 1 {
 				t.Errorf("load shared leaderboard: value=%+v err=%v", value, err)
 			}
@@ -120,7 +120,7 @@ func TestLeaderboardCacheFallsBackWhenRedisIsUnavailable(t *testing.T) {
 	client := redis.NewClient(&redis.Options{Addr: address, MaxRetries: 0, DialTimeout: 20 * time.Millisecond, ReadTimeout: 20 * time.Millisecond, WriteTimeout: 20 * time.Millisecond})
 	t.Cleanup(func() { _ = client.Close() })
 	ResetLeaderboardCacheForTest()
-	value, err := loadLeaderboardShared(context.Background(), &svc.ServiceContext{Redis: client}, "summary", 3, 0, 3, func() (*leaderboardSharedPayload, error) {
+	value, err := loadLeaderboardShared(context.Background(), &svc.ServiceContext{Redis: client}, "summary", 1, 3, 0, 3, func() (*leaderboardSharedPayload, error) {
 		return &leaderboardSharedPayload{Total: 1}, nil
 	})
 	if err != nil || value.Total != 1 {

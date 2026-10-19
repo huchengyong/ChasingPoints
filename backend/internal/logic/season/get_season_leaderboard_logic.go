@@ -83,11 +83,19 @@ func loadSeasonLeaderboardPage(ctx context.Context, svcCtx *svc.ServiceContext, 
 			return types.GetSeasonLeaderboardResp{}, err
 		}
 		offset := (page - 1) * pageSize
+		hasQualification := seasonInfo.QualifyMinMatches > 0
 		list := make([]types.SeasonLeaderboardItem, 0, len(records))
 		for index, record := range records {
+			// 达标记录排在未达标记录之前，因此达标者的全局位置就是其名次；未达标者不占名次。
+			qualified := !hasQualification || record.Qualified == 1
+			rank := 0
+			if qualified {
+				rank = offset + index + 1
+			}
 			list = append(list, types.SeasonLeaderboardItem{
-				Rank: offset + index + 1, UserId: record.UserId, Nickname: record.Nickname, Avatar: record.Avatar,
+				Rank: rank, UserId: record.UserId, Nickname: record.Nickname, Avatar: record.Avatar,
 				RankScore: record.EndRankScore, PeakScore: record.PeakRankScore, MatchesPlayed: record.MatchesPlayed, Wins: record.Wins,
+				Qualified: qualified,
 			})
 		}
 		return types.GetSeasonLeaderboardResp{Success: true, Season: seasonInfo, Total: total, List: list}, nil

@@ -10,6 +10,7 @@ import (
 	achievementx "chasing_points/internal/logic/achievement"
 	"chasing_points/internal/model"
 	"chasing_points/internal/pkg/ws"
+	"chasing_points/internal/ranking"
 	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 
@@ -459,8 +460,14 @@ func (s *SeasonSettlementService) buildSeasonRecordsWithTx(tx *gorm.DB, season *
 	if err != nil {
 		return nil, err
 	}
+	// 排位规则 V2 赛季只为达标记录排名（达标记录在排序中靠前），未达标者 final_rank 为 0、不参与称号。
+	qualifiedOnly := ranking.RulesFor(s.svcCtx.Config).IsV2Season(season)
 	rankByGameType := make(map[int]int)
 	for i := range records {
+		if qualifiedOnly && records[i].Qualified == 0 {
+			records[i].FinalRank = 0
+			continue
+		}
 		rankByGameType[records[i].GameType]++
 		records[i].FinalRank = rankByGameType[records[i].GameType]
 	}

@@ -78,16 +78,20 @@ func TestMySQLHotReadPlans(t *testing.T) {
 			query: "SELECT id FROM challenges WHERE status=0 AND expires_at<='2026-01-01' ORDER BY expires_at,id LIMIT 100",
 		},
 		{
-			name: "season leaderboard", table: "r", expectedKey: "idx_season_game_rank", rejectFilesort: true,
-			query: "SELECT r.id,r.user_id FROM season_records r LEFT JOIN users u ON u.id=r.user_id WHERE r.season_id=1 AND r.game_type=3 ORDER BY r.end_rank_score DESC,r.wins DESC,r.id DESC LIMIT 20",
+			name: "season leaderboard", table: "r", expectedKey: "idx_season_game_qualified_rank", rejectFilesort: true,
+			query: "SELECT r.id,r.user_id FROM season_records r LEFT JOIN users u ON u.id=r.user_id WHERE r.season_id=1 AND r.game_type=3 ORDER BY r.qualified DESC,r.end_rank_score DESC,r.wins DESC,r.id DESC LIMIT 20",
 		},
 		{
 			name: "due seasons", table: "s", expectedKey: "idx_seasons_end_id_status_start", rejectFilesort: true,
 			query: "SELECT s.id FROM seasons s WHERE s.status IN (0,1) AND s.start_date>='2020-01-01' AND s.end_date<'2060-01-01' AND NOT EXISTS (SELECT 1 FROM season_settlements ss WHERE ss.season_id=s.id AND ss.status='completed') ORDER BY s.end_date,s.id LIMIT 20",
 		},
 		{
-			name: "season live rank count", table: "season_records", expectedKey: "idx_season_game_rank",
-			query: "SELECT COUNT(*) FROM season_records FORCE INDEX (idx_season_game_rank) WHERE (season_id=1 AND game_type=3) AND ((end_rank_score>2000) OR (end_rank_score=2000 AND wins>10) OR (end_rank_score=2000 AND wins=10 AND id>5000))",
+			name: "season live rank count", table: "season_records", expectedKey: "idx_season_game_qualified_rank",
+			query: "SELECT COUNT(*) FROM season_records FORCE INDEX (idx_season_game_qualified_rank) WHERE (season_id=1 AND game_type=3 AND qualified=1) AND ((end_rank_score>2000) OR (end_rank_score=2000 AND wins>10) OR (end_rank_score=2000 AND wins=10 AND id>5000))",
+		},
+		{
+			name: "rating v2 pending switch", table: "user_ranking", expectedKey: "idx_user_ranking_rating_version", rejectFilesort: true,
+			query: "SELECT id FROM user_ranking WHERE rating_version<2 ORDER BY rating_version ASC,id ASC LIMIT 1",
 		},
 		{
 			name: "settled season history", table: "seasons", expectedKey: "idx_seasons_end_id_status_start", rejectFilesort: true,
@@ -161,10 +165,11 @@ func seedMySQLExplainData(t *testing.T, db *sql.DB) {
 		"INSERT INTO seasons (id,name,start_date,end_date,status) SELECT n,CONCAT('S',n),DATE_ADD('2020-01-01',INTERVAL (n-1)*30 DAY),DATE_ADD('2020-01-01',INTERVAL n*30-1 DAY),IF(MOD(n,100)=0,1,0) FROM verify_numbers WHERE n<=500",
 		"INSERT INTO seasons (id,name,start_date,end_date,status) SELECT n,CONCAT('S',n),DATE_ADD('2020-01-01',INTERVAL (n-1)*30 DAY),DATE_ADD('2020-01-01',INTERVAL n*30-1 DAY),2 FROM verify_numbers WHERE n>500 AND n<=1000",
 		"INSERT INTO season_settlements (season_id,status,completed_at,last_error) SELECT n,IF(MOD(n,2)=0,'completed','running'),IF(MOD(n,2)=0,DATE_ADD('2020-01-01',INTERVAL n*30 DAY),NULL),'' FROM verify_numbers WHERE n<=400",
-		"INSERT INTO season_records (season_id,user_id,game_type,start_rank_score,end_rank_score,peak_rank_score,matches_played,wins,final_rank) SELECT 1,n,3,1000,1000+MOD(n,3000),1100+MOD(n,3000),20,MOD(n,20),0 FROM verify_numbers WHERE n<=10000",
+		"INSERT INTO season_records (season_id,user_id,game_type,start_rank_score,end_rank_score,peak_rank_score,matches_played,wins,distinct_opponents,qualified,final_rank) SELECT 1,n,3,1000,1000+MOD(n,3000),1100+MOD(n,3000),20,MOD(n,20),MOD(n,6),IF(MOD(n,4)=0,0,1),0 FROM verify_numbers WHERE n<=10000",
+		"INSERT INTO user_ranking (user_id,game_type,rank_score,rank_level,rating_version,rated_matches) SELECT n,3,1250,3,IF(MOD(n,1000)=0,1,2),MOD(n,30) FROM verify_numbers WHERE n<=10000",
 		"INSERT INTO achievement_progress_events (id,user_id,source_type,source_id,game_type,metric_key,metric_value,occurred_at) SELECT n,MOD(n,10000)+1,'match',n,3,CASE MOD(n,3) WHEN 0 THEN 'matches_total' WHEN 1 THEN 'wins_total' ELSE 'tournament_finish_total' END,1,DATE_ADD('2025-01-01',INTERVAL n MINUTE) FROM verify_numbers",
 		"INSERT INTO venues (id,name,address,city,district,full_address,latitude,longitude,phone,business_hours,price_range,status,geo_status,geo_source,geo_level,geo_error,reject_reason) SELECT n,CONCAT('venue-',n),'address','上海','浦东',CONCAT('上海浦东address-',n),31.2304+(MOD(n,200)-100)/1000.0,121.4737+(MOD(n,200)-100)/1000.0,'','','',IF(MOD(n,5)=0,0,1),1,'seed','','','' FROM verify_numbers",
-		"ANALYZE TABLE matches,friend_requests,challenges,seasons,season_settlements,season_records,achievement_progress_events,venues",
+		"ANALYZE TABLE matches,friend_requests,challenges,seasons,season_settlements,season_records,user_ranking,achievement_progress_events,venues",
 	}
 	for _, statement := range statements {
 		if _, err := db.Exec(statement); err != nil {

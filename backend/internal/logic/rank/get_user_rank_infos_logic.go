@@ -2,8 +2,10 @@ package rank
 
 import (
 	"context"
+	"time"
 
 	"chasing_points/internal/model"
+	"chasing_points/internal/ranking"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -41,8 +43,10 @@ func (l *GetUserRankInfosLogic) GetUserRankInfos() (*types.GetUserRankInfosResp,
 
 	byGameType := make(map[int]*types.RankInfo, len(rankings))
 	configByLevel := buildRankConfigByLevel(configs)
+	rules := ranking.RulesFor(l.svcCtx.Config)
+	now := time.Now()
 	for i := range rankings {
-		info := buildRankInfo(&rankings[i], configByLevel)
+		info := buildRankInfo(&rankings[i], configByLevel, rules, now)
 		if info == nil {
 			l.Logger.Errorf("段位配置不完整: userId=%d gameType=%d level=%d", userId, rankings[i].GameType, rankings[i].RankLevel)
 			return &types.GetUserRankInfosResp{Success: false}, nil
@@ -54,7 +58,7 @@ func (l *GetUserRankInfosLogic) GetUserRankInfos() (*types.GetUserRankInfosResp,
 	for _, gameType := range gameTypes {
 		info := byGameType[gameType]
 		if info == nil {
-			info = buildRankInfo(&model.UserRanking{UserId: userId, GameType: gameType, RankLevel: 1}, configByLevel)
+			info = buildRankInfo(defaultRankingRow(rules, userId, gameType, now), configByLevel, rules, now)
 		}
 		if info == nil {
 			l.Logger.Errorf("段位配置不完整: userId=%d gameType=%d", userId, gameType)

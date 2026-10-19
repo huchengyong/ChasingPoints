@@ -64,11 +64,13 @@ func loadLeaderboardShared(
 	ctx context.Context,
 	svcCtx *svc.ServiceContext,
 	kind string,
+	rulesVersion int,
 	gameType, page, pageSize int,
 	load func() (*leaderboardSharedPayload, error),
 ) (*leaderboardSharedPayload, error) {
 	version, redisReady := leaderboardCacheVersion(ctx, svcCtx, gameType)
-	key := fmt.Sprintf("leaderboard:%s:v%d:game:%d:page:%d:size:%d", kind, version, gameType, page, pageSize)
+	// 键带规则版本：排位规则切换的瞬间不得继续返回旧规则下缓存的榜单。
+	key := fmt.Sprintf("leaderboard:%s:r%d:v%d:game:%d:page:%d:size:%d", kind, rulesVersion, version, gameType, page, pageSize)
 	if redisReady {
 		if cached, ok := readLeaderboardCache(ctx, svcCtx, key, true); ok {
 			return cached, nil

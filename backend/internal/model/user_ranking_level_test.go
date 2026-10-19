@@ -43,7 +43,7 @@ func TestRankingModelFindOrCreateByGameTypesIsIdempotent(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			rankings, err := rankingModel.FindOrCreateByGameTypes(userID)
+			rankings, err := rankingModel.FindOrCreateByGameTypes(userID, LegacyRankingDefaults())
 			if err != nil {
 				t.Errorf("initialize rankings: %v", err)
 				return

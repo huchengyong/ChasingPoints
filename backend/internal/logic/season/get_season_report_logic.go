@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"chasing_points/internal/model"
+	"chasing_points/internal/ranking"
 	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -63,7 +64,7 @@ func (l *GetSeasonReportLogic) GetSeasonReport(req *types.GetSeasonReportReq) (r
 
 	var recordInfo *types.SeasonRecordInfo
 	if record != nil {
-		recordInfo = buildSeasonRecordInfo(record, season.Name)
+		recordInfo = buildSeasonRecordInfo(record, season.Name, seasonHasQualification(l.svcCtx, season))
 	}
 
 	seasonLogs, err := l.svcCtx.RankingModel.ListRankChangesByUserAndGameTypeBetweenHalfOpen(userIdInt, gameType, startAt, endExclusive)
@@ -73,6 +74,10 @@ func (l *GetSeasonReportLogic) GetSeasonReport(req *types.GetSeasonReportReq) (r
 	beforeLog, err := l.svcCtx.RankingModel.FindLatestRankChangeBeforeByGameType(userIdInt, gameType, startAt)
 	if err != nil {
 		return nil, err
+	}
+	// 排位规则 V2 切换后，旧规则下最后一场的分数不是 V2 赛季的起点；改用本季首场的赛前分（即切换后的初始分）。
+	if rules := ranking.RulesFor(l.svcCtx.Config); beforeLog != nil && rules.V2Configured() && !startAt.Before(rules.V2StartAt()) && beforeLog.EffectiveAt.Before(rules.V2StartAt()) {
+		beforeLog = nil
 	}
 
 	startScore, endScore, peakScore := buildSeasonSnapshotFromLogs(beforeLog, seasonLogs)

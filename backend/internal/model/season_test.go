@@ -256,3 +256,82 @@ func TestSeasonModelPagesSettledSeasonsByEndDate(t *testing.T) {
 		t.Fatalf("empty season page must not query records: %+v err=%v", empty, err)
 	}
 }
+
+func TestSeasonRecordQualifiedRecordsRankFirstAndCountWithinTheirGroup(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&SeasonRecord{}, &User{}); err != nil {
+		t.Fatalf("migrate season records: %v", err)
+	}
+	if err := db.Create(&[]SeasonRecord{
+		{Id: 1, SeasonId: 1, UserId: 1, GameType: 3, EndRankScore: 1900, Wins: 4},
+		{Id: 2, SeasonId: 1, UserId: 2, GameType: 3, EndRankScore: 1400, Wins: 3, Qualified: 1},
+		{Id: 3, SeasonId: 1, UserId: 3, GameType: 3, EndRankScore: 1600, Wins: 5, Qualified: 1},
+		{Id: 4, SeasonId: 1, UserId: 4, GameType: 3, EndRankScore: 1200, Wins: 1},
+		{Id: 5, SeasonId: 1, UserId: 5, GameType: 1, EndRankScore: 2000, Wins: 9, Qualified: 1},
+	}).Error; err != nil {
+		t.Fatalf("seed records: %v", err)
+	}
+	records := NewSeasonRecordModel(db)
+	board, total, err := records.FindLeaderboardByGameType(1, 3, 1, 20)
+	if err != nil || total != 4 || len(board) != 4 {
+		t.Fatalf("load leaderboard: rows=%d total=%d err=%v", len(board), total, err)
+	}
+	wantIds := []int64{3, 2, 1, 4}
+	wantAhead := []int64{0, 1, 0, 1}
+	for index, item := range board {
+		if item.Id != wantIds[index] {
+			t.Fatalf("qualified records must rank first: %+v", board)
+		}
+		ahead, err := records.CountAheadInSeason(&item)
+		if err != nil || ahead != wantAhead[index] {
+			t.Fatalf("record %d ahead=%d want %d err=%v", item.Id, ahead, wantAhead[index], err)
+		}
+	}
+	profiles, _, err := records.FindLeaderboardWithProfilesByGameType(1, 3, 1, 2)
+	if err != nil || len(profiles) != 2 || profiles[0].Id != 3 || profiles[0].Qualified != 1 || profiles[1].Id != 2 {
+		t.Fatalf("profile leaderboard must use the same order: %+v err=%v", profiles, err)
+	}
+}
+
+func TestSeasonRecordApplyMatchRefreshesQualificationOnlyWithThresholds(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&SeasonRecord{}); err != nil {
+		t.Fatalf("migrate season records: %v", err)
+	}
+	records := NewSeasonRecordModel(db)
+	apply := func(userID int64, newOpponent bool, minMatches int) {
+		t.Helper()
+		if err := records.ApplyCompetitiveMatchWithTx(nil, SeasonRecordMatchDelta{
+			SeasonId: 1, UserId: userID, GameType: 3, StartRankScore: 1250, EndRankScore: 1270, Won: true,
+			NewOpponent: newOpponent, QualifyMinMatches: minMatches, QualifyMinOpponents: 2,
+		}); err != nil {
+			t.Fatalf("apply match: %v", err)
+		}
+	}
+	apply(1, true, 3)
+	apply(1, false, 3)
+	var record SeasonRecord
+	db.Where("season_id = 1 AND user_id = 1").First(&record)
+	if record.MatchesPlayed != 2 || record.DistinctOpponents != 1 || record.Qualified != 0 {
+		t.Fatalf("two matches against one opponent must not qualify: %+v", record)
+	}
+	apply(1, true, 3)
+	db.Where("season_id = 1 AND user_id = 1").First(&record)
+	if record.MatchesPlayed != 3 || record.DistinctOpponents != 2 || record.Qualified != 1 || record.StartRankScore != 1250 {
+		t.Fatalf("third match with a second opponent must qualify: %+v", record)
+	}
+	apply(2, true, 0)
+	apply(2, true, 0)
+	apply(2, true, 0)
+	var legacy SeasonRecord
+	db.Where("season_id = 1 AND user_id = 2").First(&legacy)
+	if legacy.MatchesPlayed != 3 || legacy.Qualified != 0 {
+		t.Fatalf("seasons without thresholds must not maintain qualification: %+v", legacy)
+	}
+}

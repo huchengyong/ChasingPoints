@@ -10,6 +10,7 @@ import (
 	"chasing_points/internal/handler"
 	logicx "chasing_points/internal/logic"
 	matchlogic "chasing_points/internal/logic/match"
+	ranklogic "chasing_points/internal/logic/rank"
 	tournamentlogic "chasing_points/internal/logic/tournament"
 	"chasing_points/internal/logic/wstsync"
 	"chasing_points/internal/middleware"
@@ -81,6 +82,7 @@ func main() {
 		}
 	}
 	go logicx.NewSeasonRolloverWorker(svcCtx).Start(context.Background())
+	go ranklogic.NewRatingRulesWorker(svcCtx).Start(context.Background())
 	go logicx.NewChallengeExpiryWorker(svcCtx).Start(context.Background())
 	go matchlogic.NewFinishRequestExpiryWorker(svcCtx).Start(context.Background())
 	go matchlogic.NewAchievementSyncWorker(svcCtx).Start(context.Background())

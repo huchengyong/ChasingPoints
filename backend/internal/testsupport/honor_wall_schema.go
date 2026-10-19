@@ -89,18 +89,20 @@ type honorWallSeasonSchema struct {
 func (honorWallSeasonSchema) TableName() string { return "seasons" }
 
 type honorWallSeasonRecordSchema struct {
-	Id             int64 `gorm:"primarykey"`
-	SeasonId       int64 `gorm:"uniqueIndex:uk_season_user_game,priority:1"`
-	UserId         int64 `gorm:"uniqueIndex:uk_season_user_game,priority:2"`
-	GameType       int   `gorm:"uniqueIndex:uk_season_user_game,priority:3"`
-	StartRankScore int
-	EndRankScore   int
-	PeakRankScore  int
-	MatchesPlayed  int
-	Wins           int
-	FinalRank      int
-	Rewards        string
-	CreatedAt      time.Time
+	Id                int64 `gorm:"primarykey"`
+	SeasonId          int64 `gorm:"uniqueIndex:uk_season_user_game,priority:1"`
+	UserId            int64 `gorm:"uniqueIndex:uk_season_user_game,priority:2"`
+	GameType          int   `gorm:"uniqueIndex:uk_season_user_game,priority:3"`
+	StartRankScore    int
+	EndRankScore      int
+	PeakRankScore     int
+	MatchesPlayed     int
+	Wins              int
+	DistinctOpponents int
+	Qualified         int
+	FinalRank         int
+	Rewards           string
+	CreatedAt         time.Time
 }
 
 func (honorWallSeasonRecordSchema) TableName() string { return "season_records" }

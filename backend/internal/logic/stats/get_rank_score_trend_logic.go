@@ -2,7 +2,9 @@ package stats
 
 import (
 	"context"
+	"time"
 
+	"chasing_points/internal/ranking"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -41,7 +43,12 @@ func (l *GetRankScoreTrendLogic) GetRankScoreTrend(req *types.GetRankScoreTrendR
 		gameType = req.GameType
 	}
 
-	logs, err := l.svcCtx.RankingModel.ListRankChangesByUserAndGameType(userIdInt, gameType, limit)
+	// 排位规则 V2 生效后只展示 V2 下的变化，避免把旧规则的分数与新分数画在同一条线上。
+	since := time.Time{}
+	if rules := ranking.RulesFor(l.svcCtx.Config); rules.V2ActiveAt(time.Now()) {
+		since = rules.V2StartAt()
+	}
+	logs, err := l.svcCtx.RankingModel.ListRankChangesByUserAndGameTypeSince(userIdInt, gameType, since, limit)
 	if err != nil {
 		return nil, err
 	}

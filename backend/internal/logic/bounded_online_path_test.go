@@ -9,7 +9,7 @@ import (
 )
 
 func TestOnlineReadPathsExcludeUnboundedAndMutatingHelpers(t *testing.T) {
-	allowedListAll := map[string]bool{"rank_rebuild_service.go": true}
+	allowedListAll := map[string]bool{}
 	err := filepath.WalkDir(".", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil || entry.IsDir() || strings.HasSuffix(path, "_test.go") {
 			return err

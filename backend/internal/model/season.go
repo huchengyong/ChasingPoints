@@ -14,7 +14,7 @@ type Season struct {
 	StartDate      time.Time `gorm:"not null;uniqueIndex:uk_seasons_start_date;index:idx_seasons_window,priority:1"`
 	EndDate        time.Time `gorm:"not null;index:idx_seasons_window,priority:2"`
 	Status         int       `gorm:"not null;default:0;index"`
-	RankResetRatio float64   `gorm:"not null;default:0.7"`
+	RankResetRatio float64   `gorm:"not null;default:1"`
 	CreatedAt      time.Time `gorm:"autoCreateTime"`
 }
 
@@ -22,24 +22,30 @@ func (Season) TableName() string {
 	return "seasons"
 }
 
+// SeasonRecord 的 DistinctOpponents 与 Qualified 只在排位规则 V2 赛季参与名次；旧赛季 Qualified 恒为 0。
 type SeasonRecord struct {
-	Id             int64     `gorm:"primarykey"`
-	SeasonId       int64     `gorm:"not null;index;uniqueIndex:uk_season_user_game"`
-	UserId         int64     `gorm:"not null;index;uniqueIndex:uk_season_user_game"`
-	GameType       int       `gorm:"not null;default:3;index;uniqueIndex:uk_season_user_game" json:"game_type"`
-	StartRankScore int       `gorm:"not null;default:0"`
-	EndRankScore   int       `gorm:"not null;default:0"`
-	PeakRankScore  int       `gorm:"not null;default:0"`
-	MatchesPlayed  int       `gorm:"not null;default:0"`
-	Wins           int       `gorm:"not null;default:0"`
-	FinalRank      int       `gorm:"not null;default:0"`
-	Rewards        *string   `gorm:"type:json"`
-	CreatedAt      time.Time `gorm:"autoCreateTime"`
+	Id                int64     `gorm:"primarykey"`
+	SeasonId          int64     `gorm:"not null;index;uniqueIndex:uk_season_user_game"`
+	UserId            int64     `gorm:"not null;index;uniqueIndex:uk_season_user_game"`
+	GameType          int       `gorm:"not null;default:3;index;uniqueIndex:uk_season_user_game" json:"game_type"`
+	StartRankScore    int       `gorm:"not null;default:0"`
+	EndRankScore      int       `gorm:"not null;default:0"`
+	PeakRankScore     int       `gorm:"not null;default:0"`
+	MatchesPlayed     int       `gorm:"not null;default:0"`
+	Wins              int       `gorm:"not null;default:0"`
+	DistinctOpponents int       `gorm:"not null;default:0"`
+	Qualified         int       `gorm:"not null;default:0"`
+	FinalRank         int       `gorm:"not null;default:0"`
+	Rewards           *string   `gorm:"type:json"`
+	CreatedAt         time.Time `gorm:"autoCreateTime"`
 }
 
 func (SeasonRecord) TableName() string {
 	return "season_records"
 }
+
+// seasonLeaderboardOrder 是赛季榜、本人名次与换季最终名次共用的排序，由 idx_season_game_qualified_rank 支撑。
+const seasonLeaderboardOrder = "qualified DESC, end_rank_score DESC, wins DESC, id DESC"
 
 type SeasonModel struct {
 	db *gorm.DB
@@ -364,7 +370,7 @@ func (m *SeasonRecordModel) ListForSettlementWithTx(tx *gorm.DB, seasonId int64)
 	}
 	var records []SeasonRecord
 	err := db.Where("season_id = ?", seasonId).
-		Order("game_type ASC, end_rank_score DESC, wins DESC, id DESC").
+		Order("game_type ASC, " + seasonLeaderboardOrder).
 		Find(&records).Error
 	return records, err
 }
@@ -381,7 +387,7 @@ func (m *SeasonRecordModel) FindLeaderboardByGameType(seasonId int64, gameType, 
 	}
 
 	var records []SeasonRecord
-	err := query.Order("end_rank_score DESC, wins DESC, id DESC").Offset(offset).Limit(pageSize).Find(&records).Error
+	err := query.Order(seasonLeaderboardOrder).Offset(offset).Limit(pageSize).Find(&records).Error
 	return records, total, err
 }
 
@@ -392,6 +398,7 @@ type SeasonLeaderboardProfile struct {
 	PeakRankScore int    `gorm:"column:peak_rank_score"`
 	MatchesPlayed int    `gorm:"column:matches_played"`
 	Wins          int    `gorm:"column:wins"`
+	Qualified     int    `gorm:"column:qualified"`
 	Nickname      string `gorm:"column:nickname"`
 	Avatar        string `gorm:"column:avatar"`
 }
@@ -406,29 +413,29 @@ func (m *SeasonRecordModel) FindLeaderboardWithProfilesByGameType(seasonId int64
 	}
 	var records []SeasonLeaderboardProfile
 	err := m.db.Table("season_records AS r").
-		Select("r.id, r.user_id, r.end_rank_score, r.peak_rank_score, r.matches_played, r.wins, u.nickname, u.avatar").
+		Select("r.id, r.user_id, r.end_rank_score, r.peak_rank_score, r.matches_played, r.wins, r.qualified, u.nickname, u.avatar").
 		Joins("LEFT JOIN users AS u ON u.id = r.user_id").
 		Where("r.season_id = ? AND r.game_type = ?", seasonId, gameType).
-		Order("r.end_rank_score DESC, r.wins DESC, r.id DESC").
+		Order("r.qualified DESC, r.end_rank_score DESC, r.wins DESC, r.id DESC").
 		Offset(offset).
 		Limit(pageSize).
 		Scan(&records).Error
 	return records, total, err
 }
 
-// CountAheadInSeason 统计同赛季同球种中排在该记录之前的人数，排序与榜单、结算一致。
+// CountAheadInSeason 统计同赛季同球种、同一达标组中排在该记录之前的人数，排序与榜单、结算一致。
 func (m *SeasonRecordModel) CountAheadInSeason(record *SeasonRecord) (int64, error) {
 	if record == nil {
 		return 0, nil
 	}
-	// 强制走 idx_season_game_rank：默认会按唯一键扫描整个赛季，成本随赛季人数而非名次增长。
+	// 强制走 idx_season_game_qualified_rank：默认会按唯一键扫描整个赛季，成本随赛季人数而非名次增长。
 	table := "season_records"
 	if m.db.Dialector.Name() == "mysql" {
-		table = "season_records FORCE INDEX (idx_season_game_rank)"
+		table = "season_records FORCE INDEX (idx_season_game_qualified_rank)"
 	}
 	var ahead int64
 	err := m.db.Table(table).
-		Where("season_id = ? AND game_type = ?", record.SeasonId, normalizeSeasonGameType(record.GameType)).
+		Where("season_id = ? AND game_type = ? AND qualified = ?", record.SeasonId, normalizeSeasonGameType(record.GameType), record.Qualified).
 		Where("(end_rank_score > ?) OR (end_rank_score = ? AND wins > ?) OR (end_rank_score = ? AND wins = ? AND id > ?)",
 			record.EndRankScore,
 			record.EndRankScore, record.Wins,
@@ -468,9 +475,14 @@ type SeasonRecordMatchDelta struct {
 	StartRankScore int
 	EndRankScore   int
 	Won            bool
+	// NewOpponent 表示本场对手是本季该球种首次交手。
+	NewOpponent bool
+	// QualifyMinMatches 与 QualifyMinOpponents 为 0 表示该赛季没有名次门槛（旧赛季），不维护 qualified。
+	QualifyMinMatches   int
+	QualifyMinOpponents int
 }
 
-// ApplyCompetitiveMatchWithTx 以唯一赛季记录为门闩累加一场已结算排位赛。
+// ApplyCompetitiveMatchWithTx 以唯一赛季记录为门闩累加一场已结算排位赛，并在有门槛的赛季刷新达标状态。
 func (m *SeasonRecordModel) ApplyCompetitiveMatchWithTx(tx *gorm.DB, delta SeasonRecordMatchDelta) error {
 	db := m.db
 	if tx != nil {
@@ -480,25 +492,39 @@ func (m *SeasonRecordModel) ApplyCompetitiveMatchWithTx(tx *gorm.DB, delta Seaso
 	if delta.Won {
 		wins = 1
 	}
-	record := SeasonRecord{
-		SeasonId:       delta.SeasonId,
-		UserId:         delta.UserId,
-		GameType:       normalizeSeasonGameType(delta.GameType),
-		StartRankScore: delta.StartRankScore,
-		EndRankScore:   delta.EndRankScore,
-		PeakRankScore:  delta.EndRankScore,
-		MatchesPlayed:  1,
-		Wins:           wins,
+	newOpponents := 0
+	if delta.NewOpponent {
+		newOpponents = 1
 	}
-	return db.Clauses(clause.OnConflict{
+	gameType := normalizeSeasonGameType(delta.GameType)
+	record := SeasonRecord{
+		SeasonId:          delta.SeasonId,
+		UserId:            delta.UserId,
+		GameType:          gameType,
+		StartRankScore:    delta.StartRankScore,
+		EndRankScore:      delta.EndRankScore,
+		PeakRankScore:     delta.EndRankScore,
+		MatchesPlayed:     1,
+		Wins:              wins,
+		DistinctOpponents: newOpponents,
+	}
+	err := db.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "season_id"}, {Name: "user_id"}, {Name: "game_type"}},
 		DoUpdates: clause.Assignments(map[string]interface{}{
-			"end_rank_score":  delta.EndRankScore,
-			"peak_rank_score": gorm.Expr("CASE WHEN peak_rank_score >= ? THEN peak_rank_score ELSE ? END", delta.EndRankScore, delta.EndRankScore),
-			"matches_played":  gorm.Expr("matches_played + 1"),
-			"wins":            gorm.Expr("wins + ?", wins),
+			"end_rank_score":     delta.EndRankScore,
+			"peak_rank_score":    gorm.Expr("CASE WHEN peak_rank_score >= ? THEN peak_rank_score ELSE ? END", delta.EndRankScore, delta.EndRankScore),
+			"matches_played":     gorm.Expr("matches_played + 1"),
+			"wins":               gorm.Expr("wins + ?", wins),
+			"distinct_opponents": gorm.Expr("distinct_opponents + ?", newOpponents),
 		}),
 	}).Create(&record).Error
+	if err != nil || delta.QualifyMinMatches <= 0 {
+		return err
+	}
+	// 单独刷新达标状态：MySQL 与 SQLite 对 upsert 赋值中引用列的新旧值语义不同，不能并入上面的赋值。
+	return db.Model(&SeasonRecord{}).
+		Where("season_id = ? AND user_id = ? AND game_type = ?", delta.SeasonId, delta.UserId, gameType).
+		Update("qualified", gorm.Expr("CASE WHEN matches_played >= ? AND distinct_opponents >= ? THEN 1 ELSE 0 END", delta.QualifyMinMatches, delta.QualifyMinOpponents)).Error
 }
 
 func (m *SeasonRecordModel) Create(record *SeasonRecord) error {

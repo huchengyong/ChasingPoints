@@ -1516,9 +1516,11 @@ type GetQiniuUploadTokenResp struct {
 }
 
 type GetRankConfigsResp struct {
-	Success bool             `json:"success"`
-	Version string           `json:"version"`
-	List    []RankConfigItem `json:"list"`
+	Success          bool             `json:"success"`
+	Version          string           `json:"version"`
+	List             []RankConfigItem `json:"list"`
+	RulesVersion     int              `json:"rules_version"`      // 当前生效的排位规则：1=旧规则 2=V2
+	RulesEffectiveAt string           `json:"rules_effective_at"` // 排位规则 V2 生效时刻（RFC3339），未配置为空
 }
 
 type GetRankListReq struct {
@@ -2043,6 +2045,7 @@ type MatchDetailData struct {
 	MyRankChange                  int                `json:"my_rank_change"`
 	OpponentRankChange            int                `json:"opponent_rank_change"`
 	MyRankDetails                 []RankDetail       `json:"my_rank_details"`
+	RankRulesVersion              int                `json:"rank_rules_version,optional"` // 本场排位分按哪套规则结算：0=未计分 1=旧规则 2=V2
 	CurrentFrameStarted           bool               `json:"current_frame_started,optional"`
 	CurrentFrameMyScore           int                `json:"current_frame_my_score,optional"`
 	CurrentFrameOpponentScore     int                `json:"current_frame_opponent_score,optional"`
@@ -2524,17 +2527,18 @@ type RankDetail struct {
 }
 
 type RankInfo struct {
-	Level       int    `json:"level"`        // 段位等级 1-6
-	Name        string `json:"name"`         // 段位名称
-	Icon        string `json:"icon"`         // 段位图标URL
-	RankScore   int    `json:"rank_score"`   // 当前排位分
-	TotalWins   int    `json:"total_wins"`   // 总胜场
-	TotalLosses int    `json:"total_losses"` // 总败场
-	MaxStreak   int    `json:"max_streak"`   // 最高连胜
-	NextLevel   int    `json:"next_level"`   // 下一段位等级
-	NextName    string `json:"next_name"`    // 下一段位名称
-	NextScore   int    `json:"next_score"`   // 晋级所需分数
-	Progress    int    `json:"progress"`     // 晋级进度百分比
+	Level              int    `json:"level"`               // 段位等级 1-6
+	Name               string `json:"name"`                // 段位名称
+	Icon               string `json:"icon"`                // 段位图标URL
+	RankScore          int    `json:"rank_score"`          // 当前排位分
+	TotalWins          int    `json:"total_wins"`          // 总胜场
+	TotalLosses        int    `json:"total_losses"`        // 总败场
+	MaxStreak          int    `json:"max_streak"`          // 最高连胜
+	NextLevel          int    `json:"next_level"`          // 下一段位等级
+	NextName           string `json:"next_name"`           // 下一段位名称
+	NextScore          int    `json:"next_score"`          // 晋级所需分数
+	Progress           int    `json:"progress"`            // 晋级进度百分比
+	PlacementRemaining int    `json:"placement_remaining"` // 排位规则 V2 下剩余定级赛场次，0 表示已定级或旧规则
 }
 
 type RankItem struct {
@@ -2706,14 +2710,16 @@ type SeasonHistoryItem struct {
 }
 
 type SeasonInfo struct {
-	Id             int64   `json:"id"`
-	Name           string  `json:"name"`
-	StartDate      string  `json:"start_date"`
-	EndDate        string  `json:"end_date"`
-	StartAt        string  `json:"start_at"`
-	EndAtExclusive string  `json:"end_at_exclusive"`
-	Status         int     `json:"status"`
-	RankResetRatio float64 `json:"rank_reset_ratio"`
+	Id                  int64   `json:"id"`
+	Name                string  `json:"name"`
+	StartDate           string  `json:"start_date"`
+	EndDate             string  `json:"end_date"`
+	StartAt             string  `json:"start_at"`
+	EndAtExclusive      string  `json:"end_at_exclusive"`
+	Status              int     `json:"status"`
+	RankResetRatio      float64 `json:"rank_reset_ratio"`      // 恒为 1：不做赛季软重置
+	QualifyMinMatches   int     `json:"qualify_min_matches"`   // 参与赛季名次的最少场次，0 表示无门槛（旧赛季）
+	QualifyMinOpponents int     `json:"qualify_min_opponents"` // 参与赛季名次的最少不同对手数，0 表示无门槛
 }
 
 type SeasonLeaderboardItem struct {
@@ -2725,17 +2731,20 @@ type SeasonLeaderboardItem struct {
 	PeakScore     int    `json:"peak_score"`
 	MatchesPlayed int    `json:"matches_played"`
 	Wins          int    `json:"wins"`
+	Qualified     bool   `json:"qualified"` // 是否达到赛季名次门槛；未达标时 rank 为 0
 }
 
 type SeasonRecordInfo struct {
-	SeasonId       int64  `json:"season_id"`
-	SeasonName     string `json:"season_name"`
-	StartRankScore int    `json:"start_rank_score"`
-	EndRankScore   int    `json:"end_rank_score"`
-	PeakRankScore  int    `json:"peak_rank_score"`
-	MatchesPlayed  int    `json:"matches_played"`
-	Wins           int    `json:"wins"`
-	FinalRank      int    `json:"final_rank"`
+	SeasonId          int64  `json:"season_id"`
+	SeasonName        string `json:"season_name"`
+	StartRankScore    int    `json:"start_rank_score"`
+	EndRankScore      int    `json:"end_rank_score"`
+	PeakRankScore     int    `json:"peak_rank_score"`
+	MatchesPlayed     int    `json:"matches_played"`
+	Wins              int    `json:"wins"`
+	FinalRank         int    `json:"final_rank"`
+	DistinctOpponents int    `json:"distinct_opponents"` // 本季该球种不同对手数（仅有门槛的赛季维护）
+	Qualified         bool   `json:"qualified"`          // 是否达到赛季名次门槛
 }
 
 type SeasonReportData struct {

@@ -2,7 +2,10 @@ package public
 
 import (
 	"context"
+	"time"
 
+	"chasing_points/internal/model"
+	"chasing_points/internal/ranking"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -46,13 +49,16 @@ func (l *GetLeaderboardLogic) GetLeaderboard(req *types.GetLeaderboardReq) (resp
 		pageSize = 100
 	}
 
-	shared, err := loadLeaderboardShared(l.ctx, l.svcCtx, "page", gameType, page, pageSize, func() (*leaderboardSharedPayload, error) {
+	rules := ranking.RulesFor(l.svcCtx.Config)
+	now := time.Now()
+	scope := rules.LeaderboardScopeAt(now)
+	shared, err := loadLeaderboardShared(l.ctx, l.svcCtx, "page", rules.VersionAt(now), gameType, page, pageSize, func() (*leaderboardSharedPayload, error) {
 		configs, loadErr := l.svcCtx.RankingModel.GetAllRankConfigs()
 		if loadErr != nil {
 			return nil, loadErr
 		}
 		_, rankNames, configVersion := buildRankConfigItems(configs)
-		topThree, loadErr := l.svcCtx.RankingModel.GetTopThreeByGameType(gameType)
+		topThree, loadErr := l.svcCtx.RankingModel.GetTopThreeByGameType(gameType, scope)
 		if loadErr != nil {
 			return nil, loadErr
 		}
@@ -61,7 +67,7 @@ func (l *GetLeaderboardLogic) GetLeaderboard(req *types.GetLeaderboardReq) (resp
 			topThreeItems = append(topThreeItems, leaderboardItem(entry, index+1, rankNames))
 		}
 		offset := (page-1)*pageSize + 3
-		entries, loadErr := l.svcCtx.RankingModel.GetLeaderboardByGameType(gameType, offset, pageSize)
+		entries, loadErr := l.svcCtx.RankingModel.GetLeaderboardByGameType(gameType, offset, pageSize, scope)
 		if loadErr != nil {
 			return nil, loadErr
 		}
@@ -69,7 +75,7 @@ func (l *GetLeaderboardLogic) GetLeaderboard(req *types.GetLeaderboardReq) (resp
 		for index, entry := range entries {
 			list = append(list, leaderboardItem(entry, offset+index+1, rankNames))
 		}
-		total, loadErr := l.svcCtx.RankingModel.GetLeaderboardCountByGameType(gameType)
+		total, loadErr := l.svcCtx.RankingModel.GetLeaderboardCountByGameType(gameType, scope)
 		if loadErr != nil {
 			return nil, loadErr
 		}
@@ -81,7 +87,7 @@ func (l *GetLeaderboardLogic) GetLeaderboard(req *types.GetLeaderboardReq) (resp
 	}
 
 	userID, _ := utils.GetUserIDFromCtx(l.ctx)
-	myRanking, rankErr := loadViewerLeaderboardItem(l.svcCtx, userID, gameType, shared.RankNames, true)
+	myRanking, rankErr := loadViewerLeaderboardItem(l.svcCtx, userID, gameType, shared.RankNames, true, now)
 	if rankErr != nil {
 		l.Logger.Errorf("获取我的排名失败: %v", rankErr)
 	}
@@ -93,11 +99,12 @@ func (l *GetLeaderboardLogic) GetLeaderboard(req *types.GetLeaderboardReq) (resp
 	return result, nil
 }
 
-func loadViewerLeaderboardItem(svcCtx *svc.ServiceContext, userID int64, gameType int, rankNames map[int]string, includeUnranked bool) (*types.LeaderboardItem, error) {
+func loadViewerLeaderboardItem(svcCtx *svc.ServiceContext, userID int64, gameType int, rankNames map[int]string, includeUnranked bool, now time.Time) (*types.LeaderboardItem, error) {
 	if svcCtx == nil || svcCtx.RankingModel == nil || userID <= 0 {
 		return nil, nil
 	}
-	rank, entry, err := svcCtx.RankingModel.GetUserRankingByGameType(userID, gameType)
+	rules := ranking.RulesFor(svcCtx.Config)
+	rank, entry, err := svcCtx.RankingModel.GetUserRankingByGameType(userID, gameType, rules.LeaderboardScopeAt(now))
 	if err != nil {
 		return nil, err
 	}
@@ -112,5 +119,14 @@ func loadViewerLeaderboardItem(svcCtx *svc.ServiceContext, userID int64, gameTyp
 	if err != nil || user == nil {
 		return nil, err
 	}
-	return &types.LeaderboardItem{UserId: user.Id, Nickname: user.Nickname, Avatar: user.Avatar, RankLevel: 1, RankName: rankNames[1]}, nil
+	level := unrankedLevel(rules, now)
+	return &types.LeaderboardItem{UserId: user.Id, Nickname: user.Nickname, Avatar: user.Avatar, RankLevel: level, RankName: rankNames[level]}, nil
+}
+
+// unrankedLevel 是未上榜用户展示的段位：V2 生效后为初始分对应的段位，旧规则下为最低段位。
+func unrankedLevel(rules ranking.Rules, now time.Time) int {
+	if rules.V2ActiveAt(now) {
+		return model.RankLevelForScore(ranking.InitialRating)
+	}
+	return 1
 }

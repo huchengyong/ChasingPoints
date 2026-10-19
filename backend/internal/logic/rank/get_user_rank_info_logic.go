@@ -2,8 +2,9 @@ package rank
 
 import (
 	"context"
+	"time"
 
-	"chasing_points/internal/model"
+	"chasing_points/internal/ranking"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -42,15 +43,17 @@ func (l *GetUserRankInfoLogic) GetUserRankInfo(req *types.GetUserRankInfoReq) (r
 		gameType = req.GameType
 	}
 
-	ranking, err := l.svcCtx.RankingModel.FindByUserIdAndGameType(userId, gameType)
+	row, err := l.svcCtx.RankingModel.FindByUserIdAndGameType(userId, gameType)
 	if err != nil {
 		l.Logger.Errorf("获取用户段位失败: %v", err)
 		return &types.GetUserRankInfoResp{
 			Success: false,
 		}, nil
 	}
-	if ranking == nil {
-		ranking = &model.UserRanking{UserId: userId, GameType: gameType, RankLevel: 1}
+	rules := ranking.RulesFor(l.svcCtx.Config)
+	now := time.Now()
+	if row == nil {
+		row = defaultRankingRow(rules, userId, gameType, now)
 	}
 
 	configs, err := l.svcCtx.RankingModel.GetAllRankConfigs()
@@ -60,9 +63,9 @@ func (l *GetUserRankInfoLogic) GetUserRankInfo(req *types.GetUserRankInfoReq) (r
 			Success: false,
 		}, nil
 	}
-	rankInfo := buildRankInfo(ranking, buildRankConfigByLevel(configs))
+	rankInfo := buildRankInfo(row, buildRankConfigByLevel(configs), rules, now)
 	if rankInfo == nil {
-		l.Logger.Errorf("获取段位配置失败: 段位等级 %d 不存在", ranking.RankLevel)
+		l.Logger.Errorf("获取段位配置失败: 段位等级 %d 不存在", row.RankLevel)
 		return &types.GetUserRankInfoResp{Success: false}, nil
 	}
 

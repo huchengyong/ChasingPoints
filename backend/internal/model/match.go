@@ -480,6 +480,34 @@ func (m *MatchModel) ListCompletedByCompletionAfterWithTx(tx *gorm.DB, afterComp
 	return matches, err
 }
 
+// ListCompletedByCompletionBetweenWithTx 为离线排位重放按完成时间读取 [from, to) 内的已完成比赛；from 为零值时不设下限。
+func (m *MatchModel) ListCompletedByCompletionBetweenWithTx(tx *gorm.DB, from, to time.Time, afterCompletedAt *time.Time, afterID int64, limit int) ([]Match, error) {
+	if limit <= 0 || limit > 1000 {
+		limit = 500
+	}
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	query := db.Where("status = ? AND deleted_at IS NULL AND completed_at IS NOT NULL AND completed_at < ?", 2, to)
+	if !from.IsZero() {
+		query = query.Where("completed_at >= ?", from)
+	}
+	if afterCompletedAt != nil {
+		query = query.Where("(completed_at > ?) OR (completed_at = ? AND id > ?)", *afterCompletedAt, *afterCompletedAt, afterID)
+	}
+	var matches []Match
+	err := query.Order("completed_at ASC, id ASC").Limit(limit).Find(&matches).Error
+	return matches, err
+}
+
+// CountCompletedWithoutCompletedAt 统计缺少 completed_at 的已完成比赛；离线排位重放要求其为 0。
+func (m *MatchModel) CountCompletedWithoutCompletedAt() (int64, error) {
+	var count int64
+	err := m.db.Model(&Match{}).Where("status = ? AND completed_at IS NULL", 2).Count(&count).Error
+	return count, err
+}
+
 func (m *MatchModel) SetCompletedAtIfEmptyWithTx(tx *gorm.DB, matchID int64, completedAt time.Time) error {
 	db := m.db
 	if tx != nil {

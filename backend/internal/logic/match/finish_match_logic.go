@@ -11,6 +11,7 @@ import (
 	seasonlogic "chasing_points/internal/logic/season"
 	"chasing_points/internal/model"
 	"chasing_points/internal/pkg/ws"
+	"chasing_points/internal/ranking"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -717,29 +718,35 @@ func (l *FinishMatchLogic) settleMatchResultTx(tx *gorm.DB, match *model.Match, 
 	player1RawAchievementScore := 0
 	player2RawAchievementScore := 0
 	completedRounds := 0
+	// 排位规则 V2 按完成时间生效：只看胜负与对手实力，不再计算会员高光分。
+	ratingV2 := ranking.RulesFor(l.svcCtx.Config).V2ActiveAt(resolveRankChangeEffectiveAt(match))
+	var completedRoundRows []model.MatchRound
 	if result != 3 && model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked {
-		rewardMap, err := l.getAchievementRewardMap(match.GameType)
-		if err != nil {
-			return finishMatchSettlement{}, err
-		}
 		rounds, err := l.svcCtx.MatchModel.ListCompletedRoundsWithTx(tx, match.Id)
 		if err != nil {
 			return finishMatchSettlement{}, err
 		}
+		completedRoundRows = rounds
 		completedRounds = len(rounds)
-		actions, err := l.svcCtx.MatchModel.ListActiveActionsWithTx(tx, match.Id)
-		if err != nil {
-			return finishMatchSettlement{}, err
-		}
-		player1RawAchievementScore, player2RawAchievementScore, err = resolveReplayAchievementScoresStrict(
-			match.GameType,
-			rounds,
-			actions,
-			nil,
-			rewardMap,
-		)
-		if err != nil {
-			return finishMatchSettlement{}, err
+		if !ratingV2 {
+			rewardMap, err := l.getAchievementRewardMap(match.GameType)
+			if err != nil {
+				return finishMatchSettlement{}, err
+			}
+			actions, err := l.svcCtx.MatchModel.ListActiveActionsWithTx(tx, match.Id)
+			if err != nil {
+				return finishMatchSettlement{}, err
+			}
+			player1RawAchievementScore, player2RawAchievementScore, err = resolveReplayAchievementScoresStrict(
+				match.GameType,
+				rounds,
+				actions,
+				nil,
+				rewardMap,
+			)
+			if err != nil {
+				return finishMatchSettlement{}, err
+			}
 		}
 	}
 
@@ -770,6 +777,10 @@ func (l *FinishMatchLogic) settleMatchResultTx(tx *gorm.DB, match *model.Match, 
 			CompetitiveRevisions: projection.CompetitiveRevisions,
 			SeasonID:             projection.SeasonID,
 		}, nil
+	}
+
+	if ratingV2 {
+		return l.settleRatingV2WithTx(tx, match, result, completedRoundRows, serverRevision)
 	}
 
 	settlementService := NewRankSettlementService(l.svcCtx.RankingModel)
@@ -874,6 +885,37 @@ func (l *FinishMatchLogic) settleMatchResultTx(tx *gorm.DB, match *model.Match, 
 		Player2Before: player2BeforeProjection,
 		Player2After:  player2AfterProjection,
 	})
+	if err != nil {
+		return finishMatchSettlement{}, err
+	}
+	return finishMatchSettlement{
+		Result:               result,
+		ServerRevision:       serverRevision,
+		CompetitiveRevisions: projection.CompetitiveRevisions,
+		SeasonID:             projection.SeasonID,
+	}, nil
+}
+
+// settleRatingV2WithTx 按排位规则 V2 结算；对手不是注册用户时只投影比赛、不计排位分。
+func (l *FinishMatchLogic) settleRatingV2WithTx(tx *gorm.DB, match *model.Match, result int, rounds []model.MatchRound, serverRevision int64) (finishMatchSettlement, error) {
+	input := logicx.CompetitiveProjectionInput{Match: match}
+	if match.OpponentId != nil && *match.OpponentId > 0 && *match.OpponentId != match.UserId {
+		settlement, err := logicx.SettleRatingV2WithTx(tx, l.svcCtx, logicx.RatingV2MatchFacts{
+			MatchId:     match.Id,
+			GameType:    match.GameType,
+			Player1Id:   match.UserId,
+			Player2Id:   *match.OpponentId,
+			Player1Won:  result == 1,
+			RaceLength:  logicx.RatingV2RaceLength(match, rounds),
+			CompletedAt: resolveRankChangeEffectiveAt(match),
+		})
+		if err != nil {
+			return finishMatchSettlement{}, err
+		}
+		input.Player1Before, input.Player1After = settlement.Player1Before, settlement.Player1After
+		input.Player2Before, input.Player2After = settlement.Player2Before, settlement.Player2After
+	}
+	projection, err := projectCompetitiveReadModelWithTx(tx, l.svcCtx, input)
 	if err != nil {
 		return finishMatchSettlement{}, err
 	}

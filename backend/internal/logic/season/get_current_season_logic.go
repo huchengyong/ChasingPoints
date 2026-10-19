@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"chasing_points/internal/model"
+	"chasing_points/internal/ranking"
 	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -49,6 +50,11 @@ func cachedCurrentSeasonResponse(ctx context.Context, svcCtx *svc.ServiceContext
 	})
 }
 
+// seasonHasQualification 表示赛季是否使用排位规则 V2 的达标门槛。
+func seasonHasQualification(svcCtx *svc.ServiceContext, season *model.Season) bool {
+	return svcCtx != nil && ranking.RulesFor(svcCtx.Config).IsV2Season(season)
+}
+
 func buildSeasonInfo(svcCtx *svc.ServiceContext, season *model.Season) *types.SeasonInfo {
 	if season == nil {
 		return nil
@@ -65,6 +71,7 @@ func buildSeasonInfo(svcCtx *svc.ServiceContext, season *model.Season) *types.Se
 	if svcCtx == nil {
 		return info
 	}
+	info.QualifyMinMatches, info.QualifyMinOpponents = ranking.RulesFor(svcCtx.Config).SeasonQualification(season)
 	startAt, endExclusive, err := seasonx.BoundsForConfig(svcCtx.Config.SeasonLifecycle, season)
 	if err != nil {
 		return info

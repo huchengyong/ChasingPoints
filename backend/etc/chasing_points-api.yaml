@@ -116,6 +116,12 @@ SeasonLifecycle:
   CycleMonths: 1
   Timezone: Asia/Shanghai
 
+# 排位规则 V2 生效：RatingV2StartDate 为赛季起点日期（如 "2026-11-01"），RatingV2StartAt 为即时生效时刻（RFC3339）。二者只能设置其一，两项都留空保持旧规则。
+# 切换前先执行 cmd/rank_rebuild -mode=seed 计算初始分，详见 openspec/changes/rebalance-ranked-rating/design.md 的迁移计划。
+Ranking:
+  RatingV2StartDate: ""
+  RatingV2StartAt: ""
+
 Observability:
   SlowSQLThresholdMs: 500
 

@@ -57,6 +57,7 @@ func newDeleteAccountTestSvc(t *testing.T) (*svc.ServiceContext, *gorm.DB) {
 		CREATE TABLE user_opponent_stats (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, opponent_user_id INTEGER NOT NULL DEFAULT 0, opponent_name_key TEXT NOT NULL DEFAULT '', opponent_name TEXT NOT NULL DEFAULT '', opponent_avatar TEXT NOT NULL DEFAULT '');
 		CREATE TABLE user_opponent_strength_buckets (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL);
 		CREATE TABLE user_ranking (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL);
+		CREATE TABLE rank_rating_seeds (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL);
 		CREATE TABLE user_achievements (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL);
 		CREATE TABLE user_titles (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL);
 		CREATE TABLE achievement_progress_events (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL);

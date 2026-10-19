@@ -187,9 +187,11 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 	myRankChange := 0
 	opponentRankChange := 0
 	myRankDetails := []types.RankDetail{}
+	rankRulesVersion := 0
 
 	if match.Status == 2 {
 		if completedCore != nil {
+			rankRulesVersion = logicx.RankRulesVersionOfLogs(completedCore.RankChanges)
 			for index := range completedCore.RankChanges {
 				rankLog := &completedCore.RankChanges[index]
 				if rankLog.UserId == userId {
@@ -211,8 +213,11 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			allLogs, logsErr := l.svcCtx.RankingModel.ListRankChangesByMatchAndGameType(match.Id, match.GameType)
 			if logsErr != nil {
 				l.Logger.Errorf("获取对局段位明细失败: matchId=%d err=%v", match.Id, logsErr)
-			} else if opponentLog := findOpponentRankLog(allLogs, userId); opponentLog != nil {
-				opponentRankChange = opponentLog.FinalChange
+			} else {
+				rankRulesVersion = logicx.RankRulesVersionOfLogs(allLogs)
+				if opponentLog := findOpponentRankLog(allLogs, userId); opponentLog != nil {
+					opponentRankChange = opponentLog.FinalChange
+				}
 			}
 		}
 	}
@@ -352,6 +357,7 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			MyRankChange:                  myRankChange,
 			OpponentRankChange:            opponentRankChange,
 			MyRankDetails:                 myRankDetails,
+			RankRulesVersion:              rankRulesVersion,
 			CurrentFrameStarted:           match.CurrentFrameStarted,
 			CurrentFrameMyScore:           currentFrameMyScore,
 			CurrentFrameOpponentScore:     currentFrameOpponentScore,

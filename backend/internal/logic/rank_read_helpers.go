@@ -1,7 +1,11 @@
 package logic
 
 import (
+	"fmt"
+	"math"
+
 	"chasing_points/internal/model"
+	"chasing_points/internal/ranking"
 	"chasing_points/internal/types"
 )
 
@@ -76,6 +80,9 @@ func rankLogToDetails(log *model.RankChangeLog) []types.RankDetail {
 	if log == nil {
 		return []types.RankDetail{}
 	}
+	if remark, ok := ranking.ParseRemark(log.Remark); ok {
+		return ratingV2Details(remark)
+	}
 
 	remark := parseRankSettlementRemark(log.Remark)
 	details := []types.RankDetail{
@@ -105,6 +112,45 @@ func rankLogToDetails(log *model.RankChangeLog) []types.RankDetail {
 
 func RankLogToDetails(log *model.RankChangeLog) []types.RankDetail {
 	return rankLogToDetails(log)
+}
+
+// ratingV2Details 按结算顺序展示排位规则 V2 的明细，各项之和等于本场变化。
+func ratingV2Details(remark ranking.Remark) []types.RankDetail {
+	if !remark.Rated {
+		return []types.RankDetail{{Label: "同对手当日第 7 场起不计分", Value: 0}}
+	}
+	label := "胜负结算"
+	if remark.Expected > 0 {
+		label = fmt.Sprintf("胜负结算（赛前胜率 %d%%）", int(math.Round(remark.Expected*100)))
+	}
+	details := []types.RankDetail{{Label: label, Value: remark.Standard}}
+	for _, item := range []struct {
+		label string
+		value int
+	}{
+		{label: "定级赛加倍", value: remark.Placement},
+		{label: "对手定级中减半", value: remark.OpponentDamping},
+		{label: "同对手衰减", value: remark.SameOpponent},
+		{label: "每日封顶", value: remark.DailyCap},
+		{label: "0 分保护", value: remark.Floor},
+	} {
+		if item.value != 0 {
+			details = append(details, types.RankDetail{Label: item.label, Value: item.value})
+		}
+	}
+	return details
+}
+
+// RankRulesVersionOfLogs 返回一场对局的排位记录按哪套规则结算：0 未计分，1 旧规则，2 V2。
+func RankRulesVersionOfLogs(logs []model.RankChangeLog) int {
+	version := 0
+	for i := range logs {
+		if _, ok := ranking.ParseRemark(logs[i].Remark); ok {
+			return ranking.RulesVersionV2
+		}
+		version = ranking.RulesVersionLegacy
+	}
+	return version
 }
 
 func findOpponentRankLog(logs []model.RankChangeLog, userId int64) *model.RankChangeLog {

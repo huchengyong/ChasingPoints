@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"chasing_points/internal/model"
+	"chasing_points/internal/ranking"
 	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 
@@ -78,7 +79,8 @@ func (p *CompetitiveProjector) ProjectWithTx(tx *gorm.DB, input CompetitiveProje
 		}
 	}
 
-	participants := buildCompetitiveParticipants(match, completedAt, actions, player1, player2, input)
+	ratingV2 := ranking.RulesFor(p.svcCtx.Config).V2ActiveAt(completedAt)
+	participants := buildCompetitiveParticipants(match, completedAt, actions, player1, player2, input, ratingV2)
 	eligibleForCompetitiveStats := model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked && (*match.Result == 1 || *match.Result == 2)
 	for _, participant := range participants {
 		created, err := p.svcCtx.CompetitiveReadModel.InsertParticipantIfAbsentWithTx(tx, &participant.result)
@@ -125,6 +127,7 @@ func buildCompetitiveParticipants(
 	actions []model.MatchAction,
 	player1, player2 *model.User,
 	input CompetitiveProjectionInput,
+	ratingV2 bool,
 ) []competitiveParticipant {
 	if match == nil || player1 == nil || match.Result == nil {
 		return nil
@@ -166,7 +169,7 @@ func buildCompetitiveParticipants(
 			DurationSeconds:    duration,
 			MatchHighScore:     match.MyScore,
 			BestBreak:          player1Break,
-			OpponentRankBucket: rankBucket(input.Player2Before),
+			OpponentRankBucket: opponentStrengthBucket(input.Player1Before, input.Player2Before, ratingV2),
 		},
 		beforeRank: input.Player1Before,
 		afterRank:  input.Player1After,
@@ -194,7 +197,7 @@ func buildCompetitiveParticipants(
 			DurationSeconds:    duration,
 			MatchHighScore:     match.OpponentScore,
 			BestBreak:          player2Break,
-			OpponentRankBucket: rankBucket(input.Player1Before),
+			OpponentRankBucket: opponentStrengthBucket(input.Player2Before, input.Player1Before, ratingV2),
 		},
 		beforeRank: input.Player2Before,
 		afterRank:  input.Player2After,
@@ -248,14 +251,33 @@ func (p *CompetitiveProjector) applySeasonRecordWithTx(tx *gorm.DB, participant 
 	if err != nil || season == nil {
 		return 0, err
 	}
-	if err := p.svcCtx.SeasonRecordModel.ApplyCompetitiveMatchWithTx(tx, model.SeasonRecordMatchDelta{
+	delta := model.SeasonRecordMatchDelta{
 		SeasonId:       season.Id,
 		UserId:         participant.result.UserId,
 		GameType:       participant.result.GameType,
 		StartRankScore: participant.beforeRank.RankScore,
 		EndRankScore:   participant.afterRank.RankScore,
 		Won:            participant.won,
-	}); err != nil {
+	}
+	// 排位规则 V2 赛季维护不同对手数与达标状态；旧赛季保持全员排名，不做额外查询。
+	delta.QualifyMinMatches, delta.QualifyMinOpponents = ranking.RulesFor(p.svcCtx.Config).SeasonQualification(season)
+	if delta.QualifyMinMatches > 0 && participant.result.OpponentUserId > 0 {
+		start, endExclusive := seasonx.Bounds(season, location)
+		met, err := p.svcCtx.CompetitiveReadModel.HasRankedMatchAgainstWithTx(
+			tx,
+			participant.result.UserId,
+			participant.result.OpponentUserId,
+			participant.result.GameType,
+			start,
+			endExclusive,
+			participant.result.MatchId,
+		)
+		if err != nil {
+			return 0, err
+		}
+		delta.NewOpponent = !met
+	}
+	if err := p.svcCtx.SeasonRecordModel.ApplyCompetitiveMatchWithTx(tx, delta); err != nil {
 		return 0, err
 	}
 	return season.Id, nil
@@ -293,6 +315,17 @@ func ViewerMatchResult(match *model.Match, viewerIsPlayer1 bool) int {
 		return *match.Result
 	}
 	return inverseMatchResult(*match.Result)
+}
+
+// opponentStrengthBucket 返回结算时的对手强度分档：排位规则 V2 下按结算前双方分差取相对分档，旧规则按对手绝对分数。
+func opponentStrengthBucket(self, opponent *model.UserRanking, ratingV2 bool) string {
+	if !ratingV2 {
+		return rankBucket(opponent)
+	}
+	if self == nil || opponent == nil {
+		return ranking.StrengthBucketEven
+	}
+	return ranking.StrengthBucket(self.RankScore, opponent.RankScore)
 }
 
 func rankBucket(ranking *model.UserRanking) string {

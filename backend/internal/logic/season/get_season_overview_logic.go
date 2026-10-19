@@ -59,9 +59,11 @@ func (l *GetSeasonOverviewLogic) GetSeasonOverview(req *types.GetSeasonOverviewR
 			appendSeasonOverviewPartial(result, "record", "赛季记录读取失败")
 			appendSeasonOverviewPartial(result, "my_rank", "赛季名次读取失败")
 		} else {
-			result.Record = buildSeasonRecordInfo(record, season.Name)
+			hasQualification := result.Season.QualifyMinMatches > 0
+			result.Record = buildSeasonRecordInfo(record, season.Name, hasQualification)
 			result.Availability["record"] = true
-			if record == nil {
+			if record == nil || (hasQualification && record.Qualified == 0) {
+				// 无记录或未达标都不占名次：my_rank = 0 且不执行计数，客户端展示上榜指引或达标进度。
 				result.Availability["my_rank"] = true
 			} else if ahead, rankErr := l.svcCtx.SeasonRecordModel.CountAheadInSeason(record); rankErr != nil {
 				appendSeasonOverviewPartial(result, "my_rank", "赛季名次读取失败")

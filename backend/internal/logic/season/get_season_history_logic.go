@@ -73,7 +73,7 @@ func (l *GetSeasonHistoryLogic) GetSeasonHistory(req *types.GetSeasonHistoryReq)
 		season := &seasons[index]
 		item := types.SeasonHistoryItem{Season: buildSeasonInfo(l.svcCtx, season)}
 		if record, ok := records[season.Id]; ok {
-			item.Record = buildSeasonRecordInfo(&record, season.Name)
+			item.Record = buildSeasonRecordInfo(&record, season.Name, item.Season.QualifyMinMatches > 0)
 		}
 		result.List = append(result.List, item)
 	}

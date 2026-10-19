@@ -86,6 +86,7 @@ func (m *UserDataLifecycleModel) DeleteAccountRelationsWithTx(tx *gorm.DB, userI
 		{"DELETE FROM user_opponent_stats WHERE user_id = ?", []any{userID}},
 		{"DELETE FROM user_opponent_strength_buckets WHERE user_id = ?", []any{userID}},
 		{"DELETE FROM user_ranking WHERE user_id = ?", []any{userID}},
+		{"DELETE FROM rank_rating_seeds WHERE user_id = ?", []any{userID}},
 		{"DELETE FROM user_achievements WHERE user_id = ?", []any{userID}},
 		{"DELETE FROM user_titles WHERE user_id = ?", []any{userID}},
 		{"DELETE FROM achievement_progress_events WHERE user_id = ?", []any{userID}},
@@ -197,7 +198,7 @@ func (m *UserDataLifecycleModel) ListExportRecords(userID int64, category string
 	case "achievement_progress":
 		return m.listExportRows("achievement_progress_events", "id, source_type, source_id, game_type, metric_key, metric_value, occurred_at, created_at", "user_id = ?", []any{userID}, afterID, snapshotAt, limit, nil)
 	case "rankings":
-		return m.listExportRows("user_ranking", "id, game_type, rank_score, rank_level, total_wins, total_losses, current_streak, max_streak, created_at, updated_at", "user_id = ?", []any{userID}, afterID, snapshotAt, limit, nil)
+		return m.listExportRows("user_ranking", "id, game_type, rank_score, rank_level, total_wins, total_losses, current_streak, max_streak, rating_version, rated_matches, created_at, updated_at", "user_id = ?", []any{userID}, afterID, snapshotAt, limit, nil)
 	case "rank_changes":
 		return m.listExportRows("rank_change_logs", "id, match_id, change_type, game_type, result, base_score, achievement_score, final_change, before_score, after_score, before_level, after_level, remark, effective_at, created_at", "user_id = ?", []any{userID}, afterID, snapshotAt, limit, nil)
 	case "reputation_profile":
@@ -219,7 +220,7 @@ func (m *UserDataLifecycleModel) ListExportRecords(userID int64, category string
 	case "tournament_participations":
 		return m.listExportRows("tournament_participants", "id, tournament_id, seed, status, final_rank, created_at", "user_id = ?", []any{userID}, afterID, snapshotAt, limit, nil)
 	case "season_records":
-		return m.listExportRows("season_records", "id, season_id, game_type, start_rank_score, end_rank_score, peak_rank_score, matches_played, wins, final_rank, rewards, created_at", "user_id = ?", []any{userID}, afterID, snapshotAt, limit, nil)
+		return m.listExportRows("season_records", "id, season_id, game_type, start_rank_score, end_rank_score, peak_rank_score, matches_played, wins, distinct_opponents, qualified, final_rank, rewards, created_at", "user_id = ?", []any{userID}, afterID, snapshotAt, limit, nil)
 	case "season_challenges":
 		return m.listExportRows("season_challenge_snapshots", "id, season_id, game_type, challenge_key, challenge_name, threshold, progress, completed, archived_at, created_at", "user_id = ?", []any{userID}, afterID, snapshotAt, limit, nil)
 	default:
