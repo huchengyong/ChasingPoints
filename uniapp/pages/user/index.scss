@@ -227,8 +227,7 @@
 }
 
 .rank-tabs {
-	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
+	display: flex;
 	gap: 4rpx;
 	padding: 4rpx;
 	border-radius: 999rpx;
@@ -236,6 +235,7 @@
 }
 
 .rank-tab {
+	flex: 1;
 	min-width: 0;
 	height: 56rpx;
 	display: flex;
@@ -259,6 +259,15 @@
 
 		text { color: #4F3707; }
 	}
+}
+
+// 只有一个相关球种时不显示切换，只标出当前球种。
+.rank-game-label {
+	display: block;
+	padding: 8rpx 4rpx 0;
+	font-size: 24rpx;
+	font-weight: 600;
+	color: rgba(255, 255, 255, 0.8);
 }
 
 .rank-body,
@@ -334,6 +343,46 @@
 	margin-top: 12rpx;
 	font-size: 22rpx;
 	color: rgba(255, 255, 255, 0.8);
+}
+
+.rank-picker {
+	margin-top: 24rpx;
+	padding-top: 20rpx;
+	border-top: 1rpx solid rgba(255, 255, 255, 0.16);
+}
+
+.rank-picker-title {
+	display: block;
+	font-size: 22rpx;
+	color: rgba(255, 255, 255, 0.8);
+}
+
+.rank-picker-options {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 12rpx;
+	margin-top: 16rpx;
+}
+
+.rank-picker-option {
+	min-width: 0;
+	height: 56rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 6rpx;
+	border-radius: 999rpx;
+	box-sizing: border-box;
+	background: rgba(0, 0, 0, 0.18);
+
+	text {
+		overflow: hidden;
+		font-size: 22rpx;
+		font-weight: 600;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		color: #FFFFFF;
+	}
 }
 
 // ========== 区块 ==========
@@ -803,6 +852,16 @@
 		background: #E0AE12;
 
 		text { color: #141109; }
+	}
+
+	.rank-picker {
+		border-top-color: rgba(255, 247, 225, 0.12);
+	}
+
+	.rank-picker-option {
+		background: rgba(0, 0, 0, 0.24);
+
+		text { color: #FFF7E1; }
 	}
 
 	.rank-name {

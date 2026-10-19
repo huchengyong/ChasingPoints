@@ -7,6 +7,7 @@ import {
   resolveMemberRankAvatarFrame,
   resolveRankAvatarFramePath,
   resolveRankCardView,
+  resolveRankGameTypeView,
   resolveReputationChip
 } from '../utils/user-homepage.js'
 
@@ -127,4 +128,51 @@ test('reputation chip names the dimension and flags a ban', () => {
   assert.deepEqual(resolveReputationChip({ status: 'restricted', status_text: '禁赛' }), { text: '禁赛', restricted: true })
   assert.equal(resolveReputationChip(null, true).text, '信誉同步中')
   assert.equal(resolveReputationChip(null, false).text, '信誉暂不可用')
+})
+
+const rankInfo = (wins, losses, score = 1000) => ({ total_wins: wins, total_losses: losses, rank_score: score })
+
+test('resolveRankGameTypeView prefers the saved game type and keeps played ones switchable', () => {
+  const view = resolveRankGameTypeView({
+    preferredGameType: 1,
+    rankInfoMap: { 1: rankInfo(0, 0), 2: rankInfo(30, 10), 3: rankInfo(0, 0), 4: rankInfo(1, 0) }
+  })
+
+  assert.equal(view.primaryGameType, 1)
+  assert.equal(view.primaryLabel, '斯诺克')
+  assert.deepEqual(view.tabs.map((item) => item.value), [2, 1, 4])
+  assert.equal(view.needsPick, false)
+})
+
+test('resolveRankGameTypeView falls back to the most played game type, then rank score, then fixed order', () => {
+  assert.equal(resolveRankGameTypeView({
+    rankInfoMap: { 1: rankInfo(3, 2, 1800), 2: rankInfo(20, 25), 3: rankInfo(10, 5, 2400), 4: rankInfo(0, 0) }
+  }).primaryGameType, 2)
+  assert.equal(resolveRankGameTypeView({
+    rankInfoMap: { 1: rankInfo(5, 5, 1300), 2: rankInfo(4, 6, 1200), 3: rankInfo(0, 0), 4: rankInfo(0, 0) }
+  }).primaryGameType, 1)
+  assert.equal(resolveRankGameTypeView({
+    rankInfoMap: { 1: rankInfo(5, 5, 1200), 2: rankInfo(4, 6, 1200), 3: rankInfo(0, 0), 4: rankInfo(0, 0) }
+  }).primaryGameType, 2)
+})
+
+test('resolveRankGameTypeView hides the switcher for single game type players', () => {
+  const view = resolveRankGameTypeView({
+    preferredGameType: 0,
+    rankInfoMap: { 1: rankInfo(0, 0), 2: rankInfo(12, 3), 3: rankInfo(0, 0), 4: rankInfo(0, 0) }
+  })
+
+  assert.equal(view.primaryGameType, 2)
+  assert.deepEqual(view.tabs, [])
+  assert.equal(view.needsPick, false)
+})
+
+test('resolveRankGameTypeView asks new players to pick only when nothing is saved or played', () => {
+  const fresh = resolveRankGameTypeView({ rankInfoMap: { 1: rankInfo(0, 0), 2: rankInfo(0, 0), 3: rankInfo(0, 0), 4: rankInfo(0, 0) } })
+  assert.equal(fresh.primaryGameType, 3)
+  assert.deepEqual(fresh.tabs, [])
+  assert.equal(fresh.needsPick, true)
+
+  assert.equal(resolveRankGameTypeView({ preferredGameType: 4, rankInfoMap: {} }).needsPick, false)
+  assert.equal(resolveRankGameTypeView({ preferredGameType: 99, rankInfoMap: null }).primaryGameType, 3)
 })

@@ -56,9 +56,29 @@ test('rank card puts the game tabs above the rank, score, and promotion progress
   assert.match(source, /\{\{ rankView\.hint \}\}/)
   assert.match(source, /v-if="rankView\.ranked" class="rank-score"/)
   assert.match(source, /v-if="rankView\.ranked" class="rank-progress"/)
-  assert.match(source, /readDefaultGameType\(uni, userStore\.userId\)/)
   assert.doesNotMatch(source, /member-hero-strip|memberHeroStrip/)
-  assert.match(styleSource, /\.rank-tabs\s*\{[\s\S]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/)
+  assert.match(styleSource, /\.rank-tabs\s*\{[\s\S]*display:\s*flex;/)
+  assert.match(styleSource, /\.rank-tab\s*\{[\s\S]*flex:\s*1;/)
+})
+
+test('rank card shows the primary game type and only switches between relevant ones', () => {
+  assert.match(source, /const preferredGameType = ref\(readDefaultGameType\(uni, userStore\.userId\)\)/)
+  assert.match(source, /resolveRankGameTypeView\(\{\s*preferredGameType: preferredGameType\.value,\s*rankInfoMap: hasRankCache\.value \? rankStore\.rankInfoMap : \{\}/)
+  assert.match(source, /v-if="rankGameView\.tabs\.length" class="rank-tabs"[\s\S]*v-for="item in rankGameView\.tabs"/)
+  assert.match(source, /<text v-else-if="hasRankCache" class="rank-game-label">\{\{ rankGameView\.primaryLabel \}\}<\/text>/)
+  // 临时切换只在当前可选球种内生效，偏好或账号变化后回到常用球种。
+  assert.match(source, /rankGameView\.value\.tabs\.some\(\(item\) => item\.value === selectedRankGameType\.value\)/)
+  assert.match(source, /onShow\(\(\) => \{\s*syncRankGamePreference\(\)/)
+  assert.match(source, /if \(ownerId === rankPreferenceOwnerId && preferred === preferredGameType\.value\) return[\s\S]*selectedRankGameType\.value = 0/)
+})
+
+test('players without a preference or ranked games can pick a primary game type inline', () => {
+  assert.match(source, /const showRankGamePicker = computed\(\(\) => hasRankCache\.value && rankGameView\.value\.needsPick\)/)
+  assert.match(source, /class="rank-body" @click="handleRankExplain"[\s\S]*v-if="showRankGamePicker" class="rank-picker"/)
+  assert.match(source, /@tap="handlePickRankGameType\(item\.value\)"/)
+  assert.match(source, /preferredGameType\.value = saveDefaultGameType\(uni, userStore\.userId, gameType\)/)
+  assert.doesNotMatch(source, /showModal\([^)]*常用球种/)
+  assert.match(styleSource, /\.rank-picker-options\s*\{[\s\S]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/)
 })
 
 test('match launching lives on home and match tabs, not on the profile tab', () => {

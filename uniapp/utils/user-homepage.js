@@ -1,4 +1,5 @@
 import { resolveFavoriteVenueRewardTaskCard } from './favorite-venue-reward.js'
+import { GAME_TYPE_TABS } from './game-types.js'
 
 export const formatDuration = (durationSeconds = 0) => {
   if (!durationSeconds || durationSeconds < 0) return '0分'
@@ -205,6 +206,33 @@ export const resolveRankCardView = (rankInfo = null) => {
     score,
     progress,
     hint
+  }
+}
+
+const countRankedMatches = (rankInfo) => (
+  toSafeNumber(rankInfo?.total_wins) + toSafeNumber(rankInfo?.total_losses)
+)
+
+// 段位卡球种：优先用户设的常用球种；没设时取排位场次最多的球种，同场次比排位分，再按球种固定顺序。
+// 只在常用球种与打过排位的球种之间切换，不足两个时不显示切换。
+export const resolveRankGameTypeView = ({ preferredGameType = 0, rankInfoMap = {} } = {}) => {
+  const safeMap = rankInfoMap || {}
+  const played = GAME_TYPE_TABS.filter((item) => countRankedMatches(safeMap[item.value]) > 0)
+  const preferred = GAME_TYPE_TABS.find((item) => item.value === Number(preferredGameType))
+  const mostPlayed = played.reduce((best, item) => {
+    if (!best) return item
+    const matchDiff = countRankedMatches(safeMap[item.value]) - countRankedMatches(safeMap[best.value])
+    if (matchDiff !== 0) return matchDiff > 0 ? item : best
+    return toSafeNumber(safeMap[item.value]?.rank_score) > toSafeNumber(safeMap[best.value]?.rank_score) ? item : best
+  }, null)
+  const primary = preferred || mostPlayed || GAME_TYPE_TABS[0]
+  const tabs = GAME_TYPE_TABS.filter((item) => item === primary || played.includes(item))
+
+  return {
+    primaryGameType: primary.value,
+    primaryLabel: primary.label,
+    tabs: tabs.length > 1 ? tabs : [],
+    needsPick: !preferred && played.length === 0
   }
 }
 

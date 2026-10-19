@@ -105,8 +105,8 @@
 						<uni-icons type="flag-filled" size="24" color="#E0AE12"></uni-icons>
 					</view>
 					<view class="menu-copy">
-						<text class="menu-text">对局偏好</text>
-						<text class="menu-description">发起 PK 时自动预选，仍可临时切换</text>
+						<text class="menu-text">常用球种</text>
+						<text class="menu-description">「我的」段位卡优先展示，发起 PK 时自动预选</text>
 					</view>
 				</view>
 				<view class="preference-options">
@@ -297,7 +297,7 @@ const toggleFriendsOnlyChallenges = async () => {
 const setDefaultGameType = (gameType) => {
 	defaultGameType.value = saveDefaultGameType(uni, userStore.userId, gameType)
 	uni.showToast({
-		title: defaultGameType.value > 0 ? '对局偏好已更新' : '已改为每次询问',
+		title: defaultGameType.value > 0 ? '常用球种已更新' : '已改为每次询问',
 		icon: 'none'
 	})
 }

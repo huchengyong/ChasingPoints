@@ -76,9 +76,9 @@
 				</view>
 
 				<view class="rank-card">
-					<view class="rank-tabs">
+					<view v-if="rankGameView.tabs.length" class="rank-tabs">
 						<view
-							v-for="item in rankGameTabs"
+							v-for="item in rankGameView.tabs"
 							:key="item.value"
 							class="rank-tab"
 							:class="{ active: currentRankGameType === item.value }"
@@ -87,6 +87,7 @@
 							<text>{{ item.label }}</text>
 						</view>
 					</view>
+					<text v-else-if="hasRankCache" class="rank-game-label">{{ rankGameView.primaryLabel }}</text>
 
 					<view v-if="!hasRankCache && (coreDataLoading || rankLoading)" class="rank-skeleton">
 						<view class="skeleton-circle"></view>
@@ -111,6 +112,19 @@
 							<view class="rank-progress-fill" :style="{ width: `${rankView.progress}%` }"></view>
 						</view>
 						<text class="rank-hint">{{ rankView.hint }}</text>
+					</view>
+					<view v-if="showRankGamePicker" class="rank-picker">
+						<text class="rank-picker-title">你主要打哪种？选好后发起 PK 也会默认选中</text>
+						<view class="rank-picker-options">
+							<view
+								v-for="item in rankGameTabs"
+								:key="item.value"
+								class="rank-picker-option"
+								@tap="handlePickRankGameType(item.value)"
+							>
+								<text>{{ item.label }}</text>
+							</view>
+						</view>
 					</view>
 				</view>
 
@@ -204,6 +218,7 @@ import {
 	resolveMemberEntry,
 	resolveMemberRankAvatarFrame,
 	resolveRankCardView,
+	resolveRankGameTypeView,
 	resolveReputationChip
 } from '@/utils/user-homepage.js'
 import { useNotificationStore } from '@/store/notification.js'
@@ -211,7 +226,7 @@ import { useFriendRequestStore } from '@/store/friendRequest.js'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { markAsRead } from '@/api/notification.js'
 import { buildHonorWallUrl, presentLatestSeasonRollover } from '@/utils/honor-wall.js'
-import { readDefaultGameType } from '@/utils/game-type-preference.js'
+import { readDefaultGameType, saveDefaultGameType } from '@/utils/game-type-preference.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import {
 	getFavoriteVenueRewardPopupStorageKey,
@@ -237,8 +252,20 @@ const secondaryIconColor = computed(() => (isDarkMode.value ? '#D7C89B' : '#6E62
 const mutedIconColor = computed(() => (isDarkMode.value ? '#9F926E' : '#9A8C67'))
 
 const rankGameTabs = GAME_TYPE_TABS
-// 段位卡默认展示用户在设置里选的常用球种。
-const currentRankGameType = ref(readDefaultGameType(uni, userStore.userId) || rankGameTabs[0].value)
+// 段位卡默认展示用户在设置里选的常用球种，没设时按排位场次自动选；页内切换只临时生效。
+const preferredGameType = ref(readDefaultGameType(uni, userStore.userId))
+let rankPreferenceOwnerId = Number(userStore.userId) || 0
+const selectedRankGameType = ref(0)
+const rankGameView = computed(() => resolveRankGameTypeView({
+	preferredGameType: preferredGameType.value,
+	rankInfoMap: hasRankCache.value ? rankStore.rankInfoMap : {}
+}))
+const currentRankGameType = computed(() => (
+	rankGameView.value.tabs.some((item) => item.value === selectedRankGameType.value)
+		? selectedRankGameType.value
+		: rankGameView.value.primaryGameType
+))
+const showRankGamePicker = computed(() => hasRankCache.value && rankGameView.value.needsPick)
 const rankInfo = computed(() => rankStore.rankInfoMap[currentRankGameType.value] || null)
 const rankView = computed(() => resolveRankCardView(rankInfo.value))
 const favoriteVenueRewardStatus = ref(null)
@@ -318,6 +345,7 @@ const guestLinks = [
 ]
 
 onShow(() => {
+	syncRankGamePreference()
 	if (isLoggedIn.value) {
 		Promise.resolve(loadHomepageData()).finally(showLatestSeasonRollover)
 	} else {
@@ -508,7 +536,24 @@ const handleStatsDetail = () => {
 
 const handleRankGameTypeChange = (gameType) => {
 	if (currentRankGameType.value === gameType) return
-	currentRankGameType.value = gameType
+	selectedRankGameType.value = gameType
+}
+
+// 设置页或开局弹窗改了常用球种、或换了账号时，段位卡回到新的常用球种。
+const syncRankGamePreference = () => {
+	const ownerId = Number(userStore.userId) || 0
+	const preferred = readDefaultGameType(uni, ownerId)
+	if (ownerId === rankPreferenceOwnerId && preferred === preferredGameType.value) return
+	rankPreferenceOwnerId = ownerId
+	preferredGameType.value = preferred
+	selectedRankGameType.value = 0
+}
+
+// 段位卡里直接选的常用球种与设置页、开局弹窗共用同一偏好。
+const handlePickRankGameType = (gameType) => {
+	preferredGameType.value = saveDefaultGameType(uni, userStore.userId, gameType)
+	selectedRankGameType.value = 0
+	uni.showToast({ title: '已设为常用球种', icon: 'none' })
 }
 
 onPullDownRefresh(async () => {
