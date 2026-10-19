@@ -12,7 +12,12 @@
 			</view>
 		</view>
 
-		<view v-if="loading" class="loading-state">
+		<!-- 切换球种只替换列表区域，与赛季页保持一致；首次进入仍显示整页加载 -->
+		<view v-if="gameTypeSwitching" class="switching-card">
+			<text class="switching-text">加载中...</text>
+		</view>
+
+		<view v-else-if="loading" class="loading-state">
 			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
@@ -97,6 +102,7 @@ const page = ref(1)
 const lastPageCount = ref(0)
 const loading = ref(false)
 const loadingMore = ref(false)
+const gameTypeSwitching = ref(false)
 const loadedIdentityKey = ref('')
 const historyState = ref(createAsyncPageState({ authGeneration: userStore.authGeneration, data: [] }))
 
@@ -154,6 +160,7 @@ const loadSeasonHistory = async ({ append = false } = {}) => {
 		if (isCurrentRequest()) {
 			loading.value = false
 			loadingMore.value = false
+			gameTypeSwitching.value = false
 		}
 	}
 }
@@ -180,6 +187,7 @@ const handleGameTypeChange = (gameType) => {
 	if (currentGameType.value === gameType) return
 	currentGameType.value = gameType
 	resetHistory()
+	gameTypeSwitching.value = true
 	loadSeasonHistory()
 }
 
@@ -248,6 +256,8 @@ onShow(() => {
 	min-height: 60vh;
 	.loading-text { font-size: 28rpx; color: #9A8C67; margin-top: 16rpx; }
 }
+.switching-card { margin-bottom: 20rpx; padding: 48rpx 32rpx; border-radius: 20rpx; background: #fff; text-align: center; }
+.switching-text { font-size: 26rpx; color: #9A8C67; }
 .page-error-state { min-height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16rpx; padding: 0 48rpx; text-align: center; }
 .page-error-title { font-size: 32rpx; font-weight: 600; color: #231C0B; }
 .page-error-text { font-size: 24rpx; line-height: 1.7; color: #6E6242; }
@@ -296,6 +306,7 @@ onShow(() => {
 	background: #141109;
 
 	.game-type-tab,
+	.switching-card,
 	.history-item {
 		background: #1e180d;
 		border-color: #3a2e16;
@@ -303,6 +314,7 @@ onShow(() => {
 
 	.game-type-tab text,
 	.loading-text,
+	.switching-text,
 	.empty-description,
 	.history-season-dates,
 	.history-absent,
