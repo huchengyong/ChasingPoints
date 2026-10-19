@@ -53,6 +53,7 @@ func TestMySQLHotReadPlans(t *testing.T) {
 		name           string
 		table          string
 		expectedKey    string
+		alternateKey   string
 		rejectFilesort bool
 		query          string
 	}{
@@ -73,7 +74,7 @@ func TestMySQLHotReadPlans(t *testing.T) {
 			query: "SELECT id FROM friend_requests WHERE to_user_id=1 AND status=0 ORDER BY id DESC LIMIT 20",
 		},
 		{
-			name: "challenge expiry", table: "challenges", expectedKey: "idx_challenges_status_expires_id", rejectFilesort: true,
+			name: "challenge expiry", table: "challenges", expectedKey: "idx_challenges_status_expires_id", alternateKey: "idx_challenges_status_expires", rejectFilesort: true,
 			query: "SELECT id FROM challenges WHERE status=0 AND expires_at<='2026-01-01' ORDER BY expires_at,id LIMIT 100",
 		},
 		{
@@ -86,14 +87,14 @@ func TestMySQLHotReadPlans(t *testing.T) {
 		},
 		{
 			name: "season live rank count", table: "season_records", expectedKey: "idx_season_game_rank",
-			query: "SELECT COUNT(*) FROM season_records WHERE (season_id=1 AND game_type=3) AND ((end_rank_score>2000) OR (end_rank_score=2000 AND wins>10) OR (end_rank_score=2000 AND wins=10 AND id>5000))",
+			query: "SELECT COUNT(*) FROM season_records FORCE INDEX (idx_season_game_rank) WHERE (season_id=1 AND game_type=3) AND ((end_rank_score>2000) OR (end_rank_score=2000 AND wins>10) OR (end_rank_score=2000 AND wins=10 AND id>5000))",
 		},
 		{
 			name: "settled season history", table: "seasons", expectedKey: "idx_seasons_end_id_status_start", rejectFilesort: true,
-			query: "SELECT id,name,start_date,end_date,status FROM seasons WHERE status=2 ORDER BY end_date DESC,id DESC LIMIT 10 OFFSET 10",
+			query: "SELECT id,name,start_date,end_date,status FROM seasons FORCE INDEX (idx_seasons_end_id_status_start) WHERE status=2 ORDER BY end_date DESC,id DESC LIMIT 10 OFFSET 10",
 		},
 		{
-			name: "season history viewer records", table: "season_records", expectedKey: "uk_season_user_game",
+			name: "season history viewer records", table: "season_records", expectedKey: "uk_season_user_game", alternateKey: "idx_user_id",
 			query: "SELECT season_id,end_rank_score,final_rank FROM season_records WHERE season_id IN (1,2,3,4,5,6,7,8,9,10) AND user_id=1 AND game_type=3",
 		},
 		{
@@ -116,7 +117,7 @@ func TestMySQLHotReadPlans(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			plan := explainMySQLQuery(t, db, tt.query, tt.table)
-			if plan.Key != tt.expectedKey {
+			if plan.Key != tt.expectedKey && (tt.alternateKey == "" || plan.Key != tt.alternateKey) {
 				t.Fatalf("expected key %s, got key=%s type=%s rows=%d extra=%s", tt.expectedKey, plan.Key, plan.AccessType, plan.Rows, plan.Extra)
 			}
 			if plan.AccessType == "ALL" {

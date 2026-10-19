@@ -294,8 +294,13 @@ func (m *SeasonModel) CountSettled() (int64, error) {
 // ListSettledPage 按结束时间从近到远分页读取已发布结算的赛季。
 func (m *SeasonModel) ListSettledPage(page, pageSize int) ([]Season, error) {
 	page, pageSize = normalizePage(page, pageSize)
+	// 小表上优化器会选 idx_status 再 filesort；强制走结束时间索引，分页才是有序索引扫描。
+	table := "seasons"
+	if m.db.Dialector.Name() == "mysql" {
+		table = "seasons FORCE INDEX (idx_seasons_end_id_status_start)"
+	}
 	var seasons []Season
-	err := m.db.Where("status = ?", 2).
+	err := m.db.Table(table).Where("status = ?", 2).
 		Order("end_date DESC, id DESC").
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
@@ -416,8 +421,13 @@ func (m *SeasonRecordModel) CountAheadInSeason(record *SeasonRecord) (int64, err
 	if record == nil {
 		return 0, nil
 	}
+	// 强制走 idx_season_game_rank：默认会按唯一键扫描整个赛季，成本随赛季人数而非名次增长。
+	table := "season_records"
+	if m.db.Dialector.Name() == "mysql" {
+		table = "season_records FORCE INDEX (idx_season_game_rank)"
+	}
 	var ahead int64
-	err := m.db.Model(&SeasonRecord{}).
+	err := m.db.Table(table).
 		Where("season_id = ? AND game_type = ?", record.SeasonId, normalizeSeasonGameType(record.GameType)).
 		Where("(end_rank_score > ?) OR (end_rank_score = ? AND wins > ?) OR (end_rank_score = ? AND wins = ? AND id > ?)",
 			record.EndRankScore,
