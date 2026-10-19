@@ -1,7 +1,8 @@
 export const MAX_RANK_LEVEL = 6
 
 // 段位配置的静态缓存版本：配置新增了规则版本字段，升级版本号让旧缓存直接失效。
-export const RANK_CONFIGS_STATIC_VERSION = 2
+// 3：切换前拉取的缓存没有 rules_effective_at，升级后重新拉取，避免切换后仍按旧规则展示。
+export const RANK_CONFIGS_STATIC_VERSION = 3
 
 export const resolveRankExplainLoadingMode = ({
   hasLoadedOnce = false,
