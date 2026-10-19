@@ -27,7 +27,7 @@ export const useUserDataInvalidationStore = () => ({
 export const useUserStore = () => ({ userId: 1, authGeneration: 1 })
 `,
   '@/utils/game-types.js': `
-export const GAME_TYPE_TABS = [{ value: 3, label: '中式八球' }]
+export const GAME_TYPE_TABS = [{ value: 3, label: '中式八球' }, { value: 2, label: '九球追分' }]
 `,
   '@/utils/honor-wall.js': `
 export const resolveCurrentSeasonState = () => ({ title: '暂无赛季', description: '请稍后再试' })
@@ -137,6 +137,15 @@ test('season page compiles and mounts with one overview request on first entry',
     let scopeVersion = 0
     const navigations = []
     const activeSeason = { id: 1, name: '真实挂载测试赛季', status: 1, start_date: '2026-08-01', end_date: '2026-09-01' }
+    let resolveSwitchOverview
+    const switchOverview = new Promise((resolve) => {
+      resolveSwitchOverview = resolve
+    })
+    let rejectSwitchOverview
+    const failedSwitchOverview = new Promise((_, reject) => {
+      rejectSwitchOverview = reject
+    })
+    const overviewParams = []
     const followUpOverviews = [
       {
         success: true,
@@ -165,6 +174,8 @@ test('season page compiles and mounts with one overview request on first entry',
         my_rank: 0,
         leaderboard: []
       },
+      switchOverview,
+      failedSwitchOverview,
       {
         success: true,
         season: null,
@@ -181,8 +192,9 @@ test('season page compiles and mounts with one overview request on first entry',
     globalThis.__SEASON_PAGE_MOUNT__ = {
       shown: [],
       versionOf: () => scopeVersion,
-      getSeasonOverview: () => {
+      getSeasonOverview: (params) => {
         overviewCalls += 1
+        overviewParams.push(params)
         if (overviewCalls === 1) return firstOverview
         return Promise.resolve(followUpOverviews[overviewCalls - 2])
       },
@@ -270,11 +282,46 @@ test('season page compiles and mounts with one overview request on first entry',
     assert.doesNotMatch(wrapper.text(), /当前排名/)
     assert.equal(wrapper.findAll('.section-notice').length, 0)
 
+    // 切换球种：只替换下方数据卡片，赛季信息与球种标签保持可见
+    await wrapper.findAll('.game-type-tab')[1].trigger('tap')
+    assert.equal(overviewCalls, 5)
+    assert.deepEqual(overviewParams.at(-1), { game_type: 2 })
+    assert.match(wrapper.text(), /真实挂载测试赛季/, 'switching must keep the season card')
+    assert.equal(wrapper.find('.loading-state').exists(), false, 'switching must not replace the whole page')
+    assert.match(wrapper.text(), /加载中/)
+    assert.equal(wrapper.findAll('.game-type-tab')[1].classes('active'), true)
+    assert.doesNotMatch(wrapper.text(), /当前排名/, 'previous discipline rank must not leak into the new tab')
+
+    resolveSwitchOverview({
+      success: true,
+      season: activeSeason,
+      season_state: 'active',
+      availability: { season: true, record: true, leaderboard: true, my_rank: true },
+      record: null,
+      my_rank: 0,
+      leaderboard: []
+    })
+    await flushPromises()
+    await nextTick()
+    assert.doesNotMatch(wrapper.text(), /加载中/)
+    assert.match(wrapper.text(), /完成一场九球追分排位即可上榜/)
+
+    await wrapper.findAll('.game-type-tab')[0].trigger('tap')
+    assert.equal(overviewCalls, 6)
+    assert.deepEqual(overviewParams.at(-1), { game_type: 3 })
+    rejectSwitchOverview(new Error('switch failed'))
+    await flushPromises()
+    await nextTick()
+    assert.match(wrapper.text(), /真实挂载测试赛季/, 'failed switch must keep the season card')
+    assert.match(wrapper.text(), /赛季数据暂时没加载出来/, 'failed switch must show the notice instead of an empty state')
+    assert.doesNotMatch(wrapper.text(), /本赛季还没有排位记录/, 'failed switch must not look unranked')
+    assert.doesNotMatch(wrapper.text(), /加载中/)
+
     scopeVersion = 4
     globalThis.__SEASON_PAGE_MOUNT__.shown[0]()
     await flushPromises()
     await nextTick()
-    assert.equal(overviewCalls, 5)
+    assert.equal(overviewCalls, 7)
     assert.match(wrapper.text(), /暂无赛季/)
     assert.match(wrapper.text(), /历届赛季/, 'history entry must stay reachable without an active season')
     await wrapper.find('.history-entry').trigger('tap')

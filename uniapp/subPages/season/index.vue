@@ -64,8 +64,12 @@
 					</view>
 				</view>
 
+				<!-- 切换球种只替换下方数据卡片，赛季信息与球种标签保持不动 -->
+				<view v-if="gameTypeSwitching" class="notice-card switching-card">
+					<text class="switching-text">加载中...</text>
+				</view>
 				<!-- 记录与榜单同时缺失时只提示一次，避免整页堆叠失败提示 -->
-				<view v-if="seasonDataUnavailable" class="notice-card">
+				<view v-else-if="seasonDataUnavailable" class="notice-card">
 					<view class="section-notice">
 						<text class="section-notice-title">赛季数据暂时没加载出来</text>
 						<text class="section-notice-desc">排位成绩会照常记录，稍后重试即可</text>
@@ -203,6 +207,7 @@ const leaderboardUnavailable = ref(false)
 const myRank = ref(0)
 const myRankAvailable = ref(false)
 const loading = ref(false)
+const gameTypeSwitching = ref(false)
 const page = ref(1)
 const hasMore = ref(true)
 const currentGameType = ref(3)
@@ -241,8 +246,8 @@ const seasonRefreshError = computed(() => (
 const currentSeasonScopeVersion = () => userDataInvalidationStore.versionOf('season')
 const currentIdentityKey = () => `${userStore.userId}:${userStore.authGeneration}`
 
-const loadSeasonOverview = async () => {
-	if (seasonPageState.value.status === ASYNC_PAGE_STATUS.LOADING || seasonPageState.value.status === ASYNC_PAGE_STATUS.REFRESHING) return
+const loadSeasonOverview = async ({ switchingGameType = false } = {}) => {
+	if (!switchingGameType && (seasonPageState.value.status === ASYNC_PAGE_STATUS.LOADING || seasonPageState.value.status === ASYNC_PAGE_STATUS.REFRESHING)) return
 	const requestIdentityKey = currentIdentityKey()
 	if (seasonPageState.value.authGeneration !== userStore.authGeneration) {
 		season.value = null
@@ -308,9 +313,15 @@ const loadSeasonOverview = async () => {
 	} catch (e) {
 		if (currentIdentityKey() !== requestIdentityKey || seasonPageState.value.requestId !== pageRequest.requestId || seasonPageState.value.authGeneration !== pageRequest.authGeneration) return
 		seasonPageState.value = rejectAsyncPageLoad(seasonPageState.value, pageRequest, e)
+		// 切换球种时已清空本球种数据，失败需要明确标出，不能被当作「未参加排位」
+		if (switchingGameType && seasonPageState.value.refreshError) {
+			recordUnavailable.value = true
+			leaderboardUnavailable.value = true
+		}
 	} finally {
 		if (currentIdentityKey() !== requestIdentityKey || seasonPageState.value.requestId !== pageRequest.requestId || seasonPageState.value.authGeneration !== pageRequest.authGeneration) return
 		loading.value = false
+		gameTypeSwitching.value = false
 	}
 }
 
@@ -365,31 +376,21 @@ const goHistory = () => {
 const handleGameTypeChange = async (gameType) => {
 	if (currentGameType.value === gameType) return
 	currentGameType.value = gameType
-	resetSeasonData()
+	clearGameTypeData()
 	page.value = 1
 	hasMore.value = true
-	await loadSeasonOverview()
+	gameTypeSwitching.value = true
+	await loadSeasonOverview({ switchingGameType: true })
 }
 
-const resetSeasonData = () => {
-	season.value = null
-	seasonState.value = 'not_started'
+// 赛季信息与球种无关，切换时保留；只清空按球种划分的记录、名次与榜单。
+const clearGameTypeData = () => {
 	myRecord.value = null
 	leaderboard.value = []
 	recordUnavailable.value = false
 	leaderboardUnavailable.value = false
 	myRank.value = 0
 	myRankAvailable.value = false
-	hasLoadedOnce.value = false
-	seasonPageState.value = {
-		...seasonPageState.value,
-		status: ASYNC_PAGE_STATUS.IDLE,
-		requestId: seasonPageState.value.requestId + 1,
-		data: null,
-		hasData: false,
-		error: null,
-		refreshError: null
-	}
 }
 
 const retrySeason = () => loadSeasonOverview()
@@ -434,6 +435,8 @@ onShow(() => {
 .refresh-error-banner { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-bottom: 20rpx; padding: 18rpx 22rpx; border-radius: 14rpx; background: rgba(224, 174, 18, 0.12); color: #8a5b00; font-size: 24rpx; }
 .refresh-error-action { flex-shrink: 0; color: #a86f00; font-weight: 600; }
 .notice-card { margin-bottom: 20rpx; padding: 32rpx; border-radius: 20rpx; background: #fff; }
+.switching-card { padding: 48rpx 32rpx; text-align: center; }
+.switching-text { font-size: 26rpx; color: #9A8C67; }
 .section-notice { display: flex; flex-direction: column; align-items: center; gap: 8rpx; padding: 24rpx 0 8rpx; text-align: center; }
 .section-notice-title { font-size: 28rpx; font-weight: 600; color: #231C0B; }
 .section-notice-desc { font-size: 24rpx; line-height: 1.6; color: #9A8C67; }
@@ -662,6 +665,7 @@ onShow(() => {
 	.history-entry-action,
 	.unranked-description,
 	.section-notice-desc,
+	.switching-text,
 	.stat-label,
 	.rank-score,
 	.empty-list,
