@@ -229,7 +229,10 @@ export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date(), 
   const todayGrowthCount = resolveTodayGrowthCount(memberStatus)
   const currentLevel = resolveCurrentLevel(growthPoints, memberStatus.growth_level)
   const growthStatus = `Lv${currentLevel.level}，今日已计入 ${todayGrowthCount}/${growthDailyCap}`
-  const rankingRightsCard = resolveMemberRankingRightsCard(memberStatus, now)
+  const rankingRightsCard = resolveMemberRankingRightsCard(memberStatus, now, options.rankRules)
+  // 排位规则 V2 生效后高光不再计入排位分，摘要不再宣传高光排位权益
+  const rankingClause = rankingRightsCard.retired ? '' : `，高光排位按 ${rankingRightsCard.levelLabel} ${rankingRightsCard.currentPercentText} 计入`
+  const rankingResumeClause = rankingRightsCard.retired ? '' : `；高光排位权益会按 ${rankingRightsCard.levelLabel} ${rankingRightsCard.currentPercentText} 恢复`
 
   if (complianceMode) {
     if (isActive) {
@@ -262,7 +265,7 @@ export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date(), 
     return {
       statusText: 'VIP中',
       title: '月卡VIP生效中',
-      description: `当前有效期至 ${expiresAtText}，VIP成长 ${growthStatus}，高光排位按 ${rankingRightsCard.levelLabel} ${rankingRightsCard.currentPercentText} 计入。`,
+      description: `当前有效期至 ${expiresAtText}，VIP成长 ${growthStatus}${rankingClause}。`,
       primaryActionText: '立即续费'
     }
   }
@@ -273,7 +276,7 @@ export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date(), 
       statusText: '已到期',
       title: 'VIP已到期',
       description: hasGrowthProgress
-        ? `上次VIP有效期到 ${expiresAtText}，当前成长 Lv${currentLevel.level} 已冻结，续开后恢复继续成长；高光排位权益会按 ${rankingRightsCard.levelLabel} ${rankingRightsCard.currentPercentText} 恢复。`
+        ? `上次VIP有效期到 ${expiresAtText}，当前成长 Lv${currentLevel.level} 已冻结，续开后恢复继续成长${rankingResumeClause}。`
         : `上次VIP有效期到 ${expiresAtText}，续费后会从当前时间重新开始计算。`,
       primaryActionText: '立即续费'
     }
@@ -282,7 +285,9 @@ export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date(), 
   return {
     statusText: '未开通',
     title: '开通月卡VIP',
-    description: '目前先开放月卡订阅，开通后完成真实对局可累计VIP成长，高光会按VIP等级计入排位。',
+    description: rankingRightsCard.retired
+      ? '目前先开放月卡订阅，开通后完成真实对局可累计VIP成长。'
+      : '目前先开放月卡订阅，开通后完成真实对局可累计VIP成长，高光会按VIP等级计入排位。',
     primaryActionText: '立即开通'
   }
 }

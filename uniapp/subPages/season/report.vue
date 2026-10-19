@@ -62,6 +62,9 @@
 				<view class="final-rank" v-if="report.record.final_rank > 0">
 					<text>最终排名：第 {{ report.record.final_rank }} 名</text>
 				</view>
+				<view class="final-rank" v-else-if="report.record.qualified === false">
+					<text>本季未达标，未参与赛季排名</text>
+				</view>
 				<view class="peak-score" v-if="report.rank_trend && report.rank_trend.length > 0">
 					<text>趋势记录：{{ report.rank_trend.join(' / ') }}</text>
 				</view>

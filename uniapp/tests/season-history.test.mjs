@@ -42,6 +42,12 @@ test('season history item exposes rank, stats and report target only when the vi
   assert.equal(absent.matches, 0)
 
   assert.equal(buildSeasonHistoryItem(settledSeason(4, { matches_played: 0, wins: 0, final_rank: 0 }), 3).rankText, '未排名')
+  const unqualified = buildSeasonHistoryItem({
+    season: { id: 5, name: 'S5', status: 2, qualify_min_matches: 5, qualify_min_opponents: 3 },
+    record: { matches_played: 3, wins: 3, final_rank: 0, qualified: false }
+  }, 3)
+  assert.equal(unqualified.rankText, '未达标', 'V2 seasons must label unqualified records instead of unranked')
+  assert.equal(unqualified.reportUrl, '/subPages/season/report?id=5&game_type=3', 'unqualified seasons still open the report')
   assert.equal(buildSeasonHistoryItem({ season: null }, 3), null)
   assert.equal(buildSeasonReportUrl(9, 4), '/subPages/season/report?id=9&game_type=4')
 })

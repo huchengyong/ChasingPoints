@@ -5,10 +5,10 @@ import { readFileSync } from 'node:fs'
 import {
   buildRankGrowthPath,
   buildRankHeroModel,
-  RANK_RULE_SUMMARY_STATS,
-  RANK_RULE_DETAIL_ROWS,
-  RANK_RULE_EXAMPLE,
+  LEGACY_RANK_RULES,
+  RATING_V2_RANK_RULES,
   resolveRankExplainLoadingMode,
+  resolveRankRules,
   shouldApplyRankExplainResponse
 } from '../utils/rank-explain.js'
 
@@ -143,27 +143,80 @@ test('buildRankHeroModel returns null when rank info is missing', () => {
   assert.equal(buildRankHeroModel({ rankInfo: null, rankList: RANK_LIST_FIXTURE }), null)
 })
 
-test('scoring rule copy locks current settlement key numbers', () => {
-  const summaryText = RANK_RULE_SUMMARY_STATS.map((item) => `${item.value} ${item.label}`).join(' ')
-  assert.match(summaryText, /\+8～40/)
-  assert.match(summaryText, /\+500/)
-  assert.match(summaryText, /败方基础扣分/)
+const ruleText = (rules) => [
+  ...rules.summaryStats.map((item) => `${item.value} ${item.label}`),
+  rules.note,
+  ...rules.detailRows.map((item) => `${item.title} ${item.description}`),
+  rules.example.title,
+  rules.example.formula
+].join(' ')
 
-  const detailText = RANK_RULE_DETAIL_ROWS.map((item) => `${item.title} ${item.description}`).join(' ')
-  assert.match(detailText, /\+8/)
-  assert.match(detailText, /\+40/)
-  assert.match(detailText, /100%/)
-  assert.match(detailText, /80%/)
-  assert.match(detailText, /30%/)
-  assert.match(detailText, /第 7 场起不计/)
-  assert.match(detailText, /-2/)
-  assert.match(detailText, /500/)
-  assert.match(detailText, /对手剩余排位分/)
+test('legacy scoring copy matches the legacy settlement without the nonexistent loss relief', () => {
+  const text = ruleText(LEGACY_RANK_RULES)
+  assert.match(text, /\+8～40/)
+  assert.match(text, /\+500/)
+  assert.match(text, /败方基础扣分/)
+  assert.match(text, /第 4～6 场按 30%/)
+  assert.match(text, /第 7 场起不计/)
+  assert.match(text, /最低 \+2/)
+  assert.match(text, /单日最多 200 分；输球不计/)
+  assert.match(LEGACY_RANK_RULES.example.formula, /\+20/)
+  assert.match(LEGACY_RANK_RULES.example.formula, /\+16/)
+  assert.doesNotMatch(text, /失败减免/)
+  assert.doesNotMatch(text, /减免到 -2/)
+})
 
-  assert.match(RANK_RULE_EXAMPLE.title, /5 局制/)
-  assert.match(RANK_RULE_EXAMPLE.formula, /\+20/)
-  assert.match(RANK_RULE_EXAMPLE.formula, /80%/)
-  assert.match(RANK_RULE_EXAMPLE.formula, /\+16/)
+test('rating v2 scoring copy locks the shared formula examples', () => {
+  const text = ruleText(RATING_V2_RANK_RULES)
+  assert.match(text, /±45/)
+  assert.match(text, /\+68/)
+  assert.match(text, /只扣 21/)
+  assert.match(text, /抢 1 为 ±20，抢 3 为 ±35，抢 5 为 ±45，抢 9 为 ±60/)
+  assert.match(text, /5:0 与 5:4 分值相同/)
+  assert.match(text, /前 10 场为定级赛，涨跌加倍/)
+  assert.match(text, /涨跌减半/)
+  assert.match(text, /第 3 场按 80%，第 4～6 场按 30%，双方同比例/)
+  assert.match(text, /第 7 场起不计/)
+  assert.match(text, /每天最多上涨 500/)
+  assert.match(text, /不改变排位分，会员与普通用户规则相同/)
+  assert.match(text, /打满 5 场、遇到至少 3 位不同对手/)
+  assert.match(text, /不做重置/)
+  assert.doesNotMatch(text, /VIP|倍率/)
+})
+
+test('resolveRankRules switches by effective time even when cached configs still say legacy', () => {
+  const effectiveAt = '2026-11-01T00:00:00+08:00'
+  const scheduled = resolveRankRules({ rulesVersion: 1, rulesEffectiveAt: effectiveAt, now: Date.parse('2026-10-31T23:59:59+08:00') })
+  assert.equal(scheduled.version, 1)
+  assert.match(scheduled.notice, /2026年11月1日起生效/)
+  assert.match(scheduled.notice, /重算你的历史排位/)
+
+  const active = resolveRankRules({ rulesVersion: 1, rulesEffectiveAt: effectiveAt, now: Date.parse('2026-11-01T00:00:00+08:00') })
+  assert.equal(active.version, 2)
+  assert.match(active.notice, /已于2026年11月1日生效/)
+
+  const unconfigured = resolveRankRules({ rulesVersion: 1, rulesEffectiveAt: '' })
+  assert.equal(unconfigured.version, 1)
+  assert.equal(unconfigured.notice, '')
+  assert.equal(resolveRankRules({ rulesVersion: 2 }).version, 2)
+})
+
+test('buildRankHeroModel exposes remaining placement matches', () => {
+  const hero = buildRankHeroModel({
+    rankInfo: { level: 3, name: '黄金球手', rank_score: 1250, next_score: 1500, placement_remaining: 7 },
+    rankList: RANK_LIST_FIXTURE
+  })
+  assert.equal(hero.placementRemaining, 7)
+  assert.equal(buildRankHeroModel({ rankInfo: { level: 3, rank_score: 1300 }, rankList: RANK_LIST_FIXTURE }).placementRemaining, 0)
+})
+
+test('rank explain page renders rules from configs and shows placement', () => {
+  assert.match(pageSource, /resolveRankRules\(rulesMeta\.value\)/)
+  assert.match(pageSource, /rulesEffectiveAt: listRes\.rules_effective_at/)
+  assert.match(pageSource, /v-if="rankRules\.notice"/)
+  assert.match(pageSource, /heroModel\.placementRemaining > 0/)
+  assert.match(styleSource, /\.rule-notice/)
+  assert.match(styleSource, /\.placement-pill/)
 })
 
 test('rank explain uses explicit initial error and retry instead of default bronze data', () => {

@@ -14,12 +14,19 @@ export const buildSeasonHistoryItem = (item, gameType) => {
   const matches = Number(record?.matches_played) || 0
   const wins = Number(record?.wins) || 0
   const finalRank = Number(record?.final_rank) || 0
+  const hasThreshold = (Number(season.qualify_min_matches) || 0) > 0
+  let rankText = '未排名'
+  if (finalRank > 0) {
+    rankText = `第 ${finalRank} 名`
+  } else if (hasThreshold && record?.qualified === false) {
+    rankText = '未达标'
+  }
   return {
     id: seasonId,
     name: season.name || `赛季 ${seasonId}`,
     dateRange: season.start_date && season.end_date ? `${season.start_date} ~ ${season.end_date}` : '',
     hasRecord: Boolean(record),
-    rankText: finalRank > 0 ? `第 ${finalRank} 名` : '未排名',
+    rankText,
     matches,
     wins,
     winRate: matches > 0 ? Math.round((wins / matches) * 100) : 0,

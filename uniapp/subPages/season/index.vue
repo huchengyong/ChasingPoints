@@ -111,11 +111,19 @@
 				<view class="record-rank" v-if="myRankAvailable && myRank > 0">
 					<text>当前排名：第 {{ myRank }} 名</text>
 				</view>
+				<view class="record-qualification" v-else-if="!qualification.qualified">
+					<text class="record-qualification-title">暂未达标，不参与赛季排名</text>
+					<text class="record-qualification-progress">{{ qualification.progressText }}</text>
+				</view>
+				<view class="record-net" v-if="netChangeText">
+					<text>本季排位分 {{ myRecord.start_rank_score }} → {{ myRecord.end_rank_score }}（{{ netChangeText }}）</text>
+				</view>
 			</view>
 
 				<view v-else class="unranked-card">
 					<text class="unranked-title">本赛季还没有排位记录</text>
 					<text class="unranked-description">完成一场{{ currentGameTypeLabel }}排位即可上榜</text>
+					<text v-if="qualification.thresholdText" class="unranked-description">{{ qualification.thresholdText }}</text>
 				</view>
 
 				<!-- 赛季排行榜 -->
@@ -130,12 +138,13 @@
 				</view>
 				<view v-else-if="leaderboard.length > 0" class="leaderboard-list">
 					<view
-						v-for="(item, idx) in leaderboard"
+						v-for="item in leaderboardRows"
 						:key="item.user_id"
 						class="rank-item"
+						:class="{ unqualified: item.rankView.unqualified }"
 					>
-						<view class="rank-num" :class="{ 'top-1': idx === 0, 'top-2': idx === 1, 'top-3': idx === 2 }">
-							<text>{{ idx + 1 }}</text>
+						<view class="rank-num" :class="{ 'top-1': item.rankView.rank === 1, 'top-2': item.rankView.rank === 2, 'top-3': item.rankView.rank === 3 }">
+							<text>{{ item.rankView.text }}</text>
 						</view>
 						<image
 							class="rank-avatar"
@@ -148,6 +157,7 @@
 						</view>
 						<view class="rank-stats">
 							<text class="rank-wins">{{ item.wins }}胜</text>
+							<text v-if="item.rankView.unqualified" class="rank-unqualified">未达标</text>
 						</view>
 					</view>
 				</view>
@@ -178,6 +188,12 @@ import { useUserStore } from '@/store/user.js'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { resolveCurrentSeasonState } from '@/utils/honor-wall.js'
 import { resolveSeasonTimeline } from '@/utils/season-lifecycle.js'
+import {
+	formatSeasonNetChange,
+	mergeLeaderboardPage,
+	resolveLeaderboardRank,
+	resolveSeasonQualification
+} from '@/utils/season-qualification.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import {
@@ -224,6 +240,11 @@ const hasActiveSeason = computed(() => seasonState.value === 'active' && Boolean
 const seasonTimeline = computed(() => resolveSeasonTimeline(season.value))
 const currentGameTypeLabel = computed(() => gameTypeTabs.find(item => item.value === currentGameType.value)?.label || '该球种')
 const seasonDataUnavailable = computed(() => recordUnavailable.value && leaderboardUnavailable.value)
+// 门槛来自赛季信息；旧赛季门槛为 0，全员参与排名
+const qualification = computed(() => resolveSeasonQualification(season.value, myRecord.value))
+const netChangeText = computed(() => formatSeasonNetChange(myRecord.value))
+// 名次以服务端为准：未达标记录 rank 为 0，不按列表位置编号
+const leaderboardRows = computed(() => leaderboard.value.map((item) => ({ ...item, rankView: resolveLeaderboardRank(item) })))
 
 const winRate = computed(() => {
 	if (!myRecord.value || myRecord.value.matches_played === 0) return 0
@@ -346,12 +367,8 @@ const fetchLeaderboard = async (isRefresh = false, isLoadMore = false) => {
 		if (currentIdentityKey() !== requestIdentityKey || seasonPageState.value.requestId !== pageRequest.requestId || seasonPageState.value.authGeneration !== pageRequest.authGeneration) return
 		if (!res?.success) throw createRequestError({ message: res?.message || '获取赛季排行榜失败', category: 'business' })
 		const newList = res.list || []
-		if (isRefresh) {
-			leaderboard.value = newList
-		} else {
-			leaderboard.value = [...leaderboard.value, ...newList]
-		}
-		hasMore.value = leaderboard.value.length < (res.total || 0)
+		leaderboard.value = isRefresh ? newList : mergeLeaderboardPage(leaderboard.value, newList)
+		hasMore.value = requestedPage * 20 < (Number(res.total) || 0)
 		seasonPageState.value = resolveAsyncPageLoad(seasonPageState.value, pageRequest, {
 			data: { season: season.value, leaderboard: leaderboard.value },
 			isEmpty: () => false
@@ -564,6 +581,21 @@ onShow(() => {
 			color: #c69200;
 			font-weight: 500;
 		}
+		.record-qualification {
+			margin-top: 20rpx;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 6rpx;
+			.record-qualification-title { font-size: 26rpx; color: #6E6242; font-weight: 500; }
+			.record-qualification-progress { font-size: 22rpx; color: #9A8C67; }
+		}
+		.record-net {
+			margin-top: 12rpx;
+			text-align: center;
+			font-size: 22rpx;
+			color: #9A8C67;
+		}
 }
 .leaderboard-card {
 	background: #fff;
@@ -622,8 +654,14 @@ onShow(() => {
 		.rank-score { font-size: 22rpx; color: #9A8C67; margin-top: 4rpx; }
 	}
 		.rank-stats {
+			display: flex;
+			flex-direction: column;
+			align-items: flex-end;
+			gap: 4rpx;
 			.rank-wins { font-size: 24rpx; color: #c69200; font-weight: 500; }
+			.rank-unqualified { font-size: 20rpx; color: #9A8C67; }
 		}
+	&.unqualified .rank-num { background: transparent; }
 	}
 .empty-list {
 	text-align: center;
@@ -664,6 +702,9 @@ onShow(() => {
 	.no-season-description,
 	.history-entry-action,
 	.unranked-description,
+	.record-qualification-progress,
+	.record-net,
+	.rank-unqualified,
 	.section-notice-desc,
 	.switching-text,
 	.stat-label,
@@ -689,6 +730,7 @@ onShow(() => {
 	.card-title,
 	.history-entry-title,
 	.unranked-title,
+	.record-qualification-title,
 	.section-notice-title,
 	.my-record-card .record-stats .stat-value,
 	.rank-item .rank-info .rank-name {

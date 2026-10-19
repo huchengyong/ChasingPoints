@@ -136,3 +136,24 @@ test('resolveMemberEntryCard shows ended compliance copy when member history exi
   assert.equal(card.eyebrow, 'VIP权益')
   assert.equal(card.priceText, '')
 })
+
+test('resolveMemberCenterSummary stops advertising highlight ranking after rating v2 starts', () => {
+  const rankRules = { rulesVersion: 2, rulesEffectiveAt: '2026-11-01T00:00:00+08:00' }
+  const active = resolveMemberCenterSummary({
+    is_active: true,
+    member_expires_at: '2026-12-31 00:30:00',
+    growth_level: 2
+  }, new Date('2026-11-05T10:00:00+08:00'), { rankRules })
+  assert.equal(active.statusText, 'VIP中')
+  assert.doesNotMatch(active.description, /高光/)
+
+  const expired = resolveMemberCenterSummary({
+    is_active: false,
+    member_expires_at: '2026-11-02 10:00:00',
+    growth_level: 3
+  }, new Date('2026-11-05T10:00:00+08:00'), { rankRules })
+  assert.doesNotMatch(expired.description, /高光排位/)
+
+  const unopened = resolveMemberCenterSummary({}, new Date('2026-11-05T10:00:00+08:00'), { rankRules })
+  assert.doesNotMatch(unopened.description, /计入排位/)
+})

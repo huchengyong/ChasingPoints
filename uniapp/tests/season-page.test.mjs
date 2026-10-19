@@ -11,6 +11,12 @@ import {
   resolveAsyncPageLoad
 } from '../utils/async-page-state.js'
 import { createRequestError } from '../utils/request-errors.js'
+import {
+  formatSeasonNetChange,
+  mergeLeaderboardPage,
+  resolveLeaderboardRank,
+  resolveSeasonQualification
+} from '../utils/season-qualification.js'
 
 const source = readFileSync(new URL('../subPages/season/index.vue', import.meta.url), 'utf8')
 
@@ -30,10 +36,11 @@ const mountSeasonPageSetup = ({ getSeasonOverview }) => {
   const component = new Function(
     'ref', 'computed', 'onMounted', 'onShow', 'getSeasonOverview', 'getSeasonLeaderboard',
     'useUserDataInvalidationStore', 'useUserStore', 'GAME_TYPE_TABS', 'resolveCurrentSeasonState',
-    'resolveSeasonTimeline', 'usePageTheme', 'resolveAvatarUrl',
+    'resolveSeasonTimeline', 'formatSeasonNetChange', 'mergeLeaderboardPage', 'resolveLeaderboardRank',
+    'resolveSeasonQualification', 'usePageTheme', 'resolveAvatarUrl',
     'ASYNC_PAGE_STATUS', 'beginAsyncPageLoad', 'createAsyncPageState', 'getAsyncPageRequest',
     'rejectAsyncPageLoad', 'resolveAsyncPageErrorFeedback', 'resolveAsyncPageLoad', 'createRequestError',
-    `${setup}\nreturn { loading, hasLoadedOnce, loadSeasonOverview, seasonPageError, season, myRecord, leaderboard, hasMore, recordUnavailable, leaderboardUnavailable, myRank, myRankAvailable }`
+    `${setup}\nreturn { loading, hasLoadedOnce, loadSeasonOverview, seasonPageError, season, myRecord, leaderboard, leaderboardRows, hasMore, recordUnavailable, leaderboardUnavailable, myRank, myRankAvailable, qualification, netChangeText }`
   )(
     ref,
     computed,
@@ -46,6 +53,10 @@ const mountSeasonPageSetup = ({ getSeasonOverview }) => {
     [],
     () => ({ title: '', description: '' }),
     () => ({ remainDays: 0, progressPercent: 0 }),
+    formatSeasonNetChange,
+    mergeLeaderboardPage,
+    resolveLeaderboardRank,
+    resolveSeasonQualification,
     () => ({ isDarkMode: ref(false) }),
     () => '',
     ASYNC_PAGE_STATUS,
@@ -172,4 +183,39 @@ test('season page replaces the unreachable report button with a history entry', 
   assert.doesNotMatch(source, /myRecord\.final_rank/, 'active season must not rely on settlement-only final_rank')
   assert.match(source, /url: `\/subPages\/season\/history\?game_type=\$\{currentGameType\.value\}`/)
   assert.match(source, /<view class="history-entry" @tap="goHistory">/)
+})
+
+test('season page exposes V2 qualification progress, net change and server ranks', async () => {
+  const { component, mounted } = mountSeasonPageSetup({
+    getSeasonOverview: async () => ({
+      success: true,
+      season: { id: 4, name: 'S4', status: 1, qualify_min_matches: 5, qualify_min_opponents: 3 },
+      season_state: 'active',
+      availability: { season: true, record: true, leaderboard: true, my_rank: true },
+      record: { matches_played: 3, wins: 2, distinct_opponents: 2, qualified: false, start_rank_score: 1250, end_rank_score: 1282 },
+      my_rank: 0,
+      leaderboard: [
+        { user_id: 7, rank: 1, qualified: true, rank_score: 1400, wins: 6 },
+        { user_id: 8, rank: 0, qualified: false, rank_score: 1900, wins: 4 }
+      ]
+    })
+  })
+  await mounted[0]()
+  assert.equal(component.qualification.value.qualified, false)
+  assert.equal(component.qualification.value.progressText, '场次 3/5 · 不同对手 2/3')
+  assert.equal(component.netChangeText.value, '+32')
+  assert.deepEqual(component.leaderboardRows.value.map((item) => item.rankView.text), ['1', '—'])
+  assert.equal(component.leaderboardRows.value[1].rankView.unqualified, true)
+  assert.equal(component.myRank.value, 0)
+})
+
+test('season page renders server ranks, qualification and deduplicated pages', () => {
+  assert.match(source, /v-for="item in leaderboardRows"/)
+  assert.match(source, /item\.rankView\.text/)
+  assert.doesNotMatch(source, /\{\{ idx \+ 1 \}\}/)
+  assert.match(source, /暂未达标，不参与赛季排名/)
+  assert.match(source, /qualification\.progressText/)
+  assert.match(source, /本季排位分 \{\{ myRecord\.start_rank_score \}\} → \{\{ myRecord\.end_rank_score \}\}/)
+  assert.match(source, /mergeLeaderboardPage\(leaderboard\.value, newList\)/)
+  assert.match(source, /hasMore\.value = requestedPage \* 20 < \(Number\(res\.total\) \|\| 0\)/)
 })

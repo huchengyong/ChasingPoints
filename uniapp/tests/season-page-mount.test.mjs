@@ -35,6 +35,9 @@ export const resolveCurrentSeasonState = () => ({ title: '暂无赛季', descrip
   '@/utils/season-lifecycle.js': `
 export const resolveSeasonTimeline = () => ({ remainDays: 10, progressPercent: 50 })
 `,
+  '@/utils/season-qualification.js': `
+export * from '${pathToFileURL(join(dirname(dirname(fileURLToPath(import.meta.url))), 'utils/season-qualification.js')).href}'
+`,
   '@/utils/page-theme.js': `
 import { ref } from 'vue'
 export const usePageTheme = () => ({ isDarkMode: ref(false) })
@@ -183,6 +186,18 @@ test('season page compiles and mounts with one overview request on first entry',
         availability: { season: true },
         record: null,
         leaderboard: []
+      },
+      {
+        success: true,
+        season: { ...activeSeason, qualify_min_matches: 5, qualify_min_opponents: 3 },
+        season_state: 'active',
+        availability: { season: true, record: true, leaderboard: true, my_rank: true },
+        record: { matches_played: 3, wins: 2, distinct_opponents: 2, qualified: false, start_rank_score: 1250, end_rank_score: 1290, peak_rank_score: 1300 },
+        my_rank: 0,
+        leaderboard: [
+          { user_id: 7, nickname: '达标甲', rank: 1, qualified: true, rank_score: 1400, wins: 6 },
+          { user_id: 8, nickname: '高分未达标', rank: 0, qualified: false, rank_score: 1900, wins: 4 }
+        ]
       }
     ]
     let resolveOverview
@@ -326,6 +341,20 @@ test('season page compiles and mounts with one overview request on first entry',
     assert.match(wrapper.text(), /历届赛季/, 'history entry must stay reachable without an active season')
     await wrapper.find('.history-entry').trigger('tap')
     assert.deepEqual(navigations, ['/subPages/season/history?game_type=3'])
+
+    // V2 赛季：未达标显示进度与本季净变化，榜单按服务端名次渲染，未达标者不编号
+    scopeVersion = 5
+    globalThis.__SEASON_PAGE_MOUNT__.shown[0]()
+    await flushPromises()
+    await nextTick()
+    assert.equal(overviewCalls, 8)
+    assert.match(wrapper.text(), /暂未达标，不参与赛季排名/)
+    assert.match(wrapper.text(), /场次 3\/5 · 不同对手 2\/3/)
+    assert.match(wrapper.text(), /本季排位分 1250 → 1290（\+40）/)
+    assert.doesNotMatch(wrapper.text(), /当前排名|第 0 名/)
+    const rankCells = wrapper.findAll('.rank-num').map((cell) => cell.text())
+    assert.deepEqual(rankCells, ['1', '—'])
+    assert.match(wrapper.text(), /未达标/)
   } finally {
     wrapper?.unmount()
     delete globalThis.__SEASON_PAGE_MOUNT__

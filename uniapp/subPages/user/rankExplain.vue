@@ -44,6 +44,7 @@
 								<text class="hero-score-value">{{ heroModel.rankScore }}</text>
 								<text class="hero-score-unit">排位分</text>
 							</view>
+							<text v-if="heroModel.placementRemaining > 0" class="placement-pill">定级赛 · 还剩 {{ heroModel.placementRemaining }} 场</text>
 						</view>
 						<image class="hero-badge" :src="heroModel.icon" mode="aspectFit"></image>
 					</view>
@@ -118,6 +119,9 @@
 							<text class="section-subtitle">先看关键规则，再按需查看细节</text>
 						</view>
 					</view>
+					<view v-if="rankRules.notice" class="rule-notice">
+						<text class="rule-notice-text">{{ rankRules.notice }}</text>
+					</view>
 					<view class="rule-stats">
 						<view class="rule-stat" v-for="item in ruleSummaryStats" :key="item.label">
 							<text class="rule-stat-value">{{ item.value }}</text>
@@ -164,11 +168,9 @@ import { GAME_TYPE_TABS, getGameTypeLabel } from '@/utils/game-types.js'
 import {
 	buildRankGrowthPath,
 	buildRankHeroModel,
-	RANK_RULE_SUMMARY_STATS,
-	RANK_RULE_NOTE,
-	RANK_RULE_DETAIL_ROWS,
-	RANK_RULE_EXAMPLE,
+	RANK_CONFIGS_STATIC_VERSION,
 	resolveRankExplainLoadingMode,
+	resolveRankRules,
 	shouldApplyRankExplainResponse
 } from '@/utils/rank-explain.js'
 
@@ -202,6 +204,8 @@ const isInitialError = computed(() => !hasLoadedOnce.value && hasLoadError.value
 // 首次请求成功前不构造默认段位，避免把青铜数据渲染成真实业务结论
 const rankInfo = ref(null)
 const rankList = ref([])
+// 规则版本来自段位配置；按生效时刻判断，静态缓存跨过切换点也能展示新规则
+const rulesMeta = ref({ rulesVersion: 0, rulesEffectiveAt: '' })
 
 const heroModel = computed(() => buildRankHeroModel({
 	rankInfo: rankInfo.value,
@@ -214,10 +218,11 @@ const growthPath = computed(() => buildRankGrowthPath({
 }))
 const currentGameTypeLabel = computed(() => getGameTypeLabel(loadedGameType.value))
 
-const ruleSummaryStats = RANK_RULE_SUMMARY_STATS
-const ruleNote = RANK_RULE_NOTE
-const ruleDetailRows = RANK_RULE_DETAIL_ROWS
-const ruleExample = RANK_RULE_EXAMPLE
+const rankRules = computed(() => resolveRankRules(rulesMeta.value))
+const ruleSummaryStats = computed(() => rankRules.value.summaryStats)
+const ruleNote = computed(() => rankRules.value.note)
+const ruleDetailRows = computed(() => rankRules.value.detailRows)
+const ruleExample = computed(() => rankRules.value.example)
 
 onLoad((options) => {
 	const gameType = Number(options?.game_type || 0)
@@ -251,7 +256,7 @@ const fetchData = async ({ force = false } = {}) => {
 			force
 				? rankStore.forceRefresh(getReadIdentity())
 				: rankStore.ensureFresh(getReadIdentity()),
-			publicReadStore.loadStatic('rank-configs', getRankConfigs, { force })
+			publicReadStore.loadStatic('rank-configs', getRankConfigs, { force, version: RANK_CONFIGS_STATIC_VERSION })
 		])
 
 		if (!shouldApplyRankExplainResponse({ requestId, latestRequestId: latestRequestId.value })) {
@@ -265,6 +270,10 @@ const fetchData = async ({ force = false } = {}) => {
 
 		rankInfo.value = nextRankInfo
 		rankList.value = listRes.list
+		rulesMeta.value = {
+			rulesVersion: Number(listRes.rules_version) || 0,
+			rulesEffectiveAt: listRes.rules_effective_at || ''
+		}
 		loadedGameType.value = requestedGameType
 		hasLoadedOnce.value = true
 		hasLoadError.value = false

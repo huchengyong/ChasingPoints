@@ -1,3 +1,5 @@
+import { resolveRankRulesState } from './rank-explain.js'
+
 const MEMBER_RANKING_DAILY_CAP = 200
 
 const MEMBER_RANKING_LEVELS = [
@@ -96,11 +98,35 @@ const resolveRankingLevelConfig = (level) => {
   return MEMBER_RANKING_LEVELS.find(item => item.level === level) || MEMBER_RANKING_LEVELS[0]
 }
 
-export const resolveMemberRankingRightsCard = (memberStatus = {}, now = new Date()) => {
+/**
+ * 会员排位权益卡片。rankRules 来自段位配置的 rules_version / rules_effective_at：
+ * 排位规则 V2 生效后高光不再计入排位分，卡片改为说明同一规则；排期中则在旧权益后提示即将停止。
+ */
+export const resolveMemberRankingRightsCard = (memberStatus = {}, now = new Date(), rankRules = {}) => {
   const active = resolveMemberActiveState(memberStatus, now)
   const level = resolveGrowthLevel(memberStatus)
   const levelConfig = resolveRankingLevelConfig(level)
   const frozen = !active && Boolean(typeof memberStatus.member_expires_at === 'string' && memberStatus.member_expires_at.trim())
+  const rulesState = resolveRankRulesState({ ...rankRules, now: now.getTime() })
+
+  if (rulesState.active) {
+    return {
+      retired: true,
+      sectionTitle: '排位规则',
+      statusText: '会员与普通用户同一规则',
+      headline: '高光不再计入排位分',
+      description: `${rulesState.effectiveDateText ? `自${rulesState.effectiveDateText}起，` : ''}排位分只看胜负与对手实力；炸清、接清、单杆等高光仍会记录在战报和成就里。`,
+      level,
+      levelLabel: `Lv${level}`,
+      currentPercentText: '',
+      dailyCap: 0,
+      levels: [],
+      ruleItems: [
+        '排位分只由胜负、对手实力和赛制长度决定，会员与普通用户规则相同。',
+        '高光照常记录在战报与生涯成就中，不改变排位分。'
+      ]
+    }
+  }
 
   let statusText = '未生效'
   let headline = '普通用户高光只记录，不计入排位'
@@ -116,7 +142,18 @@ export const resolveMemberRankingRightsCard = (memberStatus = {}, now = new Date
     description = `VIP已到期，高光仍会记录但不会计入排位；续开后会按 Lv${level} 的 ${levelConfig.percentText} 倍率恢复结算。`
   }
 
+  const ruleItems = [
+    '普通用户高光会正常记录到战报，但不计入排位分。',
+    'VIP用户按 Lv1-Lv5 的 100% / 110% / 120% / 130% / 140% 倍率计入特殊战绩分。',
+    `VIP特殊战绩排位分仅看每日上限，当日最多计入 ${MEMBER_RANKING_DAILY_CAP} 分。`
+  ]
+  if (rulesState.scheduled) {
+    ruleItems.push(`自${rulesState.effectiveDateText}起排位规则升级，特殊战绩不再计入排位分，会员与普通用户规则相同。`)
+  }
+
   return {
+    retired: false,
+    sectionTitle: '排位权益 V2',
     statusText,
     headline,
     description,
@@ -130,11 +167,7 @@ export const resolveMemberRankingRightsCard = (memberStatus = {}, now = new Date
       active: item.level === level,
       enabled: active && item.level <= level
     })),
-    ruleItems: [
-      '普通用户高光会正常记录到战报，但不计入排位分。',
-      'VIP用户按 Lv1-Lv5 的 100% / 110% / 120% / 130% / 140% 倍率计入特殊战绩分。',
-      `VIP特殊战绩排位分仅看每日上限，当日最多计入 ${MEMBER_RANKING_DAILY_CAP} 分。`
-    ]
+    ruleItems
   }
 }
 
@@ -164,6 +197,28 @@ const formatAchievementRecordText = (records = []) => {
 
 export const resolveMatchRankingRightsSummary = (match = {}) => {
   const achievementRecords = resolveAchievementRecords(match.achievements || {})
+  if (Number(match.rank_rules_version) === 2) {
+    const recordText = formatAchievementRecordText(achievementRecords)
+    return recordText
+      ? {
+        badgeText: '高光不计分',
+        title: '本场高光已记录',
+        description: `本场记录了 ${recordText}，高光会保留在战报和成就里；排位分只看胜负与对手实力，会员与普通用户规则相同。`,
+        tone: 'blue',
+        countedInRanking: false,
+        capped: false,
+        recordedAchievementsText: recordText
+      }
+      : {
+        badgeText: '只看胜负',
+        title: '本场排位只看胜负与对手实力',
+        description: '排位分由赛前胜率、赛制长度和胜负决定，会员与普通用户规则相同。',
+        tone: 'slate',
+        countedInRanking: false,
+        capped: false,
+        recordedAchievementsText: ''
+      }
+  }
   const rankDetails = Array.isArray(match.my_rank_details) ? match.my_rank_details : []
   const countedScore = rankDetails
     .filter(isAchievementRankDetail)
