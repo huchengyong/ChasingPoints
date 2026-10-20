@@ -140,3 +140,14 @@ func validProductionConfig() Config {
 	cfg.Security.MatchInvite.TTLSeconds = 300
 	return cfg
 }
+
+func TestValidateProductionSecurityRejectsHuaweiEnabledWithoutClientID(t *testing.T) {
+	cfg := validProductionConfig()
+	cfg.Security.HuaweiOAuth.Enabled = true
+	cfg.Security.HuaweiOAuth.ClientID = ""
+	cfg.Security.HuaweiOAuth.ClientSecret = "huawei-secret"
+
+	if err := cfg.ValidateProductionSecurity(); err == nil || !strings.Contains(err.Error(), "Huawei OAuth") {
+		t.Fatalf("expected Huawei enabled without client id to fail startup validation, got %v", err)
+	}
+}
