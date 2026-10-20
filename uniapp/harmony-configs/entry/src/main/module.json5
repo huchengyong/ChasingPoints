@@ -51,6 +51,13 @@
 	    "usedScene": {
 	      "when": "inuse"
 	    }
+	  },
+	  {
+	    "name": "ohos.permission.CAMERA",
+	    "reason": "$string:camera_reason",
+	    "usedScene": {
+	      "when": "inuse"
+	    }
 	  }
     ],
     "metadata": [

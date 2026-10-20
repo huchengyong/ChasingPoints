@@ -32,13 +32,9 @@
             /* android打包配置 */
             "android" : {
                 "permissions" : [
-                    "<uses-permission android:name=\"android.permission.VIBRATE\"/>",
-                    "<uses-permission android:name=\"android.permission.ACCESS_WIFI_STATE\"/>",
                     "<uses-feature android:name=\"android.hardware.camera.autofocus\"/>",
                     "<uses-permission android:name=\"android.permission.ACCESS_NETWORK_STATE\"/>",
                     "<uses-permission android:name=\"android.permission.CAMERA\"/>",
-                    "<uses-permission android:name=\"android.permission.WAKE_LOCK\"/>",
-                    "<uses-permission android:name=\"android.permission.FLASHLIGHT\"/>",
                     "<uses-feature android:name=\"android.hardware.camera\"/>"
                 ]
             },

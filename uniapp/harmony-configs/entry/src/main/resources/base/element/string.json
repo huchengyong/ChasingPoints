@@ -15,6 +15,10 @@
 	{
 	  "name": "location_reason",
 	  "value": "用于提供获查询附近球房服务"
+	},
+	{
+	  "name": "camera_reason",
+	  "value": "用于扫描匹配码与裁判码"
 	}
   ]
 }
