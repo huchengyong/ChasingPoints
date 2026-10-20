@@ -94,6 +94,6 @@
 - [ ] 8.4 用生产等价配置启动后端，验证正式 HTTP / WebSocket Origin、缺失 Origin 原生策略、Provider 配置和 Redis ticket故障均按设计失败关闭。
 - [ ] 8.5 完成 App、HarmonyOS、微信小程序真机矩阵：OAuth、匹配码展示与扫码、裁判扫码、PK 邀约闭环、弱网重连、后台恢复、权限拒绝和错误态。
 - [ ] 8.6 完成个人数据导出文件人工抽检与账号注销前后数据库快照核对，确认无认证秘密、直接身份残留或悬挂进行中对局。
-- [ ] 8.7 由发布负责人轮换所有曾进入仓库的签名材料，将新材料迁入受控存储，并记录旧材料废弃和新包签名验证结果。
+- [x] 8.7 由发布负责人轮换所有曾进入仓库的签名材料，将新材料迁入受控存储，并记录旧材料废弃和新包签名验证结果。（证据：`docs/testing/harmony-signing-rotation-acceptance.md`）
 - [ ] 8.8 记录正式允许 Origin、Huawei 服务端配置、Manifest 权限用途、签名轮换和三端真机证据；任一证据缺失时保持 P0 发布阻断。
 - [ ] 8.9 运行 `openspec validate fix-client-p0-release-blockers --type change --strict --no-interactive` 并复核所有任务、规范场景与实际实现一一对应后，才将变更交付上线评审。
