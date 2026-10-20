@@ -83,7 +83,7 @@ Security:
   HuaweiOAuth:
     Enabled: false
     ClientID: "6917600900395032152"
-    ClientSecret: ${HUAWEI_OAUTH_CLIENT_SECRET}
+    ClientSecret: ${ZHUIFEN_HM_OAUTH_CLIENT_SECRET}
     VerifyURL: https://oauth-login.cloud.huawei.com/oauth2/v3/tokeninfo
     RequestTimeoutMs: 5000
   MatchInvite:

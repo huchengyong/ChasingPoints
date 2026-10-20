@@ -16,11 +16,11 @@ type SecurityConfig struct {
 }
 
 type HuaweiOAuthConfig struct {
-	Enabled          bool   `json:",env=HUAWEI_OAUTH_ENABLED,default=false"`
-	ClientID         string `json:",env=HUAWEI_OAUTH_CLIENT_ID,optional"`
-	ClientSecret     string `json:",env=HUAWEI_OAUTH_CLIENT_SECRET,optional"`
-	VerifyURL        string `json:",env=HUAWEI_OAUTH_VERIFY_URL,optional"`
-	RequestTimeoutMs int    `json:",env=HUAWEI_OAUTH_REQUEST_TIMEOUT_MS,default=5000"`
+	Enabled          bool   `json:",env=ZHUIFEN_HM_OAUTH_ENABLED,default=false"`
+	ClientID         string `json:",env=ZHUIFEN_HM_OAUTH_CLIENT_ID,optional"`
+	ClientSecret     string `json:",env=ZHUIFEN_HM_OAUTH_CLIENT_SECRET,optional"`
+	VerifyURL        string `json:",env=ZHUIFEN_HM_OAUTH_VERIFY_URL,optional"`
+	RequestTimeoutMs int    `json:",env=ZHUIFEN_HM_OAUTH_REQUEST_TIMEOUT_MS,default=5000"`
 }
 
 type MatchInviteConfig struct {
