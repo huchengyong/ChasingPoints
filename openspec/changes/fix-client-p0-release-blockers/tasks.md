@@ -91,9 +91,9 @@
 - [x] 8.1 运行并修复 `backend` 全量 `go test ./...`，同时确认新增热点读取、导出和 WebSocket ticket测试保持查询与依赖操作有界。
 - [x] 8.2 在 `app` 运行并修复 `node --test tests/*.test.mjs`，确认登录、WebSocket、扫码、二维码、账号生命周期和错误状态契约全部通过。
 - [x] 8.3 运行仓库秘密与安全契约扫描，确认无签名秘密、绝对用户路径、客户端 OpenID 信任、query access token、通配 Origin/CORS 或 `api.qrserver.com`。
-- [ ] 8.4 用生产等价配置启动后端，验证正式 HTTP / WebSocket Origin、缺失 Origin 原生策略、Provider 配置和 Redis ticket故障均按设计失败关闭。
+- [x] 8.4 用生产等价配置启动后端，验证正式 HTTP / WebSocket Origin、缺失 Origin 原生策略、Provider 配置和 Redis ticket故障均按设计失败关闭。（证据：`docs/testing/fail-closed-verification.md`；Redis 故障与启动拒绝由单元测试覆盖，发布负责人 2026-10-20 确认可作为证据）
 - [ ] 8.5 完成 App、HarmonyOS、微信小程序真机矩阵：OAuth、匹配码展示与扫码、裁判扫码、PK 邀约闭环、弱网重连、后台恢复、权限拒绝和错误态。
-- [ ] 8.6 完成个人数据导出文件人工抽检与账号注销前后数据库快照核对，确认无认证秘密、直接身份残留或悬挂进行中对局。
+- [x] 8.6 完成个人数据导出文件人工抽检与账号注销前后数据库快照核对，确认无认证秘密、直接身份残留或悬挂进行中对局。（证据：`docs/testing/account-lifecycle-acceptance.md`；测试与生产的无对局账号做了真实注销，历史对局去标识化、进行中对局收口、已删除 OAuth 身份重登由单元测试覆盖，发布负责人 2026-10-20 确认可作为证据）
 - [x] 8.7 由发布负责人轮换所有曾进入仓库的签名材料，将新材料迁入受控存储，并记录旧材料废弃和新包签名验证结果。（证据：`docs/testing/harmony-signing-rotation-acceptance.md`）
 - [ ] 8.8 记录正式允许 Origin、Huawei 服务端配置、Manifest 权限用途、签名轮换和三端真机证据；任一证据缺失时保持 P0 发布阻断。
 - [ ] 8.9 运行 `openspec validate fix-client-p0-release-blockers --type change --strict --no-interactive` 并复核所有任务、规范场景与实际实现一一对应后，才将变更交付上线评审。

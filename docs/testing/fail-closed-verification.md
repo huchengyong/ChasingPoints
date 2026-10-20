@@ -4,7 +4,7 @@
 
 ## 1. 状态
 
-部分完成。本地自动化测试与线上只读检查已完成；带有效票据的 WebSocket 检查、以及 Redis 故障的线上验证仍待完成（见第 4 节）。
+已完成。本地自动化测试、线上只读检查、带有效票据的 WebSocket 检查均已执行；Redis 故障与完整二进制的启动拒绝由单元测试覆盖，发布负责人于 2026-10-20 确认单元测试覆盖可作为证据（见第 4 节）。
 
 ## 2. 本地自动化测试（2026-10-20）
 
@@ -40,11 +40,13 @@ go test ./... -count=1
 
 测试环境（`api-zhuifen.kekemate.cn`）的华为假凭据检查结果相同。
 
-## 4. 待完成项
+## 4. 检查明细与证据口径
 
-1. **WebSocket Origin 拒绝（带有效票据）**：必须用测试用户的 token 申领票据，票据一次性，每个用例重新申领。预期：Origin 为 `https://evil.example` → 403；`https://www.zhuifen.cn` → 101；无 Origin → 101（线上 `AllowNativeMissingOrigin: true`）。
-2. **Redis 故障的线上验证**：不在线上或测试服务器上停 Redis。代码层面的 503 已由第 2 节的测试覆盖；线上只能在隔离环境中做。
-3. **完整二进制的启动拒绝**：本地用临时副本启动时，yaml 占位符展开与线上行为不一致，未能复现完整启动。配置校验逻辑已由单元测试覆盖，启动入口为 `chasing_points.go` 中 `ValidateProductionSecurity` 的调用。
+1. **WebSocket Origin 拒绝（带有效票据）**：测试环境已完成（2026-10-20，测试账号申领票据，每个用例重新申领）：Origin 为 `https://evil.example` → 403；`https://www.zhuifen.cn` → 101；无 Origin → 101（测试配置 `AllowNativeMissingOrigin: true`）；同一票据第二次使用 → 401。
+   - 生产环境（客户端实际使用的 `ws.zhuifen.cn`）：Origin 为 `https://evil.example` → 403；无 Origin（原生客户端）→ 101。
+   - 生产环境 `api.zhuifen.cn` 上：修复前，无 Origin 的请求被拒绝（403），原因是该域名的 nginx 没有设置 `X-Forwarded-Proto`，后端把请求判定为非安全传输。2026-10-20 已在 `api.zhuifen.cn` 的 nginx 反向代理中增加 `X-Forwarded-Proto $scheme`（改动前备份为 `go_chasing_points.conf.bak-20261020T155424`，`nginx -t` 通过后 reload）。修复后：无 Origin → 101，`evil.example` → 403，`www` → 101。
+2. **Redis 故障**：不在线上或测试服务器上停 Redis。代码层面的 503 由第 2 节的测试覆盖，未做线上实测；发布负责人确认以单元测试作为证据。
+3. **完整二进制的启动拒绝**：本地用临时副本启动时，yaml 占位符展开与线上行为不一致，未能复现完整启动，未做实测。配置校验逻辑由单元测试覆盖，启动入口为 `chasing_points.go` 中 `ValidateProductionSecurity` 的调用；发布负责人确认以单元测试作为证据。
 
 ## 5. 签署
 
