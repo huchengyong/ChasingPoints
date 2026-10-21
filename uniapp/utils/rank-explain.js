@@ -1,3 +1,5 @@
+import { resolveCdnAssetUrl } from './cdn-asset.js'
+
 export const MAX_RANK_LEVEL = 6
 
 // 段位配置的静态缓存版本：配置新增了规则版本字段，升级版本号让旧缓存直接失效。
@@ -34,7 +36,7 @@ const normalizeRankConfigList = (rankList = []) => {
     .map((item) => ({
       level: Number(item.level),
       name: item.name || '',
-      icon: item.icon || '',
+      icon: resolveCdnAssetUrl(item.icon || ''),
       min_score: Number(item.min_score) || 0
     }))
     .sort((a, b) => a.level - b.level)
@@ -73,7 +75,7 @@ export const buildRankHeroModel = ({ rankInfo = null, rankList = [] } = {}) => {
   const base = {
     level,
     name: rankInfo.name || '',
-    icon: rankInfo.icon || '',
+    icon: resolveCdnAssetUrl(rankInfo.icon || ''),
     rankScore,
     placementRemaining: Math.max(0, Number(rankInfo.placement_remaining) || 0),
     isMax: level >= MAX_RANK_LEVEL

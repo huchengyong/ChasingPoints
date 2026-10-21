@@ -263,3 +263,14 @@ test('rank explain styles use mini-program-safe selectors and reset custom butto
   assert.match(styleSource, /\.rank-step\.is-current[\s\S]*?\.step-state/)
   assert.match(styleSource, /\.dark-mode/)
 })
+
+test('rank explain resolves backend rank icons to the CDN', () => {
+  const hero = buildRankHeroModel({
+    rankInfo: { level: 3, name: '黄金球手', icon: '/static/images/ranks/rank_gold.png', rank_score: 1280, next_level: 4, next_score: 1500 },
+    rankList: RANK_LIST_FIXTURE
+  })
+  const path = buildRankGrowthPath({ rankList: RANK_LIST_FIXTURE, currentLevel: 3, rankScore: 1280 })
+
+  assert.equal(hero.icon, 'https://cdn.zhuifen.cn/static/images/ranks/rank_gold.png')
+  assert.equal(path.find((item) => item.level === 6).icon, 'https://cdn.zhuifen.cn/static/images/ranks/rank_king.png')
+})

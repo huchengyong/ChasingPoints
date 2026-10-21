@@ -34,6 +34,7 @@
 - 主题接入 `theme.json`、`App.vue` CSS 变量与 `store/theme.js` 的现有切换链路，不绕过用户主题偏好。
 - 优先系统导航栏；自定义导航栏需有明确需求，并保持正确高度与返回行为。
 - Node 测试（含 Vue SFC/jsdom 挂载）不替代 App/微信小程序编译和真机 UI 验收；跨平台改动需注明实际覆盖的平台。
+- 微信小程序主包上限 2MB，`static/` 只放必须随包的小资源。段位、成就、头像框和默认封面等大图放在 [cdn-assets/](cdn-assets/)，目录结构与七牛桶 key 一致，需上传到 CDN 后才生效；页面直接绑定后端返回的 `icon` 时用 [utils/cdn-asset.js](utils/cdn-asset.js) 的 `resolveCdnAssetUrl` 转换。
 
 ## 验证命令
 在 `uniapp/` 执行；依赖按需通过 `npm install` 安装。[package.json](package.json) 没有 npm scripts，不使用 `npm test`。

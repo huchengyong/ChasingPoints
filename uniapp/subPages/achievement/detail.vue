@@ -17,7 +17,7 @@
 			<!-- 成就图标 -->
 			<view class="hero-section" :class="{ unlocked: achievement.unlocked }">
 				<view class="hero-icon">
-					<image v-if="hasDetailIcon" :src="achievement.icon" mode="aspectFit" @error="handleDetailIconError"></image>
+					<image v-if="hasDetailIcon" :src="resolveCdnAssetUrl(achievement.icon)" mode="aspectFit" @error="handleDetailIconError"></image>
 					<text v-else class="icon-emoji">{{ getFallbackEmoji(achievement) }}</text>
 				</view>
 				<text class="hero-name">{{ achievement.name }}</text>
@@ -83,6 +83,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import { getAchievementDetail } from '@/api/achievement.js'
 import { useUserStore } from '@/store/user.js'
 import { getCachedAchievementDetail } from '@/utils/achievement-detail-cache.js'
+import { resolveCdnAssetUrl } from '@/utils/cdn-asset.js'
 import {
 	getAchievementCategoryLabel,
 	getAchievementFallbackEmoji,

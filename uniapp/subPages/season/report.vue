@@ -96,7 +96,7 @@
 						class="achievement-item"
 					>
 						<view class="achievement-icon">
-							<image v-if="achievement.icon" :src="achievement.icon" mode="aspectFill"></image>
+							<image v-if="achievement.icon" :src="resolveCdnAssetUrl(achievement.icon)" mode="aspectFill"></image>
 							<text v-else>奖</text>
 						</view>
 						<view class="achievement-meta">
@@ -131,6 +131,7 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getSeasonReport } from '@/api/season.js'
+import { resolveCdnAssetUrl } from '@/utils/cdn-asset.js'
 import { GAME_TYPE_TABS, getGameTypeLabel } from '@/utils/game-types.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import {

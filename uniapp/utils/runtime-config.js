@@ -30,3 +30,6 @@ export const resolveNetworkConfig = ({ env = resolveAppEnv(), override = {} } = 
 }
 
 export const NETWORK_CONFIG = resolveNetworkConfig()
+
+// 体积较大的图片不随小程序主包（上限 2MB）发布，统一从七牛 CDN 读取；桶内 key 与应用内静态路径一致。
+export const STATIC_ASSET_BASE_URL = 'https://cdn.zhuifen.cn'

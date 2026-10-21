@@ -1,8 +1,9 @@
 import { getGameTypeLabel } from './game-types.js'
+import { resolveCdnAssetUrl } from './cdn-asset.js'
 import { formatEventNewsTime, getEventNewsStatusText } from './home-index.js'
 import { DEFAULT_USER_AVATAR } from './user-profile.js'
 
-export const DEFAULT_EVENT_COVER = '/static/images/default-event-cover.png'
+export const DEFAULT_EVENT_COVER = resolveCdnAssetUrl('/static/images/default-event-cover.png')
 export const DEFAULT_PLAYER_AVATAR = DEFAULT_USER_AVATAR
 // 官方赛讯球员无头像时的中性占位图（WST 官方风格剪影），不用平台自定义台球头像
 export const OFFICIAL_PLAYER_AVATAR_PLACEHOLDER = '/static/images/wst-player-placeholder.png'

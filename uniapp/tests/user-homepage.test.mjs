@@ -17,16 +17,16 @@ const activeMember = {
   member_expires_at: '2026-08-01 12:00:00'
 }
 
-test('resolveRankAvatarFramePath maps all six rank levels to unique local assets', () => {
+test('resolveRankAvatarFramePath maps all six rank levels to unique CDN assets', () => {
   assert.deepEqual(
     [1, 2, 3, 4, 5, 6].map(resolveRankAvatarFramePath),
     [
-      '/static/images/avatar-frames/frame_bronze.png',
-      '/static/images/avatar-frames/frame_silver.png',
-      '/static/images/avatar-frames/frame_gold.png',
-      '/static/images/avatar-frames/frame_platinum.png',
-      '/static/images/avatar-frames/frame_diamond.png',
-      '/static/images/avatar-frames/frame_king.png'
+      'https://cdn.zhuifen.cn/static/images/avatar-frames/frame_bronze.png',
+      'https://cdn.zhuifen.cn/static/images/avatar-frames/frame_silver.png',
+      'https://cdn.zhuifen.cn/static/images/avatar-frames/frame_gold.png',
+      'https://cdn.zhuifen.cn/static/images/avatar-frames/frame_platinum.png',
+      'https://cdn.zhuifen.cn/static/images/avatar-frames/frame_diamond.png',
+      'https://cdn.zhuifen.cn/static/images/avatar-frames/frame_king.png'
     ]
   )
   assert.equal(resolveRankAvatarFramePath(0), '')
@@ -39,7 +39,7 @@ test('resolveMemberRankAvatarFrame shows the current rank frame for an active me
     memberStatus: activeMember,
     rankInfo: { level: 5 },
     now
-  }), '/static/images/avatar-frames/frame_diamond.png')
+  }), 'https://cdn.zhuifen.cn/static/images/avatar-frames/frame_diamond.png')
 })
 
 test('resolveMemberRankAvatarFrame hides frames for ordinary, expired, and failed member states', () => {
@@ -175,4 +175,12 @@ test('resolveRankGameTypeView asks new players to pick only when nothing is save
 
   assert.equal(resolveRankGameTypeView({ preferredGameType: 4, rankInfoMap: {} }).needsPick, false)
   assert.equal(resolveRankGameTypeView({ preferredGameType: 99, rankInfoMap: null }).primaryGameType, 3)
+})
+
+test('rank card icon is resolved to the CDN, including the unranked default', () => {
+  assert.equal(
+    resolveRankCardView({ level: 3, name: '黄金', icon: '/static/images/ranks/rank_gold.png', rank_score: 1320 }).icon,
+    'https://cdn.zhuifen.cn/static/images/ranks/rank_gold.png'
+  )
+  assert.equal(resolveRankCardView(null).icon, 'https://cdn.zhuifen.cn/static/images/ranks/rank_bronze.png')
 })

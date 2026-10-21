@@ -158,3 +158,13 @@ test('resolveMatchViewerWin prefers the settled result over frame scores', () =>
   assert.equal(resolveMatchViewerWin({ result: 0, myScore: 1, opponentScore: 3 }), false)
   assert.match(matchResultSource, /resolveMatchViewerWin\(\{\s*result: matchData\.value\.result/)
 })
+
+test('resolveMatchRewardSummary resolves achievement icons stored as static paths to the CDN', () => {
+  const summary = resolveMatchRewardSummary({
+    success: true,
+    status: 'ready',
+    list: [{ achievement_id: 1, achievement_key: 'wins_1', icon: '/static/images/achievements/wins_1.png' }]
+  })
+
+  assert.equal(summary.rewards[0].icon, 'https://cdn.zhuifen.cn/static/images/achievements/wins_1.png')
+})

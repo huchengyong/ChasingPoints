@@ -1,4 +1,5 @@
 import { formatRewardDuration, resolveFavoriteVenueRewardTaskCard } from './favorite-venue-reward.js'
+import { resolveCdnAssetUrl } from './cdn-asset.js'
 import { GAME_TYPE_TABS } from './game-types.js'
 
 export const formatDuration = (durationSeconds = 0) => {
@@ -185,7 +186,7 @@ const DEFAULT_RANK_ICON = '/static/images/ranks/rank_bronze.png'
 // 段位卡：next_score 是下一段位的起始分；6 级（王者）为最高段位。
 export const resolveRankCardView = (rankInfo = null) => {
   if (!rankInfo) {
-    return { ranked: false, name: '未定级', icon: DEFAULT_RANK_ICON, score: 0, progress: 0, hint: '完成首场排位赛后开始定级' }
+    return { ranked: false, name: '未定级', icon: resolveCdnAssetUrl(DEFAULT_RANK_ICON), score: 0, progress: 0, hint: '完成首场排位赛后开始定级' }
   }
 
   const isMaxLevel = toSafeNumber(rankInfo.level) >= 6
@@ -202,7 +203,7 @@ export const resolveRankCardView = (rankInfo = null) => {
   return {
     ranked: true,
     name: toSafeText(rankInfo.name, '未定级'),
-    icon: toSafeText(rankInfo.icon, DEFAULT_RANK_ICON),
+    icon: resolveCdnAssetUrl(toSafeText(rankInfo.icon, DEFAULT_RANK_ICON)),
     score,
     progress,
     hint
@@ -266,7 +267,7 @@ const RANK_AVATAR_FRAME_PATHS = {
 }
 
 export const resolveRankAvatarFramePath = (level) => {
-  return RANK_AVATAR_FRAME_PATHS[toSafeNumber(level)] || ''
+  return resolveCdnAssetUrl(RANK_AVATAR_FRAME_PATHS[toSafeNumber(level)] || '')
 }
 
 export const resolveMemberRankAvatarFrame = ({

@@ -1,3 +1,4 @@
+import { resolveCdnAssetUrl } from './cdn-asset.js'
 import { buildHonorWallUrl } from './honor-wall.js'
 
 export const MATCH_REWARD_MAX_ATTEMPTS = 3
@@ -8,7 +9,7 @@ const normalizeRewardItem = (item = {}) => ({
   key: item.achievement_key || '',
   achievementName: item.achievement_name || '新成就',
   description: item.description || '这项成就已永久记录到荣誉墙',
-  icon: item.icon || '',
+  icon: resolveCdnAssetUrl(item.icon || ''),
   rewardTitleId: Number(item.reward_title_id || 0),
   rewardTitleName: item.reward_title_name || '',
   unlockedAt: item.unlocked_at || ''

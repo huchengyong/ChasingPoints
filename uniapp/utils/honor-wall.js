@@ -1,3 +1,4 @@
+import { resolveCdnAssetUrl } from './cdn-asset.js'
 import { SEASON_REPORT_PATH } from './season-history.js'
 
 const SUPPORTED_GAME_TYPES = new Set([1, 2, 3, 4])
@@ -180,7 +181,7 @@ export const buildChallengeViewModel = (challenge = {}) => {
     progress,
     threshold,
     completed,
-    icon: challengeIconPaths[challenge.key] || '',
+    icon: resolveCdnAssetUrl(challengeIconPaths[challenge.key] || ''),
     progressPercent: getProgressPercent({ progress, threshold, completed }),
     progressText: completed ? '已完成' : `${progress}/${threshold}`,
     remainingText: completed ? '本赛季已达成' : `还差 ${Math.max(0, threshold - progress)} 完成`

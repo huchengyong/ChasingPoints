@@ -113,7 +113,7 @@
 							@tap="goToDetail(item)"
 						>
 							<view class="achievement-icon locked">
-								<image v-if="hasAchievementIcon(item)" :src="item.icon" mode="aspectFit" @error="handleAchievementIconError(item)"></image>
+								<image v-if="hasAchievementIcon(item)" :src="resolveCdnAssetUrl(item.icon)" mode="aspectFit" @error="handleAchievementIconError(item)"></image>
 								<text v-else>{{ getFallbackEmoji(item) }}</text>
 							</view>
 							<view class="achievement-copy">
@@ -158,7 +158,7 @@
 							@tap="goToDetail(item)"
 						>
 							<view class="achievement-icon" :class="{ locked: !item.unlocked }">
-								<image v-if="hasAchievementIcon(item)" :src="item.icon" mode="aspectFit" @error="handleAchievementIconError(item)"></image>
+								<image v-if="hasAchievementIcon(item)" :src="resolveCdnAssetUrl(item.icon)" mode="aspectFit" @error="handleAchievementIconError(item)"></image>
 								<text v-else>{{ getFallbackEmoji(item) }}</text>
 							</view>
 							<view class="achievement-copy">
@@ -215,7 +215,7 @@
 						@tap="goToDetail(item)"
 					>
 						<view class="achievement-icon" :class="{ locked: !item.unlocked }">
-							<image v-if="hasAchievementIcon(item)" :src="item.icon" mode="aspectFit" @error="handleAchievementIconError(item)"></image>
+							<image v-if="hasAchievementIcon(item)" :src="resolveCdnAssetUrl(item.icon)" mode="aspectFit" @error="handleAchievementIconError(item)"></image>
 							<text v-else>{{ getFallbackEmoji(item) }}</text>
 						</view>
 						<view class="achievement-copy">
@@ -473,6 +473,7 @@ import { useNotificationStore } from '@/store/notification.js'
 import { useUserStore } from '@/store/user.js'
 import { useUserDataInvalidationStore } from '@/store/userDataInvalidation.js'
 import { cacheAchievementDetail } from '@/utils/achievement-detail-cache.js'
+import { resolveCdnAssetUrl } from '@/utils/cdn-asset.js'
 import {
 	filterSpecialtyAchievements,
 	getAchievementCategoryEmoji,

@@ -22,9 +22,8 @@ import {
   standardizeRoundText
 } from '../utils/saixun.js'
 
-test('DEFAULT_EVENT_COVER uses a bundled application asset', () => {
-  assert.equal(DEFAULT_EVENT_COVER, '/static/images/default-event-cover.png')
-  assert.equal(DEFAULT_EVENT_COVER.startsWith('http'), false)
+test('DEFAULT_EVENT_COVER is served from the CDN instead of the mini-program main package', () => {
+  assert.equal(DEFAULT_EVENT_COVER, 'https://cdn.zhuifen.cn/static/images/default-event-cover.png')
 })
 
 test('formatEventDateRange prefers date-only output', () => {
