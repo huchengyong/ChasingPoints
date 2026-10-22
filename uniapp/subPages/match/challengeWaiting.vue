@@ -13,12 +13,12 @@
 		<view v-else class="main-block">
 			<view class="vs-row">
 				<view class="player">
-					<image class="avatar" :src="resolveAvatarUrl(challenge.from_avatar, challenge.from_user_id)" mode="aspectFill"></image>
+					<memberAvatar :avatar="challenge.from_avatar" :user-id="challenge.from_user_id" :vip-level="challenge.from_vip_level" :size="140" />
 					<text class="player-state" :class="{ active: isWaiting(who.from) }">{{ isWaiting(who.from) ? '已进入' : '待进入' }}</text>
 				</view>
 				<text class="vs-label">VS</text>
 				<view class="player">
-					<image class="avatar" :src="resolveAvatarUrl(challenge.to_avatar, challenge.to_user_id)" mode="aspectFill"></image>
+					<memberAvatar :avatar="challenge.to_avatar" :user-id="challenge.to_user_id" :vip-level="challenge.to_vip_level" :size="140" />
 					<text class="player-state" :class="{ active: isWaiting(who.to) }">{{ isWaiting(who.to) ? '已进入' : '待进入' }}</text>
 				</view>
 			</view>
@@ -69,7 +69,7 @@ import { GAME_TYPE_LABEL_MAP } from '@/utils/game-types.js'
 import { useUserStore } from '@/store/user.js'
 import { useActivityStore } from '@/store/activity.js'
 import { usePageTheme } from '@/utils/page-theme.js'
-import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import memberAvatar from '@/components/memberAvatar.vue'
 import { formatChallengeExpiry, formatChallengeSchedule } from '@/utils/challenge-view.js'
 
 const { isDarkMode } = usePageTheme()

@@ -1,3 +1,5 @@
+import { normalizeVipLevel } from './member-identity.js'
+
 export const resolveFriendUserId = (item = {}) => {
   const rawId = item.user_id ?? item.friend_user_id ?? item.friend_id ?? item.id ?? 0
   const parsed = Number(rawId)
@@ -52,6 +54,12 @@ export const buildFriendHomepageUrl = (item = {}) => {
   query.push(`opponent_name=${encodeURIComponent(item.nickname || '球友')}`)
   query.push(`opponent_avatar=${encodeURIComponent(item.avatar || '')}`)
   query.push(`rank_name=${encodeURIComponent(item.rank_name || '')}`)
+  // 会员外观只在有效会员时透传，主页据此展示头像框与 VIP 标识。
+  const vipLevel = normalizeVipLevel(item.vip_level)
+  if (vipLevel > 0) {
+    query.push(`vip_level=${vipLevel}`)
+    query.push(`rank_level=${Math.max(0, Math.trunc(Number(item.rank_level)) || 0)}`)
+  }
 
   return `/subPages/social/friendHomepage?${query.join('&')}`
 }

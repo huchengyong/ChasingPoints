@@ -47,7 +47,7 @@
 							<view class="profile-chips">
 								<view
 									class="profile-chip"
-									:class="{ 'profile-chip--vip': memberEntry.state === 'active' }"
+									:class="{ 'profile-chip--vip': memberIdentity.showBadge }"
 									@click.stop="handleOpenMemberCenter"
 								>
 									<text>{{ profileLevelText }}</text>
@@ -216,7 +216,7 @@ import {
 	resolveCompactRewardEntry,
 	resolveCoreMetrics,
 	resolveMemberEntry,
-	resolveMemberRankAvatarFrame,
+	resolveSelfMemberIdentity,
 	resolveRankCardView,
 	resolveRankGameTypeView,
 	resolveReputationChip
@@ -303,17 +303,19 @@ const memberLevelText = computed(() => resolveMemberGrowthCard(memberStatus.valu
 // 已有缓存时刷新不闪「同步中」，只有首次读取才显示占位文案。
 const profileLevelText = computed(() => {
 	if (!memberStatus.value && coreDataLoading.value) return '等级同步中'
-	return memberEntry.value.state === 'active' ? `VIP · ${memberLevelText.value}` : memberLevelText.value
+	const identity = memberIdentity.value
+	return identity.showBadge ? `${identity.badgeText} · ${identity.tierLabel}` : memberLevelText.value
 })
 const reputationChip = computed(() => resolveReputationChip(reputationStatus.value, coreDataLoading.value))
 const compactRewardEntry = computed(() => resolveCompactRewardEntry(favoriteVenueRewardStatus.value || {}))
-const rankAvatarFrame = computed(() => resolveMemberRankAvatarFrame({
+const memberIdentity = computed(() => resolveSelfMemberIdentity({
 	isLoggedIn: isLoggedIn.value,
 	memberStatus: memberStatus.value,
 	rankInfo: rankInfo.value,
 	rankLoading: rankLoading.value && !hasRankCache.value,
 	now: new Date()
 }))
+const rankAvatarFrame = computed(() => memberIdentity.value.frameUrl)
 
 const careerState = computed(() => {
 	if (statsReady.value) return userStats.totalMatches > 0 ? 'ready' : 'empty'

@@ -1,6 +1,10 @@
 import { formatRewardDuration, resolveFavoriteVenueRewardTaskCard } from './favorite-venue-reward.js'
 import { resolveCdnAssetUrl } from './cdn-asset.js'
 import { GAME_TYPE_TABS } from './game-types.js'
+import { resolveMemberGrowthCard } from './member-center.js'
+import { resolveMemberIdentity, resolveRankAvatarFramePath } from './member-identity.js'
+
+export { resolveRankAvatarFramePath }
 
 export const formatDuration = (durationSeconds = 0) => {
   if (!durationSeconds || durationSeconds < 0) return '0分'
@@ -257,32 +261,22 @@ const parseMemberExpiresAt = (value) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
-const RANK_AVATAR_FRAME_PATHS = {
-  1: '/static/images/avatar-frames/frame_bronze.png',
-  2: '/static/images/avatar-frames/frame_silver.png',
-  3: '/static/images/avatar-frames/frame_gold.png',
-  4: '/static/images/avatar-frames/frame_platinum.png',
-  5: '/static/images/avatar-frames/frame_diamond.png',
-  6: '/static/images/avatar-frames/frame_king.png'
-}
-
-export const resolveRankAvatarFramePath = (level) => {
-  return resolveCdnAssetUrl(RANK_AVATAR_FRAME_PATHS[toSafeNumber(level)] || '')
-}
-
-export const resolveMemberRankAvatarFrame = ({
+// 本人「我的」页的会员身份：会员有效且读到真实段位才显示头像框，段位加载中不沿用旧数据。
+export const resolveSelfMemberIdentity = ({
   isLoggedIn = false,
   memberStatus = null,
   rankInfo = null,
   rankLoading = false,
   now = new Date()
 } = {}) => {
-  if (!isLoggedIn || rankLoading || !rankInfo) return ''
+  if (!isLoggedIn) return resolveMemberIdentity()
 
   const expiresAt = parseMemberExpiresAt(memberStatus?.member_expires_at)
-  if (!memberStatus?.is_active || !expiresAt || expiresAt.getTime() <= now.getTime()) return ''
-
-  return resolveRankAvatarFramePath(rankInfo.level)
+  const active = Boolean(memberStatus?.is_active) && Boolean(expiresAt) && expiresAt.getTime() > now.getTime()
+  return resolveMemberIdentity({
+    vipLevel: active ? resolveMemberGrowthCard(memberStatus, now).level : 0,
+    rankLevel: !rankLoading && rankInfo ? rankInfo.level : 0
+  })
 }
 
 // 会员中心入口的右侧状态：从未开通时不提示，避免把入口做成推销位。

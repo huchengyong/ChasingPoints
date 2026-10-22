@@ -280,7 +280,6 @@
         .avatar {
             width: 80px;
             height: 80px;
-            border: 4px solid #9A8C67;
         }
 
         .rank-badge.silver {
@@ -295,7 +294,6 @@
         .avatar {
             width: 112px;
             height: 112px;
-            border: 4px solid #fbbf24;
             box-shadow: 0 10px 30px rgba(251, 191, 36, 0.3);
         }
 
@@ -325,7 +323,6 @@
         .avatar {
             width: 80px;
             height: 80px;
-            border: 4px solid #a16207;
         }
 
         .rank-badge.bronze {
@@ -345,12 +342,16 @@
 }
 
 .avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border-radius: 50%;
-    object-fit: cover;
+    box-sizing: border-box;
 }
 
 .rank-badge {
     position: absolute;
+    z-index: 4; // 高于头像框，保证前三名的名次徽标不被框图遮住
     bottom: -6px;
     left: 50%;
     transform: translateX(-50%);
@@ -416,14 +417,6 @@
         flex: 1;
     }
 
-    .my-avatar {
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        object-fit: cover;
-        flex-shrink: 0;
-    }
-
     .my-details {
         display: flex;
         flex-direction: column;
@@ -480,13 +473,12 @@
         flex: 1;
         min-width: 0; // 允许flex项收缩，解决子元素文本溢出问题
         overflow: hidden;
+        // 头像框翼饰会溢出布局盒 8px，四周留出裁剪余量并用负边距抵消，避免被 overflow 切掉。
+        padding: 8px 0 8px 8px;
+        margin: -8px 0 -8px -8px;
     }
 
     .item-avatar {
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        object-fit: cover;
         flex-shrink: 0; // 防止头像被压缩
     }
 

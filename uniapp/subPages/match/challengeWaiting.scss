@@ -29,14 +29,7 @@
 			display: flex;
 			flex-direction: column;
 			align-items: center;
-			gap: 12rpx;
-		}
-
-		.avatar {
-			width: 140rpx;
-			height: 140rpx;
-			border-radius: 50%;
-			background: #F1EADC;
+			gap: 18rpx; // 头像底部的 VIP 标识向下探出约 8rpx，留出间距避免压到状态文字
 		}
 
 		.player-state {

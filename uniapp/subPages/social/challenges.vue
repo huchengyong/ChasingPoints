@@ -40,7 +40,7 @@
 			</view>
 			<view v-for="item in list" :key="item.id" class="challenge-card">
 				<view class="card-top" @tap="openDetail(item)">
-					<image class="challenge-avatar" :src="resolveAvatarUrl(opponentOf(item).avatar, opponentOf(item).id)" mode="aspectFill"></image>
+					<memberAvatar class="challenge-avatar" :avatar="opponentOf(item).avatar" :user-id="opponentOf(item).id" :vip-level="opponentOf(item).vipLevel" :size="88" />
 					<view class="challenge-info">
 						<text class="challenge-name">{{ opponentOf(item).nickname || '球友' }}</text>
 						<text class="challenge-game">{{ gameTypeLabel(item) }} · {{ matchModeLabel(item) }}</text>
@@ -103,7 +103,7 @@ import { GAME_TYPE_LABEL_MAP } from '@/utils/game-types.js'
 import { useUserStore } from '@/store/user.js'
 import { useActivityStore } from '@/store/activity.js'
 import { usePageTheme } from '@/utils/page-theme.js'
-import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import memberAvatar from '@/components/memberAvatar.vue'
 import { formatChallengeExpiry, formatChallengeSchedule } from '@/utils/challenge-view.js'
 import {
 	ASYNC_PAGE_STATUS,
@@ -195,7 +195,8 @@ const isTerminal = (item) => [2, 3, 4, 5, 7, 8].includes(Number(item.status))
 const opponentOf = (item) => ({
 	id: item.from_user_id === myUserId.value ? item.to_user_id : item.from_user_id,
 	nickname: item.from_user_id === myUserId.value ? item.to_nickname : item.from_nickname,
-	avatar: item.from_user_id === myUserId.value ? item.to_avatar : item.from_avatar
+	avatar: item.from_user_id === myUserId.value ? item.to_avatar : item.from_avatar,
+	vipLevel: item.from_user_id === myUserId.value ? item.to_vip_level : item.from_vip_level
 })
 const gameTypeLabel = (item) => GAME_TYPE_LABEL_MAP[item.game_type] || '台球'
 const matchModeLabel = (item) => (item.match_mode === 'practice' ? '练习' : '排位')
@@ -645,10 +646,7 @@ const rematch = (item) => {
 	gap: 20rpx;
 }
 .challenge-avatar {
-	width: 88rpx;
-	height: 88rpx;
-	border-radius: 50%;
-	background: #F1EADC;
+	flex-shrink: 0;
 }
 .challenge-info {
 	flex: 1;

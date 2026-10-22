@@ -1,13 +1,13 @@
-import { resolveMemberRankingRightsCard } from './member-ranking-rights.js'
+import { MEMBER_IDENTITY_TIERS, resolveMemberIdentity } from './member-identity.js'
 
 const MONTHLY_PRICE_FEN = 1900
-const MEMBER_GROWTH_DAILY_CAP = 5
+const MEMBER_GROWTH_DAILY_CAP = 8
 const MEMBER_GROWTH_LEVELS = [
   { level: 1, threshold: 0 },
   { level: 2, threshold: 10 },
-  { level: 3, threshold: 60 },
-  { level: 4, threshold: 260 },
-  { level: 5, threshold: 760 }
+  { level: 3, threshold: 40 },
+  { level: 4, threshold: 120 },
+  { level: 5, threshold: 300 }
 ]
 
 const toSafeInteger = (value) => {
@@ -83,6 +83,11 @@ const resolveGrowthDailyCap = (memberStatus = {}) => {
     1,
     toSafeInteger(memberStatus.growth_daily_cap ?? memberStatus.member_growth_daily_cap) || MEMBER_GROWTH_DAILY_CAP
   )
+}
+
+const resolveTierLabel = (level) => {
+  const tier = MEMBER_IDENTITY_TIERS.find(item => level >= item.minLevel && level <= item.maxLevel)
+  return tier ? tier.label : MEMBER_IDENTITY_TIERS[MEMBER_IDENTITY_TIERS.length - 1].label
 }
 
 const resolveCurrentLevel = (growthPoints, explicitLevel = 0) => {
@@ -229,10 +234,7 @@ export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date(), 
   const todayGrowthCount = resolveTodayGrowthCount(memberStatus)
   const currentLevel = resolveCurrentLevel(growthPoints, memberStatus.growth_level)
   const growthStatus = `Lv${currentLevel.level}，今日已计入 ${todayGrowthCount}/${growthDailyCap}`
-  const rankingRightsCard = resolveMemberRankingRightsCard(memberStatus, now, options.rankRules)
-  // 排位规则 V2 生效后高光不再计入排位分，摘要不再宣传高光排位权益
-  const rankingClause = rankingRightsCard.retired ? '' : `，高光排位按 ${rankingRightsCard.levelLabel} ${rankingRightsCard.currentPercentText} 计入`
-  const rankingResumeClause = rankingRightsCard.retired ? '' : `；高光排位权益会按 ${rankingRightsCard.levelLabel} ${rankingRightsCard.currentPercentText} 恢复`
+  const tierLabel = resolveTierLabel(currentLevel.level)
 
   if (complianceMode) {
     if (isActive) {
@@ -265,7 +267,7 @@ export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date(), 
     return {
       statusText: 'VIP中',
       title: '月卡VIP生效中',
-      description: `当前有效期至 ${expiresAtText}，VIP成长 ${growthStatus}${rankingClause}。`,
+      description: `当前有效期至 ${expiresAtText}，VIP成长 ${growthStatus}，展示「${tierLabel}」外观。`,
       primaryActionText: '立即续费'
     }
   }
@@ -276,7 +278,7 @@ export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date(), 
       statusText: '已到期',
       title: 'VIP已到期',
       description: hasGrowthProgress
-        ? `上次VIP有效期到 ${expiresAtText}，当前成长 Lv${currentLevel.level} 已冻结，续开后恢复继续成长${rankingResumeClause}。`
+        ? `上次VIP有效期到 ${expiresAtText}，当前成长 Lv${currentLevel.level} 已冻结，续开后恢复继续成长和「${tierLabel}」外观。`
         : `上次VIP有效期到 ${expiresAtText}，续费后会从当前时间重新开始计算。`,
       primaryActionText: '立即续费'
     }
@@ -285,10 +287,49 @@ export const resolveMemberCenterSummary = (memberStatus = {}, now = new Date(), 
   return {
     statusText: '未开通',
     title: '开通月卡VIP',
-    description: rankingRightsCard.retired
-      ? '目前先开放月卡订阅，开通后完成真实对局可累计VIP成长。'
-      : '目前先开放月卡订阅，开通后完成真实对局可累计VIP成长，高光会按VIP等级计入排位。',
+    description: '目前先开放月卡订阅，开通后完成真实对局可累计VIP成长，成长等级解锁更高阶外观。',
     primaryActionText: '立即开通'
+  }
+}
+
+/**
+ * 会员中心的「身份展示预览」与「外观档位」：
+ * 档位由成长等级决定，只有有效会员才会被别人看到；到期后成长冻结，外观不再展示，续开后恢复。
+ * complianceMode 下文案不出现开通、订阅等字样。
+ */
+export const resolveMemberIdentityPreview = (memberStatus = {}, now = new Date(), { rankLevel = 0, complianceMode = false } = {}) => {
+  const { expiresAtText, isActive } = resolveMemberActivity(memberStatus, now)
+  const level = resolveCurrentLevel(resolveMemberGrowthPoints(memberStatus), memberStatus.growth_level).level
+  const frozen = !isActive && Boolean(expiresAtText)
+  const identity = resolveMemberIdentity({ vipLevel: isActive ? level : 0, rankLevel })
+  const tierLabel = resolveTierLabel(level)
+
+  let hint
+  if (isActive) {
+    hint = `当前展示「${identity.tierLabel}」外观：别人会在排行榜、对局和好友列表里看到你的头像框与 ${identity.badgeText}。`
+  } else if (frozen) {
+    hint = `VIP已到期，外观已隐藏；${complianceMode ? '权益恢复' : '续开'}后会恢复「${tierLabel}」外观。`
+  } else {
+    hint = complianceMode
+      ? '获得VIP权益后，别人会在排行榜、对局和好友列表里看到你的头像框与 VIP 标识。'
+      : '开通VIP后，别人会在排行榜、对局和好友列表里看到你的头像框与 VIP 标识。'
+  }
+
+  return {
+    active: isActive,
+    frozen,
+    level,
+    identity,
+    hint,
+    tiers: MEMBER_IDENTITY_TIERS.map((item) => ({
+      tier: item.tier,
+      label: item.label,
+      levelText: item.levelText,
+      sampleLevel: item.minLevel,
+      badgeText: `VIP${item.minLevel}`,
+      current: isActive && item.tier === identity.tier,
+      reached: level >= item.minLevel
+    }))
   }
 }
 

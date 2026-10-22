@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import {
   resolveCoreMetrics,
   resolveMemberEntry,
-  resolveMemberRankAvatarFrame,
+  resolveSelfMemberIdentity,
   resolveRankAvatarFramePath,
   resolveRankCardView,
   resolveRankGameTypeView,
@@ -33,57 +33,57 @@ test('resolveRankAvatarFramePath maps all six rank levels to unique CDN assets',
   assert.equal(resolveRankAvatarFramePath(7), '')
 })
 
-test('resolveMemberRankAvatarFrame shows the current rank frame for an active member', () => {
-  assert.equal(resolveMemberRankAvatarFrame({
+test('resolveSelfMemberIdentity shows the current rank frame and the growth tier badge for an active member', () => {
+  const identity = resolveSelfMemberIdentity({
     isLoggedIn: true,
-    memberStatus: activeMember,
+    memberStatus: { ...activeMember, growth_level: 3 },
     rankInfo: { level: 5 },
     now
-  }), 'https://cdn.zhuifen.cn/static/images/avatar-frames/frame_diamond.png')
+  })
+  assert.equal(identity.frameUrl, 'https://cdn.zhuifen.cn/static/images/avatar-frames/frame_diamond.png')
+  assert.equal(identity.badgeText, 'VIP3')
+  assert.equal(identity.tierLabel, '进阶')
+
+  // 没有显式等级时按成长值换算，和会员中心一致。
+  assert.equal(resolveSelfMemberIdentity({
+    isLoggedIn: true,
+    memberStatus: { ...activeMember, growth_points: 300 },
+    rankInfo: { level: 1 },
+    now
+  }).badgeText, 'VIP5')
 })
 
-test('resolveMemberRankAvatarFrame hides frames for ordinary, expired, and failed member states', () => {
+test('resolveSelfMemberIdentity hides the identity for guests, ordinary, expired, and failed member states', () => {
   const states = [
     null,
-    { is_active: false, member_expires_at: '2026-08-01 12:00:00' },
-    { is_active: true, member_expires_at: '2026-07-20 12:00:00' },
-    { is_active: true, member_expires_at: 'invalid' }
+    { is_active: false, member_expires_at: '2026-08-01 12:00:00', growth_level: 4 },
+    { is_active: true, member_expires_at: '2026-07-20 12:00:00', growth_level: 4 },
+    { is_active: true, member_expires_at: 'invalid', growth_level: 4 }
   ]
 
   for (const memberStatus of states) {
-    assert.equal(resolveMemberRankAvatarFrame({
-      isLoggedIn: true,
-      memberStatus,
-      rankInfo: { level: 6 },
-      now
-    }), '')
+    const identity = resolveSelfMemberIdentity({ isLoggedIn: true, memberStatus, rankInfo: { level: 6 }, now })
+    assert.equal(identity.showBadge, false)
+    assert.equal(identity.frameUrl, '')
   }
+  const guest = resolveSelfMemberIdentity({ isLoggedIn: false, memberStatus: { ...activeMember, growth_level: 4 }, rankInfo: { level: 6 }, now })
+  assert.equal(guest.showBadge, false)
+  assert.equal(guest.frameUrl, '')
 })
 
-test('resolveMemberRankAvatarFrame waits for the real rank and hides stale switch data', () => {
-  assert.equal(resolveMemberRankAvatarFrame({
-    isLoggedIn: true,
-    memberStatus: activeMember,
-    rankInfo: null,
-    rankLoading: true,
-    now
-  }), '')
-
-  assert.equal(resolveMemberRankAvatarFrame({
-    isLoggedIn: true,
-    memberStatus: activeMember,
-    rankInfo: { level: 5 },
-    rankLoading: true,
-    now
-  }), '')
-
-  assert.equal(resolveMemberRankAvatarFrame({
-    isLoggedIn: true,
-    memberStatus: activeMember,
-    rankInfo: null,
-    rankLoading: false,
-    now
-  }), '')
+test('resolveSelfMemberIdentity waits for the real rank and hides stale switch data', () => {
+  const member = { ...activeMember, growth_level: 2 }
+  const stale = [
+    { rankInfo: null, rankLoading: true },
+    { rankInfo: { level: 5 }, rankLoading: true },
+    { rankInfo: null, rankLoading: false }
+  ]
+  for (const state of stale) {
+    const identity = resolveSelfMemberIdentity({ isLoggedIn: true, memberStatus: member, ...state, now })
+    assert.equal(identity.frameUrl, '')
+    // 段位没读到不影响会员标识本身。
+    assert.equal(identity.badgeText, 'VIP2')
+  }
 })
 
 test('career metrics cover all game types and leave the per-game rank score to the rank card', () => {

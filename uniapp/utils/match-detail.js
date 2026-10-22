@@ -64,7 +64,14 @@ export const normalizeMatchDetailPayload = (match = {}, { perspectiveUserId = 0 
         : (match.player1_name || match.my_name || '玩家1'),
       avatar: shouldSwapPerspective
         ? (match.player2_avatar || match.opponent_avatar || '')
-        : (match.player1_avatar || match.my_avatar || '')
+        : (match.player1_avatar || match.my_avatar || ''),
+      // 会员外观跟随头像取同一侧，保证头像框与头像始终是同一个人。
+      vipLevel: shouldSwapPerspective
+        ? pickNumber(match.player2_vip_level, match.opponent_vip_level)
+        : pickNumber(match.player1_vip_level, match.my_vip_level),
+      rankLevel: shouldSwapPerspective
+        ? pickNumber(match.player2_rank_level, match.opponent_rank_level)
+        : pickNumber(match.player1_rank_level, match.my_rank_level)
     },
     player2Info: {
       name: shouldSwapPerspective
@@ -72,7 +79,13 @@ export const normalizeMatchDetailPayload = (match = {}, { perspectiveUserId = 0 
         : (match.player2_name || match.opponent_name || '玩家2'),
       avatar: shouldSwapPerspective
         ? (match.player1_avatar || match.my_avatar || '')
-        : (match.player2_avatar || match.opponent_avatar || '')
+        : (match.player2_avatar || match.opponent_avatar || ''),
+      vipLevel: shouldSwapPerspective
+        ? pickNumber(match.player1_vip_level, match.my_vip_level)
+        : pickNumber(match.player2_vip_level, match.opponent_vip_level),
+      rankLevel: shouldSwapPerspective
+        ? pickNumber(match.player1_rank_level, match.my_rank_level)
+        : pickNumber(match.player2_rank_level, match.opponent_rank_level)
     },
     roundRecords: Array.isArray(match.rounds) ? normalizeRoundRecords(match.rounds, shouldSwapPerspective) : []
   }

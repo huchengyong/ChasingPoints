@@ -1,4 +1,5 @@
 import { formatRelativeTime } from './format.js'
+import { normalizeVipLevel } from './member-identity.js'
 
 const HIDDEN_TITLE = '对方已隐藏战绩'
 const HIDDEN_DESC = '这位好友暂时没有公开自己的战绩列表'
@@ -19,7 +20,9 @@ export const normalizeFriendHomepageOptions = (options = {}) => ({
   opponentId: Number(options.opponent_id || 0),
   opponentName: decodeQueryValue(options.opponent_name),
   opponentAvatar: decodeQueryValue(options.opponent_avatar),
-  rankName: decodeQueryValue(options.rank_name)
+  rankName: decodeQueryValue(options.rank_name),
+  vipLevel: normalizeVipLevel(options.vip_level),
+  rankLevel: Math.max(0, Math.trunc(Number(options.rank_level)) || 0)
 })
 
 export const buildFriendHomepageSummary = ({

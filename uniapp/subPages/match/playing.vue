@@ -18,7 +18,7 @@
 						<view class="player-compact__main">
 							<view class="player-compact__profile">
 								<view class="avatar-wrapper">
-								<image class="avatar" :src="resolveAvatarUrl(myInfo.avatar, myInfo.userId)" mode="aspectFill"></image>
+									<memberAvatar :avatar="myInfo.avatar" :user-id="myInfo.userId" :vip-level="myInfo.vipLevel" :rank-level="myInfo.rankLevel" :size="72" reserve-frame />
 								</view>
 								<view class="player-info">
 									<view class="player-name-row">
@@ -49,7 +49,7 @@
 									</view>
 								</view>
 								<view class="avatar-wrapper">
-								<image class="avatar" :src="resolveAvatarUrl(opponentInfo.avatar, opponentInfo.userId)" mode="aspectFill"></image>
+									<memberAvatar :avatar="opponentInfo.avatar" :user-id="opponentInfo.userId" :vip-level="opponentInfo.vipLevel" :rank-level="opponentInfo.rankLevel" :size="72" reserve-frame />
 								</view>
 							</view>
 							<text class="player-score is-opponent">{{ opponentScore }}</text>
@@ -618,6 +618,7 @@ import {
 import { consumeResultNavigationGuard, getMatchHistoryPageUrl, getMatchHistoryTabUrl, shouldLeavePlayingPage } from '@/utils/match-navigation.js'
 import { buildMatchActionPayload } from '@/utils/match-action.js'
 import { renderLocalQRCode } from '@/utils/local-qrcode.js'
+import memberAvatar from '@/components/memberAvatar.vue'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolvePlayingViewerUi } from '@/utils/match-role-view.js'
 import {
@@ -717,8 +718,8 @@ const snookerFoulAndMiss = ref(false)
 const snookerMissSequenceEligible = ref(false)
 const snookerFreeBallAwarded = ref(false)
 const snookerFoulCueBallInHand = ref(false)
-const myInfo = ref({ userId: 0, avatar: '' })
-const opponentInfo = ref({ userId: 0, avatar: '' })
+const myInfo = ref({ userId: 0, avatar: '', vipLevel: 0, rankLevel: 0 })
+const opponentInfo = ref({ userId: 0, avatar: '', vipLevel: 0, rankLevel: 0 })
 const viewerRole = ref('player1')
 const refereeBound = ref(false)
 const refereeUserId = ref(0)
@@ -1229,6 +1230,8 @@ const loadMatchInfo = async () => {
 				userId: Number(res.match.my_user_id || res.match.my_id || userStore.userInfo?.id || 0),
 				nickname: res.match.my_name || '我',
 				avatar: res.match.my_avatar || '',
+				vipLevel: res.match.my_vip_level || 0,
+				rankLevel: res.match.my_rank_level || 0,
 				winRate: Math.round(res.match.my_win_rate || 0),
 				maxScore: res.match.my_max_score || 0
 			}
@@ -1238,6 +1241,8 @@ const loadMatchInfo = async () => {
 				userId: Number(res.match.opponent_id || opponentInfo.value.userId || 0),
 				nickname: res.match.opponent_name || '对手',
 				avatar: res.match.opponent_avatar || '',
+				vipLevel: res.match.opponent_vip_level || 0,
+				rankLevel: res.match.opponent_rank_level || 0,
 				winRate: Math.round(res.match.opponent_win_rate || 0),
 				maxScore: res.match.opponent_max_score || 0
 			}

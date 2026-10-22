@@ -23,11 +23,15 @@
 				<text class="hero-kicker">好友名片</text>
 
 				<view class="identity-row">
-					<image
-						v-if="friendProfile.avatar"
-						class="avatar"
-						:src="friendProfile.avatar"
-						mode="aspectFill"
+					<memberAvatar
+						v-if="friendProfile.avatar || friendProfile.vipLevel > 0"
+						class="avatar-member"
+						:avatar="friendProfile.avatar"
+						:user-id="friendProfile.id"
+						:vip-level="friendProfile.vipLevel"
+						:rank-level="friendProfile.rankLevel"
+						:size="120"
+						reserve-frame
 					/>
 					<view v-else class="avatar avatar-placeholder">
 						<text>{{ avatarText }}</text>
@@ -147,6 +151,7 @@ import { usePageTheme } from '@/utils/page-theme.js'
 import { useUserStore } from '@/store/user.js'
 import { useUserDataInvalidationStore } from '@/store/userDataInvalidation.js'
 import { getOpponentList } from '@/api/match.js'
+import memberAvatar from '@/components/memberAvatar.vue'
 import { buildFriendPkReportUrl } from '@/utils/friend-entry.js'
 import { buildHonorWallUrl } from '@/utils/honor-wall.js'
 import {
@@ -210,7 +215,9 @@ const friendProfile = reactive({
 	id: 0,
 	name: '',
 	avatar: '',
-	rankName: ''
+	rankName: '',
+	vipLevel: 0,
+	rankLevel: 0
 })
 
 const stats = reactive({
@@ -344,6 +351,8 @@ onLoad((options) => {
 	friendProfile.name = normalized.opponentName
 	friendProfile.avatar = normalized.opponentAvatar
 	friendProfile.rankName = normalized.rankName
+	friendProfile.vipLevel = normalized.vipLevel
+	friendProfile.rankLevel = normalized.rankLevel
 })
 
 onShow(() => {

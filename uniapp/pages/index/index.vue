@@ -176,7 +176,7 @@
             <view v-else-if="leaderboardTopThree.length" class="ranking-card">
               <view v-for="item in leaderboardTopThree" :key="item.user_id || item.rank" class="ranking-row">
                 <text class="ranking-medal" :class="'ranking-medal--' + item.rank">{{ item.rank }}</text>
-                <image class="ranking-avatar" :src="resolveAvatarUrl(item.avatar, item.user_id)" mode="aspectFill"></image>
+                <memberAvatar class="ranking-avatar" :avatar="item.avatar" :user-id="item.user_id" :vip-level="item.vip_level" :rank-level="item.rank_level" :size="68" reserve-frame />
                 <view class="ranking-copy">
                   <text class="ranking-name">{{ item.nickname || '球手' }}</text>
                   <text class="ranking-meta">{{ item.rank_name || '冲榜中' }}</text>
@@ -300,6 +300,7 @@ import { useUserOverviewStore } from '@/store/userOverview.js'
 import { useUserStore } from '@/store/user.js'
 import { getMatchQRCode, previewMatchInvite, startMatch } from '@/api/match.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
+import memberAvatar from '@/components/memberAvatar.vue'
 import { normalizeSaiXunCard } from '@/utils/saixun.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import {

@@ -20,9 +20,24 @@ test('normalizeFriendHomepageOptions decodes route params into stable display fi
       opponentId: 52,
       opponentName: '球友 A',
       opponentAvatar: 'https://img.example/a.png',
-      rankName: '超凡'
+      rankName: '超凡',
+      vipLevel: 0,
+      rankLevel: 0
     }
   )
+})
+
+test('normalizeFriendHomepageOptions reads the member identity carried from the friend list', () => {
+  const options = normalizeFriendHomepageOptions({ opponent_id: '52', vip_level: '4', rank_level: '5' })
+  assert.equal(options.vipLevel, 4)
+  assert.equal(options.rankLevel, 5)
+
+  // 缺失或非法的会员参数按非会员处理，旧链接保持可用。
+  for (const bad of [{}, { vip_level: 'x', rank_level: 'y' }, { vip_level: '-2', rank_level: '-1' }]) {
+    const normalized = normalizeFriendHomepageOptions({ opponent_id: '52', ...bad })
+    assert.equal(normalized.vipLevel, 0)
+    assert.equal(normalized.rankLevel, 0)
+  }
 })
 
 test('buildFriendHomepageSummary exposes readable stat copy for matched friends', () => {

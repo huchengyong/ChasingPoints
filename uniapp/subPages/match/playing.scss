@@ -380,14 +380,6 @@ $success: #1bb56b;
 	}
 }
 
-.avatar {
-	width: 86rpx;
-	height: 86rpx;
-	border-radius: 50%;
-	background: $line-light;
-	flex-shrink: 0;
-}
-
 .player-info {
 	display: flex;
 	flex-direction: column;
@@ -1295,10 +1287,6 @@ $success: #1bb56b;
 	.identity-tag.is-opponent {
 		background: rgba(255, 255, 255, 0.08);
 		color: $text-primary-dark;
-	}
-
-	.avatar {
-		background: $line-dark;
 	}
 
 	.player-score {

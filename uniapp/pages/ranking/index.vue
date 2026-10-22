@@ -76,7 +76,9 @@
 					<view class="podium-user second" :class="{ 'is-empty': !podiumSlots[0].user }" @click="podiumSlots[0].user && handleUserClick(podiumSlots[0].user)">
 						<template v-if="podiumSlots[0].user">
 							<view class="avatar-wrapper">
-								<image class="avatar" :src="resolveAvatarUrl(podiumSlots[0].user.avatar, podiumSlots[0].user.user_id)" mode="aspectFill"></image>
+								<view class="avatar">
+									<memberAvatar :avatar="podiumSlots[0].user.avatar" :user-id="podiumSlots[0].user.user_id" :vip-level="podiumSlots[0].user.vip_level" :rank-level="podiumSlots[0].user.rank_level" :size="160" fit-frame ring-color="#9A8C67" badge-corner />
+								</view>
 								<view class="rank-badge silver">2</view>
 							</view>
 							<text class="nickname">{{ podiumSlots[0].user.nickname || '球手' }}</text>
@@ -91,7 +93,9 @@
 								<uni-icons type="medal-filled" size="48" color="#fbbf24"></uni-icons>
 							</view>
 							<view class="avatar-wrapper">
-								<image class="avatar" :src="resolveAvatarUrl(podiumSlots[1].user.avatar, podiumSlots[1].user.user_id)" mode="aspectFill"></image>
+								<view class="avatar">
+									<memberAvatar :avatar="podiumSlots[1].user.avatar" :user-id="podiumSlots[1].user.user_id" :vip-level="podiumSlots[1].user.vip_level" :rank-level="podiumSlots[1].user.rank_level" :size="224" fit-frame ring-color="#fbbf24" badge-corner />
+								</view>
 								<view class="rank-badge gold">1</view>
 							</view>
 							<text class="nickname">{{ podiumSlots[1].user.nickname || '球手' }}</text>
@@ -103,7 +107,9 @@
 					<view class="podium-user third" :class="{ 'is-empty': !podiumSlots[2].user }" @click="podiumSlots[2].user && handleUserClick(podiumSlots[2].user)">
 						<template v-if="podiumSlots[2].user">
 							<view class="avatar-wrapper">
-								<image class="avatar" :src="resolveAvatarUrl(podiumSlots[2].user.avatar, podiumSlots[2].user.user_id)" mode="aspectFill"></image>
+								<view class="avatar">
+									<memberAvatar :avatar="podiumSlots[2].user.avatar" :user-id="podiumSlots[2].user.user_id" :vip-level="podiumSlots[2].user.vip_level" :rank-level="podiumSlots[2].user.rank_level" :size="160" fit-frame ring-color="#a16207" badge-corner />
+								</view>
 								<view class="rank-badge bronze">3</view>
 							</view>
 							<text class="nickname">{{ podiumSlots[2].user.nickname || '球手' }}</text>
@@ -123,7 +129,7 @@
 				>
 					<text class="item-rank">{{ item.rank }}</text>
 					<view class="item-info">
-						<image class="item-avatar" :src="resolveAvatarUrl(item.avatar, item.user_id)" mode="aspectFill"></image>
+						<memberAvatar class="item-avatar" :avatar="item.avatar" :user-id="item.user_id" :vip-level="item.vip_level" :rank-level="item.rank_level" :size="96" reserve-frame />
 						<view class="item-details">
 							<text class="item-nickname">{{ item.nickname || '球手' }}</text>
 							<text class="item-rank-name">{{ item.rank_name }} | {{ item.rank_score }}分</text>
@@ -139,7 +145,7 @@
 			<view class="my-ranking-card" v-if="myRanking">
 				<text class="my-rank">{{ myRanking.rank > 0 ? myRanking.rank : '-' }}</text>
 				<view class="my-info">
-					<image class="my-avatar" :src="resolveAvatarUrl(myRanking.avatar, myRanking.user_id)" mode="aspectFill"></image>
+					<memberAvatar :avatar="myRanking.avatar" :user-id="myRanking.user_id" :vip-level="myRanking.vip_level" :rank-level="myRanking.rank_level" :size="80" reserve-frame />
 					<view class="my-details">
 						<text class="my-label">{{ myRanking.rank > 0 ? '我的排名' : '暂未上榜' }}</text>
 						<text class="my-rank-name">{{ myRanking.rank > 0 ? myRanking.rank_name : '完成首场该模式对局后入榜' }}</text>
@@ -165,13 +171,13 @@ import { usePublicReadStore } from '@/store/publicRead.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { previewMatchInvite, startMatch } from '@/api/match.js'
 import gameTypeModal from '@/components/gameTypeModal.vue'
+import memberAvatar from '@/components/memberAvatar.vue'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
 import { buildStartMatchPayload } from '@/utils/start-match.js'
 import { buildLeaderboardPodiumSlots } from '@/utils/ranking-podium.js'
 import { readDefaultGameType, saveDefaultGameType } from '@/utils/game-type-preference.js'
 import { scanAndResolveMatchCode } from '@/utils/match-scan.js'
-import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import {
 	ASYNC_PAGE_STATUS,
 	beginAsyncPageLoad,

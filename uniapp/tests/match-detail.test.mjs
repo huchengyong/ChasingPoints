@@ -49,12 +49,58 @@ test('normalizeMatchDetailPayload maps private match detail fields into display 
   })
   assert.deepEqual(detail.player1Info, {
     name: '张三',
-    avatar: 'a.png'
+    avatar: 'a.png',
+    vipLevel: 0,
+    rankLevel: 0
   })
   assert.deepEqual(detail.player2Info, {
     name: '李四',
-    avatar: 'b.png'
+    avatar: 'b.png',
+    vipLevel: 0,
+    rankLevel: 0
   })
+})
+
+test('normalizeMatchDetailPayload keeps each side member identity next to its own avatar', () => {
+  const detail = normalizeMatchDetailPayload({
+    my_name: '张三',
+    opponent_name: '李四',
+    my_avatar: 'a.png',
+    opponent_avatar: 'b.png',
+    my_vip_level: 0,
+    my_rank_level: 0,
+    opponent_vip_level: 5,
+    opponent_rank_level: 4
+  })
+
+  // 免费用户看到对手会员身份，自己一侧没有。
+  assert.deepEqual([detail.player1Info.vipLevel, detail.player1Info.rankLevel], [0, 0])
+  assert.deepEqual([detail.player2Info.vipLevel, detail.player2Info.rankLevel], [5, 4])
+})
+
+test('normalizeMatchDetailPayload swaps member identity together with the avatar for the other perspective', () => {
+  const detail = normalizeMatchDetailPayload({
+    player1_id: 1,
+    player2_id: 2,
+    player1_name: '创建者',
+    player2_name: '当前用户',
+    player1_avatar: 'p1.png',
+    player2_avatar: 'p2.png',
+    player1_vip_level: 3,
+    player1_rank_level: 2,
+    player2_vip_level: 0,
+    player2_rank_level: 0
+  }, { perspectiveUserId: 2 })
+
+  assert.equal(detail.player1Info.avatar, 'p2.png')
+  assert.equal(detail.player1Info.vipLevel, 0)
+  assert.equal(detail.player2Info.avatar, 'p1.png')
+  assert.deepEqual([detail.player2Info.vipLevel, detail.player2Info.rankLevel], [3, 2])
+})
+
+test('normalizeMatchDetailPayload treats a payload without member fields as non-members', () => {
+  const detail = normalizeMatchDetailPayload({ player1_id: 1, player2_id: 2, player1_name: 'A', player2_name: 'B' })
+  assert.deepEqual([detail.player1Info.vipLevel, detail.player2Info.vipLevel], [0, 0])
 })
 
 test('normalizeMatchDetailPayload keeps referee identity and completion attribution', () => {

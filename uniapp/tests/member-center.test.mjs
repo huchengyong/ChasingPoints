@@ -6,6 +6,7 @@ import {
   formatMemberPrice,
   getMemberPayChannelOptions,
   resolveMemberCenterSummary,
+  resolveMemberIdentityPreview,
   resolveMemberEntryCard,
   resolveMemberPlanCards,
   shouldTreatMemberOrderAsPaid
@@ -47,7 +48,8 @@ test('resolveMemberCenterSummary treats member_expires_at as UTC+8 instead of lo
   }, new Date('2026-03-30T16:20:00Z'))
 
   assert.equal(summary.statusText, 'VIP中')
-  assert.match(summary.description, /高光排位按 Lv2 110% 计入/)
+  assert.match(summary.description, /展示「标准」外观/)
+  assert.doesNotMatch(summary.description, /倍率|110%|高光/)
 })
 
 test('resolveMemberCenterSummary returns expired copy after member expires', () => {
@@ -60,7 +62,8 @@ test('resolveMemberCenterSummary returns expired copy after member expires', () 
   assert.equal(summary.statusText, '已到期')
   assert.equal(summary.title, 'VIP已到期')
   assert.match(summary.description, /2026-03-20 10:00:00/)
-  assert.match(summary.description, /高光排位权益会按 Lv3 120% 恢复/)
+  assert.match(summary.description, /「进阶」外观/)
+  assert.doesNotMatch(summary.description, /倍率|120%|高光/)
 })
 
 test('resolveMemberPlanCards marks the selected plan only', () => {
@@ -146,23 +149,67 @@ test('resolveMemberEntryCard shows ended compliance copy when member history exi
   assert.equal(card.priceText, '')
 })
 
-test('resolveMemberCenterSummary stops advertising highlight ranking after rating v2 starts', () => {
-  const rankRules = { rulesVersion: 2, rulesEffectiveAt: '2026-11-01T00:00:00+08:00' }
-  const active = resolveMemberCenterSummary({
-    is_active: true,
-    member_expires_at: '2026-12-31 00:30:00',
-    growth_level: 2
-  }, new Date('2026-11-05T10:00:00+08:00'), { rankRules })
-  assert.equal(active.statusText, 'VIP中')
-  assert.doesNotMatch(active.description, /高光/)
+test('resolveMemberCenterSummary no longer advertises ranking multipliers in any state', () => {
+  const now = new Date('2026-11-05T10:00:00+08:00')
+  const states = [
+    { is_active: true, member_expires_at: '2026-12-31 00:30:00', growth_level: 2 },
+    { is_active: true, member_expires_at: '2026-12-31 00:30:00', growth_level: 5 },
+    { is_active: false, member_expires_at: '2026-11-02 10:00:00', growth_level: 3 },
+    {}
+  ]
+  for (const status of states) {
+    const summary = resolveMemberCenterSummary(status, now)
+    assert.doesNotMatch(`${summary.title} ${summary.description}`, /高光|倍率|计入排位|\d+%/, JSON.stringify(status))
+  }
+  assert.match(resolveMemberCenterSummary({}, now).description, /成长等级解锁更高阶外观/)
+  assert.match(resolveMemberCenterSummary(states[1], now).description, /「尊享」外观/)
+})
 
-  const expired = resolveMemberCenterSummary({
-    is_active: false,
-    member_expires_at: '2026-11-02 10:00:00',
-    growth_level: 3
-  }, new Date('2026-11-05T10:00:00+08:00'), { rankRules })
-  assert.doesNotMatch(expired.description, /高光排位/)
+test('resolveMemberIdentityPreview shows the current tier only for active members', () => {
+  const now = new Date('2026-11-05T10:00:00+08:00')
+  const active = resolveMemberIdentityPreview({ is_active: true, member_expires_at: '2026-12-31 00:30:00', growth_level: 4 }, now, { rankLevel: 5 })
+  assert.equal(active.active, true)
+  assert.equal(active.level, 4)
+  assert.equal(active.identity.tierLabel, '进阶')
+  assert.equal(active.identity.badgeText, 'VIP4')
+  assert.match(active.identity.frameUrl, /frame_diamond\.png$/)
+  assert.deepEqual(active.tiers.map((item) => [item.label, item.levelText, item.current, item.reached]), [
+    ['标准', 'Lv1–Lv2', false, true],
+    ['进阶', 'Lv3–Lv4', true, true],
+    ['尊享', 'Lv5', false, false]
+  ])
+  assert.deepEqual(active.tiers.map((item) => item.badgeText), ['VIP1', 'VIP3', 'VIP5'])
+  assert.match(active.hint, /进阶/)
+  assert.match(active.hint, /排行榜、对局和好友列表/)
+})
 
-  const unopened = resolveMemberCenterSummary({}, new Date('2026-11-05T10:00:00+08:00'), { rankRules })
-  assert.doesNotMatch(unopened.description, /计入排位/)
+test('resolveMemberIdentityPreview hides the identity after expiry and explains it is restored on renewal', () => {
+  const now = new Date('2026-11-05T10:00:00+08:00')
+  const expired = resolveMemberIdentityPreview({ is_active: false, member_expires_at: '2026-11-02 10:00:00', growth_level: 3 }, now, { rankLevel: 4 })
+  assert.equal(expired.active, false)
+  assert.equal(expired.frozen, true)
+  assert.equal(expired.identity.showBadge, false)
+  assert.equal(expired.identity.frameUrl, '')
+  assert.equal(expired.tiers.some((item) => item.current), false)
+  assert.equal(expired.level, 3, 'growth is frozen, not lost')
+  assert.match(expired.hint, /已隐藏/)
+  assert.match(expired.hint, /续开/)
+  assert.match(expired.hint, /「进阶」/)
+
+  const never = resolveMemberIdentityPreview({}, now)
+  assert.equal(never.frozen, false)
+  assert.equal(never.identity.showBadge, false)
+  assert.match(never.hint, /开通VIP后/)
+})
+
+test('resolveMemberIdentityPreview avoids purchase wording in compliance mode', () => {
+  const now = new Date('2026-11-05T10:00:00+08:00')
+  const texts = [
+    resolveMemberIdentityPreview({}, now, { complianceMode: true }).hint,
+    resolveMemberIdentityPreview({ is_active: false, member_expires_at: '2026-11-02 10:00:00', growth_level: 2 }, now, { complianceMode: true }).hint
+  ]
+  for (const text of texts) {
+    assert.doesNotMatch(text, /开通|订阅|续开|续费|支付/)
+  }
+  assert.match(texts[0], /获得VIP权益后/)
 })

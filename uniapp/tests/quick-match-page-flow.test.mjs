@@ -53,6 +53,9 @@ export const GAME_TYPE_LABEL_MAP = { 3: '中式八球' }
 import { ref } from 'vue'
 export const usePageTheme = () => ({ isDarkMode: ref(false) })
 `,
+  '@/components/memberAvatar.vue': `
+export default { name: 'memberAvatar', props: ['avatar', 'userId', 'vipLevel', 'rankLevel', 'size'], render: () => null }
+`,
   '@/utils/user-profile.js': `
 export const resolveAvatarUrl = () => ''
 `,

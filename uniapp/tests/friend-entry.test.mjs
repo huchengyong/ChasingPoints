@@ -75,6 +75,15 @@ test('buildFriendHomepageUrl carries identity fields needed by the lite homepage
   )
 })
 
+test('buildFriendHomepageUrl carries vip_level and rank_level only for active members', () => {
+  const member = buildFriendHomepageUrl({ user_id: 66, nickname: 'A', avatar: '', rank_name: '星耀', vip_level: 3, rank_level: 4 })
+  assert.match(member, /&vip_level=3&rank_level=4$/)
+
+  for (const vip_level of [0, undefined, null, 'x']) {
+    assert.doesNotMatch(buildFriendHomepageUrl({ user_id: 66, vip_level, rank_level: 4 }), /vip_level|rank_level/)
+  }
+})
+
 test('buildDeleteFriendPayload uses friend_user_id expected by backend contract', () => {
   assert.deepEqual(buildDeleteFriendPayload({ user_id: 77 }), { friend_user_id: 77 })
 })

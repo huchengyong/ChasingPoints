@@ -30,12 +30,12 @@ test('logged-in header opens profile editing and keeps message and settings butt
   assert.match(source, /class="icon-btn" @click="handleNotificationCenter"/)
   assert.match(source, /class="icon-btn" @click="handleSettings"/)
   assert.match(source, /resolveReputationChip\(reputationStatus\.value, coreDataLoading\.value\)/)
-  assert.match(source, /`VIP · \$\{memberLevelText\.value\}`/)
+  assert.match(source, /`\$\{identity\.badgeText\} · \$\{identity\.tierLabel\}`/)
 })
 
 test('active members use the current rank avatar frame without replacing profile navigation', () => {
   assert.match(source, /v-if="rankAvatarFrame" class="profile-avatar-frame" :src="rankAvatarFrame"/)
-  assert.match(source, /resolveMemberRankAvatarFrame\(\{/)
+  assert.match(source, /resolveSelfMemberIdentity\(\{/)
   assert.match(source, /rankLoading: rankLoading\.value/)
   assert.match(styleSource, /\.profile-avatar-frame\s*\{[\s\S]*pointer-events:\s*none;/)
   assert.match(styleSource, /\.profile-avatar\.has-rank-frame\s*\{[\s\S]*width:\s*124rpx;[\s\S]*height:\s*124rpx;/)

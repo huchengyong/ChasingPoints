@@ -55,10 +55,14 @@
 					@touchend="handleItemTouchEnd(item)"
 					@touchcancel="handleItemTouchEnd(item)"
 				>
-					<image
+					<memberAvatar
 						class="friend-avatar"
-						:src="resolveAvatarUrl(item.avatar, item.friend_user_id || item.user_id || item.id)"
-						mode="aspectFill"
+						:avatar="item.avatar"
+						:user-id="item.friend_user_id || item.user_id || item.id"
+						:vip-level="item.vip_level"
+						:rank-level="item.rank_level"
+						:size="80"
+						reserve-frame
 					/>
 					<view class="friend-info">
 						<view class="friend-primary">
@@ -112,7 +116,7 @@ import {
 } from '@/utils/friend-entry.js'
 import { clampFriendSwipeOffset, resolveFriendSwipeEndOffset } from '@/utils/friend-swipe.js'
 import { usePageTheme } from '@/utils/page-theme.js'
-import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import memberAvatar from '@/components/memberAvatar.vue'
 import {
 	ASYNC_PAGE_STATUS,
 	beginAsyncPageLoad,
@@ -584,10 +588,7 @@ onPullDownRefresh(() => {
 		transition: transform 0.18s ease;
 
 		.friend-avatar {
-			width: 88rpx;
-			height: 88rpx;
-			border-radius: 50%;
-			margin-right: 20rpx;
+			margin-right: 16rpx;
 			flex-shrink: 0;
 		}
 
