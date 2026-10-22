@@ -55,13 +55,13 @@ export type PartialRecord = Record<string, any>
 const DEFAULT_CONFIG: MemberRightsConfig = {
   growth_rules: {
     points_per_completed_match: 1,
-    daily_match_cap: 5,
+    daily_match_cap: 8,
     level_thresholds: {
       lv1: 0,
       lv2: 10,
-      lv3: 60,
-      lv4: 260,
-      lv5: 760
+      lv3: 40,
+      lv4: 120,
+      lv5: 300
     },
     expiration_policy: 'freeze_preserve_resume',
     only_completed_real_matches: true

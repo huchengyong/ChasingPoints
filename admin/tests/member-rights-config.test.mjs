@@ -64,7 +64,7 @@ test('saving a loaded config sends back the values it was loaded with', () => {
 test('createDefaultMemberRightsConfig keeps the documented defaults', () => {
   const config = createDefaultMemberRightsConfig()
 
-  assert.equal(config.growth_rules.daily_match_cap, 5)
+  assert.equal(config.growth_rules.daily_match_cap, 8)
   assert.equal(config.growth_rules.expiration_policy, 'freeze_preserve_resume')
   assert.equal(config.ranking_rights_rules.daily_achievement_rank_score_cap, 200)
   assert.equal(config.ranking_rights_rules.ordinary_user_can_gain_achievement_rank_score, false)
