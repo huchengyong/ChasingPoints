@@ -1328,6 +1328,38 @@ type GetMatchShareDataResp struct {
 	Data    *MatchShareData `json:"data"`
 }
 
+type GetMemberMatchReplayReq struct {
+	MatchId int64 `form:"match_id"`
+}
+
+type GetMemberMatchReplayResp struct {
+	Success         bool           `json:"success"`
+	MatchId         int64          `json:"match_id"`
+	GameType        int            `json:"game_type"`
+	Locked          bool           `json:"locked"` // true=非有效会员，只返回局数
+	FrameCount      int            `json:"frame_count"`
+	FrameOnly       bool           `json:"frame_only,optional"`       // true=本该有逐动作明细但只有局级数据：旧斯诺克对局、动作超出上限或明细损坏
+	DetailTruncated bool           `json:"detail_truncated,optional"` // 动作数超出上限
+	Summary         *ReplaySummary `json:"summary,optional"`
+	Frames          []ReplayFrame  `json:"frames,optional"`
+}
+
+type GetMemberPerformanceReq struct {
+	GameType int `form:"game_type,optional,default=3"`
+}
+
+type GetMemberPerformanceResp struct {
+	Success      bool                     `json:"success"`
+	GameType     int                      `json:"game_type"`
+	Locked       bool                     `json:"locked"`                 // true=非有效会员，只返回样本数与本月预览
+	SampleCount  int                      `json:"sample_count"`           // 最近 90 天可分析的 V2 已计分排位场数，上限 200
+	MonthPreview *PerformanceMonthPreview `json:"month_preview,optional"` // 仅 locked 时返回
+	Summary      *PerformanceSummary      `json:"summary,optional"`       // 以下四项仅有效会员返回
+	BestWin      *PerformanceMatchItem    `json:"best_win,optional"`
+	WorstLoss    *PerformanceMatchItem    `json:"worst_loss,optional"`
+	Months       []PerformanceMonthItem   `json:"months,optional"` // 最近 6 个自然月
+}
+
 type GetMemberPlansResp struct {
 	Success     bool             `json:"success"`
 	CurrentTime string           `json:"current_time"`
@@ -2395,6 +2427,41 @@ type OpponentStrengthItem struct {
 	WinRate   float64 `json:"win_rate"`
 }
 
+type PerformanceMatchItem struct {
+	MatchId             int64   `json:"match_id"`
+	OpponentName        string  `json:"opponent_name"`
+	OpponentAvatar      string  `json:"opponent_avatar"`
+	OpponentBeforeScore int     `json:"opponent_before_score"` // 对手赛前排位分
+	ExpectedWinRate     float64 `json:"expected_win_rate"`     // 赛前整场胜率(百分比)
+	PlayedAt            string  `json:"played_at"`
+}
+
+type PerformanceMonthItem struct {
+	Month        string             `json:"month"` // 业务时区自然月 YYYY-MM
+	SampleCount  int                `json:"sample_count"`
+	Rating       *PerformanceRating `json:"rating"`              // 该月少于 3 场时为 null
+	EndRankScore int                `json:"end_rank_score"`      // 月末排位分，该月没有对局时为 0
+	Incomplete   bool               `json:"incomplete,optional"` // 读取上限截断了该月数据
+}
+
+type PerformanceMonthPreview struct {
+	Month       string             `json:"month"` // 业务时区自然月 YYYY-MM
+	SampleCount int                `json:"sample_count"`
+	Rating      *PerformanceRating `json:"rating"` // 本月少于 3 场时为 null
+}
+
+type PerformanceRating struct {
+	Rating int    `json:"rating"`
+	Bound  string `json:"bound,optional"` // at_least=至少 at_most=至多，缺省为精确值
+}
+
+type PerformanceSummary struct {
+	Wins         int                `json:"wins"`          // 实际胜场
+	ExpectedWins float64            `json:"expected_wins"` // 期望胜场
+	WinsDiff     float64            `json:"wins_diff"`     // 实际胜场减期望胜场
+	Rating       *PerformanceRating `json:"rating"`        // 样本少于 5 场时为 null
+}
+
 type PersonalDataExportItem struct {
 	Category string `json:"category"`
 	Id       string `json:"id"`
@@ -2639,6 +2706,46 @@ type RefreshTokenResp struct {
 	AccessToken  string `json:"access_token,optional"`
 	RefreshToken string `json:"refresh_token,optional"`
 	ExpiresIn    int64  `json:"expires_in,optional"`
+}
+
+type ReplayFrame struct {
+	FrameNo            int                `json:"frame_no"`
+	Winner             int                `json:"winner"`   // 1=我 2=对手 0=未分胜负
+	MyScore            int                `json:"my_score"` // 本局得分：斯诺克为本局比分，其余球种为本局新增的得分
+	OpponentScore      int                `json:"opponent_score"`
+	WinType            string             `json:"win_type,optional"`         // 胜局方式代码
+	DurationSeconds    int                `json:"duration_seconds,optional"` // 本局用时，0=缺少时间
+	MaxDeficit         int                `json:"max_deficit"`               // 胜方在本局曾落后的最大分差
+	KeyTags            []string           `json:"key_tags,optional"`         // decider=决胜局 comeback=落后分差最大
+	MyMaxRun           int                `json:"my_max_run,optional"`       // 斯诺克为单杆最高，九球追分为最大连续得分
+	OpponentMaxRun     int                `json:"opponent_max_run,optional"`
+	MyFoulCount        int                `json:"my_foul_count,optional"` // 犯规次数
+	OpponentFoulCount  int                `json:"opponent_foul_count,optional"`
+	MyFoulPoints       int                `json:"my_foul_points,optional"` // 本方犯规送给对手的罚分
+	OpponentFoulPoints int                `json:"opponent_foul_points,optional"`
+	Trend              []ReplayTrendPoint `json:"trend,optional"` // 不超过 60 个点
+}
+
+type ReplaySummary struct {
+	MyFrameWins           int                 `json:"my_frame_wins"`
+	OpponentFrameWins     int                 `json:"opponent_frame_wins"`
+	MyMaxRun              int                 `json:"my_max_run,optional"`
+	OpponentMaxRun        int                 `json:"opponent_max_run,optional"`
+	MyLongestStreak       int                 `json:"my_longest_streak,optional"` // 中式八球、美式九球的最长连胜局数
+	OpponentLongestStreak int                 `json:"opponent_longest_streak,optional"`
+	WinTypeStats          []ReplayWinTypeStat `json:"win_type_stats,optional"`
+}
+
+type ReplayTrendPoint struct {
+	Step int `json:"step"` // 本局第几次得分变化，0 为开局；降采样后不再连续
+	Diff int `json:"diff"` // 我方减对手的累计分差
+}
+
+type ReplayWinTypeStat struct {
+	WinType       string `json:"win_type"`
+	Label         string `json:"label"`
+	MyCount       int    `json:"my_count"`
+	OpponentCount int    `json:"opponent_count"`
 }
 
 type RoundRecord struct {

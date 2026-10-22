@@ -807,6 +807,62 @@ func (m *RankingModel) ListRankChangesByUserAndGameTypeSince(userId int64, gameT
 	return logs, err
 }
 
+// MaxAnalysisRankChangeRows 是会员表现分析一次最多读取的对局结算记录数。
+const MaxAnalysisRankChangeRows = 600
+
+// ListMatchRankChangesForAnalysis 读取用户某球种自 since 起的对局结算记录（最新在前），只取分析需要的列。
+// 走 (user_id, effective_at) 索引，行数上限为 MaxAnalysisRankChangeRows，不扫描完整历史。
+func (m *RankingModel) ListMatchRankChangesForAnalysis(userId int64, gameType int, since time.Time, limit int) ([]RankChangeLog, error) {
+	db, err := m.resolveDB(nil)
+	if err != nil {
+		return nil, err
+	}
+	supportsGameType, err := m.rankChangeLogSupportsGameType(nil)
+	if err != nil {
+		return nil, err
+	}
+	if limit <= 0 || limit > MaxAnalysisRankChangeRows {
+		limit = MaxAnalysisRankChangeRows
+	}
+	query := db.Select("id", "match_id", "result", "before_score", "after_score", "remark", "effective_at").
+		Where("user_id = ? AND change_type = ? AND effective_at >= ?", userId, rankChangeTypeMatchResult, since)
+	var logs []RankChangeLog
+	err = applyRankChangeLogGameTypeFilter(query, supportsGameType, gameType).
+		Order("effective_at DESC, id DESC").
+		Limit(limit).
+		Find(&logs).Error
+	return logs, err
+}
+
+// OpponentRatingRef 是同一场对局里对手的结算前排位分。
+type OpponentRatingRef struct {
+	MatchId     int64
+	UserId      int64
+	BeforeScore int
+}
+
+// ListOpponentBeforeScores 按对局 id 一次批量读取同场对手（非 userId 的一方）的结算前排位分，走 match_id 索引。
+// 对手没有结算记录的对局不在结果中。调用方应保证 matchIds 有界。
+func (m *RankingModel) ListOpponentBeforeScores(matchIds []int64, userId int64, gameType int) ([]OpponentRatingRef, error) {
+	if len(matchIds) == 0 {
+		return []OpponentRatingRef{}, nil
+	}
+	db, err := m.resolveDB(nil)
+	if err != nil {
+		return nil, err
+	}
+	supportsGameType, err := m.rankChangeLogSupportsGameType(nil)
+	if err != nil {
+		return nil, err
+	}
+	query := db.Model(&RankChangeLog{}).
+		Select("match_id", "user_id", "before_score").
+		Where("match_id IN ? AND change_type = ? AND user_id <> ?", matchIds, rankChangeTypeMatchResult, userId)
+	var rows []OpponentRatingRef
+	err = applyRankChangeLogGameTypeFilter(query, supportsGameType, gameType).Scan(&rows).Error
+	return rows, err
+}
+
 // ListRankChangesByUserBetween 获取用户在时间范围内的段位变更记录
 func (m *RankingModel) ListRankChangesByUserBetween(userId int64, start, end time.Time) ([]RankChangeLog, error) {
 	db, err := m.resolveDB(nil)

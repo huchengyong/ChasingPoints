@@ -811,6 +811,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
+				// 获取会员单场复盘
+				Method:  http.MethodGet,
+				Path:    "/match-replay",
+				Handler: member.GetMemberMatchReplayHandler(serverCtx),
+			},
+			{
 				// 创建会员订阅订单
 				Method:  http.MethodPost,
 				Path:    "/order",
@@ -821,6 +827,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodGet,
 				Path:    "/order/status",
 				Handler: member.GetMemberSubscriptionOrderStatusHandler(serverCtx),
+			},
+			{
+				// 获取会员表现分析
+				Method:  http.MethodGet,
+				Path:    "/performance",
+				Handler: member.GetMemberPerformanceHandler(serverCtx),
 			},
 			{
 				// 获取会员套餐列表
