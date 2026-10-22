@@ -42,7 +42,7 @@
 						<view class="versus-board">
 							<view class="player-panel">
 								<view :class="['avatar-shell', isReferee ? 'is-neutral' : (isWin ? 'is-winner' : 'is-neutral')]">
-									<image class="avatar" :src="myAvatar" mode="aspectFill"></image>
+									<memberAvatar :avatar="matchData.my_avatar" :user-id="matchData.my_user_id || matchData.user_id" :vip-level="matchData.my_vip_level" :rank-level="matchData.my_rank_level" :size="92" />
 								</view>
 								<text class="player-name">{{ matchData.my_name || '我' }}</text>
 								<text class="player-extra">{{ isReferee ? '选手' : (formatWinRate(matchData.my_win_rate) + ' 胜率') }}</text>
@@ -59,7 +59,7 @@
 
 							<view class="player-panel">
 								<view :class="['avatar-shell', isReferee ? 'is-neutral' : (!isWin ? 'is-winner' : 'is-neutral')]">
-									<image class="avatar" :src="opponentAvatar" mode="aspectFill"></image>
+									<memberAvatar :avatar="matchData.opponent_avatar" :user-id="matchData.opponent_id" :vip-level="matchData.opponent_vip_level" :rank-level="matchData.opponent_rank_level" :size="92" />
 								</view>
 								<text class="player-name">{{ matchData.opponent_name || '对手' }}</text>
 								<text class="player-extra">{{ isReferee ? '选手' : (formatWinRate(matchData.opponent_win_rate) + ' 胜率') }}</text>
@@ -250,6 +250,7 @@
 				{{ secondaryActionText }}
 			</button>
 			<button class="footer-btn btn-link" @click="handleH2H">查看交锋记录</button>
+			<button v-if="showReplayEntry" class="footer-btn btn-link" @click="handleReplay">单场复盘</button>
 		</view>
 	</view>
 </template>
@@ -259,10 +260,12 @@ import { computed, ref } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { getMatchDetail, getMatchRewardSummary } from '@/api/match.js'
 import { formatDateTime, formatRelativeTime } from '@/utils/format.js'
+import memberAvatar from '@/components/memberAvatar.vue'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveMatchRankingRightsSummary } from '@/utils/member-ranking-rights.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import { buildRematchContext } from '@/utils/match-core-flow.js'
+import { buildMatchReplayUrl, canOpenMatchReplay } from '@/utils/match-replay-entry.js'
 import { resolveFinishMethodText } from '@/utils/finish-countdown.js'
 import { resolveRefereeIdentityCard, resolveRefereeResultViewConfig, resolveCompletionSourceLabel } from '@/utils/match-referee-view.js'
 import {
@@ -331,6 +334,11 @@ const systemInfo = uni.getSystemInfoSync()
 statusBarHeight.value = systemInfo.statusBarHeight || 20
 
 const isReferee = computed(() => matchData.value.viewer_role === 'referee')
+// 单场复盘只给本场选手；资格由服务端最终判断。
+const showReplayEntry = computed(() => canOpenMatchReplay({
+	status: matchData.value.status,
+	viewerRole: matchData.value.viewer_role
+}))
 const isWin = computed(() => !isReferee.value && resolveMatchViewerWin({
 	result: matchData.value.result,
 	myScore: matchData.value.my_score,
@@ -456,14 +464,6 @@ const statsData = computed(() => {
 	}))
 })
 
-const myAvatar = computed(() => resolveAvatarUrl(
-	matchData.value.my_avatar,
-	matchData.value.my_user_id || matchData.value.user_id
-))
-const opponentAvatar = computed(() => resolveAvatarUrl(
-	matchData.value.opponent_avatar,
-	matchData.value.opponent_id
-))
 const primaryActionText = computed(() => '再来一局')
 const secondaryActionText = computed(() => (fromHistory.value ? '生成战绩海报' : '分享战绩'))
 
@@ -621,6 +621,10 @@ const handleRematch = () => {
 	}
 	uni.setStorageSync('pending_match_rematch', JSON.stringify(context))
 	uni.switchTab({ url: '/pages/match/index' })
+}
+
+const handleReplay = () => {
+	uni.navigateTo({ url: buildMatchReplayUrl(matchId.value) })
 }
 
 const handleH2H = () => {

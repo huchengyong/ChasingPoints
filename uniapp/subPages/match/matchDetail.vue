@@ -19,11 +19,15 @@
 				<view class="avatars-section">
 					<view class="player-info">
 						<view class="avatar-wrapper">
-							<image 
-								class="avatar" 
-								:src="resolveAvatarUrl(player1Info.avatar, player1UserId)"
-								mode="aspectFill" 
-							/>
+							<view class="avatar">
+								<memberAvatar
+									:avatar="player1Info.avatar"
+									:user-id="player1UserId"
+									:vip-level="player1Info.vipLevel"
+									:rank-level="player1Info.rankLevel"
+									:size="100"
+								/>
+							</view>
 						</view>
 						<text class="player-name">{{ player1Info.name || '玩家1' }}</text>
 					</view>
@@ -34,11 +38,15 @@
 
 					<view class="player-info">
 						<view class="avatar-wrapper">
-							<image 
-								class="avatar" 
-								:src="resolveAvatarUrl(player2Info.avatar, player2UserId)"
-								mode="aspectFill" 
-							/>
+							<view class="avatar">
+								<memberAvatar
+									:avatar="player2Info.avatar"
+									:user-id="player2UserId"
+									:vip-level="player2Info.vipLevel"
+									:rank-level="player2Info.rankLevel"
+									:size="100"
+								/>
+							</view>
 						</view>
 						<text class="player-name">{{ player2Info.name || '玩家2' }}</text>
 					</view>
@@ -87,7 +95,8 @@
 				</view>
 			</view>
 
-			<view class="detail-entry-row" v-if="showH2H || showRematch">
+			<view class="detail-entry-row" v-if="showH2H || showRematch || showReplay">
+				<button v-if="showReplay" class="h2h-entry-button" @tap="handleOpenReplay">单场复盘</button>
 				<button v-if="showH2H" class="h2h-entry-button" @tap="handleOpenH2H">查看双方交锋记录</button>
 				<button v-if="showRematch" class="h2h-entry-button rematch-button" @tap="handleRematch">再约一场</button>
 			</view>
@@ -129,6 +138,9 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { onHide, onLoad, onShow } from '@dcloudio/uni-app'
 import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import { getMatchDetail, getPublicMatchDetail } from '@/api/match.js'
+import memberAvatar from '@/components/memberAvatar.vue'
+import { useUserStore } from '@/store/user.js'
+import { buildMatchReplayUrl, canOpenMatchReplay } from '@/utils/match-replay-entry.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import {
 	normalizeMatchDetailPayload,
@@ -217,6 +229,15 @@ const refereeCard = computed(() => resolveRefereeIdentityCard({
 	status: matchData.value.status
 }))
 
+const userStore = useUserStore()
+// 单场复盘只给本场选手；本人详情看 viewer_role，战绩列表进入的历史详情看视角用户是否就是自己。资格由服务端最终判断。
+const showReplay = computed(() => canOpenMatchReplay({
+	status: matchData.value.status,
+	viewerRole: matchData.value.viewer_role,
+	source: detailSource.value,
+	perspectiveUserId: perspectiveUserId.value,
+	currentUserId: userStore.userId
+}))
 const showH2H = computed(() => matchData.value.status === 2 && matchData.value.viewer_role !== 'referee')
 // 再约一场：本人是选手且对手为平台用户时展示（扫码对局同样可用；仅旁观/裁判不显示）。
 const showRematch = computed(() => {
@@ -492,6 +513,10 @@ const handleRematch = () => {
 		`match_mode=${detail.match_mode === 'practice' ? 'practice' : 'ranked'}`
 	]
 	uni.navigateTo({ url: `/subPages/match/challengeCompose?${query.join('&')}` })
+}
+
+const handleOpenReplay = () => {
+	uni.navigateTo({ url: buildMatchReplayUrl(matchId.value) })
 }
 
 const handleOpenH2H = () => {

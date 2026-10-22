@@ -251,8 +251,14 @@ $shadow-dark: 0 24rpx 80rpx rgba(2, 6, 23, 0.5);
 }
 
 .avatar-shell {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
 	width: 112rpx;
 	height: 112rpx;
+	// 头像框翼饰向下溢出约 29rpx，预留空间避免压到昵称。
+	margin-bottom: 14rpx;
 	padding: 6rpx;
 	border-radius: 50%;
 	border: 4rpx solid rgba(255, 255, 255, 0.34);
@@ -266,13 +272,6 @@ $shadow-dark: 0 24rpx 80rpx rgba(2, 6, 23, 0.5);
 	&.is-neutral {
 		border-color: rgba(255, 255, 255, 0.26);
 	}
-}
-
-.avatar {
-	width: 100%;
-	height: 100%;
-	border-radius: 50%;
-	display: block;
 }
 
 .player-name {

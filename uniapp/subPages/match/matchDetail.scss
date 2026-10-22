@@ -276,11 +276,17 @@ $loss-color: #E57373;
 
 .avatar-wrapper {
     position: relative;
+    // 头像框翼饰向下溢出约 31rpx，预留空间避免压到昵称。
+    margin-bottom: 16rpx;
 }
 
 .avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 112rpx;
     height: 112rpx;
+    box-sizing: border-box;
     border-radius: 50%;
     border: 6rpx solid $border-color-light;
     background-color: #E9E2CF;
