@@ -71,13 +71,13 @@ func TestGetMemberStatusReturnsGrowthSnapshot(t *testing.T) {
 	if !resp.Success || !resp.IsActive {
 		t.Fatalf("expected active member status, got %#v", resp)
 	}
-	if resp.GrowthLevel != 3 || resp.GrowthPoints != 78 || resp.TodayGrowthCount != 3 || resp.GrowthDailyCap != 5 {
+	if resp.GrowthLevel != 3 || resp.GrowthPoints != 78 || resp.TodayGrowthCount != 3 || resp.GrowthDailyCap != 8 {
 		t.Fatalf("unexpected growth payload: %#v", resp)
 	}
 	if resp.GrowthFrozen {
 		t.Fatalf("expected active member growth not frozen: %#v", resp)
 	}
-	if resp.NextGrowthLevel != 4 || resp.NextGrowthLevelPoints != 260 || resp.RemainingGrowthPoints != 182 {
+	if resp.NextGrowthLevel != 4 || resp.NextGrowthLevelPoints != 120 || resp.RemainingGrowthPoints != 42 {
 		t.Fatalf("unexpected next growth payload: %#v", resp)
 	}
 }

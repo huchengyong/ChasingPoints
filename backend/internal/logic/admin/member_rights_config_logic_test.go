@@ -36,7 +36,7 @@ func TestAdminGetMemberRightsConfigReturnsDefaultsWhenMissing(t *testing.T) {
 	if !resp.Success {
 		t.Fatalf("expected success response, got %#v", resp)
 	}
-	if resp.GrowthRules.DailyCap != 5 || resp.RankingRights.DailyCap != 200 || resp.RankingRights.DailyPositiveCap != 500 {
+	if resp.GrowthRules.DailyCap != 8 || resp.RankingRights.DailyCap != 200 || resp.RankingRights.DailyPositiveCap != 500 {
 		t.Fatalf("unexpected default config response: %#v", resp)
 	}
 }

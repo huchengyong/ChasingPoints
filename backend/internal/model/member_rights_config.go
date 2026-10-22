@@ -61,11 +61,11 @@ func (MemberRightsConfig) TableName() string {
 func DefaultMemberGrowthRulesConfig() MemberGrowthRulesConfig {
 	return MemberGrowthRulesConfig{
 		PointsPerCompletedMatch: 1,
-		DailyCap:                5,
+		DailyCap:                8,
 		LevelThresholdLv2:       10,
-		LevelThresholdLv3:       60,
-		LevelThresholdLv4:       260,
-		LevelThresholdLv5:       760,
+		LevelThresholdLv3:       40,
+		LevelThresholdLv4:       120,
+		LevelThresholdLv5:       300,
 		ExpireStrategy:          "freeze_preserve",
 	}
 }

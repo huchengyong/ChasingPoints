@@ -87,7 +87,7 @@ func TestMemberGrowthServiceSkipsNonMember(t *testing.T) {
 	}
 }
 
-func TestMemberGrowthServiceSkipsSixthMatchInSameDay(t *testing.T) {
+func TestMemberGrowthServiceSkipsNinthMatchInSameDay(t *testing.T) {
 	now := time.Date(2026, 4, 11, 10, 0, 0, 0, UTC8Location)
 	svcCtx := newMemberGrowthServiceTestSvc(t)
 	expiresAt := now.Add(24 * time.Hour)
@@ -97,8 +97,8 @@ func TestMemberGrowthServiceSkipsSixthMatchInSameDay(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create profile: %v", err)
 	}
-	profile.GrowthPoints = 5
-	profile.TodayGrowthCount = 5
+	profile.GrowthPoints = 8
+	profile.TodayGrowthCount = 8
 	profile.TodayGrowthDate = &dayStart
 	if err := svcCtx.MemberGrowthProfileModel.Update(profile); err != nil {
 		t.Fatalf("update profile: %v", err)
@@ -144,9 +144,9 @@ func TestResolveMemberGrowthLevelThresholds(t *testing.T) {
 	}{
 		{0, 1},
 		{10, 2},
-		{60, 3},
-		{260, 4},
-		{760, 5},
+		{40, 3},
+		{120, 4},
+		{300, 5},
 	}
 	for _, tc := range cases {
 		if got := ResolveMemberGrowthLevel(tc.points); got != tc.level {
@@ -170,7 +170,7 @@ func TestMemberGrowthServiceBuildSnapshotKeepsFrozenProgress(t *testing.T) {
 	if !snapshot.Frozen || snapshot.GrowthLevel != 3 || snapshot.GrowthPoints != 78 {
 		t.Fatalf("unexpected frozen snapshot: %+v", snapshot)
 	}
-	if snapshot.NextLevel != 4 || snapshot.RemainingPoints != 182 {
+	if snapshot.NextLevel != 4 || snapshot.RemainingPoints != 42 {
 		t.Fatalf("unexpected next level snapshot: %+v", snapshot)
 	}
 }

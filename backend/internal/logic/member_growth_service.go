@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const MemberGrowthDailyCap = 5
+const MemberGrowthDailyCap = 8
 
 type MemberGrowthLevelRule struct {
 	Level          int
