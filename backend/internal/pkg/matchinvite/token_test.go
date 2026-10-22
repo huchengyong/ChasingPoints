@@ -45,7 +45,13 @@ func TestSignerRejectsTamperedAndExpiredInvite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tampered := token[:len(token)-1] + "x"
+	// 签名段首字符携带 6 个有效位；末字符只有 4 位有效，改它可能解码为同样的字节，造成偶发通过。
+	dot := strings.IndexByte(token, '.')
+	replacement := byte('A')
+	if token[dot+1] == replacement {
+		replacement = 'B'
+	}
+	tampered := token[:dot+1] + string(replacement) + token[dot+2:]
 	if _, err := signer.VerifyAt(tampered, now); !errors.Is(err, ErrInvalidToken) {
 		t.Fatalf("expected tamper rejection, got %v", err)
 	}
