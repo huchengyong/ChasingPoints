@@ -10,6 +10,65 @@
 				<text class="member-hero-desc">{{ summary.description }}</text>
 			</view>
 
+			<view class="member-section member-identity-section">
+				<view class="member-section-head">
+					<text class="member-section-title">身份展示</text>
+					<text v-if="identityPreview.active" class="member-section-tip">{{ identityPreview.identity.tierLabel }}外观</text>
+				</view>
+				<view class="member-identity-preview">
+					<memberAvatar
+						class="member-identity-avatar"
+						:avatar="ownAvatar"
+						:user-id="userStore.userId"
+						:vip-level="identityPreview.identity.vipLevel"
+						:rank-level="rankLevel"
+						:size="112"
+						reserve-frame
+					/>
+					<view class="member-identity-copy">
+						<text class="member-identity-name">{{ ownName }}</text>
+						<text class="member-identity-hint">{{ identityPreview.hint }}</text>
+					</view>
+				</view>
+				<view class="member-tier-list">
+					<view
+						v-for="item in identityPreview.tiers"
+						:key="item.tier"
+						class="member-tier-row"
+						:class="{ current: item.current, reached: item.reached && identityPreview.active }"
+					>
+						<memberAvatar class="member-tier-avatar" :avatar="ownAvatar" :user-id="userStore.userId" :vip-level="item.sampleLevel" :size="64" />
+						<view class="member-tier-copy">
+							<text class="member-tier-name">{{ item.label }}</text>
+							<text class="member-tier-levels">成长 {{ item.levelText }}</text>
+						</view>
+						<text v-if="item.current" class="member-tier-current">当前</text>
+					</view>
+				</view>
+				<text class="member-identity-note">成长等级解锁更高阶外观。外观只是展示身份，不影响排位分，也不影响对局功能。</text>
+			</view>
+
+			<view class="member-section member-analysis-section">
+				<view class="member-section-head">
+					<text class="member-section-title">深度分析</text>
+					<text class="member-section-tip">会员权益</text>
+				</view>
+				<view class="member-analysis-row" @click="openPerformance">
+					<view class="member-analysis-copy">
+						<text class="member-analysis-title">表现分析</text>
+						<text class="member-analysis-desc">按对手实力反推近 90 天真实水平，附 6 个月实力曲线</text>
+					</view>
+					<uni-icons type="right" size="16" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
+				</view>
+				<view class="member-analysis-row" @click="openMatchHistory">
+					<view class="member-analysis-copy">
+						<text class="member-analysis-title">单场复盘</text>
+						<text class="member-analysis-desc">在比赛记录里打开已完成的对局，回看每局走势与关键局</text>
+					</view>
+					<uni-icons type="right" size="16" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
+				</view>
+			</view>
+
 			<view class="member-section member-growth-section">
 				<view class="member-section-head member-growth-head">
 					<view class="member-growth-head-copy">
@@ -38,42 +97,6 @@
 				</view>
 
 				<text class="member-growth-desc">{{ growthCard.description }}</text>
-			</view>
-
-			<view class="member-section member-ranking-section">
-				<view class="member-section-head member-ranking-head">
-					<view class="member-ranking-head-copy">
-						<text class="member-section-title">{{ rankingRightsCard.sectionTitle }}</text>
-						<text class="member-ranking-status">{{ rankingRightsCard.statusText }}</text>
-					</view>
-					<view v-if="!rankingRightsCard.retired" class="member-ranking-badge">
-						<text class="member-ranking-badge-level">{{ rankingRightsCard.levelLabel }}</text>
-						<text class="member-ranking-badge-rate">{{ rankingRightsCard.currentPercentText }}</text>
-					</view>
-				</view>
-
-				<text class="member-ranking-headline">{{ rankingRightsCard.headline }}</text>
-				<text class="member-ranking-desc">{{ rankingRightsCard.description }}</text>
-
-				<view v-if="rankingRightsCard.levels.length" class="member-ranking-level-grid">
-					<view
-						v-for="item in rankingRightsCard.levels"
-						:key="item.level"
-						class="member-ranking-level-card"
-						:class="{ active: item.active }"
-					>
-						<text class="member-ranking-level-label">{{ item.levelLabel }}</text>
-						<text class="member-ranking-level-value">{{ item.percentText }}</text>
-					</view>
-				</view>
-
-				<view class="member-ranking-rule-list">
-					<text
-						v-for="item in rankingRightsCard.ruleItems"
-						:key="item"
-						class="member-ranking-rule-item"
-					>{{ item }}</text>
-				</view>
 			</view>
 
 			<view v-if="!isComplianceMode" class="member-section">
@@ -136,11 +159,8 @@
 					<text v-if="!isComplianceMode" class="tips-item">如果你当前VIP仍在有效期内，续费会在现有到期时间基础上顺延。</text>
 					<text class="tips-item">VIP成长只统计真实完赛对局，每天最多计入 {{ growthCard.dailyCap }} 场。</text>
 					<text class="tips-item">VIP到期后成长会冻结但保留，续开VIP后会从原进度继续成长。</text>
-					<template v-if="!rankingRightsCard.retired">
-						<text class="tips-item">普通用户高光会保留记录但不计入排位；VIP按当前等级倍率计入特殊战绩排位分。</text>
-						<text class="tips-item">VIP特殊战绩排位分仅保留单日上限，当日最多计入 200 分。</text>
-					</template>
-					<text v-else class="tips-item">排位分只看胜负与对手实力，会员与普通用户规则相同；高光仍会记录在战报和成就里。</text>
+					<text class="tips-item">VIP不影响排位分：排位分只看胜负、对手实力与赛制长度，会员与普通用户规则相同；高光仍会记录在战报和成就里。</text>
+					<text class="tips-item">对局的基本流程对所有用户完整开放，VIP只提供身份展示与深度分析。</text>
 					<text class="tips-item">所有展示时间统一按 UTC+8 显示。</text>
 				</view>
 			</view>
@@ -163,8 +183,9 @@ import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 
 import { getMemberPlans, createMemberSubscriptionOrder, getMemberSubscriptionOrderStatus } from '@/api/member.js'
-import { getRankConfigs } from '@/api/rank.js'
+import memberAvatar from '@/components/memberAvatar.vue'
 import { usePublicReadStore } from '@/store/publicRead.js'
+import { useRankStore } from '@/store/rank.js'
 import { useUserOverviewStore } from '@/store/userOverview.js'
 import { useUserStore } from '@/store/user.js'
 import { APP_COMPLIANCE_MODE } from '@/utils/compliance-mode.js'
@@ -175,15 +196,17 @@ import {
 	getMemberPayChannelOptions,
 	resolveMemberGrowthCard,
 	resolveMemberCenterSummary,
+	resolveMemberIdentityPreview,
 	resolveMemberPlanCards,
 	shouldTreatMemberOrderAsPaid
 } from '@/utils/member-center.js'
-import { resolveMemberRankingRightsCard } from '@/utils/member-ranking-rights.js'
-import { RANK_CONFIGS_STATIC_VERSION } from '@/utils/rank-explain.js'
+import { readDefaultGameType } from '@/utils/game-type-preference.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const { isDarkMode } = usePageTheme()
 const publicReadStore = usePublicReadStore()
 const userOverviewStore = useUserOverviewStore()
+const rankStore = useRankStore()
 const userStore = useUserStore()
 
 const loading = ref(false)
@@ -192,17 +215,22 @@ const memberStatus = ref(null)
 const plans = ref([])
 const selectedPlanCode = ref('member_monthly')
 const selectedPayChannel = ref('alipay')
-// 排位规则版本来自段位配置：V2 生效后会员高光不再计入排位分，相关权益文案随之切换
-const rankRulesMeta = ref({ rulesVersion: 0, rulesEffectiveAt: '' })
 
 const isComplianceMode = APP_COMPLIANCE_MODE
 const payChannelOptions = getMemberPayChannelOptions()
 const summary = computed(() => resolveMemberCenterSummary(memberStatus.value || {}, new Date(), {
-	complianceMode: isComplianceMode,
-	rankRules: rankRulesMeta.value
+	complianceMode: isComplianceMode
 }))
 const growthCard = computed(() => resolveMemberGrowthCard(memberStatus.value || {}, new Date()))
-const rankingRightsCard = computed(() => resolveMemberRankingRightsCard(memberStatus.value || {}, new Date(), rankRulesMeta.value))
+// 头像框跟随默认球种的当前段位；段位还没读到时只显示 VIP 标识，不显示框。
+const previewGameType = computed(() => readDefaultGameType(uni, userStore.userId) || 3)
+const rankLevel = computed(() => Number(rankStore.rankInfoMap?.[previewGameType.value]?.level) || 0)
+const identityPreview = computed(() => resolveMemberIdentityPreview(memberStatus.value || {}, new Date(), {
+	rankLevel: rankLevel.value,
+	complianceMode: isComplianceMode
+}))
+const ownAvatar = computed(() => resolveAvatarUrl(userStore.userInfo?.avatar, userStore.userId))
+const ownName = computed(() => userStore.userInfo?.nickname || '我')
 const planCards = computed(() => resolveMemberPlanCards(plans.value, selectedPlanCode.value))
 const venueRewardStatus = computed(() => userOverviewStore.favoriteVenueRewardStatus || {})
 const venueRewardClaimable = computed(() => isFavoriteVenueRewardClaimable(venueRewardStatus.value))
@@ -222,20 +250,14 @@ const loadData = async ({ force = false } = {}) => {
 
 	loading.value = true
 	try {
-		const [overview, plansRes, rankConfigs] = await Promise.all([
+		const [overview, plansRes] = await Promise.all([
 			userOverviewStore.fetch(getReadIdentity(), { force, silent: true }),
 			isComplianceMode
 				? Promise.resolve(null)
 				: publicReadStore.loadStatic('member-plans', getMemberPlans),
-			// 段位配置读取失败不影响会员中心，只是继续按旧规则展示
-			publicReadStore.loadStatic('rank-configs', getRankConfigs, { version: RANK_CONFIGS_STATIC_VERSION }).catch(() => null)
+			// 段位只用于选择头像框，读取失败不影响会员中心
+			rankStore.ensureFresh(getReadIdentity()).catch(() => null)
 		])
-		if (rankConfigs?.success) {
-			rankRulesMeta.value = {
-				rulesVersion: Number(rankConfigs.rules_version) || 0,
-				rulesEffectiveAt: rankConfigs.rules_effective_at || ''
-			}
-		}
 		if (overview?.memberStatus?.success) {
 			memberStatus.value = overview.memberStatus
 		}
@@ -257,6 +279,14 @@ const loadData = async ({ force = false } = {}) => {
 	} finally {
 		loading.value = false
 	}
+}
+
+const openPerformance = () => {
+	uni.navigateTo({ url: '/subPages/user/performance' })
+}
+
+const openMatchHistory = () => {
+	uni.navigateTo({ url: '/subPages/user/matchHistory' })
 }
 
 const handleSelectPlan = (planCode) => {
