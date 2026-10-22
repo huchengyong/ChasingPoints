@@ -188,6 +188,12 @@
 					"style": {
 						"navigationBarTitleText": "竞技分析"
 					}
+				},
+				{
+					"path": "performance",
+					"style": {
+						"navigationBarTitleText": "表现分析"
+					}
 				}
 			]
 		},
@@ -198,6 +204,12 @@
 					"path": "matchDetail",
 					"style": {
 						"navigationBarTitleText": "对局详情"
+					}
+				},
+				{
+					"path": "matchReplay",
+					"style": {
+						"navigationBarTitleText": "单场复盘"
 					}
 				},
 				{

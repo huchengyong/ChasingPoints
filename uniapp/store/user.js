@@ -6,6 +6,7 @@ import { useFriendRequestStore } from './friendRequest.js'
 import { useUserOverviewStore } from './userOverview.js'
 import { useUserDataInvalidationStore } from './userDataInvalidation.js'
 import { usePublicReadStore } from './publicRead.js'
+import { useMemberPerformanceStore } from './memberPerformance.js'
 import { matchWS, userWS } from '@/utils/websocket.js'
 import {
   clearStoredSession,
@@ -23,6 +24,7 @@ const clearCurrentUserRuntimeState = () => {
     userOverviewStore: useUserOverviewStore(),
     userDataInvalidationStore: useUserDataInvalidationStore(),
     publicReadStore: usePublicReadStore(),
+    memberPerformanceStore: useMemberPerformanceStore(),
     userSocket: userWS,
     matchSocket: matchWS
   })

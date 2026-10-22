@@ -62,6 +62,15 @@
 				</view>
 			</view>
 
+			<!-- 表现分析入口：按对手实力反推近期真实水平，会员完整可见，其余用户进入后看到本月预览 -->
+			<view class="section performance-entry" @tap="openPerformance">
+				<view class="performance-entry-copy">
+					<text class="performance-entry-title">表现分析</text>
+					<text class="performance-entry-desc">按对手实力与赛制长度，看清你近 90 天真实打出的水平</text>
+				</view>
+				<uni-icons type="right" size="16" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
+			</view>
+
 			<!-- 近期趋势 -->
 			<view class="section">
 				<view class="section-header">
@@ -507,6 +516,11 @@ const handleGameChange = (gameKey) => {
 	loadAllStats()
 }
 
+const openPerformance = () => {
+	const gameType = gameTypeValueMap[currentGame.value] || 3
+	uni.navigateTo({ url: `/subPages/user/performance?game_type=${gameType}` })
+}
+
 const handleStatsMonthChange = (offset) => {
 	selectedStatsMonthKey.value = shiftMonthKey(selectedStatsMonthKey.value, offset)
 }
@@ -535,8 +549,13 @@ const goLogin = () => {
 		.section-title,
 		.stat-value,
 		.meta-value,
-		.duration-value {
+		.duration-value,
+		.performance-entry-title {
 			color: #fff7e1;
+		}
+
+		.performance-entry-desc {
+			color: #d7c89b;
 		}
 
 		.loading-text,
@@ -659,6 +678,33 @@ const goLogin = () => {
 		color: #231C0B;
 		margin-bottom: 20rpx;
 		display: block;
+	}
+}
+
+.performance-entry {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16rpx;
+
+	.performance-entry-copy {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 8rpx;
+	}
+
+	.performance-entry-title {
+		font-size: 30rpx;
+		font-weight: 700;
+		color: #231C0B;
+	}
+
+	.performance-entry-desc {
+		font-size: 24rpx;
+		line-height: 1.5;
+		color: #6E6242;
 	}
 }
 

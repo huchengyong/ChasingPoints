@@ -36,6 +36,7 @@ export const clearUserScopedRuntimeState = ({
   userOverviewStore,
   userDataInvalidationStore,
   publicReadStore,
+  memberPerformanceStore,
   userSocket,
   matchSocket
 } = {}) => {
@@ -54,6 +55,7 @@ export const clearUserScopedRuntimeState = ({
   userOverviewStore?.clear()
   userDataInvalidationStore?.clear()
   publicReadStore?.clearLeaderboard()
+  memberPerformanceStore?.clear()
   userSocket?.disconnect()
   matchSocket?.disconnect()
 }

@@ -1,0 +1,524 @@
+// 单场复盘页：卡片风格与竞技分析页一致，暗色使用暖黑金（见 DESIGN.md）。
+$page-bg: #FAF8F2;
+$card-bg: #FFFFFF;
+$border: #E9E2CF;
+$text-primary: #231C0B;
+$text-secondary: #6E6242;
+$text-muted: #9A8C67;
+$brand: #E0AE12;
+$brand-strong: #C69200;
+$up: #18B05B;
+$down: #EF4444;
+$opponent: #B8AE92;
+
+$dark-page-bg: #141109;
+$dark-card-bg: #1E180D;
+$dark-subtle: #241D10;
+$dark-border: #3A2E16;
+$dark-text-primary: #FFF7E1;
+$dark-text-secondary: #D7C89B;
+$dark-text-muted: #9F926E;
+$dark-brand-strong: #F0C542;
+$dark-opponent: #6E6242;
+
+.replay-page {
+	min-height: 100vh;
+	padding: 24rpx 24rpx 60rpx;
+	background: $page-bg;
+	box-sizing: border-box;
+}
+
+.state-block {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding-top: 240rpx;
+
+	.state-title {
+		margin-top: 16rpx;
+		font-size: 28rpx;
+		color: $text-muted;
+	}
+
+	.state-desc {
+		margin-top: 8rpx;
+		font-size: 26rpx;
+		line-height: 1.6;
+		color: $text-secondary;
+		text-align: center;
+	}
+}
+
+.state-action {
+	min-width: 200rpx;
+	height: 76rpx;
+	line-height: 76rpx;
+	margin: 24rpx 0 0;
+	padding: 0 32rpx;
+	border-radius: 38rpx;
+	background: $brand;
+	color: #FFFFFF;
+	font-size: 28rpx;
+	font-weight: 600;
+}
+
+.state-action::after {
+	display: none;
+}
+
+.unlock-action {
+	align-self: flex-start;
+}
+
+.refresh-error-banner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20rpx;
+	margin-bottom: 20rpx;
+	padding: 18rpx 22rpx;
+	border-radius: 14rpx;
+	background: rgba(239, 68, 68, 0.1);
+	font-size: 24rpx;
+	color: $down;
+
+	.refresh-error-action {
+		flex-shrink: 0;
+		font-weight: 600;
+	}
+}
+
+.notice-banner {
+	margin-bottom: 20rpx;
+	padding: 18rpx 22rpx;
+	border-radius: 14rpx;
+	background: rgba(224, 174, 18, 0.14);
+	font-size: 24rpx;
+	line-height: 1.5;
+	color: $text-secondary;
+}
+
+.card {
+	display: flex;
+	flex-direction: column;
+	margin-bottom: 20rpx;
+	padding: 28rpx;
+	border-radius: 24rpx;
+	background: $card-bg;
+	border: 1rpx solid $border;
+	box-sizing: border-box;
+
+	.card-title {
+		font-size: 30rpx;
+		font-weight: 700;
+		color: $text-primary;
+	}
+}
+
+// 首卡使用高价值表面（暖黑金）。
+.hero-card {
+	background: linear-gradient(135deg, #3C2B08, #8F6507 60%, #C69200);
+	border-color: transparent;
+
+	.hero-kicker {
+		font-size: 22rpx;
+		color: rgba(255, 255, 255, 0.72);
+	}
+
+	.hero-title {
+		margin-top: 8rpx;
+		font-size: 40rpx;
+		font-weight: 800;
+		color: #FFFFFF;
+	}
+
+	.hero-score {
+		margin-top: 8rpx;
+		font-size: 80rpx;
+		line-height: 1.1;
+		font-weight: 800;
+		color: #FFFFFF;
+	}
+
+	.hero-desc {
+		margin-top: 12rpx;
+		font-size: 26rpx;
+		line-height: 1.6;
+		color: rgba(255, 255, 255, 0.86);
+	}
+
+	.hero-meta {
+		margin-top: 16rpx;
+		font-size: 24rpx;
+		font-weight: 600;
+		color: #FDE9A6;
+	}
+}
+
+.feature-row {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+	margin-top: 18rpx;
+
+	.feature-text {
+		font-size: 26rpx;
+		color: $text-primary;
+	}
+}
+
+.feature-footnote {
+	margin-top: 24rpx;
+	font-size: 24rpx;
+	color: $text-muted;
+}
+
+.tag-list {
+	display: flex;
+	gap: 8rpx;
+}
+
+.tag {
+	padding: 2rpx 14rpx;
+	border-radius: 999rpx;
+	font-size: 20rpx;
+	font-weight: 600;
+	line-height: 1.6;
+
+	&.tag-decider {
+		background: rgba(224, 174, 18, 0.18);
+		color: $brand-strong;
+	}
+
+	&.tag-comeback {
+		background: rgba(24, 176, 91, 0.14);
+		color: $up;
+	}
+}
+
+.key-row {
+	display: flex;
+	flex-direction: column;
+	gap: 8rpx;
+	margin-top: 20rpx;
+	padding-top: 20rpx;
+	border-top: 1rpx solid $border;
+
+	.key-frame {
+		font-size: 28rpx;
+		font-weight: 700;
+		color: $text-primary;
+	}
+
+	.key-detail {
+		font-size: 24rpx;
+		line-height: 1.5;
+		color: $text-secondary;
+	}
+}
+
+.compare-head,
+.compare-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: 16rpx;
+
+	.compare-label {
+		flex: 1;
+		text-align: center;
+		font-size: 24rpx;
+		color: $text-muted;
+	}
+
+	.compare-value {
+		width: 160rpx;
+		font-size: 32rpx;
+		font-weight: 700;
+		color: $text-primary;
+
+		&:first-child {
+			text-align: left;
+		}
+
+		&:last-child {
+			text-align: right;
+		}
+	}
+
+	&.small .compare-value {
+		font-size: 26rpx;
+	}
+}
+
+.compare-head {
+	font-size: 22rpx;
+	color: $text-muted;
+
+	text:first-child {
+		width: 160rpx;
+	}
+
+	text:last-child {
+		width: 160rpx;
+		text-align: right;
+	}
+}
+
+.sequence {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12rpx;
+	margin-top: 20rpx;
+
+	.sequence-item {
+		width: 56rpx;
+		height: 56rpx;
+		line-height: 56rpx;
+		border-radius: 50%;
+		text-align: center;
+		font-size: 22rpx;
+		font-weight: 700;
+
+		&.winner-me {
+			background: $brand;
+			color: #FFFFFF;
+		}
+
+		&.winner-opponent {
+			background: $opponent;
+			color: #FFFFFF;
+		}
+
+		&.winner-none {
+			background: $page-bg;
+			border: 1rpx solid $border;
+			color: $text-muted;
+		}
+	}
+}
+
+.sequence-legend {
+	margin-top: 12rpx;
+	font-size: 22rpx;
+	color: $text-muted;
+}
+
+.win-types {
+	margin-top: 12rpx;
+	padding-top: 8rpx;
+	border-top: 1rpx solid $border;
+}
+
+.frame-block {
+	margin-top: 24rpx;
+	padding-top: 24rpx;
+	border-top: 1rpx solid $border;
+
+	.frame-head {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 12rpx;
+	}
+
+	.frame-title {
+		font-size: 28rpx;
+		font-weight: 700;
+		color: $text-primary;
+	}
+
+	.frame-winner {
+		font-size: 24rpx;
+		font-weight: 600;
+
+		&.winner-me {
+			color: $brand-strong;
+		}
+
+		&.winner-opponent,
+		&.winner-none {
+			color: $text-secondary;
+		}
+	}
+
+	.frame-score {
+		font-size: 28rpx;
+		font-weight: 700;
+		color: $text-primary;
+	}
+
+	.frame-win-type {
+		padding: 2rpx 14rpx;
+		border-radius: 999rpx;
+		background: $page-bg;
+		font-size: 20rpx;
+		color: $text-secondary;
+	}
+
+	.frame-meta {
+		display: block;
+		margin-top: 8rpx;
+		font-size: 22rpx;
+		color: $text-muted;
+	}
+}
+
+.trend-chart {
+	margin-top: 16rpx;
+
+	.trend-body {
+		position: relative;
+		height: 200rpx;
+		display: flex;
+		align-items: stretch;
+		padding: 8rpx;
+		border-radius: 12rpx;
+		background: $page-bg;
+		box-sizing: border-box;
+		overflow: hidden;
+	}
+
+	.trend-zero {
+		position: absolute;
+		left: 8rpx;
+		right: 8rpx;
+		top: 50%;
+		height: 1rpx;
+		background: $border;
+	}
+
+	.trend-col {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		z-index: 1;
+	}
+
+	.trend-half {
+		width: 100%;
+		height: 50%;
+		display: flex;
+		justify-content: center;
+
+		&.upper {
+			align-items: flex-end;
+		}
+
+		&.lower {
+			align-items: flex-start;
+		}
+	}
+
+	.trend-bar {
+		width: 80%;
+		max-width: 14rpx;
+		min-height: 4rpx;
+		border-radius: 4rpx;
+
+		&.up {
+			background: $up;
+		}
+
+		&.down {
+			background: $down;
+		}
+	}
+
+	.trend-legend {
+		display: block;
+		margin-top: 8rpx;
+		font-size: 20rpx;
+		color: $text-muted;
+	}
+}
+
+.empty-hint {
+	display: block;
+	margin-top: 20rpx;
+	font-size: 26rpx;
+	color: $text-muted;
+	text-align: center;
+}
+
+.replay-page.dark-mode {
+	background: $dark-page-bg;
+
+	.state-block .state-title,
+	.feature-footnote,
+	.compare-head,
+	.compare-row .compare-label,
+	.sequence-legend,
+	.frame-block .frame-meta,
+	.trend-chart .trend-legend,
+	.empty-hint {
+		color: $dark-text-muted;
+	}
+
+	.state-block .state-desc,
+	.key-row .key-detail,
+	.frame-block .frame-winner.winner-opponent,
+	.frame-block .frame-winner.winner-none,
+	.frame-block .frame-win-type {
+		color: $dark-text-secondary;
+	}
+
+	.card {
+		background: $dark-card-bg;
+		border-color: $dark-border;
+
+		.card-title {
+			color: $dark-text-primary;
+		}
+	}
+
+	.hero-card {
+		background: linear-gradient(135deg, #2A1D05, #6B4A07 60%, #8F6507);
+		border-color: transparent;
+	}
+
+	.feature-row .feature-text,
+	.key-row .key-frame,
+	.compare-row .compare-value,
+	.frame-block .frame-title,
+	.frame-block .frame-score {
+		color: $dark-text-primary;
+	}
+
+	.frame-block .frame-winner.winner-me,
+	.tag.tag-decider {
+		color: $dark-brand-strong;
+	}
+
+	.key-row,
+	.frame-block,
+	.win-types {
+		border-top-color: $dark-border;
+	}
+
+	.frame-block .frame-win-type {
+		background: $dark-subtle;
+	}
+
+	.sequence .sequence-item {
+		&.winner-opponent {
+			background: $dark-opponent;
+		}
+
+		&.winner-none {
+			background: $dark-subtle;
+			border-color: $dark-border;
+			color: $dark-text-muted;
+		}
+	}
+
+	.trend-chart .trend-body {
+		background: $dark-subtle;
+	}
+
+	.trend-chart .trend-zero {
+		background: $dark-border;
+	}
+}

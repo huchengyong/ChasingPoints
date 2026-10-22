@@ -1,0 +1,536 @@
+// 表现分析页：卡片风格与竞技分析页一致，暗色使用暖黑金（见 DESIGN.md）。
+$page-bg: #FAF8F2;
+$card-bg: #FFFFFF;
+$border: #E9E2CF;
+$text-primary: #231C0B;
+$text-secondary: #6E6242;
+$text-muted: #9A8C67;
+$brand: #E0AE12;
+$brand-strong: #C69200;
+$up: #18B05B;
+$down: #EF4444;
+
+$dark-page-bg: #141109;
+$dark-card-bg: #1E180D;
+$dark-subtle: #241D10;
+$dark-border: #3A2E16;
+$dark-text-primary: #FFF7E1;
+$dark-text-secondary: #D7C89B;
+$dark-text-muted: #9F926E;
+$dark-brand-strong: #F0C542;
+
+.performance-page {
+	min-height: 100vh;
+	padding: 24rpx 24rpx 60rpx;
+	background: $page-bg;
+	box-sizing: border-box;
+}
+
+.game-tabs {
+	display: flex;
+	gap: 12rpx;
+	margin-bottom: 20rpx;
+
+	.tab-item {
+		flex: 1;
+		height: 68rpx;
+		line-height: 68rpx;
+		text-align: center;
+		border-radius: 34rpx;
+		background: $card-bg;
+		border: 1rpx solid $border;
+		font-size: 26rpx;
+		color: $text-secondary;
+
+		&.active {
+			background: $brand;
+			border-color: $brand;
+			color: #FFFFFF;
+			font-weight: 600;
+		}
+	}
+}
+
+.state-block {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding-top: 200rpx;
+
+	.state-title {
+		margin-top: 16rpx;
+		font-size: 28rpx;
+		color: $text-muted;
+	}
+
+	.state-desc {
+		margin-top: 8rpx;
+		font-size: 26rpx;
+		line-height: 1.6;
+		color: $text-secondary;
+		text-align: center;
+	}
+}
+
+.state-action {
+	min-width: 200rpx;
+	height: 76rpx;
+	line-height: 76rpx;
+	margin: 24rpx 0 0;
+	padding: 0 32rpx;
+	border-radius: 38rpx;
+	background: $brand;
+	color: #FFFFFF;
+	font-size: 28rpx;
+	font-weight: 600;
+}
+
+.state-action::after {
+	display: none;
+}
+
+.refresh-error-banner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20rpx;
+	margin-bottom: 20rpx;
+	padding: 18rpx 22rpx;
+	border-radius: 14rpx;
+	background: rgba(239, 68, 68, 0.1);
+	font-size: 24rpx;
+	color: $down;
+
+	.refresh-error-action {
+		flex-shrink: 0;
+		font-weight: 600;
+	}
+}
+
+.card {
+	display: flex;
+	flex-direction: column;
+	margin-bottom: 20rpx;
+	padding: 28rpx;
+	border-radius: 24rpx;
+	background: $card-bg;
+	border: 1rpx solid $border;
+	box-sizing: border-box;
+
+	.card-title {
+		font-size: 30rpx;
+		font-weight: 700;
+		color: $text-primary;
+	}
+}
+
+// 锁定态首卡使用高价值表面（暖黑金），其余卡片保持普通表面。
+.hero-card {
+	background: linear-gradient(135deg, #3C2B08, #8F6507 60%, #C69200);
+	border-color: transparent;
+
+	.hero-kicker {
+		font-size: 22rpx;
+		color: rgba(255, 255, 255, 0.72);
+	}
+
+	.hero-title {
+		margin-top: 8rpx;
+		font-size: 40rpx;
+		font-weight: 800;
+		color: #FFFFFF;
+	}
+
+	.hero-desc {
+		margin-top: 12rpx;
+		font-size: 26rpx;
+		line-height: 1.6;
+		color: rgba(255, 255, 255, 0.86);
+	}
+
+	.hero-meta {
+		margin-top: 20rpx;
+		font-size: 26rpx;
+		font-weight: 600;
+		color: #FDE9A6;
+	}
+}
+
+.preview-card {
+	.preview-rating {
+		display: flex;
+		align-items: baseline;
+		margin-top: 12rpx;
+	}
+
+	.preview-hint {
+		margin-top: 8rpx;
+		font-size: 24rpx;
+		color: $text-muted;
+	}
+}
+
+.rating-block,
+.preview-rating {
+	display: flex;
+	align-items: baseline;
+	margin-top: 12rpx;
+}
+
+.rating-qualifier {
+	margin-right: 8rpx;
+	font-size: 28rpx;
+	font-weight: 600;
+	color: $text-secondary;
+}
+
+.rating-value {
+	font-size: 88rpx;
+	line-height: 1.1;
+	font-weight: 800;
+	color: $brand-strong;
+
+	&.empty {
+		color: $text-muted;
+	}
+}
+
+.rating-hint {
+	margin-top: 8rpx;
+	font-size: 24rpx;
+	line-height: 1.5;
+	color: $text-muted;
+}
+
+.wins-row {
+	display: flex;
+	margin-top: 24rpx;
+	padding: 20rpx 0;
+	border-radius: 16rpx;
+	background: $page-bg;
+
+	.wins-cell {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.wins-value {
+		font-size: 40rpx;
+		font-weight: 700;
+		color: $text-primary;
+	}
+
+	.wins-label {
+		margin-top: 4rpx;
+		font-size: 22rpx;
+		color: $text-muted;
+	}
+}
+
+.tone-up {
+	color: $up !important;
+}
+
+.tone-down {
+	color: $down !important;
+}
+
+.tone-flat {
+	color: $text-secondary !important;
+}
+
+.summary-headline {
+	margin-top: 20rpx;
+	font-size: 26rpx;
+	line-height: 1.5;
+	color: $text-secondary;
+}
+
+.notable-row {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	margin-top: 20rpx;
+	padding-top: 20rpx;
+	border-top: 1rpx solid $border;
+
+	.notable-copy {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 6rpx;
+	}
+
+	.notable-title {
+		font-size: 24rpx;
+		font-weight: 700;
+	}
+
+	.notable-headline {
+		font-size: 30rpx;
+		font-weight: 600;
+		color: $text-primary;
+	}
+
+	.notable-detail {
+		font-size: 24rpx;
+		line-height: 1.5;
+		color: $text-secondary;
+	}
+
+	.notable-time {
+		font-size: 22rpx;
+		color: $text-muted;
+	}
+}
+
+.month-chart {
+	margin-top: 20rpx;
+
+	.chart-plot {
+		display: flex;
+		gap: 8rpx;
+	}
+
+	.chart-col {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.chart-area {
+		position: relative;
+		width: 100%;
+		height: 260rpx;
+		display: flex;
+		align-items: flex-end;
+		justify-content: center;
+		border-radius: 12rpx;
+		background: $page-bg;
+		overflow: hidden;
+	}
+
+	.chart-bar {
+		width: 36rpx;
+		min-height: 6rpx;
+		border-radius: 8rpx 8rpx 0 0;
+		background: rgba(224, 174, 18, 0.55);
+
+		&.current {
+			background: $brand;
+		}
+	}
+
+	.chart-dot {
+		position: absolute;
+		left: 50%;
+		width: 16rpx;
+		height: 16rpx;
+		margin-left: -8rpx;
+		margin-bottom: -8rpx;
+		border-radius: 50%;
+		background: $text-primary;
+		border: 3rpx solid $card-bg;
+		box-sizing: border-box;
+	}
+
+	.chart-label {
+		margin-top: 10rpx;
+		font-size: 22rpx;
+		color: $text-secondary;
+	}
+
+	.chart-value {
+		margin-top: 2rpx;
+		font-size: 22rpx;
+		font-weight: 700;
+		color: $text-primary;
+
+		&.muted {
+			color: $text-muted;
+			font-weight: 400;
+		}
+	}
+
+	.chart-note {
+		margin-top: 2rpx;
+		font-size: 18rpx;
+		color: $text-muted;
+		text-align: center;
+	}
+
+	.chart-footnote {
+		display: block;
+		margin-top: 16rpx;
+		font-size: 20rpx;
+		line-height: 1.5;
+		color: $text-muted;
+	}
+
+	.chart-legend {
+		display: flex;
+		gap: 28rpx;
+		margin-top: 20rpx;
+		font-size: 22rpx;
+		color: $text-secondary;
+	}
+
+	.legend-item {
+		display: flex;
+		align-items: center;
+		gap: 8rpx;
+	}
+
+	.legend-swatch {
+		&.bar {
+			width: 24rpx;
+			height: 16rpx;
+			border-radius: 4rpx;
+			background: $brand;
+		}
+
+		&.dot {
+			width: 16rpx;
+			height: 16rpx;
+			border-radius: 50%;
+			background: $text-primary;
+		}
+	}
+}
+
+.empty-hint {
+	margin-top: 20rpx;
+	font-size: 26rpx;
+	color: $text-muted;
+}
+
+.feature-row {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+	margin-top: 18rpx;
+
+	.feature-text {
+		font-size: 26rpx;
+		color: $text-primary;
+	}
+}
+
+.feature-footnote {
+	margin-top: 24rpx;
+	font-size: 24rpx;
+	color: $text-muted;
+}
+
+.unlock-action {
+	align-self: flex-start;
+}
+
+.performance-note {
+	display: block;
+	margin-top: 8rpx;
+	padding: 0 8rpx;
+	font-size: 22rpx;
+	line-height: 1.6;
+	color: $text-muted;
+	text-align: center;
+}
+
+.performance-page.dark-mode {
+	background: $dark-page-bg;
+
+	.game-tabs .tab-item {
+		background: $dark-subtle;
+		border-color: $dark-border;
+		color: $dark-text-secondary;
+
+		&.active {
+			background: $brand;
+			border-color: $brand;
+			color: #FFFFFF;
+		}
+	}
+
+	.state-block .state-title,
+	.rating-hint,
+	.preview-card .preview-hint,
+	.wins-row .wins-label,
+	.notable-row .notable-time,
+	.empty-hint,
+	.feature-footnote,
+	.performance-note,
+	.month-chart .chart-note,
+	.month-chart .chart-footnote,
+	.month-chart .chart-value.muted,
+	.rating-value.empty {
+		color: $dark-text-muted;
+	}
+
+	.state-block .state-desc,
+	.rating-qualifier,
+	.summary-headline,
+	.notable-row .notable-detail,
+	.month-chart .chart-label,
+	.month-chart .chart-legend {
+		color: $dark-text-secondary;
+	}
+
+	.card {
+		background: $dark-card-bg;
+		border-color: $dark-border;
+
+		.card-title {
+			color: $dark-text-primary;
+		}
+	}
+
+	.hero-card {
+		background: linear-gradient(135deg, #2A1D05, #6B4A07 60%, #8F6507);
+		border-color: transparent;
+	}
+
+	.rating-value {
+		color: $dark-brand-strong;
+	}
+
+	.wins-row {
+		background: $dark-subtle;
+
+		.wins-value {
+			color: $dark-text-primary;
+		}
+	}
+
+	.notable-row {
+		border-top-color: $dark-border;
+
+		.notable-headline {
+			color: $dark-text-primary;
+		}
+	}
+
+	.feature-row .feature-text,
+	.month-chart .chart-value {
+		color: $dark-text-primary;
+	}
+
+	.month-chart {
+		.chart-area {
+			background: $dark-subtle;
+		}
+
+		.chart-dot {
+			background: $dark-text-primary;
+			border-color: $dark-card-bg;
+		}
+
+		.legend-swatch.dot {
+			background: $dark-text-primary;
+		}
+	}
+}
