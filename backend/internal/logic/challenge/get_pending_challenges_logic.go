@@ -39,6 +39,7 @@ func (l *GetPendingChallengesLogic) GetPendingChallenges() (resp *types.GetPendi
 		return resp, nil
 	}
 	resp.List = buildChallengeInfoList(rows, now)
+	fillChallengeVipLevels(l.ctx, l.svcCtx, now, challengeInfoPtrs(resp.List)...)
 	resp.Success = true
 	return resp, nil
 }

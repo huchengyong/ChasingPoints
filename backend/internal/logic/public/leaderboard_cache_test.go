@@ -141,7 +141,8 @@ func TestLeaderboardRedisCacheSharesOnlyPublicPageData(t *testing.T) {
 	if first.MyRanking == nil || first.MyRanking.UserId != 1 || second.MyRanking == nil || second.MyRanking.UserId != 2 {
 		t.Fatalf("viewer rankings must remain independent: first=%+v second=%+v", first.MyRanking, second.MyRanking)
 	}
-	if firstQueries != 7 || secondQueries != 3 {
+	// 会员档位随共享载荷缓存（冷加载多 1 次用户查询），本人排名每次实时读取（多 1 次用户查询）；没有有效会员时不查成长档案。
+	if firstQueries != 9 || secondQueries != 4 {
 		t.Fatalf("shared page must be cached while personal rank stays live: first=%d second=%d", firstQueries, secondQueries)
 	}
 
@@ -152,7 +153,7 @@ func TestLeaderboardRedisCacheSharesOnlyPublicPageData(t *testing.T) {
 		t.Fatalf("bump leaderboard version: %v", err)
 	}
 	third, thirdQueries := loadCachedLeaderboardForViewer(t, db, redisClient, 2)
-	if thirdQueries != 7 || len(third.TopThree) == 0 || third.TopThree[0].UserId != 2 || third.MyRanking == nil || third.MyRanking.Rank != 1 {
+	if thirdQueries != 9 || len(third.TopThree) == 0 || third.TopThree[0].UserId != 2 || third.MyRanking == nil || third.MyRanking.Rank != 1 {
 		t.Fatalf("version bump must reload shared page and combine current viewer rank: resp=%+v queries=%d", third, thirdQueries)
 	}
 	metrics := LeaderboardCacheMetrics()
@@ -170,8 +171,8 @@ func TestLeaderboardSummaryCacheAlsoKeepsViewerRankSeparate(t *testing.T) {
 	if first.MyRanking == nil || first.MyRanking.UserId != 1 || second.MyRanking == nil || second.MyRanking.UserId != 2 {
 		t.Fatalf("summary viewer rankings must remain independent: first=%+v second=%+v", first.MyRanking, second.MyRanking)
 	}
-	if firstQueries != 5 || secondQueries != 3 {
-		t.Fatalf("summary cache must save only config/top-three queries: first=%d second=%d", firstQueries, secondQueries)
+	if firstQueries != 7 || secondQueries != 4 {
+		t.Fatalf("summary cache must save only config/top-three/vip queries: first=%d second=%d", firstQueries, secondQueries)
 	}
 }
 

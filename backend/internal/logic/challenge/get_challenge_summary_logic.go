@@ -55,6 +55,7 @@ func (l *GetChallengeSummaryLogic) GetChallengeSummary() (resp *types.GetChallen
 			resp.CurrentChallenge.ToAvatar = toProfile.avatar
 		}
 		resp.CurrentChallenge.MatchId = matchId
+		fillChallengeVipLevels(l.ctx, l.svcCtx, now, resp.CurrentChallenge)
 	}
 	count, err := l.svcCtx.ChallengeModel.CountReceivedPending(userId, now)
 	if err != nil {

@@ -2,6 +2,7 @@ package share
 
 import (
 	"context"
+	"time"
 
 	logicx "chasing_points/internal/logic"
 	"chasing_points/internal/model"
@@ -151,16 +152,29 @@ func (l *GetMatchShareDataLogic) GetMatchShareData(req *types.GetMatchShareDataR
 	player1WinRate, player1MaxScore := player1Profile.WinRate, player1Profile.MaxScore
 	player2WinRate, player2MaxScore := player2Profile.WinRate, player2Profile.MaxScore
 
+	// 会员档位与段位和胜率一样按请求实时读取，不进入已完成对局的长期核心缓存。
+	// 会员标识只是装饰信息：读取失败时按非会员展示，不影响分享数据。
+	player2ID := int64(0)
+	if match.OpponentId != nil {
+		player2ID = *match.OpponentId
+	}
+	identities, identityErr := logicx.LoadMemberIdentities(l.svcCtx, []int64{match.UserId, player2ID}, match.GameType, time.Now())
+	if identityErr != nil {
+		l.Logger.Errorf("读取分享对局双方会员身份失败，按非会员展示: matchId=%d err=%v", match.Id, identityErr)
+	}
+
 	myWinRate := player1WinRate
 	opponentWinRate := player2WinRate
 	myMaxScore := player1MaxScore
 	opponentMaxScore := player2MaxScore
+	myIdentity, opponentIdentity := identities[match.UserId], identities[player2ID]
 	myActor := 1
 	if !isPlayer1 {
 		myWinRate = player2WinRate
 		opponentWinRate = player1WinRate
 		myMaxScore = player2MaxScore
 		opponentMaxScore = player1MaxScore
+		myIdentity, opponentIdentity = opponentIdentity, myIdentity
 		myActor = 2
 	}
 
@@ -221,6 +235,10 @@ func (l *GetMatchShareDataLogic) GetMatchShareData(req *types.GetMatchShareDataR
 			OpponentName:      opponentName,
 			OpponentAvatar:    opponentAvatar,
 			OpponentScore:     opponentScore,
+			MyVipLevel:        myIdentity.VipLevel,
+			OpponentVipLevel:  opponentIdentity.VipLevel,
+			MyRankLevel:       myIdentity.RankLevel,
+			OpponentRankLevel: opponentIdentity.RankLevel,
 			Result:            result,
 			MatchTime:         match.CreatedAt.Format("2006-01-02 15:04:05"),
 			RankChange:        rankChange,

@@ -46,6 +46,7 @@ goctl api go --api chasing_points.api --dir . --style go_zero --home ~/.goctl/de
 - 数据库与缓存操作继承真实请求 Context，确保 SQL、耗时与缓存结果进入请求完成观测。热点读取变更补 query-count 测试；索引变更用代表性 MySQL EXPLAIN 验证。
 - 缓存由具体领域维护，明确 key scope、TTL 和失效时机；公共缓存不含 viewer 个性化数据，Redis 异常回源权威数据。
 - 公开且可个性化的接口使用统一 optional JWT；无效 Bearer Token 返回 `401`，不得降级为匿名。
+- 公开列表与详情展示他人会员身份时，用 `logic.ResolveVipLevels` / `LoadMemberIdentities` 在组装阶段批量解析（查询次数固定、不随行数增长，失败降级为非会员而不拖垮接口）；会员字段不进入按对局长期缓存的核心摘要，也不得进入排位结算。
 - 新读模型只在开关精确为 `enabled` 时启用；快照缺失时有界回退或明确 partial，默认不切读。
 
 ## 验证与运行

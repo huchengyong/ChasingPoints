@@ -702,9 +702,11 @@ type ChallengeInfo struct {
 	FromUserId    int64  `json:"from_user_id"`
 	FromNickname  string `json:"from_nickname"`
 	FromAvatar    string `json:"from_avatar"`
+	FromVipLevel  int    `json:"from_vip_level,optional"` // 有效会员的成长等级 1-5，0=非会员
 	ToUserId      int64  `json:"to_user_id"`
 	ToNickname    string `json:"to_nickname"`
 	ToAvatar      string `json:"to_avatar"`
+	ToVipLevel    int    `json:"to_vip_level,optional"`
 	GameType      int    `json:"game_type"`
 	MatchMode     string `json:"match_mode,optional"`
 	Message       string `json:"message"`
@@ -1074,6 +1076,7 @@ type FriendInfo struct {
 	Avatar    string `json:"avatar"`
 	RankLevel int    `json:"rank_level"`
 	RankName  string `json:"rank_name"`
+	VipLevel  int    `json:"vip_level,optional"` // 有效会员的成长等级 1-5，0=非会员
 	CreatedAt string `json:"created_at"`
 }
 
@@ -1951,10 +1954,11 @@ type LeaderboardItem struct {
 	UserId    int64  `json:"user_id"`
 	Nickname  string `json:"nickname"`
 	Avatar    string `json:"avatar"`
-	RankLevel int    `json:"rank_level"` // 段位等级
-	RankName  string `json:"rank_name"`  // 段位名称
-	RankScore int    `json:"rank_score"` // 排位分
-	WinRate   int    `json:"win_rate"`   // 胜率百分比
+	RankLevel int    `json:"rank_level"`         // 段位等级
+	RankName  string `json:"rank_name"`          // 段位名称
+	RankScore int    `json:"rank_score"`         // 排位分
+	WinRate   int    `json:"win_rate"`           // 胜率百分比
+	VipLevel  int    `json:"vip_level,optional"` // 有效会员的成长等级 1-5，0=非会员
 }
 
 type LoginByOauthReq struct {
@@ -2038,6 +2042,10 @@ type MatchDetailData struct {
 	OpponentName                  string             `json:"opponent_name"`
 	MyAvatar                      string             `json:"my_avatar"`
 	OpponentAvatar                string             `json:"opponent_avatar"`
+	MyVipLevel                    int                `json:"my_vip_level,optional"` // 有效会员的成长等级 1-5，0=非会员；按请求时刻解析
+	OpponentVipLevel              int                `json:"opponent_vip_level,optional"`
+	MyRankLevel                   int                `json:"my_rank_level,optional"` // 本场球种的当前段位等级，用于选头像框；只为有效会员返回，其余为 0
+	OpponentRankLevel             int                `json:"opponent_rank_level,optional"`
 	MyWinRate                     float64            `json:"my_win_rate"`        // 我方胜率(百分比)
 	OpponentWinRate               float64            `json:"opponent_win_rate"`  // 对手胜率(百分比)
 	MyMaxScore                    int                `json:"my_max_score"`       // 我方单杆最高
@@ -2192,6 +2200,10 @@ type MatchShareData struct {
 	OpponentName      string             `json:"opponent_name"`
 	OpponentAvatar    string             `json:"opponent_avatar"`
 	OpponentScore     int                `json:"opponent_score"`
+	MyVipLevel        int                `json:"my_vip_level,optional"` // 有效会员的成长等级 1-5，0=非会员
+	OpponentVipLevel  int                `json:"opponent_vip_level,optional"`
+	MyRankLevel       int                `json:"my_rank_level,optional"` // 本场球种的当前段位等级，用于选头像框；只为有效会员返回，其余为 0
+	OpponentRankLevel int                `json:"opponent_rank_level,optional"`
 	Result            string             `json:"result"`
 	MatchTime         string             `json:"match_time"`
 	RankChange        int                `json:"rank_change"`

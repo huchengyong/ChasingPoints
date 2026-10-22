@@ -223,6 +223,7 @@ func BuildChallengeInfoForBootstrap(ctx context.Context, svcCtx *svc.ServiceCont
 		info.ToNickname = filled.ToNickname
 		info.ToAvatar = filled.ToAvatar
 	}
+	fillChallengeVipLevels(ctx, svcCtx, now, &info)
 	return &info, nil
 }
 

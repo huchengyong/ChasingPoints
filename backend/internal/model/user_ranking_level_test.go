@@ -71,3 +71,44 @@ func TestRankingModelFindOrCreateByGameTypesIsIdempotent(t *testing.T) {
 		t.Fatalf("expected four rows after concurrent initialization, got %d", count)
 	}
 }
+
+func TestFindRankLevelsByUserIdsScopesToGameTypeAcrossBatches(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&UserRanking{}); err != nil {
+		t.Fatalf("prepare ranking schema: %v", err)
+	}
+	// 1100 个用户跨过 500 条一批的分批边界；每人在球种 1 的段位与球种 3 不同。
+	const total = 1100
+	rankings := make([]UserRanking, 0, total*2)
+	ids := make([]int64, 0, total+1)
+	for i := 1; i <= total; i++ {
+		rankings = append(rankings,
+			UserRanking{UserId: int64(i), GameType: 3, RankLevel: i%6 + 1},
+			UserRanking{UserId: int64(i), GameType: 1, RankLevel: 6},
+		)
+		ids = append(ids, int64(i))
+	}
+	ids = append(ids, total+1)
+	if err := db.CreateInBatches(&rankings, 200).Error; err != nil {
+		t.Fatalf("seed rankings: %v", err)
+	}
+
+	got, err := NewRankingModel(db).FindRankLevelsByUserIds(ids, 3)
+	if err != nil {
+		t.Fatalf("find rank levels: %v", err)
+	}
+	if len(got) != total || got[1] != 2 || got[501] != 501%6+1 || got[total] != total%6+1 {
+		t.Fatalf("unexpected rank levels: len=%d sample=%d/%d/%d", len(got), got[1], got[501], got[total])
+	}
+	if _, ok := got[total+1]; ok {
+		t.Fatal("user without a ranking row must stay out of the result")
+	}
+
+	empty, err := NewRankingModel(db).FindRankLevelsByUserIds(nil, 3)
+	if err != nil || len(empty) != 0 {
+		t.Fatalf("empty ids: %v err=%v", empty, err)
+	}
+}

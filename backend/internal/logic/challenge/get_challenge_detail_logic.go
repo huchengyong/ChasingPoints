@@ -58,6 +58,7 @@ func (l *GetChallengeDetailLogic) GetChallengeDetail(req *types.GetChallengeDeta
 	}
 	resp.Success = true
 	info := buildChallengeInfo(*row, matchId, now)
+	fillChallengeVipLevels(l.ctx, l.svcCtx, now, &info)
 	resp.Challenge = &info
 	return resp, nil
 }

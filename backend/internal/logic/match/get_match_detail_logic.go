@@ -169,19 +169,29 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 	player1WinRate, player1MaxScore := player1Profile.WinRate, player1Profile.MaxScore
 	player2WinRate, player2MaxScore := player2Profile.WinRate, player2Profile.MaxScore
 
+	// 会员档位与段位和胜率一样属于当前最新指标，按请求实时读取，不进入已完成对局的长期核心缓存。
+	// 会员标识只是装饰信息：读取失败时按非会员展示，不影响对局详情。
+	identities, identityErr := logicx.LoadMemberIdentities(l.svcCtx, []int64{match.UserId, player2Id}, match.GameType, time.Now())
+	if identityErr != nil {
+		l.Logger.Errorf("读取对局双方会员身份失败，按非会员展示: matchId=%d err=%v", match.Id, identityErr)
+	}
+
 	// 根据视角设置我方和对手的统计数据
 	var myWinRate, opponentWinRate float64
 	var myMaxScore, opponentMaxScore int
+	var myIdentity, opponentIdentity logicx.MemberIdentity
 	if isPlayer1 {
 		myWinRate = player1WinRate
 		myMaxScore = player1MaxScore
 		opponentWinRate = player2WinRate
 		opponentMaxScore = player2MaxScore
+		myIdentity, opponentIdentity = identities[match.UserId], identities[player2Id]
 	} else {
 		myWinRate = player2WinRate
 		myMaxScore = player2MaxScore
 		opponentWinRate = player1WinRate
 		opponentMaxScore = player1MaxScore
+		myIdentity, opponentIdentity = identities[player2Id], identities[match.UserId]
 	}
 
 	myRankChange := 0
@@ -350,6 +360,10 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			OpponentName:                  opponentName,
 			MyAvatar:                      myAvatar,
 			OpponentAvatar:                opponentAvatar,
+			MyVipLevel:                    myIdentity.VipLevel,
+			OpponentVipLevel:              opponentIdentity.VipLevel,
+			MyRankLevel:                   myIdentity.RankLevel,
+			OpponentRankLevel:             opponentIdentity.RankLevel,
 			MyWinRate:                     myWinRate,
 			OpponentWinRate:               opponentWinRate,
 			MyMaxScore:                    myMaxScore,

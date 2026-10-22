@@ -116,6 +116,30 @@ func (m *UserModel) FindByIdsWithTx(tx *gorm.DB, ids []int64) (map[int64]User, e
 	return users, nil
 }
 
+// FindMemberExpiresAtByIds 批量读取已设置会员到期时间的用户，只查必要列；未设置或已删除的用户不在结果中。
+func (m *UserModel) FindMemberExpiresAtByIds(ids []int64) (map[int64]time.Time, error) {
+	expiresAt := make(map[int64]time.Time, len(ids))
+	const batchSize = 500
+	for start := 0; start < len(ids); start += batchSize {
+		end := start + batchSize
+		if end > len(ids) {
+			end = len(ids)
+		}
+		var list []User
+		if err := m.db.Select("id", "member_expires_at").
+			Where("id IN ? AND member_expires_at IS NOT NULL", ids[start:end]).
+			Find(&list).Error; err != nil {
+			return nil, err
+		}
+		for _, user := range list {
+			if user.MemberExpiresAt != nil {
+				expiresAt[user.Id] = *user.MemberExpiresAt
+			}
+		}
+	}
+	return expiresAt, nil
+}
+
 func (m *UserModel) FindByIdForUpdateWithTx(tx *gorm.DB, id int64) (*User, error) {
 	db := m.db
 	if tx != nil {

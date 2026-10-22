@@ -75,6 +75,7 @@ func (l *GetLeaderboardLogic) GetLeaderboard(req *types.GetLeaderboardReq) (resp
 		for index, entry := range entries {
 			list = append(list, leaderboardItem(entry, offset+index+1, rankNames))
 		}
+		fillLeaderboardVipLevels(l.ctx, l.svcCtx, now, leaderboardItemPtrs(topThreeItems, list)...)
 		total, loadErr := l.svcCtx.RankingModel.GetLeaderboardCountByGameType(gameType, scope)
 		if loadErr != nil {
 			return nil, loadErr
@@ -87,7 +88,7 @@ func (l *GetLeaderboardLogic) GetLeaderboard(req *types.GetLeaderboardReq) (resp
 	}
 
 	userID, _ := utils.GetUserIDFromCtx(l.ctx)
-	myRanking, rankErr := loadViewerLeaderboardItem(l.svcCtx, userID, gameType, shared.RankNames, true, now)
+	myRanking, rankErr := loadViewerLeaderboardItem(l.ctx, l.svcCtx, userID, gameType, shared.RankNames, true, now)
 	if rankErr != nil {
 		l.Logger.Errorf("获取我的排名失败: %v", rankErr)
 	}
@@ -99,7 +100,7 @@ func (l *GetLeaderboardLogic) GetLeaderboard(req *types.GetLeaderboardReq) (resp
 	return result, nil
 }
 
-func loadViewerLeaderboardItem(svcCtx *svc.ServiceContext, userID int64, gameType int, rankNames map[int]string, includeUnranked bool, now time.Time) (*types.LeaderboardItem, error) {
+func loadViewerLeaderboardItem(ctx context.Context, svcCtx *svc.ServiceContext, userID int64, gameType int, rankNames map[int]string, includeUnranked bool, now time.Time) (*types.LeaderboardItem, error) {
 	if svcCtx == nil || svcCtx.RankingModel == nil || userID <= 0 {
 		return nil, nil
 	}
@@ -110,6 +111,7 @@ func loadViewerLeaderboardItem(svcCtx *svc.ServiceContext, userID int64, gameTyp
 	}
 	if entry != nil {
 		item := leaderboardItem(*entry, rank, rankNames)
+		fillLeaderboardVipLevels(ctx, svcCtx, now, &item)
 		return &item, nil
 	}
 	if !includeUnranked || svcCtx.UserModel == nil {
@@ -120,7 +122,9 @@ func loadViewerLeaderboardItem(svcCtx *svc.ServiceContext, userID int64, gameTyp
 		return nil, err
 	}
 	level := unrankedLevel(rules, now)
-	return &types.LeaderboardItem{UserId: user.Id, Nickname: user.Nickname, Avatar: user.Avatar, RankLevel: level, RankName: rankNames[level]}, nil
+	item := types.LeaderboardItem{UserId: user.Id, Nickname: user.Nickname, Avatar: user.Avatar, RankLevel: level, RankName: rankNames[level]}
+	fillLeaderboardVipLevels(ctx, svcCtx, now, &item)
+	return &item, nil
 }
 
 // unrankedLevel 是未上榜用户展示的段位：V2 生效后为初始分对应的段位，旧规则下为最低段位。

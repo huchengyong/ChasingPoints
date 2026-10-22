@@ -131,3 +131,36 @@ func TestMemberGrowthModelsReturnHelpfulNilErrors(t *testing.T) {
 		t.Fatalf("expected nil db error, got %v", err)
 	}
 }
+
+func TestFindGrowthPointsByUserIdsReturnsOnlyExistingProfiles(t *testing.T) {
+	db := newMemberGrowthTestDB(t)
+	profileModel := NewMemberGrowthProfileModel(db)
+	// 1100 个档案跨过 500 条一批的分批边界。
+	const total = 1100
+	profiles := make([]MemberGrowthProfile, 0, total)
+	ids := make([]int64, 0, total+1)
+	for i := 1; i <= total; i++ {
+		profiles = append(profiles, MemberGrowthProfile{UserId: int64(i), GrowthPoints: i * 2, GrowthLevel: 1})
+		ids = append(ids, int64(i))
+	}
+	ids = append(ids, total+1)
+	if err := db.CreateInBatches(&profiles, 200).Error; err != nil {
+		t.Fatalf("seed profiles: %v", err)
+	}
+
+	got, err := profileModel.FindGrowthPointsByUserIds(ids)
+	if err != nil {
+		t.Fatalf("find growth points: %v", err)
+	}
+	if len(got) != total || got[1] != 2 || got[501] != 1002 || got[total] != total*2 {
+		t.Fatalf("unexpected growth points: len=%d sample=%d/%d/%d", len(got), got[1], got[501], got[total])
+	}
+	if _, ok := got[total+1]; ok {
+		t.Fatal("user without a profile must stay out of the result")
+	}
+
+	empty, err := profileModel.FindGrowthPointsByUserIds(nil)
+	if err != nil || len(empty) != 0 {
+		t.Fatalf("empty ids: %v err=%v", empty, err)
+	}
+}

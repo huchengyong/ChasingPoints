@@ -45,6 +45,7 @@ func (l *GetChallengeHistoryLogic) GetChallengeHistory(req *types.GetChallengeHi
 	}
 	now := time.Now()
 	resp.List = buildChallengeInfoList(rows, now)
+	fillChallengeVipLevels(l.ctx, l.svcCtx, now, challengeInfoPtrs(resp.List)...)
 	if len(rows) >= pageSize {
 		resp.NextBeforeId = rows[len(rows)-1].Id
 	}

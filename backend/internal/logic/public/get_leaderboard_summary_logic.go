@@ -53,6 +53,7 @@ func (l *GetLeaderboardSummaryLogic) GetLeaderboardSummary(req *types.GetLeaderb
 		for index, entry := range topThree {
 			items = append(items, leaderboardItem(entry, index+1, rankNames))
 		}
+		fillLeaderboardVipLevels(l.ctx, l.svcCtx, now, leaderboardItemPtrs(items)...)
 		return &leaderboardSharedPayload{TopThree: items, RankNames: rankNames, ConfigVersion: version}, nil
 	})
 	if err != nil {
@@ -60,7 +61,7 @@ func (l *GetLeaderboardSummaryLogic) GetLeaderboardSummary(req *types.GetLeaderb
 		return result, nil
 	}
 	userID, _ := utils.GetUserIDFromCtx(l.ctx)
-	myRanking, rankErr := loadViewerLeaderboardItem(l.svcCtx, userID, gameType, shared.RankNames, false, now)
+	myRanking, rankErr := loadViewerLeaderboardItem(l.ctx, l.svcCtx, userID, gameType, shared.RankNames, false, now)
 	if rankErr != nil {
 		l.Logger.Errorf("获取当前用户排名失败: %v", rankErr)
 	}

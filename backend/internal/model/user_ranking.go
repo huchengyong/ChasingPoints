@@ -1069,6 +1069,28 @@ func (m *RankingModel) GetLeaderboardCountByGameType(gameType int, scope Leaderb
 	return count, err
 }
 
+// FindRankLevelsByUserIds 批量读取用户在指定球种的当前段位等级，只查必要列；没有排位记录的用户不在结果中。
+func (m *RankingModel) FindRankLevelsByUserIds(userIds []int64, gameType int) (map[int64]int, error) {
+	levels := make(map[int64]int, len(userIds))
+	const batchSize = 500
+	for start := 0; start < len(userIds); start += batchSize {
+		end := start + batchSize
+		if end > len(userIds) {
+			end = len(userIds)
+		}
+		var list []UserRanking
+		if err := m.db.Select("user_id", "rank_level").
+			Where("game_type = ? AND user_id IN ?", gameType, userIds[start:end]).
+			Find(&list).Error; err != nil {
+			return nil, err
+		}
+		for _, ranking := range list {
+			levels[ranking.UserId] = ranking.RankLevel
+		}
+	}
+	return levels, nil
+}
+
 // GetUserRanking 获取用户的排名
 func (m *RankingModel) GetUserRanking(userId int64) (int, *LeaderboardEntry, error) {
 	return m.GetUserRankingByGameType(userId, defaultRankingGameType, LeaderboardScope{})

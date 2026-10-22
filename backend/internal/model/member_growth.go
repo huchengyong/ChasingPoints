@@ -95,6 +95,31 @@ func (m *MemberGrowthProfileModel) FindByUserIdWithTx(tx *gorm.DB, userId int64)
 	return &profile, nil
 }
 
+// FindGrowthPointsByUserIds 批量读取成长值，只查必要列；没有成长档案的用户不在结果中。
+func (m *MemberGrowthProfileModel) FindGrowthPointsByUserIds(userIds []int64) (map[int64]int, error) {
+	if m == nil || m.db == nil {
+		return nil, ErrMemberGrowthProfileDBNil
+	}
+	points := make(map[int64]int, len(userIds))
+	const batchSize = 500
+	for start := 0; start < len(userIds); start += batchSize {
+		end := start + batchSize
+		if end > len(userIds) {
+			end = len(userIds)
+		}
+		var list []MemberGrowthProfile
+		if err := m.db.Select("user_id", "growth_points").
+			Where("user_id IN ?", userIds[start:end]).
+			Find(&list).Error; err != nil {
+			return nil, err
+		}
+		for _, profile := range list {
+			points[profile.UserId] = profile.GrowthPoints
+		}
+	}
+	return points, nil
+}
+
 func (m *MemberGrowthProfileModel) FindOrCreate(userId int64) (*MemberGrowthProfile, error) {
 	return m.FindOrCreateWithTx(nil, userId)
 }
