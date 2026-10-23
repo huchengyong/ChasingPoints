@@ -121,7 +121,7 @@
 ## 9. 验证与收尾
 
 - [x] 9.1 在 `backend/` 运行改动涉及的 Go 测试和全量 `go test ./...`。在 `uniapp/` 运行 `node --test tests/*.test.mjs`。记录命令与结果。
-- [ ] 9.2 用 HBuilderX 发行微信小程序与 App。确认小程序主包仍低于 2MB，并确认新页面位于分包。（本机 `mp-weixin` 构建已确认主包 0.954MB、新页面在分包；HBuilderX 发行与 App 包待用户执行，见 `docs/testing/revamp-vip-benefits-acceptance.md`。）
+- [ ] 9.2 用 HBuilderX 发行微信小程序与 App。确认小程序主包仍低于 2MB，并确认新页面位于分包。（2026-10-23 用 HBuilderX CLI 生产模式构建 `mp-weixin` 与 `app-plus` 资源，均通过；主包 0.954MB，`subPages/user/performance` 与 `subPages/match/matchReplay` 位于分包。尚未完成：App 云打包（需 DCloud 账号）与微信后台上传，见 `docs/testing/revamp-vip-benefits-acceptance.md`。）
 - [ ] 9.3 部署测试环境后，用测试账号做真机验收：
   - 会员与免费用户对局时双方看到的标识
   - 排行榜延迟不超过一个缓存周期

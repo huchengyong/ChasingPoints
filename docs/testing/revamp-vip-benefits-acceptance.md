@@ -34,9 +34,15 @@
 
 小程序构建（HBuilderX CLI 的 `mp-weixin`，本机产物）：
 
-- 主包 0.954 MB（上限 2 MB）。
-- `subPages/user/performance`、`subPages/match/matchReplay` 位于分包，不在主包页面列表。
+- 2026-10-23 生产模式（`NODE_ENV=production`）构建，日志在 scratchpad `build-mp-release.log`，构建完成无错误。
+- 主包 0.954 MB（1000202 字节，上限 2 MB），按 `app.json` 的 `subPackages` 根目录切分统计。
+- `subPages/user/performance`、`subPages/match/matchReplay` 位于分包（`subPages/user`、`subPages/match`），不在主包页面列表。
 - `components/memberAvatar` 因被多个分包共用位于主包，约 4 KB。
+
+App 资源构建（HBuilderX CLI 的 `app-plus`，生产模式）：
+
+- 构建完成无错误，两个新页面的样式与脚本编译进 `app-service.js`。
+- 仅生成资源，未做云打包，因此没有 `.apk` / `.ipa`。
 
 ## 2. 部署前修复的测试失败
 
@@ -50,7 +56,7 @@
 ## 4. 未执行或阻塞
 
 - **任务 1.2a（已完成，只读核对）**：2026-10-22，经 SSH 登录测试服务器（`chasingpoints-dev`，`/www/server/chasing-points/shared/.env` 的 `MYSQL_DSN`）与生产服务器（`chasingpoints-prod`，`/www/wwwroot/api.zhuifen.cn/.env` 的 `MYSQL_DSN`），在服务器上用 `mysql --batch` 执行 `SELECT COUNT(*) FROM member_rights_configs` 与对应的 `SELECT`。结果：测试库 0 行，生产库 0 行。没有已保存的配置覆盖代码默认值，运行时回退到 `DefaultMemberGrowthRulesConfig`（门槛 10/40/120/300、每日上限 8），与新数值一致，因此没有修改任何环境的配置。只读脚本未打印 DSN 或密码；没有写入任何数据。
-- **任务 9.2（发行包）**：只做了上面的本机小程序构建，没有用 HBuilderX 发行，也没有构建 App 包。主包体积与分包归属最终以发行产物为准。
+- **任务 9.2（发行包）**：未完成发行动作。已完成生产模式的 `mp-weixin` 与 `app-plus` 资源构建，并确认主包体积与分包归属（见第 1 节）。未完成：App 云打包（需要 DCloud 账号登录，生成 `.apk` / `.ipa`），以及微信小程序上传到后台（需要上传密钥，并会在后台生成对外可见的版本）。这两项需要用户确认后再做。
 - **任务 9.3 的部署部分（已完成）**：2026-10-22 通过 `backend/deploy-dev.sh` 部署到测试环境（`chasingpoints-dev`，`api-zhuifen.kekemate.cn`）。发布号 `20261022172041-04b0d106c394-dirty`（部署时工作区有未提交改动，所以带 `-dirty`；部署后仅修正了 `user_ranking.go` 中一处注释的位置，没有行为改动）。
   - 迁移：本次没有新增 SQL 迁移，`goose` 输出 `no migrations to run`，当前版本 `20261019120000`。
   - 服务：`chasing-points.service` 为 active，启动于 2026-10-22 09:21:24 UTC；本机 `/api/admin/exists` 返回 200；公网 `https://api-zhuifen.kekemate.cn/api/admin/exists` 返回 200。
