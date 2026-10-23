@@ -69,4 +69,11 @@
 - 管理后台：`20261019162819-c4a05cd` 发布到 `admin.zhuifen.cn`，旧版备份在 `/www/wwwroot/.admin-backups/admin.zhuifen.cn/20261019162819-c4a05cd`。入口页与含 API 地址的 chunk 与本地构建一致，线上 API 指向 `api.zhuifen.cn`；`/`、`/settings/member-ranking-rights`、`/member/list` 返回 200。
 - 已排期：线上 `.env` 写入 `RANKING_RATING_V2_START_AT=2026-10-20T00:00:00+08:00`（改动前备份在 `/www/wwwroot/api.zhuifen.cn/deploy-tools/env-before-v2-20261019165823`），API 已重启加载，健康检查 200。公开接口 `/api/public/rank/configs` 返回 `rules_version=1`、`rules_effective_at` 为该时刻。`rank_rating_seeds` 写入 2 条（用户 3 球种 3 → 1290，用户 4 球种 3 → 1210），其余段位行切换时取 1250。
 - 未执行：切换本身由后台 worker 在 2026-10-20 00:00（Asia/Shanghai）自动完成。若在 T 之前又有排位完成，需在 T 之前重新执行 `-mode=seed -apply`（整表替换，可重复执行）。
-- 切换后待办：执行 `-mode=audit` 并确认 `differences=0`，核对 `rules_version` 与 `rating_reset` 数量，并把结果补到本节。
+- 切换后核对（2026-10-23，已完成，只读）：
+  - 公开接口 `https://api.zhuifen.cn/api/public/rank/configs`：`rules_version=2`，`rules_effective_at=2026-10-20T00:00:00+08:00`。
+  - `rank_change_logs` 中 `change_type='rating_reset'` 共 16 条，4 个球种各 4 条，`effective_at` 均为 `2026-10-20 00:00:00`。
+  - `user_ranking` 中 `rating_version>=2` 共 12 行（用户 2、3、4 × 4 个球种），`rating_version<2` 为 0 行。
+    - 原预期 16 行，差额 4 行与用户 1 对应。用户 1 是 2026-10-20 注销的生产测试账号（见 `docs/testing/account-lifecycle-acceptance.md`），注销事务中的 `DeleteAccountRelationsWithTx` 会删除该用户的 `user_ranking` 与 `rank_rating_seeds`，并保留 `rank_change_logs`（清空 `remark`）。因此 `rating_reset` 仍为 16 条，属于预期。
+  - `rank_rating_seeds`：2 条（用户 3 球种 3 → 1290，用户 4 球种 3 → 1210），与切换记录一致。
+  - `rank_rebuild -mode=audit`（只读，未带 `-apply`，工具为 2026-10-19 16:47 构建的二进制）：`v2_start=2026-10-20T00:00:00+08:00`，`resets=16`，`replayed_matches=0`，`compared_logs=0`，`compared_rankings=12`，`ranking_differences=0`，`differences=0`。
+  - 局限：`replayed_matches=0`，即 V2 生效后生产环境还没有任何排位结算。本次 `differences=0` 只说明切换状态与记录一致，没有验证 V2 结算逻辑。第一场 V2 排位结算后需要再次执行 `-mode=audit`，并确认 `replayed_matches>0`、`compared_logs>0` 且 `differences=0`。
