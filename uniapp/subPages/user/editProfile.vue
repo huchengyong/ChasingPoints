@@ -49,10 +49,12 @@
 				<text class="modal-title">编辑昵称</text>
 				<input
 					class="modal-input"
-					type="text"
+					:type="nicknameInputType"
 					v-model="newNickname"
 					placeholder="请输入昵称"
 					maxlength="12"
+					@blur="syncNicknameInput"
+					@nicknamereview="handleNicknameReview"
 				/>
 				<view class="modal-actions">
 					<button class="modal-button modal-button-secondary" @click="closeEditNicknameModal">取消</button>
@@ -102,6 +104,11 @@ const showBindPhoneModal = ref(false)
 const newNickname = ref('')
 const isSaving = ref(false)
 const isUploadingAvatar = ref(false)
+// 微信小程序的 nickname 键盘才会在键盘上方展示微信昵称
+let nicknameInputType = 'text'
+// #ifdef MP-WEIXIN
+nicknameInputType = 'nickname'
+// #endif
 
 const chooseAvatarSource = () => {
 	if (isUploadingAvatar.value) return
@@ -174,6 +181,19 @@ const uploadAvatar = async (filePath) => {
 const openEditNicknameModal = () => {
 	newNickname.value = userNickname.value
 	showEditNicknameModal.value = true
+}
+
+// 选用微信昵称时不一定触发 input 事件，失焦时以输入框的值为准
+const syncNicknameInput = (event) => {
+	const value = event?.detail?.value
+	if (typeof value === 'string') newNickname.value = value
+}
+
+// 微信昵称安全检测未通过时会清空输入框，这里同步清空，避免提交未通过的昵称
+const handleNicknameReview = (event) => {
+	if (event?.detail?.pass !== false) return
+	newNickname.value = ''
+	uni.showToast({ title: '昵称未通过安全检测，请重新输入', icon: 'none' })
 }
 
 const closeEditNicknameModal = () => {

@@ -84,3 +84,11 @@ test('settings page limits nickname input to 12 characters for profile layout sa
   assert.match(editProfileSource, /nickname\.length < 2 \|\| nickname\.length > 12/)
   assert.match(editProfileSource, /昵称长度需要在2-12个字符之间/)
 })
+
+test('edit profile nickname input offers the WeChat nickname keyboard and follows its review', () => {
+  assert.match(editProfileSource, /:type="nicknameInputType"/)
+  assert.match(editProfileSource, /#ifdef MP-WEIXIN\s*nicknameInputType = 'nickname'\s*\/\/ #endif/)
+  assert.match(editProfileSource, /@blur="syncNicknameInput"/)
+  assert.match(editProfileSource, /@nicknamereview="handleNicknameReview"/)
+  assert.match(editProfileSource, /pass !== false\) return\s*newNickname\.value = ''/)
+})

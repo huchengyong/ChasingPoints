@@ -141,6 +141,20 @@ test('welcome page labels the hard-coded preview card as sample data', () => {
 	assert.match(welcomeSource, /<view class="preview-card"[^>]*>\s*<text class="preview-badge">示例数据<\/text>/)
 })
 
+test('login page shares the welcome brand row and single-line agreement layout', () => {
+	const brandRowStyle = /class="brand-row" :style="\{ marginTop: `\$\{headerLayout\.top\}px`, minHeight: `\$\{headerLayout\.minHeight\}px` \}"/
+	assert.match(welcomeSource, brandRowStyle)
+	assert.match(loginSource, brandRowStyle)
+	assert.match(loginSource, /const headerLayout = resolveWelcomeHeaderLayout\(\{[\s\S]*?menuButton: menuButtonRect/)
+	for (const source of [welcomeStyleSource, loginSource]) {
+		assert.match(source, /\.brand-logo \{\s*width: 84rpx;\s*height: 84rpx;/)
+		assert.match(source, /\.brand-name \{[^}]*font-size: 36rpx;/)
+		assert.match(source, /\.brand-en \{[^}]*font-size: 22rpx;/)
+		assert.match(source, /\.agreement-row \{\s*padding: 24rpx 0;/)
+	}
+	assert.match(loginSource, /\.agreement-block \{\s*display: flex;\s*flex-wrap: wrap;/)
+})
+
 test('login page renders one login mode at a time and honors the phone route parameter', () => {
   assert.match(loginSource, /const authMode = ref/)
   assert.match(loginSource, /onLoad\(\(options\) => \{[\s\S]*?resolveLoginMode\(\{[\s\S]*?requestedMethod: options\?\.method/)

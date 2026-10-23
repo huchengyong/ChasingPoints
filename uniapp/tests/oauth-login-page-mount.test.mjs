@@ -298,6 +298,9 @@ function createUniStub(context) {
     getSystemInfoSync() {
       return { uniPlatform: 'app-harmony' }
     },
+    getMenuButtonBoundingClientRect() {
+      return null
+    },
     getUserInfo(payload) {
       context.uniCalls.getUserInfo += 1
       payload.success({

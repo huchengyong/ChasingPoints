@@ -195,7 +195,7 @@ export function resolveWelcomeActions({
   }
 }
 
-// 欢迎页使用自定义导航栏：小程序的品牌行放在右上角胶囊下方，其余端放在状态栏下方的标准导航栏高度内。
+// 欢迎页与登录页使用自定义导航栏：小程序的品牌行放在右上角胶囊下方，其余端放在状态栏下方的标准导航栏高度内。
 export function resolveWelcomeHeaderLayout({ statusBarHeight = 0, menuButton = null } = {}) {
   if (menuButton?.height > 0 && menuButton.bottom > 0) {
     return { top: menuButton.bottom + WELCOME_CAPSULE_GAP, minHeight: 0 }

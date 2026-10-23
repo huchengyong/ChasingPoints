@@ -437,6 +437,11 @@
 	.checkbox {
 		border-color: rgba(224, 174, 18, 0.68);
 		background: rgba(255, 255, 255, 0.04);
+
+		&.checked {
+			background: #f7d86a;
+			border-color: #f7d86a;
+		}
 	}
 
 	.agreement-text,

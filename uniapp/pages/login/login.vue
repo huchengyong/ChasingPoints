@@ -1,7 +1,7 @@
 <template>
 	<view class="login-container" :class="{ 'dark-mode': isDarkMode }">
 		<view class="login-content">
-			<view class="brand-row">
+			<view class="brand-row" :style="{ marginTop: `${headerLayout.top}px`, minHeight: `${headerLayout.minHeight}px` }">
 				<image class="brand-logo" src="/static/logo.png" mode="aspectFit"></image>
 				<view class="brand-copy">
 					<text class="brand-name">追分竞技</text>
@@ -14,7 +14,10 @@
 					<text class="eyebrow">台球竞技记录</text>
 					<text class="title">每一杆，</text>
 					<text class="title">都值得被记录</text>
-					<text class="subtitle">记录战绩、生成战报，找到真正旗鼓相当的对手。</text>
+					<view class="subtitle">
+						<text>记录战绩、生成战报，</text>
+						<text>找到真正旗鼓相当的对手。</text>
+					</view>
 					<view class="benefit-list">
 						<text>对局记录</text>
 						<text>竞技排名</text>
@@ -209,6 +212,7 @@ import {
 	resolvePostLoginNavigation,
 	resolveSmsFeedback,
 	resolveWechatPostLoginState,
+	resolveWelcomeHeaderLayout,
 	shouldClearEntryFunnelAgreementSession
 } from '@/utils/entry-funnel.js'
 import { buildHuaweiOAuthLoginPayload } from '@/utils/oauth-login.js'
@@ -223,9 +227,16 @@ isHarmonyPlatform = true
 // #endif
 
 let isWechatMiniProgram = false
+let menuButtonRect = null
 // #ifdef MP-WEIXIN
 isWechatMiniProgram = true
+menuButtonRect = uni.getMenuButtonBoundingClientRect()
 // #endif
+
+const headerLayout = resolveWelcomeHeaderLayout({
+	statusBarHeight: uni.getSystemInfoSync().statusBarHeight,
+	menuButton: menuButtonRect
+})
 
 const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
@@ -655,7 +666,7 @@ onUnmounted(() => {
 .login-container {
 	min-height: 100vh;
 	box-sizing: border-box;
-	padding: calc(76rpx + env(safe-area-inset-top)) 40rpx calc(32rpx + env(safe-area-inset-bottom));
+	padding: 0 40rpx calc(12rpx + env(safe-area-inset-bottom));
 	background:
 		radial-gradient(circle at 88% 5%, rgba(224, 174, 18, 0.18), transparent 28%),
 		linear-gradient(180deg, #fffdf8 0%, #f8f3e9 100%);
@@ -669,7 +680,7 @@ onUnmounted(() => {
 }
 
 .login-content {
-	min-height: calc(100vh - 108rpx - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+	min-height: calc(100vh - 12rpx - env(safe-area-inset-bottom));
 	display: flex;
 	flex-direction: column;
 }
@@ -677,34 +688,36 @@ onUnmounted(() => {
 .brand-row {
 	display: flex;
 	align-items: center;
-	gap: 18rpx;
-	margin-top: 112rpx;
+	flex-shrink: 0;
+	gap: 20rpx;
 }
 
 .brand-logo {
-	width: 76rpx;
-	height: 76rpx;
-	border-radius: 22rpx;
-	box-shadow: 0 14rpx 30rpx rgba(198, 146, 0, 0.18);
+	width: 84rpx;
+	height: 84rpx;
+	border-radius: 24rpx;
+	box-shadow: 0 10rpx 24rpx rgba(198, 146, 0, 0.18);
 }
 
 .brand-copy {
 	display: flex;
 	flex-direction: column;
-	gap: 4rpx;
+	gap: 2rpx;
 }
 
 .brand-name {
 	color: #2a2419;
-	font-size: 26rpx;
+	font-size: 36rpx;
 	font-weight: 800;
+	line-height: 1.2;
 	letter-spacing: 1rpx;
 }
 
 .brand-en {
 	color: #a08c5d;
-	font-size: 16rpx;
-	letter-spacing: 3rpx;
+	font-size: 22rpx;
+	line-height: 1.2;
+	letter-spacing: 6rpx;
 }
 
 .dark-mode .brand-name {
@@ -722,13 +735,13 @@ onUnmounted(() => {
 }
 
 .hero-section {
-	margin-top: 156rpx;
+	margin-top: 40rpx;
 	display: flex;
 	flex-direction: column;
 }
 
 .eyebrow {
-	margin-bottom: 18rpx;
+	margin-bottom: 14rpx;
 	color: #a47a14;
 	font-size: 20rpx;
 	font-weight: 800;
@@ -744,8 +757,9 @@ onUnmounted(() => {
 }
 
 .subtitle {
-	max-width: 590rpx;
-	margin-top: 22rpx;
+	display: flex;
+	flex-direction: column;
+	margin-top: 16rpx;
 	color: #746b5a;
 	font-size: 27rpx;
 	line-height: 1.6;
@@ -917,10 +931,9 @@ onUnmounted(() => {
 
 .agreement-block {
 	display: flex;
-	flex-direction: column;
+	flex-wrap: wrap;
 	align-items: center;
-	gap: 8rpx;
-	margin-top: 22rpx;
+	justify-content: center;
 }
 
 .agreement-row,
@@ -930,6 +943,11 @@ onUnmounted(() => {
 	justify-content: center;
 }
 
+// 勾选行与 .link 的上下内边距用于把点击区域撑到约 44pt。
+.agreement-row {
+	padding: 24rpx 0;
+}
+
 .agreement-row.disabled,
 .agreement-links.disabled {
 	opacity: 0.45;
@@ -937,10 +955,10 @@ onUnmounted(() => {
 }
 
 .checkbox {
-	width: 32rpx;
-	height: 32rpx;
+	width: 36rpx;
+	height: 36rpx;
 	margin-right: 10rpx;
-	border: 2rpx solid rgba(224, 174, 18, 0.42);
+	border: 2rpx solid #d4ad3c;
 	border-radius: 8rpx;
 	background: rgba(255, 255, 255, 0.72);
 	display: flex;
@@ -961,7 +979,7 @@ onUnmounted(() => {
 }
 
 .link {
-	margin: 0 4rpx;
+	padding: 24rpx 4rpx;
 	color: #846414;
 }
 
@@ -970,8 +988,13 @@ onUnmounted(() => {
 }
 
 .dark-mode .checkbox {
-	border-color: rgba(224, 174, 18, 0.42);
+	border-color: rgba(224, 174, 18, 0.68);
 	background: rgba(255, 255, 255, 0.04);
+
+	&.checked {
+		background: #f7d86a;
+		border-color: #f7d86a;
+	}
 }
 
 .dark-mode .agreement-text,
@@ -1161,13 +1184,13 @@ onUnmounted(() => {
 }
 
 .phone-agreement {
-	margin-top: 28rpx;
+	margin-top: 4rpx;
 }
 
 .login-btn {
 	height: 96rpx;
 	line-height: 96rpx;
-	margin: 28rpx 0 0;
+	margin: 4rpx 0 0;
 	padding: 0;
 	background: linear-gradient(135deg, #e5b928 0%, #c99700 100%);
 	color: #ffffff;

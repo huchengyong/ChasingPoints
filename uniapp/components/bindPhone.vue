@@ -827,6 +827,11 @@ $dark-input-bg: transparent;
 		.checkbox {
 			background: rgba(255, 247, 225, 0.06);
 			border-color: rgba(247, 231, 168, 0.18);
+
+			&.checked {
+				background: #f7d86a;
+				border-color: #f7d86a;
+			}
 		}
 
 		.agreement-text {
