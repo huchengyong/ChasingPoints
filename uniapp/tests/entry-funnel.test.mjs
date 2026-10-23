@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import * as entryFunnel from '../utils/entry-funnel.js'
 
 import {
+  AUTH_NETWORK_ERROR_MESSAGE,
   canAttemptLogin,
   canRequestSms,
   canSubmitLogin,
@@ -12,12 +13,14 @@ import {
   isPhoneValid,
   maskPhone,
   resolveAlternateLoginMode,
+  resolveAuthErrorMessage,
   resolveAuthenticationGate,
   resolveAuthenticationPhase,
   resolveEntryFunnelAgreementState,
   resolveLoginMode,
   resolvePostLoginNavigation,
   resolveSmsFeedback,
+  resolveWechatPhoneAuthMessage,
   resolveWechatPostLoginState,
   shouldClearEntryFunnelAgreementSession,
   resolveWelcomeActions,
@@ -305,4 +308,31 @@ test('shouldClearEntryFunnelAgreementSession only clears when no funnel page rem
     currentRoute: 'pages/login/login',
     visibleRoutes: ['pages/user/index']
   }), true)
+})
+
+test('resolveAuthErrorMessage turns network timeouts into a readable login message', () => {
+  assert.equal(
+    resolveAuthErrorMessage({ category: 'network', message: 'request:fail timeout' }, '登录失败'),
+    AUTH_NETWORK_ERROR_MESSAGE
+  )
+  assert.equal(
+    resolveAuthErrorMessage({ errMsg: 'login:fail timeout' }, '微信登录失败，请重试'),
+    AUTH_NETWORK_ERROR_MESSAGE
+  )
+  assert.doesNotMatch(AUTH_NETWORK_ERROR_MESSAGE, /request:fail|timeout/)
+})
+
+test('resolveAuthErrorMessage keeps server messages and falls back for unknown errors', () => {
+  assert.equal(
+    resolveAuthErrorMessage({ category: 'business', message: '微信授权已失效，请重试' }, '登录失败'),
+    '微信授权已失效，请重试'
+  )
+  assert.equal(resolveAuthErrorMessage({ errMsg: 'login:fail cancel' }, '微信登录失败，请重试'), '微信登录失败，请重试')
+  assert.equal(resolveAuthErrorMessage(undefined, '登录失败，请重试'), '登录失败，请重试')
+})
+
+test('resolveWechatPhoneAuthMessage separates a user denial from other authorization failures', () => {
+  assert.match(resolveWechatPhoneAuthMessage({ detail: { errMsg: 'getPhoneNumber:fail user deny' } }), /需要授权手机号/)
+  assert.match(resolveWechatPhoneAuthMessage({ detail: { errMsg: 'getPhoneNumber:fail no permission' } }), /授权失败/)
+  assert.match(resolveWechatPhoneAuthMessage({}), /授权失败/)
 })

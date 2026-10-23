@@ -15,6 +15,7 @@ const authApiSource = readFileSync(new URL('../api/auth.js', import.meta.url), '
 const welcomeSource = readFileSync(new URL('../pages/welcome/index.vue', import.meta.url), 'utf8')
 const welcomeStyleSource = readFileSync(new URL('../pages/welcome/index.scss', import.meta.url), 'utf8')
 const loginSource = readFileSync(new URL('../pages/login/login.vue', import.meta.url), 'utf8')
+const agreementSheetSource = readFileSync(new URL('../components/agreementConsentSheet.vue', import.meta.url), 'utf8')
 
 function extractSourceBetween(source, startMarker, endMarker) {
 	const start = source.indexOf(startMarker)
@@ -26,13 +27,6 @@ function extractReloginBranch(source) {
 	return source.match(/if \(payload\?\.action === 'relogin'\) \{[\s\S]*?\n\t\}/)?.[0] || ''
 }
 
-const welcomeBindPhoneSuccessSource = extractSourceBetween(
-	welcomeSource,
-	'const handleBindPhoneSuccess',
-	'const handleBindPhoneClose'
-)
-const welcomeReloginBranchSource = extractReloginBranch(welcomeBindPhoneSuccessSource)
-const welcomeNormalBindSuccessSource = welcomeBindPhoneSuccessSource.replace(welcomeReloginBranchSource, '')
 const loginBindPhoneSuccessSource = extractSourceBetween(
 	loginSource,
 	'const handleBindPhoneSuccess',
@@ -85,6 +79,19 @@ test('merged mini-program binding replaces the current session instead of requir
   assert.equal(result.maskedPhone, '138****8000')
 })
 
+test('auth api sends the phone code with the WeChat login code and keeps the legacy shape without it', () => {
+  assert.match(authApiSource, /wechatMiniLogin = \(code, phoneCode = ''\)/)
+  assert.match(authApiSource, /phoneCode \? \{ code, phone_code: phoneCode \} : \{ code \}/)
+  assert.match(authApiSource, /post\('\/api\/auth\/wechat-mini-login', data, \{ silent: true \}\)/)
+})
+
+test('agreement sheet can turn its confirm button into the WeChat phone authorization button', () => {
+  assert.match(agreementSheetSource, /:open-type="phoneAuthorize \? 'getPhoneNumber' : ''"/)
+  assert.match(agreementSheetSource, /@getphonenumber="\$emit\('phone-number', \$event\)"/)
+  assert.match(agreementSheetSource, /phoneAuthorize:\s*\{\s*type:\s*Boolean,\s*default:\s*false/)
+  assert.match(agreementSheetSource, /defineEmits\(\['close', 'agree', 'phone-number'/)
+})
+
 test('auth api exposes dedicated WeChat mini-program endpoints', () => {
   assert.match(authApiSource, /wechat-mini-login/)
   assert.match(authApiSource, /wechat-mini-bind-phone/)
@@ -95,40 +102,33 @@ test('welcome page gives mini programs a WeChat primary action while keeping bro
 	assert.match(welcomeSource, /<image class="brand-logo" src="\/static\/logo\.png"/)
 	assert.match(welcomeSource, /isWechatMiniProgram/)
 	assert.match(welcomeSource, /welcomeActions\.showPhoneLogin/)
-	assert.match(welcomeSource, /handleWechatMiniLogin/)
+	assert.match(welcomeSource, /handleWechatPhoneNumber/)
 	assert.match(welcomeSource, /uni\.login/)
 	assert.match(welcomeSource, /handleBrowse/)
 	assert.match(welcomeSource, /url: '\/pages\/login\/login\?method=phone'/)
 })
 
-test('welcome page delays navigation until an unbound user handles the phone prompt', () => {
-	assert.match(welcomeSource, /resolveWechatPostLoginState/)
+test('welcome page logs in with the WeChat phone authorization and never opens a bind sheet', () => {
 	assert.match(welcomeSource, /const authGate = computed/)
 	assert.match(welcomeSource, /class="phone-login-btn"[\s\S]*?:disabled="authGate\.isAuthenticating"/)
 	assert.match(welcomeSource, /class="btn-tertiary"[\s\S]*?:disabled="authGate\.isAuthenticating"/)
 	assert.match(welcomeSource, /if \(!authGate\.value\.canLeave\) return/)
 	assert.match(welcomeSource, /if \(!authGate\.value\.shouldHandleResult\) return/)
-	assert.match(welcomeSource, /postLoginState\.action === 'bind-phone'[\s\S]*?showBindPhoneModal\.value = true[\s\S]*?return[\s\S]*?navigateToHome\(\)/)
-	assert.match(welcomeSource, /if \(hasViewed && !showBindPhoneModal\.value\)/)
-	assert.match(welcomeSource, /:use-sms-binding="true"/)
-	assert.match(welcomeSource, /:require-agreement="false"/)
-	assert.match(welcomeSource, /bindingSkipped:\s*true/)
-	assert.match(welcomeSource, /handleBindPhoneSuccess/)
+	assert.match(welcomeSource, /:open-type="wechatPhoneOpenType"/)
+	assert.match(welcomeSource, /@getphonenumber="handleWechatPhoneNumber"/)
+	assert.match(welcomeSource, /isWechatMiniProgram && isAgreed\.value \? 'getPhoneNumber' : ''/)
+	assert.match(welcomeSource, /wechatMiniLogin\(loginResult\.code, phoneCode\)/)
+	assert.match(welcomeSource, /getWechatPhoneNumberCode\(event\)[\s\S]*?resolveWechatPhoneAuthMessage\(event\)/)
+	assert.match(welcomeSource, /resolveAuthErrorMessage\(error, '微信登录失败，请重试'\)/)
+	assert.match(welcomeSource, /userStore\.login\(response\)[\s\S]*?navigateToHome\(\)/)
+	assert.doesNotMatch(welcomeSource, /bindPhone|showBindPhoneModal|resolveWechatPostLoginState|need_bind_phone/)
 })
 
-test('welcome page enters home after binding or choosing to bind later', () => {
-	assert.match(welcomeNormalBindSuccessSource, /navigateToHome\(\)/)
-	assert.match(welcomeSource, /handleBindPhoneClose[\s\S]*?bindingSkipped:\s*true[\s\S]*?navigateToHome\(\)/)
-})
-
-test('welcome page sends merged accounts to phone login with the bound phone prefilled', () => {
-	assert.match(welcomeReloginBranchSource, /userStore\.logout\(\)/)
-	assert.match(welcomeReloginBranchSource, /encodeURIComponent\(payload\?\.phone \|\| ''\)/)
-	assert.match(welcomeReloginBranchSource, /url:\s*`\/pages\/login\/login\?method=phone&phone=\$\{encodedPhone\}`/)
-	assert.match(welcomeReloginBranchSource, /\n\t\treturn\n\t\}$/)
-	assert.doesNotMatch(welcomeReloginBranchSource, /navigateToHome\(\)/)
-	assert.match(welcomeNormalBindSuccessSource, /navigateToHome\(\)/)
-	assert.match(loginSource, /onLoad\(\(options\) => \{[\s\S]*?formData\.phone = options\?\.phone[\s\S]*?decodeURIComponent\(options\.phone\)/)
+test('welcome page keeps the agreement sheet open until the phone authorization returns', () => {
+	assert.match(welcomeSource, /:phone-authorize="isWechatPhoneAuthorizing"/)
+	assert.match(welcomeSource, /@phone-number="handleWechatPhoneNumber"/)
+	assert.match(welcomeSource, /if \(isWechatPhoneAuthorizing\.value\) return\n\tcloseAgreementSheet\(\)/)
+	assert.match(welcomeSource, /handleWechatPhoneNumber[\s\S]*?closeAgreementSheet\(\)/)
 })
 
 test('welcome page matches the ivory light and warm dark login visual', () => {
@@ -164,16 +164,23 @@ test('login page renders one login mode at a time and honors the phone route par
   assert.doesNotMatch(loginSource, /class="form-card"/)
 })
 
-test('login page defers navigation for unbound WeChat users and reuses prior consent', () => {
-  assert.match(loginSource, /resolveWechatPostLoginState/)
+test('login page logs WeChat users in with one phone-authorized request and keeps the bind sheet for other providers', () => {
   assert.match(loginSource, /const authGate = computed/)
   assert.match(loginSource, /switchLoginMode[\s\S]*?if \(!authGate\.value\.canLeave\) return/)
   assert.match(loginSource, /isLogging:\s*authGate\.value\.isAuthenticating/)
   assert.match(loginSource, /if \(!authGate\.value\.shouldHandleResult\) return/)
-  assert.match(loginSource, /postLoginState\.action === 'bind-phone'[\s\S]*?showBindPhoneModal\.value = true[\s\S]*?return[\s\S]*?navigateAfterLogin\(\)/)
-	assert.match(loginSource, /:use-sms-binding="true"/)
-	assert.match(loginSource, /:require-agreement="false"/)
-	assert.match(loginSource, /bindingSkipped:\s*true/)
+  assert.match(loginSource, /:open-type="wechatPhoneOpenType"/)
+  assert.match(loginSource, /@getphonenumber="handleWechatPhoneNumber"/)
+  assert.match(loginSource, /wechatMiniLogin\(loginResult\.code, phoneCode\)/)
+  assert.match(loginSource, /:phone-authorize="isWechatPhoneAuthorizing"/)
+  assert.match(loginSource, /@phone-number="handleWechatPhoneNumber"/)
+  assert.match(loginSource, /if \(isWechatPhoneAuthorizing\.value\) return\n\tcloseAgreementSheet\(\)/)
+  const wechatHandlerSource = extractSourceBetween(loginSource, 'const handleWechatPhoneNumber', 'const handleHuaweiLogin')
+  assert.doesNotMatch(wechatHandlerSource, /showBindPhoneModal|resolveWechatPostLoginState/)
+  assert.match(loginSource, /loginResult\.need_bind_phone[\s\S]*?showBindPhoneModal\.value = true/)
+  assert.match(loginSource, /:use-sms-binding="true"/)
+  assert.match(loginSource, /:require-agreement="false"/)
+  assert.match(loginSource, /bindingSkipped:\s*true/)
 })
 
 test('login page keeps merged accounts on a prefilled phone login state', () => {

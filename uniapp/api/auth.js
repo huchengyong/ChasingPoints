@@ -43,10 +43,13 @@ export const loginByOauth = (data) => {
 /**
  * 微信小程序一键登录
  * @param {String} code uni.login 返回的短期凭证
+ * @param {String} phoneCode getPhoneNumber 返回的短期凭证；传入后同一次请求完成手机号绑定
  * @returns {Promise}
  */
-export const wechatMiniLogin = (code) => {
-	return post('/api/auth/wechat-mini-login', { code })
+export const wechatMiniLogin = (code, phoneCode = '') => {
+	const data = phoneCode ? { code, phone_code: phoneCode } : { code }
+	// 页面按错误类型给出登录专用提示，不叠加请求层的通用网络失败 toast。
+	return post('/api/auth/wechat-mini-login', data, { silent: true })
 }
 
 /**

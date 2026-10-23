@@ -88,6 +88,25 @@ export function resolveWechatPostLoginState({
   }
 }
 
+export const AUTH_NETWORK_ERROR_MESSAGE = '网络不太稳定，登录超时，请检查网络后重试'
+const WECHAT_PHONE_DENIED_MESSAGE = '需要授权手机号才能一键登录，也可使用手机号验证码登录'
+const WECHAT_PHONE_FAILED_MESSAGE = '微信手机号授权失败，请改用手机号验证码登录'
+
+// 网络超时、断网在请求层带 network 分类，uni.login 自身失败只有 errMsg；统一成可读提示，避免露出 request:fail timeout。
+export function resolveAuthErrorMessage(error, fallback = '登录失败，请重试') {
+  if (error?.category === 'network' || /timeout|network/i.test(String(error?.errMsg || ''))) {
+    return AUTH_NETWORK_ERROR_MESSAGE
+  }
+
+  return error?.message || fallback
+}
+
+// getphonenumber 没有返回 code 时，区分用户主动拒绝与其他授权失败。
+export function resolveWechatPhoneAuthMessage(event) {
+  const errMsg = String(event?.detail?.errMsg || '')
+  return /deny|cancel/i.test(errMsg) ? WECHAT_PHONE_DENIED_MESSAGE : WECHAT_PHONE_FAILED_MESSAGE
+}
+
 export function isPhoneValid(phone) {
   return PHONE_REGEXP.test(String(phone || '').trim())
 }

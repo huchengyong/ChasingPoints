@@ -11,8 +11,13 @@
 				<text class="sheet-separator">和</text>
 				<text class="sheet-link" @click="$emit('open-privacy')">隐私政策</text>
 			</view>
-			<button class="sheet-confirm-btn" @click="$emit('agree')">
-				同意并继续
+			<button
+				class="sheet-confirm-btn"
+				:open-type="phoneAuthorize ? 'getPhoneNumber' : ''"
+				@click="$emit('agree')"
+				@getphonenumber="$emit('phone-number', $event)"
+			>
+				{{ phoneAuthorize ? '同意并登录' : '同意并继续' }}
 			</button>
 		</view>
 	</view>
@@ -27,10 +32,15 @@ defineProps({
 	isDarkMode: {
 		type: Boolean,
 		default: false
+	},
+	// 微信小程序一键登录：确认按钮同时拉起手机号授权，授权结果通过 phone-number 事件交给页面。
+	phoneAuthorize: {
+		type: Boolean,
+		default: false
 	}
 })
 
-const emit = defineEmits(['close', 'agree', 'open-user', 'open-privacy'])
+const emit = defineEmits(['close', 'agree', 'phone-number', 'open-user', 'open-privacy'])
 
 const handleClose = () => {
 	emit('close')

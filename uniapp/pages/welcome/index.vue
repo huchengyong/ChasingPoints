@@ -45,6 +45,8 @@
 					class="btn-primary"
 					:class="{ 'wechat-primary': isWechatMiniProgram, authenticating: authGate.isAuthenticating }"
 					:disabled="welcomeActions.primaryDisabled"
+					:open-type="wechatPhoneOpenType"
+					@getphonenumber="handleWechatPhoneNumber"
 					@click="handlePrimaryEntry"
 				>
 					{{ welcomeActions.primaryText }}
@@ -98,21 +100,13 @@
 			</view>
 		</view>
 
-		<bindPhone
-			:show="showBindPhoneModal"
-			:closable="true"
-			:is-dark-mode="isDarkMode"
-			:use-sms-binding="true"
-			:require-agreement="false"
-			@close="handleBindPhoneClose"
-			@success="handleBindPhoneSuccess"
-		/>
-
 		<agreementConsentSheet
 			:show="showAgreementSheet"
 			:is-dark-mode="isDarkMode"
+			:phone-authorize="isWechatPhoneAuthorizing"
 			@close="closeAgreementSheet"
 			@agree="handleAgreementAccepted"
+			@phone-number="handleWechatPhoneNumber"
 			@open-user="openUserAgreement"
 			@open-privacy="openPrivacyPolicy"
 		/>
@@ -123,16 +117,17 @@
 import { computed, ref } from 'vue'
 import { onShow, onUnload } from '@dcloudio/uni-app'
 import agreementConsentSheet from '@/components/agreementConsentSheet.vue'
-import bindPhone from '@/components/bindPhone.vue'
 import { wechatMiniLogin } from '@/api/auth.js'
 import { useUserStore } from '@/store/user.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { getWechatPhoneNumberCode } from '@/utils/bind-phone-flow.js'
 import {
 	AUTH_SLOW_FEEDBACK_DELAY,
+	resolveAuthErrorMessage,
 	resolveAuthenticationFeedback,
 	resolveAuthenticationGate,
 	resolveEntryFunnelAgreementState,
-	resolveWechatPostLoginState,
+	resolveWechatPhoneAuthMessage,
 	resolveWelcomeActions,
 	resolveWelcomeHeaderLayout,
 	shouldClearEntryFunnelAgreementSession
@@ -173,7 +168,6 @@ const isPageActive = ref(true)
 const isAgreed = ref(false)
 const isWechatLogging = ref(false)
 const isSlowLogging = ref(false)
-const showBindPhoneModal = ref(false)
 const showAgreementSheet = ref(false)
 const pendingAgreementAction = ref('')
 const authGate = computed(() => resolveAuthenticationGate({
@@ -201,6 +195,13 @@ const clearAuthFeedback = () => {
 	}
 	isSlowLogging.value = false
 }
+// 协议已勾选时主按钮本身就是微信手机号授权按钮；未勾选时点击先弹协议。
+const wechatPhoneOpenType = computed(() => (
+	isWechatMiniProgram && isAgreed.value ? 'getPhoneNumber' : ''
+))
+const isWechatPhoneAuthorizing = computed(() => (
+	isWechatMiniProgram && pendingAgreementAction.value === 'wechat-mini'
+))
 const welcomeActions = computed(() => resolveWelcomeActions({
 	isHarmony: isHarmonyPlatform,
 	isWechatMini: isWechatMiniProgram,
@@ -223,7 +224,7 @@ onShow(() => {
 	}
 
 	const hasViewed = uni.getStorageSync(WELCOME_PAGE_VIEWED_KEY)
-	if (hasViewed && !showBindPhoneModal.value) {
+	if (hasViewed) {
 		navigateToHome()
 		return
 	}
@@ -290,7 +291,8 @@ const navigateToLogin = () => {
 
 const handlePrimaryEntry = () => {
 	if (isWechatMiniProgram) {
-		handleWechatMiniLogin()
+		// 已同意协议时按钮是 getPhoneNumber 原生按钮，登录由 @getphonenumber 接管。
+		if (!isAgreed.value) requestAgreementFor('wechat-mini')
 		return
 	}
 
@@ -301,13 +303,17 @@ const handlePrimaryEntry = () => {
 	navigateToLogin()
 }
 
-const handleWechatMiniLogin = async () => {
+const handleWechatPhoneNumber = async (event) => {
 	if (!authGate.value.canStart) return
-	if (!isAgreed.value) {
-		requestAgreementFor('wechat-mini')
+	closeAgreementSheet()
+	const phoneCode = getWechatPhoneNumberCode(event)
+	if (!phoneCode) {
+		uni.showToast({
+			title: resolveWechatPhoneAuthMessage(event),
+			icon: 'none'
+		})
 		return
 	}
-	if (isWechatLogging.value) return
 
 	isWechatLogging.value = true
 	startAuthFeedback()
@@ -323,22 +329,15 @@ const handleWechatMiniLogin = async () => {
 			throw new Error('微信登录失败，请重试')
 		}
 
-		const response = await wechatMiniLogin(loginResult.code)
+		const response = await wechatMiniLogin(loginResult.code, phoneCode)
 		if (!authGate.value.shouldHandleResult) return
 		userStore.login(response)
 		uni.setStorageSync(WELCOME_PAGE_VIEWED_KEY, true)
-		const postLoginState = resolveWechatPostLoginState({
-			needBindPhone: response.need_bind_phone
-		})
-		if (postLoginState.action === 'bind-phone') {
-			showBindPhoneModal.value = true
-			return
-		}
 		navigateToHome()
 	} catch (error) {
 		if (!authGate.value.shouldHandleResult) return
 		uni.showToast({
-			title: error.message || '微信登录失败，请重试',
+			title: resolveAuthErrorMessage(error, '微信登录失败，请重试'),
 			icon: 'none'
 		})
 	} finally {
@@ -355,54 +354,16 @@ const handleHuaweiLogin = () => {
 	navigateToLogin()
 }
 
-const handleBindPhoneSuccess = (payload) => {
-	showBindPhoneModal.value = false
-	if (payload?.action === 'relogin') {
-		userStore.logout()
-		const encodedPhone = encodeURIComponent(payload?.phone || '')
-		uni.navigateTo({
-			url: `/pages/login/login?method=phone&phone=${encodedPhone}`
-		})
-		uni.showToast({
-			title: payload.message || '账号已合并，请使用手机号登录',
-			icon: 'none'
-		})
-		return
-	}
-
-	navigateToHome()
-	uni.showToast({
-		title: payload?.message || '绑定成功',
-		icon: 'success'
-	})
-}
-
-const handleBindPhoneClose = () => {
-	const postLoginState = resolveWechatPostLoginState({
-		needBindPhone: userStore.needBindPhone,
-		bindingSkipped: true
-	})
-	userStore.setNeedBindPhone(postLoginState.needBindPhone)
-	showBindPhoneModal.value = false
-	navigateToHome()
-	uni.showToast({
-		title: '可稍后绑定手机号',
-		icon: 'none'
-	})
-}
-
 const handleAgreementAccepted = () => {
 	isAgreed.value = true
 	persistAgreementState(true)
 	const action = pendingAgreementAction.value
+	// 微信入口的确认按钮同时拉起手机号授权，弹层保留到 @phone-number 回调再关闭。
+	if (isWechatPhoneAuthorizing.value) return
 	closeAgreementSheet()
 
 	if (action === 'huawei') {
 		handleHuaweiLogin()
-		return
-	}
-	if (action === 'wechat-mini') {
-		handleWechatMiniLogin()
 		return
 	}
 

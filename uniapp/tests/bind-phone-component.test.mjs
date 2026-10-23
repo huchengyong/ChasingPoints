@@ -162,7 +162,7 @@ const editProfileSource = readFileSync(
 )
 
 test('parent pages keep the compat relogin fallback for merged accounts without tokens', () => {
-  for (const pageSource of [loginSource, welcomeSource, editProfileSource]) {
+  for (const pageSource of [loginSource, editProfileSource]) {
     assert.match(pageSource, /payload\?\.action === 'relogin'/)
     assert.match(pageSource, /userStore\.logout\(\)/)
   }
@@ -173,9 +173,8 @@ test('edit profile skips phone-only updates when the session was replaced', () =
   assert.match(editProfileSource, /userStore\.bindPhoneSuccess\(payload\?\.maskedPhone/)
 })
 
-test('login and welcome finish the flow after an atomic session replacement', () => {
+test('login finishes the flow after an atomic session replacement', () => {
   assert.match(loginSource, /navigateAfterLogin\(\)/)
-  assert.match(welcomeSource, /navigateToHome\(\)/)
 })
 
 test('login page allows bind phone modal to close later and passes current theme through', () => {

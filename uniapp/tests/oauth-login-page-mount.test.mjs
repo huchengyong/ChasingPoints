@@ -32,10 +32,20 @@ export const usePageTheme = () => ({ isDarkMode: ref(false) })
   '@/components/agreementConsentSheet.vue': `
 import { h } from 'vue'
 export default {
-  props: ['show'],
-  emits: ['close', 'agree', 'open-user', 'open-privacy'],
-  setup(props) {
-    return () => props.show ? h('view', { class: 'agreement-consent-sheet-stub' }, '需要先同意协议') : null
+  props: ['show', 'phoneAuthorize'],
+  emits: ['close', 'agree', 'phone-number', 'open-user', 'open-privacy'],
+  setup(props, { emit }) {
+    return () => props.show ? h('view', {
+      class: 'agreement-consent-sheet-stub',
+      'data-phone-authorize': String(props.phoneAuthorize)
+    }, [
+      '需要先同意协议',
+      h('button', { class: 'stub-agree', onClick: () => emit('agree') }),
+      h('button', {
+        class: 'stub-phone',
+        onClick: () => emit('phone-number', { detail: { code: 'sheet-phone-code' } })
+      })
+    ]) : null
   }
 }
 `,
@@ -52,6 +62,7 @@ export default {
 }
 
 const realModuleReplacements = {
+  '@/utils/bind-phone-flow.js': '../utils/bind-phone-flow.js',
   '@/utils/entry-funnel.js': '../utils/entry-funnel.js',
   '@/utils/oauth-login.js': '../utils/oauth-login.js'
 }
@@ -134,6 +145,89 @@ test('Harmony OAuth login shows upstream-unavailable feedback without creating a
     assert.equal(context.oauthPayloads.length, 1)
     assert.equal(context.userStore.loginCalls.length, 0)
     assert.equal(context.toasts.at(-1)?.title, '华为登录服务暂不可用，请稍后重试')
+  } finally {
+    await cleanup()
+  }
+})
+
+test('WeChat one-tap login sends the login code and phone code in one request without a bind sheet', async () => {
+  const { wrapper, context, flushPromises, cleanup } = await mountLoginPage()
+  try {
+    await enterWechatMode(wrapper, context)
+    await triggerClick(wrapper, '.agreement-row')
+    assert.equal(wrapper.element.querySelector('.wechat-login-btn').getAttribute('open-type'), 'getPhoneNumber')
+
+    await triggerPhoneNumber(wrapper, '.wechat-login-btn', { code: 'phone-code' })
+    await flushPromises()
+
+    assert.deepEqual(context.wechatLoginRequests, [{ code: 'wx-login-code', phoneCode: 'phone-code' }])
+    assert.equal(context.userStore.loginCalls.length, 1)
+    assert.deepEqual(context.switchTabs, ['/pages/index/index'])
+    assert.equal(wrapper.element.querySelector('.bind-phone-stub'), null)
+  } finally {
+    await cleanup()
+  }
+})
+
+test('WeChat one-tap login asks for agreement first and finishes from the sheet authorization button', async () => {
+  const { wrapper, context, flushPromises, cleanup } = await mountLoginPage()
+  try {
+    await enterWechatMode(wrapper, context)
+    assert.equal(wrapper.element.querySelector('.wechat-login-btn').getAttribute('open-type'), '')
+    await triggerClick(wrapper, '.wechat-login-btn')
+
+    const sheet = wrapper.element.querySelector('.agreement-consent-sheet-stub')
+    assert.ok(sheet, wrapper.html())
+    assert.equal(sheet.getAttribute('data-phone-authorize'), 'true')
+    assert.equal(context.wechatLoginRequests.length, 0)
+
+    await triggerClick(wrapper, '.stub-agree')
+    assert.ok(wrapper.element.querySelector('.agreement-consent-sheet-stub'), 'sheet must stay open until the phone authorization returns')
+    assert.equal(context.wechatLoginRequests.length, 0)
+
+    await triggerClick(wrapper, '.stub-phone')
+    await flushPromises()
+
+    assert.deepEqual(context.wechatLoginRequests, [{ code: 'wx-login-code', phoneCode: 'sheet-phone-code' }])
+    assert.equal(wrapper.element.querySelector('.agreement-consent-sheet-stub'), null)
+    assert.deepEqual(context.switchTabs, ['/pages/index/index'])
+  } finally {
+    await cleanup()
+  }
+})
+
+test('WeChat one-tap login explains a denied phone authorization and does not call the backend', async () => {
+  const { wrapper, context, flushPromises, cleanup } = await mountLoginPage()
+  try {
+    await enterWechatMode(wrapper, context)
+    await triggerClick(wrapper, '.agreement-row')
+    await triggerPhoneNumber(wrapper, '.wechat-login-btn', { errMsg: 'getPhoneNumber:fail user deny' })
+    await flushPromises()
+
+    assert.equal(context.wechatLoginRequests.length, 0)
+    assert.equal(context.uniCalls.wechatLogin, 0)
+    assert.equal(context.userStore.loginCalls.length, 0)
+    assert.match(context.toasts.at(-1)?.title, /需要授权手机号/)
+  } finally {
+    await cleanup()
+  }
+})
+
+test('WeChat one-tap login shows a readable timeout message and frees the button', async () => {
+  const { wrapper, context, flushPromises, cleanup } = await mountLoginPage({
+    wechatMiniLogin: async () => {
+      throw Object.assign(new Error('request:fail timeout'), { category: 'network' })
+    }
+  })
+  try {
+    await enterWechatMode(wrapper, context)
+    await triggerClick(wrapper, '.agreement-row')
+    await triggerPhoneNumber(wrapper, '.wechat-login-btn', { code: 'phone-code' })
+    await flushPromises()
+
+    assert.equal(context.userStore.loginCalls.length, 0)
+    assert.equal(context.toasts.at(-1)?.title, '网络不太稳定，登录超时，请检查网络后重试')
+    assert.equal(wrapper.element.querySelector('.wechat-login-btn').hasAttribute('disabled'), false)
   } finally {
     await cleanup()
   }
@@ -223,6 +317,20 @@ async function enterPhoneMode(wrapper, context) {
   assert.ok(wrapper.element.querySelector('.third-party-btn'), wrapper.html())
 }
 
+async function enterWechatMode(wrapper, context) {
+  context.loaded[0]?.({})
+  context.shown[0]?.()
+  await wrapper.vm.$nextTick()
+  assert.ok(wrapper.element.querySelector('.wechat-login-btn'), wrapper.html())
+}
+
+async function triggerPhoneNumber(wrapper, selector, detail) {
+  const element = wrapper.element.querySelector(selector)
+  assert.ok(element, `${selector} not found\n${wrapper.html()}`)
+  element.dispatchEvent(new window.CustomEvent('getphonenumber', { bubbles: true, detail }))
+  await wrapper.vm.$nextTick()
+}
+
 async function triggerClick(wrapper, selector) {
   const element = wrapper.element.querySelector(selector)
   assert.ok(element, `${selector} not found\n${wrapper.html()}`)
@@ -242,8 +350,10 @@ function createMountContext(overrides = {}) {
     oauthPayloads: [],
     uniCalls: {
       getUserInfo: 0,
-      login: 0
+      login: 0,
+      wechatLogin: 0
     },
+    wechatLoginRequests: [],
     userStore: {
       loginCalls: [],
       logoutCalls: 0,
@@ -270,7 +380,16 @@ function createMountContext(overrides = {}) {
         user_info: { id: 1, nickname: '华为用户' }
       }
     },
-    wechatMiniLogin: async () => ({ success: true }),
+    wechatMiniLogin: async (code, phoneCode) => {
+      context.wechatLoginRequests.push({ code, phoneCode })
+      return {
+        success: true,
+        access_token: 'access-token',
+        refresh_token: 'refresh-token',
+        need_bind_phone: false,
+        user_info: { id: 2, nickname: '微信用户', phone: '138****8000' }
+      }
+    },
     ...overrides
   }
   return context
@@ -311,6 +430,11 @@ function createUniStub(context) {
       })
     },
     login(payload) {
+      if (!payload.provider) {
+        context.uniCalls.wechatLogin += 1
+        payload.success({ code: 'wx-login-code' })
+        return
+      }
       context.uniCalls.login += 1
       payload.success({
         authResult: {
