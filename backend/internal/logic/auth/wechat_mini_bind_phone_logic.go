@@ -50,43 +50,7 @@ func (l *WechatMiniBindPhoneLogic) WechatMiniBindPhone(req *types.WechatMiniBind
 		return &types.WechatMiniBindPhoneResp{Success: false, Message: "手机号格式不正确"}, nil
 	}
 
-	var resultUser *model.User
-	mergedAccount := false
-	err = l.svcCtx.UserModel.Transaction(func(tx *gorm.DB) error {
-		currentUser, err := l.svcCtx.UserModel.FindByIdForUpdateWithTx(tx, userID)
-		if err != nil {
-			return err
-		}
-		if currentUser == nil {
-			return errWechatMiniUserMissing
-		}
-
-		existingUser, err := l.svcCtx.UserModel.FindByPhoneForUpdateWithTx(tx, phone)
-		if err != nil {
-			return err
-		}
-		if existingUser != nil && existingUser.Id != currentUser.Id {
-			if existingUser.Status != 1 {
-				return errMergeTargetInactive
-			}
-			if err := l.svcCtx.OauthModel.UpdateUserIdWithTx(tx, currentUser.Id, existingUser.Id); err != nil {
-				return err
-			}
-			if err := l.svcCtx.UserModel.DeleteByIdWithTx(tx, currentUser.Id); err != nil {
-				return err
-			}
-			mergedAccount = true
-			resultUser = existingUser
-			return nil
-		}
-
-		if err := l.svcCtx.UserModel.UpdatePhoneWithTx(tx, currentUser.Id, phone); err != nil {
-			return err
-		}
-		currentUser.Phone = &phone
-		resultUser = currentUser
-		return nil
-	})
+	resultUser, mergedAccount, err := bindWechatMiniPhone(l.svcCtx, userID, phone)
 	if err != nil {
 		if errors.Is(err, errWechatMiniUserMissing) {
 			return &types.WechatMiniBindPhoneResp{Success: false, Message: "用户不存在"}, nil
@@ -122,3 +86,44 @@ var (
 	mainlandPhonePattern     = regexp.MustCompile(`^1[3-9]\d{9}$`)
 	errWechatMiniUserMissing = errors.New("wechat mini user missing")
 )
+
+// bindWechatMiniPhone 给小程序用户绑定微信授权的手机号。手机号已属于其他启用用户时，
+// 把当前用户的微信关联并入该用户并删除当前用户，返回合并后的目标用户。
+func bindWechatMiniPhone(svcCtx *svc.ServiceContext, userID int64, phone string) (resultUser *model.User, mergedAccount bool, err error) {
+	err = svcCtx.UserModel.Transaction(func(tx *gorm.DB) error {
+		currentUser, err := svcCtx.UserModel.FindByIdForUpdateWithTx(tx, userID)
+		if err != nil {
+			return err
+		}
+		if currentUser == nil {
+			return errWechatMiniUserMissing
+		}
+
+		existingUser, err := svcCtx.UserModel.FindByPhoneForUpdateWithTx(tx, phone)
+		if err != nil {
+			return err
+		}
+		if existingUser != nil && existingUser.Id != currentUser.Id {
+			if existingUser.Status != 1 {
+				return errMergeTargetInactive
+			}
+			if err := svcCtx.OauthModel.UpdateUserIdWithTx(tx, currentUser.Id, existingUser.Id); err != nil {
+				return err
+			}
+			if err := svcCtx.UserModel.DeleteByIdWithTx(tx, currentUser.Id); err != nil {
+				return err
+			}
+			mergedAccount = true
+			resultUser = existingUser
+			return nil
+		}
+
+		if err := svcCtx.UserModel.UpdatePhoneWithTx(tx, currentUser.Id, phone); err != nil {
+			return err
+		}
+		currentUser.Phone = &phone
+		resultUser = currentUser
+		return nil
+	})
+	return resultUser, mergedAccount, err
+}

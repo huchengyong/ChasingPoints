@@ -45,9 +45,11 @@ func TestRandomWechatMiniNicknameCoversEveryStyle(t *testing.T) {
 }
 
 type fakeWechatMiniClient struct {
-	identity *wechatmini.Identity
-	phone    string
-	err      error
+	identity   *wechatmini.Identity
+	phone      string
+	err        error
+	phoneErr   error
+	phoneCalls int
 }
 
 func (f *fakeWechatMiniClient) ExchangeLoginCode(context.Context, string) (*wechatmini.Identity, error) {
@@ -55,6 +57,10 @@ func (f *fakeWechatMiniClient) ExchangeLoginCode(context.Context, string) (*wech
 }
 
 func (f *fakeWechatMiniClient) GetPhoneNumber(context.Context, string) (string, error) {
+	f.phoneCalls++
+	if f.phoneErr != nil {
+		return "", f.phoneErr
+	}
 	return f.phone, f.err
 }
 
@@ -269,6 +275,235 @@ func TestWechatMiniLoginFailureDoesNotCreateUser(t *testing.T) {
 	}
 	if count != 0 {
 		t.Fatalf("expected no user after failed identity exchange, got %d", count)
+	}
+}
+
+func countWechatMiniTestUsers(t *testing.T, svcCtx *svc.ServiceContext) int64 {
+	t.Helper()
+	var count int64
+	if err := svcCtx.DB.Model(&model.User{}).Count(&count).Error; err != nil {
+		t.Fatalf("count users: %v", err)
+	}
+	return count
+}
+
+func TestWechatMiniLoginWithPhoneCodeCreatesUserWithPhone(t *testing.T) {
+	client := &fakeWechatMiniClient{
+		identity: &wechatmini.Identity{OpenID: "wechat-openid-phone-new", UnionID: "wechat-unionid-phone-new"},
+		phone:    "13800138001",
+	}
+	svcCtx := newWechatMiniAuthTestSvc(t, client)
+
+	resp, err := NewWechatMiniLoginLogic(context.Background(), svcCtx).WechatMiniLogin(&types.WechatMiniLoginReq{
+		Code:      "login-code",
+		PhoneCode: "phone-code",
+	})
+	if err != nil {
+		t.Fatalf("wechat mini login: %v", err)
+	}
+	if !resp.Success || resp.NeedBindPhone || resp.UserInfo == nil || resp.UserInfo.Phone != "138****8001" {
+		t.Fatalf("expected a phone-bound login, got %#v", resp)
+	}
+	if !wechatMiniDefaultNicknamePattern.MatchString(resp.UserInfo.Nickname) || resp.AccessToken == "" || resp.RefreshToken == "" {
+		t.Fatalf("unexpected login response: %#v", resp)
+	}
+
+	user, err := svcCtx.UserModel.FindByPhone("13800138001")
+	if err != nil || user == nil || user.Id != resp.UserInfo.Id {
+		t.Fatalf("expected the created user to own the phone, got %#v, err %v", user, err)
+	}
+	oauth, err := svcCtx.OauthModel.FindByProviderAndOpenId(wechatMiniProvider, "wechat-openid-phone-new")
+	if err != nil || oauth == nil || oauth.UserId != user.Id {
+		t.Fatalf("expected oauth linked to the created user, got %#v, err %v", oauth, err)
+	}
+}
+
+func TestWechatMiniLoginWithPhoneCodeLinksExistingPhoneAccount(t *testing.T) {
+	phone := "13800138002"
+	client := &fakeWechatMiniClient{identity: &wechatmini.Identity{OpenID: "wechat-openid-phone-link"}, phone: phone}
+	svcCtx := newWechatMiniAuthTestSvc(t, client)
+	phoneUser := &model.User{Phone: &phone, Nickname: "手机号用户", Status: 1}
+	if err := svcCtx.UserModel.Create(phoneUser); err != nil {
+		t.Fatalf("create phone user: %v", err)
+	}
+
+	resp, err := NewWechatMiniLoginLogic(context.Background(), svcCtx).WechatMiniLogin(&types.WechatMiniLoginReq{
+		Code:      "login-code",
+		PhoneCode: "phone-code",
+	})
+	if err != nil {
+		t.Fatalf("wechat mini login: %v", err)
+	}
+	if !resp.Success || resp.NeedBindPhone || resp.UserInfo == nil || resp.UserInfo.Id != phoneUser.Id || resp.UserInfo.Nickname != "手机号用户" {
+		t.Fatalf("expected login into the existing phone account, got %#v", resp)
+	}
+	if count := countWechatMiniTestUsers(t, svcCtx); count != 1 {
+		t.Fatalf("expected no additional user, got %d users", count)
+	}
+	oauth, err := svcCtx.OauthModel.FindByProviderAndOpenId(wechatMiniProvider, "wechat-openid-phone-link")
+	if err != nil || oauth == nil || oauth.UserId != phoneUser.Id {
+		t.Fatalf("expected oauth linked to the phone account, got %#v, err %v", oauth, err)
+	}
+}
+
+func TestWechatMiniLoginWithPhoneCodeRejectsDisabledPhoneAccount(t *testing.T) {
+	phone := "13800138003"
+	client := &fakeWechatMiniClient{identity: &wechatmini.Identity{OpenID: "wechat-openid-phone-disabled"}, phone: phone}
+	svcCtx := newWechatMiniAuthTestSvc(t, client)
+	phoneUser := &model.User{Phone: &phone, Nickname: "停用手机号用户", Status: 1}
+	if err := svcCtx.UserModel.Create(phoneUser); err != nil {
+		t.Fatalf("create phone user: %v", err)
+	}
+	if err := svcCtx.DB.Model(&model.User{}).Where("id = ?", phoneUser.Id).Update("status", 0).Error; err != nil {
+		t.Fatalf("disable phone user: %v", err)
+	}
+
+	resp, err := NewWechatMiniLoginLogic(context.Background(), svcCtx).WechatMiniLogin(&types.WechatMiniLoginReq{
+		Code:      "login-code",
+		PhoneCode: "phone-code",
+	})
+	if err != nil {
+		t.Fatalf("disabled phone account login should return a safe response: %v", err)
+	}
+	if resp == nil || resp.Success || resp.AccessToken != "" || resp.RefreshToken != "" || resp.Message != loginUnavailableMessage {
+		t.Fatalf("disabled phone account received a session: %#v", resp)
+	}
+	oauth, err := svcCtx.OauthModel.FindByProviderAndOpenId(wechatMiniProvider, "wechat-openid-phone-disabled")
+	if err != nil || oauth != nil {
+		t.Fatalf("oauth must not be linked to a disabled account, got %#v, err %v", oauth, err)
+	}
+	if count := countWechatMiniTestUsers(t, svcCtx); count != 1 {
+		t.Fatalf("expected no additional user, got %d users", count)
+	}
+}
+
+func TestWechatMiniLoginPhoneAuthorizationFailureDoesNotCreateUser(t *testing.T) {
+	client := &fakeWechatMiniClient{
+		identity: &wechatmini.Identity{OpenID: "wechat-openid-phone-failed"},
+		phoneErr: &wechatmini.Error{Kind: wechatmini.ErrorKindRejected},
+	}
+	svcCtx := newWechatMiniAuthTestSvc(t, client)
+
+	resp, err := NewWechatMiniLoginLogic(context.Background(), svcCtx).WechatMiniLogin(&types.WechatMiniLoginReq{
+		Code:      "login-code",
+		PhoneCode: "expired-phone-code",
+	})
+	if err != nil {
+		t.Fatalf("wechat mini login: %v", err)
+	}
+	if resp.Success || resp.Message == "" || resp.AccessToken != "" {
+		t.Fatalf("expected safe phone authorization failure, got %#v", resp)
+	}
+	if count := countWechatMiniTestUsers(t, svcCtx); count != 0 {
+		t.Fatalf("expected no user after phone authorization failure, got %d", count)
+	}
+	oauth, err := svcCtx.OauthModel.FindByProviderAndOpenId(wechatMiniProvider, "wechat-openid-phone-failed")
+	if err != nil || oauth != nil {
+		t.Fatalf("oauth must not be created after phone authorization failure, got %#v, err %v", oauth, err)
+	}
+}
+
+func TestWechatMiniLoginRejectsMalformedAuthorizedPhone(t *testing.T) {
+	client := &fakeWechatMiniClient{identity: &wechatmini.Identity{OpenID: "wechat-openid-phone-malformed"}, phone: "+8613800138004"}
+	svcCtx := newWechatMiniAuthTestSvc(t, client)
+
+	resp, err := NewWechatMiniLoginLogic(context.Background(), svcCtx).WechatMiniLogin(&types.WechatMiniLoginReq{
+		Code:      "login-code",
+		PhoneCode: "phone-code",
+	})
+	if err != nil {
+		t.Fatalf("wechat mini login: %v", err)
+	}
+	if resp.Success || resp.Message != "手机号格式不正确" {
+		t.Fatalf("expected malformed phone rejection, got %#v", resp)
+	}
+	if count := countWechatMiniTestUsers(t, svcCtx); count != 0 {
+		t.Fatalf("expected no user, got %d", count)
+	}
+}
+
+func TestWechatMiniLoginWithPhoneCodeBindsExistingPhoneFreeOAuthUser(t *testing.T) {
+	client := &fakeWechatMiniClient{identity: &wechatmini.Identity{OpenID: "wechat-openid-phone-bind"}, phone: "13800138005"}
+	svcCtx := newWechatMiniAuthTestSvc(t, client)
+	phoneFreeUser := &model.User{Nickname: "旧微信用户", Status: 1}
+	if err := svcCtx.UserModel.Create(phoneFreeUser); err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	if err := svcCtx.OauthModel.Create(&model.UserOauth{UserId: phoneFreeUser.Id, Provider: wechatMiniProvider, OpenId: "wechat-openid-phone-bind"}); err != nil {
+		t.Fatalf("create oauth: %v", err)
+	}
+
+	resp, err := NewWechatMiniLoginLogic(context.Background(), svcCtx).WechatMiniLogin(&types.WechatMiniLoginReq{
+		Code:      "login-code",
+		PhoneCode: "phone-code",
+	})
+	if err != nil {
+		t.Fatalf("wechat mini login: %v", err)
+	}
+	if !resp.Success || resp.NeedBindPhone || resp.UserInfo == nil || resp.UserInfo.Id != phoneFreeUser.Id || resp.UserInfo.Phone != "138****8005" {
+		t.Fatalf("expected the existing user to receive the phone, got %#v", resp)
+	}
+}
+
+func TestWechatMiniLoginWithPhoneCodeMergesPhoneFreeOAuthUserIntoPhoneAccount(t *testing.T) {
+	phone := "13800138006"
+	client := &fakeWechatMiniClient{identity: &wechatmini.Identity{OpenID: "wechat-openid-phone-merge"}, phone: phone}
+	svcCtx := newWechatMiniAuthTestSvc(t, client)
+	phoneFreeUser := &model.User{Nickname: "旧微信用户", Status: 1}
+	if err := svcCtx.UserModel.Create(phoneFreeUser); err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	if err := svcCtx.OauthModel.Create(&model.UserOauth{UserId: phoneFreeUser.Id, Provider: wechatMiniProvider, OpenId: "wechat-openid-phone-merge"}); err != nil {
+		t.Fatalf("create oauth: %v", err)
+	}
+	phoneUser := &model.User{Phone: &phone, Nickname: "手机号用户", Status: 1}
+	if err := svcCtx.UserModel.Create(phoneUser); err != nil {
+		t.Fatalf("create phone user: %v", err)
+	}
+
+	resp, err := NewWechatMiniLoginLogic(context.Background(), svcCtx).WechatMiniLogin(&types.WechatMiniLoginReq{
+		Code:      "login-code",
+		PhoneCode: "phone-code",
+	})
+	if err != nil {
+		t.Fatalf("wechat mini login: %v", err)
+	}
+	if !resp.Success || resp.NeedBindPhone || resp.UserInfo == nil || resp.UserInfo.Id != phoneUser.Id {
+		t.Fatalf("expected a session for the merged phone account, got %#v", resp)
+	}
+	oauth, err := svcCtx.OauthModel.FindByProviderAndOpenId(wechatMiniProvider, "wechat-openid-phone-merge")
+	if err != nil || oauth == nil || oauth.UserId != phoneUser.Id {
+		t.Fatalf("expected oauth moved to the phone account, got %#v, err %v", oauth, err)
+	}
+	if removed, err := svcCtx.UserModel.FindById(phoneFreeUser.Id); err != nil || removed != nil {
+		t.Fatalf("expected the phone-free user removed, got %#v, err %v", removed, err)
+	}
+}
+
+func TestWechatMiniLoginSkipsPhoneExchangeForUsersWithPhone(t *testing.T) {
+	phone := "13800138007"
+	client := &fakeWechatMiniClient{identity: &wechatmini.Identity{OpenID: "wechat-openid-phone-existing"}, phone: "13900139007"}
+	svcCtx := newWechatMiniAuthTestSvc(t, client)
+	user := &model.User{Phone: &phone, Nickname: "已绑定用户", Status: 1}
+	if err := svcCtx.UserModel.Create(user); err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	if err := svcCtx.OauthModel.Create(&model.UserOauth{UserId: user.Id, Provider: wechatMiniProvider, OpenId: "wechat-openid-phone-existing"}); err != nil {
+		t.Fatalf("create oauth: %v", err)
+	}
+
+	resp, err := NewWechatMiniLoginLogic(context.Background(), svcCtx).WechatMiniLogin(&types.WechatMiniLoginReq{
+		Code:      "login-code",
+		PhoneCode: "phone-code",
+	})
+	if err != nil {
+		t.Fatalf("wechat mini login: %v", err)
+	}
+	if !resp.Success || resp.UserInfo == nil || resp.UserInfo.Id != user.Id || resp.UserInfo.Phone != "138****8007" {
+		t.Fatalf("expected login to keep the bound phone, got %#v", resp)
+	}
+	if client.phoneCalls != 0 {
+		t.Fatalf("expected no phone exchange for a user that already has a phone, got %d calls", client.phoneCalls)
 	}
 }
 

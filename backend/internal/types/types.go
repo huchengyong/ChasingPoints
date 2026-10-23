@@ -3287,7 +3287,8 @@ type WechatMiniBindPhoneResp struct {
 }
 
 type WechatMiniLoginReq struct {
-	Code string `json:"code"`
+	Code      string `json:"code"`
+	PhoneCode string `json:"phone_code,optional"`
 }
 
 type WechatMiniLoginResp struct {

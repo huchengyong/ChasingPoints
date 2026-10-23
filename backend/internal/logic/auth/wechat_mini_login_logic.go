@@ -46,39 +46,54 @@ func (l *WechatMiniLoginLogic) WechatMiniLogin(req *types.WechatMiniLoginReq) (r
 		return &types.WechatMiniLoginResp{Success: false, Message: "微信登录凭证无效"}, nil
 	}
 
-	oauth, err := l.svcCtx.OauthModel.FindByProviderAndOpenId(wechatMiniProvider, identity.OpenID)
+	user, err := l.findOAuthUser(identity.OpenID)
 	if err != nil {
-		l.Logger.Errorf("查询微信小程序关联失败: %v", err)
 		return nil, err
 	}
+	if user != nil && user.Status != 1 {
+		return &types.WechatMiniLoginResp{Success: false, Message: loginUnavailableMessage}, nil
+	}
 
-	var user *model.User
-	if oauth == nil {
-		user, err = l.createWechatMiniUser(identity.OpenID, identity.UnionID)
-		if err != nil && isDuplicateOAuthError(err) {
-			oauth, err = l.svcCtx.OauthModel.FindByProviderAndOpenId(wechatMiniProvider, identity.OpenID)
-		}
+	// 已绑定手机号的老用户不再向微信换取手机号，避免多余的授权调用。
+	phone := ""
+	if (user == nil || user.Phone == nil || *user.Phone == "") && strings.TrimSpace(req.PhoneCode) != "" {
+		phone, err = l.svcCtx.WechatMiniClient.GetPhoneNumber(l.ctx, req.PhoneCode)
 		if err != nil {
-			l.Logger.Errorf("创建微信小程序用户失败: %v", err)
-			return nil, err
+			return &types.WechatMiniLoginResp{Success: false, Message: err.Error()}, nil
+		}
+		if !mainlandPhonePattern.MatchString(phone) {
+			return &types.WechatMiniLoginResp{Success: false, Message: "手机号格式不正确"}, nil
 		}
 	}
 
 	if user == nil {
-		if oauth == nil {
-			return nil, fmt.Errorf("微信小程序关联不存在")
+		user, err = l.createWechatMiniUser(identity.OpenID, identity.UnionID, phone)
+		if err != nil && isDuplicateOAuthError(err) {
+			user, err = l.findOAuthUser(identity.OpenID)
+			if err == nil && user == nil {
+				err = fmt.Errorf("微信小程序关联不存在")
+			}
 		}
-		user, err = l.svcCtx.UserModel.FindById(oauth.UserId)
 		if err != nil {
-			l.Logger.Errorf("查询微信小程序用户失败: %v", err)
+			if errors.Is(err, errMergeTargetInactive) {
+				return &types.WechatMiniLoginResp{Success: false, Message: loginUnavailableMessage}, nil
+			}
+			l.Logger.Errorf("创建微信小程序用户失败: %v", err)
 			return nil, err
-		}
-		if user == nil {
-			return nil, fmt.Errorf("用户数据异常")
 		}
 	}
 	if user.Status != 1 {
 		return &types.WechatMiniLoginResp{Success: false, Message: loginUnavailableMessage}, nil
+	}
+	if phone != "" && (user.Phone == nil || *user.Phone == "") {
+		user, _, err = bindWechatMiniPhone(l.svcCtx, user.Id, phone)
+		if err != nil {
+			if errors.Is(err, errMergeTargetInactive) {
+				return &types.WechatMiniLoginResp{Success: false, Message: loginUnavailableMessage}, nil
+			}
+			l.Logger.Errorf("微信小程序登录绑定手机号失败: %v", err)
+			return nil, err
+		}
 	}
 	if err := ensureUserRankingProfiles(l.svcCtx, user.Id); err != nil {
 		l.Logger.Errorf("初始化用户段位失败: %v", err)
@@ -109,16 +124,55 @@ var (
 	wechatMiniMixedNicknames     = []string{"夜航开杆", "流光走位", "星尘清台"}
 )
 
-func (l *WechatMiniLoginLogic) createWechatMiniUser(openID, unionID string) (*model.User, error) {
-	user := &model.User{
-		Nickname:        randomWechatMiniNickname(),
-		Status:          1,
-		MemberExpiresAt: resolveWelcomeMemberExpiresAt(l.svcCtx),
+// findOAuthUser 返回 openid 已关联的用户，没有关联时返回 nil。
+func (l *WechatMiniLoginLogic) findOAuthUser(openID string) (*model.User, error) {
+	oauth, err := l.svcCtx.OauthModel.FindByProviderAndOpenId(wechatMiniProvider, openID)
+	if err != nil {
+		l.Logger.Errorf("查询微信小程序关联失败: %v", err)
+		return nil, err
 	}
+	if oauth == nil {
+		return nil, nil
+	}
+	user, err := l.svcCtx.UserModel.FindById(oauth.UserId)
+	if err != nil {
+		l.Logger.Errorf("查询微信小程序用户失败: %v", err)
+		return nil, err
+	}
+	if user == nil {
+		return nil, fmt.Errorf("用户数据异常")
+	}
+	return user, nil
+}
 
+// createWechatMiniUser 为新 openid 建立用户关联。phone 非空时，手机号已有账号则直接关联到该账号，否则带手机号建号。
+func (l *WechatMiniLoginLogic) createWechatMiniUser(openID, unionID, phone string) (*model.User, error) {
+	var user *model.User
 	err := l.svcCtx.UserModel.Transaction(func(tx *gorm.DB) error {
-		if err := l.svcCtx.UserModel.CreateWithTx(tx, user); err != nil {
-			return err
+		if phone != "" {
+			existingUser, err := l.svcCtx.UserModel.FindByPhoneWithTx(tx, phone)
+			if err != nil {
+				return err
+			}
+			if existingUser != nil {
+				if existingUser.Status != 1 {
+					return errMergeTargetInactive
+				}
+				user = existingUser
+			}
+		}
+		if user == nil {
+			user = &model.User{
+				Nickname:        randomWechatMiniNickname(),
+				Status:          1,
+				MemberExpiresAt: resolveWelcomeMemberExpiresAt(l.svcCtx),
+			}
+			if phone != "" {
+				user.Phone = &phone
+			}
+			if err := l.svcCtx.UserModel.CreateWithTx(tx, user); err != nil {
+				return err
+			}
 		}
 
 		var unionIDPtr *string
