@@ -81,10 +81,18 @@ test('players without a preference or ranked games can pick a primary game type 
   assert.match(styleSource, /\.rank-picker-options\s*\{[\s\S]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/)
 })
 
-test('match launching lives on home and match tabs, not on the profile tab', () => {
-  assert.doesNotMatch(source, /status-card|challenge-status-strip|qrcode-modal|gameTypeModal/)
-  assert.doesNotMatch(source, /scanAndResolveMatchCode|startMatch|getMatchQRCode|userWS/)
-  assert.match(source, /const goStartFirstMatch = \(\) => \{\s*openRoute\('\/pages\/index\/index', true\)/)
+test('profile header offers quick scan and match QR shortcuts instead of an empty-state launch button', () => {
+  assert.match(source, /class="profile-actions">\s*<button class="icon-btn" aria-label="扫码开局" @click="handleQuickScan">\s*<uni-icons type="scan"[\s\S]*<button class="icon-btn" aria-label="出示我的二维码" @click="showMyMatchQRCode">\s*<view class="qr-glyph">[\s\S]*@click="handleNotificationCenter"[\s\S]*@click="handleSettings"/)
+  assert.doesNotMatch(source, /goStartFirstMatch|去发起对局|empty-action/)
+  assert.doesNotMatch(styleSource, /\.empty-action/)
+  // 开局弹窗与段位卡共用常用球种偏好
+  assert.match(source, /:default-type="preferredGameType"/)
+  assert.match(source, /if \(setAsDefault\) \{\s*preferredGameType\.value = saveDefaultGameType\(uni, userStore\.userId, gameType\)\s*selectedRankGameType\.value = 0/)
+  // 当前对局卡、约球条仍只在首页与观赛页
+  assert.doesNotMatch(source, /status-card|challenge-status-strip|userWS/)
+  assert.match(styleSource, /\.qr-glyph-finder\s*\{[\s\S]*border:\s*4rpx solid var\(--me-text-secondary\);/)
+  // 四个图标挤占昵称区，窄屏下标签换行而不是截成省略号
+  assert.match(styleSource, /\.profile-chips\s*\{\s*display:\s*flex;\s*flex-wrap:\s*wrap;/)
 })
 
 test('career stats are labelled as all game types and handle empty and failed reads', () => {

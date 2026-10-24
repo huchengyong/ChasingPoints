@@ -13,6 +13,7 @@
 	--me-danger: #EF4444;
 	--me-danger-soft: rgba(239, 68, 68, 0.1);
 	--me-shadow: 0 2rpx 8rpx rgba(31, 26, 16, 0.05);
+	--me-mask: rgba(20, 17, 9, 0.56);
 	min-height: 100vh;
 	box-sizing: border-box;
 	background: #F7F4EC;
@@ -29,6 +30,7 @@
 		--me-accent-soft: rgba(224, 174, 18, 0.2);
 		--me-danger-soft: rgba(239, 68, 68, 0.16);
 		--me-shadow: none;
+		--me-mask: rgba(0, 0, 0, 0.64);
 		background: #141109;
 	}
 }
@@ -125,8 +127,10 @@
 	color: var(--me-text-primary);
 }
 
+// 头部右侧有四个图标，窄屏放不下两个标签时换行，避免把标签截成省略号
 .profile-chips {
 	display: flex;
+	flex-wrap: wrap;
 	gap: 10rpx;
 	margin-top: 12rpx;
 	min-width: 0;
@@ -169,7 +173,7 @@
 
 .profile-actions {
 	display: flex;
-	gap: 16rpx;
+	gap: 12rpx;
 	flex-shrink: 0;
 }
 
@@ -213,6 +217,62 @@
 		line-height: 1;
 		color: #FFFFFF;
 	}
+}
+
+// uni-icons 没有二维码字形：三个定位角 + 点阵，颜色与相邻图标一致
+.qr-glyph {
+	position: relative;
+	width: 36rpx;
+	height: 36rpx;
+	box-sizing: border-box;
+}
+
+.qr-glyph-finder {
+	position: absolute;
+	width: 16rpx;
+	height: 16rpx;
+	border: 4rpx solid var(--me-text-secondary);
+	border-radius: 4rpx;
+	box-sizing: border-box;
+
+	&::after {
+		content: '';
+		position: absolute;
+		top: 2rpx;
+		left: 2rpx;
+		width: 4rpx;
+		height: 4rpx;
+		background: var(--me-text-secondary);
+	}
+
+	&--top-left {
+		top: 0;
+		left: 0;
+	}
+
+	&--top-right {
+		top: 0;
+		right: 0;
+	}
+
+	&--bottom-left {
+		bottom: 0;
+		left: 0;
+	}
+}
+
+.qr-glyph-dots {
+	position: absolute;
+	top: 20rpx;
+	left: 20rpx;
+	width: 4rpx;
+	height: 4rpx;
+	background: var(--me-text-secondary);
+	box-shadow:
+		12rpx 0 0 var(--me-text-secondary),
+		6rpx 6rpx 0 var(--me-text-secondary),
+		0 12rpx 0 var(--me-text-secondary),
+		12rpx 12rpx 0 var(--me-text-secondary);
 }
 
 // ========== 段位卡（高价值表面） ==========
@@ -497,22 +557,6 @@
 	font-size: 24rpx;
 	line-height: 1.55;
 	color: var(--me-text-secondary);
-}
-
-.empty-action {
-	height: 68rpx;
-	display: flex;
-	align-items: center;
-	margin-top: 22rpx;
-	padding: 0 32rpx;
-	border-radius: 999rpx;
-	background: var(--me-accent);
-
-	text {
-		font-size: 26rpx;
-		font-weight: 600;
-		color: #FFFFFF;
-	}
 }
 
 .career-error {
@@ -800,6 +844,140 @@
 	justify-content: center;
 	flex-shrink: 0;
 	border-radius: 50%;
+}
+
+// ========== 匹配二维码弹窗 ==========
+.qr-mask {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 40rpx;
+	box-sizing: border-box;
+	background: var(--me-mask);
+}
+
+.qr-panel {
+	width: 100%;
+	max-width: 620rpx;
+	padding: 32rpx;
+	border-radius: 32rpx;
+	box-sizing: border-box;
+	background: var(--me-surface);
+	box-shadow: 0 30rpx 80rpx rgba(20, 17, 9, 0.24);
+}
+
+.qr-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 20rpx;
+}
+
+.qr-title,
+.qr-subtitle {
+	display: block;
+}
+
+.qr-title {
+	font-size: 32rpx;
+	font-weight: 700;
+	color: var(--me-text-primary);
+}
+
+.qr-subtitle {
+	margin-top: 8rpx;
+	font-size: 24rpx;
+	line-height: 1.5;
+	color: var(--me-text-secondary);
+}
+
+.qr-close {
+	flex-shrink: 0;
+	width: 64rpx;
+	height: 64rpx;
+	line-height: 64rpx;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background: var(--me-surface-secondary);
+
+	&::after {
+		display: none;
+	}
+}
+
+.qr-body {
+	position: relative;
+	min-height: 480rpx;
+	margin: 28rpx 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 24rpx;
+	background: var(--me-surface-secondary);
+}
+
+.qr-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 20rpx;
+	font-size: 26rpx;
+	color: var(--me-text-secondary);
+}
+
+.qr-error {
+	color: var(--me-danger);
+}
+
+// 二维码始终白底，保证扫码识别率
+.qr-image {
+	width: 440rpx;
+	height: 440rpx;
+	border-radius: 16rpx;
+	background: #FFFFFF;
+
+	&.is-loading {
+		position: absolute;
+		opacity: 0;
+	}
+}
+
+.qr-retry,
+.qr-done {
+	margin: 0;
+	padding: 0 28rpx;
+	border-radius: 999rpx;
+	font-size: 26rpx;
+	font-weight: 600;
+
+	&::after {
+		display: none;
+	}
+}
+
+.qr-retry {
+	height: 68rpx;
+	line-height: 68rpx;
+	background: var(--me-accent-soft);
+	color: var(--me-accent-strong);
+}
+
+.qr-done {
+	width: 100%;
+	height: 80rpx;
+	line-height: 80rpx;
+	background: var(--me-accent);
+	color: #FFFFFF;
 }
 
 // ========== 骨架屏 ==========

@@ -11,15 +11,18 @@ const startPayloadSource = read('../utils/start-match.js')
 const matchPageSource = read('../pages/match/index.vue')
 const homePageSource = read('../pages/index/index.vue')
 const playingPageSource = read('../subPages/match/playing.vue')
+const userPageSource = read('../pages/user/index.vue')
 const scanSources = [
   homePageSource,
   matchPageSource,
-  read('../pages/ranking/index.vue')
+  read('../pages/ranking/index.vue'),
+  userPageSource
 ]
 const qrSources = [
   matchPageSource,
   homePageSource,
-  playingPageSource
+  playingPageSource,
+  userPageSource
 ]
 
 test('invite API and start payload use a server-verifiable token instead of mutable profile fields', () => {
@@ -56,6 +59,10 @@ test('local QR displays expose loading, failure, and refresh states', () => {
   assert.match(matchPageSource, /matchQrLoading/)
   assert.match(matchPageSource, /matchQrFailed/)
   assert.match(matchPageSource, /@click="loadMyMatchQRCode"/)
+
+  assert.match(userPageSource, /v-if="matchQrLoading"/)
+  assert.match(userPageSource, /matchQrFailed/)
+  assert.match(userPageSource, /@click="loadMyMatchQRCode"/)
 
   assert.match(playingPageSource, /refereeQrcodeLoading/)
   assert.match(playingPageSource, /refereeQrcodeError/)
