@@ -1,16 +1,8 @@
-export const TAB_BAR_ROUTES = [
-  'pages/index/index',
-  'pages/match/index',
-  'pages/tournament/index',
-  'pages/user/index'
-]
+import { MAIN_TABS, resolveMainTabBarPlatform } from './main-tab-bar.js'
 
-const TAB_BAR_ITEMS = [
-  ['index', 'index-selected'],
-  ['match', 'match-selected'],
-  ['tournament', 'tournament-selected'],
-  ['user', 'user-selected']
-]
+export const TAB_BAR_ROUTES = MAIN_TABS.map((tab) => tab.route)
+
+const TAB_BAR_ITEMS = MAIN_TABS.map((tab) => [tab.icon, `${tab.icon}-selected`])
 
 const normalizeRoute = (route = '') => String(route).replace(/^\/+/, '').split('?')[0]
 
@@ -98,7 +90,8 @@ export const applyRuntimeTheme = ({
     uniApi.setBackgroundTextStyle({ textStyle: themeStyles.backgroundTextStyle })
   }
 
-  if (isConfiguredTabBarRoute(route)) {
+  // 小程序启用自定义 TabBar 后 setTabBarStyle / setTabBarItem 失效，主题由各 Tab 页经 use-main-tab-bar 下发。
+  if (isConfiguredTabBarRoute(route) && resolveMainTabBarPlatform(uniApi) !== 'custom') {
     if (typeof uniApi.setTabBarStyle === 'function') {
       uniApi.setTabBarStyle(themeStyles.tabBar)
     }

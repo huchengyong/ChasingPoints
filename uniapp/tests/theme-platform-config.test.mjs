@@ -1,11 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
+import { readPagesJson } from './helpers/pages-json.mjs'
 
 const manifestSource = readFileSync(new URL('../manifest.json', import.meta.url), 'utf8')
 const appSource = readFileSync(new URL('../App.vue', import.meta.url), 'utf8')
 const storeSource = readFileSync(new URL('../store/theme.js', import.meta.url), 'utf8')
-const pagesConfig = JSON.parse(readFileSync(new URL('../pages.json', import.meta.url), 'utf8'))
+const pagesConfig = readPagesJson()
 const themeConfig = JSON.parse(readFileSync(new URL('../theme.json', import.meta.url), 'utf8'))
 
 test('App, WeChat mini program and Harmony builds enable native dark mode themes', () => {

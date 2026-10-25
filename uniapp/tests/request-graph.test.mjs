@@ -55,6 +55,7 @@ const loadPublicReadStore = (mocks) => {
     getLeaderboard: mocks.getLeaderboard || (() => Promise.resolve({ success: true })),
     getLeaderboardSummary: mocks.getLeaderboardSummary,
     getNearbyVenues: mocks.getNearbyVenues,
+    getPublicMatches: mocks.getPublicMatches || (() => Promise.resolve({ success: true, list: [] })),
     buildNearbyVenueCacheKey: () => 'nearby',
     buildPublicReadKey: (prefix, params) => `${prefix}:${JSON.stringify(params)}`
   }, 'usePublicReadStore')
@@ -111,7 +112,7 @@ test.after(() => {
   delete globalThis.__CHASING_POINTS_REQUEST_METRICS__
 })
 
-test('home request graph stays within four reads after Bootstrap hydrates activity', async () => {
+test('home request graph stays within five reads after Bootstrap hydrates activity', async () => {
   const useActivityStore = loadActivityStore(activityRequestMocks())
   const useUserOverviewStore = loadUserOverviewStore(() => {
     recordRequest('GET', '/api/user/overview')
@@ -129,37 +130,61 @@ test('home request graph stays within four reads after Bootstrap hydrates activi
     getNearbyVenues: () => {
       recordRequest('GET', '/api/venue/nearby')
       return Promise.resolve({ success: true, list: [] })
+    },
+    getPublicMatches: () => {
+      recordRequest('GET', '/api/public/matches')
+      return Promise.resolve({ success: true, list: [] })
     }
   })
   const identity = { userId: 7, authGeneration: 3 }
+  const publicRead = usePublicReadStore()
   const activity = useActivityStore()
   bootstrapActivity(activity, identity)
 
   await Promise.all([
     activity.fetch(identity),
     useUserOverviewStore().fetch(identity),
-    usePublicReadStore().loadLeaderboardSummary({ game_type: 3 }, { identity }),
-    usePublicReadStore().loadEventNews({ page: 1, page_size: 1 }),
-    usePublicReadStore().loadNearbyVenues({ latitude: 22.5, longitude: 114.1, radius: 5000, limit: 3 })
+    publicRead.loadLeaderboardSummary({ game_type: 3 }, { identity }),
+    publicRead.loadEventNews({ page: 1, page_size: 1 }),
+    publicRead.loadLiveMatchPreview(),
+    publicRead.loadNearbyVenues({ latitude: 22.5, longitude: 114.1, radius: 5000, limit: 3 })
   ])
 
   assert.deepEqual(getRequestCountSnapshot(), {
     'GET /api/user/overview': 1,
     'GET /api/public/rank/leaderboard-summary': 1,
     'GET /api/event-news/list': 1,
+    'GET /api/public/matches': 1,
     'GET /api/venue/nearby': 1
   })
+
+  // 切走再切回首页（TTL 内）不再请求；下拉刷新强制回源
+  resetRequestCounts()
+  await Promise.all([
+    publicRead.loadLeaderboardSummary({ game_type: 3 }, { identity }),
+    publicRead.loadEventNews({ page: 1, page_size: 1 }),
+    publicRead.loadLiveMatchPreview()
+  ])
+  assert.deepEqual(getRequestCountSnapshot(), {})
+  await publicRead.loadLiveMatchPreview({ force: true })
+  assert.deepEqual(getRequestCountSnapshot(), { 'GET /api/public/matches': 1 })
 })
 
-test('match and user first screens reuse Bootstrap activity within their request caps', async () => {
+test('lobby, message and user first screens reuse Bootstrap activity within their request caps', async () => {
   const identity = { userId: 7, authGeneration: 3 }
   const useActivityStore = loadActivityStore(activityRequestMocks())
   const activity = useActivityStore()
   bootstrapActivity(activity, identity)
 
+  // 观赛大厅首屏只读公开列表，不再读取活动状态
   recordRequest('GET', '/api/public/matches')
-  await activity.fetch(identity)
   assert.deepEqual(getRequestCountSnapshot(), { 'GET /api/public/matches': 1 })
+
+  // 消息 Tab 首屏：通知列表一次；两个待处理数量来自已水合的活动快照，不再请求
+  resetRequestCounts()
+  recordRequest('GET', '/api/notification/list')
+  await activity.fetch(identity)
+  assert.deepEqual(getRequestCountSnapshot(), { 'GET /api/notification/list': 1 })
 
   resetRequestCounts()
   const useUserOverviewStore = loadUserOverviewStore(() => {
@@ -279,6 +304,7 @@ test('cold start and each foreground generation issue one Bootstrap, while old a
 test('core pages are wired only to their capped aggregate reads', () => {
   const homeSource = readAppFile('pages/index/index.vue')
   const matchSource = readAppFile('pages/match/index.vue')
+  const messageSource = readAppFile('pages/message/index.vue')
   const rankingSource = readAppFile('pages/ranking/index.vue')
   const userSource = readAppFile('pages/user/index.vue')
   const statsSource = readAppFile('subPages/user/statsDetail.vue')
@@ -287,8 +313,11 @@ test('core pages are wired only to their capped aggregate reads', () => {
   assert.match(homeSource, /activityStore\.fetch\(getActivityIdentity\(\)/)
   assert.match(homeSource, /userOverviewStore\.fetch\(getActivityIdentity\(\)/)
   assert.match(homeSource, /publicReadStore\.loadLeaderboardSummary\(/)
-  assert.match(matchSource, /const publicMatchesRequest = getPublicMatches\(/)
-  assert.match(matchSource, /activityStore\.fetch\(/)
+  assert.match(homeSource, /publicReadStore\.loadLiveMatchPreview\(/)
+  assert.match(matchSource, /getPublicMatches\(buildSpectatorMatchListParams\(/)
+  assert.doesNotMatch(matchSource, /activityStore/)
+  assert.match(messageSource, /activityStore\.fetch\(getReadIdentity\(\), \{ silent: true \}\)/)
+  assert.match(messageSource, /getNotificationList\(\{ page: page\.value, page_size: pageSize \}\)/)
   assert.match(rankingSource, /onShow\(\(\) => \{\s*fetchLeaderboard\(\)/)
   assert.match(rankingSource, /publicReadStore\.loadLeaderboard\(/)
   assert.match(userSource, /activityStore\.fetch\(identity, \{ force, silent: true \}\)/)

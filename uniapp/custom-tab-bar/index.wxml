@@ -1,0 +1,27 @@
+<view class="tab-bar {{dark ? 'dark' : ''}} {{hidden ? 'hidden' : ''}}">
+  <block wx:for="{{list}}" wx:key="pagePath">
+    <view
+      class="tab-item {{selected === index ? 'selected' : ''}}"
+      data-index="{{index}}"
+      bindtap="onTapTab"
+      aria-role="tab"
+      aria-label="{{item.text}}{{selected === index ? '，当前页' : ''}}"
+    >
+      <view class="tab-icon-wrap">
+        <image
+          class="tab-icon"
+          src="/static/tabbar/{{item.key}}{{selected === index ? '-selected' : ''}}_{{dark ? 'dark' : 'light'}}.png"
+          mode="aspectFit"
+        />
+        <view wx:if="{{item.key === 'message' && badgeType === 'text'}}" class="badge">
+          <text class="badge-text">{{badgeText}}</text>
+        </view>
+        <view wx:if="{{item.key === 'message' && badgeType === 'dot'}}" class="badge-dot"></view>
+      </view>
+      <text class="tab-text">{{item.text}}</text>
+    </view>
+    <view wx:if="{{index === 1}}" class="scan" bindtap="onTapScan" aria-role="button" aria-label="扫码">
+      <image class="scan-icon" src="/static/tabbar/scan-button.png" mode="aspectFit" />
+    </view>
+  </block>
+</view>

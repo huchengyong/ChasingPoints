@@ -305,7 +305,7 @@ const submit = async () => {
 		useActivityStore().markDirty()
 		setTimeout(() => {
 			if (!pageActive || !isSameIdentity(identity)) return
-			uni.switchTab({ url: '/pages/match/index' })
+			uni.switchTab({ url: '/pages/index/index' })
 		}, 600)
 	} catch (error) {
 		if (pageActive && isSameIdentity(identity) && generation === pageGeneration) uni.showToast({ title: '发送失败', icon: 'none' })

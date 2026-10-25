@@ -1,9 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { readPagesJson } from './helpers/pages-json.mjs'
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
-const pagesConfig = JSON.parse(read('pages.json'))
+const pagesConfig = readPagesJson()
 
 const subPackagePaths = (root) => (pagesConfig.subPackages.find((item) => item.root === root)?.pages || []).map((page) => page.path)
 

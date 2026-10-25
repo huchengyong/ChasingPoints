@@ -48,38 +48,24 @@ export const markAsRead = async () => ({ success: true })
   '@/api/match.js': `
 const call = (name) => (...args) => globalThis.__USER_MATCH_ENTRY__.api[name](...args)
 export const getMatchQRCode = call('getMatchQRCode')
-export const previewMatchInvite = call('previewMatchInvite')
-export const startMatch = call('startMatch')
 `,
-  '@/utils/match-scan.js': `
-export const scanAndResolveMatchCode = (...args) => globalThis.__USER_MATCH_ENTRY__.scan(...args)
+  '@/utils/use-main-tab-bar.js': `
+export const useMainTabBar = (tabKey) => globalThis.__USER_MATCH_ENTRY__.tabBars.push(tabKey)
+export const setMainTabBarVisible = (visible) => globalThis.__USER_MATCH_ENTRY__.tabBarVisibility.push(visible)
 `,
   '@/utils/local-qrcode.js': `
 export const renderLocalQRCode = (options) => {
   globalThis.__USER_MATCH_ENTRY__.renderedQRCodes.push(options)
 }
-`,
-  '@/components/gameTypeModal.vue': `
-import { h } from 'vue'
-export default {
-  name: 'gameTypeModal',
-  props: ['visible', 'defaultType'],
-  emits: ['update:visible', 'confirm'],
-  render() {
-    return this.visible ? h('view', { class: 'game-type-modal-stub' }) : null
-  }
-}
 `
 }
 
-// 纯逻辑工具直接复用真实实现，避免在测试里复写开局与路由规则。
+// 纯逻辑工具直接复用真实实现。
 const realModules = [
   '@/utils/user-homepage.js',
   '@/utils/game-types.js',
   '@/utils/honor-wall.js',
   '@/utils/game-type-preference.js',
-  '@/utils/ongoing-match-guard.js',
-  '@/utils/start-match.js',
   '@/utils/favorite-venue-reward.js',
   '@/utils/member-center.js'
 ]
@@ -177,7 +163,7 @@ function createUniStub({ actionSheetIndex = 0 } = {}) {
   }
 }
 
-async function mountPage({ api = {}, scan, uniStub = createUniStub() } = {}) {
+async function mountPage({ api = {}, uniStub = createUniStub() } = {}) {
   const tempDir = await mkdtemp(join(appDir, '.user-match-entry-'))
   const { reactive } = await vueRuntimePromise
   const user = reactive({
@@ -187,8 +173,10 @@ async function mountPage({ api = {}, scan, uniStub = createUniStub() } = {}) {
     userInfo: { id: 7, nickname: '测试球友', avatar: '' }
   })
   const renderedQRCodes = []
+  const tabBars = []
+  const tabBarVisibility = []
   globalThis.uni = uniStub.uni
-  globalThis.__USER_MATCH_ENTRY__ = { user, api, scan, renderedQRCodes }
+  globalThis.__USER_MATCH_ENTRY__ = { user, api, renderedQRCodes, tabBars, tabBarVisibility }
   const cleanupGlobals = () => {
     delete globalThis.__USER_MATCH_ENTRY__
     delete globalThis.uni
@@ -204,6 +192,8 @@ async function mountPage({ api = {}, scan, uniStub = createUniStub() } = {}) {
       wrapper,
       user,
       renderedQRCodes,
+      tabBars,
+      tabBarVisibility,
       flushPromises,
       cleanup: async () => {
         wrapper.unmount()
@@ -217,91 +207,6 @@ async function mountPage({ api = {}, scan, uniStub = createUniStub() } = {}) {
     throw error
   }
 }
-
-const scannedOpponent = {
-  type: 'start_match',
-  inviteToken: 'invite.token',
-  opponent: { id: 2, nickname: '对手乙', avatar: '' }
-}
-
-test('头部扫码按选定球种与对局类型开局并进入计分页', async () => {
-  const uniStub = createUniStub({ actionSheetIndex: 2 })
-  const payloads = []
-  const page = await mountPage({
-    uniStub,
-    scan: async () => scannedOpponent,
-    api: {
-      startMatch: async (payload) => {
-        payloads.push(payload)
-        return { success: true, action: 'created', match_id: 99 }
-      }
-    }
-  })
-  try {
-    assert.doesNotMatch(page.wrapper.text(), /去发起对局/)
-    await page.wrapper.find('[aria-label="扫码开局"]').trigger('click')
-    const modal = page.wrapper.findComponent({ name: 'gameTypeModal' })
-    assert.equal(modal.props('visible'), true)
-
-    modal.vm.$emit('confirm', { gameType: 3, setAsDefault: false })
-    await page.flushPromises()
-
-    assert.equal(payloads.length, 1)
-    assert.equal(payloads[0].game_type, 3)
-    assert.equal(payloads[0].match_mode, 'ranked')
-    assert.equal(payloads[0].visibility, 'public')
-    assert.equal(payloads[0].invite_token, 'invite.token')
-    const [navigation] = uniStub.callsOf('navigateTo')
-    assert.match(navigation.options.url, /^\/subPages\/match\/playing\?match_id=99&game_type=3/)
-  } finally {
-    await page.cleanup()
-  }
-})
-
-test('扫码或建局等待期间切换账号，旧账号的结果不得开局或跳转', async () => {
-  const pendingScan = defer()
-  const pendingStart = defer()
-  let startCalls = 0
-  const uniStub = createUniStub()
-  const page = await mountPage({
-    uniStub,
-    scan: () => pendingScan.promise,
-    api: {
-      startMatch: () => {
-        startCalls += 1
-        return pendingStart.promise
-      }
-    }
-  })
-  try {
-    const modal = page.wrapper.findComponent({ name: 'gameTypeModal' })
-
-    // 扫码期间切号：不再调用建局接口
-    await page.wrapper.find('[aria-label="扫码开局"]').trigger('click')
-    modal.vm.$emit('confirm', { gameType: 3, setAsDefault: false })
-    page.user.authGeneration = 2
-    pendingScan.resolve(scannedOpponent)
-    await page.flushPromises()
-    assert.equal(startCalls, 0)
-
-    // 建局请求返回前切号：不跳转旧账号的对局
-    const scanAgain = defer()
-    globalThis.__USER_MATCH_ENTRY__.scan = () => scanAgain.promise
-    await page.wrapper.find('[aria-label="扫码开局"]').trigger('click')
-    modal.vm.$emit('confirm', { gameType: 3, setAsDefault: false })
-    scanAgain.resolve(scannedOpponent)
-    await page.flushPromises()
-    assert.equal(startCalls, 1)
-    page.user.authGeneration = 3
-    pendingStart.resolve({ success: true, action: 'created', match_id: 100 })
-    await page.flushPromises()
-
-    assert.equal(uniStub.callsOf('navigateTo').length, 0)
-    assert.equal(uniStub.callsOf('hideLoading').length, 1, '加载提示仍需关闭')
-  } finally {
-    await page.cleanup()
-  }
-})
 
 test('出示二维码时隐藏 TabBar 并本地渲染，关闭后迟到的二维码不再渲染', async () => {
   const uniStub = createUniStub()
@@ -323,8 +228,9 @@ test('出示二维码时隐藏 TabBar 并本地渲染，关闭后迟到的二维
     await qrButton.trigger('click')
     await page.flushPromises()
 
+    assert.deepEqual(page.tabBars, ['user'], '页面接入主导航')
     assert.equal(page.wrapper.find('.qr-mask').exists(), true)
-    assert.equal(uniStub.callsOf('hideTabBar').length, 1)
+    assert.deepEqual(page.tabBarVisibility, [false], '打开二维码弹层时隐藏 TabBar')
     assert.deepEqual(
       page.renderedQRCodes.map(({ canvasId, content }) => ({ canvasId, content })),
       [{ canvasId: 'user-match-invite-qrcode', content: 'my.invite' }]
@@ -332,7 +238,7 @@ test('出示二维码时隐藏 TabBar 并本地渲染，关闭后迟到的二维
 
     await page.wrapper.find('.qr-done').trigger('click')
     assert.equal(page.wrapper.find('.qr-mask').exists(), false)
-    assert.equal(uniStub.callsOf('showTabBar').length, 1)
+    assert.deepEqual(page.tabBarVisibility, [false, true], '关闭后恢复 TabBar')
 
     await qrButton.trigger('click')
     await page.wrapper.find('.qr-close').trigger('click')

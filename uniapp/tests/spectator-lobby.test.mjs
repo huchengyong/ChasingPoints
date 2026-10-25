@@ -2,7 +2,10 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
+import { readPagesJson } from './helpers/pages-json.mjs'
 import {
+  HOME_LIVE_MATCH_LIMIT,
+  buildHomeLiveMatches,
   buildSpectatorFinishedMatchDetailUrl,
   buildSpectatorMatchListParams,
   buildSpectatorSections,
@@ -231,9 +234,9 @@ test('buildSpectatorSections groups only the mixed friends tab', () => {
   assert.deepEqual(buildSpectatorSections([], 'live'), [])
 })
 
-test('match tab uses status tabs, an action-sheet game filter and paged loading', () => {
+test('the lobby is a plain list page with status tabs, an action-sheet game filter and paged loading', () => {
   const pageSource = readFileSync(new URL('../pages/match/index.vue', import.meta.url), 'utf8')
-  const pagesJson = readFileSync(new URL('../pages.json', import.meta.url), 'utf8')
+  const pagesConfig = readPagesJson()
 
   assert.match(pageSource, /const lobbyTabs = computed\(\(\) => resolveSpectatorLobbyTabs\(userStore\.isLoggedIn\)\)/)
   assert.match(pageSource, /v-for="tab in lobbyTabs"[\s\S]*@tap="selectLobbyTab\(tab\.value\)"/)
@@ -243,11 +246,73 @@ test('match tab uses status tabs, an action-sheet game filter and paged loading'
   assert.match(pageSource, /page: nextPage/)
   // 切换标签先作废在途请求并清空旧列表
   assert.match(pageSource, /const reloadLobby = \(\) => \{[\s\S]*requestId: lobbyState\.value\.requestId \+ 1[\s\S]*spectatorMatches\.value = \[\]/)
-  // 「我的对局」只在顶部卡片出现，列表按 id 排除
-  assert.match(pageSource, /const lobbyItems = computed[\s\S]*Number\(match\.id\) !== currentId/)
-  // 扫码执裁入口常驻，不再只出现在空态
-  assert.match(pageSource, /class="challenge-entry-btn" @tap="handleScanAsReferee"/)
+  // 本人参与的对局留在列表里并标「我」，不再被顶部开局卡过滤
+  assert.match(pageSource, /spectatorMatches\.value\.map\(\(match\) => normalizeSpectatorMatch\(match, \{ userId: userId\.value \}\)\)/)
+  assert.match(pageSource, /v-if="player\.isMe" class="me-tag"/)
+  assert.doesNotMatch(pageSource, /currentId|myMatchCard|activityStore|challengeCard/)
   assert.doesNotMatch(pageSource, /showFilterPanel|confirmSpectatorFilters|status-segmented|game-type-choice/)
-  assert.match(pagesJson, /"navigationBarTitleText":\s*"观赛"/)
-  assert.match(pagesJson, /"text":\s*"观赛"/)
+
+  // 观赛大厅是普通页面：保留下拉刷新，但不再注册为 Tab
+  const lobby = pagesConfig.pages.find((page) => page.path === 'pages/match/index')
+  assert.equal(lobby.style.navigationBarTitleText, '观赛大厅')
+  assert.equal(lobby.style.enablePullDownRefresh, true)
+  assert.equal(pagesConfig.tabBar.list.some((item) => item.pagePath === 'pages/match/index'), false)
+})
+
+const liveItem = (id, extra = {}) => ({
+  id,
+  status: 1,
+  game_type: 3,
+  match_mode: 'practice',
+  duration_seconds: 600,
+  player1_id: id * 10 + 1,
+  player1_name: `甲${id}`,
+  player1_score: 1,
+  player2_id: id * 10 + 2,
+  player2_name: `乙${id}`,
+  player2_score: 0,
+  ...extra
+})
+
+test('home live preview shows at most three matches and never repeats the viewer current match', () => {
+  assert.equal(HOME_LIVE_MATCH_LIMIT, 3)
+
+  const four = [liveItem(1), liveItem(2), liveItem(3), liveItem(4)]
+  assert.deepEqual(buildHomeLiveMatches(four).map((match) => match.id), [1, 2, 3])
+  assert.deepEqual(
+    buildHomeLiveMatches(four, { currentMatchId: 2 }).map((match) => match.id),
+    [1, 3, 4],
+    'the viewer match is already the main card, and the freed slot is refilled'
+  )
+  assert.deepEqual(buildHomeLiveMatches([liveItem(2)], { currentMatchId: 2 }), [])
+})
+
+test('home live preview reuses the lobby card shape and marks the viewer', () => {
+  const [card] = buildHomeLiveMatches([liveItem(1, { player1_id: 7 })], { userId: 7 })
+
+  assert.equal(card.isLive, true)
+  assert.equal(card.isMine, true)
+  assert.equal(card.metaText, '中式八球 · 练习')
+  assert.match(card.statusText, /^进行中/)
+  assert.deepEqual(card.players.map((player) => [player.name, player.score, player.isMe]), [
+    ['甲1', 1, true],
+    ['乙1', 0, false]
+  ])
+})
+
+test('home live preview tolerates a missing list', () => {
+  assert.deepEqual(buildHomeLiveMatches(undefined), [])
+  assert.deepEqual(buildHomeLiveMatches(null), [])
+})
+
+test('home live preview request stays inside the lobby hall query contract', () => {
+  const storeSource = readFileSync(new URL('../store/publicRead.js', import.meta.url), 'utf8')
+  const pageSize = Number(storeSource.match(/LIVE_MATCH_PREVIEW_SIZE = (\d+)/)[1])
+
+  // 取一场多于展示数，才能在去掉本人对局后仍凑满上限
+  assert.equal(pageSize, HOME_LIVE_MATCH_LIMIT + 1)
+  assert.deepEqual(
+    buildSpectatorMatchListParams({ scope: 'hall', status: 1, page: 1, pageSize }),
+    { scope: 'hall', status: 1, page: 1, page_size: pageSize }
+  )
 })

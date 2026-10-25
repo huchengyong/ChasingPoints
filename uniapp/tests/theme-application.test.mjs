@@ -36,12 +36,13 @@ const createUniRecorder = () => {
 
 test('isConfiguredTabBarRoute identifies configured tabBar routes', () => {
   assert.equal(isConfiguredTabBarRoute('pages/index/index'), true)
-  assert.equal(isConfiguredTabBarRoute('/pages/match/index'), true)
+  assert.equal(isConfiguredTabBarRoute('/pages/message/index'), true)
   assert.equal(isConfiguredTabBarRoute('pages/tournament/index'), true)
   assert.equal(isConfiguredTabBarRoute('pages/user/index'), true)
 })
 
 test('isConfiguredTabBarRoute rejects non-tabBar routes', () => {
+  assert.equal(isConfiguredTabBarRoute('pages/match/index'), false)
   assert.equal(isConfiguredTabBarRoute('pages/welcome/index'), false)
   assert.equal(isConfiguredTabBarRoute('pages/login/login'), false)
   assert.equal(isConfiguredTabBarRoute('subPages/user/settings'), false)
@@ -141,13 +142,13 @@ test('applyRuntimeTheme applies existing dark tabBar colors on tabBar pages', ()
       },
       {
         index: 1,
-        iconPath: '/static/tabbar/match_dark.png',
-        selectedIconPath: '/static/tabbar/match-selected_dark.png'
+        iconPath: '/static/tabbar/tournament_dark.png',
+        selectedIconPath: '/static/tabbar/tournament-selected_dark.png'
       },
       {
         index: 2,
-        iconPath: '/static/tabbar/tournament_dark.png',
-        selectedIconPath: '/static/tabbar/tournament-selected_dark.png'
+        iconPath: '/static/tabbar/message_dark.png',
+        selectedIconPath: '/static/tabbar/message-selected_dark.png'
       },
       {
         index: 3,
@@ -156,4 +157,21 @@ test('applyRuntimeTheme applies existing dark tabBar colors on tabBar pages', ()
       }
     ]
   )
+})
+
+test('applyRuntimeTheme leaves the native tabBar APIs alone when the custom tab bar is in use', () => {
+  const recorder = createUniRecorder()
+  recorder.uniApi.getSystemInfoSync = () => ({ uniPlatform: 'mp-weixin' })
+
+  applyRuntimeTheme({
+    uniApi: recorder.uniApi,
+    route: 'pages/index/index',
+    isDarkMode: true
+  })
+
+  assert.deepEqual(recorder.calls.map((call) => call.method), [
+    'setNavigationBarColor',
+    'setBackgroundColor',
+    'setBackgroundTextStyle'
+  ])
 })

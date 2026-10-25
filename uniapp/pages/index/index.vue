@@ -6,22 +6,8 @@
       <view class="header-content">
         <view class="header-copy">
           <text class="title">追分</text>
-          <!-- #ifdef MP-WEIXIN -->
-          <text v-if="notificationStore.unreadCount > 0" class="subtitle subtitle--link" @tap="goNotification">{{ unreadText }}</text>
-          <text v-else class="subtitle">{{ greetingText }}</text>
-          <!-- #endif -->
-          <!-- #ifndef MP-WEIXIN -->
           <text class="subtitle">{{ greetingText }}</text>
-          <!-- #endif -->
         </view>
-        <!-- #ifndef MP-WEIXIN -->
-        <view class="header-right" @tap="goNotification">
-          <uni-icons type="chat" size="22" :color="isDarkMode ? '#FFF7E1' : '#231C0B'"></uni-icons>
-          <view v-if="notificationStore.unreadCount > 0" class="header-badge">
-            <text>{{ notificationStore.unreadCount > 99 ? '99+' : notificationStore.unreadCount }}</text>
-          </view>
-        </view>
-        <!-- #endif -->
       </view>
     </view>
 
@@ -109,9 +95,52 @@
             </view>
           </view>
 
+          <!-- 约球状态读不到时不能当作「没有约球」，给出重试入口 -->
+          <view v-if="isLoggedIn && !activityStore.challengeAvailable" class="challenge-unavailable" @tap="retryChallengeActivity">
+            <text class="challenge-unavailable__text">约球状态读取失败，点击重试</text>
+          </view>
+
           <view v-if="homeRefreshError || homePageError" class="home-refresh-error">
             <text>{{ (homeRefreshError || homePageError).description }}</text>
             <text class="home-refresh-error__action" @tap="retryHomeData">重试</text>
+          </view>
+
+          <!-- 正在进行：公开大厅的预览，完整列表在观赛大厅 -->
+          <view class="home-section">
+            <view class="section-header">
+              <text class="section-title">正在进行</text>
+              <view class="section-more" @tap="goTo('/pages/match/index')">
+                <text>观赛大厅</text>
+                <uni-icons type="right" size="14" :color="mutedIconColor"></uni-icons>
+              </view>
+            </view>
+            <view v-if="liveMatchError" class="section-empty">
+              <text class="empty-title">{{ liveMatchError.title }}</text>
+              <text class="empty-desc">{{ liveMatchError.description }}</text>
+              <text class="section-error__action" @tap="retryHomeData">重试</text>
+            </view>
+            <view v-else-if="liveMatches.length" class="live-card">
+              <view v-for="match in liveMatches" :key="match.id" class="live-item" @tap="handleLiveMatchTap(match)">
+                <view class="live-item-head">
+                  <text class="live-item-meta">{{ match.metaText }}</text>
+                  <view class="live-state">
+                    <view class="live-state-dot"></view>
+                    <text>{{ match.statusText }}</text>
+                  </view>
+                </view>
+                <view v-for="(player, index) in match.players" :key="index" class="live-player">
+                  <image class="live-player-avatar" :src="resolveAvatarUrl(player.avatar, player.id)" mode="aspectFill"></image>
+                  <text class="live-player-name">{{ player.name }}</text>
+                  <text v-if="player.isMe" class="me-tag">我</text>
+                  <text class="live-player-score">{{ player.score }}</text>
+                </view>
+              </view>
+            </view>
+            <view v-else-if="homeLoading" class="skeleton-card skeleton-card--live"></view>
+            <view v-else class="section-empty">
+              <text class="empty-title">暂无正在进行的对局</text>
+              <text class="empty-desc">公开对局开打后会出现在这里。</text>
+            </view>
           </view>
 
           <!-- 赛事 -->
@@ -248,11 +277,6 @@
       </view>
     </scroll-view>
 
-    <gameTypeModal
-      v-model:visible="showGameTypeModal"
-      :default-type="defaultGameType"
-      @confirm="handleGameTypeConfirm"
-    />
 
     <view v-if="showMatchQrModal" class="qr-mask" @tap="closeMatchQrModal">
       <view class="qr-panel" @tap.stop>
@@ -294,15 +318,15 @@
 import { computed, nextTick, onUnmounted, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useActivityStore } from '@/store/activity.js'
-import { useNotificationStore } from '@/store/notification.js'
 import { usePublicReadStore } from '@/store/publicRead.js'
 import { useUserOverviewStore } from '@/store/userOverview.js'
 import { useUserStore } from '@/store/user.js'
-import { getMatchQRCode, previewMatchInvite, startMatch } from '@/api/match.js'
-import gameTypeModal from '@/components/gameTypeModal.vue'
+import { getMatchQRCode } from '@/api/match.js'
 import memberAvatar from '@/components/memberAvatar.vue'
 import { normalizeSaiXunCard } from '@/utils/saixun.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { useMainTabBar, setMainTabBarVisible } from '@/utils/use-main-tab-bar.js'
+import { startQuickScan } from '@/utils/quick-scan-entry.js'
 import {
   buildHomeNearbyVenueParams,
   formatHomeMyRanking,
@@ -313,12 +337,10 @@ import {
 } from '@/utils/home-index.js'
 import { buildOngoingMatchCard } from '@/utils/match-core-flow.js'
 import { resolveChallengeQuickCard } from '@/utils/challenge-view.js'
-import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
-import { START_MATCH_MODE_OPTIONS, buildStartMatchPayload } from '@/utils/start-match.js'
-import { readDefaultGameType, saveDefaultGameType } from '@/utils/game-type-preference.js'
+import { buildPlayingRoute } from '@/utils/ongoing-match-guard.js'
+import { buildHomeLiveMatches, shouldOpenPlayingForSpectatorMatch } from '@/utils/spectator-lobby.js'
 import { getCurrentLocation } from '@/utils/permission-helper.js'
 import { renderLocalQRCode } from '@/utils/local-qrcode.js'
-import { scanAndResolveMatchCode } from '@/utils/match-scan.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import {
   ASYNC_PAGE_STATUS,
@@ -336,7 +358,7 @@ const activityStore = useActivityStore()
 const publicReadStore = usePublicReadStore()
 const userOverviewStore = useUserOverviewStore()
 const { isDarkMode } = usePageTheme()
-const notificationStore = useNotificationStore()
+useMainTabBar('index')
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const isLoggedIn = computed(() => userStore.isLoggedIn)
@@ -359,11 +381,6 @@ const homeRefreshError = computed(() => (
     ? resolveAsyncPageErrorFeedback(homeState.value.refreshError, { resource: '首页内容' })
     : null
 ))
-const showGameTypeModal = ref(false)
-const selectedGameType = ref(null)
-const defaultGameType = ref(0)
-const startMatchMode = ref('practice')
-const startMatchVisibility = ref('private')
 const showMatchQrModal = ref(false)
 const matchQrLoading = ref(false)
 const matchQrFailed = ref(false)
@@ -372,12 +389,13 @@ const currentMatch = computed(() => (isLoggedIn.value ? activityStore.currentMat
 const leaderboardTopThree = ref([])
 const myRanking = ref(null)
 const topEventNews = ref(null)
+const liveMatchList = ref([])
 const nearbyVenues = ref([])
 const nearbyVenueLoading = ref(false)
 const nearbyVenueError = ref(null)
 const nearbyVenueAttemptAt = ref(0)
 const favoriteVenueRewardStatus = ref(null)
-const homeSectionErrors = ref({ leaderboard: null, eventNews: null })
+const homeSectionErrors = ref({ leaderboard: null, eventNews: null, liveMatches: null })
 const leaderboardError = computed(() => (
   homeSectionErrors.value.leaderboard
     ? resolveAsyncPageErrorFeedback(homeSectionErrors.value.leaderboard, { resource: '排行榜' })
@@ -386,6 +404,11 @@ const leaderboardError = computed(() => (
 const eventNewsError = computed(() => (
   homeSectionErrors.value.eventNews
     ? resolveAsyncPageErrorFeedback(homeSectionErrors.value.eventNews, { resource: '赛事情报' })
+    : null
+))
+const liveMatchError = computed(() => (
+  homeSectionErrors.value.liveMatches
+    ? resolveAsyncPageErrorFeedback(homeSectionErrors.value.liveMatches, { resource: '正在进行的对局' })
     : null
 ))
 const nearbyVenueLocationIssue = ref('')
@@ -402,7 +425,9 @@ const nearbyVenueFeedback = computed(() => {
 })
 
 const hasContent = computed(() => {
-  return Boolean(currentMatch.value || topEventNews.value || leaderboardTopThree.value.length || nearbyVenues.value.length)
+  return Boolean(
+    currentMatch.value || topEventNews.value || leaderboardTopThree.value.length || liveMatchList.value.length || nearbyVenues.value.length
+  )
 })
 
 const homeVenueEmptyAction = computed(() => resolveHomeVenueEmptyAction(favoriteVenueRewardStatus.value))
@@ -411,10 +436,6 @@ const mutedIconColor = computed(() => (isDarkMode.value ? '#9F926E' : '#9A8C67')
 const greetingText = computed(() => (
   isLoggedIn.value ? `${resolveHomeGreeting(greetingHour.value)}，${userName.value}` : '记录每一局真实比分'
 ))
-const unreadText = computed(() => {
-  const count = notificationStore.unreadCount
-  return `${count > 99 ? '99+' : count} 条未读消息`
-})
 
 // 活动状态首次返回前不确定是否有进行中的对局，先占位，避免「来一局」闪成「继续对局」
 const playCardLoading = computed(() => isLoggedIn.value && !activityStore.loaded && homeLoading.value)
@@ -431,6 +452,11 @@ const challengeCard = computed(() => {
   return sameMatch || sameChallenge ? null : card
 })
 const myRankingText = computed(() => formatHomeMyRanking(myRanking.value))
+// 本人的当前对局已在开局卡展示，预览里不再重复
+const liveMatches = computed(() => buildHomeLiveMatches(liveMatchList.value, {
+  userId: userId.value,
+  currentMatchId: ongoingCard.value?.id
+}))
 
 const getActivityIdentity = () => ({
   userId: userStore.userId,
@@ -462,7 +488,7 @@ const loadData = async ({ force = false } = {}) => {
     favoriteVenueRewardStatus.value = null
   }
   homeState.value = nextState
-  homeSectionErrors.value = { leaderboard: null, eventNews: null }
+  homeSectionErrors.value = { leaderboard: null, eventNews: null, liveMatches: null }
 
   try {
     const nearbyVenueRequest = loadNearbyVenues({ force, passive: !force })
@@ -471,7 +497,8 @@ const loadData = async ({ force = false } = {}) => {
         force,
         identity: isLoggedIn.value ? getActivityIdentity() : undefined
       }),
-      publicReadStore.loadEventNews({ page: 1, page_size: 1 }, { force })
+      publicReadStore.loadEventNews({ page: 1, page_size: 1 }, { force }),
+      publicReadStore.loadLiveMatchPreview({ force })
     ]
 
     if (isLoggedIn.value) {
@@ -486,11 +513,14 @@ const loadData = async ({ force = false } = {}) => {
     let resultIndex = isLoggedIn.value ? 1 : 0
     const leaderboardResult = results[resultIndex++]
     const eventNewsResult = results[resultIndex++]
+    const liveMatchResult = results[resultIndex++]
     const leaderboardLoadError = resolveHomeResponseError(leaderboardResult, '加载排行榜失败')
     const eventNewsLoadError = resolveHomeResponseError(eventNewsResult, '加载赛事情报失败')
+    const liveMatchLoadError = resolveHomeResponseError(liveMatchResult, '加载正在进行的对局失败')
     homeSectionErrors.value = {
       leaderboard: leaderboardLoadError,
-      eventNews: eventNewsLoadError
+      eventNews: eventNewsLoadError,
+      liveMatches: liveMatchLoadError
     }
 
     if (!leaderboardLoadError) {
@@ -502,6 +532,11 @@ const loadData = async ({ force = false } = {}) => {
     if (!eventNewsLoadError && Array.isArray(eventNewsResult.value.list)) {
       const topItem = eventNewsResult.value.list[0] || null
       topEventNews.value = topItem ? normalizeSaiXunCard(topItem) : null
+    }
+
+    // 预览读取失败时保留上一次的列表，只在区块里提示失败
+    if (!liveMatchLoadError) {
+      liveMatchList.value = Array.isArray(liveMatchResult.value.list) ? liveMatchResult.value.list : []
     }
 
     if (isLoggedIn.value) {
@@ -575,6 +610,10 @@ const loadNearbyVenues = async ({ force = false, passive = false } = {}) => {
 
 const retryHomeData = () => loadData({ force: true })
 
+const retryChallengeActivity = () => {
+  activityStore.fetch(getActivityIdentity(), { force: true, silent: true })
+}
+
 const retryNearbyVenues = () => loadNearbyVenues({ force: true })
 
 const handleHomeErrorAction = () => {
@@ -617,10 +656,6 @@ const goLogin = () => {
   uni.navigateTo({ url: '/pages/login/login' })
 }
 
-const goNotification = () => {
-  uni.navigateTo({ url: '/subPages/notification/index' })
-}
-
 const goToVenueDetail = (id) => {
   if (!id) return
   goTo(`/subPages/venue/detail?id=${id}`)
@@ -632,7 +667,7 @@ const handleContinueCurrentMatch = () => {
   if (currentMatch.value) handleContinueMatch(currentMatch.value)
 }
 
-// 与观赛页一致的三种开局方式
+// 三种开局方式：扫描对手二维码走统一扫码流程（先扫后选球种与类型）
 const handleStartMatch = () => {
   if (!isLoggedIn.value) {
     goLogin()
@@ -642,8 +677,7 @@ const handleStartMatch = () => {
     itemList: ['扫描对手二维码', '出示我的二维码', '选择好友或最近对手'],
     success: ({ tapIndex }) => {
       if (tapIndex === 0) {
-        defaultGameType.value = readDefaultGameType(uni, userId.value)
-        showGameTypeModal.value = true
+        startQuickScan()
         return
       }
       if (tapIndex === 1) {
@@ -655,67 +689,9 @@ const handleStartMatch = () => {
   })
 }
 
-const handleGameTypeConfirm = ({ gameType, setAsDefault } = {}) => {
-  if (setAsDefault) {
-    defaultGameType.value = saveDefaultGameType(uni, userId.value, gameType)
-  }
-  selectedGameType.value = gameType
-  uni.showActionSheet({
-    itemList: START_MATCH_MODE_OPTIONS.map((item) => item.label),
-    success: ({ tapIndex }) => {
-      const option = START_MATCH_MODE_OPTIONS[tapIndex]
-      if (!option) return
-      startMatchMode.value = option.matchMode
-      startMatchVisibility.value = option.visibility
-      scanToStartMatch()
-    }
-  })
-}
-
-const scanToStartMatch = async () => {
-  const scanAction = await scanAndResolveMatchCode({
-    uniApi: uni,
-    previewMatchInvite
-  })
-  if (scanAction.type === 'cancelled') return
-  if (scanAction.type === 'error') {
-    uni.showToast({ title: scanAction.message || '扫码失败', icon: 'none' })
-    return
-  }
-  if (scanAction.type !== 'start_match') {
-    uni.showToast({ title: '请扫描匹配二维码发起对局', icon: 'none' })
-    return
-  }
-  await handleMatchResult(scanAction)
-}
-
-const handleMatchResult = async (scanAction) => {
-  try {
-    const opponentData = scanAction.opponent
-
-    uni.showLoading({ title: '匹配中...', mask: true })
-    const res = await startMatch(buildStartMatchPayload({
-      gameType: selectedGameType.value,
-      opponent: opponentData,
-      matchMode: startMatchMode.value,
-      visibility: startMatchVisibility.value,
-      inviteToken: scanAction.inviteToken
-    }))
-    uni.hideLoading()
-    handleStartMatchOutcome(resolveStartMatchGuardAction({
-      response: res,
-      selectedGameType: selectedGameType.value,
-      scannedOpponent: opponentData
-    }))
-  } catch (error) {
-    uni.hideLoading()
-    uni.showToast({ title: '匹配失败', icon: 'none' })
-  }
-}
-
 const showMyMatchQRCode = async () => {
   showMatchQrModal.value = true
-  uni.hideTabBar({ animation: true })
+  setMainTabBarVisible(false)
   await loadMyMatchQRCode()
 }
 
@@ -750,39 +726,12 @@ const closeMatchQrModal = () => {
   matchQrLoading.value = false
   matchQrFailed.value = false
   matchQrContent.value = ''
-  uni.showTabBar({ animation: true })
+  setMainTabBarVisible(true)
 }
 
 const navigateToPlayingMatch = (match) => {
   uni.navigateTo({
     url: buildPlayingRoute(match)
-  })
-}
-
-const handleStartMatchOutcome = (outcome) => {
-  if (outcome.type === 'navigate' || outcome.type === 'resume') {
-    navigateToPlayingMatch(outcome.match)
-    return
-  }
-
-  if (outcome.type === 'prompt_self_ongoing') {
-    uni.showModal({
-      title: '你有未结束的对局',
-      content: outcome.message,
-      confirmText: '进入该对局',
-      cancelText: '稍后处理',
-      success: ({ confirm }) => {
-        if (confirm) {
-          navigateToPlayingMatch(outcome.match)
-        }
-      }
-    })
-    return
-  }
-
-  uni.showToast({
-    title: outcome.message || '创建对局失败',
-    icon: 'none'
   })
 }
 
@@ -795,13 +744,22 @@ const handleContinueMatch = (match) => {
   })
 }
 
+// 与观赛大厅一致：本人参与的进行中对局进入计分页，其他对局进入观战页
+const handleLiveMatchTap = (match) => {
+  if (shouldOpenPlayingForSpectatorMatch({ match, userId: userId.value, isLoggedIn: isLoggedIn.value })) {
+    handleContinueMatch(match)
+    return
+  }
+  goTo(`/subPages/match/matchDetail?match_id=${match.id}&mode=spectate`)
+}
+
 onShow(() => {
   greetingHour.value = new Date().getHours()
   loadData()
 })
 
 onUnmounted(() => {
-  if (showMatchQrModal.value) uni.showTabBar({ animation: false })
+  if (showMatchQrModal.value) setMainTabBarVisible(true)
 })
 </script>
 

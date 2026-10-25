@@ -1,0 +1,108 @@
+/* 使用普通 view 渲染，页面弹层才能盖住它；颜色与 theme.json 的亮 / 暗两套保持一致。 */
+.tab-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 998;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: calc(50px + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  border-top: 1px solid #E9E2CF;
+  background: #F7F4EC;
+  transition: transform 0.25s ease;
+}
+
+.tab-bar.dark {
+  border-top-color: #3A2E16;
+  background: #141109;
+}
+
+.tab-bar.hidden {
+  transform: translateY(100%);
+  pointer-events: none;
+}
+
+.tab-item {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 50px;
+}
+
+.tab-icon-wrap {
+  position: relative;
+  width: 24px;
+  height: 24px;
+}
+
+.tab-icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
+.tab-text {
+  margin-top: 2px;
+  font-size: 10px;
+  line-height: 12px;
+  color: #6E6242;
+}
+
+.tab-bar.dark .tab-text {
+  color: #c6b78c;
+}
+
+.tab-item.selected .tab-text,
+.tab-bar.dark .tab-item.selected .tab-text {
+  color: #E0AE12;
+}
+
+.scan {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+}
+
+.scan-icon {
+  display: block;
+  width: 50px;
+  height: 50px;
+}
+
+.badge {
+  position: absolute;
+  top: -6px;
+  left: 14px;
+  box-sizing: border-box;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #EF4444;
+  text-align: center;
+}
+
+.badge-text {
+  font-size: 10px;
+  line-height: 16px;
+  color: #FFFFFF;
+}
+
+.badge-dot {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: #EF4444;
+}

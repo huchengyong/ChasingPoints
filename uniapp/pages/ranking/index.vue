@@ -153,13 +153,6 @@
 				</view>
 				<text class="my-score">{{ myRanking.rank > 0 ? `${myRanking.rank_score}分` : '未记录榜单分数' }}</text>
 			</view>
-
-		<!-- 选择比赛类型弹框（用于开始对战） -->
-		<gameTypeModal
-			v-model:visible="showGameTypeModal"
-			:default-type="defaultGameType"
-			@confirm="handleGameTypeConfirm"
-		/>
 	</view>
 </template>
 
@@ -169,15 +162,10 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { usePublicReadStore } from '@/store/publicRead.js'
 import { usePageTheme } from '@/utils/page-theme.js'
-import { previewMatchInvite, startMatch } from '@/api/match.js'
-import gameTypeModal from '@/components/gameTypeModal.vue'
 import memberAvatar from '@/components/memberAvatar.vue'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
-import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
-import { buildStartMatchPayload } from '@/utils/start-match.js'
 import { buildLeaderboardPodiumSlots } from '@/utils/ranking-podium.js'
-import { readDefaultGameType, saveDefaultGameType } from '@/utils/game-type-preference.js'
-import { scanAndResolveMatchCode } from '@/utils/match-scan.js'
+import { startQuickScan } from '@/utils/quick-scan-entry.js'
 import {
 	ASYNC_PAGE_STATUS,
 	beginAsyncPageLoad,
@@ -221,9 +209,6 @@ const rankList = ref([])
 const currentPage = ref(1)
 const pageSize = 20
 const total = ref(0)
-const showGameTypeModal = ref(false)
-const selectedGameType = ref(null)
-const defaultGameType = ref(0)
 const currentGameType = ref(3)
 const gameTypeTabs = GAME_TYPE_TABS
 const podiumSlots = computed(() => buildLeaderboardPodiumSlots(topThree.value))
@@ -372,122 +357,10 @@ const handleUserClick = (user) => {
 }
 
 /**
- * 开始对战 - 打开选择比赛类型弹框
+ * 发起PK：走统一扫码流程，先扫对手二维码，再在确认页选球种和对局类型
  */
 const handleStartMatch = () => {
-	// 检查登录状态
-	if (!userStore.isLoggedIn) {
-		uni.showToast({
-			title: '请先登录后再发起PK',
-			icon: 'none',
-			duration: 1500
-		})
-		setTimeout(() => {
-			uni.navigateTo({
-				url: '/pages/login/login'
-			})
-		}, 1500)
-		return
-	}
-	defaultGameType.value = readDefaultGameType(uni, userStore.userId)
-	showGameTypeModal.value = true
-}
-
-/**
- * 处理比赛类型确认
- */
-const handleGameTypeConfirm = ({ gameType, setAsDefault } = {}) => {
-	if (setAsDefault) {
-		defaultGameType.value = saveDefaultGameType(uni, userStore.userId, gameType)
-	}
-	selectedGameType.value = gameType
-	// 开始扫码
-	handleScanCode()
-}
-
-/**
- * 开始扫码
- */
-const handleScanCode = async () => {
-	const scanAction = await scanAndResolveMatchCode({
-		uniApi: uni,
-		previewMatchInvite
-	})
-	if (scanAction.type === 'cancelled') return
-	if (scanAction.type === 'error') {
-		uni.showToast({ title: scanAction.message || '扫码失败', icon: 'none' })
-		return
-	}
-	if (scanAction.type !== 'start_match') {
-		uni.showToast({ title: '请扫描匹配二维码发起对局', icon: 'none' })
-		return
-	}
-	await handleMatchResult(scanAction)
-}
-
-/**
- * 处理匹配结果
- */
-const handleMatchResult = async (scanAction) => {
-	try {
-		const opponentData = scanAction.opponent
-
-		// 显示加载中
-		uni.showLoading({ title: '匹配中...', mask: true })
-
-		// 创建对局
-		const res = await startMatch(buildStartMatchPayload({
-			gameType: selectedGameType.value,
-			opponent: opponentData,
-			inviteToken: scanAction.inviteToken
-		}))
-
-		// 隐藏加载
-		uni.hideLoading()
-
-		handleStartMatchOutcome(resolveStartMatchGuardAction({
-			response: res,
-			selectedGameType: selectedGameType.value,
-			scannedOpponent: opponentData
-		}))
-	} catch (error) {
-		uni.hideLoading()
-		console.error('处理匹配结果失败:', error)
-		uni.showToast({ title: '匹配失败', icon: 'none' })
-	}
-}
-
-const navigateToPlayingMatch = (match) => {
-	uni.navigateTo({
-		url: buildPlayingRoute(match)
-	})
-}
-
-const handleStartMatchOutcome = (outcome) => {
-	if (outcome.type === 'navigate' || outcome.type === 'resume') {
-		navigateToPlayingMatch(outcome.match)
-		return
-	}
-
-	if (outcome.type === 'prompt_self_ongoing') {
-		uni.showModal({
-			title: '你有未结束的对局',
-			content: outcome.message,
-			confirmText: '进入该对局',
-			cancelText: '稍后处理',
-			success: ({ confirm }) => {
-				if (confirm) {
-					navigateToPlayingMatch(outcome.match)
-				}
-			}
-		})
-		return
-	}
-
-	uni.showToast({
-		title: outcome.message || '创建对局失败',
-		icon: 'none'
-	})
+	startQuickScan()
 }
 </script>
 

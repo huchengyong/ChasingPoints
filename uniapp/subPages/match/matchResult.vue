@@ -265,6 +265,7 @@ import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveMatchRankingRightsSummary } from '@/utils/member-ranking-rights.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import { buildRematchContext } from '@/utils/match-core-flow.js'
+import { startQuickScan } from '@/utils/quick-scan-entry.js'
 import { buildMatchReplayUrl, canOpenMatchReplay } from '@/utils/match-replay-entry.js'
 import { resolveFinishMethodText } from '@/utils/finish-countdown.js'
 import { resolveRefereeIdentityCard, resolveRefereeResultViewConfig, resolveCompletionSourceLabel } from '@/utils/match-referee-view.js'
@@ -616,11 +617,11 @@ const redirectToMatchHistory = () => {
 const handleRematch = () => {
 	const context = buildRematchContext(matchData.value)
 	if (!context.opponent_id) {
-		uni.showToast({ title: '缺少对手信息，请从对局页重新扫码', icon: 'none' })
+		uni.showToast({ title: '缺少对手信息，请重新扫码开局', icon: 'none' })
 		return
 	}
-	uni.setStorageSync('pending_match_rematch', JSON.stringify(context))
-	uni.switchTab({ url: '/pages/match/index' })
+	// 直接进入统一扫码流程；只接受原对手的匹配码，球种与类型预填为上一场的设置
+	startQuickScan({ rematch: context })
 }
 
 const handleReplay = () => {

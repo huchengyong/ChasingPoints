@@ -27,7 +27,7 @@ const honorWallSource = readFileSync(new URL('../subPages/achievement/index.vue'
 const honorWallStyle = readFileSync(new URL('../subPages/achievement/index.scss', import.meta.url), 'utf8')
 const userTabSource = readFileSync(new URL('../pages/user/index.vue', import.meta.url), 'utf8')
 const friendHomepageSource = readFileSync(new URL('../subPages/social/friendHomepage.vue', import.meta.url), 'utf8')
-const notificationSource = readFileSync(new URL('../subPages/notification/index.vue', import.meta.url), 'utf8')
+const notificationSource = readFileSync(new URL('../pages/message/index.vue', import.meta.url), 'utf8')
 const achievementApiSource = readFileSync(new URL('../api/achievement.js', import.meta.url), 'utf8')
 const pagesJsonSource = readFileSync(new URL('../pages.json', import.meta.url), 'utf8')
 

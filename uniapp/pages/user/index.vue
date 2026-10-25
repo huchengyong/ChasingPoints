@@ -63,21 +63,12 @@
 						</view>
 					</view>
 					<view class="profile-actions">
-						<button class="icon-btn" aria-label="扫码开局" @click="handleQuickScan">
-							<uni-icons type="scan" size="20" :color="secondaryIconColor"></uni-icons>
-						</button>
 						<button class="icon-btn" aria-label="出示我的二维码" @click="showMyMatchQRCode">
 							<view class="qr-glyph">
 								<view class="qr-glyph-finder qr-glyph-finder--top-left"></view>
 								<view class="qr-glyph-finder qr-glyph-finder--top-right"></view>
 								<view class="qr-glyph-finder qr-glyph-finder--bottom-left"></view>
 								<view class="qr-glyph-dots"></view>
-							</view>
-						</button>
-						<button class="icon-btn" @click="handleNotificationCenter">
-							<uni-icons type="notification-filled" size="20" :color="secondaryIconColor"></uni-icons>
-							<view v-if="pendingTotal > 0" class="icon-btn-badge">
-								<text>{{ pendingBadgeText }}</text>
 							</view>
 						</button>
 						<button class="icon-btn" @click="handleSettings">
@@ -210,12 +201,6 @@
 			</view>
 		</view>
 
-		<gameTypeModal
-			v-model:visible="showGameTypeModal"
-			:default-type="preferredGameType"
-			@confirm="handleGameTypeConfirm"
-		/>
-
 		<view v-if="showMatchQrModal" class="qr-mask" @click="closeMatchQrModal">
 			<view class="qr-panel" @click.stop>
 				<view class="qr-header">
@@ -259,6 +244,7 @@ import { useActivityStore } from '@/store/activity.js'
 import { useUserOverviewStore } from '@/store/userOverview.js'
 import { useUserStore } from '@/store/user.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { useMainTabBar, setMainTabBarVisible } from '@/utils/use-main-tab-bar.js'
 import { useRankStore } from '@/store/rank.js'
 import {
 	resolveCompactRewardEntry,
@@ -273,14 +259,10 @@ import { useNotificationStore } from '@/store/notification.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
 import { GAME_TYPE_TABS } from '@/utils/game-types.js'
 import { markAsRead } from '@/api/notification.js'
-import { getMatchQRCode, previewMatchInvite, startMatch } from '@/api/match.js'
-import gameTypeModal from '@/components/gameTypeModal.vue'
+import { getMatchQRCode } from '@/api/match.js'
 import { buildHonorWallUrl, presentLatestSeasonRollover } from '@/utils/honor-wall.js'
 import { readDefaultGameType, saveDefaultGameType } from '@/utils/game-type-preference.js'
-import { buildPlayingRoute, resolveStartMatchGuardAction } from '@/utils/ongoing-match-guard.js'
-import { START_MATCH_MODE_OPTIONS, buildStartMatchPayload } from '@/utils/start-match.js'
 import { renderLocalQRCode } from '@/utils/local-qrcode.js'
-import { scanAndResolveMatchCode } from '@/utils/match-scan.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import {
 	getFavoriteVenueRewardPopupStorageKey,
@@ -296,6 +278,7 @@ const activityStore = useActivityStore()
 const userOverviewStore = useUserOverviewStore()
 const rankStore = useRankStore()
 const { isDarkMode } = usePageTheme()
+useMainTabBar('user')
 const notificationStore = useNotificationStore()
 const friendRequestStore = useFriendRequestStore()
 
@@ -322,10 +305,6 @@ const currentRankGameType = computed(() => (
 const showRankGamePicker = computed(() => hasRankCache.value && rankGameView.value.needsPick)
 const rankInfo = computed(() => rankStore.rankInfoMap[currentRankGameType.value] || null)
 const rankView = computed(() => resolveRankCardView(rankInfo.value))
-const showGameTypeModal = ref(false)
-const selectedGameType = ref(null)
-const startMatchMode = ref('practice')
-const startMatchVisibility = ref('private')
 const showMatchQrModal = ref(false)
 const matchQrLoading = ref(false)
 const matchQrFailed = ref(false)
@@ -344,8 +323,6 @@ const isLoggedIn = computed(() => userStore.isLoggedIn)
 const hasRankCache = computed(() => (
 	rankStore.loaded && rankStore.ownerUserId === (Number(userStore.userId) || 0)
 ))
-const pendingTotal = computed(() => notificationStore.unreadCount + friendRequestStore.pendingCount)
-const pendingBadgeText = computed(() => (pendingTotal.value > 99 ? '99+' : String(pendingTotal.value || '')))
 
 const userInfo = computed(() => ({
 	id: userStore.userInfo?.id || 0,
@@ -396,6 +373,7 @@ const quickActions = [
 ]
 
 const serviceLinks = computed(() => ([
+	{ title: '约球记录', icon: 'list', value: '', handler: () => openRoute('/subPages/social/challenges?tab=history') },
 	{ title: '会员中心', icon: 'vip', value: memberEntry.value.text, handler: handleOpenMemberCenter },
 	{ title: '赛季档案', icon: 'calendar', value: '', handler: () => openRoute('/subPages/season/index') },
 	{ title: '规则百科', icon: 'help', value: '', handler: () => openRoute('/subPages/rules/index') },
@@ -564,110 +542,9 @@ const handleGoLogin = () => {
 	uni.navigateTo({ url: '/pages/login/login' })
 }
 
-// 头部快捷入口：扫码与首页「扫描对手二维码」同流程，先选球种和对局类型再扫码。
-const handleQuickScan = () => {
-	showGameTypeModal.value = true
-}
-
-const handleGameTypeConfirm = ({ gameType, setAsDefault } = {}) => {
-	if (setAsDefault) {
-		preferredGameType.value = saveDefaultGameType(uni, userStore.userId, gameType)
-		selectedRankGameType.value = 0
-	}
-	selectedGameType.value = gameType
-	uni.showActionSheet({
-		itemList: START_MATCH_MODE_OPTIONS.map((item) => item.label),
-		success: ({ tapIndex }) => {
-			const option = START_MATCH_MODE_OPTIONS[tapIndex]
-			if (!option) return
-			startMatchMode.value = option.matchMode
-			startMatchVisibility.value = option.visibility
-			scanToStartMatch()
-		}
-	})
-}
-
-const scanToStartMatch = async () => {
-	const authGeneration = userStore.authGeneration
-	const scanAction = await scanAndResolveMatchCode({
-		uniApi: uni,
-		previewMatchInvite
-	})
-	if (authGeneration !== userStore.authGeneration) return
-	if (scanAction.type === 'cancelled') return
-	if (scanAction.type === 'error') {
-		uni.showToast({ title: scanAction.message || '扫码失败', icon: 'none' })
-		return
-	}
-	if (scanAction.type !== 'start_match') {
-		uni.showToast({ title: '请扫描匹配二维码发起对局', icon: 'none' })
-		return
-	}
-	await handleMatchResult(scanAction, authGeneration)
-}
-
-const handleMatchResult = async (scanAction, authGeneration) => {
-	try {
-		const opponentData = scanAction.opponent
-
-		uni.showLoading({ title: '匹配中...', mask: true })
-		const res = await startMatch(buildStartMatchPayload({
-			gameType: selectedGameType.value,
-			opponent: opponentData,
-			matchMode: startMatchMode.value,
-			visibility: startMatchVisibility.value,
-			inviteToken: scanAction.inviteToken
-		}))
-		uni.hideLoading()
-		// 等待期间切号或会话失效，旧账号的开局结果不再跳转
-		if (authGeneration !== userStore.authGeneration) return
-		handleStartMatchOutcome(resolveStartMatchGuardAction({
-			response: res,
-			selectedGameType: selectedGameType.value,
-			scannedOpponent: opponentData
-		}))
-	} catch (error) {
-		uni.hideLoading()
-		uni.showToast({ title: '匹配失败', icon: 'none' })
-	}
-}
-
-const navigateToPlayingMatch = (match) => {
-	uni.navigateTo({
-		url: buildPlayingRoute(match)
-	})
-}
-
-const handleStartMatchOutcome = (outcome) => {
-	if (outcome.type === 'navigate' || outcome.type === 'resume') {
-		navigateToPlayingMatch(outcome.match)
-		return
-	}
-
-	if (outcome.type === 'prompt_self_ongoing') {
-		uni.showModal({
-			title: '你有未结束的对局',
-			content: outcome.message,
-			confirmText: '进入该对局',
-			cancelText: '稍后处理',
-			success: ({ confirm }) => {
-				if (confirm) {
-					navigateToPlayingMatch(outcome.match)
-				}
-			}
-		})
-		return
-	}
-
-	uni.showToast({
-		title: outcome.message || '创建对局失败',
-		icon: 'none'
-	})
-}
-
 const showMyMatchQRCode = async () => {
 	showMatchQrModal.value = true
-	uni.hideTabBar({ animation: true })
+	setMainTabBarVisible(false)
 	await loadMyMatchQRCode()
 }
 
@@ -706,11 +583,11 @@ const closeMatchQrModal = () => {
 	matchQrLoading.value = false
 	matchQrFailed.value = false
 	matchQrContent.value = ''
-	uni.showTabBar({ animation: true })
+	setMainTabBarVisible(true)
 }
 
 onUnmounted(() => {
-	if (showMatchQrModal.value) uni.showTabBar({ animation: false })
+	if (showMatchQrModal.value) setMainTabBarVisible(true)
 })
 
 const handleRankExplain = () => {
@@ -778,10 +655,6 @@ onPullDownRefresh(async () => {
 		uni.stopPullDownRefresh()
 	}
 })
-
-const handleNotificationCenter = () => {
-	uni.navigateTo({ url: '/subPages/notification/index' })
-}
 
 const handleHelp = () => {
 	uni.navigateTo({ url: '/subPages/help/feedback' })

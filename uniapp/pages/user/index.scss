@@ -36,11 +36,12 @@
 }
 
 .main-content {
-	padding: 24rpx 24rpx calc(48rpx + env(safe-area-inset-bottom));
+	// 小程序的自定义 TabBar（--ui-tab-bar-space）已含安全区，其他端取安全区本身
+	padding: 24rpx 24rpx calc(48rpx + max(env(safe-area-inset-bottom), var(--ui-tab-bar-space, 0px)));
 	box-sizing: border-box;
 
 	&.has-float-reward {
-		padding-bottom: calc(200rpx + env(safe-area-inset-bottom));
+		padding-bottom: calc(200rpx + max(env(safe-area-inset-bottom), var(--ui-tab-bar-space, 0px)));
 	}
 }
 
@@ -195,27 +196,6 @@
 
 	&::after {
 		display: none;
-	}
-}
-
-.icon-btn-badge {
-	position: absolute;
-	top: -4rpx;
-	right: -4rpx;
-	min-width: 30rpx;
-	height: 30rpx;
-	padding: 0 8rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	border-radius: 999rpx;
-	background: var(--me-danger);
-	box-sizing: border-box;
-
-	text {
-		font-size: 18rpx;
-		line-height: 1;
-		color: #FFFFFF;
 	}
 }
 
@@ -777,7 +757,7 @@
 .float-reward-entry {
 	position: fixed;
 	right: 24rpx;
-	bottom: calc(24rpx + var(--window-bottom, 0px));
+	bottom: calc(24rpx + var(--window-bottom, 0px) + var(--ui-tab-bar-space, 0px));
 	left: 24rpx;
 	z-index: 90;
 	padding: 20rpx 20rpx 20rpx 24rpx;

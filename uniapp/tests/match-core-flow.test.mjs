@@ -107,7 +107,9 @@ test('finished match cards route to single match detail before h2h', () => {
 })
 
 test('match core pages keep the full launch, confirmation, and post-match exits', () => {
-  const matchPage = readFileSync(new URL('../pages/match/index.vue', import.meta.url), 'utf8')
+  const homePage = readFileSync(new URL('../pages/index/index.vue', import.meta.url), 'utf8')
+  const lobbyPage = readFileSync(new URL('../pages/match/index.vue', import.meta.url), 'utf8')
+  const confirmPage = readFileSync(new URL('../subPages/match/scanConfirm.vue', import.meta.url), 'utf8')
   const playingPage = readFileSync(new URL('../subPages/match/playing.vue', import.meta.url), 'utf8')
   const resultPage = readFileSync(new URL('../subPages/match/matchResult.vue', import.meta.url), 'utf8')
   const detailPage = readFileSync(new URL('../subPages/match/matchDetail.vue', import.meta.url), 'utf8')
@@ -115,17 +117,18 @@ test('match core pages keep the full launch, confirmation, and post-match exits'
 
   const startMatchHelper = readFileSync(new URL('../utils/start-match.js', import.meta.url), 'utf8')
 
-  assert.match(matchPage, /class="play-card match-primary-action"/)
-  assert.match(matchPage, /buildOngoingMatchCard\(currentMatch\.value/)
-  assert.match(matchPage, /扫描对手二维码.*出示我的二维码.*选择好友或最近对手/)
-  assert.match(matchPage, /challenge-entry-btn/)
-  assert.match(matchPage, /challenge-quick-card/)
-  assert.match(matchPage, /START_MATCH_MODE_OPTIONS\.map\(\(item\) => item\.label\)/)
+  // 开局入口在首页：当前对局卡、三种开局方式、约球卡与二维码
+  assert.match(homePage, /buildOngoingMatchCard\(currentMatch\.value/)
+  assert.match(homePage, /扫描对手二维码.*出示我的二维码.*选择好友或最近对手/)
+  assert.match(homePage, /challenge-card/)
+  assert.match(homePage, /\/subPages\/match\/opponentSelector/)
+  assert.match(homePage, /canvas-id="home-match-invite-qrcode"/)
+  assert.doesNotMatch(homePage, /challenges\?mode=select/)
+  // 扫码之后在确认页选对局类型
+  assert.match(confirmPage, /START_MATCH_MODE_OPTIONS/)
   assert.match(startMatchHelper, /练习赛（默认私密，不影响竞技权益）[\s\S]*排位赛（公开展示，需结束确认）/)
-  assert.match(matchPage, /\/subPages\/match\/opponentSelector/)
-  assert.match(matchPage, /class="match-qr-image"/)
-  assert.doesNotMatch(matchPage, /challenges\?mode=select/)
-  assert.match(matchPage, /buildFinishedMatchDetailRoute/)
+  // 观赛大厅只负责列表
+  assert.match(lobbyPage, /buildFinishedMatchDetailRoute/)
 
   assert.match(playingPage, /finishConfirmView\.title/)
   assert.match(playingPage, /向右滑动确认结束/)
@@ -138,7 +141,8 @@ test('match core pages keep the full launch, confirmation, and post-match exits'
   assert.match(resultPage, /分享战绩|生成战绩海报/)
   assert.match(resultPage, /查看交锋记录/)
   assert.doesNotMatch(resultPage, /保存并完成/)
-  assert.match(resultPage, /pending_match_rematch/)
+  assert.match(resultPage, /startQuickScan\(\{ rematch: context \}\)/)
+  assert.doesNotMatch(resultPage, /pending_match_rematch/)
 
   assert.match(detailPage, /查看双方交锋记录/)
   assert.match(detailPage, /handleOpenH2H/)

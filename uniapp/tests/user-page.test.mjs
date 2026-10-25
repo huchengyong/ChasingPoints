@@ -21,13 +21,12 @@ test('guest view keeps a single login action, public entries, and direct feedbac
   assert.doesNotMatch(source, /正在进行的对局|title: '赛讯'/)
 })
 
-test('logged-in header opens profile editing and keeps message and settings buttons', () => {
+test('logged-in header opens profile editing and keeps the QR and settings buttons', () => {
   assert.match(source, /<view class="profile-header">/)
   assert.match(source, /class="profile-main" @click="handleEditProfile"/)
   assert.match(source, /class="profile-avatar" :class="\{ 'has-rank-frame': rankAvatarFrame \}"/)
   assert.match(source, /@click\.stop="handleOpenMemberCenter"/)
   assert.match(source, /@click\.stop="handleOpenReputation"/)
-  assert.match(source, /class="icon-btn" @click="handleNotificationCenter"/)
   assert.match(source, /class="icon-btn" @click="handleSettings"/)
   assert.match(source, /resolveReputationChip\(reputationStatus\.value, coreDataLoading\.value\)/)
   assert.match(source, /`\$\{identity\.badgeText\} · \$\{identity\.tierLabel\}`/)
@@ -81,17 +80,21 @@ test('players without a preference or ranked games can pick a primary game type 
   assert.match(styleSource, /\.rank-picker-options\s*\{[\s\S]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/)
 })
 
-test('profile header offers quick scan and match QR shortcuts instead of an empty-state launch button', () => {
-  assert.match(source, /class="profile-actions">\s*<button class="icon-btn" aria-label="扫码开局" @click="handleQuickScan">\s*<uni-icons type="scan"[\s\S]*<button class="icon-btn" aria-label="出示我的二维码" @click="showMyMatchQRCode">\s*<view class="qr-glyph">[\s\S]*@click="handleNotificationCenter"[\s\S]*@click="handleSettings"/)
+test('profile header offers the match QR and settings; scanning and messages live elsewhere', () => {
+  assert.match(source, /class="profile-actions">\s*<button class="icon-btn" aria-label="出示我的二维码" @click="showMyMatchQRCode">\s*<view class="qr-glyph">[\s\S]*@click="handleSettings"/)
+  // 扫码由底部中间按钮承接，消息由消息 Tab 承接
+  assert.doesNotMatch(source, /handleQuickScan|aria-label="扫码开局"|type="scan"/)
+  assert.doesNotMatch(source, /handleNotificationCenter|notification-filled|pendingTotal|pendingBadgeText|icon-btn-badge/)
+  assert.doesNotMatch(styleSource, /icon-btn-badge/)
   assert.doesNotMatch(source, /goStartFirstMatch|去发起对局|empty-action/)
   assert.doesNotMatch(styleSource, /\.empty-action/)
-  // 开局弹窗与段位卡共用常用球种偏好
-  assert.match(source, /:default-type="preferredGameType"/)
-  assert.match(source, /if \(setAsDefault\) \{\s*preferredGameType\.value = saveDefaultGameType\(uni, userStore\.userId, gameType\)\s*selectedRankGameType\.value = 0/)
-  // 当前对局卡、约球条仍只在首页与观赛页
+  // 开局与球种弹窗已移到扫码确认页；段位卡仍可直接设置常用球种
+  assert.doesNotMatch(source, /gameTypeModal|:default-type=|handleGameTypeConfirm|scanAndResolveMatchCode|startMatch\(/)
+  assert.match(source, /const handlePickRankGameType = \(gameType\) => \{\s*preferredGameType\.value = saveDefaultGameType\(uni, userStore\.userId, gameType\)\s*selectedRankGameType\.value = 0/)
+  // 当前对局卡、约球条在首页
   assert.doesNotMatch(source, /status-card|challenge-status-strip|userWS/)
   assert.match(styleSource, /\.qr-glyph-finder\s*\{[\s\S]*border:\s*4rpx solid var\(--me-text-secondary\);/)
-  // 四个图标挤占昵称区，窄屏下标签换行而不是截成省略号
+  // 图标挤占昵称区时，窄屏下标签换行而不是截成省略号
   assert.match(styleSource, /\.profile-chips\s*\{\s*display:\s*flex;\s*flex-wrap:\s*wrap;/)
 })
 
@@ -112,7 +115,8 @@ test('shortcuts keep the four record entries in one brand color', () => {
   assert.match(styleSource, /\.shortcuts-card\s*\{[\s\S]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/)
 })
 
-test('service list only uses existing member, season, rules, and venue routes', () => {
+test('service list opens the challenge history first, then the existing member, season, rules and venue routes', () => {
+  assert.match(source, /serviceLinks = computed\(\(\) => \(\[\s*\{ title: '约球记录', icon: 'list', value: '', handler: \(\) => openRoute\('\/subPages\/social\/challenges\?tab=history'\) \},\s*\{ title: '会员中心'/)
   assert.match(source, /title: '会员中心', icon: 'vip', value: memberEntry\.value\.text/)
   assert.match(source, /openRoute\('\/subPages\/season\/index'\)/)
   assert.match(source, /openRoute\('\/subPages\/rules\/index'\)/)
@@ -141,7 +145,8 @@ test('floatable reward states render a single floating entry and the old full-sc
   assert.match(source, /class="float-reward-close"/)
   assert.match(source, /handleFloatRewardClose/)
   assert.match(source, /:class="\{ 'has-float-reward': floatRewardVisible \}"/)
-  assert.match(styleSource, /bottom:\s*calc\(24rpx \+ var\(--window-bottom, 0px\)\)/)
+  // 浮动入口让开 H5 页内 TabBar（--window-bottom）和小程序自定义 TabBar（--ui-tab-bar-space）
+  assert.match(styleSource, /bottom:\s*calc\(24rpx \+ var\(--window-bottom, 0px\) \+ var\(--ui-tab-bar-space, 0px\)\)/)
   assert.doesNotMatch(source, /class="reward-modal-overlay"/)
 })
 

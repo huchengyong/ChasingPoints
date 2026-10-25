@@ -3,7 +3,6 @@ import assert from 'node:assert/strict'
 
 import {
   buildStartMatchPayload,
-  normalizePendingMatchContext,
   normalizeStartMatchOptions,
   validateStartMatchPayload
 } from '../utils/start-match.js'
@@ -115,58 +114,6 @@ test('buildStartMatchPayload defaults new snooker matches to free format', () =>
     snooker_rules_version: 2,
     snooker_format: 'free',
     snooker_target_wins: 0
-  })
-})
-
-test('challenge scan context is retired; rematch contexts use independent required fields', () => {
-  assert.equal(normalizePendingMatchContext('pending_match_challenge', JSON.stringify({
-    challenge_id: 88,
-    opponent_id: 2001,
-    game_type: 3
-  })).valid, false)
-  assert.deepEqual(normalizePendingMatchContext('pending_match_rematch', JSON.stringify({
-    opponent_id: 2001,
-    game_type: 2,
-    match_mode: 'ranked',
-    visibility: 'public'
-  })).context, {
-    context_type: 'rematch',
-    challenge_id: 0,
-    opponent_id: 2001,
-    game_type: 2,
-    match_mode: 'ranked',
-    visibility: 'public'
-  })
-  assert.deepEqual(normalizePendingMatchContext('pending_match_rematch', JSON.stringify({
-    opponent_id: 2001,
-    game_type: 4,
-    match_format: 'race_to',
-    target_wins: 65
-  })).context, {
-    context_type: 'rematch',
-    challenge_id: 0,
-    opponent_id: 2001,
-    game_type: 4,
-    match_mode: 'practice',
-    visibility: 'private',
-    match_format: 'free',
-    target_wins: 0
-  })
-  assert.deepEqual(normalizePendingMatchContext('pending_match_rematch', JSON.stringify({
-    opponent_id: 2001,
-    game_type: 1,
-    snooker_format: 'race_to',
-    snooker_target_wins: 5
-  })).context, {
-    context_type: 'rematch',
-    challenge_id: 0,
-    opponent_id: 2001,
-    game_type: 1,
-    match_mode: 'practice',
-    visibility: 'private',
-    snooker_rules_version: 2,
-    snooker_format: 'race_to',
-    snooker_target_wins: 5
   })
 })
 

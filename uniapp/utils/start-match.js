@@ -54,47 +54,7 @@ export const normalizeStartMatchOptions = ({ match_mode, matchMode, visibility }
   }
 }
 
-export const normalizePendingMatchContext = (storageKey = '', raw = '') => {
-  // 约球比赛由双方主动进入创建；扫码上下文仅保留重赛（rematch）。
-  const type = storageKey === 'pending_match_rematch' ? 'rematch' : ''
-  if (!type || !raw) return { valid: false, context: null, message: '开局信息已失效' }
-
-  let parsed
-  try {
-    parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
-  } catch {
-    return { valid: false, context: null, message: '重赛信息已失效' }
-  }
-
-  const context = {
-    ...parsed,
-    context_type: type,
-    challenge_id: Number(parsed?.challenge_id || 0),
-    opponent_id: Number(parsed?.opponent_id || 0),
-    game_type: Number(parsed?.game_type || 0),
-    match_mode: parsed?.match_mode === 'ranked' ? 'ranked' : 'practice',
-    visibility: parsed?.visibility === 'public' ? 'public' : 'private'
-  }
-  if (context.game_type === 1) {
-    context.snooker_rules_version = Number(parsed?.snooker_rules_version || 2)
-    context.snooker_format = parsed?.snooker_format === 'race_to' ? 'race_to' : 'free'
-    context.snooker_target_wins = context.snooker_format === 'race_to'
-      ? Math.min(Math.max(Number(parsed?.snooker_target_wins) || 1, 1), 25)
-      : 0
-  }
-  if ([3, 4].includes(context.game_type)) {
-    context.match_format = 'free'
-    context.target_wins = 0
-  }
-  const valid = context.opponent_id > 0 && context.game_type > 0
-  return {
-    valid,
-    context: valid ? context : null,
-    message: valid ? '' : '重赛信息不完整'
-  }
-}
-
-// 扫码开局前的模式选择，观赛页与首页共用：练习赛可私密，排位赛必须公开。
+// 扫码确认页的对局类型选项：练习赛可私密，排位赛必须公开。
 export const START_MATCH_MODE_OPTIONS = [
   { label: '练习赛（默认私密，不影响竞技权益）', matchMode: 'practice', visibility: 'private' },
   { label: '练习赛（公开展示，不影响竞技权益）', matchMode: 'practice', visibility: 'public' },

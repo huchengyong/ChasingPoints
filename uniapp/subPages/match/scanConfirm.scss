@@ -1,0 +1,367 @@
+/* 扫码确认页：颜色取值对应 DESIGN.md 语义 Token */
+
+.confirm-page {
+	--sc-page: #F7F4EC;
+	--sc-card: #FFFFFF;
+	--sc-subtle: #FAF8F2;
+	--sc-chip: #F5F0E4;
+	--sc-text: #231C0B;
+	--sc-text-secondary: #6E6242;
+	--sc-text-muted: #9A8C67;
+	--sc-border: #E9E2CF;
+	--sc-brand: #E0AE12;
+	--sc-brand-strong: #C69200;
+	--sc-brand-tint: rgba(224, 174, 18, 0.14);
+	--sc-danger: #EF4444;
+	--sc-shadow: 0 2rpx 8rpx rgba(31, 26, 16, 0.05);
+	min-height: 100vh;
+	box-sizing: border-box;
+	padding: 24rpx 24rpx calc(48rpx + env(safe-area-inset-bottom));
+	background: #F7F4EC;
+	color: var(--sc-text);
+
+	&.dark-mode {
+		--sc-page: #141109;
+		--sc-card: #1E180D;
+		--sc-subtle: #241D10;
+		--sc-chip: #2F2813;
+		--sc-text: #FFF7E1;
+		--sc-text-secondary: #D7C89B;
+		--sc-text-muted: #9F926E;
+		--sc-border: #3A2E16;
+		--sc-brand-strong: #F0C542;
+		--sc-brand-tint: rgba(224, 174, 18, 0.2);
+		--sc-shadow: none;
+		background: #141109;
+	}
+}
+
+// ========== 对手与表单卡片 ==========
+.opponent-card,
+.form-card,
+.referee-card {
+	border: 1rpx solid var(--sc-border);
+	border-radius: 24rpx;
+	box-sizing: border-box;
+	background: var(--sc-card);
+	box-shadow: var(--sc-shadow);
+}
+
+.opponent-card {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+	padding: 28rpx;
+}
+
+.opponent-avatar {
+	flex-shrink: 0;
+	width: 96rpx;
+	height: 96rpx;
+	border-radius: 50%;
+	background: var(--sc-border);
+}
+
+.opponent-info {
+	display: flex;
+	flex: 1;
+	min-width: 0;
+	flex-direction: column;
+	gap: 6rpx;
+}
+
+.opponent-name {
+	overflow: hidden;
+	font-size: 32rpx;
+	font-weight: 700;
+	color: var(--sc-text);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.opponent-sub {
+	font-size: 24rpx;
+	line-height: 1.5;
+	color: var(--sc-text-muted);
+}
+
+.form-card {
+	display: flex;
+	flex-direction: column;
+	gap: 18rpx;
+	margin-top: 24rpx;
+	padding: 28rpx;
+}
+
+.form-label {
+	margin-top: 8rpx;
+	font-size: 26rpx;
+	font-weight: 600;
+	color: var(--sc-text);
+
+	&:first-child {
+		margin-top: 0;
+	}
+}
+
+.chip-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16rpx;
+}
+
+.chip {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+	padding: 14rpx 30rpx;
+	border-radius: 999rpx;
+	background: var(--sc-chip);
+	color: var(--sc-text-secondary);
+	font-size: 26rpx;
+
+	&.active {
+		background: var(--sc-brand);
+		color: #FFFFFF;
+		font-weight: 600;
+	}
+}
+
+.chip-badge {
+	padding: 2rpx 10rpx;
+	border-radius: 999rpx;
+	background: rgba(255, 255, 255, 0.28);
+	font-size: 20rpx;
+}
+
+.chip:not(.active) .chip-badge {
+	background: var(--sc-brand-tint);
+	color: var(--sc-brand-strong);
+}
+
+.default-choice {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+	font-size: 24rpx;
+	color: var(--sc-text-secondary);
+}
+
+.default-choice-box {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32rpx;
+	height: 32rpx;
+	border: 2rpx solid var(--sc-text-muted);
+	border-radius: 8rpx;
+	box-sizing: border-box;
+}
+
+.default-choice.active .default-choice-box {
+	border-color: var(--sc-brand);
+	background: var(--sc-brand);
+}
+
+.mode-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+}
+
+.mode-option {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	padding: 22rpx 20rpx;
+	border: 1rpx solid var(--sc-border);
+	border-radius: 18rpx;
+	box-sizing: border-box;
+	background: var(--sc-subtle);
+
+	&.active {
+		border-color: var(--sc-brand);
+		background: var(--sc-brand-tint);
+	}
+}
+
+.mode-radio {
+	flex-shrink: 0;
+	width: 32rpx;
+	height: 32rpx;
+	border: 2rpx solid var(--sc-text-muted);
+	border-radius: 50%;
+	box-sizing: border-box;
+}
+
+.mode-option.active .mode-radio {
+	border: 10rpx solid var(--sc-brand);
+}
+
+.mode-label {
+	flex: 1;
+	font-size: 26rpx;
+	line-height: 1.45;
+	color: var(--sc-text);
+}
+
+// ========== 执裁预览 ==========
+.referee-card {
+	padding: 32rpx 28rpx;
+}
+
+.referee-title,
+.referee-desc,
+.referee-score,
+.referee-meta {
+	display: block;
+}
+
+.referee-title {
+	font-size: 32rpx;
+	font-weight: 700;
+	color: var(--sc-text);
+}
+
+.referee-desc {
+	margin-top: 10rpx;
+	font-size: 24rpx;
+	line-height: 1.55;
+	color: var(--sc-text-secondary);
+}
+
+.referee-body {
+	margin-top: 28rpx;
+	padding: 28rpx 24rpx;
+	border-radius: 24rpx;
+	background: var(--sc-subtle);
+	text-align: center;
+}
+
+.referee-players {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 28rpx;
+}
+
+.referee-player {
+	display: flex;
+	flex: 1;
+	min-width: 0;
+	flex-direction: column;
+	align-items: center;
+	gap: 10rpx;
+
+	image {
+		width: 86rpx;
+		height: 86rpx;
+		border-radius: 50%;
+		background: var(--sc-border);
+	}
+
+	text {
+		max-width: 180rpx;
+		overflow: hidden;
+		font-size: 25rpx;
+		font-weight: 600;
+		color: var(--sc-text);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+}
+
+.referee-vs {
+	color: var(--sc-text-muted);
+	font-size: 22rpx;
+	font-weight: 700;
+}
+
+.referee-score {
+	margin-top: 24rpx;
+	color: var(--sc-brand-strong);
+	font-size: 52rpx;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+}
+
+.referee-meta {
+	margin-top: 8rpx;
+	color: var(--sc-text-secondary);
+	font-size: 24rpx;
+}
+
+// ========== 状态与操作 ==========
+.state-block {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 20rpx;
+	min-height: 60vh;
+	text-align: center;
+}
+
+.state-title {
+	font-size: 32rpx;
+	font-weight: 700;
+	color: var(--sc-text);
+}
+
+.state-text {
+	font-size: 26rpx;
+	line-height: 1.55;
+	color: var(--sc-text-secondary);
+}
+
+.state-text--error,
+.inline-error {
+	color: var(--sc-danger);
+}
+
+.inline-error {
+	display: block;
+	margin-top: 20rpx;
+	font-size: 24rpx;
+	line-height: 1.5;
+	text-align: center;
+}
+
+.primary-btn,
+.ghost-btn {
+	width: 100%;
+	height: 92rpx;
+	margin: 24rpx 0 0;
+	padding: 0;
+	border-radius: 999rpx;
+	box-sizing: border-box;
+	font-size: 30rpx;
+	font-weight: 600;
+	line-height: 92rpx;
+
+	&::after {
+		display: none;
+	}
+}
+
+.primary-btn {
+	background: var(--sc-brand);
+	color: #FFFFFF;
+}
+
+.ghost-btn {
+	margin-top: 16rpx;
+	border: 1rpx solid var(--sc-border);
+	background: var(--sc-subtle);
+	color: var(--sc-text-secondary);
+}
+
+.state-block .primary-btn,
+.state-block .ghost-btn {
+	max-width: 520rpx;
+}
+
+.primary-btn[disabled],
+.ghost-btn[disabled] {
+	opacity: 0.55;
+}

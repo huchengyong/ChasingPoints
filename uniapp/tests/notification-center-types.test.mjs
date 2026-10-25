@@ -2,10 +2,10 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const source = readFileSync(
-  new URL('../subPages/notification/index.vue', import.meta.url),
-  'utf8'
-)
+const source = [
+  readFileSync(new URL('../pages/message/index.vue', import.meta.url), 'utf8'),
+  readFileSync(new URL('../pages/message/index.scss', import.meta.url), 'utf8')
+].join('\n')
 
 test('notification center maps all real backend notification types with explicit icons and styles', () => {
   assert.match(source, /challenge:\s*'🎯'/)

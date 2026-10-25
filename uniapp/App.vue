@@ -11,6 +11,7 @@
 	import { handleCurrentSessionInvalid, post } from '@/utils/request.js'
 	import { buildPlayingRoute, shouldPromptOngoingMatch } from '@/utils/ongoing-match-guard.js'
 	import { applyRuntimeTheme } from '@/utils/theme-application.js'
+	import { startQuickScan } from '@/utils/quick-scan-entry.js'
 	import { resolveSystemDarkMode } from '@/utils/theme-preference.js'
 	import {
 		canApplySessionRecoveryResult,
@@ -66,6 +67,11 @@
 				uni.$on('session-invalid', this.websocketSessionInvalidCallback)
 			}
 			this.bindNetworkStatusListener()
+			// 中间扫码按钮：鸿蒙原生 TabBar 的 midButton 点击回调（H5 仅用于本地截图预览）；
+			// 小程序由自定义 TabBar 承接，回调经 utils/use-main-tab-bar.js 下发。
+			// #ifdef APP-HARMONY || H5
+			uni.onTabBarMidButtonTap(() => startQuickScan())
+			// #endif
 			// 推送注册
 			// #ifdef APP-PLUS
 			try {
@@ -539,6 +545,12 @@
 		--ui-shadow-soft: 0 2rpx 8rpx rgba(31, 26, 16, 0.05);
 		--ui-shadow-primary: 0 8rpx 32rpx rgba(224, 174, 18, 0.22);
 		--ui-shadow-card: 0 16rpx 40rpx rgba(31, 26, 16, 0.08);
+
+		/* 底部 TabBar 覆盖在页面上时占用的高度：小程序自定义 TabBar 为 50px 加安全区，其他端的 TabBar 不占用页面区域 */
+		--ui-tab-bar-space: 0px;
+		/* #ifdef MP-WEIXIN */
+		--ui-tab-bar-space: calc(50px + env(safe-area-inset-bottom));
+		/* #endif */
 
 		/* 兼容别名：迁移期保留，指向语义 Token */
 		--primary-color: var(--ui-brand-primary);

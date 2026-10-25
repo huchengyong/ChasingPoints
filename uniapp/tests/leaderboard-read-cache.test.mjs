@@ -25,6 +25,7 @@ const loadPublicReadStore = (mocks) => {
     'getLeaderboard',
     'getLeaderboardSummary',
     'getNearbyVenues',
+    'getPublicMatches',
     'buildNearbyVenueCacheKey',
     'buildPublicReadKey',
     `${source}; return usePublicReadStore`
@@ -35,6 +36,7 @@ const loadPublicReadStore = (mocks) => {
     mocks.getLeaderboard,
     mocks.getLeaderboardSummary,
     mocks.getNearbyVenues || (() => Promise.resolve({ success: true })),
+    mocks.getPublicMatches || (() => Promise.resolve({ success: true, list: [] })),
     mocks.buildNearbyVenueCacheKey || (() => 'nearby'),
     mocks.buildPublicReadKey || ((prefix, params) => `${prefix}:${JSON.stringify(params)}`)
   )
@@ -159,4 +161,93 @@ test('home and ranking pages use the cached aggregate leaderboard reads', () => 
   assert.doesNotMatch(eventListSource, /getEventNewsList\(/)
   assert.match(eventDetailSource, /publicReadStore\.loadEventNewsView\(/)
   assert.doesNotMatch(eventDetailSource, /getEventNewsView\(/)
+})
+
+const withFakeNow = async (run) => {
+  const realNow = Date.now
+  let now = 1_000_000
+  Date.now = () => now
+  try {
+    return await run({ advance: (ms) => { now += ms } })
+  } finally {
+    Date.now = realNow
+  }
+}
+
+test('live match preview asks for the first small hall page and keeps it for 30 seconds', async () => {
+  await withFakeNow(async ({ advance }) => {
+    const requests = []
+    const usePublicReadStore = loadPublicReadStore({
+      getPublicMatches: async (params) => {
+        requests.push(params)
+        return { success: true, list: [{ id: requests.length }], total: 1 }
+      }
+    })
+    const store = usePublicReadStore()
+
+    const first = await store.loadLiveMatchPreview()
+    advance(29_000)
+    const cached = await store.loadLiveMatchPreview()
+    assert.equal(requests.length, 1, 'inside the TTL the preview is served from cache')
+    assert.deepEqual(cached, first)
+    assert.deepEqual(requests[0], { scope: 'hall', status: 1, page: 1, page_size: 4 })
+
+    advance(2_000)
+    const refreshed = await store.loadLiveMatchPreview()
+    assert.equal(requests.length, 2, 'after the TTL it reloads')
+    assert.equal(refreshed.list[0].id, 2)
+  })
+})
+
+test('live match preview can be forced to reload and single-flights concurrent readers', async () => {
+  const pending = deferred()
+  let calls = 0
+  const usePublicReadStore = loadPublicReadStore({
+    getPublicMatches: () => {
+      calls += 1
+      return pending.promise
+    }
+  })
+  const store = usePublicReadStore()
+
+  const first = store.loadLiveMatchPreview()
+  const second = store.loadLiveMatchPreview({ force: true })
+  await Promise.resolve()
+  assert.equal(calls, 1)
+
+  pending.resolve({ success: true, list: [{ id: 1 }] })
+  assert.deepEqual(await first, await second)
+
+  await store.loadLiveMatchPreview({ force: true })
+  assert.equal(calls, 2)
+})
+
+test('live match preview does not cache a failure and keeps the last good list when a refresh fails', async () => {
+  await withFakeNow(async ({ advance }) => {
+    let mode = 'fail'
+    const usePublicReadStore = loadPublicReadStore({
+      getPublicMatches: async () => {
+        if (mode === 'fail') throw new Error('offline')
+        return { success: true, list: [{ id: 9 }] }
+      }
+    })
+    const store = usePublicReadStore()
+
+    await assert.rejects(store.loadLiveMatchPreview(), /offline/)
+    mode = 'ok'
+    const loaded = await store.loadLiveMatchPreview()
+    assert.equal(loaded.list[0].id, 9, 'a failure leaves nothing behind that blocks the next read')
+
+    mode = 'fail'
+    advance(31_000)
+    const stale = await store.loadLiveMatchPreview()
+    assert.equal(stale.list[0].id, 9, 'a failed refresh falls back to the previous list')
+  })
+})
+
+test('the live match preview holds no viewer data', () => {
+  const source = readAppFile('store/publicRead.js')
+  assert.match(source, /liveMatches: \{\}/)
+  assert.match(source, /scope: 'hall'/)
+  assert.doesNotMatch(source, /liveMatches[\s\S]{0,200}identity/)
 })

@@ -11,7 +11,7 @@ test('retained private read pages bind refreshes to identity and exact invalidat
   const honor = readPage('subPages/achievement/index.vue')
   const history = readPage('subPages/user/matchHistory.vue')
   const opponents = readPage('subPages/user/opponentRecord.vue')
-  const notifications = readPage('subPages/notification/index.vue')
+  const notifications = readPage('pages/message/index.vue')
   const requests = readPage('subPages/social/friendRequests.vue')
 
   assert.match(stats, /loadedIdentityKey\.value !== currentIdentityKey\(\)/)

@@ -134,6 +134,7 @@ import { onShow } from '@dcloudio/uni-app'
 
 import { usePublicReadStore } from '@/store/publicRead.js'
 import { usePageTheme } from '@/utils/page-theme.js'
+import { useMainTabBar } from '@/utils/use-main-tab-bar.js'
 import { buildSaiXunListSections, normalizeSaiXunCard } from '@/utils/saixun.js'
 import {
   buildCurrentYearFilter,
@@ -153,6 +154,7 @@ import {
 import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
+useMainTabBar('tournament')
 const publicReadStore = usePublicReadStore()
 
 const STATUS_TABS = [

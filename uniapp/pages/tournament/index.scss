@@ -8,6 +8,8 @@
   background: var(--sx-page);
   color: var(--sx-text);
   box-sizing: border-box;
+  // 小程序的自定义 TabBar 覆盖在页面底部，滚动区域止于它上方
+  padding-bottom: var(--ui-tab-bar-space, 0px);
   overflow: hidden;
 
   &.dark-mode {

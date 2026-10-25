@@ -5,22 +5,24 @@ import { readFileSync } from 'node:fs'
 const appRoot = new URL('..', import.meta.url)
 const readAppFile = (path) => readFileSync(new URL(path, appRoot), 'utf8')
 
-test('对局首页恢复「再来一局」扫码上下文消费', () => {
-  const source = readAppFile('pages/match/index.vue')
-  assert.match(source, /consumePendingMatchContext\(\)/)
-  assert.match(source, /normalizePendingMatchContext\('pending_match_rematch', raw\)/)
-  assert.match(source, /uni\.removeStorageSync\('pending_match_rematch'\)/)
-  assert.match(readAppFile('subPages/match/matchResult.vue'), /pending_match_rematch/)
+test('「再来一局」直接进入统一扫码，只接受原对手，不再借本地存储交接', () => {
+  const result = readAppFile('subPages/match/matchResult.vue')
+  assert.match(result, /startQuickScan\(\{ rematch: context \}\)/)
+  assert.doesNotMatch(result, /pending_match_rematch|switchTab\(\{ url: '\/pages\/match\/index'/)
+  assert.match(readAppFile('utils/quick-scan.js'), /请扫描指定对手的匹配码/)
 })
 
-test('对局首页回源必须经过活动 Store 的 dirty 与 TTL 判断', () => {
-  const source = readAppFile('pages/match/index.vue')
-  assert.match(source, /activityStore\.shouldFetch\(\)/)
-  assert.doesNotMatch(source, /activityStore\.dirty\)/)
+test('首页回源必须经过活动 Store 的 dirty 与 TTL 判断，观赛大厅不再读取活动状态', () => {
+  const home = readAppFile('pages/index/index.vue')
+  assert.match(home, /activityStore\.fetch\(getActivityIdentity\(\), \{ force, silent: true \}\)/)
+  assert.doesNotMatch(home, /activityStore\.dirty\)/)
+  assert.doesNotMatch(readAppFile('pages/match/index.vue'), /activityStore/)
 })
 
-test('约球区块读取失败时观赛 Tab 提供重试入口', () => {
-  assert.match(readAppFile('pages/match/index.vue'), /challenge-unavailable[\s\S]*?retryChallengeActivity/)
+test('约球区块读取失败时首页提供重试入口，不把未知状态当作「没有约球」', () => {
+  const home = readAppFile('pages/index/index.vue')
+  assert.match(home, /v-if="isLoggedIn && !activityStore\.challengeAvailable" class="challenge-unavailable" @tap="retryChallengeActivity"/)
+  assert.match(home, /const retryChallengeActivity = \(\) => \{\s*activityStore\.fetch\(getActivityIdentity\(\), \{ force: true, silent: true \}\)/)
   assert.match(readAppFile('store/activity.js'), /challengeAvailable/)
 })
 
@@ -41,12 +43,14 @@ test('实际预约日是唯一日期状态，改选日期立即生效', () => {
   assert.match(selector, /scheduled_date=\$\{query\.scheduled_date\}/)
 })
 
-test('「查看并取消」直达约球详情，主 Tab 入口明确指定 Tab', () => {
+test('「查看并取消」直达约球详情，「我的」与消息 Tab 的入口明确指定 Tab', () => {
   const compose = readAppFile('subPages/match/challengeCompose.vue')
   assert.match(compose, /challengeWaiting\?challenge_id=\$\{res\.pending_challenge_id\}/)
-  const home = readAppFile('pages/match/index.vue')
-  assert.match(home, /goChallenges\('history'\)/)
-  assert.match(home, /goChallenges\('received'\)/)
+  assert.match(compose, /uni\.switchTab\(\{ url: '\/pages\/index\/index' \}\)/)
+  // 记录在「我的」，收到的邀请在消息 Tab，本人发出的与历史不被默认 Tab 过滤
+  assert.match(readAppFile('pages/user/index.vue'), /openRoute\('\/subPages\/social\/challenges\?tab=history'\)/)
+  assert.match(readAppFile('utils/message-center.js'), /\/subPages\/social\/challenges\?tab=received/)
+  assert.doesNotMatch(readAppFile('pages/match/index.vue'), /goChallenges|challengeCompose/)
 })
 
 test('比赛终态在本机立即失效约球活动卡', () => {

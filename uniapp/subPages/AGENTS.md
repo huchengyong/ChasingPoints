@@ -5,7 +5,7 @@
 ## 注册与导航
 - 新增/移动页面前检查 [pages.json](../pages.json) 的 `subPackages`、路径与导航配置。目录存在不代表已注册；分包根也不一定位于 `subPages/`（例如 `pages/ranking`）。
 - 改路径时一起核对调用方、分享入口与兼容跳转，不按旧页面清单恢复已经收口的入口。
-- [notification/index.vue](notification/index.vue) 是通知中心，[user/notification.vue](user/notification.vue) 是通知偏好设置，不能混淆职责。
+- 通知中心是主包的消息 Tab [pages/message/index.vue](../pages/message/index.vue)，[user/notification.vue](user/notification.vue) 是通知偏好设置，不能混淆职责。
 
 ## 跨页面状态
 - 对局进行中、结果、详情与分享页复用现有对局同步规则；修改前一起检查 [utils/websocket.js](../utils/websocket.js) 与 [utils/match-action.js](../utils/match-action.js)，不要每页复制 snapshot/revision 处理。

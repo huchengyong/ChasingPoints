@@ -12,6 +12,8 @@
 | HTTP/WS 环境地址 | [utils/runtime-config.js](utils/runtime-config.js) |
 | 实时对局 | [utils/websocket.js](utils/websocket.js)、[utils/match-action.js](utils/match-action.js) |
 | 主题 | [store/theme.js](store/theme.js)、[theme.json](theme.json)、[utils/theme-application.js](utils/theme-application.js) |
+| 主导航（四个 Tab、中间扫码按钮、消息角标） | [pages.json](pages.json) 的 `tabBar`、小程序原生组件 [custom-tab-bar/](custom-tab-bar/)、[utils/main-tab-bar.js](utils/main-tab-bar.js)（纯逻辑与平台分支）、[utils/use-main-tab-bar.js](utils/use-main-tab-bar.js)（Tab 页接入） |
+| 扫码（开局、执裁） | [utils/quick-scan.js](utils/quick-scan.js)（流程）、[utils/quick-scan-entry.js](utils/quick-scan-entry.js)（运行时接线）、[subPages/match/scanConfirm.vue](subPages/match/scanConfirm.vue)（确认页） |
 | 页面局部约束 | [subPages/AGENTS.md](subPages/AGENTS.md) |
 
 ## 页面与请求边界
@@ -33,7 +35,10 @@
 - 品牌、主题、按钮、WXSS 选择器和安全区规则统一维护在 [DESIGN.md](../DESIGN.md)；修改 UI 时按该文档的 UniApp 细则与验收清单核对，不复制另一套规范。
 - 主题接入 `theme.json`、`App.vue` CSS 变量与 `store/theme.js` 的现有切换链路，不绕过用户主题偏好。
 - 优先系统导航栏；自定义导航栏需有明确需求，并保持正确高度与返回行为。
-- Node 测试（含 Vue SFC/jsdom 挂载）不替代 App/微信小程序编译和真机 UI 验收；跨平台改动需注明实际覆盖的平台。
+- 主导航为「首页 / 赛讯 / 扫码 / 消息 / 我的」：小程序用自定义 TabBar（原生组件，不经 uni-app 编译，`uni.setTabBar*` / `hideTabBar` 对它不生效），鸿蒙用原生 `midButton`；新增或调整 Tab 时同步 `pages.json`、`custom-tab-bar/`、`utils/main-tab-bar.js` 的 `MAIN_TABS` 与 `theme.json` 图标。Tab 页用 `useMainTabBar` 接入，弹层隐藏 / 恢复 TabBar 只用 `setMainTabBarVisible`，不直接调用 `uni.hideTabBar` / `uni.showTabBar`。
+- 所有「扫对手码 / 裁判码」入口只调用 `startQuickScan`（先扫后选）；页面里不要再自带球种弹窗、扫码或开局代码，扫码凭证只经内存交接，不进路由、本地存储或日志。
+- `uni` 在小程序里是编译期注入的，`utils/` 中的纯逻辑不要依赖 `globalThis.uni`，由调用方显式传入 `uniApi`。
+- UniApp 目前只编译微信小程序和鸿蒙（iOS / Android 改为原生开发）。Node 测试（含 Vue SFC/jsdom 挂载）不替代微信小程序 / 鸿蒙的编译和真机 UI 验收；改动需注明实际覆盖的平台。
 - 公开界面展示他人会员身份（头像框、VIP 标识）统一使用 [components/memberAvatar.vue](components/memberAvatar.vue) 与 [utils/member-identity.js](utils/member-identity.js)，不在页面里手写头像框或标识；字段缺失按非会员处理。头像框素材很宽，按周围空间选择占位方式（默认溢出、`reserve-frame`、`fit-frame`），不要靠加大父容器边距硬撑。会员分析页（表现分析、单场复盘）的开通入口只由 `canShowPaidMembershipEntry()` 控制。
 - 微信小程序主包上限 2MB，`static/` 只放必须随包的小资源。段位、成就、头像框和默认封面等大图放在 [cdn-assets/](cdn-assets/)，目录结构与七牛桶 key 一致，需上传到 CDN 后才生效；页面直接绑定后端返回的 `icon` 时用 [utils/cdn-asset.js](utils/cdn-asset.js) 的 `resolveCdnAssetUrl` 转换。
 

@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-const pagePath = path.resolve('subPages/notification/index.vue')
+const pagePath = path.resolve('pages/message/index.vue')
 const apiPath = path.resolve('api/notification.js')
 const tournamentPagePath = path.resolve('pages/tournament/index.vue')
 const sendFriendRequestLogicPath = path.resolve('backend/internal/logic/send_friend_request_logic.go')

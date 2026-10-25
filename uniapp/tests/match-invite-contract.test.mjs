@@ -12,14 +12,13 @@ const matchPageSource = read('../pages/match/index.vue')
 const homePageSource = read('../pages/index/index.vue')
 const playingPageSource = read('../subPages/match/playing.vue')
 const userPageSource = read('../pages/user/index.vue')
-const scanSources = [
-  homePageSource,
-  matchPageSource,
-  read('../pages/ranking/index.vue'),
-  userPageSource
-]
+const rankingPageSource = read('../pages/ranking/index.vue')
+const resultPageSource = read('../subPages/match/matchResult.vue')
+const confirmPageSource = read('../subPages/match/scanConfirm.vue')
+const quickScanSource = read('../utils/quick-scan.js')
+const quickScanEntrySource = read('../utils/quick-scan-entry.js')
+const appSource = read('../App.vue')
 const qrSources = [
-  matchPageSource,
   homePageSource,
   playingPageSource,
   userPageSource
@@ -33,15 +32,21 @@ test('invite API and start payload use a server-verifiable token instead of muta
   assert.match(startPayloadSource, /if \(!inviteToken && \(!Number\.isFinite\(opponentId\) \|\| opponentId <= 0\)\)/)
 })
 
-test('all PK scan entries use the same preview-first helper and pass its invite token to start payload', () => {
-  for (const source of scanSources) {
-    assert.match(source, /scanAndResolveMatchCode/)
-    assert.match(source, /previewMatchInvite/)
-    assert.doesNotMatch(source, /JSON.parse(scanResult)/)
+test('every scan entry goes through the unified preview-first flow', () => {
+  // 解析与预览只在统一流程里：先预览取得对手，再把 invite token 交给确认页开局
+  assert.match(quickScanSource, /scanAndResolveMatchCode/)
+  assert.match(quickScanEntrySource, /previewMatchInvite/)
+  assert.match(confirmPageSource, /inviteToken\s*\n\s*\}\)\)/)
+  assert.match(confirmPageSource, /buildStartMatchPayload\(\{[\s\S]*inviteToken[\s\S]*\}\)/)
+
+  for (const source of [homePageSource, matchPageSource, rankingPageSource, userPageSource, resultPageSource, confirmPageSource]) {
+    assert.doesNotMatch(source, /scanAndResolveMatchCode/)
+    assert.doesNotMatch(source, /JSON.parse\(scanResult\)/)
   }
-  for (const source of scanSources) {
-    assert.match(source, /inviteToken: scanAction.inviteToken/)
+  for (const source of [homePageSource, rankingPageSource, resultPageSource, appSource]) {
+    assert.match(source, /startQuickScan/)
   }
+  assert.match(appSource, /uni\.onTabBarMidButtonTap\(\(\) => startQuickScan\(\)\)/)
 })
 
 test('all match and referee QR displays render locally without a third-party QR image service', () => {
@@ -56,10 +61,6 @@ test('local QR displays expose loading, failure, and refresh states', () => {
   assert.match(homePageSource, /matchQrFailed/)
   assert.match(homePageSource, /@tap="loadMyMatchQRCode"/)
 
-  assert.match(matchPageSource, /matchQrLoading/)
-  assert.match(matchPageSource, /matchQrFailed/)
-  assert.match(matchPageSource, /@click="loadMyMatchQRCode"/)
-
   assert.match(userPageSource, /v-if="matchQrLoading"/)
   assert.match(userPageSource, /matchQrFailed/)
   assert.match(userPageSource, /@click="loadMyMatchQRCode"/)
@@ -68,12 +69,19 @@ test('local QR displays expose loading, failure, and refresh states', () => {
   assert.match(playingPageSource, /refereeQrcodeError/)
   assert.match(playingPageSource, /refereeQrcodeContent\.value = ''/)
   assert.match(playingPageSource, /@click="openRefereeQrModal"/)
+
+  // 观赛大厅只有列表，不再带二维码弹层
+  assert.doesNotMatch(matchPageSource, /matchQrLoading|renderLocalQRCode|canvas/)
 })
 
-test('challenge scan context is gone and rematch context is cleared after cancellation, failure, or identity change', () => {
-  assert.match(matchPageSource, /const clearPendingStartContext/)
-  assert.match(matchPageSource, /scanAction\.type === 'cancelled'/)
-  assert.match(matchPageSource, /pendingStartAuthGeneration\.value !== userStore\.authGeneration/)
-  assert.doesNotMatch(matchPageSource, /pending_match_challenge/)
-  assert.match(matchPageSource, /uni\.removeStorageSync\('pending_match_rematch'\)/)
+test('scan credentials stay in memory and out of routes, storage and logs', () => {
+  assert.doesNotMatch(quickScanSource, /StorageSync|console\./)
+  assert.doesNotMatch(confirmPageSource, /StorageSync\('(?!default-game-type)|setStorageSync\(.*(token|invite)/i)
+  // 页面路由只带对局信息，凭证不外泄
+  assert.doesNotMatch(confirmPageSource, /navigateTo\(\{[^}]*(inviteToken|join_token)/)
+  assert.doesNotMatch(confirmPageSource, /redirectTo\(\{ url: `[^`]*(inviteToken|join_token)/)
+  // 约球扫码上下文已移除，「再来一局」不再借本地存储交接
+  for (const source of [matchPageSource, homePageSource, userPageSource, resultPageSource, confirmPageSource, quickScanSource]) {
+    assert.doesNotMatch(source, /pending_match_challenge|pending_match_rematch/)
+  }
 })

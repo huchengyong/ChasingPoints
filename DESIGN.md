@@ -68,7 +68,7 @@
 
 ### 3.3 实现映射
 
-- UniApp：在 `uniapp/App.vue` 的 `page` 与 `.dark-mode` 中提供 `--ui-*` CSS 变量；`uniapp/theme.json` 负责原生主题替换；`uniapp/utils/theme-application.js` 负责运行时导航栏与 TabBar；`uniapp/uni.scss` 保留 UniApp 默认变量。
+- UniApp：在 `uniapp/App.vue` 的 `page` 与 `.dark-mode` 中提供 `--ui-*` CSS 变量；`uniapp/theme.json` 负责原生主题替换；`uniapp/utils/theme-application.js` 负责运行时导航栏与鸿蒙原生 TabBar，小程序自定义 TabBar 的主题由 `uniapp/utils/use-main-tab-bar.js` 在各 Tab 页下发；`uniapp/uni.scss` 保留 UniApp 默认变量。
 - 原生 iOS：通过 `iOS/iOS/AppTheme.swift` 的 `AppTheme` / `AppPalette` 消费颜色语义；`theme_mode` / `ThemeMode` 管理外观偏好，不引入 CSS 变量或 rpx 映射。
 - 官网：在 `website/assets/styles/main.css` 的 `:root` 中提供同名 `--ui-*` 变量，组件通过变量消费视觉角色。
 
@@ -192,14 +192,17 @@
 
 ### 9.5 导航与 TabBar
 
-- App / 小程序选中态 `brand-primary`，未选中 `text-muted` / 平台未选中色。
+- 小程序 / 鸿蒙选中态 `brand-primary`，未选中 `text-muted` / 平台未选中色。
 - 导航栏、TabBar 颜色由主题机制统一驱动，页面不得硬编码绕过。
+- UniApp 主导航为「首页 / 赛讯 / 扫码 / 消息 / 我的」：中间扫码按钮不对应页面，与栏同高、不外凸，使用品牌金圆形图标，亮暗主题共用同一张图，不随主题切换。小程序用原生自定义 TabBar（`custom-tab-bar/`），鸿蒙用原生 `midButton`；两端文字、图标、选中色与角标位置保持一致。
+- 消息角标只表达一种计数：有未读通知显示数字（超过 99 显示「99+」），没有未读但有待处理的好友申请或约球邀请时显示红点；状态不能只靠颜色表达，数字和红点之外仍以消息列表为准。
 - 官网 Header 使用毛玻璃 + `border-default`，当前导航项与 CTA 保持清晰对比。
 
 ### 9.6 弹层 / 底部抽屉
 
 - 弹层：`surface-card` + `radius-xl` + 深色遮罩。
-- UniApp 底部抽屉覆盖 TabBar 区域时，必须处理 `env(safe-area-inset-bottom)`，或在打开时 `uni.hideTabBar`、关闭 / 卸载时 `uni.showTabBar`，避免操作与 TabBar 重叠。
+- UniApp 底部抽屉覆盖 TabBar 区域时，必须处理 `env(safe-area-inset-bottom)`，或在打开时隐藏 TabBar、关闭 / 卸载时恢复，避免操作与 TabBar 重叠。隐藏与恢复统一使用 `setMainTabBarVisible`（`utils/use-main-tab-bar.js`），不直接调用 `uni.hideTabBar` / `uni.showTabBar`：小程序自定义 TabBar 下这两个接口不生效。
+- 小程序自定义 TabBar 覆盖在页面底部，Tab 页用 `--ui-tab-bar-space`（50px 加安全区；其他端为 0）预留底部空间，页面内固定在底部的元素也要让开它。
 
 ### 9.7 空态 / 加载态 / 骨架屏
 
@@ -238,7 +241,7 @@
 4. 亮暗主题均由共享主题机制驱动，暗色使用暖黑金。
 5. 圆角、间距、阴影与同层级组件一致。
 6. UniApp 自定义 button 满足 `margin: 0`、隐藏 `::after`、`line-height` 与 `height` 一致、`[disabled]` 覆盖。
-7. 底部弹层处理安全区与 TabBar。
+7. 底部弹层处理安全区与 TabBar（隐藏 / 恢复走统一方法，Tab 页为自定义 TabBar 预留底部空间）。
 8. 空态 / 加载态 / 骨架屏层级统一。
 9. 官网移动端无横向溢出，交互元素有可见焦点态。
 10. 仅做视觉调整时，不顺带改变路由、接口、生命周期、校验或业务数据。
@@ -248,7 +251,7 @@
 | 场景 | UniApp 亮色 | UniApp 暗色 | 微信小程序 | 官网移动端 | 官网桌面端 |
 |---|---|---|---|---|---|
 | 欢迎 → 登录 → 首页链路 | ✅ | ✅ | ✅ | — | — |
-| 四个主 Tab | ✅ | ✅ | ✅ | — | — |
+| 四个主 Tab 与中间扫码按钮 | ✅ | ✅ | ✅ | — | — |
 | 列表 / 详情 / 表单 / 弹层 | ✅ | ✅ | ✅ | — | — |
 | 原生按钮 / 导航栏 / 安全区 | ✅ | ✅ | ✅ | — | — |
 | 首页 Hero / 下载 CTA | — | — | — | ✅ | ✅ |

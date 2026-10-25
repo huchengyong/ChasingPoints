@@ -23,6 +23,8 @@
   flex-direction: column;
   overflow: hidden;
   box-sizing: border-box;
+  // 小程序的自定义 TabBar 覆盖在页面底部，滚动区域止于它上方
+  padding-bottom: var(--ui-tab-bar-space, 0px);
   background: #F7F4EC;
   color: var(--home-text-primary);
 
@@ -82,46 +84,6 @@
   margin-top: 6rpx;
   font-size: 24rpx;
   color: var(--home-text-secondary);
-}
-
-.subtitle--link {
-  font-weight: 600;
-  color: var(--home-accent-strong);
-}
-
-.header-right {
-  position: relative;
-  flex-shrink: 0;
-  width: 72rpx;
-  height: 72rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--home-surface);
-  border: 1rpx solid var(--home-border);
-  box-sizing: border-box;
-}
-
-.header-badge {
-  position: absolute;
-  top: -4rpx;
-  right: -4rpx;
-  min-width: 30rpx;
-  height: 30rpx;
-  padding: 0 8rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999rpx;
-  background: var(--home-danger);
-  box-sizing: border-box;
-
-  text {
-    font-size: 18rpx;
-    line-height: 1;
-    color: #FFFFFF;
-  }
 }
 
 .home-scroll {
@@ -382,6 +344,20 @@
   }
 }
 
+.challenge-unavailable {
+  margin-top: 16rpx;
+  padding: 16rpx 22rpx;
+  border-radius: 18rpx;
+  background: var(--home-surface);
+  border: 1rpx solid var(--home-border);
+  box-sizing: border-box;
+}
+
+.challenge-unavailable__text {
+  font-size: 24rpx;
+  color: var(--home-text-secondary);
+}
+
 // ========== 错误提示 ==========
 .home-load-error {
   display: flex;
@@ -544,6 +520,112 @@
   .empty-action {
     align-self: center;
   }
+}
+
+// ========== 正在进行 ==========
+.live-card {
+  border-radius: 24rpx;
+  background: var(--home-surface);
+  border: 1rpx solid var(--home-border);
+  box-shadow: var(--home-shadow);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.live-item {
+  padding: 20rpx 24rpx;
+
+  & + .live-item {
+    border-top: 1rpx solid var(--home-border);
+  }
+
+  &:active {
+    background: var(--home-surface-secondary);
+  }
+}
+
+.live-item-head {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.live-item-meta {
+  flex: 1;
+  min-width: 0;
+  font-size: 22rpx;
+  color: var(--home-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.live-state {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 40rpx;
+  padding: 0 14rpx;
+  border-radius: 999rpx;
+  background: var(--home-success-soft);
+  box-sizing: border-box;
+
+  text {
+    font-size: 20rpx;
+    font-weight: 600;
+    line-height: 40rpx;
+    color: var(--home-success);
+    white-space: nowrap;
+  }
+}
+
+.live-state-dot {
+  width: 10rpx;
+  height: 10rpx;
+  margin-right: 8rpx;
+  border-radius: 50%;
+  background: var(--home-success);
+}
+
+.live-player {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  min-height: 64rpx;
+
+  & + .live-player {
+    margin-top: 8rpx;
+  }
+}
+
+.live-player-avatar {
+  flex-shrink: 0;
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: var(--home-surface-secondary);
+}
+
+.live-player-name {
+  min-width: 0;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: var(--home-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.live-player-score {
+  flex-shrink: 0;
+  min-width: 48rpx;
+  margin-left: auto;
+  text-align: right;
+  font-size: 34rpx;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--home-text-primary);
 }
 
 // ========== 赛事 ==========
@@ -883,6 +965,10 @@
 .skeleton-card {
   border-radius: 24rpx;
   opacity: 0.6;
+}
+
+.skeleton-card--live {
+  height: 280rpx;
 }
 
 .skeleton-card--event {

@@ -2,9 +2,10 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { readPagesJson } from './helpers/pages-json.mjs'
 
 const appRoot = new URL('..', import.meta.url)
-const pagesJson = JSON.parse(readFileSync(new URL('../pages.json', import.meta.url), 'utf8'))
+const pagesJson = readPagesJson()
 
 const registeredRoutes = [
   ...pagesJson.pages.map((page) => page.path),
@@ -14,8 +15,7 @@ const registeredRoutes = [
 const getRouteSource = (route) => readFileSync(new URL(`../${route}.vue`, import.meta.url), 'utf8')
 const themeAwareComponents = [
   'components/agreementConsentSheet.vue',
-  'components/bindPhone.vue',
-  'components/gameTypeModal.vue'
+  'components/bindPhone.vue'
 ]
 
 const getRouteStyleSource = (route) => {

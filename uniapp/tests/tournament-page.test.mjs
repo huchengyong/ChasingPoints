@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { readPagesJson } from './helpers/pages-json.mjs'
 
 const pageSource = readFileSync(
   new URL('../pages/tournament/index.vue', import.meta.url),
@@ -39,7 +40,7 @@ test('tournament list filters by status tabs and action sheets without a custom 
 })
 
 test('tournament list is the only tabbar registration and retired paths are gone', () => {
-  const pagesConfig = JSON.parse(readFileSync(new URL('../pages.json', import.meta.url), 'utf8'))
+  const pagesConfig = readPagesJson()
   const pagePaths = pagesConfig.pages.map((page) => page.path)
   assert.ok(pagePaths.includes('pages/tournament/index'))
   assert.ok(pagePaths.includes('pages/social/index'))
@@ -80,7 +81,7 @@ test('filter change resets pagination to page 1', () => {
 
 test('detail page offers round tabs and forced pull-down refresh', () => {
   const detailSource = readFileSync(new URL('../subPages/tournament/detail.vue', import.meta.url), 'utf8')
-  const pagesConfig = JSON.parse(readFileSync(new URL('../pages.json', import.meta.url), 'utf8'))
+  const pagesConfig = readPagesJson()
   const tournamentPkg = pagesConfig.subPackages.find((pkg) => pkg.root === 'subPages/tournament')
   const detailConfig = tournamentPkg.pages.find((page) => page.path === 'detail')
 

@@ -102,6 +102,17 @@ export const normalizeSpectatorMatch = (match = {}, { userId = 0 } = {}) => {
   }
 }
 
+export const HOME_LIVE_MATCH_LIMIT = 3
+
+// 首页「正在进行」：去掉本人的当前对局（已在开局卡展示）再取前 3 场，卡片形态与观赛列表一致。
+export const buildHomeLiveMatches = (list = [], { userId = 0, currentMatchId = 0 } = {}) => {
+  const currentId = Number(currentMatchId) || 0
+  return (Array.isArray(list) ? list : [])
+    .filter((match) => !currentId || Number(match.id) !== currentId)
+    .slice(0, HOME_LIVE_MATCH_LIMIT)
+    .map((match) => normalizeSpectatorMatch(match, { userId }))
+}
+
 // 好友标签混合两种状态，按「进行中 / 已结束」分组；大厅标签只有一种状态，不加分组标题。
 export const buildSpectatorSections = (list = [], tabValue = 'live') => {
   if (tabValue !== 'friends') {

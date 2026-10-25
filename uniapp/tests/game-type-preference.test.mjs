@@ -64,20 +64,21 @@ test('a saved preference remains after the following scan flow is cancelled', ()
 	assert.equal(readDefaultGameType(storage, 101), 3)
 })
 
-test('settings and all direct PK entries use the shared preference helper', () => {
+test('settings and the scan confirm page share the default game type preference helper', () => {
   const settings = readFileSync(new URL('../subPages/user/settings.vue', import.meta.url), 'utf8')
   assert.match(settings, /DEFAULT_GAME_TYPE_OPTIONS/)
   assert.match(settings, /每次询问/)
   assert.match(settings, /saveDefaultGameType/)
 
-	for (const path of ['../pages/index/index.vue', '../pages/match/index.vue', '../pages/ranking/index.vue']) {
-		const page = readFileSync(new URL(path, import.meta.url), 'utf8')
-		assert.match(page, /:default-type="defaultGameType"/)
-		assert.match(page, /readDefaultGameType/)
-		assert.match(page, /saveDefaultGameType/)
-		const handlerStart = page.indexOf('const handleGameTypeConfirm')
-		const saveIndex = page.indexOf('defaultGameType.value = saveDefaultGameType', handlerStart)
-		const selectionIndex = page.indexOf('selectedGameType.value = gameType', handlerStart)
-		assert.ok(handlerStart >= 0 && saveIndex > handlerStart && saveIndex < selectionIndex)
-	}
+  // 所有扫码入口都在扫码之后的确认页里选球种；偏好只在勾选「设为默认」并点击开始时保存，且先于开局请求
+  const confirm = readFileSync(new URL('../subPages/match/scanConfirm.vue', import.meta.url), 'utf8')
+  assert.match(confirm, /readDefaultGameType\(uni, identity\.userId\)/)
+  assert.match(confirm, /if \(setAsDefault\.value\) \{\s*defaultGameType\.value = saveDefaultGameType\(uni, identity\.userId, selectedGameType\)/)
+  const saveIndex = confirm.indexOf('saveDefaultGameType(uni, identity.userId')
+  assert.ok(saveIndex > 0 && saveIndex < confirm.indexOf('await startMatch('))
+
+  for (const path of ['../pages/index/index.vue', '../pages/match/index.vue', '../pages/ranking/index.vue', '../pages/user/index.vue']) {
+    const page = readFileSync(new URL(path, import.meta.url), 'utf8')
+    assert.doesNotMatch(page, /gameTypeModal|handleGameTypeConfirm/, path)
+  }
 })

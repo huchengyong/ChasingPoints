@@ -18,7 +18,7 @@ const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 const CORE_DATA_PAGES = [
   'pages/tournament/index.vue',
-  'subPages/notification/index.vue',
+  'pages/message/index.vue',
   'subPages/social/feed.vue',
   'subPages/social/myPosts.vue',
   'subPages/social/friendList.vue',
@@ -42,7 +42,7 @@ const CORE_DATA_PAGES = [
 
 const PAGE_LOADERS = {
   'pages/tournament/index.vue': 'fetchData',
-  'subPages/notification/index.vue': 'loadNotifications',
+  'pages/message/index.vue': 'loadNotifications',
   'subPages/social/feed.vue': 'loadData',
   'subPages/social/myPosts.vue': 'loadPosts',
   'subPages/social/friendList.vue': 'loadData',

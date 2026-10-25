@@ -34,7 +34,7 @@
 		{
 			"path": "pages/match/index",
 			"style": {
-				"navigationBarTitleText": "观赛",
+				"navigationBarTitleText": "观赛大厅",
 				"enablePullDownRefresh": true
 			}
 		},
@@ -42,6 +42,13 @@
 			"path": "pages/tournament/index",
 			"style": {
 				"navigationBarTitleText": "赛讯"
+			}
+		},
+		{
+			"path": "pages/message/index",
+			"style": {
+				"navigationBarTitleText": "消息",
+				"enablePullDownRefresh": true
 			}
 		},
 		{
@@ -59,6 +66,17 @@
 			}
 	],
 	"tabBar": {
+		// #ifdef MP-WEIXIN
+		"custom": true,
+		// #endif
+		// 中间扫码按钮不对应页面；H5 仅用于本地截图预览，不是发布目标
+		// #ifdef APP-HARMONY || H5
+		"midButton": {
+			"width": "50px",
+			"height": "50px",
+			"backgroundImage": "static/tabbar/scan-button.png"
+		},
+		// #endif
 		"color": "@tabInactive",
 		"selectedColor": "@tabActive",
 		"backgroundColor": "@background",
@@ -71,16 +89,16 @@
 				"selectedIconPath": "@selectedIndexIconPath"
 			},
 			{
-				"pagePath": "pages/match/index",
-				"text": "观赛",
-				"iconPath": "@matchIconPath",
-				"selectedIconPath": "@selectedMatchIconPath"
-			},
-			{
 				"pagePath": "pages/tournament/index",
 				"text": "赛讯",
 				"iconPath": "@tournamentIconPath",
 				"selectedIconPath": "@selectedTournamentIconPath"
+			},
+			{
+				"pagePath": "pages/message/index",
+				"text": "消息",
+				"iconPath": "@messageIconPath",
+				"selectedIconPath": "@selectedMessageIconPath"
 			},
 			{
 				"pagePath": "pages/user/index",
@@ -216,6 +234,12 @@
 					"path": "opponentSelector",
 					"style": {
 						"navigationBarTitleText": "选择球友"
+					}
+				},
+				{
+					"path": "scanConfirm",
+					"style": {
+						"navigationBarTitleText": "确认对局"
 					}
 				},
 				{
@@ -431,18 +455,6 @@
 					"path": "history",
 					"style": {
 						"navigationBarTitleText": "历届赛季"
-					}
-				}
-			]
-		}
-		,{
-			"root": "subPages/notification",
-			"pages": [
-				{
-					"path": "index",
-					"style": {
-						"navigationBarTitleText": "消息中心",
-						"enablePullDownRefresh": true
 					}
 				}
 			]

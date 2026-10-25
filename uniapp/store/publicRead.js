@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { getEventNewsList, getEventNewsView } from '@/api/event-news.js'
+import { getPublicMatches } from '@/api/match.js'
 import { getLeaderboard, getLeaderboardSummary } from '@/api/rank.js'
 import { getNearbyVenues } from '@/api/venue.js'
 import { buildNearbyVenueCacheKey, buildPublicReadKey } from '@/utils/public-read-cache.js'
@@ -8,6 +9,9 @@ import { readStaticReadCache, writeStaticReadCache } from '@/utils/static-read-c
 const EVENT_NEWS_TTL = 5 * 60 * 1000
 const LEADERBOARD_TTL = 30 * 1000
 const NEARBY_VENUES_TTL = 3 * 60 * 1000
+// 首页「正在进行」预览：多取 1 场，去掉本人的当前对局后仍能凑满 3 场。
+const LIVE_MATCH_PREVIEW_TTL = 30 * 1000
+const LIVE_MATCH_PREVIEW_SIZE = 4
 const STATIC_DATA_TTL = 24 * 60 * 60 * 1000
 
 const isFresh = (entry, ttl, now = Date.now()) => (
@@ -41,6 +45,7 @@ export const usePublicReadStore = defineStore('publicRead', {
     eventNews: {},
     eventNewsViews: {},
     leaderboard: {},
+    liveMatches: {},
     nearbyVenues: {},
     staticData: {}
   }),
@@ -109,6 +114,16 @@ export const usePublicReadStore = defineStore('publicRead', {
       const key = leaderboardCacheKey('leaderboard-summary', params, options.identity)
       return this.loadEntry('leaderboard', key, async () => normalizeLeaderboardResponse(await getLeaderboardSummary(params)), {
         ttl: LEADERBOARD_TTL,
+        force: options.force
+      })
+    },
+
+    // 公开大厅里正在进行的对局，与访问者无关，因此不按身份分键；本人对局由页面按当前身份过滤。
+    loadLiveMatchPreview(options = {}) {
+      const params = { scope: 'hall', status: 1, page: 1, page_size: LIVE_MATCH_PREVIEW_SIZE }
+      const key = buildPublicReadKey('live-matches', params)
+      return this.loadEntry('liveMatches', key, () => getPublicMatches(params), {
+        ttl: LIVE_MATCH_PREVIEW_TTL,
         force: options.force
       })
     },

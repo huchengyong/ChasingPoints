@@ -262,8 +262,10 @@ test('home page hides the common tools section after moving tools to user servic
   assert.doesNotMatch(homeIndexVueSource, /label: '规则说明'/)
 })
 
-test('home mini program leaves the capsule area clear without a duplicate notification button', () => {
-  assert.match(homeIndexVueSource, /<!-- #ifndef MP-WEIXIN -->\s*<view class="header-right"/)
+test('home header only carries the title and greeting, messages live in their own tab', () => {
+  assert.match(homeIndexVueSource, /<text class="title">追分<\/text>\s*<text class="subtitle">\{\{ greetingText \}\}<\/text>/)
+  assert.doesNotMatch(homeIndexVueSource, /header-right|header-badge|subtitle--link|goNotification|unreadText|notificationStore/)
+  assert.doesNotMatch(homeIndexScssSource, /header-right|header-badge|subtitle--link/)
   assert.doesNotMatch(homeIndexVueSource, /navHeaderStyle/)
   assert.doesNotMatch(homeIndexVueSource, /getMenuButtonBoundingClientRect/)
 })
@@ -364,11 +366,41 @@ test('home keeps one primary card and drops duplicated summary and filler tags',
   assert.match(homeIndexVueSource, /formatHomeMyRanking\(myRanking\.value\)/)
 })
 
-test('home start flow offers the same entries and mode choice as the match tab', () => {
+test('home start flow keeps its three entries and sends scanning through the unified flow', () => {
   assert.match(homeIndexVueSource, /扫描对手二维码.*出示我的二维码.*选择好友或最近对手/)
-  assert.match(homeIndexVueSource, /START_MATCH_MODE_OPTIONS\.map\(\(item\) => item\.label\)/)
-  assert.match(homeIndexVueSource, /matchMode: startMatchMode\.value,\s*visibility: startMatchVisibility\.value/)
+  assert.match(homeIndexVueSource, /if \(tapIndex === 0\) \{\s*startQuickScan\(\)/)
+  assert.match(homeIndexVueSource, /from '@\/utils\/quick-scan-entry\.js'/)
+  // 球种与对局类型改在扫码之后的确认页选择，首页不再自带扫码与开局代码
+  assert.doesNotMatch(homeIndexVueSource, /gameTypeModal|START_MATCH_MODE_OPTIONS|scanAndResolveMatchCode|startMatch\(|handleGameTypeConfirm/)
   assert.match(homeIndexVueSource, /canvas-id="home-match-invite-qrcode"/)
+  assert.match(homeIndexVueSource, /setMainTabBarVisible\(false\)[\s\S]*setMainTabBarVisible\(true\)/)
+  assert.doesNotMatch(homeIndexVueSource, /uni\.hideTabBar|uni\.showTabBar/)
+})
+
+test('home shows a live-match preview after the play and challenge cards, with an always-visible lobby link', () => {
+  const challengeIndex = homeIndexVueSource.indexOf('v-if="challengeCard"')
+  const liveIndex = homeIndexVueSource.indexOf('<!-- 正在进行')
+  const eventIndex = homeIndexVueSource.indexOf('<!-- 赛事 -->')
+  assert.ok(challengeIndex > 0 && challengeIndex < liveIndex && liveIndex < eventIndex)
+
+  // 入口在 section-header 里，不受空态或失败影响
+  assert.match(homeIndexVueSource, /<text class="section-title">正在进行<\/text>[\s\S]*?goTo\('\/pages\/match\/index'\)[\s\S]*?<text>观赛大厅<\/text>[\s\S]*?v-if="liveMatchError"/)
+  assert.match(homeIndexVueSource, /暂无正在进行的对局/)
+  assert.match(homeIndexVueSource, /publicReadStore\.loadLiveMatchPreview\(\{ force \}\)/)
+  assert.match(homeIndexVueSource, /buildHomeLiveMatches\(liveMatchList\.value, \{\s*userId: userId\.value,\s*currentMatchId: ongoingCard\.value\?\.id/)
+})
+
+test('a failed live preview only affects its own section and keeps the previous list', () => {
+  assert.match(homeIndexVueSource, /resolveHomeResponseError\(liveMatchResult, '加载正在进行的对局失败'\)/)
+  assert.match(homeIndexVueSource, /if \(!liveMatchLoadError\) \{\s*liveMatchList\.value = /)
+  // 整页失败仍只取决于榜单与赛事
+  assert.match(homeIndexVueSource, /if \(leaderboardLoadError && eventNewsLoadError\) \{/)
+  assert.doesNotMatch(homeIndexVueSource, /liveMatchLoadError &&|&& liveMatchLoadError/)
+})
+
+test('tapping a live match follows the lobby rule: own match plays, others spectate', () => {
+  assert.match(homeIndexVueSource, /const handleLiveMatchTap = \(match\) => \{\s*if \(shouldOpenPlayingForSpectatorMatch\(\{ match, userId: userId\.value, isLoggedIn: isLoggedIn\.value \}\)\) \{\s*handleContinueMatch\(match\)/)
+  assert.match(homeIndexVueSource, /\/subPages\/match\/matchDetail\?match_id=\$\{match\.id\}&mode=spectate/)
 })
 
 test('home nearby venues load passively without repeated permission toasts', () => {
