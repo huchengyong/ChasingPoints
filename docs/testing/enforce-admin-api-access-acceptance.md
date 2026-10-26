@@ -1,6 +1,6 @@
 # 后台接口访问控制：验收记录
 
-对应变更：`openspec/changes/enforce-admin-api-access`。记录日期：2026-10-26。
+对应变更：`openspec/changes/archive/2026-10-26-enforce-admin-api-access`。记录日期：2026-10-26。
 
 ## 1. 背景与发现
 
