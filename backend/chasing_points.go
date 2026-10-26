@@ -49,11 +49,7 @@ func main() {
 	}
 	handler.RegisterHandlers(server, svcCtx)
 
-	// 注册全局中间件
-	server.Use(middleware.RequestContextMiddleware)
-	server.Use(middleware.RequestObservabilityMiddleware)
-	server.Use(middleware.NewOptionalPublicJWTMiddleware(c.Auth.AccessSecret).Handle)
-	server.Use(middleware.NewActiveUserSessionMiddleware(svcCtx.UserModel).Handle)
+	registerGlobalMiddlewares(server, c, svcCtx)
 
 	// 初始化 WebSocket Hub
 	ws.InitGlobalHub()
@@ -90,6 +86,16 @@ func main() {
 
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
 	server.StartWithOpts(withWechatMessagePushRoute(c))
+}
+
+// registerGlobalMiddlewares 注册全局中间件；先注册的在外层，后台访问控制放在用户会话校验之前，
+// 这样普通用户令牌访问后台接口时直接拒绝，不再查用户表。
+func registerGlobalMiddlewares(server *rest.Server, c config.Config, svcCtx *svc.ServiceContext) {
+	server.Use(middleware.RequestContextMiddleware)
+	server.Use(middleware.RequestObservabilityMiddleware)
+	server.Use(middleware.NewOptionalPublicJWTMiddleware(c.Auth.AccessSecret).Handle)
+	server.Use(middleware.NewAdminAccessMiddleware().Handle)
+	server.Use(middleware.NewActiveUserSessionMiddleware(svcCtx.UserModel).Handle)
 }
 
 func newAPIServer(c config.Config) *rest.Server {
