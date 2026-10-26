@@ -230,6 +230,131 @@ type AdminFeedbackTicketProcessReq struct {
 	ProcessResult string `json:"process_result,optional"`
 }
 
+type AdminGearBrandInfo struct {
+	Id           int64  `json:"id"`
+	Name         string `json:"name"`
+	Aliases      string `json:"aliases"` // 搜索别名，逗号分隔
+	Sort         int    `json:"sort"`
+	Status       int    `json:"status"` // 1=启用 0=停用
+	ProductCount int64  `json:"product_count"`
+}
+
+type AdminGearBrandListReq struct {
+	Keyword  string `form:"keyword,optional"`
+	Page     int    `form:"page,optional,default=1"`
+	PageSize int    `form:"page_size,optional,default=20"`
+}
+
+type AdminGearBrandListResp struct {
+	Code    int                  `json:"code"`
+	Success bool                 `json:"success"`
+	Message string               `json:"message"`
+	Total   int64                `json:"total"`
+	List    []AdminGearBrandInfo `json:"list"`
+}
+
+type AdminGearBrandSaveReq struct {
+	Id      int64  `json:"id,optional"` // 0 表示新增
+	Name    string `json:"name"`
+	Aliases string `json:"aliases,optional"`
+	Sort    int    `json:"sort,optional"`
+	Status  int    `json:"status,optional,default=1"`
+}
+
+type AdminGearPendingInfo struct {
+	CustomKey string   `json:"custom_key"`
+	Category  string   `json:"category"`
+	BrandName string   `json:"brand_name"`
+	ModelName string   `json:"model_name"`
+	CueStyle  string   `json:"cue_style"`
+	Roles     []string `json:"roles"`
+	Count     int64    `json:"count"`
+	LastAt    string   `json:"last_at"`
+}
+
+type AdminGearPendingLinkReq struct {
+	CustomKey string `json:"custom_key"`
+	ProductId int64  `json:"product_id"`
+}
+
+type AdminGearPendingLinkResp struct {
+	Code      int    `json:"code"`
+	Success   bool   `json:"success"`
+	Message   string `json:"message"`
+	Updated   int64  `json:"updated"`
+	Remaining int64  `json:"remaining"` // 仍未关联的登记数，大于 0 时可以再次执行
+}
+
+type AdminGearPendingListReq struct {
+	Category string `form:"category,optional"`
+	Page     int    `form:"page,optional,default=1"`
+	PageSize int    `form:"page_size,optional,default=20"`
+}
+
+type AdminGearPendingListResp struct {
+	Code    int                    `json:"code"`
+	Success bool                   `json:"success"`
+	Message string                 `json:"message"`
+	Total   int64                  `json:"total"`
+	List    []AdminGearPendingInfo `json:"list"`
+}
+
+type AdminGearProductInfo struct {
+	Id            int64    `json:"id"`
+	Category      string   `json:"category"`
+	BrandId       int64    `json:"brand_id"`
+	BrandName     string   `json:"brand_name"`
+	Name          string   `json:"name"`
+	House         bool     `json:"house"`
+	CueStyle      string   `json:"cue_style"`
+	Roles         []string `json:"roles"`
+	LengthMm      int      `json:"length_mm"`
+	WeightG       int      `json:"weight_g"`
+	TipDiameterMm float64  `json:"tip_diameter_mm"`
+	ImagePath     string   `json:"image_path"`
+	Sort          int      `json:"sort"`
+	Status        int      `json:"status"` // 1=启用 0=停用
+}
+
+type AdminGearProductListReq struct {
+	Category string `form:"category,optional"`
+	BrandId  int64  `form:"brand_id,optional"`
+	Keyword  string `form:"keyword,optional"`
+	Status   int    `form:"status,optional,default=-1"` // -1=全部 1=启用 0=停用
+	Page     int    `form:"page,optional,default=1"`
+	PageSize int    `form:"page_size,optional,default=20"`
+}
+
+type AdminGearProductListResp struct {
+	Code    int                    `json:"code"`
+	Success bool                   `json:"success"`
+	Message string                 `json:"message"`
+	Total   int64                  `json:"total"`
+	List    []AdminGearProductInfo `json:"list"`
+}
+
+type AdminGearProductSaveReq struct {
+	Id            int64    `json:"id,optional"` // 0 表示新增
+	Category      string   `json:"category"`
+	BrandId       int64    `json:"brand_id,optional"` // 球房公用条目为 0
+	Name          string   `json:"name"`
+	CueStyle      string   `json:"cue_style,optional"`
+	Roles         []string `json:"roles,optional"`
+	LengthMm      int      `json:"length_mm,optional"`
+	WeightG       int      `json:"weight_g,optional"`
+	TipDiameterMm float64  `json:"tip_diameter_mm,optional"`
+	ImagePath     string   `json:"image_path,optional"`
+	Sort          int      `json:"sort,optional"`
+	Status        int      `json:"status,optional,default=1"`
+}
+
+type AdminGearSaveResp struct {
+	Code    int    `json:"code"`
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Id      int64  `json:"id,optional"`
+}
+
 type AdminInfo struct {
 	Id       int64  `json:"id"`
 	Email    string `json:"email"`
@@ -743,6 +868,18 @@ type CreateFeedbackTicketResp struct {
 	TicketId int64  `json:"ticket_id"`
 }
 
+type CreateGearItemReq struct {
+	Category       string   `json:"category"` // cue/break_jump
+	ProductId      int64    `json:"product_id,optional"`
+	BrandId        int64    `json:"brand_id,optional"`   // 未收录：目录品牌
+	BrandName      string   `json:"brand_name,optional"` // 未收录：目录没有该品牌时自填，不超过 32 字
+	ModelName      string   `json:"model_name,optional"` // 未收录：型号名，不超过 64 字
+	CueStyle       string   `json:"cue_style,optional"`
+	Roles          []string `json:"roles,optional"`
+	TipProductId   int64    `json:"tip_product_id,optional"`
+	ChalkProductId int64    `json:"chalk_product_id,optional"`
+}
+
 type CreateMemberSubscriptionOrderReq struct {
 	PlanCode   string `json:"plan_code"`
 	PayChannel string `json:"pay_channel"`
@@ -886,6 +1023,10 @@ type DeleteAccountReq struct {
 
 type DeleteFriendReq struct {
 	FriendUserId int64 `json:"friend_user_id"`
+}
+
+type DeleteGearItemReq struct {
+	ItemId int64 `json:"item_id"`
 }
 
 type DurationStats struct {
@@ -1100,6 +1241,64 @@ type GameTypeStats struct {
 	HighestScore int     `json:"highest_score"`
 }
 
+type GearBrandInfo struct {
+	Id   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+type GearDefaultInfo struct {
+	GameType int    `json:"game_type"` // 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
+	Slot     string `json:"slot"`      // cue/break
+	ItemId   int64  `json:"item_id"`
+}
+
+type GearItemInfo struct {
+	Id           int64            `json:"id"`
+	Category     string           `json:"category"` // cue/break_jump
+	Status       int              `json:"status"`   // 1=在用 2=退役 3=已删除（仅可能出现在对局用杆记录里）
+	Unlisted     bool             `json:"unlisted"` // true=未收录型号
+	House        bool             `json:"house"`
+	BrandName    string           `json:"brand_name"` // 球房公用条目为空
+	ModelName    string           `json:"model_name"`
+	CueStyle     string           `json:"cue_style,optional"`
+	Roles        []string         `json:"roles,optional"`
+	Product      *GearProductInfo `json:"product,optional"`       // 已关联目录型号时返回，含官方规格与目录图
+	TipProduct   *GearProductInfo `json:"tip_product,optional"`   // 对局用杆记录里为记录当时的皮头
+	ChalkProduct *GearProductInfo `json:"chalk_product,optional"` // 对局用杆记录里为记录当时的巧克
+	CreatedAt    string           `json:"created_at"`
+}
+
+type GearItemResp struct {
+	Success bool          `json:"success"`
+	Message string        `json:"message"`
+	Item    *GearItemInfo `json:"item,optional"`
+}
+
+type GearMatchSide struct {
+	UserId       int64            `json:"user_id"`
+	Recorded     bool             `json:"recorded"`        // false=未记录
+	Source       string           `json:"source,optional"` // auto/manual
+	Cue          *GearItemInfo    `json:"cue,optional"`
+	TipProduct   *GearProductInfo `json:"tip_product,optional"`
+	ChalkProduct *GearProductInfo `json:"chalk_product,optional"`
+	BreakCue     *GearItemInfo    `json:"break_cue,optional"`
+}
+
+type GearProductInfo struct {
+	Id            int64    `json:"id"`
+	Category      string   `json:"category"` // cue/break_jump/tip/chalk
+	BrandId       int64    `json:"brand_id"`
+	BrandName     string   `json:"brand_name"` // 球房公用条目为空
+	Name          string   `json:"name"`
+	House         bool     `json:"house"`              // 球房公用条目
+	CueStyle      string   `json:"cue_style,optional"` // 球杆杆型 snooker/pool
+	Roles         []string `json:"roles,optional"`     // 冲跳身份 break/jump
+	LengthMm      int      `json:"length_mm,optional"`
+	WeightG       int      `json:"weight_g,optional"`
+	TipDiameterMm float64  `json:"tip_diameter_mm,optional"`
+	ImagePath     string   `json:"image_path,optional"` // 目录图路径，为空时客户端按类别显示默认图
+}
+
 type GetAchievementDetailReq struct {
 	AchievementId int64 `form:"achievement_id"`
 }
@@ -1216,6 +1415,70 @@ type GetFriendRequestsResp struct {
 	Success bool                `json:"success"`
 	Total   int64               `json:"total"`
 	List    []FriendRequestInfo `json:"list"`
+}
+
+type GetGearBrandsReq struct {
+	Category string `form:"category"` // cue/break_jump/tip/chalk
+}
+
+type GetGearBrandsResp struct {
+	Success bool            `json:"success"`
+	Message string          `json:"message"`
+	List    []GearBrandInfo `json:"list"`
+}
+
+type GetGearMatchReq struct {
+	MatchId int64 `form:"match_id"`
+}
+
+type GetGearMatchResp struct {
+	Success       bool          `json:"success"`
+	Message       string        `json:"message"`
+	Reason        string        `json:"reason,optional"` // not_completed/not_participant/not_found
+	MatchId       int64         `json:"match_id,optional"`
+	GameType      int           `json:"game_type,optional"`
+	SupportsBreak bool          `json:"supports_break,optional"` // 该球种是否记录冲杆
+	Me            GearMatchSide `json:"me,optional"`
+	HasOpponent   bool          `json:"has_opponent,optional"` // 对手是否为注册用户
+	Opponent      GearMatchSide `json:"opponent,optional"`
+	Editable      bool          `json:"editable,optional"`
+	EditDeadline  string        `json:"edit_deadline,optional"` // RFC3339
+}
+
+type GetGearMineResp struct {
+	Success  bool              `json:"success"`
+	Message  string            `json:"message"`
+	MaxItems int               `json:"max_items"`
+	Items    []GearItemInfo    `json:"items"`
+	Defaults []GearDefaultInfo `json:"defaults"`
+}
+
+type GetGearProductsReq struct {
+	Category string `form:"category"`
+	BrandId  int64  `form:"brand_id,optional"`
+	Keyword  string `form:"keyword,optional"`
+	House    bool   `form:"house,optional"` // true 只看球房公用条目
+	Page     int    `form:"page,optional,default=1"`
+	PageSize int    `form:"page_size,optional,default=20"` // 上限 50
+}
+
+type GetGearProductsResp struct {
+	Success bool              `json:"success"`
+	Message string            `json:"message"`
+	Total   int64             `json:"total"`
+	List    []GearProductInfo `json:"list"`
+}
+
+type GetGearUserReq struct {
+	UserId int64 `form:"user_id"`
+}
+
+type GetGearUserResp struct {
+	Success  bool              `json:"success"`
+	Message  string            `json:"message"`
+	Reason   string            `json:"reason,optional"` // not_friend：不是好友
+	Items    []GearItemInfo    `json:"items"`
+	Defaults []GearDefaultInfo `json:"defaults"`
 }
 
 type GetGlossaryReq struct {
@@ -2905,6 +3168,12 @@ type SendSmsResp struct {
 	Message string `json:"message"`
 }
 
+type SetGearDefaultReq struct {
+	GameType int    `json:"game_type"`
+	Slot     string `json:"slot"` // cue/break
+	ItemId   int64  `json:"item_id"`
+}
+
 type SingleHighScoreRecord struct {
 	MatchId      int64  `json:"match_id"`
 	Score        int    `json:"score"`
@@ -3096,6 +3365,23 @@ type TrendPoint struct {
 	WinRate   float64 `json:"win_rate"`
 	RankScore int     `json:"rank_score,omitempty"`
 	Result    int     `json:"result"`
+}
+
+type UpdateGearItemReq struct {
+	ItemId         int64 `json:"item_id"`
+	Status         int   `json:"status,optional"` // 1=在用 2=退役
+	UpdateTip      bool  `json:"update_tip,optional"`
+	TipProductId   int64 `json:"tip_product_id,optional"`
+	UpdateChalk    bool  `json:"update_chalk,optional"`
+	ChalkProductId int64 `json:"chalk_product_id,optional"`
+}
+
+type UpdateGearMatchReq struct {
+	MatchId        int64 `json:"match_id"`
+	CueItemId      int64 `json:"cue_item_id,optional"`
+	TipProductId   int64 `json:"tip_product_id,optional"`
+	ChalkProductId int64 `json:"chalk_product_id,optional"`
+	BreakItemId    int64 `json:"break_item_id,optional"`
 }
 
 type UpdateMatchFormatReq struct {

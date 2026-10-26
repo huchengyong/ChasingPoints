@@ -44,6 +44,9 @@ var personalDataExportCategories = []string{
 	"tournament_participations",
 	"season_records",
 	"season_challenges",
+	"gear_items",
+	"gear_defaults",
+	"match_gear_snapshots",
 }
 
 type PersonalDataExportRecord struct {
@@ -95,6 +98,9 @@ func (m *UserDataLifecycleModel) DeleteAccountRelationsWithTx(tx *gorm.DB, userI
 		{"DELETE FROM member_growth_logs WHERE user_id = ?", []any{userID}},
 		{"DELETE FROM favorite_venue_reward_records WHERE user_id = ?", []any{userID}},
 		{"DELETE FROM venue_checkins WHERE user_id = ?", []any{userID}},
+		{"DELETE FROM user_gear_items WHERE user_id = ?", []any{userID}},
+		{"DELETE FROM user_gear_defaults WHERE user_id = ?", []any{userID}},
+		{"DELETE FROM match_gear_snapshots WHERE user_id = ?", []any{userID}},
 	}
 	if strings.TrimSpace(phone) != "" {
 		statements = append(statements, accountDeletionStatement{"DELETE FROM verification_codes WHERE phone = ?", []any{phone}})
@@ -223,6 +229,12 @@ func (m *UserDataLifecycleModel) ListExportRecords(userID int64, category string
 		return m.listExportRows("season_records", "id, season_id, game_type, start_rank_score, end_rank_score, peak_rank_score, matches_played, wins, distinct_opponents, qualified, final_rank, rewards, created_at", "user_id = ?", []any{userID}, afterID, snapshotAt, limit, nil)
 	case "season_challenges":
 		return m.listExportRows("season_challenge_snapshots", "id, season_id, game_type, challenge_key, challenge_name, threshold, progress, completed, archived_at, created_at", "user_id = ?", []any{userID}, afterID, snapshotAt, limit, nil)
+	case "gear_items":
+		return m.listExportRows("user_gear_items", "id, category, product_id, custom_brand_id, custom_brand_name, custom_model_name, cue_style, roles, tip_product_id, chalk_product_id, status, created_at, updated_at", "user_id = ?", []any{userID}, afterID, snapshotAt, limit, nil)
+	case "gear_defaults":
+		return m.listExportRows("user_gear_defaults", "id, game_type, slot, item_id, created_at, updated_at", "user_id = ?", []any{userID}, afterID, snapshotAt, limit, nil)
+	case "match_gear_snapshots":
+		return m.listExportRows("match_gear_snapshots", "id, match_id, cue_item_id, tip_product_id, chalk_product_id, break_item_id, source, created_at, updated_at", "user_id = ?", []any{userID}, afterID, snapshotAt, limit, nil)
 	default:
 		return nil, false, fmt.Errorf("unsupported personal data export category: %s", category)
 	}

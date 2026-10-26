@@ -117,6 +117,46 @@ func TestMySQLHotReadPlans(t *testing.T) {
 			name: "public matches", table: "m", expectedKey: "idx_matches_public_status_time", rejectFilesort: true,
 			query: "SELECT m.id FROM matches m WHERE m.deleted_at IS NULL AND m.visibility='public' AND m.status=1 ORDER BY m.match_time DESC,m.id DESC LIMIT 20",
 		},
+		{
+			name: "gear brands with products", table: "p", expectedKey: "idx_gear_products_list",
+			query: "SELECT b.id FROM gear_brands b WHERE b.status=1 AND EXISTS (SELECT 1 FROM gear_products p WHERE p.brand_id=b.id AND p.category='cue' AND p.status=1) ORDER BY b.sort,b.id",
+		},
+		{
+			name: "gear products of one brand", table: "p", expectedKey: "idx_gear_products_list", rejectFilesort: true,
+			query: "SELECT p.id FROM gear_products p LEFT JOIN gear_brands b ON b.id=p.brand_id WHERE p.category='cue' AND p.status=1 AND p.brand_id=5 ORDER BY p.sort,p.id LIMIT 20",
+		},
+		{
+			name: "gear products of a category", table: "p", expectedKey: "idx_gear_products_list",
+			query: "SELECT p.id FROM gear_products p LEFT JOIN gear_brands b ON b.id=p.brand_id WHERE p.category='cue' AND p.status=1 AND (p.brand_id=0 OR b.status=1) ORDER BY p.sort,p.id LIMIT 20",
+		},
+		{
+			name: "gear items of a friend", table: "user_gear_items", expectedKey: "idx_user_gear_items_user_status", rejectFilesort: true,
+			query: "SELECT id FROM user_gear_items WHERE user_id=1 AND status=1 ORDER BY id ASC LIMIT 60",
+		},
+		{
+			name: "gear items of the owner", table: "user_gear_items", expectedKey: "idx_user_gear_items_user_status",
+			query: "SELECT id FROM user_gear_items WHERE user_id=1 AND status IN (1,2) ORDER BY id ASC LIMIT 60",
+		},
+		{
+			name: "gear defaults of a user", table: "user_gear_defaults", expectedKey: "uniq_user_gear_defaults",
+			query: "SELECT id FROM user_gear_defaults WHERE user_id=1",
+		},
+		{
+			name: "gear defaults of both players", table: "user_gear_defaults", expectedKey: "uniq_user_gear_defaults",
+			query: "SELECT id FROM user_gear_defaults WHERE user_id IN (1,2) AND game_type=3",
+		},
+		{
+			name: "gear records of a match", table: "match_gear_snapshots", expectedKey: "uniq_match_gear_snapshots",
+			query: "SELECT id FROM match_gear_snapshots WHERE match_id=100 ORDER BY user_id ASC",
+		},
+		{
+			name: "gear pending groups", table: "user_gear_items", expectedKey: "idx_user_gear_items_pending",
+			query: "SELECT custom_key,MIN(category) AS category,COUNT(*) AS cnt,MAX(id) AS latest_id FROM user_gear_items WHERE product_id=0 AND status<3 GROUP BY custom_key ORDER BY cnt DESC,latest_id DESC LIMIT 20",
+		},
+		{
+			name: "gear pending link batch", table: "user_gear_items", expectedKey: "idx_user_gear_items_pending", rejectFilesort: true,
+			query: "SELECT id FROM user_gear_items WHERE product_id=0 AND custom_key='cue|nbrand-1|model-1' ORDER BY id ASC LIMIT 500",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -130,6 +170,7 @@ func TestMySQLHotReadPlans(t *testing.T) {
 			if tt.rejectFilesort && strings.Contains(plan.Extra, "Using filesort") {
 				t.Fatalf("hot read plan must preserve index ordering: %+v", plan)
 			}
+			t.Logf("plan: table=%s type=%s key=%s rows=%d extra=%q", plan.Table, plan.AccessType, plan.Key, plan.Rows, plan.Extra)
 		})
 	}
 }
@@ -169,7 +210,13 @@ func seedMySQLExplainData(t *testing.T, db *sql.DB) {
 		"INSERT INTO user_ranking (user_id,game_type,rank_score,rank_level,rating_version,rated_matches) SELECT n,3,1250,3,IF(MOD(n,1000)=0,1,2),MOD(n,30) FROM verify_numbers WHERE n<=10000",
 		"INSERT INTO achievement_progress_events (id,user_id,source_type,source_id,game_type,metric_key,metric_value,occurred_at) SELECT n,MOD(n,10000)+1,'match',n,3,CASE MOD(n,3) WHEN 0 THEN 'matches_total' WHEN 1 THEN 'wins_total' ELSE 'tournament_finish_total' END,1,DATE_ADD('2025-01-01',INTERVAL n MINUTE) FROM verify_numbers",
 		"INSERT INTO venues (id,name,address,city,district,full_address,latitude,longitude,phone,business_hours,price_range,status,geo_status,geo_source,geo_level,geo_error,reject_reason) SELECT n,CONCAT('venue-',n),'address','上海','浦东',CONCAT('上海浦东address-',n),31.2304+(MOD(n,200)-100)/1000.0,121.4737+(MOD(n,200)-100)/1000.0,'','','',IF(MOD(n,5)=0,0,1),1,'seed','','','' FROM verify_numbers",
-		"ANALYZE TABLE matches,friend_requests,challenges,seasons,season_settlements,season_records,user_ranking,achievement_progress_events,venues",
+		"INSERT INTO gear_brands (id,name,aliases,sort,status) SELECT n,CONCAT('brand-',n),'',MOD(n,20),IF(MOD(n,50)=0,0,1) FROM verify_numbers WHERE n<=200",
+		"INSERT INTO gear_products (id,category,brand_id,name,house,cue_style,roles,sort,status) SELECT n+100,ELT(MOD(n,4)+1,'cue','break_jump','tip','chalk'),MOD(n,200)+1,CONCAT('model-',n),0,IF(MOD(n,4)=0,'pool',''),IF(MOD(n,4)=1,'break',''),MOD(n,50),IF(MOD(n,13)=0,0,1) FROM verify_numbers WHERE n<=5000",
+		"INSERT INTO user_gear_items (id,user_id,category,product_id,custom_brand_name,custom_model_name,custom_key,cue_style,status) SELECT n,MOD(n,10000)+1,IF(MOD(n,5)=0,'break_jump','cue'),IF(MOD(n,4)=0,0,MOD(n,5000)+1),IF(MOD(n,4)=0,CONCAT('brand-',MOD(n,300)),''),IF(MOD(n,4)=0,CONCAT('model-',MOD(n,700)),''),IF(MOD(n,4)=0,CONCAT('cue|nbrand-',MOD(n,300),'|model-',MOD(n,700)),''),'pool',IF(MOD(n,17)=0,2,IF(MOD(n,29)=0,3,1)) FROM verify_numbers",
+		"INSERT INTO user_gear_defaults (user_id,game_type,slot,item_id) SELECT n,3,'cue',n FROM verify_numbers WHERE n<=10000",
+		"INSERT INTO match_gear_snapshots (match_id,user_id,cue_item_id,tip_product_id,chalk_product_id,source) SELECT n,MOD(n,10000)+1,n,MOD(n,5000)+1,0,'auto' FROM verify_numbers",
+		"INSERT INTO match_gear_snapshots (match_id,user_id,cue_item_id,tip_product_id,chalk_product_id,source) SELECT n,MOD(n+1,10000)+1,n,0,0,'auto' FROM verify_numbers",
+		"ANALYZE TABLE matches,friend_requests,challenges,seasons,season_settlements,season_records,user_ranking,achievement_progress_events,venues,gear_brands,gear_products,user_gear_items,user_gear_defaults,match_gear_snapshots",
 	}
 	for _, statement := range statements {
 		if _, err := db.Exec(statement); err != nil {

@@ -66,6 +66,9 @@ func newDeleteAccountTestSvc(t *testing.T) (*svc.ServiceContext, *gorm.DB) {
 		CREATE TABLE member_growth_logs (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL);
 		CREATE TABLE favorite_venue_reward_records (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL);
 		CREATE TABLE venue_checkins (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL);
+		CREATE TABLE user_gear_items (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, custom_model_name TEXT NOT NULL DEFAULT '');
+		CREATE TABLE user_gear_defaults (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, item_id INTEGER NOT NULL DEFAULT 0);
+		CREATE TABLE match_gear_snapshots (id INTEGER PRIMARY KEY, match_id INTEGER NOT NULL, user_id INTEGER NOT NULL, cue_item_id INTEGER NOT NULL DEFAULT 0);
 		CREATE TABLE verification_codes (id INTEGER PRIMARY KEY, phone TEXT NOT NULL);
 		CREATE TABLE rank_change_logs (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, operator_user_id INTEGER NOT NULL DEFAULT 0, remark TEXT NOT NULL DEFAULT '');
 		CREATE TABLE user_reputation_logs (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, reason_detail TEXT NOT NULL DEFAULT '');
@@ -129,6 +132,12 @@ func seedOAuthDeletionAccount(t *testing.T, svcCtx *svc.ServiceContext, db *gorm
 		{"INSERT INTO member_growth_logs (id, user_id) VALUES (?, ?)", []any{424, 101}},
 		{"INSERT INTO favorite_venue_reward_records (id, user_id) VALUES (?, ?)", []any{425, 101}},
 		{"INSERT INTO venue_checkins (id, user_id) VALUES (?, ?)", []any{426, 101}},
+		{"INSERT INTO user_gear_items (id, user_id, custom_model_name) VALUES (?, ?, ?)", []any{430, 101, "我的自填型号"}},
+		{"INSERT INTO user_gear_items (id, user_id, custom_model_name) VALUES (?, ?, ?)", []any{431, 202, "保留用户的杆"}},
+		{"INSERT INTO user_gear_defaults (id, user_id, item_id) VALUES (?, ?, ?)", []any{432, 101, 430}},
+		{"INSERT INTO user_gear_defaults (id, user_id, item_id) VALUES (?, ?, ?)", []any{433, 202, 431}},
+		{"INSERT INTO match_gear_snapshots (id, match_id, user_id, cue_item_id) VALUES (?, ?, ?, ?)", []any{434, 301, 101, 430}},
+		{"INSERT INTO match_gear_snapshots (id, match_id, user_id, cue_item_id) VALUES (?, ?, ?, ?)", []any{435, 301, 202, 431}},
 		{"INSERT INTO rank_change_logs (id, user_id, operator_user_id, remark) VALUES (?, ?, ?, ?)", []any{427, 101, 101, "包含身份信息"}},
 		{"INSERT INTO user_reputation_logs (id, user_id, reason_detail) VALUES (?, ?, ?)", []any{428, 101, "包含身份信息"}},
 		{"INSERT INTO feedback_tickets (id, user_id, content, contact) VALUES (?, ?, ?, ?)", []any{429, 101, "反馈正文", "13800138000"}},
@@ -171,6 +180,16 @@ func TestDeleteAccountOAuthClearsPersonalDataAndAnonymizesFacts(t *testing.T) {
 	assertDeletedRows(t, db, "match_participant_results", "user_id = ?", 101)
 	assertDeletedRows(t, db, "user_competitive_stats", "user_id = ?", 101)
 	assertDeletedRows(t, db, "user_ranking", "user_id = ?", 101)
+	assertDeletedRows(t, db, "user_gear_items", "user_id = ?", 101)
+	assertDeletedRows(t, db, "user_gear_defaults", "user_id = ?", 101)
+	assertDeletedRows(t, db, "match_gear_snapshots", "user_id = ?", 101)
+	// 同一场对局里对手的用杆记录与装备属于对手本人，不受影响
+	for table, id := range map[string]int{"user_gear_items": 431, "user_gear_defaults": 433, "match_gear_snapshots": 435} {
+		var kept int64
+		if err := db.Table(table).Where("id = ?", id).Count(&kept).Error; err != nil || kept != 1 {
+			t.Fatalf("%s row %d of the other player must survive the deletion: count=%d err=%v", table, id, kept, err)
+		}
+	}
 
 	var match struct {
 		Status       int

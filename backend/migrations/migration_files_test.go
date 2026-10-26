@@ -537,3 +537,55 @@ func TestRebalanceRankedRatingMigrationIsGuardedAndKeepsDefaultCharset(t *testin
 		}
 	}
 }
+
+func TestAddGearTablesMigrationCreatesTablesWithoutCharsetOverride(t *testing.T) {
+	content, err := os.ReadFile("20261025115843_add_gear_tables.sql")
+	if err != nil {
+		t.Fatalf("read gear tables migration: %v", err)
+	}
+
+	text := string(content)
+	upBlock, downBlock, found := strings.Cut(text, "-- +goose Down")
+	if !found {
+		t.Fatal("expected gear tables migration to contain a goose Down block")
+	}
+	requiredUpSnippets := []string{
+		"-- +goose Up",
+		"CREATE TABLE IF NOT EXISTS `gear_brands`",
+		"UNIQUE KEY `uniq_gear_brands_name` (`name`)",
+		"CREATE TABLE IF NOT EXISTS `gear_products`",
+		"`category` VARCHAR(16) NOT NULL",
+		"`tip_diameter_mm` DECIMAL(5,2) NOT NULL DEFAULT 0",
+		"UNIQUE KEY `uniq_gear_products_identity` (`category`, `brand_id`, `name`)",
+		"KEY `idx_gear_products_list` (`category`, `status`, `brand_id`, `sort`, `id`)",
+		"CREATE TABLE IF NOT EXISTS `user_gear_items`",
+		"`custom_key` VARCHAR(255) NOT NULL DEFAULT ''",
+		"KEY `idx_user_gear_items_user_status` (`user_id`, `status`, `id`)",
+		"KEY `idx_user_gear_items_pending` (`product_id`, `custom_key`)",
+		"CREATE TABLE IF NOT EXISTS `user_gear_defaults`",
+		"UNIQUE KEY `uniq_user_gear_defaults` (`user_id`, `game_type`, `slot`)",
+		"CREATE TABLE IF NOT EXISTS `match_gear_snapshots`",
+		"UNIQUE KEY `uniq_match_gear_snapshots` (`match_id`, `user_id`)",
+		"KEY `idx_match_gear_snapshots_user` (`user_id`, `match_id`)",
+		"INSERT IGNORE INTO `gear_products`",
+		"('cue', 0, '球房公杆', 1, 0, 1)",
+		"('chalk', 0, '球房巧克', 1, 0, 1)",
+	}
+	for _, snippet := range requiredUpSnippets {
+		if !strings.Contains(upBlock, snippet) {
+			t.Fatalf("expected gear tables migration Up block to contain %q", snippet)
+		}
+	}
+	for _, table := range []string{"gear_brands", "gear_products", "user_gear_items", "user_gear_defaults", "match_gear_snapshots"} {
+		if !strings.Contains(downBlock, "DROP TABLE IF EXISTS `"+table+"`") {
+			t.Fatalf("expected gear tables migration Down block to drop %s", table)
+		}
+	}
+
+	upper := strings.ToUpper(text)
+	for _, forbidden := range []string{"CHARSET", "CHARACTER SET", "COLLATE"} {
+		if strings.Contains(upper, forbidden) {
+			t.Fatalf("gear tables migration must not specify %s, keep the database default", forbidden)
+		}
+	}
+}

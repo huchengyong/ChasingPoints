@@ -32,6 +32,7 @@ func newPersonalDataExportTestSvc(t *testing.T) *svc.ServiceContext {
 		&model.VenueCheckin{}, &model.MemberSubscriptionOrder{}, &model.MemberGrowthProfile{}, &model.MemberGrowthLog{},
 		&model.FavoriteVenueRewardRecord{}, &model.FeedbackTicket{}, &model.TournamentParticipant{},
 		&model.SeasonRecord{}, &model.SeasonChallengeSnapshot{},
+		&model.UserGearItem{}, &model.UserGearDefault{}, &model.MatchGearSnapshot{},
 	); err != nil {
 		t.Fatalf("prepare export schema: %v", err)
 	}
@@ -233,6 +234,60 @@ func TestExportPersonalDataChallengeReportsLinkedMatchFromMatchesTable(t *testin
 			}
 		default:
 			t.Fatalf("unexpected challenge record %d", record.ID)
+		}
+	}
+}
+
+func TestExportPersonalDataIncludesOnlyTheCallersGearWithTypedNames(t *testing.T) {
+	svcCtx := newPersonalDataExportTestSvc(t)
+	for _, id := range []int64{101, 202} {
+		if err := svcCtx.UserModel.Create(&model.User{Id: id, Nickname: "用户", Status: 1}); err != nil {
+			t.Fatalf("create user %d: %v", id, err)
+		}
+	}
+	seed := []any{
+		&model.UserGearItem{UserId: 101, Category: model.GearCategoryCue, CustomBrandName: "我的品牌", CustomModelName: "我的自填型号", CueStyle: model.GearCueStylePool, Status: model.GearItemStatusActive},
+		&model.UserGearItem{UserId: 101, Category: model.GearCategoryBreakJump, ProductId: 7, Roles: "break", Status: model.GearItemStatusDeleted},
+		&model.UserGearItem{UserId: 202, Category: model.GearCategoryCue, CustomBrandName: "别人的品牌", CustomModelName: "别人的自填型号", Status: model.GearItemStatusActive},
+		&model.UserGearDefault{UserId: 101, GameType: 3, Slot: model.GearSlotCue, ItemId: 1},
+		&model.UserGearDefault{UserId: 202, GameType: 3, Slot: model.GearSlotCue, ItemId: 3},
+		&model.MatchGearSnapshot{MatchId: 9, UserId: 101, CueItemId: 1, TipProductId: 5, Source: model.GearSnapshotSourceAuto},
+		&model.MatchGearSnapshot{MatchId: 9, UserId: 202, CueItemId: 3, Source: model.GearSnapshotSourceAuto},
+	}
+	for _, row := range seed {
+		if err := svcCtx.DB.Create(row).Error; err != nil {
+			t.Fatalf("seed gear data: %v", err)
+		}
+	}
+
+	logic := NewExportPersonalDataLogic(personalDataExportCtx(101), svcCtx)
+	page, err := logic.ExportPersonalData(&types.PersonalDataExportReq{})
+	byCategory := map[string][]string{}
+	for requestCount := 0; err == nil && page.Success && requestCount < 64; requestCount++ {
+		for _, item := range page.Items {
+			byCategory[item.Category] = append(byCategory[item.Category], item.DataJson)
+		}
+		if page.Complete {
+			break
+		}
+		page, err = logic.ExportPersonalData(&types.PersonalDataExportReq{Cursor: page.NextCursor})
+	}
+	if err != nil || !page.Success || !page.Complete {
+		t.Fatalf("export did not complete: resp=%+v err=%v", page, err)
+	}
+
+	if len(byCategory["gear_items"]) != 2 || len(byCategory["gear_defaults"]) != 1 || len(byCategory["match_gear_snapshots"]) != 1 {
+		t.Fatalf("expected the caller's two items (including the soft-deleted one), one default and one match record: %+v", byCategory)
+	}
+	joined := strings.Join(byCategory["gear_items"], "\n")
+	if !strings.Contains(joined, "我的自填型号") || !strings.Contains(joined, "我的品牌") {
+		t.Fatalf("the export must include the names the user typed: %s", joined)
+	}
+	for category, rows := range byCategory {
+		for _, row := range rows {
+			if strings.Contains(row, "别人的自填型号") || strings.Contains(row, "别人的品牌") {
+				t.Fatalf("another user's gear leaked into the %s export: %s", category, row)
+			}
 		}
 	}
 }

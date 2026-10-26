@@ -280,6 +280,10 @@ func (l *FinishMatchLogic) finishMatchImmediately(req *types.FinishMatchReq, for
 }
 
 func (l *FinishMatchLogic) finishMatchPostCommit(req *types.FinishMatchReq, userId int64, match *model.Match, result int, competitiveRevisions map[int64]int64, seasonID int64) (*types.FinishMatchResp, error) {
+	// 对局用杆记录只是附加信息：失败只记日志，不影响完成与结算；放在广播之前，客户端收到结束通知时记录已经可读。
+	if err := logicx.RecordMatchGearSnapshots(l.svcCtx, match); err != nil {
+		l.Logger.Errorf("记录对局用杆失败: matchId=%d err=%v", match.Id, err)
+	}
 	if model.NormalizeMatchMode(match.MatchMode) == model.MatchModeRanked {
 		l.applyMatchReputation(match)
 	}

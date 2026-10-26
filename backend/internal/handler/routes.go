@@ -14,6 +14,7 @@ import (
 	feedback "chasing_points/internal/handler/feedback"
 	follow "chasing_points/internal/handler/follow"
 	friend "chasing_points/internal/handler/friend"
+	gear "chasing_points/internal/handler/gear"
 	match "chasing_points/internal/handler/match"
 	member "chasing_points/internal/handler/member"
 	notification "chasing_points/internal/handler/notification"
@@ -380,6 +381,49 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
+				// 保存装备品牌（管理员）
+				Method:  http.MethodPost,
+				Path:    "/brand/save",
+				Handler: admin.AdminSaveGearBrandHandler(serverCtx),
+			},
+			{
+				// 获取装备品牌列表（管理员）
+				Method:  http.MethodGet,
+				Path:    "/brands",
+				Handler: admin.AdminGetGearBrandListHandler(serverCtx),
+			},
+			{
+				// 获取待收录的未收录型号（管理员）
+				Method:  http.MethodGet,
+				Path:    "/pending",
+				Handler: admin.AdminGetGearPendingListHandler(serverCtx),
+			},
+			{
+				// 把未收录型号关联到目录型号（管理员）
+				Method:  http.MethodPost,
+				Path:    "/pending/link",
+				Handler: admin.AdminLinkGearPendingHandler(serverCtx),
+			},
+			{
+				// 保存装备型号（管理员）
+				Method:  http.MethodPost,
+				Path:    "/product/save",
+				Handler: admin.AdminSaveGearProductHandler(serverCtx),
+			},
+			{
+				// 获取装备型号列表（管理员）
+				Method:  http.MethodGet,
+				Path:    "/products",
+				Handler: admin.AdminGetGearProductListHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/admin/gear"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
 				// 手机号登录/注册
 				Method:  http.MethodPost,
 				Path:    "/login",
@@ -619,6 +663,73 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
 		rest.WithPrefix("/api/friend"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 获取装备目录品牌
+				Method:  http.MethodGet,
+				Path:    "/catalog/brands",
+				Handler: gear.GetGearBrandsHandler(serverCtx),
+			},
+			{
+				// 获取装备目录型号
+				Method:  http.MethodGet,
+				Path:    "/catalog/products",
+				Handler: gear.GetGearProductsHandler(serverCtx),
+			},
+			{
+				// 设置或清除主力装备
+				Method:  http.MethodPost,
+				Path:    "/default/set",
+				Handler: gear.SetGearDefaultHandler(serverCtx),
+			},
+			{
+				// 登记装备
+				Method:  http.MethodPost,
+				Path:    "/item/create",
+				Handler: gear.CreateGearItemHandler(serverCtx),
+			},
+			{
+				// 删除装备
+				Method:  http.MethodPost,
+				Path:    "/item/delete",
+				Handler: gear.DeleteGearItemHandler(serverCtx),
+			},
+			{
+				// 修改装备状态或皮头巧克
+				Method:  http.MethodPost,
+				Path:    "/item/update",
+				Handler: gear.UpdateGearItemHandler(serverCtx),
+			},
+			{
+				// 获取对局的本场用杆
+				Method:  http.MethodGet,
+				Path:    "/match",
+				Handler: gear.GetGearMatchHandler(serverCtx),
+			},
+			{
+				// 修改或补记本场用杆
+				Method:  http.MethodPost,
+				Path:    "/match/update",
+				Handler: gear.UpdateGearMatchHandler(serverCtx),
+			},
+			{
+				// 获取我的装备与主力设置
+				Method:  http.MethodGet,
+				Path:    "/mine",
+				Handler: gear.GetGearMineHandler(serverCtx),
+			},
+			{
+				// 获取好友的装备
+				Method:  http.MethodGet,
+				Path:    "/user",
+				Handler: gear.GetGearUserHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/gear"),
 	)
 
 	server.AddRoutes(

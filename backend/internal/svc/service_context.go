@@ -74,6 +74,7 @@ type ServiceContext struct {
 	MemberRightsConfigModel         *model.MemberRightsConfigModel
 	ReputationConfigModel           *model.ReputationConfigModel
 	LlmConfigModel                  *model.LlmConfigModel
+	GearModel                       *model.GearModel
 	UserReputationProfileModel      *model.UserReputationProfileModel
 	UserReputationLogModel          *model.UserReputationLogModel
 	FeedbackTicketModel             *model.FeedbackTicketModel
@@ -143,6 +144,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		MemberRightsConfigModel:         models.MemberRightsConfigModel,
 		ReputationConfigModel:           models.ReputationConfigModel,
 		LlmConfigModel:                  models.LlmConfigModel,
+		GearModel:                       models.GearModel,
 		UserReputationProfileModel:      models.UserReputationProfileModel,
 		UserReputationLogModel:          models.UserReputationLogModel,
 		FeedbackTicketModel:             models.FeedbackTicketModel,
@@ -206,6 +208,7 @@ type serviceModels struct {
 	MemberRightsConfigModel         *model.MemberRightsConfigModel
 	ReputationConfigModel           *model.ReputationConfigModel
 	LlmConfigModel                  *model.LlmConfigModel
+	GearModel                       *model.GearModel
 	UserReputationProfileModel      *model.UserReputationProfileModel
 	UserReputationLogModel          *model.UserReputationLogModel
 	FeedbackTicketModel             *model.FeedbackTicketModel
@@ -276,6 +279,7 @@ func (s *ServiceContext) WithContext(ctx context.Context) *ServiceContext {
 	scoped.MemberRightsConfigModel = models.MemberRightsConfigModel
 	scoped.ReputationConfigModel = models.ReputationConfigModel
 	scoped.LlmConfigModel = models.LlmConfigModel
+	scoped.GearModel = models.GearModel
 	scoped.UserReputationProfileModel = models.UserReputationProfileModel
 	scoped.UserReputationLogModel = models.UserReputationLogModel
 	scoped.FeedbackTicketModel = models.FeedbackTicketModel
@@ -392,6 +396,7 @@ func newServiceModels(db *gorm.DB) serviceModels {
 		MemberRightsConfigModel:         memberRightsConfigModel,
 		ReputationConfigModel:           reputationConfigModel,
 		LlmConfigModel:                  llmConfigModel,
+		GearModel:                       model.NewGearModel(db),
 		UserReputationProfileModel:      userReputationProfileModel,
 		UserReputationLogModel:          userReputationLogModel,
 		FeedbackTicketModel:             model.NewFeedbackTicketModel(db),
