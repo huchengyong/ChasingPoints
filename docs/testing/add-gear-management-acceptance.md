@@ -1,6 +1,6 @@
 # 装备管理：验收记录
 
-对应变更：`openspec/changes/add-gear-management`（任务 6.3、10.4、12.1–12.4）。
+对应变更：`openspec/changes/archive/2026-10-26-add-gear-management`（已归档，规格见 `openspec/specs/gear-catalog`、`user-gear`、`match-gear-record`）（任务 6.3、10.4、12.1–12.4）。
 范围：装备目录（品牌、型号、默认图）、用户装备（球杆、皮头、巧克、冲杆 / 跳杆、球房公杆与主力）、对局用杆记录、后台目录维护。UniApp 只编译微信小程序与鸿蒙；iOS / Android 不在本次范围。
 
 ## 1. 本次自动化执行

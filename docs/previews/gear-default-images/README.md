@@ -1,6 +1,6 @@
 # 装备默认图与风格说明
 
-> 2026-10-25 讨论「装备」功能时产出，对应 OpenSpec 变更 [add-gear-management](../../../openspec/changes/add-gear-management/design.md)。第一期所有装备图片都用这套默认图；以后每个型号的目录图按本文风格生成，保证整个目录看起来像同一套游戏道具。
+> 2026-10-25 讨论「装备」功能时产出，对应 OpenSpec 变更 [add-gear-management](../../../openspec/changes/archive/2026-10-26-add-gear-management/design.md)。第一期所有装备图片都用这套默认图；以后每个型号的目录图按本文风格生成，保证整个目录看起来像同一套游戏道具。
 
 预览：在本目录用浏览器打开 [index.html](index.html)，会把每张图放在浅色、深色和透明棋盘格上对比。
 
