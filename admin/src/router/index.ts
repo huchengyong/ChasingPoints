@@ -79,6 +79,30 @@ const routes = [
         meta: { title: '奖励发放记录', parent: '/venues' }
       },
       {
+        path: 'gear',
+        name: 'Gear',
+        redirect: '/gear/pending',
+        meta: { title: '装备目录', icon: 'Box' }
+      },
+      {
+        path: 'gear/pending',
+        name: 'GearPending',
+        component: () => import('@/views/gear/pending.vue'),
+        meta: { title: '待收录型号', parent: '/gear' }
+      },
+      {
+        path: 'gear/products',
+        name: 'GearProducts',
+        component: () => import('@/views/gear/products.vue'),
+        meta: { title: '型号管理', parent: '/gear' }
+      },
+      {
+        path: 'gear/brands',
+        name: 'GearBrands',
+        component: () => import('@/views/gear/brands.vue'),
+        meta: { title: '品牌管理', parent: '/gear' }
+      },
+      {
         path: 'settings',
         name: 'Settings',
         redirect: '/settings/member-rewards',

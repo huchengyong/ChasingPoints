@@ -75,6 +75,7 @@ const userStore = useUserStore()
 const activeMenu = computed(() => route.path)
 const openMenuGroups = computed(() => {
   if (route.path.startsWith('/venues/')) return ['/venues']
+  if (route.path.startsWith('/gear/')) return ['/gear']
   if (route.path.startsWith('/settings/')) return ['/settings']
   return []
 })
@@ -92,6 +93,16 @@ const menuList = [
     children: [
       { path: '/venues/review', title: '球馆审核' },
       { path: '/venues/reward-records', title: '奖励发放记录' }
+    ]
+  },
+  {
+    path: '/gear',
+    title: '装备目录',
+    icon: 'Box',
+    children: [
+      { path: '/gear/pending', title: '待收录型号' },
+      { path: '/gear/products', title: '型号管理' },
+      { path: '/gear/brands', title: '品牌管理' }
     ]
   },
   {
