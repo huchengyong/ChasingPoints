@@ -100,6 +100,7 @@ CDN（任务 6.3）：
   - 待收录：测试分组「验收-待收录A」关联到型号「验收-待收录A型号A」。关联弹窗的登记条数与型号名称正确；取消不改变数据；确认后显示关联条数，剩余时分组保留。
   - 测试数据名称以「验收-」开头，测试结束后已在后台停用（用户确认）。
 - [x] 用真实 HTTP 请求带普通用户 JWT 调用 `/api/admin/gear/*`，确认被拒。由 `enforce-admin-api-access` 补上：`backend/admin_access_route_test.go` 启动真实服务，用普通用户令牌请求所有已注册的后台路由（包括 `/api/admin/gear/*`），全部 403；开发与生产上匿名访问 39 个受保护接口全部 401（见 `docs/testing/enforce-admin-api-access-acceptance.md`）。
+- [x] 生产后台（`admin.zhuifen.cn`）的装备目录页面：用户用管理员账号逐页点过，没有发现问题（用户确认）。该前端构建自 `c2b528d`，2026-10-26 手工发布。
 
 ## 6. 备注
 
