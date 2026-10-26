@@ -288,13 +288,12 @@ const loadProducts = async ({ append = false } = {}) => {
 	listLoading.value = true
 	listError.value = ''
 	try {
-		const res = await getGearProducts({
-			category: category.value,
-			brand_id: brandId.value || undefined,
-			keyword: keyword.value.trim() || undefined,
-			page: nextPage,
-			page_size: PAGE_SIZE
-		})
+		// 小程序的 uni.request 会把值为 undefined 的 GET 参数拼成字符串 "undefined"，后端解析 brand_id 会返回 400，所以只带有值的字段。
+		const params = { category: category.value, page: nextPage, page_size: PAGE_SIZE }
+		if (brandId.value) params.brand_id = brandId.value
+		const word = keyword.value.trim()
+		if (word) params.keyword = word
+		const res = await getGearProducts(params)
 		if (!sameIdentity(identity) || version !== queryVersion) return
 		if (!res?.success) throw new Error(res?.message || '型号加载失败')
 		const list = (res.list || []).filter((item) => !item.house || keyword.value.trim() || brandId.value)

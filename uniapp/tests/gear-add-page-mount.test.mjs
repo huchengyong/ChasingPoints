@@ -59,15 +59,33 @@ test('create mode reads brands, the house cue and the first page of products, an
     const houseRequest = page.calls.products.find((params) => params.house)
     assert.deepEqual(houseRequest, { category: 'cue', house: true, page: 1, page_size: 1 })
     const listRequest = page.calls.products.find((params) => !params.house)
-    assert.equal(listRequest.page, 1)
-    assert.equal(listRequest.page_size, 20)
-    assert.equal(listRequest.category, 'cue')
+    // 严格相等：不带 brand_id / keyword 这些值为 undefined 的键，小程序会把它们拼成 "undefined" 字符串导致后端 400。
+    assert.deepEqual(listRequest, { category: 'cue', page: 1, page_size: 20 })
     assert.equal(page.wrapper.findAll('.house-row').length, 1)
     const rows = page.wrapper.findAll('.product-row')
     assert.equal(rows.length, 2, 'the house cue has its own quick row and is not repeated in the list')
     assert.match(text(page.wrapper), /Alpha A-100/)
     assert.match(text(page.wrapper), /美式杆 · 540 g/)
     assert.match(text(page.wrapper), /找不到我的型号/)
+  } finally {
+    await page.cleanup()
+  }
+})
+
+test('choosing a brand and searching send those filters and nothing else', async () => {
+  const page = await mountAdd()
+  try {
+    await page.wrapper.findAll('.brand-chip')[1].trigger('tap')
+    await page.flushPromises()
+    const lists = () => page.calls.products.filter((params) => !params.house)
+    assert.deepEqual(lists().at(-1), { category: 'cue', brand_id: 10, page: 1, page_size: 20 })
+    await page.wrapper.find('.search-input').trigger('input', inputEvent(' A-100 '))
+    await page.wrapper.find('.search-input').trigger('confirm')
+    await page.flushPromises()
+    assert.deepEqual(lists().at(-1), { category: 'cue', brand_id: 10, keyword: 'A-100', page: 1, page_size: 20 })
+    await page.wrapper.findAll('.brand-chip')[0].trigger('tap')
+    await page.flushPromises()
+    assert.deepEqual(lists().at(-1), { category: 'cue', keyword: 'A-100', page: 1, page_size: 20 })
   } finally {
     await page.cleanup()
   }
