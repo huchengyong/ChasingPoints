@@ -75,11 +75,11 @@ UniApp：H5 构建 + 无头 Chrome 配合**本地 mock 接口**，亮 / 暗两�
 
 ## 5. 未执行 / 需要人工确认
 
-任务 6.3、12.3 保持未勾选。
+任务 12.3 保持未勾选：真机首轮验收时后端还没有部署装备接口（见第 6 节），装备页返回 404，核心流程没有跑通，需要在部署后重测。
 
-CDN：
+CDN（任务 6.3）：
 
-- [ ] 把 `uniapp/cdn-assets/static/images/gear/` 下 7 张默认图上传到七牛桶（key 与目录结构一致），并核对 `https://cdn.zhuifen.cn/static/images/gear/<文件名>.png` 可以访问。上传需要用户授权，本次没有执行；尚未上传，线上地址没有核对过。
+- [x] `uniapp/cdn-assets/static/images/gear/` 下 7 张默认图已由用户上传到七牛桶（key 与目录结构一致）。这是用户的确认；我在本机用 curl 访问 `https://cdn.zhuifen.cn/...` 得到 403，已有的段位图同样是 403，说明本机的访问方式受限，不能独立核对线上地址。
 
 微信小程序（开发者工具与真机）、鸿蒙（模拟器或真机）：
 
@@ -97,7 +97,12 @@ CDN：
 
 ## 6. 备注
 
-- 本次改动没有提交，也没有执行任何迁移到开发 / 生产库；迁移 `20261025115843_add_gear_tables.sql` 只在临时 MySQL 上跑过。
+- 部署（2026-10-26）：
+  - 真机验收时装备页显示「资源不存在或已下线」，原因是测试和生产后端都还没有装备接口：`/api/gear/*` 返回 404，已有接口（如 `/api/friend/search`）返回 401。
+  - 测试环境：`backend/deploy-dev.sh`，发布 `20261026101435-8bf206a15639-dirty`（先于提交，工作区未提交状态），执行迁移 `20261025115843_add_gear_tables.sql`；服务 active，装备用户端与后台共 6 类路由探测均为 401（路由存在，需要登录）。
+  - 生产环境：先提交并推送 `devlop`（`bbbb502` 后端、`186cdac` UniApp、`763926d` 后台、`e8035a1` 文档），预演列出待执行迁移 1 个、线上配置模板无变化，再正式发布 `20261026102155-e8035a1343c9`；脚本先备份数据库，再执行迁移、替换二进制并重启，本机与公网健康检查均为 200，日志无错误行；装备路由在服务器本机探测同为 401。
+  - 没有直接查询线上库里预置的球房公杆 / 球房巧克行；这两行由迁移写入，已在临时 MySQL 的端到端用例里核对过，线上迁移执行结果为 OK。
+  - 部署后没有用真实登录态走过装备接口，仍需真机重测。
 - 只有 `admin/src/layout/index.vue` 与 `admin/src/router/index.ts` 是改动已有后台文件；其余后台改动为新增。
 - 发现的既有问题（不在本次范围）：后台路由并非所有接口都校验管理员身份。已确认没有管理员校验的写接口有 `update_user_status`、`review_venue`、`update_venue_reward_config`、`update_reputation_config`、`update_llm_config`、`update_member_rights_config`，另有若干读接口。本次新增的 6 个装备后台接口都校验管理员（`requireGearAdmin`）。建议另开变更统一补上。
 - 默认图的风格与重新导出方法见 [docs/previews/gear-default-images/README.md](../previews/gear-default-images/README.md)。

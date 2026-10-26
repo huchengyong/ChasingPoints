@@ -107,7 +107,7 @@
 
 - [x] 6.1 把 `docs/previews/gear-default-images/` 中 7 张默认图的 SVG 导出为 512×512 透明 PNG，放到 `uniapp/cdn-assets/static/images/gear/`，文件名不变。核对背景透明、单张体积合理。
 - [x] 6.2 `uniapp/utils/cdn-asset.js` 的 `CDN_ASSET_PATH_PATTERN` 增加 `gear` 目录，补测试。
-- [ ] 6.3 确认授权后把装备默认图上传 CDN，核对线上地址可以访问，记录在验收文档中。
+- [x] 6.3 确认授权后把装备默认图上传 CDN，核对线上地址可以访问，记录在验收文档中。
 
 ## 7. UniApp 基础模块
 
