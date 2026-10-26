@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<title>巧克 默认图</title>
+<g transform="translate(512 548)">
+<polygon points="0,-275 250,-150 250,150 0,275 -250,150 -250,-150" fill="none" stroke="#FFF4D8" stroke-opacity="0.42" stroke-width="15" stroke-linejoin="round"/>
+<polygon points="-250,-150 0,-25 0,275 -250,150" fill="#2F63C6"/>
+<polygon points="0,-25 250,-150 250,150 0,275" fill="#244E9E"/>
+<polygon points="-250,-124 0,1 0,33 -250,-92" fill="#E0AE12"/>
+<polygon points="0,1 250,-124 250,-92 0,33" fill="#C69200"/>
+<g transform="translate(-125.0 108.5) rotate(26.6)"><ellipse rx="66" ry="56" fill="#F3F0E8"/><ellipse rx="44" ry="37" fill="none" stroke="#2F63C6" stroke-width="7"/><circle r="11" fill="#E0AE12"/></g>
+<g transform="translate(125.0 102.5) rotate(-26.6)" opacity="0.75"><line x1="-70" y1="-14" x2="70" y2="-14" stroke="#9DB6E6" stroke-width="7" stroke-linecap="round"/><line x1="-50" y1="14" x2="50" y2="14" stroke="#9DB6E6" stroke-width="7" stroke-linecap="round"/></g>
+<polygon points="0,-275 250,-150 0,-25 -250,-150" fill="#7FA7EE"/>
+<defs>
+<clipPath id="dimple"><ellipse cx="0" cy="-150" rx="110.0" ry="55.0"/></clipPath>
+</defs>
+<ellipse cx="0" cy="-150" rx="110.0" ry="55.0" fill="#3F69BC"/>
+<g clip-path="url(#dimple)"><ellipse cx="16" cy="-140" rx="110.0" ry="55.0" fill="#A6C1F2"/></g>
+<polyline points="-250,-150 0,-25 250,-150" fill="none" stroke="#DCE7FB" stroke-width="5" stroke-linejoin="round" transform="translate(0 -4)"/>
+<polygon points="-250,-150 0,-25 0,275 -250,150" fill="#FFFFFF" opacity="0.06"/>
+<polygon points="0,-25 250,-150 250,150 0,275" fill="#1A0F05" opacity="0.10"/>
+<line x1="0" y1="-25" x2="0" y2="275" stroke="#2A1A0C" stroke-width="3.5"/>
+<polyline points="-250,-150 0,-25 250,-150" fill="none" stroke="#2A1A0C" stroke-width="3.5" stroke-linejoin="round"/>
+<polygon points="0,-275 250,-150 250,150 0,275 -250,150 -250,-150" fill="none" stroke="#2A1A0C" stroke-width="6" stroke-linejoin="round"/>
+<circle cx="-196" cy="-300" r="10" fill="#A6C1F2"/>
+<circle cx="-158" cy="-334" r="6.5" fill="#A6C1F2"/>
+<circle cx="-226" cy="-344" r="5" fill="#A6C1F2"/>
+</g>
+</svg>

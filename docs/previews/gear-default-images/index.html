@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>追分 · 装备默认图预览</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      --page: #f7f4ec;
+      --card: #ffffff;
+      --text: #231c0b;
+      --text-2: #6e6242;
+      --border: #e9e2cf;
+      --dark-page: #141109;
+      --dark-card: #1e180d;
+      --brand: #c69200;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 32px 16px 64px;
+      background: var(--page);
+      color: var(--text);
+    }
+
+    main { width: min(1120px, 100%); margin: 0 auto; }
+
+    h1 { font-size: 28px; margin: 0 0 8px; }
+    h2 { font-size: 20px; margin: 40px 0 12px; }
+    p { color: var(--text-2); line-height: 1.7; margin: 0 0 8px; }
+    code { font-size: 0.92em; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px;
+    }
+
+    .card h3 { margin: 0 0 4px; font-size: 16px; }
+    .card .file { margin: 0 0 12px; font-size: 12px; color: var(--text-2); word-break: break-all; }
+
+    .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+
+    .tile {
+      aspect-ratio: 1;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    .tile img { width: 100%; height: 100%; object-fit: contain; }
+    .tile.light { background: var(--page); }
+    .tile.dark { background: var(--dark-card); }
+    .tile.checker {
+      background-color: #ffffff;
+      background-image:
+        linear-gradient(45deg, #ddd 25%, transparent 25%),
+        linear-gradient(-45deg, #ddd 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #ddd 75%),
+        linear-gradient(-45deg, transparent 75%, #ddd 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+    }
+
+    .labels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
+    .labels span { font-size: 12px; color: var(--text-2); text-align: center; }
+
+    .sizes {
+      display: flex;
+      align-items: flex-end;
+      gap: 16px;
+      flex-wrap: wrap;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px;
+    }
+
+    .sizes figure { margin: 0; text-align: center; }
+    .sizes figcaption { font-size: 12px; color: var(--text-2); margin-top: 4px; }
+    .sizes .swatch { border-radius: 10px; display: grid; place-items: center; background: var(--page); }
+    .sizes .swatch.dark { background: var(--dark-card); }
+
+  </style>
+</head>
+<body>
+<main>
+  <h1>装备默认图预览</h1>
+  <p>第一期所有装备图片都用这套默认图。画布 1024×1024，PNG 透明背景，同名 SVG 是源文件。风格、构图与生成提示词见同目录 <code>README.md</code>。</p>
+  <p>每张图分别放在浅色页面底、深色卡片底和透明棋盘格上，用来检查两种主题下的轮廓和透明边缘。球杆统一与竖直方向成 25°。</p>
+
+  <h2>默认图</h2>
+  <div class="grid" id="items"></div>
+
+  <h2>小尺寸</h2>
+  <p>球杆细长，缩到 120px 以下只剩轮廓和配色，木纹、铭牌、接木尖角都看不清。列表里要用小图时，建议另裁后把特写，或者只显示类别图标加文字。</p>
+  <div class="sizes" id="sizes"></div>
+
+</main>
+
+<script>
+  const items = [
+    ['gear-cue-snooker-default', '球杆 · 斯诺克 / 中八风格', '白蜡木杆身、乌木后把、四尖接木、铜接头、铭牌'],
+    ['gear-cue-pool-default', '球杆 · 美式风格', '枫木杆身、白箍、麻绳缠把、前把尖角、后把镶嵌'],
+    ['gear-break-cue-default', '冲杆', '酚醛硬杆头、运动握把、铜色前把；开跳杆也用这张'],
+    ['gear-jump-cue-default', '跳杆', '短杆、酚醛硬杆头，按真实长度比例缩短'],
+    ['gear-house-cue-default', '球房公杆', '一体杆、素色后把、重量贴纸、有点外翻的皮头'],
+    ['gear-tip-default', '皮头', '层压皮头，顶面带一点巧克蓝'],
+    ['gear-chalk-default', '巧克', '传统蓝色巧克，顶面有用过的凹坑'],
+  ];
+
+  const grid = document.getElementById('items');
+  for (const [file, title, desc] of items) {
+    const card = document.createElement('section');
+    card.className = 'card';
+    card.innerHTML = `
+      <h3>${title}</h3>
+      <p class="file">${file}.png · ${desc}</p>
+      <div class="tiles">
+        <div class="tile light"><img src="${file}.png" alt="${title}，浅色背景" /></div>
+        <div class="tile dark"><img src="${file}.png" alt="${title}，深色背景" /></div>
+        <div class="tile checker"><img src="${file}.png" alt="${title}，透明背景" /></div>
+      </div>
+      <div class="labels"><span>浅色</span><span>深色</span><span>透明</span></div>`;
+    grid.appendChild(card);
+  }
+
+  const sizes = document.getElementById('sizes');
+  for (const px of [240, 160, 120, 96, 64]) {
+    for (const dark of [false, true]) {
+      const fig = document.createElement('figure');
+      fig.innerHTML = `
+        <div class="swatch${dark ? ' dark' : ''}" style="width:${px}px;height:${px}px">
+          <img src="gear-cue-pool-default.png" width="${px}" height="${px}" alt="美式球杆 ${px}px" />
+        </div>
+        <figcaption>${px}px${dark ? ' 深色' : ''}</figcaption>`;
+      sizes.appendChild(fig);
+    }
+  }
+</script>
+</body>
+</html>
