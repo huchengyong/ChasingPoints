@@ -93,7 +93,7 @@ CDN（任务 6.3）：
 后台：
 
 - [ ] 用真实后端与真实管理员令牌走一遍录入品牌与型号、归并关联。本次只在 MySQL 端到端用例（逻辑层）和 mock 界面上验证过。
-- [ ] 用真实 HTTP 请求带普通用户 JWT 调用 `/api/admin/gear/*`，确认被拒。本次只在逻辑层用「用户令牌 / 匿名」上下文验证过拒绝，没有经过路由、中间件和真实 JWT。
+- [x] 用真实 HTTP 请求带普通用户 JWT 调用 `/api/admin/gear/*`，确认被拒。由 `enforce-admin-api-access` 补上：`backend/admin_access_route_test.go` 启动真实服务，用普通用户令牌请求所有已注册的后台路由（包括 `/api/admin/gear/*`），全部 403；开发与生产上匿名访问 39 个受保护接口全部 401（见 `docs/testing/enforce-admin-api-access-acceptance.md`）。
 
 ## 6. 备注
 
