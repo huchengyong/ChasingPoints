@@ -34,3 +34,16 @@ npm run dev
 ```
 
 `lint` / `format` scripts 会改写文件，不作为全仓无差别验证步骤；需要格式化时仅处理本次改动范围。构建警告以本次输出为准，不沿用历史“构建通过”结论。
+
+## 发布
+
+管理后台是静态站，由 [deploy.sh](deploy.sh) 发布，流程与校验见脚本头部注释：
+
+```bash
+# 在 admin/ 下执行；--dry-run 只测试和构建，不上传
+./deploy.sh dev [--dry-run]
+./deploy.sh prod [--dry-run]
+```
+
+- 生产只发布已提交并推送的代码，执行时需要输入 `yes` 确认。
+- 站点目录只有静态文件；不要手改服务器上的 `index.html` 或 `assets/`，需要回退时用脚本留下的 `.admin-backups` 备份。
