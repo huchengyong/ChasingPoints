@@ -458,6 +458,35 @@
 					}
 				}
 			]
+		},
+		{
+			"root": "subPages/gear",
+			"pages": [
+				{
+					"path": "index",
+					"style": {
+						"navigationBarTitleText": "我的装备"
+					}
+				},
+				{
+					"path": "add",
+					"style": {
+						"navigationBarTitleText": "添加装备"
+					}
+				},
+				{
+					"path": "item",
+					"style": {
+						"navigationBarTitleText": "装备详情"
+					}
+				},
+				{
+					"path": "friend",
+					"style": {
+						"navigationBarTitleText": "TA 的装备"
+					}
+				}
+			]
 		}
 	],
 	"uniIdRouter": {}

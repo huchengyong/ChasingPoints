@@ -101,6 +101,9 @@
 				<button v-if="showRematch" class="h2h-entry-button rematch-button" @tap="handleRematch">再约一场</button>
 			</view>
 
+			<!-- 本场用杆：只对已完成对局的选手展示，读取失败只影响这张卡片 -->
+			<matchGearCard :match-id="matchId" :enabled="showMatchGear" />
+
 			<!-- 局记录列表 -->
 			<view class="round-history">
 				<text class="section-title">局记录</text>
@@ -139,6 +142,8 @@ import { onHide, onLoad, onShow } from '@dcloudio/uni-app'
 import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import { getMatchDetail, getPublicMatchDetail } from '@/api/match.js'
 import memberAvatar from '@/components/memberAvatar.vue'
+import matchGearCard from '@/components/matchGearCard.vue'
+import { shouldShowMatchGear } from '@/utils/gear-match.js'
 import { useUserStore } from '@/store/user.js'
 import { buildMatchReplayUrl, canOpenMatchReplay } from '@/utils/match-replay-entry.js'
 import { usePageTheme } from '@/utils/page-theme.js'
@@ -239,6 +244,12 @@ const showReplay = computed(() => canOpenMatchReplay({
 	currentUserId: userStore.userId
 }))
 const showH2H = computed(() => matchData.value.status === 2 && matchData.value.viewer_role !== 'referee')
+const showMatchGear = computed(() => shouldShowMatchGear({
+	status: matchData.value.status,
+	viewerRole: matchData.value.viewer_role,
+	isPlayer1: matchData.value.is_player1,
+	isSpectate: isSpectateMode.value
+}))
 // 再约一场：本人是选手且对手为平台用户时展示（扫码对局同样可用；仅旁观/裁判不显示）。
 const showRematch = computed(() => {
 	const detail = matchData.value

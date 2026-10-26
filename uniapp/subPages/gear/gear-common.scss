@@ -1,0 +1,201 @@
+// 装备页面共用样式。颜色全部取全局 --ui-* 语义变量，亮暗主题由共享主题机制驱动（见 DESIGN.md）。
+
+.state-block {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 200rpx 48rpx 0;
+	text-align: center;
+
+	.state-title {
+		margin-top: 16rpx;
+		font-size: 30rpx;
+		font-weight: 600;
+		color: var(--ui-text-primary);
+	}
+
+	.state-desc {
+		margin-top: 10rpx;
+		font-size: 26rpx;
+		line-height: 1.6;
+		color: var(--ui-text-secondary);
+	}
+}
+
+.primary-btn {
+	min-width: 220rpx;
+	height: 80rpx;
+	line-height: 80rpx;
+	margin: 24rpx 0 0;
+	padding: 0 36rpx;
+	border-radius: var(--ui-radius-pill);
+	background: var(--ui-brand-primary);
+	color: #FFFFFF;
+	font-size: 28rpx;
+	font-weight: 600;
+
+	&::after {
+		display: none;
+	}
+
+	&[disabled] {
+		opacity: 0.5;
+	}
+}
+
+.ghost-btn {
+	min-width: 160rpx;
+	height: 72rpx;
+	line-height: 72rpx;
+	margin: 0;
+	padding: 0 28rpx;
+	border-radius: var(--ui-radius-pill);
+	background: var(--ui-surface-subtle);
+	border: 1rpx solid var(--ui-border-default);
+	color: var(--ui-brand-strong);
+	font-size: 26rpx;
+
+	&::after {
+		display: none;
+	}
+
+	&[disabled] {
+		opacity: 0.5;
+	}
+}
+
+.danger-btn {
+	height: 88rpx;
+	line-height: 88rpx;
+	margin: 0;
+	border-radius: var(--ui-radius-md);
+	background: var(--ui-surface-card);
+	border: 1rpx solid var(--ui-danger);
+	color: var(--ui-danger);
+	font-size: 28rpx;
+
+	&::after {
+		display: none;
+	}
+
+	&[disabled] {
+		opacity: 0.5;
+	}
+}
+
+.refresh-error-banner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20rpx;
+	margin-bottom: 20rpx;
+	padding: 18rpx 22rpx;
+	border-radius: var(--ui-radius-sm);
+	background: rgba(239, 68, 68, 0.1);
+	font-size: 24rpx;
+	color: var(--ui-danger);
+
+	.refresh-error-action {
+		flex-shrink: 0;
+		font-weight: 600;
+	}
+}
+
+.card {
+	margin-bottom: 20rpx;
+	padding: 28rpx;
+	border-radius: var(--ui-radius-lg);
+	background: var(--ui-surface-card);
+	border: 1rpx solid var(--ui-border-default);
+	box-sizing: border-box;
+}
+
+.card-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	margin-bottom: 8rpx;
+
+	.card-title {
+		font-size: 30rpx;
+		font-weight: 700;
+		color: var(--ui-text-primary);
+	}
+
+	.card-caption {
+		font-size: 22rpx;
+		color: var(--ui-text-muted);
+	}
+}
+
+.chip-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12rpx;
+}
+
+.chip {
+	padding: 10rpx 24rpx;
+	border-radius: var(--ui-radius-pill);
+	background: var(--ui-surface-subtle);
+	border: 1rpx solid var(--ui-border-default);
+	font-size: 24rpx;
+	color: var(--ui-text-secondary);
+
+	&.active {
+		background: var(--ui-brand-primary);
+		border-color: var(--ui-brand-primary);
+		color: #FFFFFF;
+		font-weight: 600;
+	}
+}
+
+// 底部抽屉：覆盖页面底部，必须留出安全区
+.sheet-mask {
+	position: fixed;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	z-index: 90;
+	background: rgba(0, 0, 0, 0.5);
+}
+
+.sheet {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 100;
+	max-height: 78vh;
+	display: flex;
+	flex-direction: column;
+	padding: 28rpx 28rpx calc(24rpx + env(safe-area-inset-bottom));
+	border-radius: var(--ui-radius-xl) var(--ui-radius-xl) 0 0;
+	background: var(--ui-surface-card);
+	box-sizing: border-box;
+
+	.sheet-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 12rpx;
+	}
+
+	.sheet-title {
+		font-size: 32rpx;
+		font-weight: 700;
+		color: var(--ui-text-primary);
+	}
+
+	.sheet-close {
+		padding: 8rpx 12rpx;
+		font-size: 26rpx;
+		color: var(--ui-text-muted);
+	}
+
+	.sheet-body {
+		flex: 1;
+		min-height: 0;
+	}
+}

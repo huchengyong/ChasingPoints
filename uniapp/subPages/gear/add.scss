@@ -1,0 +1,306 @@
+@import './gear-common.scss';
+
+// 添加装备 / 选择皮头与巧克：颜色取全局 --ui-* 语义变量；暗色表面由 .dark-mode 显式覆盖。
+.gear-add-page {
+	min-height: 100vh;
+	padding: 24rpx 24rpx 80rpx;
+	background: #F7F4EC;
+	color: var(--ui-text-primary);
+	box-sizing: border-box;
+
+	&.dark-mode {
+		background: #141109;
+	}
+}
+
+.category-tabs {
+	display: flex;
+	gap: 12rpx;
+	margin-bottom: 20rpx;
+
+	.category-tab {
+		flex: 1;
+		height: 72rpx;
+		line-height: 72rpx;
+		text-align: center;
+		border-radius: var(--ui-radius-pill);
+		background: var(--ui-surface-card);
+		border: 1rpx solid var(--ui-border-default);
+		font-size: 26rpx;
+		color: var(--ui-text-secondary);
+
+		&.active {
+			background: var(--ui-brand-primary);
+			border-color: var(--ui-brand-primary);
+			color: #FFFFFF;
+			font-weight: 600;
+		}
+	}
+}
+
+.pick-banner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin: 4rpx 4rpx 20rpx;
+
+	.pick-title {
+		font-size: 32rpx;
+		font-weight: 700;
+		color: var(--ui-text-primary);
+	}
+
+	.pick-clear {
+		padding: 8rpx 4rpx;
+		font-size: 26rpx;
+		color: var(--ui-brand-strong);
+	}
+}
+
+.search-box {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+	height: 80rpx;
+	padding: 0 24rpx;
+	border-radius: var(--ui-radius-pill);
+	background: var(--ui-surface-card);
+	border: 1rpx solid var(--ui-border-default);
+	box-sizing: border-box;
+
+	.search-input {
+		flex: 1;
+		min-width: 0;
+		height: 80rpx;
+		font-size: 28rpx;
+		color: var(--ui-text-primary);
+	}
+
+	.search-clear {
+		flex-shrink: 0;
+		font-size: 24rpx;
+		color: var(--ui-text-muted);
+	}
+}
+
+.search-placeholder {
+	color: var(--ui-text-muted);
+	font-size: 28rpx;
+}
+
+.brand-scroll {
+	margin: 20rpx -24rpx 0;
+	white-space: nowrap;
+
+	.brand-row {
+		display: inline-flex;
+		gap: 12rpx;
+		padding: 0 24rpx;
+	}
+
+	.brand-chip {
+		display: inline-block;
+		padding: 10rpx 26rpx;
+		border-radius: var(--ui-radius-pill);
+		background: var(--ui-surface-card);
+		border: 1rpx solid var(--ui-border-default);
+		font-size: 24rpx;
+		color: var(--ui-text-secondary);
+
+		&.active {
+			background: var(--ui-brand-tint);
+			border-color: var(--ui-brand-primary);
+			color: var(--ui-brand-strong);
+			font-weight: 600;
+		}
+	}
+}
+
+.house-row {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+	margin-top: 20rpx;
+	padding: 18rpx 24rpx;
+	border-radius: var(--ui-radius-lg);
+	background: var(--ui-brand-tint);
+	border: 1rpx solid var(--ui-brand-primary);
+	box-sizing: border-box;
+
+	.house-image {
+		flex-shrink: 0;
+		width: 140rpx;
+		height: 140rpx;
+	}
+
+	.house-copy {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.house-title {
+		font-size: 30rpx;
+		font-weight: 700;
+		color: var(--ui-text-primary);
+	}
+
+	.house-desc {
+		margin-top: 6rpx;
+		font-size: 24rpx;
+		color: var(--ui-text-secondary);
+	}
+}
+
+.empty-tip {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 100rpx 48rpx 40rpx;
+	text-align: center;
+
+	.empty-title {
+		font-size: 30rpx;
+		font-weight: 600;
+		color: var(--ui-text-primary);
+	}
+
+	.empty-desc {
+		margin-top: 10rpx;
+		font-size: 26rpx;
+		color: var(--ui-text-secondary);
+	}
+}
+
+.product-list {
+	margin-top: 20rpx;
+	border-radius: var(--ui-radius-lg);
+	background: var(--ui-surface-card);
+	border: 1rpx solid var(--ui-border-default);
+	overflow: hidden;
+}
+
+.product-row {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+	padding: 20rpx 24rpx;
+	border-top: 1rpx solid var(--ui-border-default);
+
+	&:first-child {
+		border-top: none;
+	}
+
+	.product-image {
+		flex-shrink: 0;
+		width: 160rpx;
+		height: 160rpx;
+		border-radius: var(--ui-radius-md);
+		background: var(--ui-surface-subtle);
+	}
+
+	.product-copy {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.product-title {
+		font-size: 28rpx;
+		font-weight: 600;
+		line-height: 1.4;
+		color: var(--ui-text-primary);
+		overflow-wrap: break-word;
+	}
+
+	.product-subtitle {
+		margin-top: 8rpx;
+		font-size: 22rpx;
+		color: var(--ui-text-muted);
+	}
+}
+
+.list-tip {
+	display: block;
+	padding: 24rpx 0;
+	text-align: center;
+	font-size: 24rpx;
+	color: var(--ui-text-muted);
+
+	&.list-tip--action {
+		color: var(--ui-brand-strong);
+	}
+}
+
+.unlisted-entry {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16rpx;
+	margin-top: 28rpx;
+	padding: 24rpx 28rpx;
+	border-radius: var(--ui-radius-lg);
+	background: var(--ui-surface-card);
+	border: 1rpx dashed var(--ui-border-default);
+	box-sizing: border-box;
+
+	.unlisted-copy {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.unlisted-title {
+		font-size: 28rpx;
+		font-weight: 600;
+		color: var(--ui-text-primary);
+	}
+
+	.unlisted-desc {
+		margin-top: 6rpx;
+		font-size: 22rpx;
+		color: var(--ui-text-muted);
+	}
+}
+
+.unlisted-form {
+	margin-top: 16rpx;
+
+	.form-label {
+		display: block;
+		margin: 24rpx 0 12rpx;
+		font-size: 24rpx;
+		font-weight: 600;
+		color: var(--ui-text-secondary);
+
+		&:first-child {
+			margin-top: 0;
+		}
+	}
+
+	.form-input {
+		margin-top: 16rpx;
+		height: 80rpx;
+		padding: 0 24rpx;
+		border-radius: var(--ui-radius-md);
+		background: var(--ui-surface-subtle);
+		border: 1rpx solid var(--ui-border-default);
+		font-size: 28rpx;
+		color: var(--ui-text-primary);
+		box-sizing: border-box;
+	}
+
+	.form-hint {
+		display: block;
+		margin-top: 24rpx;
+		font-size: 22rpx;
+		line-height: 1.6;
+		color: var(--ui-text-muted);
+	}
+
+	.submit-btn {
+		width: 100%;
+		margin-top: 24rpx;
+	}
+}

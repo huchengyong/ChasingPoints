@@ -40,7 +40,7 @@
 - `uni` 在小程序里是编译期注入的，`utils/` 中的纯逻辑不要依赖 `globalThis.uni`，由调用方显式传入 `uniApi`。
 - UniApp 目前只编译微信小程序和鸿蒙（iOS / Android 改为原生开发）。Node 测试（含 Vue SFC/jsdom 挂载）不替代微信小程序 / 鸿蒙的编译和真机 UI 验收；改动需注明实际覆盖的平台。
 - 公开界面展示他人会员身份（头像框、VIP 标识）统一使用 [components/memberAvatar.vue](components/memberAvatar.vue) 与 [utils/member-identity.js](utils/member-identity.js)，不在页面里手写头像框或标识；字段缺失按非会员处理。头像框素材很宽，按周围空间选择占位方式（默认溢出、`reserve-frame`、`fit-frame`），不要靠加大父容器边距硬撑。会员分析页（表现分析、单场复盘）的开通入口只由 `canShowPaidMembershipEntry()` 控制。
-- 微信小程序主包上限 2MB，`static/` 只放必须随包的小资源。段位、成就、头像框和默认封面等大图放在 [cdn-assets/](cdn-assets/)，目录结构与七牛桶 key 一致，需上传到 CDN 后才生效；页面直接绑定后端返回的 `icon` 时用 [utils/cdn-asset.js](utils/cdn-asset.js) 的 `resolveCdnAssetUrl` 转换。
+- 微信小程序主包上限 2MB，`static/` 只放必须随包的小资源。段位、成就、头像框、默认封面和装备图（`static/images/gear/`）等大图放在 [cdn-assets/](cdn-assets/)，目录结构与七牛桶 key 一致，需上传到 CDN 后才生效；页面直接绑定后端返回的 `icon` 时用 [utils/cdn-asset.js](utils/cdn-asset.js) 的 `resolveCdnAssetUrl` 转换。
 
 ## 验证命令
 在 `uniapp/` 执行；依赖按需通过 `npm install` 安装。[package.json](package.json) 没有 npm scripts，不使用 `npm test`。

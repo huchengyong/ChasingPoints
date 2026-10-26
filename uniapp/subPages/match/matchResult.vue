@@ -163,6 +163,9 @@
 					</view>
 				</view>
 
+				<!-- 本场用杆：只对已完成对局的选手展示，读取失败只影响这张卡片 -->
+				<matchGearCard :match-id="matchId" :enabled="showMatchGear" />
+
 				<view class="referee-card" v-if="refereeCard.hasReferee">
 					<view class="referee-card-head">
 						<uni-icons type="person-filled" size="18" color="#E0AE12"></uni-icons>
@@ -261,6 +264,8 @@ import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { getMatchDetail, getMatchRewardSummary } from '@/api/match.js'
 import { formatDateTime, formatRelativeTime } from '@/utils/format.js'
 import memberAvatar from '@/components/memberAvatar.vue'
+import matchGearCard from '@/components/matchGearCard.vue'
+import { shouldShowMatchGear } from '@/utils/gear-match.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveMatchRankingRightsSummary } from '@/utils/member-ranking-rights.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
@@ -335,6 +340,11 @@ const systemInfo = uni.getSystemInfoSync()
 statusBarHeight.value = systemInfo.statusBarHeight || 20
 
 const isReferee = computed(() => matchData.value.viewer_role === 'referee')
+const showMatchGear = computed(() => shouldShowMatchGear({
+	status: matchData.value.status,
+	viewerRole: matchData.value.viewer_role,
+	isPlayer1: matchData.value.is_player1
+}))
 // 单场复盘只给本场选手；资格由服务端最终判断。
 const showReplayEntry = computed(() => canOpenMatchReplay({
 	status: matchData.value.status,

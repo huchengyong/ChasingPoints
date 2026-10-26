@@ -307,6 +307,11 @@
 	margin: 0;
 }
 
+// 第三个按钮单独占一行
+.hero-gear-btn {
+	grid-column: 1 / -1;
+}
+
 .fact-chip {
 	text {
 		font-size: 22rpx;

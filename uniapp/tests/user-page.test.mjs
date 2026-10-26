@@ -118,6 +118,7 @@ test('shortcuts keep the four record entries in one brand color', () => {
 test('service list opens the challenge history first, then the existing member, season, rules and venue routes', () => {
   assert.match(source, /serviceLinks = computed\(\(\) => \(\[\s*\{ title: '约球记录', icon: 'list', value: '', handler: \(\) => openRoute\('\/subPages\/social\/challenges\?tab=history'\) \},\s*\{ title: '会员中心'/)
   assert.match(source, /title: '会员中心', icon: 'vip', value: memberEntry\.value\.text/)
+  assert.match(source, /title: '装备', icon: 'tune', value: '', handler: \(\) => openRoute\('\/subPages\/gear\/index'\)/)
   assert.match(source, /openRoute\('\/subPages\/season\/index'\)/)
   assert.match(source, /openRoute\('\/subPages\/rules\/index'\)/)
   assert.match(source, /openRoute\('\/subPages\/venue\/index'\)/)

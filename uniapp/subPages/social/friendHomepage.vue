@@ -77,6 +77,9 @@
 					<button class="secondary-btn" @tap="goToHonorWall">
 						<text>查看荣誉墙</text>
 					</button>
+					<button class="secondary-btn hero-gear-btn" @tap="goToFriendGear">
+						<text>TA 的装备</text>
+					</button>
 				</view>
 			</view>
 
@@ -154,6 +157,7 @@ import { getOpponentList } from '@/api/match.js'
 import memberAvatar from '@/components/memberAvatar.vue'
 import { buildFriendPkReportUrl } from '@/utils/friend-entry.js'
 import { buildHonorWallUrl } from '@/utils/honor-wall.js'
+import { buildFriendGearUrl } from '@/utils/gear-display.js'
 import {
 	buildOpponentCardViewModels,
 	buildOpponentH2HUrl,
@@ -342,6 +346,12 @@ const goToPkReport = () => {
 const goToHonorWall = () => {
 	uni.navigateTo({
 		url: buildHonorWallUrl({ userId: friendProfile.id, gameType: 3 })
+	})
+}
+
+const goToFriendGear = () => {
+	uni.navigateTo({
+		url: buildFriendGearUrl({ userId: friendProfile.id, name: friendProfile.name })
 	})
 }
 

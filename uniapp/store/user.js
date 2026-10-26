@@ -7,6 +7,7 @@ import { useUserOverviewStore } from './userOverview.js'
 import { useUserDataInvalidationStore } from './userDataInvalidation.js'
 import { usePublicReadStore } from './publicRead.js'
 import { useMemberPerformanceStore } from './memberPerformance.js'
+import { useGearStore } from './gear.js'
 import { matchWS, userWS } from '@/utils/websocket.js'
 import {
   clearStoredSession,
@@ -25,6 +26,7 @@ const clearCurrentUserRuntimeState = () => {
     userDataInvalidationStore: useUserDataInvalidationStore(),
     publicReadStore: usePublicReadStore(),
     memberPerformanceStore: useMemberPerformanceStore(),
+    gearStore: useGearStore(),
     userSocket: userWS,
     matchSocket: matchWS
   })

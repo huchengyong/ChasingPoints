@@ -375,6 +375,7 @@ const quickActions = [
 const serviceLinks = computed(() => ([
 	{ title: '约球记录', icon: 'list', value: '', handler: () => openRoute('/subPages/social/challenges?tab=history') },
 	{ title: '会员中心', icon: 'vip', value: memberEntry.value.text, handler: handleOpenMemberCenter },
+	{ title: '装备', icon: 'tune', value: '', handler: () => openRoute('/subPages/gear/index') },
 	{ title: '赛季档案', icon: 'calendar', value: '', handler: () => openRoute('/subPages/season/index') },
 	{ title: '规则百科', icon: 'help', value: '', handler: () => openRoute('/subPages/rules/index') },
 	{ title: '附近球馆', icon: 'location', value: '', handler: () => openRoute('/subPages/venue/index') }

@@ -1,0 +1,231 @@
+@import './gear-common.scss';
+
+// 我的装备：颜色取全局 --ui-* 语义变量；暗色表面由 .dark-mode 显式覆盖。
+.gear-page {
+	min-height: 100vh;
+	padding: 24rpx 24rpx 60rpx;
+	background: #F7F4EC;
+	color: var(--ui-text-primary);
+	box-sizing: border-box;
+
+	&.dark-mode {
+		background: #141109;
+	}
+}
+
+.default-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 20rpx;
+	padding: 20rpx 0;
+	border-top: 1rpx solid var(--ui-border-default);
+
+	.default-game {
+		flex-shrink: 0;
+		width: 148rpx;
+		padding-top: 6rpx;
+		font-size: 26rpx;
+		font-weight: 600;
+		color: var(--ui-text-primary);
+	}
+
+	.default-slots {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 12rpx;
+	}
+
+	.slot {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16rpx;
+		padding: 12rpx 20rpx;
+		border-radius: var(--ui-radius-md);
+		background: var(--ui-surface-subtle);
+		border: 1rpx solid var(--ui-border-default);
+	}
+
+	.slot-label {
+		flex-shrink: 0;
+		font-size: 22rpx;
+		color: var(--ui-text-muted);
+	}
+
+	.slot-value {
+		flex: 1;
+		min-width: 0;
+		text-align: right;
+		font-size: 26rpx;
+		color: var(--ui-text-primary);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+
+		&.empty {
+			color: var(--ui-text-muted);
+		}
+	}
+}
+
+.section-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin: 8rpx 4rpx 16rpx;
+
+	.section-copy {
+		display: flex;
+		align-items: baseline;
+		gap: 12rpx;
+	}
+
+	.section-title {
+		font-size: 32rpx;
+		font-weight: 700;
+		color: var(--ui-text-primary);
+	}
+
+	.section-count {
+		font-size: 24rpx;
+		color: var(--ui-text-muted);
+	}
+
+	.ghost-btn {
+		min-width: 0;
+		height: 64rpx;
+		line-height: 64rpx;
+		padding: 0 28rpx;
+	}
+}
+
+.empty-card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 56rpx 36rpx;
+	text-align: center;
+
+	.empty-title {
+		font-size: 32rpx;
+		font-weight: 700;
+		color: var(--ui-text-primary);
+	}
+
+	.empty-desc {
+		margin-top: 12rpx;
+		font-size: 26rpx;
+		line-height: 1.6;
+		color: var(--ui-text-secondary);
+	}
+}
+
+.group {
+	margin-bottom: 12rpx;
+
+	.group-title {
+		display: block;
+		margin: 16rpx 4rpx 16rpx;
+		font-size: 26rpx;
+		font-weight: 600;
+		color: var(--ui-text-secondary);
+	}
+}
+
+.grid {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 20rpx;
+
+	.grid-cell {
+		width: calc(50% - 10rpx);
+	}
+}
+
+.privacy-note {
+	display: block;
+	margin: 28rpx 8rpx 0;
+	font-size: 22rpx;
+	line-height: 1.6;
+	color: var(--ui-text-muted);
+	text-align: center;
+}
+
+.picker-row {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+	padding: 18rpx 8rpx;
+	border-top: 1rpx solid var(--ui-border-default);
+
+	&.active {
+		.picker-title {
+			color: var(--ui-brand-strong);
+		}
+	}
+
+	.picker-image {
+		flex-shrink: 0;
+		width: 140rpx;
+		height: 140rpx;
+		border-radius: var(--ui-radius-md);
+		background: var(--ui-surface-subtle);
+	}
+
+	.picker-copy {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.picker-title {
+		font-size: 28rpx;
+		font-weight: 600;
+		color: var(--ui-text-primary);
+		overflow-wrap: break-word;
+	}
+
+	.picker-subtitle {
+		margin-top: 6rpx;
+		font-size: 22rpx;
+		color: var(--ui-text-muted);
+	}
+
+	.picker-mark {
+		flex-shrink: 0;
+		padding: 4rpx 16rpx;
+		border-radius: var(--ui-radius-pill);
+		background: var(--ui-brand-tint);
+		font-size: 22rpx;
+		color: var(--ui-brand-strong);
+	}
+}
+
+.picker-clear {
+	padding: 28rpx 8rpx 8rpx;
+	border-top: 1rpx solid var(--ui-border-default);
+	text-align: center;
+	font-size: 28rpx;
+	color: var(--ui-danger);
+}
+
+.picker-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 40rpx 0;
+
+	.picker-empty-text {
+		font-size: 26rpx;
+		line-height: 1.6;
+		color: var(--ui-text-secondary);
+		text-align: center;
+	}
+
+	.picker-empty-btn {
+		margin-top: 24rpx;
+	}
+}
