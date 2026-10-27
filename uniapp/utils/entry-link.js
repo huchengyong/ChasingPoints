@@ -6,6 +6,9 @@ const inviteCodePattern = /^[0-9A-Za-z]{12}$/
 
 const home = () => ({ type: 'home' })
 
+// 入口链接、端内扫码和分享卡片打开对局时共用的观战详情路由。
+export const buildSpectateRoute = (matchId) => `/subPages/match/matchDetail?match_id=${matchId}&mode=spectate`
+
 export const buildEntryLink = ({ type = 'home', value } = {}) => {
   if (type === 'invite') return `${ENTRY_BASE}?j=${value}`
   if (type === 'match') return `${ENTRY_BASE}?m=${value}`

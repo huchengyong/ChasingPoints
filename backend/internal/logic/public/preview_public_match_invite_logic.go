@@ -75,12 +75,17 @@ func (l *PreviewPublicMatchInviteLogic) allowRequest() (bool, error) {
 		ip = "unknown"
 	}
 	key := previewRateLimitKeyPrefix + ip
-	count, err := l.svcCtx.Redis.Incr(l.ctx, key).Result()
-	if err != nil {
+	pipe := l.svcCtx.Redis.TxPipeline()
+	incr := pipe.Incr(l.ctx, key)
+	ttl := pipe.TTL(l.ctx, key)
+	if _, err := pipe.Exec(l.ctx); err != nil {
 		return false, err
 	}
-	if count == 1 {
-		l.svcCtx.Redis.Expire(l.ctx, key, time.Minute)
+	// 只要键没有过期时间就补上（包括上次设置失败的情况），避免计数器永久存在、把整个出口 IP 一直拦住。
+	if ttl.Val() < 0 {
+		if err := l.svcCtx.Redis.Expire(l.ctx, key, time.Minute).Err(); err != nil {
+			return false, err
+		}
 	}
-	return count <= previewRateLimitPerMinute, nil
+	return incr.Val() <= previewRateLimitPerMinute, nil
 }

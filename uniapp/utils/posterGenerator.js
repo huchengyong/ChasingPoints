@@ -491,13 +491,14 @@ function drawMatchPoster(canvasId, data, template, images) {
     })
 
     const qrTarget = resolvePosterQrTarget(data)
-    if (drawPosterQrCode(ctx, qrTarget.url, { x: 60, y: H - 196, size: 120 })) {
+    // 二维码在左侧不与居中文字相交；两行旁注整体放在「追分」品牌行（约 H-122 起）之上，避免重叠。
+    if (drawPosterQrCode(ctx, qrTarget.url, { x: 60, y: H - 216, size: 120 })) {
       ctx.setFontSize(22)
       ctx.setFillStyle('#cbd5e1')
-      ctx.fillText(qrTarget.caption, 204, H - 138)
+      ctx.fillText(qrTarget.caption, 204, H - 176)
       ctx.setFontSize(18)
       ctx.setFillStyle('#64748b')
-      ctx.fillText('微信扫一扫进入小程序', 204, H - 106)
+      ctx.fillText('微信扫一扫进入小程序', 204, H - 140)
     }
 
     drawCenterText(ctx, '追分', H - 92, 30, theme ? theme.brand : '#60a5fa')

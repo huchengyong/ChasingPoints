@@ -44,8 +44,8 @@ export const createLinkEntryFlow = ({
         expiresAt: response.preview.expires_at || ''
       }
     } catch {
-      settled = true
-      return { type: 'expired', message: unavailableMessage }
+      // 网络或服务异常不代表短码失效：不结束流程，页面可以重试。
+      return { type: 'error', message: unavailableMessage }
     }
   }
 
@@ -74,7 +74,7 @@ export const createLinkEntryFlow = ({
       return { type: 'confirm', route: SCAN_CONFIRM_ROUTE }
     } catch {
       if (!isCurrent(identity)) return { type: 'ignore' }
-      return { type: 'expired', message: unavailableMessage }
+      return { type: 'error', message: unavailableMessage }
     } finally {
       resolving = false
     }
@@ -97,5 +97,11 @@ export const createLinkEntryFlow = ({
     return exchange(identity)
   }
 
-  return { begin, resume }
+  // 网络失败后由页面「重试」触发：重新走一遍进入流程，短码已确认失效或已交接时不再请求。
+  const retry = async () => {
+    if (!started || settled || resolving) return { type: 'ignore' }
+    return begin(inviteCode)
+  }
+
+  return { begin, resume, retry }
 }

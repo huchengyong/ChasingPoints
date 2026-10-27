@@ -17,6 +17,33 @@ const (
 	MatchInviteUnavailableMessage = "匹配二维码服务暂不可用"
 )
 
+// NewMatchInviteSigner 按配置创建匹配邀请签名器；签发、校验与短码兑换共用。
+func NewMatchInviteSigner(svcCtx *svc.ServiceContext) (*matchinvite.Signer, error) {
+	if svcCtx == nil {
+		return nil, matchinvite.ErrSignerConfig
+	}
+	return matchinvite.NewSigner(
+		svcCtx.Config.Security.MatchInvite.SigningSecret,
+		time.Duration(svcCtx.Config.Security.MatchInvite.TTLSeconds)*time.Second,
+	)
+}
+
+// VerifyMatchInvite 校验签名 token，失败时返回面向用户的提示。
+func VerifyMatchInvite(svcCtx *svc.ServiceContext, token string) (*matchinvite.Claims, string) {
+	signer, err := NewMatchInviteSigner(svcCtx)
+	if err != nil {
+		return nil, MatchInviteUnavailableMessage
+	}
+	claims, err := signer.Verify(strings.TrimSpace(token))
+	if err == nil {
+		return claims, ""
+	}
+	if errors.Is(err, matchinvite.ErrExpiredToken) {
+		return nil, MatchInviteExpiredMessage
+	}
+	return nil, "无效的匹配二维码"
+}
+
 // MatchInviteCodeResult 是短码兑换后的可信结果，供登录态兑换与匿名预览共同使用。
 type MatchInviteCodeResult struct {
 	Token     string
@@ -30,21 +57,18 @@ func ResolveMatchInviteCode(ctx context.Context, svcCtx *svc.ServiceContext, cod
 	}
 	token, err := svcCtx.MatchInviteCodeStore.Resolve(ctx, strings.TrimSpace(code))
 	if err != nil {
-		if errors.Is(err, matchinvite.ErrCodeNotFound) || errors.Is(err, matchinvite.ErrInvalidCode) || errors.Is(err, matchinvite.ErrExpiredToken) {
+		if errors.Is(err, matchinvite.ErrCodeNotFound) || errors.Is(err, matchinvite.ErrInvalidCode) {
 			return nil, MatchInviteExpiredMessage
 		}
 		return nil, MatchInviteUnavailableMessage
 	}
 
-	signer, err := matchinvite.NewSigner(
-		svcCtx.Config.Security.MatchInvite.SigningSecret,
-		time.Duration(svcCtx.Config.Security.MatchInvite.TTLSeconds)*time.Second,
-	)
-	if err != nil {
-		return nil, MatchInviteUnavailableMessage
+	// 短码入口不区分签名无效与过期，统一按失效提示。
+	claims, message := VerifyMatchInvite(svcCtx, token)
+	if message == MatchInviteUnavailableMessage {
+		return nil, message
 	}
-	claims, err := signer.Verify(token)
-	if err != nil {
+	if message != "" {
 		return nil, MatchInviteExpiredMessage
 	}
 

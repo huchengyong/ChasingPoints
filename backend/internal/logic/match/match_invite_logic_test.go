@@ -9,6 +9,9 @@ import (
 	"chasing_points/internal/model"
 	"chasing_points/internal/pkg/matchinvite"
 	"chasing_points/internal/types"
+
+	miniredis "github.com/alicebob/miniredis/v2"
+	"github.com/redis/go-redis/v9"
 )
 
 func TestMatchInviteQRCodeAndPreviewUseServerSignedIdentity(t *testing.T) {
@@ -118,5 +121,24 @@ func TestStartMatchRequiresAndCanonicalizesInviteInProduction(t *testing.T) {
 	})
 	if err != nil || !replayed.Success || replayed.Action != startMatchActionResumeExisting || replayed.MatchId != resp.MatchId {
 		t.Fatalf("repeat invite must converge to existing match: resp=%+v err=%v", replayed, err)
+	}
+}
+
+func TestMatchInviteQRCodeFailsWhenShortCodeCannotBeSaved(t *testing.T) {
+	svcCtx := newMatchLogicTestSvc(t)
+	svcCtx.Config.Security.MatchInvite.SigningSecret = "invite-test-secret"
+	svcCtx.Config.Security.MatchInvite.TTLSeconds = 300
+	seedMatchLogicUser(t, svcCtx, 1001, "发起人")
+
+	broken := miniredis.RunT(t)
+	svcCtx.MatchInviteCodeStore = matchinvite.NewCodeStore(redis.NewClient(&redis.Options{Addr: broken.Addr()}))
+	broken.Close()
+
+	resp, err := NewGetMatchQRCodeLogic(matchLogicCtx(1001), svcCtx).GetMatchQRCode()
+	if err != nil {
+		t.Fatalf("issue QR invite: %v", err)
+	}
+	if resp.Success || resp.QrcodeData != "" || resp.InviteToken != "" {
+		t.Fatalf("an unsaved short code must not produce a QR code: %+v", resp)
 	}
 }

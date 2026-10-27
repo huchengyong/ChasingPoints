@@ -1,5 +1,6 @@
 // 分享卡片：只依据页面已经加载的数据同步生成，不在分享时发请求。
 // 公开对局带比分与球种；私密、已取消或数据未加载时退回通用卡片。
+import { buildSpectateRoute } from './entry-link.js'
 import { getGameTypeLabel } from './game-types.js'
 
 const GENERIC_TITLE = '追分 · 记录每一局真实比分'
@@ -47,6 +48,6 @@ export const buildMatchShareCard = (detail = {}) => {
 
   return {
     title,
-    path: `/subPages/match/matchDetail?match_id=${matchId}&mode=spectate`
+    path: buildSpectateRoute(matchId)
   }
 }

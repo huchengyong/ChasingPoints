@@ -1,6 +1,7 @@
 // 统一扫码流程：中间扫码按钮、首页「扫描对手二维码」和赛果页「再来一局」共用。
 // 先扫码，再按码类型进入确认页（subPages/match/scanConfirm）：对手匹配码确认球种与对局类型后开局，裁判码预览后确认执裁。
 // 纯逻辑（只用相对路径引用）：会话、预览接口和 uni API 都由调用方注入，接线见 quick-scan-entry.js。
+import { buildSpectateRoute } from './entry-link.js'
 import { scanAndResolveMatchCode } from './match-scan.js'
 import { normalizeStartMatchOptions } from './start-match.js'
 
@@ -78,7 +79,7 @@ export const createQuickScan = ({
       }
 
       if (result.type === 'open_match') {
-        uniApi.navigateTo({ url: `/subPages/match/matchDetail?match_id=${result.matchId}&mode=spectate` })
+        uniApi.navigateTo({ url: buildSpectateRoute(result.matchId) })
         return { type: 'spectate' }
       }
 

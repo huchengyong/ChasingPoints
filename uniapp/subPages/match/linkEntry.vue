@@ -11,6 +11,13 @@
 			<button class="primary-btn" @tap="handleBackHome">返回首页</button>
 		</view>
 
+		<view v-else-if="stage === 'error'" class="state-block">
+			<text class="state-title">暂时无法打开邀请</text>
+			<text class="state-text state-text--error">{{ errorMessage }}</text>
+			<button class="primary-btn" @tap="handleRetry">重试</button>
+			<button class="text-btn" @tap="handleBackHome">返回首页</button>
+		</view>
+
 		<template v-else-if="stage === 'preview'">
 			<view class="inviter-card">
 				<image
@@ -38,7 +45,7 @@ import { computed, ref } from 'vue'
 import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { previewPublicMatchInvite, resolveMatchInviteCode } from '@/api/match.js'
 import { useUserStore } from '@/store/user.js'
-import { decodeLaunchQuery, parseEntryLink } from '@/utils/entry-link.js'
+import { buildSpectateRoute, decodeLaunchQuery, parseEntryLink } from '@/utils/entry-link.js'
 import { createLinkEntryFlow } from '@/utils/link-entry-flow.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { handoffResolvedScan } from '@/utils/quick-scan-entry.js'
@@ -46,12 +53,11 @@ import { resolveAvatarUrl } from '@/utils/user-profile.js'
 
 const LOGIN_ROUTE = '/pages/login/login'
 const HOME_ROUTE = '/pages/index/index'
-const SPECTATE_ROUTE = (matchId) => `/subPages/match/matchDetail?match_id=${matchId}&mode=spectate`
 
 const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
 
-// loading：解析或兑换中；preview：未登录预览；expired：短码失效。
+// loading：解析或兑换中；preview：未登录预览；expired：短码失效；error：网络或服务异常，可重试。
 const stage = ref('loading')
 const errorMessage = ref('')
 const inviter = ref({ name: '', avatar: '' })
@@ -102,11 +108,22 @@ const handleAction = (action) => {
 		uni.redirectTo({ url: action.route })
 		return
 	}
-	if (action.type === 'expired') {
+	if (action.type === 'expired' || action.type === 'error') {
 		stopTimer()
 		errorMessage.value = action.message
-		stage.value = 'expired'
+		stage.value = action.type
 	}
+}
+
+const handleRetry = async () => {
+	stage.value = 'loading'
+	const action = await flow.retry()
+	// 被忽略（已有请求在途或登录态刚变化）时退回错误态，不让页面停在加载中。
+	if (action.type === 'ignore') {
+		if (stage.value === 'loading') stage.value = 'error'
+		return
+	}
+	handleAction(action)
 }
 
 const handleBackHome = () => {
@@ -120,7 +137,7 @@ const handleLogin = () => {
 onLoad(async (options = {}) => {
 	const parsed = parseEntryLink(decodeLaunchQuery(options.q))
 	if (parsed.type === 'match') {
-		uni.redirectTo({ url: SPECTATE_ROUTE(parsed.matchId) })
+		uni.redirectTo({ url: buildSpectateRoute(parsed.matchId) })
 		return
 	}
 	if (parsed.type !== 'invite') {
@@ -261,6 +278,22 @@ onUnload(stopTimer)
 	font-size: 32rpx;
 	font-weight: 600;
 	border: none;
+}
+
+.text-btn {
+	margin-top: 24rpx;
+	background: transparent;
+	color: #6e6242;
+	font-size: 28rpx;
+	border: none;
+
+	&::after {
+		border: none;
+	}
+
+	.dark-mode & {
+		color: #d7c89b;
+	}
 }
 
 .hint {

@@ -221,3 +221,46 @@ test('the match poster still generates with the QR caption of its own visibility
   assert.equal(privatePoster.path, '/tmp/poster.png')
   assert.ok(texts(privatePoster.calls).includes('微信扫码打开追分'))
 })
+
+// 按画布调用还原文字的大致占位（中文按每字一个字号宽），检查二维码区和其他文字互不压叠。
+const textBoxes = (calls) => {
+  let fontSize = 16
+  let align = 'left'
+  const boxes = []
+  for (const [name, ...args] of calls) {
+    if (name === 'setFontSize') fontSize = args[0]
+    if (name === 'setTextAlign') align = args[0]
+    if (name === 'fillText') {
+      const [text, x, y] = args
+      const width = Array.from(String(text)).length * fontSize
+      const left = align === 'center' ? x - width / 2 : align === 'right' ? x - width : x
+      boxes.push({ text, left, right: left + width, top: y - fontSize, bottom: y })
+    }
+  }
+  return boxes
+}
+
+const overlaps = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
+
+test('the poster QR block does not overlap the brand line, footnote or data cards', async () => {
+  for (const data of [
+    { ...shareData, visibility: 'public', match_id: 501 },
+    { ...shareData, visibility: 'public', match_id: 501, summary_stats: Array.from({ length: 6 }, (_, i) => ({ label: `项${i}`, value: '1', tone: 'blue' })) }
+  ]) {
+    const { calls } = await drawPoster(data)
+    const qrRect = calls.find(([name, , , w, h]) => name === 'fillRect' && w === 120 && h === 120)
+    assert.ok(qrRect, '应绘制 120 尺寸的二维码底块')
+    const [, x, y, size] = qrRect
+    const qrBox = { left: x, right: x + size, top: y, bottom: y + size }
+    const captions = new Set(['微信扫码查看这场比赛', '微信扫码打开追分', '微信扫一扫进入小程序'])
+    const boxes = textBoxes(calls)
+    const captionBoxes = boxes.filter((box) => captions.has(box.text))
+    assert.equal(captionBoxes.length, 2)
+    for (const box of boxes.filter((item) => !captions.has(item.text))) {
+      assert.equal(overlaps(qrBox, box), false, `二维码压住了「${box.text}」`)
+      for (const caption of captionBoxes) {
+        assert.equal(overlaps(caption, box), false, `「${caption.text}」压住了「${box.text}」`)
+      }
+    }
+  }
+})

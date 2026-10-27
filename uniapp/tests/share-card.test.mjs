@@ -85,3 +85,22 @@ test('the public detail shape shares player 1 then player 2', () => {
   assert.equal(card.title, '发起者 9:6 应战者 · 九球追分排位赛')
   assert.equal(card.path, '/subPages/match/matchDetail?match_id=502&mode=spectate')
 })
+
+// 页面接线：分享回调里调用的构造函数必须在本页导入，否则微信里点转发会直接抛 ReferenceError。
+test('every page that registers a share callback imports the card builder it calls', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const pages = [
+    'pages/index/index.vue',
+    'subPages/match/matchResult.vue',
+    'subPages/match/matchDetail.vue'
+  ]
+  for (const page of pages) {
+    const source = await readFile(new URL(`../${page}`, import.meta.url), 'utf8')
+    const calls = [...source.matchAll(/onShareAppMessage\(\(\)\s*=>\s*(\w+)\(/g)].map((match) => match[1])
+    assert.ok(calls.length > 0, `${page} 应注册分享回调`)
+    for (const name of calls) {
+      const imported = new RegExp(`import\\s*\\{[^}]*\\b${name}\\b[^}]*\\}\\s*from\\s*'@/utils/share-card\\.js'`)
+      assert.match(source, imported, `${page} 调用了 ${name} 但没有从 share-card.js 导入`)
+    }
+  }
+})

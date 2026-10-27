@@ -84,3 +84,22 @@
 
 1. **`X-Forwarded-For` 可伪造，匿名预览的 IP 限流不生效。** 生产 nginx（`go_chasing_points.conf`）用 `$proxy_add_x_forwarded_for`，而 `backend/internal/utils/http.go` 的 `GetClientIP` 取第一个 IP，客户端自填的头会被当成来源。短码约 71 位熵，枚举不可行；限流只用于防止刷接口，因此风险有限。整改方向：反向代理侧覆盖该头，或后端只信任代理追加的最后一跳。**未在本期处理。**
 2. **线上站点出现间歇性 TCP 连接失败。** 从本机连续请求 `https://www.zhuifen.cn/go/`，部分请求在 `connect` 阶段就停在 20 秒超时（`time_connect = 0`），其余请求 TCP 建连 5–7ms、TLS 握手 3.3–4.1 秒。站点 `access_log off`，无法从访问日志侧确认。需与主机侧核对是否有机房/防火墙的新连接限速；微信校验文件此前已通过校验，不影响现有配置。
+
+## 7. 代码复查修复（2026-10-27，未发布）
+
+复查后修正以下问题，均已补回归测试；改动尚未提交、未部署，上面第 2、2.1 节的发布记录不包含这些修复。
+
+| 问题 | 修复 | 回归测试 |
+| --- | --- | --- |
+| 赛果页分享回调调用 `buildMatchShareCard` 但未导入，微信里点转发会抛 `ReferenceError` | `matchResult.vue` 补导入 | `share-card.test.mjs`：注册分享回调的页面必须从 `share-card.js` 导入所调用的构造函数（去掉修复时该用例失败） |
+| 匿名预览限流在 `EXPIRE` 失败时计数键永不过期，整个出口 IP 被永久拦截 | `INCR` 与 `TTL` 放进同一事务管道，键没有过期时间就补设并检查错误 | `TestPreviewRateLimitWindowAlwaysExpires`（旧实现下失败） |
+| 官网 `/go/` 对匹配码访客展示首页小程序码，并称「不用再扫码」，照做会丢失邀请 | 文案移到 `website/data/go.ts`；匹配码访客改为提示用微信重扫对方手机上的码，不展示首页小程序码；对局访客说明首页码只能打开首页 | `website/tests/go-content.test.ts` |
+| 战报海报二维码第二行旁注与居中的「追分」品牌字重叠 | 二维码区上移，两行旁注都在品牌行之上；海报高度不变 | `poster-generator.test.mjs`：按画布调用检查二维码区与其他文字不重叠（旧布局下失败） |
+| 承接页网络失败显示「邀请已失效」，且未登录时预览失败不可重试 | 网络/服务异常返回可重试的 `error` 态（标题「暂时无法打开邀请」+「重试」）；真正失效仍为 `expired` 且不可重试 | `link-entry-flow.test.mjs` 新增 3 条 |
+| 签名器构造与 token 校验在 `logic` 与 `logic/match` 各写一份；短码错误映射里有永远走不到的 `ErrExpiredToken` 判断 | 收进 `logic.NewMatchInviteSigner` / `logic.VerifyMatchInvite`，`match` 包委托调用，提示文案不变；删除死判断 | 既有 `match_invite_logic_test.go` 全部通过 |
+| 新增代码三处各自拼观战详情路由 | `entry-link.js` 新增 `buildSpectateRoute`，承接页、端内扫码、分享卡片共用（早于本变更的两处未改） | 既有用例覆盖路由值 |
+| 任务 3.8 缺少的后端测试 | 补：短码写入失败不返回二维码；分享数据返回归一化 `visibility`；匿名预览只返回展示字段；超限后不查短码 | 对应新增用例 |
+
+本次自动化执行：`node --test tests/*.test.mjs`（`uniapp/`）1133 个用例 1132 通过，唯一失败仍是上文 `.DS_Store` 引起的 `cdn-asset.test.mjs`；`go vet ./...`、`go test ./...`（`backend/`）通过；`npm run test`（`website/`）36 个用例通过，`npm run generate` 成功且产物含 `/go/index.html`；`openspec validate add-wechat-scan-to-join-and-share --strict` 通过。
+
+待人工确认：重新上传体验版后，在赛果页点「转发」确认卡片标题带比分；生成一张公开对局战报海报，确认二维码与「追分」不重叠且可被微信识别。

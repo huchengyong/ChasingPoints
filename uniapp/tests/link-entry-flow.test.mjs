@@ -137,6 +137,50 @@ test('a network failure never hands over a credential', async () => {
 
   const action = await flow.begin(code)
 
-  assert.equal(action.type, 'expired')
+  assert.equal(action.type, 'error')
   assert.equal(calls.handoff.length, 0)
+})
+
+test('a network failure can be retried and then hands over once', async () => {
+  let failing = true
+  const { flow, calls } = setup({
+    loggedIn: true,
+    exchange: () => {
+      if (failing) throw new Error('network')
+      return exchangeResponse
+    }
+  })
+
+  assert.equal((await flow.begin(code)).type, 'error')
+  failing = false
+  const action = await flow.retry()
+
+  assert.equal(action.type, 'confirm')
+  assert.equal(calls.handoff.length, 1)
+  assert.equal((await flow.retry()).type, 'ignore')
+})
+
+test('a guest preview network failure is an error, not an expired code', async () => {
+  let failing = true
+  const { flow } = setup({
+    preview: () => {
+      if (failing) throw new Error('network')
+      return previewResponse
+    }
+  })
+
+  const failed = await flow.begin(code)
+  assert.equal(failed.type, 'error')
+
+  failing = false
+  const action = await flow.retry()
+  assert.equal(action.type, 'await_login')
+})
+
+test('an expired code cannot be retried', async () => {
+  const { flow, calls } = setup({ preview: () => ({ success: false, message: '匹配二维码已失效，请让对方刷新二维码' }) })
+
+  assert.equal((await flow.begin(code)).type, 'expired')
+  assert.equal((await flow.retry()).type, 'ignore')
+  assert.equal(calls.preview, 1)
 })
