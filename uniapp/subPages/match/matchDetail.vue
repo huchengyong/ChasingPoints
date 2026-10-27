@@ -1,5 +1,5 @@
 <template>
-	<view class="match-detail-container" :class="{ 'dark-mode': isDarkMode }">
+	<view class="match-detail-container" :class="{ 'dark-mode': isDarkMode, 'has-spectate-login': showSpectateLoginHint }">
 		<!-- 加载状态 -->
 		<view v-if="loading" class="loading-container">
 			<uni-icons type="spinner-cycle" size="48" color="#E0AE12"></uni-icons>
@@ -133,17 +133,24 @@
 				</view>
 			</view>
 		</template>
+
+		<!-- 观战未登录引导：从分享卡片或海报进来的路人 -->
+		<view v-if="showSpectateLoginHint" class="spectate-login">
+			<text class="spectate-login__text">用追分记录你的比赛</text>
+			<button class="spectate-login__btn" @tap="handleLoginFromSpectate">登录</button>
+		</view>
 	</view>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { onHide, onLoad, onShow } from '@dcloudio/uni-app'
+import { onHide, onLoad, onShareAppMessage, onShow } from '@dcloudio/uni-app'
 import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import { getMatchDetail, getPublicMatchDetail } from '@/api/match.js'
 import memberAvatar from '@/components/memberAvatar.vue'
 import matchGearCard from '@/components/matchGearCard.vue'
 import { shouldShowMatchGear } from '@/utils/gear-match.js'
+import { buildMatchShareCard } from '@/utils/share-card.js'
 import { useUserStore } from '@/store/user.js'
 import { buildMatchReplayUrl, canOpenMatchReplay } from '@/utils/match-replay-entry.js'
 import { usePageTheme } from '@/utils/page-theme.js'
@@ -179,6 +186,9 @@ const matchData = ref({
 	completed_by_user_id: 0,
 	completion_source: 'unknown'
 })
+// 原始详情只用于分享卡片：卡片要选手 1/选手 2 的稳定顺序，不用展示用的归一化视角。
+const shareSource = ref({})
+const showSpectateLoginHint = computed(() => isSpectateMode.value && !userStore.isLoggedIn)
 const player1Info = ref({
 	name: '',
 	avatar: ''
@@ -292,6 +302,14 @@ onMounted(() => {
 	}
 })
 
+// #ifdef MP-WEIXIN
+onShareAppMessage(() => buildMatchShareCard(shareSource.value))
+// #endif
+
+const handleLoginFromSpectate = () => {
+	uni.navigateTo({ url: '/pages/login/login' })
+}
+
 onShow(() => {
 	matchWS.setTargetActive(true)
 	if (wsHandlersReady && matchId.value && matchData.value.status === 1) {
@@ -339,6 +357,7 @@ const loadMatchData = async () => {
 				perspectiveUserId: perspectiveUserId.value
 			})
 			matchData.value = normalized.matchData
+			shareSource.value = res.match
 			player1Info.value = normalized.player1Info
 			player2Info.value = normalized.player2Info
 			const player1Id = Number(res.match.player1_id || res.match.my_user_id || res.match.my_id || 0)

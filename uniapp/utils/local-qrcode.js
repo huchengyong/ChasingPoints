@@ -45,6 +45,11 @@ export const renderLocalQRCode = ({
   const qr = new QRCode()
   qr.data = plan.content
   qr.size = plan.size
+  // 微信/系统相机需要码四周留白才能定位；uqrcodejs 默认 margin=0，码会顶到画布边缘
+  qr.margin = Math.round(plan.size * 0.08)
+  // 不依赖画布/主题底色，固定纯黑白
+  qr.backgroundColor = '#FFFFFF'
+  qr.foregroundColor = '#000000'
   qr.make()
   qr.canvasContext = component === undefined
     ? uniApi.createCanvasContext(plan.canvasId)

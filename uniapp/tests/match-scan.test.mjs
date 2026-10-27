@@ -104,3 +104,62 @@ test('scan cancellation and permission denial do not create a match action', asy
   assert.equal(denied.type, 'error')
   assert.equal(denied.reason, 'permission-denied')
 })
+
+test('entry links are separated before referee JSON and bare tokens', () => {
+  const code = 'Ab3dEf6hIj9k'
+  assert.deepEqual(parseMatchScanPayload(`https://www.zhuifen.cn/go/?j=${code}`), {
+    type: 'resolve_invite_code',
+    inviteCode: code
+  })
+  assert.deepEqual(parseMatchScanPayload('https://www.zhuifen.cn/go/?m=123'), {
+    type: 'open_match',
+    matchId: 123
+  })
+  assert.deepEqual(parseMatchScanPayload('https://www.zhuifen.cn/go/'), {
+    type: 'error',
+    message: '无效的二维码'
+  })
+  assert.deepEqual(parseMatchScanPayload('https://example.com/go/?j=Ab3dEf6hIj9k'), {
+    type: 'error',
+    message: '无效的二维码'
+  })
+})
+
+test('an invite link code resolves into the same start action as a bare token', async () => {
+  const result = await resolveMatchScanPayload({
+    rawValue: 'https://www.zhuifen.cn/go/?j=Ab3dEf6hIj9k',
+    resolveMatchInviteCode: async (code) => {
+      assert.equal(code, 'Ab3dEf6hIj9k')
+      return {
+        success: true,
+        invite_token: 'header.payload',
+        preview: { opponent_id: 9, opponent_name: '对手乙', opponent_avatar: 'a.png' }
+      }
+    }
+  })
+
+  assert.deepEqual(result, {
+    type: 'start_match',
+    inviteToken: 'header.payload',
+    opponent: { id: 9, nickname: '对手乙', avatar: 'a.png' }
+  })
+})
+
+test('a failed invite link exchange reports the server message', async () => {
+  const expired = await resolveMatchScanPayload({
+    rawValue: 'https://www.zhuifen.cn/go/?j=Ab3dEf6hIj9k',
+    resolveMatchInviteCode: async () => ({ success: false, message: '匹配二维码已失效，请让对方刷新二维码' })
+  })
+  assert.deepEqual(expired, { type: 'error', message: '匹配二维码已失效，请让对方刷新二维码' })
+
+  const broken = await resolveMatchScanPayload({
+    rawValue: 'https://www.zhuifen.cn/go/?j=Ab3dEf6hIj9k',
+    resolveMatchInviteCode: async () => { throw new Error('network') }
+  })
+  assert.deepEqual(broken, { type: 'error', message: '匹配二维码服务暂不可用，请稍后重试' })
+
+  const missing = await resolveMatchScanPayload({
+    rawValue: 'https://www.zhuifen.cn/go/?j=Ab3dEf6hIj9k'
+  })
+  assert.deepEqual(missing, { type: 'error', message: '匹配二维码服务暂不可用' })
+})

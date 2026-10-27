@@ -5,7 +5,7 @@ describe('buildPageSeo', () => {
   it('returns download page metadata with canonical path', () => {
     const result = buildPageSeo({
       title: '下载追分',
-      description: 'iOS 与 Android 下载入口',
+      description: '微信小程序与鸿蒙下载入口',
       path: '/download'
     })
 

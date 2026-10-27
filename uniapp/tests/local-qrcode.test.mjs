@@ -36,12 +36,20 @@ test('local QR renderer draws through Uni canvas without a third-party image req
       calls.push('draw')
     }
   }
+  const settings = {}
   const context = { kind: 'canvas' }
   const plan = renderLocalQRCode({
     canvasId: 'match-invite-code',
     content: 'signed.match.invite',
     size: 200,
-    QRCode: FakeQRCode,
+    QRCode: class extends FakeQRCode {
+      make() {
+        settings.margin = this.margin
+        settings.backgroundColor = this.backgroundColor
+        settings.foregroundColor = this.foregroundColor
+        super.make()
+      }
+    },
     uniApi: {
       createCanvasContext(canvasId) {
         calls.push(canvasId)
@@ -56,4 +64,10 @@ test('local QR renderer draws through Uni canvas without a third-party image req
     size: 200
   })
   assert.deepEqual(calls, ['make', 'match-invite-code', 'draw'])
+  // 静默区与纯黑白是微信/系统相机能识别的前提
+  assert.deepEqual(settings, {
+    margin: 16,
+    backgroundColor: '#FFFFFF',
+    foregroundColor: '#000000'
+  })
 })

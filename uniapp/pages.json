@@ -272,6 +272,12 @@
 						"navigationBarTitleText": "战绩海报",
 						"navigationStyle": "custom"
 					}
+				},
+				{
+					"path": "linkEntry",
+					"style": {
+						"navigationBarTitleText": "追分邀请"
+					}
 				}
 			]
 		},

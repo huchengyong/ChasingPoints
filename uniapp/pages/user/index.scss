@@ -920,9 +920,10 @@
 }
 
 // 二维码始终白底，保证扫码识别率
+// 用 px 与画布绘制尺寸 240 对齐：rpx 换算出不同像素宽度，会让码在框内偏几像素、模块被非整数放大
 .qr-image {
-	width: 440rpx;
-	height: 440rpx;
+	width: 240px;
+	height: 240px;
 	border-radius: 16rpx;
 	background: #FFFFFF;
 

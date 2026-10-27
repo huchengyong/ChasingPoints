@@ -15,7 +15,7 @@
 ## 配置与发布边界
 - 站点域名、备案配置看 [data/site.ts](data/site.ts)；联系方式与投诉接口地址看 [data/contact.ts](data/contact.ts)。这些文件已有默认值，发布前逐项核对，不笼统当作占位内容。
 - 环境变量由 [data/runtime.ts](data/runtime.ts) 等现有入口读取，配置说明见 [README.md](README.md)；修改后核对实际构建/生成页面，不假设只改服务器环境即可更新静态产物。
-- [data/download.ts](data/download.ts) 当前将 iOS/Android 按钮和二维码目标统一指向 `https://www.zhuifen.cn/coming-soon`；未消费 `NUXT_PUBLIC_IOS_DOWNLOAD_URL` / `NUXT_PUBLIC_ANDROID_DOWNLOAD_URL`，仅设置这两个变量不会切换下载入口。
+- [data/download.ts](data/download.ts) 只开放微信小程序入口（小程序码图片 `public/qr-miniprogram.jpg`，落地页 `/go/`）；鸿蒙未上架时没有链接和二维码，也不消费旧的 `NUXT_PUBLIC_IOS_DOWNLOAD_URL` / `NUXT_PUBLIC_ANDROID_DOWNLOAD_URL`。
 - 正式下载开放时同时核对按钮、二维码资源及目标、文案与 [下载契约测试](tests/download-content.test.ts)，不在无关任务中把预告页替换为下载页。
 - `public/sitemap.xml`、`robots.txt` 是静态文件，域名或路由改变需一并核对，不会仅因 `NUXT_PUBLIC_SITE_URL` 改动自动同步。
 

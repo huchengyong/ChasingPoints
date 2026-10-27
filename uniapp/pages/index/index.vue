@@ -316,10 +316,11 @@
 
 <script setup>
 import { computed, nextTick, onUnmounted, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShareAppMessage, onShow } from '@dcloudio/uni-app'
 import { useActivityStore } from '@/store/activity.js'
 import { usePublicReadStore } from '@/store/publicRead.js'
 import { useUserOverviewStore } from '@/store/userOverview.js'
+import { buildHomeShareCard } from '@/utils/share-card.js'
 import { useUserStore } from '@/store/user.js'
 import { getMatchQRCode } from '@/api/match.js'
 import memberAvatar from '@/components/memberAvatar.vue'
@@ -752,6 +753,10 @@ const handleLiveMatchTap = (match) => {
   }
   goTo(`/subPages/match/matchDetail?match_id=${match.id}&mode=spectate`)
 }
+
+// #ifdef MP-WEIXIN
+onShareAppMessage(() => buildHomeShareCard())
+// #endif
 
 onShow(() => {
   greetingHour.value = new Date().getHours()

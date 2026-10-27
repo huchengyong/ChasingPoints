@@ -2,8 +2,8 @@
     "name" : "追分",
     "appid" : "__UNI__77D0D4A",
     "description" : "追分是一款面向台球爱好者的对局记录与成长型应用，帮助你把每一场比赛都变成可沉淀、可分享、可复盘的数据。",
-    "versionName" : "1.0.2",
-    "versionCode" : "102",
+    "versionName" : "1.0.3",
+    "versionCode" : 103,
     "transformPx" : false,
     /* 5+App特有相关 */
     "app-plus" : {

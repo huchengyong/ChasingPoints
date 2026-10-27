@@ -55,5 +55,5 @@ npm run test
 
 - 页面统一通过 `pages/*.vue` 暴露公开路由，不和 `admin/` 共用路由体系。
 - 长文协议内容放在 `data/legal.ts`，不要把正文直接写死在页面组件里。
-- iOS/Android 下载按钮及二维码目标当前统一指向 `https://www.zhuifen.cn/coming-soon`，见 [data/download.ts](data/download.ts)；代码未消费 `NUXT_PUBLIC_IOS_DOWNLOAD_URL` / `NUXT_PUBLIC_ANDROID_DOWNLOAD_URL`，设置它们不会切换入口。
+- 下载页当前只开放微信小程序入口（小程序码 `public/qr-miniprogram.jpg`，落地页 `/go/`），鸿蒙显示「即将上线」，见 [data/download.ts](data/download.ts)；代码未消费 `NUXT_PUBLIC_IOS_DOWNLOAD_URL` / `NUXT_PUBLIC_ANDROID_DOWNLOAD_URL`，设置它们不会切换入口。
 - 正式下载开放时同步修改按钮、二维码资源与目标、文案及 [下载契约测试](tests/download-content.test.ts)。联系方式、备案与 sitemap 已有具体内容，发布前核实，不一概视为占位值。

@@ -25,6 +25,7 @@ export const createQuickScan = ({
   uniApi,
   getSession,
   previewMatchInvite,
+  resolveMatchInviteCode,
   scan = scanAndResolveMatchCode
 }) => {
   let scanning = false
@@ -68,12 +69,17 @@ export const createQuickScan = ({
 
     scanning = true
     try {
-      const result = await scan({ uniApi, previewMatchInvite })
+      const result = await scan({ uniApi, previewMatchInvite, resolveMatchInviteCode })
       if (!isCurrent(identity)) return { type: 'stale' }
       if (result.type === 'cancelled') return result
       if (result.type === 'error') {
         toast(result.message || '扫码失败')
         return result
+      }
+
+      if (result.type === 'open_match') {
+        uniApi.navigateTo({ url: `/subPages/match/matchDetail?match_id=${result.matchId}&mode=spectate` })
+        return { type: 'spectate' }
       }
 
       if (result.type === 'join_referee') {
@@ -113,5 +119,19 @@ export const createQuickScan = ({
     return sameIdentity(pending.identity, current) ? pending : null
   }
 
-  return { start, takeHandoff }
+  // 承接页（入口链接）兑换成功后交接凭证，不走扫码；身份已变化时丢弃。
+  const handoffResolved = ({ identity, inviteToken, opponent } = {}) => {
+    if (!inviteToken || !isCurrent(identity)) return false
+    handoff = {
+      identity: { userId: Number(identity.userId) || 0, authGeneration: Number(identity.authGeneration) },
+      mode: 'start',
+      inviteToken,
+      opponent,
+      preset: null,
+      rematch: null
+    }
+    return true
+  }
+
+  return { start, takeHandoff, handoffResolved }
 }

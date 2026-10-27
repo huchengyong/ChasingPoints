@@ -462,3 +462,52 @@ $loss-color: #E57373;
         }
     }
 }
+
+/* 观战未登录引导条：贴底显示，登录后随状态自动消失 */
+.spectate-login {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24rpx 40rpx calc(24rpx + env(safe-area-inset-bottom));
+    background: $card-bg-light;
+    border-top: 1rpx solid $border-color-light;
+
+    &__text {
+        font-size: 28rpx;
+        color: $text-secondary-light;
+    }
+
+    &__btn {
+        margin: 0;
+        height: 68rpx;
+        line-height: 68rpx;
+        padding: 0 48rpx;
+        border-radius: 34rpx;
+        background: $primary-color;
+        color: #ffffff;
+        font-size: 28rpx;
+        font-weight: 600;
+
+        &::after {
+            border: none;
+        }
+    }
+}
+
+.dark-mode .spectate-login {
+    background: $card-bg-dark;
+    border-top-color: $border-color-dark;
+
+    .spectate-login__text {
+        color: $text-secondary-dark;
+    }
+}
+
+/* 引导条是 fixed 的，留出同样高度的底部空间，最后一条局记录不会被挡住 */
+.match-detail-container.has-spectate-login {
+    padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
+}

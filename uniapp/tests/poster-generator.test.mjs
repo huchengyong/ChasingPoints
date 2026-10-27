@@ -3,7 +3,13 @@ import assert from 'node:assert/strict'
 
 import { readFileSync } from 'node:fs'
 
-import { generateMatchPoster, resolveMatchPosterTemplate, resolvePkSummaryLayout } from '../utils/posterGenerator.js'
+import {
+  drawPosterQrCode,
+  generateMatchPoster,
+  resolveMatchPosterTemplate,
+  resolvePkSummaryLayout,
+  resolvePosterQrTarget
+} from '../utils/posterGenerator.js'
 
 test('resolvePkSummaryLayout leaves comfortable bottom padding for two-line summary', () => {
   const layout = resolvePkSummaryLayout('这是一段足够长的系统结论文案，用来验证第二行文本不会再贴着卡片底部显示')
@@ -181,4 +187,37 @@ test('the share page still degrades to the existing fallback poster when generat
   assert.match(source, /catch \(e\) \{[\s\S]*posterPath\.value = await generateFallbackPoster\(\)/)
   // 降级海报不带会员字段，始终是标准模板。
   assert.doesNotMatch(source.slice(source.indexOf('const generateFallbackPoster')), /vip_level/)
+})
+
+// ---------- 海报二维码 ----------
+
+test('poster QR points at the match for public matches and at the home page otherwise', () => {
+  assert.deepEqual(resolvePosterQrTarget({ visibility: 'public', match_id: 501 }), {
+    url: 'https://www.zhuifen.cn/go/?m=501',
+    caption: '微信扫码查看这场比赛'
+  })
+
+  const home = { url: 'https://www.zhuifen.cn/go/', caption: '微信扫码打开追分' }
+  assert.deepEqual(resolvePosterQrTarget({ visibility: 'private', match_id: 501 }), home)
+  assert.deepEqual(resolvePosterQrTarget({ match_id: 501 }), home)
+  assert.deepEqual(resolvePosterQrTarget({ visibility: 'public' }), home)
+  assert.deepEqual(resolvePosterQrTarget(), home)
+})
+
+test('a QR that cannot be encoded is skipped without throwing', () => {
+  const fillRects = []
+  const ctx = { setFillStyle: () => {}, fillRect: (...args) => fillRects.push(args) }
+
+  assert.equal(drawPosterQrCode(ctx, `https://www.zhuifen.cn/go/?j=${'a'.repeat(6000)}`, { x: 0, y: 0, size: 100 }), false)
+  assert.equal(fillRects.length, 0)
+})
+
+test('the match poster still generates with the QR caption of its own visibility', async () => {
+  const publicPoster = await drawPoster({ ...shareData, visibility: 'public', match_id: 501 })
+  assert.equal(publicPoster.path, '/tmp/poster.png')
+  assert.ok(texts(publicPoster.calls).includes('微信扫码查看这场比赛'))
+
+  const privatePoster = await drawPoster({ ...shareData, visibility: 'private', match_id: 501 })
+  assert.equal(privatePoster.path, '/tmp/poster.png')
+  assert.ok(texts(privatePoster.calls).includes('微信扫码打开追分'))
 })

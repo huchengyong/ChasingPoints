@@ -181,6 +181,26 @@ export const previewMatchInvite = (inviteToken) => {
 }
 
 /**
+ * 登录态下用入口链接里的短码换回邀请 token
+ * @param {String} inviteCode 12 位短码
+ */
+export const resolveMatchInviteCode = (inviteCode) => {
+  return post('/api/match/invite/resolve', {
+    invite_code: String(inviteCode || '').trim()
+  })
+}
+
+/**
+ * 未登录时用短码预览邀请人（不含 token 与用户 ID）
+ * @param {String} inviteCode 12 位短码
+ */
+export const previewPublicMatchInvite = (inviteCode) => {
+  return post('/api/public/match-invite/preview', {
+    invite_code: String(inviteCode || '').trim()
+  })
+}
+
+/**
  * 获取本场裁判二维码
  * @param {Object} params { match_id }
  * @returns {Promise}

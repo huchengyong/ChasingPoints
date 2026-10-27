@@ -9,6 +9,12 @@ describe('seo assets', () => {
     expect(sitemap).toContain('/download')
   })
 
+  it('keeps the scan entry page out of sitemap.xml', () => {
+    const sitemap = readFileSync(resolve(import.meta.dirname, '../public/sitemap.xml'), 'utf8')
+
+    expect(sitemap).not.toContain('/go')
+  })
+
   it('uses the production www.zhuifen.cn host in static seo assets', () => {
     const sitemap = readFileSync(resolve(import.meta.dirname, '../public/sitemap.xml'), 'utf8')
     const robots = readFileSync(resolve(import.meta.dirname, '../public/robots.txt'), 'utf8')

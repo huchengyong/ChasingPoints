@@ -25,7 +25,7 @@ test('app lifecycle pauses both realtime channels and resumes through foreground
 
 test('match pages own their realtime target while visible and release it on hide or unmount', () => {
   for (const source of [matchDetailSource, playingSource]) {
-    assert.match(source, /import\s*\{\s*onHide,\s*onLoad,\s*onShow\s*\}\s*from\s*'@dcloudio\/uni-app'/)
+    assert.match(source, /import\s*\{[^}]*\bonHide\b[^}]*\bonLoad\b[^}]*\bonShow\b[^}]*\}\s*from\s*'@dcloudio\/uni-app'/)
     assert.match(source, /onShow\(\(\)\s*=>\s*\{[\s\S]*matchWS\.setTargetActive\(true\)/)
     assert.match(source, /onHide\(\(\)\s*=>\s*\{\s*matchWS\.setTargetActive\(false\)/)
     assert.match(source, /onUnmounted\(\(\)\s*=>\s*\{[\s\S]*matchWS\.disconnect\(\)/)

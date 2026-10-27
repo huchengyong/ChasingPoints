@@ -3,9 +3,57 @@
  * 使用 Canvas 绘制分享海报
  */
 
+import UQRCode from 'uqrcodejs'
+import { buildEntryLink } from './entry-link.js'
 import { getGameTypeLabel } from './game-types.js'
 import { resolveMemberIdentity } from './member-identity.js'
 import { DEFAULT_USER_AVATAR } from './user-profile.js'
+
+const QR_QUIET_MODULES = 2
+
+/**
+ * 海报二维码指向哪个入口：公开对局去对局页，私密或缺失（按私密处理）去首页。
+ */
+export function resolvePosterQrTarget(data = {}) {
+  const matchId = Number(data.match_id || 0)
+  return data.visibility === 'public' && matchId > 0
+    ? { url: buildEntryLink({ type: 'match', value: matchId }), caption: '微信扫码查看这场比赛' }
+    : { url: buildEntryLink(), caption: '微信扫码打开追分' }
+}
+
+// 用 uqrcodejs 的模块矩阵逐格画到海报画布上，四周留出静默区。
+function drawQrModules(ctx, url, { x, y, size }) {
+  const qr = new UQRCode({ data: url, size: 200, margin: 0 })
+  qr.make()
+  const count = qr.moduleCount
+  const unit = size / (count + QR_QUIET_MODULES * 2)
+  ctx.setFillStyle('#ffffff')
+  ctx.fillRect(x, y, size, size)
+  ctx.setFillStyle('#0f172a')
+  for (let row = 0; row < count; row += 1) {
+    for (let col = 0; col < count; col += 1) {
+      if (qr.isBlack(row, col)) {
+        ctx.fillRect(
+          x + (col + QR_QUIET_MODULES) * unit,
+          y + (row + QR_QUIET_MODULES) * unit,
+          unit,
+          unit
+        )
+      }
+    }
+  }
+}
+
+// 二维码画不出来只跳过它，海报照常生成。
+export function drawPosterQrCode(ctx, url, box) {
+  try {
+    drawQrModules(ctx, url, box)
+    return true
+  } catch (error) {
+    console.error('绘制海报二维码失败', error)
+    return false
+  }
+}
 
 /**
  * 绘制圆角矩形
@@ -325,7 +373,8 @@ function drawMatchPoster(canvasId, data, template, images) {
     const sRows = stats.length > 0 ? Math.ceil(stats.length / 2) : 0
     const statsTop = 572 + dy + 56 + hRows * 170 + 20
     const statsEnd = statsTop + 56 + sRows * 170
-    const H = Math.max(1320 + dy, statsEnd + 150)
+    // 底部还要放二维码，最后一行数据卡下面留够空间。
+    const H = Math.max(1320 + dy, statsEnd + 240)
 
     const gameTypeName = data.game_type_name || getGameTypeLabel(data.game_type)
     const rankChange = Number(data.rank_change || 0)
@@ -441,6 +490,16 @@ function drawMatchPoster(canvasId, data, template, images) {
       drawSummaryCard(ctx, item, 60 + col * 315, statsTop + 56 + row * 170, 275, 146)
     })
 
+    const qrTarget = resolvePosterQrTarget(data)
+    if (drawPosterQrCode(ctx, qrTarget.url, { x: 60, y: H - 196, size: 120 })) {
+      ctx.setFontSize(22)
+      ctx.setFillStyle('#cbd5e1')
+      ctx.fillText(qrTarget.caption, 204, H - 138)
+      ctx.setFontSize(18)
+      ctx.setFillStyle('#64748b')
+      ctx.fillText('微信扫一扫进入小程序', 204, H - 106)
+    }
+
     drawCenterText(ctx, '追分', H - 92, 30, theme ? theme.brand : '#60a5fa')
     drawCenterText(ctx, '真实对局数据生成，仅供复盘与分享', H - 54, 20, theme ? theme.footnote : '#64748b')
 
@@ -484,6 +543,14 @@ export function generatePkReportPoster(canvasId, data) {
 
     drawCenterText(ctx, '追分 · PK 报表', 86, 28, '#94a3b8')
     drawCenterText(ctx, data.gameTypeLabel || '真实交锋数据', 132, 22, '#64748b')
+
+    // 交手报告只指向首页，避免把某个对手的对局带进公开页面。
+    const qrTarget = resolvePosterQrTarget({})
+    if (drawPosterQrCode(ctx, qrTarget.url, { x: 596, y: 28, size: 108 })) {
+      ctx.setFontSize(18)
+      ctx.setFillStyle('#94a3b8')
+      ctx.fillText('扫码打开追分', 596, 162)
+    }
 
     ctx.setTextAlign('center')
     ctx.setFontSize(28)

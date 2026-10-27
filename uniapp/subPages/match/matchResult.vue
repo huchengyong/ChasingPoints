@@ -260,7 +260,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { onLoad, onUnload } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage, onUnload } from '@dcloudio/uni-app'
 import { getMatchDetail, getMatchRewardSummary } from '@/api/match.js'
 import { formatDateTime, formatRelativeTime } from '@/utils/format.js'
 import memberAvatar from '@/components/memberAvatar.vue'
@@ -486,6 +486,10 @@ onLoad((options) => {
 	loadMatchData()
 	loadRewardSummary()
 })
+
+// #ifdef MP-WEIXIN
+onShareAppMessage(() => buildMatchShareCard(matchData.value))
+// #endif
 
 onUnload(() => {
 	rewardSummaryDisposed = true

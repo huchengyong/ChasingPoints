@@ -236,3 +236,36 @@ test('failing to open the confirm page drops the credential and tells the user',
   assert.deepEqual(calls.at(-1), ['showToast', { title: '打开确认页失败，请重试', icon: 'none' }])
   assert.equal(quickScan.takeHandoff(identity), null)
 })
+
+test('a match link opens the spectate detail instead of the confirm page', async () => {
+  const { quickScan, calls } = setup({
+    scan: async () => ({ type: 'open_match', matchId: 123 })
+  })
+
+  const result = await quickScan.start()
+
+  assert.deepEqual(result, { type: 'spectate' })
+  assert.deepEqual(calls, [['navigateTo', { url: '/subPages/match/matchDetail?match_id=123&mode=spectate' }]])
+  assert.equal(quickScan.takeHandoff(identity), null)
+})
+
+test('a resolved invite link hands the credential over to the confirm page once', () => {
+  const { quickScan } = setup()
+  const opponent = { id: 9, nickname: '对手乙', avatar: 'a.png' }
+
+  assert.equal(quickScan.handoffResolved({ identity, inviteToken: 'link.token', opponent }), true)
+  const handoff = quickScan.takeHandoff(identity)
+  assert.equal(handoff.mode, 'start')
+  assert.equal(handoff.inviteToken, 'link.token')
+  assert.deepEqual(handoff.opponent, opponent)
+  assert.equal(quickScan.takeHandoff(identity), null)
+})
+
+test('a resolved invite link is dropped when the identity changed or the token is missing', () => {
+  const { quickScan } = setup()
+  const opponent = { id: 9, nickname: '对手乙', avatar: 'a.png' }
+
+  assert.equal(quickScan.handoffResolved({ identity: { userId: 8, authGeneration: 1 }, inviteToken: 'link.token', opponent }), false)
+  assert.equal(quickScan.handoffResolved({ identity, inviteToken: '', opponent }), false)
+  assert.equal(quickScan.takeHandoff(identity), null)
+})

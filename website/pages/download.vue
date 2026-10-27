@@ -33,16 +33,22 @@ usePageSeo({
         >
           <div>
             <p class="download-card__platform">{{ entry.label }}</p>
-            <h2>{{ entry.platform === 'ios' ? 'iPhone / iPad' : 'Android 手机' }}</h2>
+            <h2>{{ entry.heading }}</h2>
             <p class="download-card__note">{{ entry.note }}</p>
           </div>
 
           <div class="download-card__actions">
-            <a class="download-card__button" :href="entry.href" target="_blank" rel="noreferrer">
-              立即获取
+            <a
+              v-if="entry.href"
+              class="download-card__button"
+              :href="entry.href"
+            >
+              打开入口
             </a>
-            <a :href="entry.qrTargetUrl" target="_blank" rel="noreferrer">
-              <img :alt="`${entry.label} 二维码`" :src="entry.qrImage" class="download-card__qr">
+            <span v-else class="download-card__button download-card__button--disabled">即将上线</span>
+
+            <a v-if="entry.qrImage" :href="entry.qrTargetUrl">
+              <img :alt="`${entry.label} 小程序码`" :src="entry.qrImage" class="download-card__qr">
             </a>
           </div>
         </article>
@@ -136,6 +142,11 @@ usePageSeo({
   border-radius: 18px;
   border: 1px solid rgba(31, 26, 16, 0.1);
   background: #fff;
+}
+
+.download-card__button--disabled {
+  background: rgba(31, 26, 16, 0.08);
+  color: rgba(31, 26, 16, 0.55);
 }
 
 .download-notes {
