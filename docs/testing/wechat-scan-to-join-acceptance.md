@@ -129,3 +129,17 @@
 本次自动化执行：`node --test tests/*.test.mjs`（`uniapp/`）1135 个用例 1134 通过（唯一失败仍为 `.DS_Store` 引起的 `cdn-asset.test.mjs`）；`go vet ./...`、`go test ./...`（`backend/`）通过；原生 iOS 不调用 `/api/share/match`，无需改动。
 
 待人工确认：后端发布 `match_mode` 后重新生成一张练习赛海报与一张排位赛海报，确认标签与卡片版式。练习赛标签依赖新后端返回 `match_mode`；后端未发布前，新客户端仍显示「排位 ±0」。
+
+## 9. 复查修复的发布（2026-10-27，用户授权）
+
+本次发布包含 `04988e9`（第 7 节）与 `4479570`（第 8 节），已推送 `origin/devlop`（`f3d08fd..4479570`）。
+
+| 环境 | 命令与结果 | 线上核对 |
+| --- | --- | --- |
+| 开发后端 | `./deploy-dev.sh`（`backend/`）；发布标识 `20261027214942-44795708e3ec`；goose：no migrations to run（版本 `20261025115843`） | `systemctl is-active` = active，`current` 指向新发布；匿名预览（不存在的短码）返回统一失效文案；未登录调用 `/api/match/invite/resolve`、`/api/share/match` 均为 401；Redis 中 `rl:invite_preview:<ip>` 带 TTL（49 秒），第 7 节限流修复生效 |
+| 生产后端 | 先预演 `./deploy-prod.sh < /dev/null`：线上 `be755d1` → 待发布 `4479570`，包含上述两个提交，待执行迁移 0 个；再 `echo yes \| ./deploy-prod.sh`，发布标识 `20261027215114-44795708e3ec` | 重启后 `local health: http=200`、`public health: http=200`，启动后流水 `error=0 severe=0`；在服务器本机用 `--resolve` 核对：匿名预览返回统一失效文案，兑换与分享接口未登录 401；`restart-prod.sh --status` 正常。旧二进制备份在 `deploy-stage-20261027215114-44795708e3ec/backup/chasing_points.live` |
+| 官网 | `npm run test`（36 通过）、`npm run generate`；先在服务器打包备份 `/www/wwwroot/.website-backups/www.zhuifen.cn-public-20261027215207.tar.gz`，再按第 3 节的 `rsync` 同步 | `/go/`、`/go/?j=…`、`/download/`、`/qr-miniprogram.jpg`、两处校验文件均 200，校验文件内容不变；线上 `/go/` 脚本含「重新扫描对方手机上的匹配码」，不再含「不用再扫码」 |
+
+未在线上核对：生产 Redis 用 `redis-cli` 未列出限流键（可能需要认证或不同库），限流修复以开发环境核对与回归测试为准；分享数据的 `match_mode` 需登录态，未用真实账号调用，以回归测试为准。
+
+仍待人工：重新上传体验版后，各生成一张练习赛与排位赛海报，确认「练习赛」标签与对称卡片；扫码规则 Release 仍等小程序正式发布当天。
