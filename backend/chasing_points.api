@@ -336,6 +336,10 @@ service chasing_points-api {
 	@doc "获取静态段位配置"
 	@handler GetRankConfigs
 	get /rank/configs returns (GetRankConfigsResp)
+
+	@doc "未登录预览匹配邀请（凭短码）"
+	@handler PreviewPublicMatchInvite
+	post /match-invite/preview (PublicMatchInvitePreviewReq) returns (PublicMatchInvitePreviewResp)
 }
 
 @server (
@@ -1430,11 +1434,38 @@ type MatchInvitePreviewReq {
 	InviteToken string `json:"invite_token"`
 }
 
+type MatchInviteResolveReq {
+	InviteCode string `json:"invite_code"`
+}
+
 type MatchInvitePreviewInfo {
 	OpponentId     int64  `json:"opponent_id"`
 	OpponentName   string `json:"opponent_name"`
 	OpponentAvatar string `json:"opponent_avatar"`
 	ExpiresAt      string `json:"expires_at"`
+}
+
+type MatchInviteResolveResp {
+	Success     bool                    `json:"success"`
+	Message     string                  `json:"message,optional"`
+	InviteToken string                  `json:"invite_token,optional"`
+	Preview     *MatchInvitePreviewInfo `json:"preview,optional"`
+}
+
+type PublicMatchInvitePreviewReq {
+	InviteCode string `json:"invite_code"`
+}
+
+type PublicMatchInvitePreviewInfo {
+	InviterName   string `json:"inviter_name"`
+	InviterAvatar string `json:"inviter_avatar"`
+	ExpiresAt     string `json:"expires_at"`
+}
+
+type PublicMatchInvitePreviewResp {
+	Success bool                          `json:"success"`
+	Message string                        `json:"message,optional"`
+	Preview *PublicMatchInvitePreviewInfo `json:"preview,optional"`
 }
 
 type MatchInvitePreviewResp {
@@ -1777,6 +1808,10 @@ service chasing_points-api {
 	@doc "匹配邀请预览"
 	@handler PreviewMatchInvite
 	post /invite/preview (MatchInvitePreviewReq) returns (MatchInvitePreviewResp)
+
+	@doc "用匹配码短码兑换邀请 token"
+	@handler ResolveMatchInvite
+	post /invite/resolve (MatchInviteResolveReq) returns (MatchInviteResolveResp)
 
 	@doc "获取本场裁判二维码"
 	@handler GetMatchRefereeQRCode
@@ -3582,6 +3617,7 @@ type MatchShareData {
 	Result            string             `json:"result"`
 	MatchTime         string             `json:"match_time"`
 	RankChange        int                `json:"rank_change"`
+	Visibility        string             `json:"visibility,optional"` // public/private，海报据此选择二维码链接
 	SummaryHighlights []MatchSummaryItem `json:"summary_highlights,optional"`
 	SummaryStats      []MatchSummaryItem `json:"summary_stats,optional"`
 }

@@ -819,6 +819,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: match.PreviewMatchInviteHandler(serverCtx),
 			},
 			{
+				// 用匹配码短码兑换邀请 token
+				Method:  http.MethodPost,
+				Path:    "/invite/resolve",
+				Handler: match.ResolveMatchInviteHandler(serverCtx),
+			},
+			{
 				// 获取对局列表
 				Method:  http.MethodGet,
 				Path:    "/list",
@@ -1056,6 +1062,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 
 	server.AddRoutes(
 		[]rest.Route{
+			{
+				// 未登录预览匹配邀请（凭短码）
+				Method:  http.MethodPost,
+				Path:    "/match-invite/preview",
+				Handler: public.PreviewPublicMatchInviteHandler(serverCtx),
+			},
 			{
 				// 获取公开对局详情
 				Method:  http.MethodGet,

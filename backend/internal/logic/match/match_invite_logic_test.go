@@ -1,6 +1,8 @@
 package match
 
 import (
+	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,11 +21,15 @@ func TestMatchInviteQRCodeAndPreviewUseServerSignedIdentity(t *testing.T) {
 	if err != nil || !qrResp.Success || qrResp.QrcodeData == "" || qrResp.InviteToken == "" {
 		t.Fatalf("issue QR invite: resp=%+v err=%v", qrResp, err)
 	}
-	if qrResp.QrcodeData != qrResp.InviteToken || qrResp.ExpiresInSeconds <= 0 {
+	if !strings.HasPrefix(qrResp.QrcodeData, "https://www.zhuifen.cn/go/?j=") || qrResp.ExpiresInSeconds <= 0 {
 		t.Fatalf("unexpected QR response: %+v", qrResp)
 	}
-	if qrResp.QrcodeData[0] == '{' {
-		t.Fatalf("qrcode must not expose mutable user JSON")
+	code := strings.TrimPrefix(qrResp.QrcodeData, "https://www.zhuifen.cn/go/?j=")
+	if !matchinvite.ValidCode(code) {
+		t.Fatalf("qrcode must carry a 12-char short code: %q", code)
+	}
+	if stored, err := svcCtx.MatchInviteCodeStore.Resolve(context.Background(), code); err != nil || stored != qrResp.InviteToken {
+		t.Fatalf("short code must map back to the signed token: token=%q err=%v", stored, err)
 	}
 
 	preview, err := NewPreviewMatchInviteLogic(matchLogicCtx(2002), svcCtx).PreviewMatchInvite(&types.MatchInvitePreviewReq{

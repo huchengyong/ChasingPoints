@@ -2410,6 +2410,17 @@ type MatchInvitePreviewResp struct {
 	Preview *MatchInvitePreviewInfo `json:"preview,optional"`
 }
 
+type MatchInviteResolveReq struct {
+	InviteCode string `json:"invite_code"`
+}
+
+type MatchInviteResolveResp struct {
+	Success     bool                    `json:"success"`
+	Message     string                  `json:"message,optional"`
+	InviteToken string                  `json:"invite_token,optional"`
+	Preview     *MatchInvitePreviewInfo `json:"preview,optional"`
+}
+
 type MatchLastAction struct {
 	ActionType     string `json:"action_type,optional"`
 	Actor          int    `json:"actor,optional"`
@@ -2502,6 +2513,7 @@ type MatchShareData struct {
 	Result            string             `json:"result"`
 	MatchTime         string             `json:"match_time"`
 	RankChange        int                `json:"rank_change"`
+	Visibility        string             `json:"visibility,optional"` // public/private，海报据此选择二维码链接
 	SummaryHighlights []MatchSummaryItem `json:"summary_highlights,optional"`
 	SummaryStats      []MatchSummaryItem `json:"summary_stats,optional"`
 }
@@ -2814,6 +2826,22 @@ type PublicMatchDetailData struct {
 	RefereeDurationSeconds        int64         `json:"referee_duration_seconds,optional"`
 	Rounds                        []RoundRecord `json:"rounds"` // 局记录
 	CreatedAt                     string        `json:"created_at"`
+}
+
+type PublicMatchInvitePreviewInfo struct {
+	InviterName   string `json:"inviter_name"`
+	InviterAvatar string `json:"inviter_avatar"`
+	ExpiresAt     string `json:"expires_at"`
+}
+
+type PublicMatchInvitePreviewReq struct {
+	InviteCode string `json:"invite_code"`
+}
+
+type PublicMatchInvitePreviewResp struct {
+	Success bool                          `json:"success"`
+	Message string                        `json:"message,optional"`
+	Preview *PublicMatchInvitePreviewInfo `json:"preview,optional"`
 }
 
 type PublicMatchListItem struct {

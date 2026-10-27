@@ -7,9 +7,12 @@ import (
 
 	"chasing_points/internal/config"
 	"chasing_points/internal/model"
+	"chasing_points/internal/pkg/matchinvite"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
+	miniredis "github.com/alicebob/miniredis/v2"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -25,6 +28,8 @@ func newMatchLogicTestSvc(t *testing.T) *svc.ServiceContext {
 		t.Fatalf("prepare match logic schema: %v", err)
 	}
 
+	mr := miniredis.RunT(t)
+
 	return &svc.ServiceContext{
 		DB:                   db,
 		UserModel:            model.NewUserModel(db),
@@ -32,6 +37,7 @@ func newMatchLogicTestSvc(t *testing.T) *svc.ServiceContext {
 		CompetitiveReadModel: model.NewCompetitiveReadModel(db),
 		FriendModel:          model.NewFriendModel(db),
 		Config:               config.Config{CompetitiveReadModel: config.CompetitiveReadModelConfig{ReadMode: "enabled"}},
+		MatchInviteCodeStore: matchinvite.NewCodeStore(redis.NewClient(&redis.Options{Addr: mr.Addr()})),
 	}
 }
 

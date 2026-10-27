@@ -9,6 +9,7 @@ import (
 	"chasing_points/internal/model"
 	"chasing_points/internal/observability"
 	"chasing_points/internal/pkg/geocode"
+	"chasing_points/internal/pkg/matchinvite"
 	oauthverify "chasing_points/internal/pkg/oauth"
 	"chasing_points/internal/pkg/push"
 	qiniuupload "chasing_points/internal/pkg/qiniu"
@@ -88,6 +89,7 @@ type ServiceContext struct {
 	WechatMiniClient                wechatmini.Client
 	OAuthVerifier                   oauthverify.Verifier
 	WSTicketStore                   wsticket.Store
+	MatchInviteCodeStore            *matchinvite.CodeStore
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -158,6 +160,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		WechatMiniClient:                wechatMiniClient,
 		OAuthVerifier:                   oauthverify.NewProviderVerifier(c.Security),
 		WSTicketStore:                   wsticket.NewRedisStore(rdb),
+		MatchInviteCodeStore:            matchinvite.NewCodeStore(rdb),
 	}
 }
 
