@@ -2514,6 +2514,7 @@ type MatchShareData struct {
 	MatchTime         string             `json:"match_time"`
 	RankChange        int                `json:"rank_change"`
 	Visibility        string             `json:"visibility,optional"` // public/private，海报据此选择二维码链接
+	MatchMode         string             `json:"match_mode,optional"` // ranked/practice，练习赛海报不显示排位变化
 	SummaryHighlights []MatchSummaryItem `json:"summary_highlights,optional"`
 	SummaryStats      []MatchSummaryItem `json:"summary_stats,optional"`
 }

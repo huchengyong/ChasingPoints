@@ -11,6 +11,11 @@ import { DEFAULT_USER_AVATAR } from './user-profile.js'
 
 const QR_QUIET_MODULES = 2
 
+// 两列数据卡：卡片区 60–690（宽 630），左右各留 60，列间距 20。
+const POSTER_CARD_LEFT = 60
+const POSTER_CARD_GAP = 20
+const POSTER_CARD_WIDTH = (630 - POSTER_CARD_GAP) / 2
+
 /**
  * 海报二维码指向哪个入口：公开对局去对局页，私密或缺失（按私密处理）去首页。
  */
@@ -324,7 +329,8 @@ function drawSummaryCard(ctx, item, x, y, w, h) {
   ctx.fillText(item.value || '--', x + 28, y + 94)
 
   if (item.desc) {
-    drawTextBlock(ctx, item.desc, x + 28, y + 132, 16, 28, 2, '#cbd5e1', 20)
+    // 卡片内文字区宽 w - 28 - 20；按 18 号字算一行能放的字数，只画一行，超出省略，不越出卡片右缘和底边。
+    drawTextBlock(ctx, item.desc, x + 28, y + 132, Math.floor((w - 48) / 18), 28, 1, '#cbd5e1', 18)
   }
 }
 
@@ -378,7 +384,10 @@ function drawMatchPoster(canvasId, data, template, images) {
 
     const gameTypeName = data.game_type_name || getGameTypeLabel(data.game_type)
     const rankChange = Number(data.rank_change || 0)
-    const rankChangeLabel = rankChange > 0 ? `排位 +${rankChange}` : rankChange < 0 ? `排位 ${rankChange}` : '排位 ±0'
+    // 练习赛不计排位，标签显示对局类型；没有 match_mode 的旧数据保持显示排位变化。
+    const rankChangeLabel = data.match_mode === 'practice'
+      ? '练习赛'
+      : rankChange > 0 ? `排位 +${rankChange}` : rankChange < 0 ? `排位 ${rankChange}` : '排位 ±0'
     const resultColor = data.result === '胜利' ? '#22c55e' : data.result === '失利' ? '#f97316' : '#cbd5e1'
 
     const grd = ctx.createLinearGradient(0, 0, W, H)
@@ -466,14 +475,17 @@ function drawMatchPoster(canvasId, data, template, images) {
     ctx.setFontSize(22)
     ctx.setFillStyle('#cbd5e1')
     ctx.fillText(`对局时间 ${data.match_time || data.date || '--'}`, 80, 510 + dy)
-    ctx.fillText(`总结口径与战报页一致`, 500, 510 + dy)
+    // 右侧说明与左侧时间对称，右对齐到 670（卡片区右缘 690 内收 20）。
+    ctx.setTextAlign('right')
+    ctx.fillText(`总结口径与战报页一致`, 670, 510 + dy)
+    ctx.setTextAlign('left')
 
     drawSectionHeader(ctx, '本场亮点', `按${gameTypeName}模式提炼这场最值得记住的表现`, 572 + dy)
     if (highlights.length) {
       highlights.forEach((item, index) => {
         const col = index % 2
         const row = Math.floor(index / 2)
-        drawSummaryCard(ctx, item, 60 + col * 315, 628 + dy + row * 170, 275, 146)
+        drawSummaryCard(ctx, item, POSTER_CARD_LEFT + col * (POSTER_CARD_WIDTH + POSTER_CARD_GAP), 628 + dy + row * 170, POSTER_CARD_WIDTH, 146)
       })
     } else {
       drawRoundRect(ctx, 60, 628 + dy, 630, 146, 24)
@@ -487,7 +499,7 @@ function drawMatchPoster(canvasId, data, template, images) {
     stats.forEach((item, index) => {
       const col = index % 2
       const row = Math.floor(index / 2)
-      drawSummaryCard(ctx, item, 60 + col * 315, statsTop + 56 + row * 170, 275, 146)
+      drawSummaryCard(ctx, item, POSTER_CARD_LEFT + col * (POSTER_CARD_WIDTH + POSTER_CARD_GAP), statsTop + 56 + row * 170, POSTER_CARD_WIDTH, 146)
     })
 
     const qrTarget = resolvePosterQrTarget(data)

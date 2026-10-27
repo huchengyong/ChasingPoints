@@ -245,6 +245,7 @@ func (l *GetMatchShareDataLogic) GetMatchShareData(req *types.GetMatchShareDataR
 			SummaryHighlights: summaryHighlights,
 			SummaryStats:      summaryStats,
 			Visibility:        model.NormalizeMatchVisibility(match.Visibility, match.MatchMode),
+			MatchMode:         model.NormalizeMatchMode(match.MatchMode),
 		},
 	}, nil
 }

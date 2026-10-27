@@ -14,8 +14,9 @@ import (
 	"gorm.io/gorm"
 )
 
-// 海报据 visibility 选择二维码：私密练习对局不能被印成对局链接，旧数据缺省按排位公开归一。
-func TestMatchShareDataReturnsNormalizedVisibility(t *testing.T) {
+// 海报据 visibility 选择二维码、据 match_mode 决定是否显示排位变化：
+// 私密练习对局不能被印成对局链接，练习赛不显示排位；旧数据缺省按排位公开归一。
+func TestMatchShareDataReturnsNormalizedVisibilityAndMode(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
@@ -42,10 +43,12 @@ func TestMatchShareDataReturnsNormalizedVisibility(t *testing.T) {
 		mode       string
 		visibility string
 		want       string
+		wantMode   string
 	}{
-		{id: 31, mode: model.MatchModePractice, visibility: model.MatchVisibilityPrivate, want: model.MatchVisibilityPrivate},
-		{id: 32, mode: model.MatchModeRanked, visibility: model.MatchVisibilityPublic, want: model.MatchVisibilityPublic},
-		{id: 33, mode: model.MatchModeRanked, visibility: "", want: model.MatchVisibilityPublic},
+		{id: 31, mode: model.MatchModePractice, visibility: model.MatchVisibilityPrivate, want: model.MatchVisibilityPrivate, wantMode: model.MatchModePractice},
+		{id: 32, mode: model.MatchModeRanked, visibility: model.MatchVisibilityPublic, want: model.MatchVisibilityPublic, wantMode: model.MatchModeRanked},
+		{id: 33, mode: "", visibility: "", want: model.MatchVisibilityPublic, wantMode: model.MatchModeRanked},
+		{id: 34, mode: model.MatchModePractice, visibility: model.MatchVisibilityPublic, want: model.MatchVisibilityPublic, wantMode: model.MatchModePractice},
 	} {
 		match := model.Match{
 			Id: testCase.id, UserId: 1, OpponentId: &opponentID, OpponentName: "乙", GameType: 1,
@@ -63,6 +66,9 @@ func TestMatchShareDataReturnsNormalizedVisibility(t *testing.T) {
 		}
 		if resp.Data.Visibility != testCase.want {
 			t.Fatalf("match %d visibility = %q, want %q", testCase.id, resp.Data.Visibility, testCase.want)
+		}
+		if resp.Data.MatchMode != testCase.wantMode {
+			t.Fatalf("match %d match_mode = %q, want %q", testCase.id, resp.Data.MatchMode, testCase.wantMode)
 		}
 	}
 }

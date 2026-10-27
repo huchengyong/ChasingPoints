@@ -103,3 +103,29 @@
 本次自动化执行：`node --test tests/*.test.mjs`（`uniapp/`）1133 个用例 1132 通过，唯一失败仍是上文 `.DS_Store` 引起的 `cdn-asset.test.mjs`；`go vet ./...`、`go test ./...`（`backend/`）通过；`npm run test`（`website/`）36 个用例通过，`npm run generate` 成功且产物含 `/go/index.html`；`openspec validate add-wechat-scan-to-join-and-share --strict` 通过。
 
 待人工确认：重新上传体验版后，在赛果页点「转发」确认卡片标题带比分；生成一张公开对局战报海报，确认二维码与「追分」不重叠且可被微信识别。
+
+## 8. 第 7 节修复的真机确认与海报版式修正（2026-10-27）
+
+### 8.1 真机确认（用户提供截图，体验版）
+
+用户重新上传体验版后提供了三张截图：分享给好友的卡片、保存到相册的海报、海报预览页。对局为九球追分练习赛（公开），比分 99:58。
+
+| 项目 | 结果 |
+| --- | --- |
+| 赛果页转发卡片 | 通过：标题为「PerfectI… 99:58 TimesNew… · 九球追分练习赛」，含比分，昵称按 8 字截断，球种与对局类型正确；卡片封面为赛果页顶部默认截图；卡片标注「未发布的小程序 · 体验版」 |
+| 海报二维码与文字 | 通过：两行旁注都在「追分」品牌行之上，无重叠 |
+| 海报二维码内容 | 通过：用 macOS CoreImage（`CIDetector` QR 检测）解码保存的海报与预览页截图，均为 `https://www.zhuifen.cn/go/?m=2` |
+| 微信扫海报二维码进入小程序 | 未验证：扫码规则仍为 Pending，需在正式发布后确认 |
+
+### 8.2 截图暴露的两个历史问题（早于本变更），已修正
+
+| 问题 | 修复 | 回归测试 |
+| --- | --- | --- |
+| 练习赛海报右上角显示「排位 ±0」：标签固定写排位，`MatchShareData` 也没有对局类型 | `MatchShareData` 新增 `match_mode`（`NormalizeMatchMode` 归一，经 goctl 生成）；练习赛标签显示「练习赛」，缺少 `match_mode` 的旧数据仍显示排位变化 | 后端 `TestMatchShareDataReturnsNormalizedVisibilityAndMode`；`poster-generator.test.mjs` 练习赛/排位赛/旧数据三种情况（旧实现下失败） |
+| 数据卡片左右边距不对称（左 60、右 100），长说明（如「不被对手打断的连续得分峰值」）越出卡片右缘，右上「总结口径与战报页一致」超出卡片区 | 两列卡片改为 60–690 内对称（宽 305、间距 20）；说明文字按卡片宽度计算每行字数、18 号字单行，超出省略；右上说明右对齐到 670；海报高度不变 | `poster-generator.test.mjs`：卡片左缘为 60/385、所有文字在 [60, 690] 内（旧实现下失败） |
+
+改前后对比：在 headless Chrome 里回放单测同款画布调用渲染海报，改前版式与用户真机海报一致，改后卡片对称、说明不越界、标签为「练习赛」。
+
+本次自动化执行：`node --test tests/*.test.mjs`（`uniapp/`）1135 个用例 1134 通过（唯一失败仍为 `.DS_Store` 引起的 `cdn-asset.test.mjs`）；`go vet ./...`、`go test ./...`（`backend/`）通过；原生 iOS 不调用 `/api/share/match`，无需改动。
+
+待人工确认：后端发布 `match_mode` 后重新生成一张练习赛海报与一张排位赛海报，确认标签与卡片版式。练习赛标签依赖新后端返回 `match_mode`；后端未发布前，新客户端仍显示「排位 ±0」。

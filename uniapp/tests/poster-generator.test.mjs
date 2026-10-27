@@ -264,3 +264,39 @@ test('the poster QR block does not overlap the brand line, footnote or data card
     }
   }
 })
+
+// 卡片区左右各留 60：两列数据卡与所有文字都应落在 [60, 690] 内，左右对称。
+test('poster cards and texts stay inside symmetric 60px margins', async () => {
+  const data = {
+    ...shareData,
+    visibility: 'public',
+    match_id: 501,
+    summary_highlights: [
+      { label: '大金次数', value: '7 次', desc: '高价值一杆制胜', tone: 'gold' },
+      { label: '最高连续得分', value: '34 分', desc: '不被对手打断的连续得分峰值', tone: 'red' }
+    ],
+    summary_stats: Array.from({ length: 6 }, (_, i) => ({ label: `项目${i}`, value: '1', desc: '当前历史胜率表现', tone: 'blue' }))
+  }
+  const { calls } = await drawPoster(data)
+
+  const accentBars = calls.filter(([name, , , w, h]) => name === 'fillRect' && w === 10 && h === 146)
+  const columns = [...new Set(accentBars.map(([, x]) => x))].sort((a, b) => a - b)
+  assert.deepEqual(columns, [60, 385], '两列卡片左缘应为 60 与 385（宽 305、间距 20）')
+
+  for (const box of textBoxes(calls)) {
+    assert.ok(box.left >= 60 && box.right <= 690, `「${box.text}」超出左右边距：${box.left}–${box.right}`)
+  }
+})
+
+test('a practice match poster shows a practice chip instead of a rank change', async () => {
+  const practice = await drawPoster({ ...shareData, match_mode: 'practice', rank_change: 0 })
+  assert.ok(texts(practice.calls).includes('练习赛'))
+  assert.equal(texts(practice.calls).some((text) => String(text).startsWith('排位')), false)
+
+  const ranked = await drawPoster({ ...shareData, match_mode: 'ranked', rank_change: 12 })
+  assert.ok(texts(ranked.calls).includes('排位 +12'))
+
+  // 旧后端没有 match_mode 时保持原样，仍显示排位变化。
+  const legacy = await drawPoster({ ...shareData, rank_change: 12 })
+  assert.ok(texts(legacy.calls).includes('排位 +12'))
+})
