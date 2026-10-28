@@ -83,6 +83,15 @@ REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" PING
 - [ ] 登录/绑定手机、“我的”页 UserWS、创建对局、计分和结束对局已冒烟验证
 - [ ] iOS/Android 版本号、签名、Universal Links 和商店资料已核对（如本次发布原生 App）
 
+### 扫码打开小程序规则（首次正式发布及承接页路径变更时）
+
+匹配码、海报二维码都是普通链接 `https://www.zhuifen.cn/go/?…`，靠微信「扫普通链接二维码打开小程序」规则拉起小程序；规则未发布时，非开发者/体验成员用微信扫只会落到官网 `/go/` 兜底页。规则配置与背景见 [扫码开局验收记录](testing/wechat-scan-to-join-acceptance.md) 第 4 节。
+
+- [ ] 小程序正式版已发布，且包含承接页 `subPages/match/linkEntry`（先发版本，再发规则）
+- [ ] 微信公众平台「开发管理 → 开发设置 → 扫普通链接二维码打开小程序」中，前缀 `https://www.zhuifen.cn/go/` → 页面 `subPages/match/linkEntry` 的规则已点「发布」，状态不再是 Pending
+- [ ] 用非开发者、非体验成员的微信号扫另一台手机上的「出示匹配二维码」，直接进入承接页并显示邀请人
+- [ ] 公开对局战报海报发到聊天中长按识别，打开该对局的观战详情
+
 ## 管理后台
 
 - [ ] `admin/.env.production` 的 `VITE_API_BASE_URL` 指向正式 API
@@ -96,6 +105,8 @@ REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" PING
 - [ ] `NUXT_PUBLIC_API_BASE_URL` 指向正式 API
 - [ ] iOS/Android 下载链接和二维码已替换，不再指向 coming-soon（正式开放下载时）
 - [ ] 联系邮箱、电话、ICP备案和公安备案信息已确认
+- [ ] 微信扫码规则校验文件 `https://www.zhuifen.cn/mH43X7dRHZ.txt` 与 `https://www.zhuifen.cn/go/mH43X7dRHZ.txt` 仍返回 `200`（改版或清理静态文件时不得删除）
+- [ ] `/go/` 兜底页可访问，带 `?j=` 时提示用微信重新扫描对方手机上的匹配码
 - [ ] 隐私政策、用户协议内容及更新日期已完成上线审核
 - [ ] canonical、OG URL、sitemap、公开页面和反馈提交均正常
 
