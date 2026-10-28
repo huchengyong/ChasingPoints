@@ -78,20 +78,24 @@
   height: 50px;
 }
 
+/* text 是行内元素，会按页面默认字号撑出的基线排版而整体偏下；用 flex 居中。 */
 .badge {
   position: absolute;
   top: -6px;
   left: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   box-sizing: border-box;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
   border-radius: 8px;
   background: #EF4444;
-  text-align: center;
 }
 
 .badge-text {
+  display: block;
   font-size: 10px;
   line-height: 16px;
   color: #FFFFFF;
