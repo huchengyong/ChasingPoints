@@ -31,7 +31,7 @@
     margin-right: 16rpx;
     border-radius: 999rpx;
     background: rgba(255, 255, 255, 0.82);
-    border: 1rpx solid rgba(148, 163, 184, 0.2);
+    border: 1rpx solid #E9E2CF;
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
@@ -533,6 +533,25 @@
 
 .dark-mode {
     background-color: #141109;
+
+    .game-type-tab {
+        background: #1E180D;
+        border-color: #3A2E16;
+
+        text {
+            color: #D7C89B;
+        }
+
+        &.active {
+            background: rgba(224, 174, 18, 0.2);
+            border-color: rgba(224, 174, 18, 0.3);
+            box-shadow: none;
+
+            text {
+                color: #F0C542;
+            }
+        }
+    }
 
     .loading-wrapper .loading-text {
         color: #9F926E;
