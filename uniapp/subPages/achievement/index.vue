@@ -39,7 +39,7 @@
 
 				<view class="equipped-title-card" :class="{ interactive: isSelf }" @tap="openTitleSelector">
 					<view class="title-medal">
-						<uni-icons type="medal-filled" size="25" color="#ffffff"></uni-icons>
+						<uni-icons type="medal-filled" size="25" :color="isDarkMode ? '#F0C542' : '#ffffff'"></uni-icons>
 					</view>
 					<view class="title-copy">
 						<text class="title-label">当前称号</text>

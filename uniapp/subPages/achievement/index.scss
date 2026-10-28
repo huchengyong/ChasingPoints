@@ -455,7 +455,7 @@
 	justify-content: space-between;
 	gap: 16rpx;
 	padding-bottom: 16rpx;
-	border-bottom: 1rpx solid #edf0f3;
+	border-bottom: 1rpx solid #E9E2CF;
 }
 
 .group-title-wrap {
@@ -481,7 +481,7 @@
 }
 
 .achievement-row + .achievement-row {
-	border-top: 1rpx solid #edf0f3;
+	border-top: 1rpx solid #E9E2CF;
 }
 
 .achievement-icon {
@@ -493,6 +493,11 @@
 
 .achievement-icon.locked {
 	background: #FAF8F2;
+}
+
+/* 只给图片 / 文字去色：滤镜放在容器上会把深色模式的暖色底也变成中性灰。 */
+.achievement-icon.locked image,
+.achievement-icon.locked text {
 	filter: grayscale(1);
 	opacity: 0.68;
 }
@@ -516,7 +521,7 @@
 	height: 10rpx;
 	margin-top: 14rpx;
 	border-radius: 999rpx;
-	background: #e9edf2;
+	background: #E9E2CF;
 	overflow: hidden;
 }
 
@@ -615,7 +620,7 @@
 .challenge-row + .challenge-row,
 .history-row + .history-row,
 .archive-challenge-row + .archive-challenge-row {
-	border-top: 1rpx solid #edf0f3;
+	border-top: 1rpx solid #E9E2CF;
 }
 
 .challenge-icon {
@@ -730,7 +735,7 @@
 	gap: 8rpx;
 	min-height: 76rpx;
 	margin-top: 10rpx;
-	border-top: 1rpx solid #edf0f3;
+	border-top: 1rpx solid #E9E2CF;
 }
 
 .load-more text {
@@ -937,7 +942,7 @@
 }
 
 .title-option + .title-option {
-	border-top: 1rpx solid #edf0f3;
+	border-top: 1rpx solid #E9E2CF;
 }
 
 .title-option.selected {
@@ -1070,6 +1075,81 @@
 
 .honor-wall-page.dark-mode {
 	background: #141109;
+
+	.refresh-indicator,
+	.profile-kicker,
+	.season-kicker {
+		color: #E0AE12;
+	}
+
+	/* 当前称号：暗色下改为暖黑表面叠加品牌金高光，避免整块亮金压过页面且白字对比不足。 */
+	.equipped-title-card {
+		background: linear-gradient(135deg, rgba(224, 174, 18, 0.30) 0%, rgba(224, 174, 18, 0.12) 100%), #241d10;
+		border: 1rpx solid rgba(224, 174, 18, 0.32);
+		box-shadow: none;
+	}
+
+	.title-medal {
+		background: rgba(224, 174, 18, 0.2);
+	}
+
+	.title-label {
+		color: #F0C542;
+	}
+
+	.title-name {
+		color: #FFF7E1;
+	}
+
+	.title-source {
+		color: #D7C89B;
+	}
+
+	.title-action {
+		border-color: rgba(224, 174, 18, 0.45);
+		background: rgba(224, 174, 18, 0.16);
+		color: #F0C542;
+	}
+
+	.recent-icon,
+	.achievement-icon,
+	.challenge-icon,
+	.history-icon,
+	.intermission-icon {
+		background: rgba(224, 174, 18, 0.18);
+	}
+
+	.challenge-icon.has-image {
+		background: transparent;
+	}
+
+	.section-count,
+	.recent-type,
+	.unlocked-tag,
+	.history-type {
+		background: rgba(224, 174, 18, 0.18);
+		color: #F0C542;
+	}
+
+	.challenge-progress.complete,
+	.archive-challenge-progress.complete {
+		color: #F0C542;
+	}
+
+	.title-option-icon {
+		background: rgba(224, 174, 18, 0.18);
+		color: #F0C542;
+	}
+
+	.title-option-icon.season {
+		background: rgba(167, 139, 250, 0.18);
+		color: #c4b5fd;
+	}
+
+	.title-option-icon.tournament {
+		background: rgba(45, 212, 191, 0.16);
+		color: #5eead4;
+	}
 
 	.honor-hero-card,
 	.content-card,
