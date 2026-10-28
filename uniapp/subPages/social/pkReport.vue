@@ -418,7 +418,7 @@ const goToH2H = () => {
 
 const openPkInvite = () => {
   uni.navigateTo({ url: '/subPages/social/challenges' })
-  uni.showToast({ title: '可在 PK 记录页继续发起邀约', icon: 'none' })
+  uni.showToast({ title: '可在约球页继续发起邀约', icon: 'none' })
 }
 
 onLoad((options) => {

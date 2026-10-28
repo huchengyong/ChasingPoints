@@ -1268,7 +1268,7 @@ const loadMatchInfo = async () => {
 			detailStatus: res?.match?.status,
 			currentMatchId
 		})) {
-			pageLog('检测到对局已结束或当前对局已切换，返回比赛记录页', {
+			pageLog('检测到对局已结束或当前对局已切换，返回对局记录页', {
 				matchId: matchId.value,
 				detailStatus: res?.match?.status,
 				currentMatchId

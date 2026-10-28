@@ -63,7 +63,7 @@
 				<view class="member-analysis-row" @click="openMatchHistory">
 					<view class="member-analysis-copy">
 						<text class="member-analysis-title">单场复盘</text>
-						<text class="member-analysis-desc">在比赛记录里打开已完成的对局，回看每局走势与关键局</text>
+						<text class="member-analysis-desc">在对局记录里打开已完成的对局，回看每局走势与关键局</text>
 					</view>
 					<uni-icons type="right" size="16" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 				</view>

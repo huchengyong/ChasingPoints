@@ -108,7 +108,7 @@ test('career stats are labelled as all game types and handle empty and failed re
 
 test('shortcuts keep the four record entries in one brand color', () => {
   assert.match(source, /class="metrics-card"[\s\S]*class="shortcuts-card"[\s\S]*class="list-card"/)
-  for (const label of ['比赛记录', '过往对手', '荣誉墙', '好友']) {
+  for (const label of ['对局记录', '过往对手', '荣誉墙', '好友']) {
     assert.match(source, new RegExp(`label: '${label}'`))
   }
   assert.doesNotMatch(source, /iconClass|#2563eb|#7c3aed|#0f766e/)
@@ -116,8 +116,8 @@ test('shortcuts keep the four record entries in one brand color', () => {
 })
 
 test('service list opens the challenge history first, then the existing member, season, rules and venue routes', () => {
-  assert.match(source, /serviceLinks = computed\(\(\) => \(\[\s*\{ title: '约球记录', icon: 'list', value: '', handler: \(\) => openRoute\('\/subPages\/social\/challenges\?tab=history'\) \},\s*\{ title: '会员中心'/)
-  assert.match(source, /title: '会员中心', icon: 'vip', value: memberEntry\.value\.text/)
+  assert.match(source, /serviceLinks = computed\(\(\) => \(\[\s*\{ title: '约球记录', icon: 'list', value: '', handler: \(\) => openRoute\('\/subPages\/social\/challenges\?tab=history'\) \},\s*\{ title: 'VIP中心'/)
+  assert.match(source, /title: 'VIP中心', icon: 'vip', value: memberEntry\.value\.text/)
   assert.match(source, /title: '装备', icon: 'tune', value: '', handler: \(\) => openRoute\('\/subPages\/gear\/index'\)/)
   assert.match(source, /openRoute\('\/subPages\/season\/index'\)/)
   assert.match(source, /openRoute\('\/subPages\/rules\/index'\)/)

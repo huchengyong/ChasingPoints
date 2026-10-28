@@ -287,7 +287,7 @@
 					{
 						"path": "feedback",
 						"style": {
-							"navigationBarTitleText": "投诉举报与反馈"
+							"navigationBarTitleText": "帮助、投诉与举报"
 						}
 					}
 				]
@@ -353,14 +353,14 @@
 				{
 					"path": "friendRequests",
 					"style": {
-						"navigationBarTitleText": "好友请求",
+						"navigationBarTitleText": "好友申请",
 						"enablePullDownRefresh": true
 					}
 				},
 				{
 					"path": "challenges",
 					"style": {
-						"navigationBarTitleText": "PK记录"
+						"navigationBarTitleText": "约球"
 					}
 				},
 				{
