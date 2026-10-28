@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand/v2"
 	"strings"
 
 	"chasing_points/internal/model"
@@ -118,12 +117,6 @@ func (l *WechatMiniLoginLogic) WechatMiniLogin(req *types.WechatMiniLoginReq) (r
 
 const wechatMiniProvider = "weixin_mini_program"
 
-var (
-	wechatMiniBilliardsNicknames = []string{"旋风清台", "金杆球手", "精准走位"}
-	wechatMiniCasualNicknames    = []string{"青柠旅人", "晴日玩家", "云端漫游"}
-	wechatMiniMixedNicknames     = []string{"夜航开杆", "流光走位", "星尘清台"}
-)
-
 // findOAuthUser 返回 openid 已关联的用户，没有关联时返回 nil。
 func (l *WechatMiniLoginLogic) findOAuthUser(openID string) (*model.User, error) {
 	oauth, err := l.svcCtx.OauthModel.FindByProviderAndOpenId(wechatMiniProvider, openID)
@@ -163,7 +156,7 @@ func (l *WechatMiniLoginLogic) createWechatMiniUser(openID, unionID, phone strin
 		}
 		if user == nil {
 			user = &model.User{
-				Nickname:        randomWechatMiniNickname(),
+				Nickname:        randomDefaultNickname(),
 				Status:          1,
 				MemberExpiresAt: resolveWelcomeMemberExpiresAt(l.svcCtx),
 			}
@@ -190,20 +183,6 @@ func (l *WechatMiniLoginLogic) createWechatMiniUser(openID, unionID, phone strin
 		return nil, err
 	}
 	return user, nil
-}
-
-func randomWechatMiniNickname() string {
-	return randomWechatMiniNicknameWith(rand.IntN)
-}
-
-func randomWechatMiniNicknameWith(randomInt func(int) int) string {
-	styles := [][]string{
-		wechatMiniBilliardsNicknames,
-		wechatMiniCasualNicknames,
-		wechatMiniMixedNicknames,
-	}
-	words := styles[randomInt(len(styles))]
-	return fmt.Sprintf("%s·%04d", words[randomInt(len(words))], randomInt(10000))
 }
 
 func isDuplicateOAuthError(err error) bool {

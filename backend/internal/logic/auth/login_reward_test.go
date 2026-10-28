@@ -104,6 +104,9 @@ func TestLoginCreatesNewUserWithoutWelcomeRewardByDefault(t *testing.T) {
 	if err != nil {
 		t.Fatalf("find created user: %v", err)
 	}
+	if !defaultNicknamePattern.MatchString(user.Nickname) || resp.UserInfo.Nickname != user.Nickname {
+		t.Fatalf("new phone user nickname = %q, response nickname = %q, want default nickname", user.Nickname, resp.UserInfo.Nickname)
+	}
 	assertWelcomeRewardDisabled(t, user)
 }
 
@@ -452,5 +455,30 @@ func assertNoUsersCreated(t *testing.T, svcCtx *svc.ServiceContext) {
 	}
 	if oauthCount != 0 {
 		t.Fatalf("expected no oauth records created, got %d", oauthCount)
+	}
+}
+
+func TestLoginByOauthUsesDefaultNicknameWhenProviderNicknameIsBlank(t *testing.T) {
+	svcCtx, _ := newAuthRewardTestSvc(t)
+	setStaticOAuthIdentity(svcCtx, "openid-blank-nickname")
+
+	resp, err := NewLoginByOauthLogic(context.Background(), svcCtx).LoginByOauth(&types.LoginByOauthReq{
+		Provider:   "huawei",
+		Credential: "credential-blank-nickname",
+		NickName:   "  ",
+	})
+	if err != nil {
+		t.Fatalf("oauth login new user: %v", err)
+	}
+	if !resp.Success || resp.UserInfo == nil {
+		t.Fatalf("expected successful oauth login response, got %#v", resp)
+	}
+
+	user, err := svcCtx.UserModel.FindById(resp.UserInfo.Id)
+	if err != nil {
+		t.Fatalf("find oauth user: %v", err)
+	}
+	if !defaultNicknamePattern.MatchString(user.Nickname) || resp.UserInfo.Nickname != user.Nickname {
+		t.Fatalf("new oauth user nickname = %q, response nickname = %q, want default nickname", user.Nickname, resp.UserInfo.Nickname)
 	}
 }

@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"regexp"
 	"testing"
 	"time"
 
@@ -15,34 +14,6 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
-
-var wechatMiniDefaultNicknamePattern = regexp.MustCompile(`^(?:旋风清台|金杆球手|精准走位|青柠旅人|晴日玩家|云端漫游|夜航开杆|流光走位|星尘清台)·\d{4}$`)
-
-func TestRandomWechatMiniNicknameCoversEveryStyle(t *testing.T) {
-	tests := []struct {
-		name   string
-		values []int
-		want   string
-	}{
-		{name: "台球风格", values: []int{0, 1, 4827}, want: "金杆球手·4827"},
-		{name: "轻松通用风格", values: []int{1, 2, 1936}, want: "云端漫游·1936"},
-		{name: "混合风格", values: []int{2, 0, 7}, want: "夜航开杆·0007"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			index := 0
-			got := randomWechatMiniNicknameWith(func(int) int {
-				value := tt.values[index]
-				index++
-				return value
-			})
-			if got != tt.want {
-				t.Fatalf("random nickname = %q, want %q", got, tt.want)
-			}
-		})
-	}
-}
 
 type fakeWechatMiniClient struct {
 	identity   *wechatmini.Identity
@@ -130,7 +101,7 @@ func TestWechatMiniLoginCreatesPhoneFreeUserAndOAuthAssociation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("wechat mini login: %v", err)
 	}
-	if !resp.Success || !resp.NeedBindPhone || resp.UserInfo == nil || !wechatMiniDefaultNicknamePattern.MatchString(resp.UserInfo.Nickname) {
+	if !resp.Success || !resp.NeedBindPhone || resp.UserInfo == nil || !defaultNicknamePattern.MatchString(resp.UserInfo.Nickname) {
 		t.Fatalf("unexpected login response: %#v", resp)
 	}
 	if resp.AccessToken == "" || resp.RefreshToken == "" {
@@ -174,7 +145,7 @@ func TestWechatMiniLoginCreatesNewUserWithConfiguredWelcomeReward(t *testing.T) 
 	if err != nil {
 		t.Fatalf("wechat mini login with explicit welcome reward: %v", err)
 	}
-	if !resp.Success || !resp.NeedBindPhone || resp.UserInfo == nil || !wechatMiniDefaultNicknamePattern.MatchString(resp.UserInfo.Nickname) {
+	if !resp.Success || !resp.NeedBindPhone || resp.UserInfo == nil || !defaultNicknamePattern.MatchString(resp.UserInfo.Nickname) {
 		t.Fatalf("unexpected login response: %#v", resp)
 	}
 	if resp.AccessToken == "" || resp.RefreshToken == "" {
@@ -304,7 +275,7 @@ func TestWechatMiniLoginWithPhoneCodeCreatesUserWithPhone(t *testing.T) {
 	if !resp.Success || resp.NeedBindPhone || resp.UserInfo == nil || resp.UserInfo.Phone != "138****8001" {
 		t.Fatalf("expected a phone-bound login, got %#v", resp)
 	}
-	if !wechatMiniDefaultNicknamePattern.MatchString(resp.UserInfo.Nickname) || resp.AccessToken == "" || resp.RefreshToken == "" {
+	if !defaultNicknamePattern.MatchString(resp.UserInfo.Nickname) || resp.AccessToken == "" || resp.RefreshToken == "" {
 		t.Fatalf("unexpected login response: %#v", resp)
 	}
 

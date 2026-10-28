@@ -61,7 +61,7 @@ func (l *LoginLogic) Login(req *types.LoginReq) (resp *types.LoginResp, err erro
 	if user == nil {
 		user = &model.User{
 			Phone:           &req.Phone,
-			Nickname:        fmt.Sprintf("用户%s", req.Phone[7:]),
+			Nickname:        randomDefaultNickname(),
 			Status:          1,
 			MemberExpiresAt: resolveWelcomeMemberExpiresAt(l.svcCtx),
 		}

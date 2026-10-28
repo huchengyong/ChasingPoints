@@ -87,7 +87,7 @@ func (l *LoginByOauthLogic) LoginByOauth(req *types.LoginByOauthReq) (resp *type
 	} else {
 		nickname := strings.TrimSpace(req.NickName)
 		if nickname == "" {
-			nickname = "华为用户"
+			nickname = randomDefaultNickname()
 		}
 		avatar := strings.TrimSpace(req.AvatarUrl)
 		oauthIdentityCreateMu.Lock()
