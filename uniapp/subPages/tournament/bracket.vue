@@ -141,7 +141,7 @@ onMounted(() => {
 <style lang="scss" scoped>
 .bracket-page {
 	min-height: 100vh;
-	background: #FAF8F2;
+	background: #F7F4EC;
 }
 .loading-state {
 	display: flex;

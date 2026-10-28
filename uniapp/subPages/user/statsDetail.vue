@@ -533,7 +533,7 @@ const goLogin = () => {
 <style lang="scss" scoped>
 .stats-page {
 	min-height: 100vh;
-	background: #FAF8F2;
+	background: #F7F4EC;
 	padding-bottom: 60rpx;
 	padding-top: 24rpx;
 	box-sizing: border-box;

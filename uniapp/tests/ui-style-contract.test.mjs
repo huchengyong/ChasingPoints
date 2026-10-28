@@ -7,8 +7,11 @@ import { fileURLToPath } from 'node:url'
 const appRoot = fileURLToPath(new URL('..', import.meta.url))
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
 
-// Legacy cool blue-black values that must not serve as page/card/input/modal surfaces.
-const PROHIBITED_SURFACES = ['#101922', '#0f172a', '#0f1720', '#1e293b', '#0b1120', '#0c141d']
+// Legacy cool blue-black and off-token dark values that must not serve as page/card/input/modal surfaces.
+const PROHIBITED_SURFACES = [
+  '#101922', '#0f172a', '#0f1720', '#1e293b', '#0b1120', '#0c141d',
+  '#1e2a3a', '#2c3e50', '#121212', '#191413', '#241f1d'
+]
 
 // Files that legitimately keep a cool dark canvas for posters/media overlays rather than page surfaces.
 const ALLOWED_SURFACE_FILES = new Set([
@@ -69,7 +72,11 @@ test('legacy cool blue-black surfaces do not reappear as foundational background
     if (ALLOWED_SURFACE_FILES.has(relative)) continue
 
     const source = readFileSync(file, 'utf8')
-    const declarations = source.match(/background(?:-color)?\s*:[^;{}]+/g) || []
+    // SCSS 变量也要检查：页面常把深色表面先定义成 `$bg-dark` 再引用。
+    const declarations = [
+      ...(source.match(/background(?:-color)?\s*:[^;{}]+/g) || []),
+      ...(source.match(/\$[\w-]+\s*:[^;{}]+/g) || [])
+    ]
     for (const declaration of declarations) {
       const hit = PROHIBITED_SURFACES.find((color) => declaration.toUpperCase().includes(color.toUpperCase()))
       if (hit) {

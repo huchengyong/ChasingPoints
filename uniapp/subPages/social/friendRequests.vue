@@ -251,7 +251,7 @@ onPullDownRefresh(() => {
 <style lang="scss" scoped>
 .requests-page {
 	min-height: 100vh;
-	background: #FAF8F2;
+	background: #F7F4EC;
 }
 
 .loading-state {

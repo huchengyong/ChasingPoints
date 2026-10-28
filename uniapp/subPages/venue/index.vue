@@ -293,7 +293,7 @@ onMounted(() => {
 <style lang="scss" scoped>
 .venue-page {
 	min-height: 100vh;
-	background: #FAF8F2;
+	background: #F7F4EC;
 }
 .location-bar {
 	display: flex;

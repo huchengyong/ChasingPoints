@@ -499,7 +499,7 @@ onShow(() => {
 <style lang="scss" scoped>
 .feed-page {
 	min-height: 100vh;
-	background: #FAF8F2;
+	background: #F7F4EC;
 	display: flex;
 	flex-direction: column;
 

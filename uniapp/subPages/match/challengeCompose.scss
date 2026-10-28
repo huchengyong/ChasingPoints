@@ -1,6 +1,6 @@
 .compose-page {
 	min-height: 100vh;
-	background: #FAF8F2;
+	background: #F7F4EC;
 	padding: 24rpx 24rpx 60rpx;
 	box-sizing: border-box;
 
@@ -173,30 +173,30 @@
 }
 
 .compose-page.dark-mode {
-	background: #191413;
+	background: #141109;
 
 	.opponent-card,
 	.form-card {
-		background: #241F1D;
+		background: #1E180D;
 
 		.opponent-name,
 		.form-label,
 		.hour-value text,
 		.message-input {
-			color: #E8DFC9;
+			color: #FFF7E1;
 		}
 
 		.opponent-sub,
 		.form-hint,
 		.hour-sep {
-			color: #9A8C67;
+			color: #9F926E;
 		}
 
 		.chip {
-			background: #2F2823;
+			background: #241D10;
 
 			text {
-				color: #C6B78C;
+				color: #D7C89B;
 			}
 
 			&.active {
@@ -210,7 +210,7 @@
 
 		.hour-value,
 		.message-input {
-			background: #2F2823;
+			background: #241D10;
 		}
 	}
 }

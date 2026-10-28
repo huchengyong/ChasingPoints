@@ -115,40 +115,40 @@ const { isDarkMode } = usePageTheme()
 /* 浅色模式（默认） */
 .privacy-container {
 	min-height: 100vh;
-	background-color: #f5f5f5;
+	background-color: #F7F4EC;
 	display: flex;
 	flex-direction: column;
 
 	/* 深色模式 */
 	&.dark-mode {
-		background-color: #121212;
+		background-color: #141109;
 
 		.nav-bar {
-			background-color: #1e1e1e;
+			background-color: #1E180D;
 		}
 
 		.nav-back-icon {
-			color: #ffffff;
+			color: #FFF7E1;
 		}
 
 		.nav-title {
-			color: #ffffff;
+			color: #FFF7E1;
 		}
 
 		.article-title {
-			color: #ffffff;
+			color: #FFF7E1;
 		}
 
 		.update-time {
-			color: #9dabb9;
+			color: #9F926E;
 		}
 
 		.section-title {
-			color: #ffffff;
+			color: #FFF7E1;
 		}
 
 		.section-content {
-			color: rgba(255, 255, 255, 0.8);
+			color: rgba(255, 247, 225, 0.8);
 		}
 	}
 }
@@ -201,7 +201,7 @@ const { isDarkMode } = usePageTheme()
 
 .article-title {
 	display: block;
-	color: #333333;
+	color: #231C0B;
 	font-size: 44rpx;
 	font-weight: bold;
 	text-align: center;
@@ -210,7 +210,7 @@ const { isDarkMode } = usePageTheme()
 
 .update-time {
 	display: block;
-	color: #666666;
+	color: #9A8C67;
 	font-size: 26rpx;
 	text-align: center;
 	margin-bottom: 48rpx;
@@ -222,7 +222,7 @@ const { isDarkMode } = usePageTheme()
 
 .section-title {
 	display: block;
-	color: #333333;
+	color: #231C0B;
 	font-size: 32rpx;
 	font-weight: bold;
 	margin-bottom: 16rpx;
@@ -230,7 +230,7 @@ const { isDarkMode } = usePageTheme()
 
 .section-content {
 	display: block;
-	color: rgba(0, 0, 0, 0.7);
+	color: rgba(35, 28, 11, 0.75);
 	font-size: 28rpx;
 	line-height: 1.8;
 }

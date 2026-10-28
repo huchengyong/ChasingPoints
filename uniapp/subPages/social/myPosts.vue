@@ -243,7 +243,7 @@ const handleDelete = (item) => {
 <style lang="scss" scoped>
 .my-posts-page {
 	min-height: 100vh;
-	background: #FAF8F2;
+	background: #F7F4EC;
 	color: #231C0B;
 	padding: 24rpx;
 	box-sizing: border-box;

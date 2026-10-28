@@ -190,7 +190,7 @@ const goToGlossary = () => {
 <style lang="scss" scoped>
 .rules-page {
 	min-height: 100vh;
-	background: #FAF8F2;
+	background: #F7F4EC;
 	padding: 24rpx;
 }
 

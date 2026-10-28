@@ -1,6 +1,6 @@
 .waiting-page {
 	min-height: 100vh;
-	background: #FAF8F2;
+	background: #F7F4EC;
 	padding: 40rpx 32rpx 60rpx;
 	box-sizing: border-box;
 
@@ -140,16 +140,16 @@
 }
 
 .waiting-page.dark-mode {
-	background: #191413;
+	background: #141109;
 
 	.meta-line,
 	.state-text {
-		color: #E8DFC9;
+		color: #FFF7E1;
 	}
 
 	.meta-hint,
 	.player-state {
-		color: #9A8C67;
+		color: #9F926E;
 	}
 
 	.player-state.active {

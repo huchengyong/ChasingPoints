@@ -454,9 +454,12 @@ onPullDownRefresh(() => {
 </script>
 
 <style lang="scss" scoped>
+/* flex 容器不发生外边距塌陷，PK 报表模式顶部横幅的 margin 不会露出导航栏下的窗口底色。 */
 .friend-list-page {
+	display: flex;
+	flex-direction: column;
 	min-height: 100vh;
-	background: #FAF8F2;
+	background: #F7F4EC;
 }
 
 .page-banner {

@@ -152,7 +152,7 @@ const handlePublish = async () => {
 <style lang="scss" scoped>
 .post-create-page {
 	min-height: 100vh;
-	background: #FAF8F2;
+	background: #F7F4EC;
 	padding: 20rpx 24rpx;
 
 	&.dark-mode {

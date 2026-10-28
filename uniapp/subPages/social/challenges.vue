@@ -541,13 +541,16 @@ const rematch = (item) => {
 </script>
 
 <style lang="scss" scoped>
+/* 顶部用 padding 而非首个子元素的 margin，避免外边距塌陷露出导航栏下的窗口底色。 */
 .challenges-page {
 	min-height: 100vh;
-	background: #FAF8F2;
+	box-sizing: border-box;
+	background: #F7F4EC;
+	padding-top: 20rpx;
 	padding-bottom: 32rpx;
 }
 .page-tip {
-	margin: 20rpx 24rpx 0;
+	margin: 0 24rpx;
 	padding: 18rpx 20rpx;
 	border-radius: 20rpx;
 	background: rgba(224, 174, 18, 0.12);
@@ -780,36 +783,81 @@ const rematch = (item) => {
 	}
 }
 .challenges-page.dark-mode {
-	background: #191413;
+	background: #141109;
 
 	.page-tip {
 		background: rgba(224, 174, 18, 0.1);
-	}
-	.tab-bar,
-	.challenge-card,
-	.challenge-message {
-		background: #241F1D;
-	}
-	.challenge-message {
-		background: #191413;
-	}
-	.challenge-info .challenge-name,
-	.challenge-time {
-		color: #E8DFC9;
-	}
-	.challenge-status {
-		background: #2F2823;
 
 		text {
-			color: #C6B78C;
+			color: #D7C89B;
+		}
+	}
+	.tab-bar,
+	.challenge-card {
+		background: #1E180D;
+	}
+	.tab-bar .tab-item {
+		text {
+			color: #9F926E;
+		}
+
+		&.active {
+			background: rgba(224, 174, 18, 0.20);
+
+			text {
+				color: #F0C542;
+			}
+		}
+	}
+	.challenge-message {
+		background: #241D10;
+
+		text {
+			color: #D7C89B;
+		}
+	}
+	.challenge-info {
+		.challenge-name {
+			color: #FFF7E1;
+		}
+		.challenge-game,
+		.challenge-time {
+			color: #9F926E;
+		}
+	}
+	.challenge-status {
+		background: #241D10;
+
+		text {
+			color: #D7C89B;
+		}
+
+		&.status-0 {
+			background: rgba(224, 174, 18, 0.20);
+
+			text {
+				color: #F0C542;
+			}
+		}
+		&.status-1, &.status-6 {
+			background: rgba(96, 165, 250, 0.16);
+
+			text {
+				color: #60A5FA;
+			}
 		}
 	}
 	.card-actions .ghost-btn {
-		background: #2F2823;
+		background: #241D10;
 
 		text {
-			color: #C6B78C;
+			color: #D7C89B;
 		}
+	}
+	.loading-text,
+	.load-more text,
+	.empty-state .empty-text {
+		color: #9F926E;
 	}
 }
 </style>

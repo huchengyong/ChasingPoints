@@ -108,7 +108,7 @@
 						@click="toggleSnookerFormatEditor"
 					>
 						<text>{{ snookerFormatLabel }}</text>
-						<uni-icons v-if="canChangeSnookerFormat" type="right" size="14" color="#667687"></uni-icons>
+						<uni-icons v-if="canChangeSnookerFormat" type="right" size="14" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 					</view>
 				</view>
 				<text class="snooker-format-hint">{{ snookerFormatHint }}</text>
@@ -143,7 +143,7 @@
 						@click="toggleMatchFormatEditor"
 					>
 						<text>{{ poolMatchFormatLabel }}</text>
-						<uni-icons v-if="canChangeMatchFormat" type="right" size="14" color="#667687"></uni-icons>
+						<uni-icons v-if="canChangeMatchFormat" type="right" size="14" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 					</view>
 				</view>
 				<text class="snooker-format-hint">{{ poolMatchFormatHint }}</text>

@@ -1,25 +1,26 @@
 /* 交锋记录页面样式 */
 
+// 颜色与 DESIGN.md 的语义 Token 保持一致
 // 主色调
-$primary-color: #4CAF50;
+$primary-color: #E0AE12;
 $loss-red: #E57373;
 
 // 浅色模式变量
-$bg-light: #FAF8F2;
+$bg-light: #F7F4EC;
 $card-bg-light: #ffffff;
-$stats-bg-light: #f3f4f6;
-$text-primary-light: #111827;
+$stats-bg-light: #FAF8F2;
+$text-primary-light: #231C0B;
 $text-secondary-light: #6E6242;
 $text-tertiary-light: #9A8C67;
 $border-color-light: #E9E2CF;
 
 // 深色模式变量
-$bg-dark: #1E2A3A;
-$card-bg-dark: #2C3E50;
-$stats-bg-dark: rgba(30, 42, 58, 0.6);
-$text-primary-dark: #F5F5F5;
-$text-secondary-dark: #9A8C67;
-$text-tertiary-dark: #6E6242;
+$bg-dark: #141109;
+$card-bg-dark: #1E180D;
+$stats-bg-dark: #241D10;
+$text-primary-dark: #FFF7E1;
+$text-secondary-dark: #D7C89B;
+$text-tertiary-dark: #9F926E;
 $border-color-dark: #3A2E16;
 
 // 页面容器
@@ -69,7 +70,7 @@ $border-color-dark: #3A2E16;
             width: 112rpx;
             height: 112rpx;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #D9A617 0%, #BB8400 100%);
             border: 8rpx solid $border-color-light;
             display: flex;
             align-items: center;
@@ -647,7 +648,7 @@ $border-color-dark: #3A2E16;
     height: 88rpx;
     line-height: 88rpx;
     border-radius: 999rpx;
-    background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+    background: linear-gradient(135deg, #D9A617 0%, #BB8400 100%);
     box-sizing: border-box;
 
     &::after {

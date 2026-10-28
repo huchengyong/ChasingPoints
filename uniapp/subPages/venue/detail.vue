@@ -41,7 +41,7 @@
 			</view>
 			<view v-else class="image-placeholder">
 				<view class="placeholder-badge">
-					<uni-icons type="location" size="28" color="#0f766e"></uni-icons>
+					<uni-icons type="location" size="28" color="#C69200"></uni-icons>
 				</view>
 				<text class="placeholder-title">暂无球馆图片</text>
 				<text class="placeholder-text">先通过地址、营业信息和签到数据了解这个球馆。</text>
@@ -109,7 +109,7 @@
 					<text class="nav-text">去导航</text>
 				</view>
 				<view class="action-btn call-btn" @tap="callPhone" v-if="venue.phone">
-					<uni-icons type="phone" size="20" color="#0f766e"></uni-icons>
+					<uni-icons type="phone" size="20" :color="isDarkMode ? '#D7C89B' : '#6E6242'"></uni-icons>
 					<text class="call-text">打电话</text>
 				</view>
 				<view class="action-btn checkin-btn" :class="{ disabled: hasCheckedIn }" @tap="doCheckin">

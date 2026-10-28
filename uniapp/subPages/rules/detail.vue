@@ -180,7 +180,7 @@ onLoad((options) => {
 <style lang="scss" scoped>
 .detail-page {
 	min-height: 100vh;
-	background: #FAF8F2;
+	background: #F7F4EC;
 }
 
 .category-header {

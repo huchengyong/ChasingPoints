@@ -1,19 +1,21 @@
-$bg-light: #f4f6f8;
-$surface-light: #eef3f8;
-$line-light: #dbe4ee;
-$text-primary-light: #18222d;
-$text-secondary-light: #667687;
-$shadow-light: 0 24rpx 48rpx rgba(17, 41, 69, 0.08);
+// 表面、文字与通用控件使用 DESIGN.md 的语义 Token；蓝 / 橙只用于区分「我方 / 对手」。
+$bg-light: #F7F4EC;
+$surface-light: #FAF8F2;
+$line-light: #E9E2CF;
+$text-primary-light: #231C0B;
+$text-secondary-light: #6E6242;
+$shadow-light: 0 24rpx 48rpx rgba(31, 26, 16, 0.08);
 
 $bg-dark: #141109;
-$surface-dark: #223241;
+$surface-dark: #1E180D;
 $line-dark: rgba(255, 255, 255, 0.08);
-$text-primary-dark: #f4f7fb;
-$text-secondary-dark: #94a5b8;
+$text-primary-dark: #FFF7E1;
+$text-secondary-dark: #D7C89B;
 
 $me-primary: #0b7aff;
 $opponent-primary: #ff7b54;
 $gold: #f7c948;
+$brand: #E0AE12;
 $success: #1bb56b;
 
 .playing-container {
@@ -22,8 +24,8 @@ $success: #1bb56b;
 	flex-direction: column;
 	box-sizing: border-box;
 	background:
-		radial-gradient(circle at top, rgba(11, 122, 255, 0.08), transparent 38%),
-		linear-gradient(180deg, #f8fbff 0%, $bg-light 42%, #eef2f6 100%);
+		radial-gradient(circle at top, rgba(224, 174, 18, 0.08), transparent 38%),
+		linear-gradient(180deg, #FAF8F2 0%, $bg-light 42%, $bg-light 100%);
 	color: $text-primary-light;
 }
 
@@ -31,10 +33,10 @@ $success: #1bb56b;
 	position: sticky;
 	top: 0;
 	z-index: 20;
-	background: rgba(244, 246, 248, 0.88);
+	background: rgba(247, 244, 236, 0.88);
 	backdrop-filter: blur(20rpx);
 	box-sizing: border-box;
-	border-bottom: 2rpx solid rgba(24, 34, 45, 0.04);
+	border-bottom: 2rpx solid rgba(35, 28, 11, 0.04);
 
 	.header-content {
 		height: 88rpx;
@@ -198,7 +200,7 @@ $success: #1bb56b;
 	padding: 28rpx 32rpx;
 	border-radius: 28rpx;
 	background: rgba(255, 255, 255, 0.72);
-	border: 2rpx solid rgba(24, 34, 45, 0.06);
+	border: 2rpx solid rgba(35, 28, 11, 0.06);
 }
 
 .readonly-panel__title {
@@ -282,7 +284,7 @@ $success: #1bb56b;
 	padding: 18rpx 20rpx;
 	border-radius: 22rpx;
 	background: linear-gradient(180deg, rgba(11, 122, 255, 0.08), rgba(255, 123, 84, 0.06));
-	border: 2rpx solid rgba(24, 34, 45, 0.06);
+	border: 2rpx solid rgba(35, 28, 11, 0.06);
 }
 
 .snooker-frame-summary__label {
@@ -375,7 +377,7 @@ $success: #1bb56b;
 	}
 
 	&.is-opponent {
-		background: rgba(24, 34, 45, 0.1);
+		background: rgba(35, 28, 11, 0.1);
 		color: $text-primary-light;
 	}
 }
@@ -508,8 +510,8 @@ $success: #1bb56b;
 .snooker-v2-section {
 	padding: 24rpx;
 	border-radius: 24rpx;
-	background: rgba(24, 34, 45, 0.04);
-	border: 2rpx solid rgba(24, 34, 45, 0.07);
+	background: rgba(35, 28, 11, 0.04);
+	border: 2rpx solid rgba(35, 28, 11, 0.07);
 	box-sizing: border-box;
 }
 
@@ -671,7 +673,7 @@ $success: #1bb56b;
 	min-height: 112rpx;
 	padding: 16rpx 10rpx;
 	border-radius: 20rpx;
-	border: 2rpx solid rgba(24, 34, 45, 0.08);
+	border: 2rpx solid rgba(35, 28, 11, 0.08);
 	background: #ffffff;
 	color: $text-primary-light;
 	display: flex;
@@ -719,8 +721,8 @@ $success: #1bb56b;
 	line-height: 80rpx;
 	padding: 0 18rpx;
 	border-radius: 18rpx;
-	background: rgba(11, 122, 255, 0.1);
-	color: $me-primary;
+	background: rgba(35, 28, 11, 0.06);
+	color: $text-primary-light;
 	font-size: 22rpx;
 	font-weight: 700;
 	box-sizing: border-box;
@@ -777,7 +779,7 @@ $success: #1bb56b;
 	line-height: 64rpx;
 	padding: 0 20rpx;
 	border-radius: 999rpx;
-	background: rgba(24, 34, 45, 0.06);
+	background: rgba(35, 28, 11, 0.06);
 	color: $text-secondary-light;
 	font-size: 20rpx;
 	box-sizing: border-box;
@@ -787,7 +789,7 @@ $success: #1bb56b;
 	}
 
 	&.active {
-		background: $me-primary;
+		background: $brand;
 		color: #ffffff;
 	}
 }
@@ -804,7 +806,7 @@ $success: #1bb56b;
 		line-height: 64rpx;
 		padding: 0;
 		border-radius: 50%;
-		background: rgba(24, 34, 45, 0.08);
+		background: rgba(35, 28, 11, 0.08);
 		color: $text-primary-light;
 		font-size: 30rpx;
 
@@ -858,7 +860,7 @@ $success: #1bb56b;
 	line-height: 64rpx;
 	padding: 0 24rpx;
 	border-radius: 999rpx;
-	background: rgba(24, 34, 45, 0.06);
+	background: rgba(35, 28, 11, 0.06);
 	color: $text-secondary-light;
 	font-size: 22rpx;
 	font-weight: 700;
@@ -869,7 +871,7 @@ $success: #1bb56b;
 	}
 
 	&.is-active {
-		background: $me-primary;
+		background: $brand;
 		color: #ffffff;
 	}
 }
@@ -926,8 +928,8 @@ $success: #1bb56b;
 	min-height: 156rpx;
 	padding: 16rpx 10rpx 18rpx;
 	border-radius: 28rpx;
-	border: 2rpx solid rgba(24, 34, 45, 0.08);
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(238, 243, 248, 0.92));
+	border: 2rpx solid rgba(35, 28, 11, 0.08);
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 248, 242, 0.92));
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -956,7 +958,7 @@ $success: #1bb56b;
 	}
 
 	&.is-primary {
-		box-shadow: 0 18rpx 32rpx rgba(24, 34, 45, 0.12);
+		box-shadow: 0 18rpx 32rpx rgba(35, 28, 11, 0.12);
 
 		.snooker-ball-btn__ball {
 			width: 96rpx;
@@ -1015,8 +1017,8 @@ $success: #1bb56b;
 	}
 
 	&.is-foul {
-		background: linear-gradient(180deg, rgba(11, 122, 255, 0.14), rgba(11, 122, 255, 0.05));
-		border-color: rgba(11, 122, 255, 0.12);
+		background: linear-gradient(180deg, rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0.04));
+		border-color: rgba(239, 68, 68, 0.14);
 	}
 
 	&.is-disabled {
@@ -1035,7 +1037,7 @@ $success: #1bb56b;
 	box-shadow:
 		inset -8rpx -10rpx 14rpx rgba(0, 0, 0, 0.22),
 		inset 8rpx 10rpx 14rpx rgba(255, 255, 255, 0.24),
-		0 10rpx 18rpx rgba(24, 34, 45, 0.16);
+		0 10rpx 18rpx rgba(35, 28, 11, 0.16);
 }
 
 .snooker-ball-btn__score {
@@ -1192,19 +1194,19 @@ $success: #1bb56b;
 }
 
 .btn-primary {
-	background: linear-gradient(135deg, #0b7aff 0%, #0262d6 100%);
+	background: linear-gradient(135deg, #D9A617 0%, #BB8400 100%);
 	color: #ffffff;
-	box-shadow: 0 18rpx 28rpx rgba(11, 122, 255, 0.24);
+	box-shadow: 0 18rpx 28rpx rgba(224, 174, 18, 0.24);
 }
 
 .btn-secondary {
-	background: linear-gradient(135deg, rgba(11, 122, 255, 0.16) 0%, rgba(11, 122, 255, 0.08) 100%);
-	color: $me-primary;
-	border: 2rpx solid rgba(11, 122, 255, 0.14);
+	background: linear-gradient(135deg, rgba(224, 174, 18, 0.16) 0%, rgba(224, 174, 18, 0.08) 100%);
+	color: #C69200;
+	border: 2rpx solid rgba(224, 174, 18, 0.2);
 }
 
 .undo-btn {
-	background: rgba(24, 34, 45, 0.06);
+	background: rgba(35, 28, 11, 0.06);
 	color: $text-primary-light;
 }
 
@@ -1229,7 +1231,7 @@ $success: #1bb56b;
 
 	.scoreboard-card,
 	.action-panel {
-		background: rgba(24, 35, 47, 0.95);
+		background: rgba(30, 24, 13, 0.95);
 		border-color: rgba(255, 255, 255, 0.05);
 		box-shadow: none;
 	}
@@ -1263,7 +1265,7 @@ $success: #1bb56b;
 
 	.readonly-panel,
 	.referee-modal-container {
-		background: rgba(24, 35, 47, 0.95);
+		background: rgba(30, 24, 13, 0.95);
 		border-color: rgba(255, 255, 255, 0.05);
 	}
 
@@ -1307,9 +1309,24 @@ $success: #1bb56b;
 	}
 
 	.btn-secondary {
-		background: linear-gradient(135deg, rgba(11, 122, 255, 0.2) 0%, rgba(11, 122, 255, 0.1) 100%);
-		color: #8cc3ff;
-		border-color: rgba(11, 122, 255, 0.22);
+		background: linear-gradient(135deg, rgba(224, 174, 18, 0.2) 0%, rgba(224, 174, 18, 0.1) 100%);
+		color: #F0C542;
+		border-color: rgba(224, 174, 18, 0.22);
+	}
+
+	.snooker-v2-action {
+		background: rgba(255, 247, 225, 0.08);
+		color: $text-primary-dark;
+
+		&.is-highlight {
+			background: rgba(224, 174, 18, 0.2);
+			color: #F0C542;
+		}
+
+		&.is-danger {
+			background: rgba(239, 68, 68, 0.16);
+			color: #fca5a5;
+		}
 	}
 
 	.snooker-v2-status,
@@ -1383,21 +1400,21 @@ $success: #1bb56b;
 
 	.snooker-v2-chip.active,
 	.snooker-v2-toggle.active {
-		background: $me-primary;
+		background: $brand;
 		color: #ffffff;
 	}
 
 	.snooker-ball-btn {
-		background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(34, 50, 65, 0.94));
+		background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(30, 24, 13, 0.94));
 		border-color: rgba(255, 255, 255, 0.06);
 
 		&.is-foul {
-			background: linear-gradient(180deg, rgba(11, 122, 255, 0.22), rgba(11, 122, 255, 0.08));
-			border-color: rgba(11, 122, 255, 0.16);
+			background: linear-gradient(180deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.06));
+			border-color: rgba(239, 68, 68, 0.18);
 		}
 
 		&.is-primary {
-			box-shadow: 0 18rpx 34rpx rgba(2, 6, 23, 0.34);
+			box-shadow: 0 18rpx 34rpx rgba(0, 0, 0, 0.34);
 		}
 	}
 
@@ -1415,7 +1432,7 @@ $success: #1bb56b;
 		color: $text-secondary-dark;
 
 		&.is-active {
-			background: $me-primary;
+			background: $brand;
 			color: #ffffff;
 		}
 	}

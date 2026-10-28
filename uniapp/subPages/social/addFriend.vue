@@ -197,7 +197,7 @@ const handleAdd = async (item) => {
 <style lang="scss" scoped>
 .add-friend-page {
 	min-height: 100vh;
-	background: #FAF8F2;
+	background: #F7F4EC;
 }
 
 .search-bar {

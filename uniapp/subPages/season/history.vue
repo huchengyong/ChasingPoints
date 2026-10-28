@@ -223,7 +223,7 @@ onShow(() => {
 .season-history-page {
 	min-height: 100vh;
 	padding: 20rpx 24rpx 40rpx;
-	background: #FAF8F2;
+	background: #F7F4EC;
 	box-sizing: border-box;
 }
 .game-type-tabs {

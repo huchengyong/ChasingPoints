@@ -2,10 +2,10 @@
 	min-height: 100vh;
 	box-sizing: border-box;
 	padding: 36rpx 32rpx calc(48rpx + env(safe-area-inset-bottom));
-	background: #f7f4ed;
+	background: #F7F4EC;
 
 	&.dark-mode {
-		background: #17140e;
+		background: #141109;
 	}
 }
 
@@ -45,7 +45,7 @@
 	bottom: 2rpx;
 	width: 58rpx;
 	height: 58rpx;
-	border: 5rpx solid #f7f4ed;
+	border: 5rpx solid #F7F4EC;
 	border-radius: 50%;
 	background: #1f2924;
 	display: flex;
@@ -54,7 +54,7 @@
 }
 
 .dark-mode .camera-badge {
-	border-color: #17140e;
+	border-color: #141109;
 }
 
 .avatar-hint {
@@ -160,7 +160,7 @@
 }
 
 .dark-mode .modal-card {
-	background: #262116;
+	background: #1E180D;
 }
 
 .modal-title {
