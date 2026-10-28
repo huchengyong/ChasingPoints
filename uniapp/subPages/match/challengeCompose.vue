@@ -64,7 +64,7 @@
 			<text class="form-hint">预计时间仅作提醒，明天早晨7点失效</text>
 
 			<text class="form-label">附言（选填）</text>
-			<input class="message-input" v-model="message" placeholder="给对方捎句话" maxlength="50" />
+			<input class="message-input" v-model="message" placeholder-style="color: #9A8C67" placeholder="给对方捎句话" maxlength="50" />
 		</view>
 
 		<button class="submit-btn" :disabled="submitting" @tap="submit">

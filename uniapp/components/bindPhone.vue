@@ -52,6 +52,7 @@
 							class="phone-input"
 							type="number"
 							v-model="phone"
+							placeholder-style="color: #9A8C67"
 							placeholder="请输入手机号码"
 							maxlength="11"
 							@input="handlePhoneInput"
@@ -68,6 +69,7 @@
 							class="code-input"
 							type="number"
 							v-model="code"
+							placeholder-style="color: #9A8C67"
 							placeholder="请输入6位验证码"
 							maxlength="6"
 						/>

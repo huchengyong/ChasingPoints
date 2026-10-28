@@ -6,6 +6,7 @@
 			<input
 				class="search-input"
 				v-model="searchKeyword"
+				placeholder-style="color: #9A8C67"
 				placeholder="搜索规则、术语..."
 				confirm-type="search"
 				@confirm="handleSearch"

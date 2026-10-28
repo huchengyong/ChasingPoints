@@ -128,6 +128,7 @@
 							<input
 								class="comment-input"
 								v-model="item.commentText"
+								placeholder-style="color: #9A8C67"
 								placeholder="写评论..."
 								confirm-type="send"
 								@confirm="submitComment(item)"

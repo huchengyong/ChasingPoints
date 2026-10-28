@@ -5,6 +5,7 @@
 			<textarea
 				class="content-input"
 				v-model="content"
+				placeholder-style="color: #9A8C67"
 				placeholder="分享你的台球时刻..."
 				:maxlength="2000"
 				auto-height

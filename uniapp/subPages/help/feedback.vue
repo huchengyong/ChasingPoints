@@ -21,6 +21,7 @@
 					class="feedback-textarea"
 					v-model="feedbackContent"
 					placeholder="请详细描述您遇到的问题、投诉或举报事项..."
+					placeholder-style="color: #9A8C67"
 					:maxlength="contentMaxLength"
 				/>
 				<text class="char-count">{{ feedbackContent.length }}/{{ contentMaxLength }}</text>
@@ -33,6 +34,7 @@
 					type="text"
 					v-model="contactInfo"
 					placeholder="手机号或邮箱，便于处理人员联系您"
+					placeholder-style="color: #9A8C67"
 				/>
 			</view>
 		</view>

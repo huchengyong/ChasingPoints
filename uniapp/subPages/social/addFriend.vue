@@ -7,6 +7,7 @@
 				<input
 					class="search-input"
 					v-model="keyword"
+					placeholder-style="color: #9A8C67"
 					placeholder="搜索昵称或手机号"
 					confirm-type="search"
 					@confirm="doSearch"

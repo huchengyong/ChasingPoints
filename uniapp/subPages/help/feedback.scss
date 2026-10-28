@@ -15,9 +15,10 @@ $border-color-light: #E9E2CF;
 $bg-dark: #141109;
 $card-bg-dark: #1E180D;
 $text-primary-dark: #FFF7E1;
-$text-secondary-dark: #9F926E;
+$text-secondary-dark: #D7C89B;
 $text-muted-dark: #9F926E;
 $border-color-dark: #3A2E16;
+$input-bg-dark: #241D10;
 
 // 页面容器
 .feedback-container {
@@ -136,7 +137,7 @@ $border-color-dark: #3A2E16;
     width: 100%;
     height: 96rpx;
     line-height: 96rpx;
-    background: linear-gradient(135deg, $primary-color 0%, #F59E0B 100%);
+    background: linear-gradient(135deg, #D9A617 0%, #BB8400 100%);
     border: none;
     border-radius: 20rpx;
     font-size: 32rpx;
@@ -179,7 +180,7 @@ $border-color-dark: #3A2E16;
 
     .feedback-textarea {
         color: $text-primary-dark;
-        background-color: $bg-dark;
+        background-color: $input-bg-dark;
         border-color: $border-color-dark;
 
         &::placeholder {
@@ -194,7 +195,11 @@ $border-color-dark: #3A2E16;
     .category-picker,
     .contact-input {
         color: $text-primary-dark;
-        background-color: $bg-dark;
+        background-color: $input-bg-dark;
         border-color: $border-color-dark;
+    }
+
+    .submit-btn {
+        background: linear-gradient(135deg, #E0AE12 0%, #A97500 100%);
     }
 }

@@ -156,9 +156,9 @@
 				<template v-else>
 					<text class="deletion-copy">{{ hasBoundPhone ? '请输入已绑定的完整手机号并完成注销验证码验证。' : '将重新发起第三方授权，仅用于确认你的注销请求。' }}</text>
 					<view v-if="hasBoundPhone" class="deletion-sms-fields">
-						<input v-model.trim="deletePhone" class="deletion-input" type="number" maxlength="11" placeholder="已绑定的完整手机号" />
+						<input v-model.trim="deletePhone" class="deletion-input" type="number" maxlength="11" placeholder-style="color: #9A8C67" placeholder="已绑定的完整手机号" />
 						<view class="deletion-code-row">
-							<input v-model.trim="deleteSmsCode" class="deletion-input deletion-code-input" type="number" maxlength="6" placeholder="注销验证码" />
+							<input v-model.trim="deleteSmsCode" class="deletion-input deletion-code-input" type="number" maxlength="6" placeholder-style="color: #9A8C67" placeholder="注销验证码" />
 							<button class="deletion-send-code-btn" :disabled="deleteSmsSending" @click="sendDeleteAccountSms">{{ deleteSmsSending ? '发送中…' : '获取验证码' }}</button>
 						</view>
 					</view>

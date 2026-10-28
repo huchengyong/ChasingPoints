@@ -14,6 +14,7 @@
             v-model="searchKeyword"
             type="text"
             class="search-input"
+            placeholder-style="color: #9A8C67"
             :placeholder="viewModel.searchPlaceholder"
             @confirm="handleSearch"
           />

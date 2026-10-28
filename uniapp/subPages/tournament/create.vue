@@ -48,6 +48,7 @@
 					class="form-input"
 					:class="{ 'input-missing': showValidation && !requiredFieldStatus.name }"
 					v-model="form.name"
+					placeholder-style="color: #9A8C67"
 					placeholder="例如：周末公开赛 · 第 3 站"
 					maxlength="50"
 				/>
@@ -128,7 +129,7 @@
 					<text class="form-label">城市</text>
 					<text class="label-optional">选填</text>
 				</view>
-				<input class="form-input" v-model="form.city" placeholder="例如：上海" maxlength="20" />
+				<input class="form-input" v-model="form.city" placeholder-style="color: #9A8C67" placeholder="例如：上海" maxlength="20" />
 				<text class="field-hint">填写后会展示在赛事信息中。</text>
 			</view>
 			<view class="form-item">
@@ -136,7 +137,7 @@
 					<text class="form-label">场馆名称</text>
 					<text class="label-optional">选填</text>
 				</view>
-				<input class="form-input" v-model="form.venue_name" placeholder="例如：XX 台球俱乐部" maxlength="50" />
+				<input class="form-input" v-model="form.venue_name" placeholder-style="color: #9A8C67" placeholder="例如：XX 台球俱乐部" maxlength="50" />
 				<text class="field-hint">填清楚场馆，参赛者更容易判断出行距离。</text>
 			</view>
 		</view>
@@ -151,6 +152,7 @@
 				<textarea
 					class="form-textarea"
 					v-model="form.description"
+					placeholder-style="color: #9A8C67"
 					placeholder="可填写报名要求、费用、奖励、赛程安排等"
 					maxlength="500"
 				/>

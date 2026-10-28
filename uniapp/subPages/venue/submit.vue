@@ -18,7 +18,7 @@
 					<text class="form-label">球馆名称</text>
 					<text :class="requiredFieldStatus.name ? 'label-complete' : 'label-required'">{{ requiredFieldStatus.name ? '已完成' : '必填' }}</text>
 				</view>
-				<input class="form-input" :class="{ 'input-missing': showValidation && !requiredFieldStatus.name }" v-model="form.name" placeholder="例如：星轨台球俱乐部" maxlength="50" />
+				<input class="form-input" :class="{ 'input-missing': showValidation && !requiredFieldStatus.name }" v-model="form.name" placeholder-style="color: #9A8C67" placeholder="例如：星轨台球俱乐部" maxlength="50" />
 				<view class="field-meta">
 					<text class="field-hint">建议填写门店常用名称，方便大家识别。</text>
 					<text class="field-count">{{ form.name.length }}/50</text>
@@ -52,7 +52,7 @@
 					<text class="form-label">详细地址</text>
 					<text :class="requiredFieldStatus.address ? 'label-complete' : 'label-required'">{{ requiredFieldStatus.address ? '已完成' : '必填' }}</text>
 				</view>
-				<input class="form-input" :class="{ 'input-missing': showValidation && !requiredFieldStatus.address }" v-model="form.address" placeholder="请输入门牌号、楼层等详细地址" maxlength="100" />
+				<input class="form-input" :class="{ 'input-missing': showValidation && !requiredFieldStatus.address }" v-model="form.address" placeholder-style="color: #9A8C67" placeholder="请输入门牌号、楼层等详细地址" maxlength="100" />
 				<view class="field-meta">
 					<text class="field-hint">建议包含楼层或门牌，首次到店更容易找到。</text>
 					<text class="field-count">{{ form.address.length }}/100</text>

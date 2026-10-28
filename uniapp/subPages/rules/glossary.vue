@@ -6,6 +6,7 @@
 			<input
 				class="search-input"
 				v-model="filterText"
+				placeholder-style="color: #9A8C67"
 				placeholder="搜索术语..."
 			/>
 		</view>

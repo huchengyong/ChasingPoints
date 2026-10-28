@@ -84,6 +84,7 @@
 							<input
 								type="tel"
 								v-model="formData.phone"
+								placeholder-style="color: #9A8C67"
 								placeholder="请输入手机号"
 								class="form-input"
 								maxlength="11"
@@ -99,6 +100,7 @@
 							<input
 								type="number"
 								v-model="formData.code"
+								placeholder-style="color: #9A8C67"
 								placeholder="请输入6位验证码"
 								class="form-input code-input"
 								maxlength="6"

@@ -51,6 +51,7 @@
 					class="modal-input"
 					:type="nicknameInputType"
 					v-model="newNickname"
+					placeholder-style="color: #9A8C67"
 					placeholder="请输入昵称"
 					maxlength="12"
 					@blur="syncNicknameInput"
