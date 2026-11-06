@@ -1,0 +1,135 @@
+# 手动发布后端：在 Actions 页面选择分支与环境后点击 Run workflow。
+# 复用 backend/deploy-dev.sh、backend/deploy-prod.sh；配置说明见 backend/readme.md。
+# 仓库公开，运行日志所有人可见：服务器地址、用户名与密钥只放 Environment secrets。
+name: Deploy backend
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 发布环境
+        type: choice
+        options:
+          - dev
+          - production
+        default: dev
+      confirm_production:
+        description: 生产正式发布（不勾选只预演：测试、编译、上传并列出迁移，线上不变）
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-backend-${{ inputs.target }}
+  cancel-in-progress: false
+
+env:
+  # 发布号与服务器暂存目录按时间戳排序清理，与本机发布保持同一时区
+  TZ: Asia/Shanghai
+
+jobs:
+  deploy:
+    name: ${{ inputs.target }} · ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}
+    timeout-minutes: 30
+    env:
+      HOST_ALIAS: ${{ inputs.target == 'production' && 'chasingpoints-prod' || 'chasingpoints-dev' }}
+    steps:
+      - name: Check branch
+        if: inputs.target == 'production'
+        run: |
+          case "$GITHUB_REF_NAME" in
+            devlop|main) ;;
+            *) echo "::error::生产只允许从 devlop 或 main 发布，当前为 $GITHUB_REF_NAME"; exit 1 ;;
+          esac
+
+      - uses: actions/checkout@v5
+        with:
+          # deploy-prod.sh 需要远端分支与完整历史来核对线上版本和提交清单
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Configure SSH
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          for name in SSH_HOST SSH_USER SSH_PRIVATE_KEY SSH_KNOWN_HOSTS; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Environment ${{ inputs.target }} 缺少 secret $name"
+              exit 1
+            fi
+          done
+          install -d -m 700 ~/.ssh
+          (umask 077; printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key)
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # 复用同一条 SSH 连接，减少跨境网络下逐次握手超时
+          cat > ~/.ssh/config <<EOF
+          Host $HOST_ALIAS
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            ServerAliveInterval 15
+            ServerAliveCountMax 4
+            ControlMaster auto
+            ControlPath ~/.ssh/cm-%C
+            ControlPersist 30m
+          EOF
+          for attempt in 1 2 3 4 5; do
+            if ssh -o BatchMode=yes -o ConnectTimeout=30 -o LogLevel=ERROR "$HOST_ALIAS" true; then
+              echo "SSH ready"
+              exit 0
+            fi
+            echo "SSH attempt $attempt failed, retrying..."
+            sleep 5
+          done
+          echo "::error::无法通过 SSH 连接 ${{ inputs.target }} 服务器"
+          exit 1
+
+      - name: Deploy to dev
+        if: inputs.target == 'dev'
+        working-directory: backend
+        run: ./deploy-dev.sh
+
+      - name: Preview production deploy
+        if: inputs.target == 'production' && !inputs.confirm_production
+        working-directory: backend
+        run: |
+          set +e
+          ./deploy-prod.sh < /dev/null 2>&1 | tee "$RUNNER_TEMP/preview.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          # 退出码 0：生产已是该版本；预演读不到 yes 会取消并返回 1
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          fi
+          if grep -q '已取消，清理服务器暂存目录' "$RUNNER_TEMP/preview.log"; then
+            echo "::notice::预演完成，线上未改动。核对提交清单与迁移数后，勾选“生产正式发布”重新运行。"
+            exit 0
+          fi
+          exit "$status"
+
+      - name: Deploy to production
+        if: inputs.target == 'production' && inputs.confirm_production
+        working-directory: backend
+        env:
+          # 无人值守时不执行迁移；有待执行迁移须在本机人工发布
+          CHASING_POINTS_DEPLOY_NO_MIGRATIONS: "1"
+        run: echo yes | ./deploy-prod.sh
+
+      - name: Close SSH
+        if: always()
+        run: |
+          ssh -O exit "$HOST_ALIAS" 2>/dev/null || true
+          rm -f ~/.ssh/deploy_key
