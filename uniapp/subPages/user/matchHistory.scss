@@ -341,7 +341,7 @@ $border-color-dark: #3A2E16;
     transition: all 0.2s ease;
 
     &.active {
-        color: #231C0B;
+        color: #FFFFFF;
         background-color: $primary-color;
         font-weight: 600;
     }
@@ -511,7 +511,7 @@ $border-color-dark: #3A2E16;
         color: $text-secondary-dark;
 
         &.active {
-            color: #231C0B;
+            color: #FFFFFF;
         }
     }
 
