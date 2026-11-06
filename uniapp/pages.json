@@ -269,8 +269,7 @@
 				{
 					"path": "shareResult",
 					"style": {
-						"navigationBarTitleText": "战绩海报",
-						"navigationStyle": "custom"
+						"navigationBarTitleText": "战绩海报"
 					}
 				},
 				{
