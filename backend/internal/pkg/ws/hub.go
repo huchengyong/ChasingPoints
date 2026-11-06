@@ -22,6 +22,37 @@ type Client struct {
 	MatchId int64
 	UserId  int64
 	Send    chan []byte
+
+	// sendMu 保护 Send 的关闭状态：Hub、读协程和快照协程都会向 Send 写入，
+	// 关闭与写入必须互斥，避免向已关闭的 channel 发送而 panic。
+	sendMu     sync.Mutex
+	sendClosed bool
+}
+
+// trySend 非阻塞地投递消息；连接已关闭或发送缓冲已满时返回 false。
+func (c *Client) trySend(payload []byte) bool {
+	c.sendMu.Lock()
+	defer c.sendMu.Unlock()
+	if c.sendClosed {
+		return false
+	}
+	select {
+	case c.Send <- payload:
+		return true
+	default:
+		return false
+	}
+}
+
+// closeSend 关闭发送通道，可重复调用。
+func (c *Client) closeSend() {
+	c.sendMu.Lock()
+	defer c.sendMu.Unlock()
+	if c.sendClosed {
+		return
+	}
+	c.sendClosed = true
+	close(c.Send)
 }
 
 // Message WebSocket消息结构
@@ -233,7 +264,7 @@ func (h *Hub) Run() {
 			if room, ok := h.rooms[client.MatchId]; ok {
 				if _, ok := room[client]; ok {
 					delete(room, client)
-					close(client.Send)
+					client.closeSend()
 					// 如果房间为空，删除房间
 					if len(room) == 0 {
 						delete(h.rooms, client.MatchId)
@@ -244,7 +275,8 @@ func (h *Hub) Run() {
 			logx.Infof("客户端断开: MatchId=%d, UserId=%d", client.MatchId, client.UserId)
 
 		case message := <-h.Broadcast:
-			h.mu.RLock()
+			// 慢连接会被踢出房间（修改 map），需要写锁
+			h.mu.Lock()
 			if room, ok := h.rooms[message.MatchId]; ok {
 				if len(message.ViewerMessages) > 0 {
 					for client := range room {
@@ -252,25 +284,24 @@ func (h *Hub) Run() {
 						if !ok {
 							continue
 						}
-						select {
-						case client.Send <- payload:
-						default:
-							close(client.Send)
+						if !client.trySend(payload) {
+							client.closeSend()
 							delete(room, client)
 						}
 					}
 				} else {
 					for client := range room {
-						select {
-						case client.Send <- message.Message:
-						default:
-							close(client.Send)
+						if !client.trySend(message.Message) {
+							client.closeSend()
 							delete(room, client)
 						}
 					}
 				}
+				if len(room) == 0 {
+					delete(h.rooms, message.MatchId)
+				}
 			}
-			h.mu.RUnlock()
+			h.mu.Unlock()
 
 		case client := <-h.RegisterUser:
 			h.mu.Lock()
@@ -286,7 +317,7 @@ func (h *Hub) Run() {
 			if room, ok := h.userRooms[client.UserId]; ok {
 				if _, ok := room[client]; ok {
 					delete(room, client)
-					close(client.Send)
+					client.closeSend()
 					if len(room) == 0 {
 						delete(h.userRooms, client.UserId)
 					}
@@ -296,18 +327,20 @@ func (h *Hub) Run() {
 			logx.Infof("用户连接断开: UserId=%d", client.UserId)
 
 		case message := <-h.SendUser:
-			h.mu.RLock()
+			// 慢连接会被踢出用户房间（修改 map），需要写锁
+			h.mu.Lock()
 			if room, ok := h.userRooms[message.UserId]; ok {
 				for client := range room {
-					select {
-					case client.Send <- message.Message:
-					default:
-						close(client.Send)
+					if !client.trySend(message.Message) {
+						client.closeSend()
 						delete(room, client)
 					}
 				}
+				if len(room) == 0 {
+					delete(h.userRooms, message.UserId)
+				}
 			}
-			h.mu.RUnlock()
+			h.mu.Unlock()
 		}
 	}
 }
@@ -413,11 +446,8 @@ func (h *Hub) DisconnectUser(userID int64) {
 		delete(h.userRooms, userID)
 	}
 	for client := range clients {
-		select {
-		case client.Send <- payload:
-		default:
-		}
-		close(client.Send)
+		client.trySend(payload)
+		client.closeSend()
 	}
 	h.mu.Unlock()
 }
@@ -459,19 +489,24 @@ func (c *Client) ReadPump() {
 			break
 		}
 
-		// 处理客户端消息（如同步请求）
-		var msg Message
-		if err := json.Unmarshal(message, &msg); err == nil {
-			if msg.Type == "ping" {
-				// 响应心跳
-				pongMsg, _ := json.Marshal(Message{Type: "pong"})
-				c.Send <- pongMsg
-			}
-			if msg.Type == "sync" {
-				logx.Infof("收到对局同步请求: MatchId=%d, UserId=%d", c.MatchId, c.UserId)
-				c.sendMatchSync()
-			}
-		}
+		c.handleMatchMessage(message)
+	}
+}
+
+// handleMatchMessage 处理对局连接的客户端消息（心跳、同步请求）
+func (c *Client) handleMatchMessage(message []byte) {
+	var msg Message
+	if err := json.Unmarshal(message, &msg); err != nil {
+		return
+	}
+	switch msg.Type {
+	case "ping":
+		// 响应心跳；连接已被踢出或缓冲已满时丢弃，不阻塞读协程
+		pongMsg, _ := json.Marshal(Message{Type: "pong"})
+		c.trySend(pongMsg)
+	case "sync":
+		logx.Infof("收到对局同步请求: MatchId=%d, UserId=%d", c.MatchId, c.UserId)
+		c.sendMatchSync()
 	}
 }
 
@@ -892,9 +927,7 @@ func (c *Client) sendMatchSync() {
 		return
 	}
 
-	select {
-	case c.Send <- payload:
-	default:
+	if !c.trySend(payload) {
 		logx.Errorf("发送对局同步快照失败: matchId=%d, userId=%d", c.MatchId, c.UserId)
 	}
 }

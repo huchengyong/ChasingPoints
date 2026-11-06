@@ -100,8 +100,9 @@ func (c *Client) handleUserMessage(message []byte) {
 	var msg Message
 	if err := json.Unmarshal(message, &msg); err == nil {
 		if msg.Type == "ping" {
+			// 连接已被踢出或缓冲已满时丢弃，不阻塞读协程
 			pongMsg, _ := json.Marshal(Message{Type: "pong"})
-			c.Send <- pongMsg
+			c.trySend(pongMsg)
 		}
 	}
 }
