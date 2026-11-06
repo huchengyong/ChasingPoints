@@ -841,7 +841,7 @@ onUnmounted(() => {
 .login-btn {
 	height: 96rpx;
 	line-height: 96rpx;
-	border-radius: 28rpx;
+	border-radius: 18rpx;
 	font-size: 30rpx;
 	font-weight: 800;
 }
@@ -1267,7 +1267,7 @@ onUnmounted(() => {
 	height: 88rpx;
 	line-height: 88rpx;
 	border: 1rpx solid #e5cf93;
-	border-radius: 24rpx;
+	border-radius: 18rpx;
 	background: rgba(255, 255, 255, 0.5);
 	color: #6e6242;
 	display: flex;

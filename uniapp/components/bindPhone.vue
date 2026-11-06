@@ -579,7 +579,7 @@ $dark-input-bg: transparent;
 		color: #c69200;
 		background: transparent;
 		border: none;
-		border-radius: 12rpx;
+		border-radius: 18rpx;
 		box-sizing: border-box;
 		white-space: nowrap;
 
@@ -632,7 +632,7 @@ $dark-input-bg: transparent;
 		font-size: 32rpx;
 		font-weight: bold;
 		text-align: center;
-		border-radius: 24rpx;
+		border-radius: 18rpx;
 		border: none;
 
 		&.active {

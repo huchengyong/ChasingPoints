@@ -272,7 +272,7 @@ onUnload(stopTimer)
 	width: 100%;
 	height: 96rpx;
 	line-height: 96rpx;
-	border-radius: 48rpx;
+	border-radius: 18rpx;
 	background: #e0ae12;
 	color: #ffffff;
 	font-size: 32rpx;

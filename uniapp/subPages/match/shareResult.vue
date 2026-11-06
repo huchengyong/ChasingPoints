@@ -180,7 +180,7 @@ onLoad((options) => {
 		justify-content: center;
 		gap: 12rpx;
 		background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
-		border-radius: 12rpx;
+		border-radius: 18rpx;
 		padding: 24rpx;
 		.save-text { font-size: 30rpx; color: #fff; font-weight: 500; }
 	}

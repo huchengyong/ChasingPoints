@@ -299,7 +299,7 @@ const handlePublish = async () => {
 		width: 100%;
 		background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
 		color: #ffffff;
-		border-radius: 40rpx;
+		border-radius: 18rpx;
 		height: 88rpx;
 		line-height: 88rpx;
 		font-size: 32rpx;

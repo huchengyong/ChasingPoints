@@ -165,6 +165,10 @@
 - 营销 / 重点 CTA（官网、欢迎页、高价值入口）：可用 `brand-gradient-start → brand-gradient-end` 渐变，白字。
 - 次要操作：透明或 `surface-subtle` 背景 + `border-default` + `text-secondary` / `brand-strong` 文字。
 - 破坏性操作：`danger`，不与普通主操作同形。
+- 圆角按形态选择，不按页面或重要程度：
+  - 撑满容器宽度的块级按钮（底部操作栏、表单提交、登录 / 欢迎页、弹层与抽屉内的确认按钮、计分面板）用 `radius-md`。
+  - 宽度随文字的紧凑按钮（状态页重试 / 空态引导 / 去登录、卡片内行内操作）用 `radius-pill`。
+  - 纯图标按钮用圆形。
 - UniApp 自定义 `button`：
   - `margin: 0`（覆盖原生 margin）。
   - 隐藏 `button::after`。

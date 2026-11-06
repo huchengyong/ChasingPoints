@@ -313,7 +313,7 @@ onMounted(() => {
 		gap: 6rpx;
 		padding: 12rpx 24rpx;
 			background: #e0ae12;
-			border-radius: 12rpx;
+			border-radius: 999rpx;
 			.submit-text { font-size: 26rpx; color: #ffffff; }
 		}
 	}
@@ -413,7 +413,7 @@ onMounted(() => {
 		.empty-btn {
 			padding: 16rpx 40rpx;
 			background: #e0ae12;
-			border-radius: 12rpx;
+			border-radius: 999rpx;
 			color: #ffffff;
 			font-size: 28rpx;
 		}

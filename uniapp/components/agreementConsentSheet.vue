@@ -132,7 +132,7 @@ const handleClose = () => {
 	height: 96rpx;
 	line-height: 96rpx; 
 	margin-top: 32rpx;
-	border-radius: 999rpx;
+	border-radius: 18rpx;
 	background: linear-gradient(135deg, #f7d86a 0%, #e0ae12 48%, #c69200 100%);
 	color: #ffffff;
 	font-size: 32rpx;

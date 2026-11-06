@@ -524,7 +524,7 @@ onLoad((options) => {
 	padding: 24rpx;
 	background: #ffffff;
 	border: 1rpx solid #E9E2CF;
-	border-radius: 16rpx;
+	border-radius: 18rpx;
 	color: #231C0B;
 	font-size: 28rpx;
 	margin-top: 16rpx;
