@@ -41,14 +41,14 @@ jobs:
       - name: Check branch
         if: inputs.target == 'production'
         run: |
-          case "$GITHUB_REF_NAME" in
-            devlop|main) ;;
-            *) echo "::error::生产只允许从 devlop 或 main 发布，当前为 $GITHUB_REF_NAME"; exit 1 ;;
-          esac
+          if [ "$GITHUB_REF_NAME" != main ]; then
+            echo "::error::生产只允许从 main 发布，当前为 $GITHUB_REF_NAME；请先把改动合入 main"
+            exit 1
+          fi
 
       - uses: actions/checkout@v5
         with:
-          # deploy-prod.sh 需要远端分支与完整历史来核对线上版本和提交清单
+          # deploy-prod.sh 需要 origin/main 与完整历史来核对分支、线上版本和提交清单
           fetch-depth: 0
 
       - uses: actions/setup-go@v6

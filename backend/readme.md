@@ -45,7 +45,7 @@ cd backend
 [`.github/workflows/deploy-backend.yml`](../.github/workflows/deploy-backend.yml) 在 GitHub Actions 中调用 `deploy-dev.sh` / `deploy-prod.sh`：在 Actions 页面选择 **Deploy backend → Run workflow**，选分支和环境后运行。
 
 - `dev`：直接发布开发服务器，行为与本机执行 `deploy-dev.sh` 相同（包括 Goose 迁移）。
-- `production`：只允许 `devlop` 或 `main` 分支。默认只预演（测试、编译、上传并列出提交清单与待执行迁移，线上不变）；核对后勾选“生产正式发布”再运行一次。有待执行迁移时会自动取消，迁移发布在本机人工执行 `deploy-prod.sh`。
+- `production`：`main` 是生产分支，只允许从 `main` 发布（本机执行 `deploy-prod.sh` 也要求 HEAD 已合入 `origin/main`）；改动先在 `devlop` 发布测试环境，再通过 PR 合入 `main`。默认只预演（测试、编译、上传并列出提交清单与待执行迁移，线上不变）；核对后勾选“生产正式发布”再运行一次。有待执行迁移时会自动取消，迁移发布在本机人工执行 `deploy-prod.sh`。
 - workflow 文件需要先合入默认分支 `main`，Actions 页面才会出现运行按钮。
 
 在仓库 **Settings → Environments** 建 `dev` 和 `production` 两个环境，各自配置以下 secrets（仓库公开，运行日志所有人可见，地址等信息不要写进 workflow 或仓库）：
@@ -57,4 +57,4 @@ cd backend
 | `SSH_PRIVATE_KEY` | CI 专用部署私钥，不要复用个人密钥 |
 | `SSH_KNOWN_HOSTS` | 服务器主机公钥，可在本机执行 `ssh-keygen -F <服务器 IP>` 取得 |
 
-建议给 `production` 环境设置部署分支限制（`devlop`、`main`）。
+建议给 `production` 环境设置部署分支限制，只允许 `main`。
