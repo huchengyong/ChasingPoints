@@ -58,3 +58,5 @@ cd backend
 | `SSH_KNOWN_HOSTS` | 服务器主机公钥，可在本机执行 `ssh-keygen -F <服务器 IP>` 取得 |
 
 建议给 `production` 环境设置部署分支限制，只允许 `main`。
+
+GitHub runner 在海外，直接 `scp` 到国内生产服务器很慢，因此生产发布包经七牛中转：workflow 设置 `CHASING_POINTS_DEPLOY_RELAY_BUCKET`（空间名见 workflow 的 `PROD_RELAY_BUCKET`），`deploy-prod.sh` 通过 SSH 让服务器用 `.env` 中的七牛密钥签发只能写入该发布包、1 小时过期的上传凭证，runner 上传后服务器经 S3 兼容接口下载、校验 sha256 并删除七牛上的对象（见 [deploy-relay.py](deploy-relay.py)）。中转空间须为华南（z2）的**私有**空间，建议在七牛控制台为 `deploy/` 前缀配置 1 天后删除的生命周期规则，清理中断发布留下的对象。本机执行 `deploy-prod.sh` 不设置该变量时仍直接 `scp`。

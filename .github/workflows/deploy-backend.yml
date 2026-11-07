@@ -28,6 +28,8 @@ concurrency:
 env:
   # 发布号与服务器暂存目录按时间戳排序清理，与本机发布保持同一时区
   TZ: Asia/Shanghai
+  # 生产发布包经七牛华南私有空间中转（海外 runner 直传国内服务器过慢），见 backend/deploy-relay.py
+  PROD_RELAY_BUCKET: zhuifen-deploy
 
 jobs:
   deploy:
@@ -105,6 +107,8 @@ jobs:
       - name: Preview production deploy
         if: inputs.target == 'production' && !inputs.confirm_production
         working-directory: backend
+        env:
+          CHASING_POINTS_DEPLOY_RELAY_BUCKET: ${{ env.PROD_RELAY_BUCKET }}
         run: |
           set +e
           ./deploy-prod.sh < /dev/null 2>&1 | tee "$RUNNER_TEMP/preview.log"
@@ -126,6 +130,7 @@ jobs:
         env:
           # 无人值守时不执行迁移；有待执行迁移须在本机人工发布
           CHASING_POINTS_DEPLOY_NO_MIGRATIONS: "1"
+          CHASING_POINTS_DEPLOY_RELAY_BUCKET: ${{ env.PROD_RELAY_BUCKET }}
         run: echo yes | ./deploy-prod.sh
 
       - name: Close SSH
