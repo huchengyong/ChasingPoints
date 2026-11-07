@@ -40,23 +40,19 @@ cd backend
 
 部署失败时会恢复上一版程序；已经执行的数据库迁移不会自动回滚。
 
-## GitHub Actions 发布
+## GitHub Actions 发布开发环境
 
-[`.github/workflows/deploy-backend.yml`](../.github/workflows/deploy-backend.yml) 在 GitHub Actions 中调用 `deploy-dev.sh` / `deploy-prod.sh`：在 Actions 页面选择 **Deploy backend → Run workflow**，选分支和环境后运行。
+[`.github/workflows/deploy-backend.yml`](../.github/workflows/deploy-backend.yml) 在 GitHub Actions 中调用 `deploy-dev.sh`：在 Actions 页面选择 **Deploy backend → Run workflow**，选分支后运行，行为与本机执行 `deploy-dev.sh` 相同（包括 Goose 迁移）。workflow 文件需要先合入默认分支 `main`，Actions 页面才会出现运行按钮。
 
-- `dev`：直接发布开发服务器，行为与本机执行 `deploy-dev.sh` 相同（包括 Goose 迁移）。
-- `production`：`main` 是生产分支，只允许从 `main` 发布（本机执行 `deploy-prod.sh` 也要求 HEAD 已合入 `origin/main`）；改动先在 `devlop` 发布测试环境，再通过 PR 合入 `main`。默认只预演（测试、编译、上传并列出提交清单与待执行迁移，线上不变）；核对后勾选“生产正式发布”再运行一次。有待执行迁移时会自动取消，迁移发布在本机人工执行 `deploy-prod.sh`。
-- workflow 文件需要先合入默认分支 `main`，Actions 页面才会出现运行按钮。
-
-在仓库 **Settings → Environments** 建 `dev` 和 `production` 两个环境，各自配置以下 secrets（仓库公开，运行日志所有人可见，地址等信息不要写进 workflow 或仓库）：
+在仓库 **Settings → Environments** 的 `dev` 环境配置以下 secrets（仓库公开，运行日志所有人可见，地址等信息不要写进 workflow 或仓库）：
 
 | Secret | 内容 |
 | --- | --- |
 | `SSH_HOST` | 服务器 IP |
-| `SSH_USER` | 登录用户（开发服务器需免密 `sudo`） |
+| `SSH_USER` | 登录用户（需免密 `sudo`） |
 | `SSH_PRIVATE_KEY` | CI 专用部署私钥，不要复用个人密钥 |
 | `SSH_KNOWN_HOSTS` | 服务器主机公钥，可在本机执行 `ssh-keygen -F <服务器 IP>` 取得 |
 
-建议给 `production` 环境设置部署分支限制，只允许 `main`。
+## 生产发布
 
-GitHub runner 在海外，直接 `scp` 到国内生产服务器很慢，因此生产发布包经七牛中转：workflow 设置 `CHASING_POINTS_DEPLOY_RELAY_BUCKET`（空间名见 workflow 的 `PROD_RELAY_BUCKET`），`deploy-prod.sh` 通过 SSH 让服务器用 `.env` 中的七牛密钥签发只能写入该发布包、1 小时过期的上传凭证，runner 上传后服务器经 S3 兼容接口下载、校验 sha256 并删除七牛上的对象（见 [deploy-relay.py](deploy-relay.py)）。中转空间须为华南（z2）的**私有**空间，建议在七牛控制台为 `deploy/` 前缀配置 1 天后删除的生命周期规则，清理中断发布留下的对象。本机执行 `deploy-prod.sh` 不设置该变量时仍直接 `scp`。
+`main` 是生产分支：改动先在 `devlop` 发布开发环境，再通过 PR 合入 `main`，然后在本机 `main` 上执行 `deploy-prod.sh`（脚本要求 HEAD 已合入 `origin/main`，用法见脚本头部）。生产服务器在国内，GitHub runner 跨境上传发布包（直传或经七牛中转）都会超时，因此生产不走 GitHub Actions。
