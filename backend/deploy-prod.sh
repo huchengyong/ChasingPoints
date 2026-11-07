@@ -8,20 +8,16 @@
 #   backend/deploy-prod.sh
 #
 # 依赖：~/.ssh/config 中的 chasingpoints-prod 别名（可用 CHASING_POINTS_PROD_HOST 覆盖），HEAD 已合入 origin/main（main 是生产分支）。
-# CHASING_POINTS_DEPLOY_NO_MIGRATIONS=1：有待执行迁移时取消发布（GitHub Actions 发布使用）。
-# CHASING_POINTS_DEPLOY_RELAY_BUCKET=<七牛华南私有空间>：发布包经七牛中转上传（见 deploy-relay.py），默认 scp 直传。
 set -Eeuo pipefail
 
 HOST="${CHASING_POINTS_PROD_HOST:-chasingpoints-prod}"
 GOOSE_VERSION=v3.28.0
 KEEP_STAGES=3
 SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=15 -o LogLevel=ERROR)
-RELAY_BUCKET="${CHASING_POINTS_DEPLOY_RELAY_BUCKET:-}"
-RELAY_UPLOAD_URL=https://up-z2.qiniup.com
 
 case "${1:-}" in
     "") ;;
-    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,10p' "$0"; exit 0 ;;
     *) printf 'Unknown argument: %s\n' "$1" >&2; exit 2 ;;
 esac
 
@@ -107,31 +103,8 @@ cleanup_stage() {
     ssh "${SSH_OPTS[@]}" "$HOST" "rm -rf '/www/wwwroot/api.zhuifen.cn/deploy-stage-$release_id'" || true
 }
 
-# 跨境直传服务器很慢时（如 GitHub Actions），经七牛私有空间中转：服务器签发一次性上传凭证，
-# 本地上传到七牛，服务器下载并校验后删除七牛上的对象。七牛密钥只在服务器 .env 中。
-relay_upload() {
-    local relay_key="deploy/$archive_name"
-    local checksum token
-    checksum="$(shasum -a 256 "$work_dir/$archive_name" | cut -d' ' -f1)"
-    token="$(ssh "${SSH_OPTS[@]}" "$HOST" "python3 - upload-token '$RELAY_BUCKET' '$relay_key'" < "$backend_dir/deploy-relay.py")"
-    [ -n "$token" ] || { printf '获取七牛上传凭证失败。\n' >&2; return 1; }
-    if [ -n "${GITHUB_ACTIONS:-}" ]; then
-        printf '::add-mask::%s\n' "$token"
-    fi
-    curl --fail --silent --show-error --retry 3 --retry-all-errors --connect-timeout 30 --max-time 900 \
-        -F "token=$token" -F "key=$relay_key" -F "file=@$work_dir/$archive_name" \
-        -o /dev/null -w 'uploaded %{size_upload} bytes to relay in %{time_total}s\n' \
-        "$RELAY_UPLOAD_URL"
-    ssh "${SSH_OPTS[@]}" "$HOST" "python3 - fetch '$RELAY_BUCKET' '$relay_key' '$remote_archive' '$checksum'" < "$backend_dir/deploy-relay.py"
-}
-
 printf 'Uploading release...\n'
-if [ -n "$RELAY_BUCKET" ]; then
-    printf 'Uploading via Qiniu relay bucket %s...\n' "$RELAY_BUCKET"
-    relay_upload
-else
-    scp "${SSH_OPTS[@]}" "$work_dir/$archive_name" "${HOST}:${remote_archive}"
-fi
+scp "${SSH_OPTS[@]}" "$work_dir/$archive_name" "${HOST}:${remote_archive}"
 
 stage_output="$(ssh "${SSH_OPTS[@]}" "$HOST" "bash -s -- '$release_id' '$remote_archive' '$GOOSE_VERSION'" <<'REMOTE'
 set -Eeuo pipefail
@@ -159,12 +132,7 @@ pending="$(printf '%s\n' "$stage_output" | sed -n 's/^pending=//p')"
 printf '\n待执行迁移：%s 个\n' "$pending"
 printf '%s\n' "$stage_output" | grep -v '^pending=' || true
 
-# 5) 人工确认；无人值守发布（如 CI）可设置 CHASING_POINTS_DEPLOY_NO_MIGRATIONS=1，有待执行迁移时直接取消
-if [ "${CHASING_POINTS_DEPLOY_NO_MIGRATIONS:-}" = 1 ] && [ "$pending" != 0 ]; then
-    printf '\n有 %s 个待执行迁移，已设置 CHASING_POINTS_DEPLOY_NO_MIGRATIONS=1，取消发布；请在本机人工发布。\n' "$pending" >&2
-    cleanup_stage
-    exit 1
-fi
+# 5) 人工确认
 printf '\n即将发布到生产 %s：' "$HOST"
 if [ "$pending" != 0 ]; then printf '先备份数据库并执行 %s 个迁移，' "$pending"; fi
 printf '再替换二进制并重启（会有几秒停机）。\n输入 yes 继续：'
