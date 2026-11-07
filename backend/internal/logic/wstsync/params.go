@@ -12,6 +12,7 @@ func ParseSyncParams(args []string) (SyncParams, error) {
 	fs.SetOutput(io.Discard)
 
 	var (
+		backfill          bool
 		season            int
 		year              int
 		fromText          string
@@ -22,6 +23,7 @@ func ParseSyncParams(args []string) (SyncParams, error) {
 		gameType          int
 	)
 
+	fs.BoolVar(&backfill, "backfill", false, "historical backfill mode (default from 2023-01-01 to today UTC)")
 	fs.IntVar(&season, "season", 0, "WST season id")
 	fs.IntVar(&year, "year", 0, "calendar year")
 	fs.StringVar(&fromText, "from", "", "start date")
@@ -38,13 +40,62 @@ func ParseSyncParams(args []string) (SyncParams, error) {
 		return SyncParams{}, fmt.Errorf("unexpected positional arguments: %v", fs.Args())
 	}
 
-	modeCount := 0
 	params := SyncParams{
+		Backfill:          backfill,
 		Publish:           publish,
 		DryRun:            dryRun,
 		IncludeQualifiers: includeQualifiers,
 		GameType:          gameType,
 	}
+
+	if backfill {
+		return buildBackfillParams(params, fromText, toText, gameType, season, year)
+	}
+
+	return buildLegacyParams(params, season, year, fromText, toText)
+}
+
+func buildBackfillParams(params SyncParams, fromText, toText string, gameType, season, year int) (SyncParams, error) {
+	if season > 0 || year > 0 {
+		return SyncParams{}, fmt.Errorf("--backfill is mutually exclusive with --season and --year")
+	}
+	if gameType != 1 {
+		return SyncParams{}, fmt.Errorf("--backfill only supports snooker (game-type=1)")
+	}
+
+	now := time.Now().UTC()
+	defaultFrom := time.Date(2023, time.January, 1, 0, 0, 0, 0, time.UTC)
+	defaultTo := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+
+	from, err := parseDateOnly(fromText)
+	if err != nil {
+		return SyncParams{}, fmt.Errorf("invalid --from date: %w", err)
+	}
+	to, err := parseDateOnly(toText)
+	if err != nil {
+		return SyncParams{}, fmt.Errorf("invalid --to date: %w", err)
+	}
+
+	// Apply defaults for unspecified endpoints.
+	if from == nil {
+		from = &defaultFrom
+	}
+	if to == nil {
+		to = &defaultTo
+	}
+
+	if to.Before(*from) {
+		return SyncParams{}, fmt.Errorf("--to must not be before --from")
+	}
+
+	params.Mode = SyncModeBackfill
+	params.From = from
+	params.To = to
+	return params, nil
+}
+
+func buildLegacyParams(params SyncParams, season, year int, fromText, toText string) (SyncParams, error) {
+	modeCount := 0
 
 	if season > 0 {
 		modeCount++

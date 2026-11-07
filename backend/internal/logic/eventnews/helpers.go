@@ -3,6 +3,7 @@ package eventnews
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -14,7 +15,7 @@ import (
 
 const eventNewsTimeLayout = "2006-01-02 15:04:05"
 const eventNewsDateLayout = "2006-01-02"
-const defaultTournamentCoverImage = "https://images.gc.wstservices.co.uk/fit-in/400x600/4ddad400-99d3-11ee-94e8-c9d138e537ff.png"
+const wstImageHost = "images.gc.wstservices.co.uk"
 
 var eventNewsNow = time.Now
 var shanghaiLocation = time.FixedZone("UTC+8", 8*60*60)
@@ -169,22 +170,22 @@ func eventNewsDateWindowOverlaps(window eventNewsDateWindow, startDate, endDate 
 
 func mapEventNewsInfo(item model.EventNews, tournament *model.Tournament, matches []model.TournamentMatch) types.EventNewsInfo {
 	resp := types.EventNewsInfo{
-		Id:         item.Id,
-		Title:      item.Title,
-		GameType:   item.GameType,
-		SourceType: item.SourceType,
-		SourceName: item.SourceName,
-		SourceUrl:  item.SourceUrl,
-		CoverImage: strings.TrimSpace(item.CoverImage),
-		Summary:    item.Summary,
-		Content:    item.Content,
+		Id:          item.Id,
+		Title:       item.Title,
+		GameType:    item.GameType,
+		SourceType:  item.SourceType,
+		SourceName:  item.SourceName,
+		SourceUrl:   item.SourceUrl,
+		CoverImage:  sanitizePublicImageURL(item.CoverImage),
+		Summary:     item.Summary,
+		Content:     item.Content,
 		Description: "",
-		Country:    item.Country,
-		City:       item.City,
-		Venue:      item.Venue,
-		Status:     item.Status,
-		Published:  item.Published,
-		MatchCount: len(matches),
+		Country:     item.Country,
+		City:        item.City,
+		Venue:       item.Venue,
+		Status:      item.Status,
+		Published:   item.Published,
+		MatchCount:  len(matches),
 	}
 	if item.StartDate != nil {
 		resp.StartDate = item.StartDate.Format(eventNewsDateLayout)
@@ -212,7 +213,7 @@ func mapEventNewsInfo(item model.EventNews, tournament *model.Tournament, matche
 		resp.TournamentName = tournament.Name
 		resp.Description = strings.TrimSpace(tournament.Description)
 		if resp.CoverImage == "" {
-			resp.CoverImage = strings.TrimSpace(tournament.CoverImage)
+			resp.CoverImage = sanitizePublicImageURL(tournament.CoverImage)
 		}
 		if resp.GameType == 0 {
 			resp.GameType = tournament.GameType
@@ -241,9 +242,6 @@ func mapEventNewsInfo(item model.EventNews, tournament *model.Tournament, matche
 	}
 	if resp.TournamentName == "" {
 		resp.TournamentName = item.Title
-	}
-	if resp.CoverImage == "" {
-		resp.CoverImage = defaultTournamentCoverImage
 	}
 	if resp.EndDate == "" {
 		resp.EndDate = resp.StartDate
@@ -283,12 +281,14 @@ func mapEventNewsMatchInfo(eventID int64, item model.TournamentMatch, players ma
 		HomePlayerFirstName: homeFirstName,
 		HomePlayerLastName:  homeLastName,
 		HomePlayerFlagEmoji: strings.TrimSpace(homePlayer.FlagEmoji),
+		HomePlayerCountryCode: strings.TrimSpace(homePlayer.CountryCode),
 		HomePlayerAvatar:    resolvePlayerAvatar(players, homePlayerID),
 		AwayPlayerId:        awayPlayerID,
 		AwayPlayerName:      awayPlayerName,
 		AwayPlayerFirstName: awayFirstName,
 		AwayPlayerLastName:  awayLastName,
 		AwayPlayerFlagEmoji: strings.TrimSpace(awayPlayer.FlagEmoji),
+		AwayPlayerCountryCode: strings.TrimSpace(awayPlayer.CountryCode),
 		AwayPlayerAvatar:    resolvePlayerAvatar(players, awayPlayerID),
 		HomeScore:           item.HomeScore,
 		AwayScore:           item.AwayScore,
@@ -396,7 +396,7 @@ func mapTournamentInfo(item *model.Tournament) *types.TournamentInfo {
 		CreatorId:      item.CreatorId,
 		Name:           item.Name,
 		Description:    item.Description,
-		CoverImage:     firstNonEmpty(item.CoverImage, defaultTournamentCoverImage),
+		CoverImage:     sanitizePublicImageURL(item.CoverImage),
 		GameType:       item.GameType,
 		Format:         item.Format,
 		MaxPlayers:     item.MaxPlayers,
@@ -531,7 +531,19 @@ func resolvePlayerAvatar(players map[int64]model.Player, playerID int64) string 
 	if !ok {
 		return ""
 	}
-	return strings.TrimSpace(player.Avatar)
+	return sanitizePublicImageURL(player.Avatar)
+}
+
+func sanitizePublicImageURL(rawURL string) string {
+	value := strings.TrimSpace(rawURL)
+	if value == "" {
+		return ""
+	}
+	parsed, err := url.Parse(value)
+	if err == nil && strings.EqualFold(parsed.Hostname(), wstImageHost) {
+		return ""
+	}
+	return value
 }
 
 func buildPlayerDisplayName(player model.Player) string {
@@ -600,9 +612,6 @@ func normalizeStoredShanghaiClock(value time.Time) time.Time {
 }
 
 func normalizeDisplayTimeBySource(sourceType string, value time.Time) time.Time {
-	if strings.EqualFold(strings.TrimSpace(sourceType), "official") {
-		return normalizeStoredShanghaiClock(value)
-	}
 	return reinterpretStoredUTC(value)
 }
 

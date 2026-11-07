@@ -1,0 +1,224 @@
+const PHONE_REGEXP = /^1[3-9]\d{9}$/
+const CODE_REGEXP = /^\d{6}$/
+export const AUTH_SLOW_FEEDBACK_DELAY = 3000
+const WELCOME_NAV_BAR_HEIGHT = 44
+const WELCOME_CAPSULE_GAP = 12
+const ENTRY_FUNNEL_ROUTES = new Set([
+  'pages/welcome/index',
+  'pages/login/login'
+])
+
+export function resolveLoginMode({ isWechatMini, requestedMethod = '' } = {}) {
+  if (!isWechatMini) {
+    return 'phone'
+  }
+
+  return requestedMethod === 'phone' ? 'phone' : 'wechat'
+}
+
+export function resolveAlternateLoginMode(currentMode) {
+  return currentMode === 'wechat' ? 'phone' : 'wechat'
+}
+
+export function resolveAuthenticationGate({
+  isWechatLogging = false,
+  isPhoneLogging = false,
+  isHuaweiLogging = false,
+  isPageActive = true
+} = {}) {
+  const isAuthenticating = Boolean(isWechatLogging || isPhoneLogging || isHuaweiLogging)
+  const canInteract = Boolean(isPageActive) && !isAuthenticating
+
+  return {
+    isAuthenticating,
+    canStart: canInteract,
+    canLeave: canInteract,
+    shouldHandleResult: Boolean(isPageActive)
+  }
+}
+
+export function resolveAuthenticationPhase({
+  isAuthenticating = false,
+  elapsedMs = 0
+} = {}) {
+  if (!isAuthenticating) {
+    return 'idle'
+  }
+
+  return Number(elapsedMs) >= AUTH_SLOW_FEEDBACK_DELAY ? 'slow' : 'pending'
+}
+
+export function resolveAuthenticationFeedback({
+  isAuthenticating = false,
+  isSlow = false
+} = {}) {
+  if (!isAuthenticating) {
+    return {
+      visible: false,
+      phase: 'idle',
+      message: ''
+    }
+  }
+
+  if (isSlow) {
+    return {
+      visible: true,
+      phase: 'slow',
+      message: '网络有些慢，追分竭尽全力为您继续尝试中'
+    }
+  }
+
+  return {
+    visible: true,
+    phase: 'pending',
+    message: '追分正在为您完成登录'
+  }
+}
+
+export function resolveWechatPostLoginState({
+  needBindPhone,
+  bindingSkipped = false,
+  bindingCompleted = false
+} = {}) {
+  const remainsUnbound = Boolean(needBindPhone) && !bindingCompleted
+
+  return {
+    action: remainsUnbound && !bindingSkipped ? 'bind-phone' : 'navigate',
+    needBindPhone: remainsUnbound
+  }
+}
+
+export const AUTH_NETWORK_ERROR_MESSAGE = '网络不太稳定，登录超时，请检查网络后重试'
+const WECHAT_PHONE_DENIED_MESSAGE = '需要授权手机号才能一键登录，也可使用手机号验证码登录'
+const WECHAT_PHONE_FAILED_MESSAGE = '微信手机号授权失败，请改用手机号验证码登录'
+
+// 网络超时、断网在请求层带 network 分类，uni.login 自身失败只有 errMsg；统一成可读提示，避免露出 request:fail timeout。
+export function resolveAuthErrorMessage(error, fallback = '登录失败，请重试') {
+  if (error?.category === 'network' || /timeout|network/i.test(String(error?.errMsg || ''))) {
+    return AUTH_NETWORK_ERROR_MESSAGE
+  }
+
+  return error?.message || fallback
+}
+
+// getphonenumber 没有返回 code 时，区分用户主动拒绝与其他授权失败。
+export function resolveWechatPhoneAuthMessage(event) {
+  const errMsg = String(event?.detail?.errMsg || '')
+  return /deny|cancel/i.test(errMsg) ? WECHAT_PHONE_DENIED_MESSAGE : WECHAT_PHONE_FAILED_MESSAGE
+}
+
+export function isPhoneValid(phone) {
+  return PHONE_REGEXP.test(String(phone || '').trim())
+}
+
+export function isCodeValid(code) {
+  return CODE_REGEXP.test(String(code || '').trim())
+}
+
+export function canRequestSms({ phone, countdown, isSending }) {
+  return isPhoneValid(phone) && countdown <= 0 && !isSending
+}
+
+export function canAttemptLogin({ phone, code, isLogging }) {
+  return isPhoneValid(phone) && isCodeValid(code) && !isLogging
+}
+
+export function canAttemptWechatMiniLogin({ isAgreed, isLogging }) {
+  return Boolean(isAgreed) && !isLogging
+}
+
+export function canSubmitLogin({ phone, code, isAgreed, isLogging }) {
+  return canAttemptLogin({ phone, code, isLogging }) && Boolean(isAgreed)
+}
+
+export function getPhoneError(phone) {
+  const value = String(phone || '').trim()
+  if (!value) {
+    return ''
+  }
+
+  return isPhoneValid(value) ? '' : '请输入正确的手机号'
+}
+
+export function getCodeError(code) {
+  const value = String(code || '').trim()
+  if (!value) {
+    return ''
+  }
+
+  return isCodeValid(value) ? '' : '请输入6位验证码'
+}
+
+export function maskPhone(phone) {
+  const value = String(phone || '').trim()
+  if (!isPhoneValid(value)) {
+    return ''
+  }
+
+  return `${value.slice(0, 3)}****${value.slice(7)}`
+}
+
+export function resolveSmsFeedback(phone) {
+  const maskedPhone = maskPhone(phone)
+  if (!maskedPhone) {
+    return '验证码已发送，请注意查收'
+  }
+
+  return `验证码已发送至 ${maskedPhone}`
+}
+
+export function resolvePostLoginNavigation({ pageCount }) {
+  return Number(pageCount) > 1 ? 'back' : 'home'
+}
+
+export function resolveEntryFunnelAgreementState({ storedAgreement, sessionActive }) {
+  if (!sessionActive) {
+    return false
+  }
+
+  return Boolean(storedAgreement)
+}
+
+export function shouldClearEntryFunnelAgreementSession({ currentRoute, visibleRoutes = [] }) {
+  return !visibleRoutes.some((route) => route !== currentRoute && ENTRY_FUNNEL_ROUTES.has(route))
+}
+
+export function resolveWelcomeActions({
+  isHarmony,
+  isWechatMini = false,
+  isAgreed,
+  isLogging = false,
+  isSlowLogging = false
+}) {
+  if (isWechatMini) {
+    return {
+      primaryText: isLogging
+        ? (isSlowLogging ? '网络稍慢，正在继续…' : '正在安全登录…')
+        : '微信一键进入',
+      secondaryText: '手机号登录',
+      tertiaryText: '先逛逛',
+      showHuaweiLogin: false,
+      showPhoneLogin: true,
+      primaryDisabled: Boolean(isLogging),
+      secondaryDisabled: false
+    }
+  }
+
+  return {
+    primaryText: '手机号登录 / 注册',
+    secondaryText: '华为账号登录',
+    tertiaryText: '先逛逛',
+    showHuaweiLogin: Boolean(isHarmony),
+    primaryDisabled: false,
+    secondaryDisabled: false
+  }
+}
+
+// 欢迎页与登录页使用自定义导航栏：小程序的品牌行放在右上角胶囊下方，其余端放在状态栏下方的标准导航栏高度内。
+export function resolveWelcomeHeaderLayout({ statusBarHeight = 0, menuButton = null } = {}) {
+  if (menuButton?.height > 0 && menuButton.bottom > 0) {
+    return { top: menuButton.bottom + WELCOME_CAPSULE_GAP, minHeight: 0 }
+  }
+
+  return { top: statusBarHeight || 0, minHeight: WELCOME_NAV_BAR_HEIGHT }
+}

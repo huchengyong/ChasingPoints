@@ -2,7 +2,9 @@ package sms
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 
 	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
@@ -71,7 +73,7 @@ func (c *AliSmsClient) SendVerificationCode(phone, code string) error {
 
 	resp, err := c.client.SendSmsWithOptions(sendSmsRequest, runtime)
 	if err != nil {
-		return c.handleError(err)
+		return c.handleError(err, phone, code)
 	}
 
 	// 检查返回结果
@@ -84,8 +86,23 @@ func (c *AliSmsClient) SendVerificationCode(phone, code string) error {
 	return nil
 }
 
+// sanitizeSmsError 去掉错误信息中的手机号和验证码：HTTP 错误会带上包含这两者的完整请求 URL。
+func sanitizeSmsError(err error, phone, code string) error {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		err = urlErr.Err
+	}
+	msg := err.Error()
+	for _, secret := range []string{phone, code} {
+		if secret != "" {
+			msg = strings.ReplaceAll(msg, secret, "***")
+		}
+	}
+	return errors.New(msg)
+}
+
 // handleError 处理阿里云SDK错误
-func (c *AliSmsClient) handleError(err error) error {
+func (c *AliSmsClient) handleError(err error, phone, code string) error {
 	if sdkErr, ok := err.(*tea.SDKError); ok {
 		var data interface{}
 		d := json.NewDecoder(strings.NewReader(tea.StringValue(sdkErr.Data)))
@@ -97,7 +114,7 @@ func (c *AliSmsClient) handleError(err error) error {
 				errMsg = fmt.Sprintf("%s (建议: %v)", errMsg, recommend)
 			}
 		}
-		return fmt.Errorf("阿里云短信错误: %s", errMsg)
+		return fmt.Errorf("阿里云短信错误: %w", sanitizeSmsError(errors.New(errMsg), phone, code))
 	}
-	return fmt.Errorf("发送短信失败: %w", err)
+	return fmt.Errorf("发送短信失败: %w", sanitizeSmsError(err, phone, code))
 }

@@ -24,7 +24,7 @@ func NewCommentPostLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Comme
 	return &CommentPostLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+    "@dcloudio/uni-ui": "^1.5.11",
+    "pinia": "^3.0.4",
+    "pinia-plugin-persistedstate": "^4.7.1",
+    "uqrcodejs": "4.0.7"
+  },
+  "devDependencies": {
+    "@vue/compiler-sfc": "^3.5.41",
+    "@vue/test-utils": "^2.4.11",
+    "jsdom": "^26.1.0",
+    "vue": "^3.5.41"
+  }
+}

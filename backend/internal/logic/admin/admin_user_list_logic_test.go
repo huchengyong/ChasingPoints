@@ -91,7 +91,7 @@ func TestAdminGetUserListIncludesMemberStatusExpiryAndReputation(t *testing.T) {
 		banUntilValues[item.Id] = item.BanUntil
 	}
 
-	if memberStatuses[1001] != "会员中" {
+	if memberStatuses[1001] != "VIP中" {
 		t.Fatalf("expected active member status, got %#v", resp.List)
 	}
 	if memberExpiry[1001] == "" {

@@ -9,11 +9,6 @@ import (
 	jwt "github.com/golang-jwt/jwt/v5"
 )
 
-const (
-	accessTokenType  = "access"
-	refreshTokenType = "refresh"
-)
-
 type authTokenPair struct {
 	AccessToken  string
 	RefreshToken string
@@ -25,12 +20,12 @@ func issueAuthTokenPair(userId int64, svcCtx *svc.ServiceContext) (*authTokenPai
 		return nil, errors.New("auth config missing")
 	}
 
-	accessToken, err := pkg.GenerateTypedToken(userId, svcCtx.Config.Auth.AccessSecret, svcCtx.Config.Auth.AccessExpire, accessTokenType)
+	accessToken, err := pkg.GenerateTypedToken(userId, svcCtx.Config.Auth.AccessSecret, svcCtx.Config.Auth.AccessExpire, pkg.AccessTokenType)
 	if err != nil {
 		return nil, err
 	}
 
-	refreshToken, err := pkg.GenerateTypedToken(userId, svcCtx.Config.Auth.AccessSecret, resolveRefreshExpire(svcCtx), refreshTokenType)
+	refreshToken, err := pkg.GenerateTypedToken(userId, svcCtx.Config.Auth.AccessSecret, resolveRefreshExpire(svcCtx), pkg.RefreshTokenType)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +56,7 @@ func parseRefreshTokenUserId(tokenString string, secret string) (int64, error) {
 		return 0, jwt.ErrTokenInvalidClaims
 	}
 	// 兼容旧版登录态：历史 refresh_token 没有 token_type，只能在自然过期前续一次。
-	if claims.TokenType != "" && claims.TokenType != refreshTokenType {
+	if claims.TokenType != "" && claims.TokenType != pkg.RefreshTokenType {
 		return 0, jwt.ErrTokenInvalidClaims
 	}
 	return claims.UserId, nil

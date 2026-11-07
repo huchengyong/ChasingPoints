@@ -21,7 +21,7 @@ func NewGetSingleHighScoreLogic(ctx context.Context, svcCtx *svc.ServiceContext)
 	return &GetSingleHighScoreLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -33,11 +33,15 @@ func (l *GetSingleHighScoreLogic) GetSingleHighScore(req *types.GetSingleHighSco
 	}
 
 	limit := 10
-	if req != nil && req.Limit > 0 {
-		limit = req.Limit
+	gameType := 0
+	if req != nil {
+		gameType = req.GameType
+		if req.Limit > 0 {
+			limit = req.Limit
+		}
 	}
 
-	records, err := loadUserSingleHighScoreRecords(l.svcCtx, userIdInt, req.GameType, limit)
+	records, err := loadUserSingleHighScoreRecords(l.svcCtx, userIdInt, gameType, limit)
 	if err != nil {
 		return nil, err
 	}

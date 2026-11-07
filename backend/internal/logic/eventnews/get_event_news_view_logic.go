@@ -21,7 +21,7 @@ func NewGetEventNewsViewLogic(ctx context.Context, svcCtx *svc.ServiceContext) *
 	return &GetEventNewsViewLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -32,6 +32,7 @@ func (l *GetEventNewsViewLogic) GetEventNewsView(req *types.GetEventNewsViewReq)
 	if cached, ok := loadCachedEventNewsViewResp(l.ctx, l.svcCtx, req.EventId); ok {
 		return cached, nil
 	}
+	eventNewsCacheMetrics.Fallback(l.ctx)
 
 	item, err := l.svcCtx.EventNewsModel.FindPublishedById(req.EventId)
 	if err != nil {

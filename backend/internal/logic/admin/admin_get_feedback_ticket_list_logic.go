@@ -21,7 +21,7 @@ func NewAdminGetFeedbackTicketListLogic(ctx context.Context, svcCtx *svc.Service
 	return &AdminGetFeedbackTicketListLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

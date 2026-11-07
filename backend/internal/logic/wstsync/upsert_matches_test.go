@@ -37,6 +37,35 @@ func TestMapOfficialMatchStatus(t *testing.T) {
 	}
 }
 
+func TestBackfillPreservesVerifiedOfficialMatchStatus(t *testing.T) {
+	now := time.Date(2026, 4, 5, 11, 0, 0, 0, time.UTC)
+	start := now.Add(-24 * time.Hour)
+	record := MatchUpsertRecord{SourceStatus: "Scheduled", StartTime: &start, PlayersAllocated: true, PreserveSourceStatus: true}
+	if got := resolveOfficialMatchStatus(record, now, false); got != model.EventNewsStatusUpcoming {
+		t.Fatalf("expected backfill to preserve Scheduled, got %d", got)
+	}
+
+	record = MatchUpsertRecord{SourceMatchId: "withdrawn", SourceTournamentId: "tournament-1", SourceStatus: "Completed", HomeScore: 4, PreserveSourceStatus: true}
+	match, err := buildOfficialMatch(record, map[string]model.Tournament{"tournament-1": {Id: 1}}, nil, nil, now)
+	if err != nil {
+		t.Fatalf("build completed placeholder: %v", err)
+	}
+	if !match.IsPlaceholder || match.Status != model.EventNewsStatusFinished {
+		t.Fatalf("expected completed placeholder to retain official status, got %#v", match)
+	}
+}
+
+func TestKnownOfficialMatchStatusUsesVerifiedWSTValues(t *testing.T) {
+	for _, status := range []string{"Scheduled", "Live", "Completed"} {
+		if !isKnownOfficialMatchStatus(status) {
+			t.Fatalf("expected %q to be accepted", status)
+		}
+	}
+	if isKnownOfficialMatchStatus("Finished") {
+		t.Fatal("expected unobserved Finished status to require review")
+	}
+}
+
 func TestUpsertMatchesInsertsMissingMatchAndBindsTournamentAndPlayers(t *testing.T) {
 	db := newWSTSyncTestDB(t)
 	now := time.Date(2026, 4, 5, 11, 0, 0, 0, time.UTC)

@@ -75,6 +75,7 @@ const userStore = useUserStore()
 const activeMenu = computed(() => route.path)
 const openMenuGroups = computed(() => {
   if (route.path.startsWith('/venues/')) return ['/venues']
+  if (route.path.startsWith('/gear/')) return ['/gear']
   if (route.path.startsWith('/settings/')) return ['/settings']
   return []
 })
@@ -95,12 +96,23 @@ const menuList = [
     ]
   },
   {
+    path: '/gear',
+    title: '装备目录',
+    icon: 'Box',
+    children: [
+      { path: '/gear/pending', title: '待收录型号' },
+      { path: '/gear/products', title: '型号管理' },
+      { path: '/gear/brands', title: '品牌管理' }
+    ]
+  },
+  {
     path: '/settings',
     title: '配置管理',
     icon: 'Setting',
     children: [
-      { path: '/settings/member-rewards', title: '会员奖励配置' },
-      { path: '/settings/member-ranking-rights', title: '会员排位权益配置' }
+      { path: '/settings/member-rewards', title: 'VIP奖励配置' },
+      { path: '/settings/member-ranking-rights', title: 'VIP排位权益配置' },
+      { path: '/settings/llm', title: '大模型配置' }
     ]
   },
   // 合规收口：动态审核菜单暂时隐藏，页面文件保留以便后续持证后快速恢复。

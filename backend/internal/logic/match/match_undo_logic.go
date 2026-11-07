@@ -25,7 +25,7 @@ func NewMatchUndoLogic(ctx context.Context, svcCtx *svc.ServiceContext) *MatchUn
 	return &MatchUndoLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -78,7 +78,7 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 		l.Logger.Errorf("查询幂等操作失败: matchId=%d, clientActionId=%s, err=%v", match.Id, req.ClientActionId, err)
 		return &types.MatchUndoResp{Success: false, Accepted: false, Message: "撤销失败"}, nil
 	}
-	if existingAction != nil {
+	if isMatchActionReplay(existingAction, "undo", 0, req.BaseRevision) {
 		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
 		if stateErr != nil {
 			l.Logger.Errorf("加载重放快照失败: matchId=%d, clientActionId=%s, err=%v", match.Id, req.ClientActionId, stateErr)
@@ -99,7 +99,7 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 			Message:                   "已撤销上一步操作",
 		}, nil
 	}
-	if err := validateMatchActionMeta(matchActionMeta{
+	if err := validateNewMatchAction(existingAction, matchActionMeta{
 		ClientActionID: req.ClientActionId,
 		BaseRevision:   req.BaseRevision,
 	}, match.SyncRevision); err != nil {
@@ -124,8 +124,8 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 		}, nil
 	}
 
-	// 获取最后一条操作
-	lastAction, err := l.svcCtx.MatchModel.GetLastAction(match.Id)
+	// 获取最后一条记分操作，结束确认流程的记录不参与撤销
+	lastAction, err := l.svcCtx.MatchModel.GetLastUndoableActionWithTx(nil, match.Id)
 	if err != nil || lastAction == nil {
 		return &types.MatchUndoResp{Success: false, Message: "没有可撤销的操作"}, nil
 	}
@@ -143,92 +143,112 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 		IsUndone:       1,
 	}
 	var serverRevision int64
-	err = l.svcCtx.DB.Transaction(func(tx *gorm.DB) error {
-		switch lastAction.ActionType {
-		case "score":
-			if match.GameType == 1 {
-				if lastAction.Actor == 1 {
-					match.CurrentFrameMyScore -= lastAction.ScoreChange
-				} else {
-					match.CurrentFrameOpponentScore -= lastAction.ScoreChange
-				}
-			} else if lastAction.Actor == 1 {
-				match.MyScore -= lastAction.ScoreChange
-			} else {
-				match.OpponentScore -= lastAction.ScoreChange
+	if isSnookerV2Match(match) {
+		err = l.svcCtx.DB.Transaction(func(tx *gorm.DB) error {
+			if err := undoSnookerV2ActionWithTx(l.svcCtx, tx, match, lastAction); err != nil {
+				return err
 			}
-		case "foul":
-			if match.GameType == 1 {
-				if lastAction.Actor == 1 {
-					match.CurrentFrameOpponentScore -= lastAction.ScoreChange
-				} else {
-					match.CurrentFrameMyScore -= lastAction.ScoreChange
-				}
-			} else if lastAction.Actor == 1 {
-				match.OpponentScore -= lastAction.ScoreChange
-			} else {
-				match.MyScore -= lastAction.ScoreChange
+			revision, revisionErr := l.svcCtx.MatchModel.BumpMatchRevisionWithTx(tx, match)
+			if revisionErr != nil {
+				return revisionErr
 			}
-		case "win":
-			if match.GameType == 1 {
-				round, roundErr := l.svcCtx.MatchModel.GetLastRoundWithTx(tx, match.Id)
-				if roundErr != nil {
-					return roundErr
-				}
-				if round == nil || round.Winner == nil {
-					return gorm.ErrRecordNotFound
-				}
-				reopenSnookerFrame(match, round, *round.Winner)
-				if err := l.svcCtx.MatchModel.DeleteRoundWithTx(tx, round.Id); err != nil {
-					return err
-				}
-			} else {
-				if lastAction.Actor == 1 {
+			serverRevision = revision
+			return l.svcCtx.MatchModel.CreateActionWithRevisionWithTx(tx, undoAction, serverRevision)
+		})
+	} else {
+		err = l.svcCtx.DB.Transaction(func(tx *gorm.DB) error {
+			switch lastAction.ActionType {
+			case "score":
+				if match.GameType == 1 {
+					if lastAction.Actor == 1 {
+						match.CurrentFrameMyScore -= lastAction.ScoreChange
+					} else {
+						match.CurrentFrameOpponentScore -= lastAction.ScoreChange
+					}
+				} else if lastAction.Actor == 1 {
 					match.MyScore -= lastAction.ScoreChange
 				} else {
 					match.OpponentScore -= lastAction.ScoreChange
 				}
-				round, roundErr := l.svcCtx.MatchModel.GetLastRoundWithTx(tx, match.Id)
-				if roundErr != nil {
-					return roundErr
+			case "foul":
+				if match.GameType == 1 {
+					if lastAction.Actor == 1 {
+						match.CurrentFrameOpponentScore -= lastAction.ScoreChange
+					} else {
+						match.CurrentFrameMyScore -= lastAction.ScoreChange
+					}
+				} else if lastAction.Actor == 1 {
+					match.OpponentScore -= lastAction.ScoreChange
+				} else {
+					match.MyScore -= lastAction.ScoreChange
 				}
-				if round != nil {
+			case "win":
+				if match.GameType == 1 {
+					round, roundErr := l.svcCtx.MatchModel.GetLastRoundWithTx(tx, match.Id)
+					if roundErr != nil {
+						return roundErr
+					}
+					if round == nil || round.Winner == nil {
+						return gorm.ErrRecordNotFound
+					}
+					reopenSnookerFrame(match, round, *round.Winner)
+					if err := undoRoundAchievementWithTx(l.svcCtx, tx, match.Id, round.WinType, lastAction.Actor); err != nil {
+						return err
+					}
 					if err := l.svcCtx.MatchModel.DeleteRoundWithTx(tx, round.Id); err != nil {
 						return err
 					}
+				} else {
+					if lastAction.Actor == 1 {
+						match.MyScore -= lastAction.ScoreChange
+					} else {
+						match.OpponentScore -= lastAction.ScoreChange
+					}
+					round, roundErr := l.svcCtx.MatchModel.GetLastRoundWithTx(tx, match.Id)
+					if roundErr != nil {
+						return roundErr
+					}
+					if round != nil {
+						if err := undoRoundAchievementWithTx(l.svcCtx, tx, match.Id, round.WinType, lastAction.Actor); err != nil {
+							return err
+						}
+						if err := l.svcCtx.MatchModel.DeleteRoundWithTx(tx, round.Id); err != nil {
+							return err
+						}
+					}
+				}
+			case "round_start":
+				if match.GameType == 1 {
+					match.CurrentFrameStarted = false
+					match.CurrentFrameMyScore = 0
+					match.CurrentFrameOpponentScore = 0
 				}
 			}
-		case "round_start":
-			if match.GameType == 1 {
-				match.CurrentFrameStarted = false
+
+			if match.MyScore < 0 {
+				match.MyScore = 0
+			}
+			if match.OpponentScore < 0 {
+				match.OpponentScore = 0
+			}
+			if match.CurrentFrameMyScore < 0 {
 				match.CurrentFrameMyScore = 0
+			}
+			if match.CurrentFrameOpponentScore < 0 {
 				match.CurrentFrameOpponentScore = 0
 			}
-		}
 
-		if match.MyScore < 0 {
-			match.MyScore = 0
-		}
-		if match.OpponentScore < 0 {
-			match.OpponentScore = 0
-		}
-		if match.CurrentFrameMyScore < 0 {
-			match.CurrentFrameMyScore = 0
-		}
-		if match.CurrentFrameOpponentScore < 0 {
-			match.CurrentFrameOpponentScore = 0
-		}
-
-		if err := l.svcCtx.MatchModel.UndoActionWithTx(tx, lastAction.Id); err != nil {
-			return err
-		}
-		revision, revisionErr := l.svcCtx.MatchModel.BumpMatchRevisionWithTx(tx, match)
-		if revisionErr != nil {
-			return revisionErr
-		}
-		serverRevision = revision
-		return l.svcCtx.MatchModel.CreateActionWithRevisionWithTx(tx, undoAction, serverRevision)
-	})
+			if err := l.svcCtx.MatchModel.UndoActionWithTx(tx, lastAction.Id); err != nil {
+				return err
+			}
+			revision, revisionErr := l.svcCtx.MatchModel.BumpMatchRevisionWithTx(tx, match)
+			if revisionErr != nil {
+				return revisionErr
+			}
+			serverRevision = revision
+			return l.svcCtx.MatchModel.CreateActionWithRevisionWithTx(tx, undoAction, serverRevision)
+		})
+	}
 	if err != nil {
 		if isRetryableMatchWriteError(err) {
 			replayState, replayErr := reloadMatchWriteReplayState(l.svcCtx, userId, req.MatchId, req.ClientActionId)
@@ -237,7 +257,7 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 				return &types.MatchUndoResp{Success: false, Accepted: false, Message: "撤销失败"}, nil
 			}
 			scoreView := buildMatchWriteScoreView(userId, replayState.Match)
-			if replayState.ExistingAction != nil {
+			if isMatchActionReplay(replayState.ExistingAction, "undo", 0, req.BaseRevision) {
 				return &types.MatchUndoResp{
 					Accepted:                  true,
 					Success:                   true,
@@ -275,19 +295,17 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 		return &types.MatchUndoResp{Success: false, Accepted: false, Message: "撤销失败"}, nil
 	}
 
-	// 获取当前局数
-	roundCount, _ := l.svcCtx.MatchModel.GetRoundCount(match.Id)
+	roundCount := view.CompletedRoundCount
 	redBallCount := 0
-	snookerState := model.SnookerRoundState{ClearedColors: make([]int, 0, 6)}
+	snookerState := view.SnookerState
 	if match.GameType == 1 {
-		if state, stateErr := loadSnookerRoundState(l.svcCtx, match.Id, int(roundCount)+1); stateErr == nil {
-			snookerState = state
-			redBallCount = state.RedBallCount
-		}
+		redBallCount = snookerState.RedBallCount
 	}
 
 	// 推送 WebSocket 消息通知双方
-	if ws.GlobalHub != nil {
+	if isSnookerV2Match(match) {
+		broadcastSnookerAction(match, snookerState, "undo", false)
+	} else if ws.GlobalHub != nil {
 		l.Logger.Infof("广播撤销结果: matchId=%d, action=%s, player1=%d, player2=%d, currentRound=%d",
 			match.Id, lastAction.ActionType, match.MyScore, match.OpponentScore, int(roundCount)+1)
 		ws.GlobalHub.BroadcastToMatch(match.Id, &ws.Message{
@@ -311,6 +329,9 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 				SnookerClearedColors:          snookerState.ClearedColors,
 				SnookerExpectedClearanceScore: snookerState.ExpectedClearanceScore,
 				SnookerClearanceCompleted:     snookerState.ClearanceCompleted,
+				MatchFormat:                   view.Snapshot.MatchFormat,
+				TargetWins:                    view.Snapshot.TargetWins,
+				CanChangeMatchFormat:          view.Snapshot.CanChangeMatchFormat,
 				Status:                        match.Status,
 			},
 		})
@@ -332,4 +353,13 @@ func (l *MatchUndoLogic) MatchUndo(req *types.MatchUndoReq) (resp *types.MatchUn
 		OpponentScore:             scoreView.OpponentScore,
 		Message:                   "已撤销上一步操作",
 	}, nil
+}
+
+// undoRoundAchievementWithTx 撤销局胜时同步回退该局记下的特殊成绩，避免结束比赛时按残留记录累计成就。
+func undoRoundAchievementWithTx(svcCtx *svc.ServiceContext, tx *gorm.DB, matchId int64, winType string, actor int) error {
+	achievementType := normalizeStoredAchievementType(winType)
+	if achievementType == "" {
+		return nil
+	}
+	return svcCtx.MatchModel.DecrementAchievementWithTx(tx, matchId, achievementType, actor)
 }

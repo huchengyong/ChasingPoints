@@ -36,10 +36,10 @@ func TestDefaultMemberRightsConfigUsesAgreedRules(t *testing.T) {
 		t.Fatalf("decode ranking rights rules: %v", err)
 	}
 
-	if growth.PointsPerCompletedMatch != 1 || growth.DailyCap != 5 {
+	if growth.PointsPerCompletedMatch != 1 || growth.DailyCap != 8 {
 		t.Fatalf("unexpected growth defaults: %+v", growth)
 	}
-	if growth.LevelThresholdLv2 != 10 || growth.LevelThresholdLv3 != 60 || growth.LevelThresholdLv4 != 260 || growth.LevelThresholdLv5 != 760 {
+	if growth.LevelThresholdLv2 != 10 || growth.LevelThresholdLv3 != 40 || growth.LevelThresholdLv4 != 120 || growth.LevelThresholdLv5 != 300 {
 		t.Fatalf("unexpected growth thresholds: %+v", growth)
 	}
 	if growth.ExpireStrategy != "freeze_preserve" {

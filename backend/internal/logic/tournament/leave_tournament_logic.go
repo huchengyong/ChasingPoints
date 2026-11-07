@@ -24,7 +24,7 @@ func NewLeaveTournamentLogic(ctx context.Context, svcCtx *svc.ServiceContext) *L
 	return &LeaveTournamentLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

@@ -16,7 +16,7 @@ func newMatchPublicListTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("open sqlite db: %v", err)
 	}
 
-	if err := db.AutoMigrate(&User{}, &Friend{}, &Match{}); err != nil {
+	if err := db.AutoMigrate(&User{}, &Friend{}, &Match{}, &MatchRound{}); err != nil {
 		t.Fatalf("prepare public match list schema: %v", err)
 	}
 
@@ -36,6 +36,9 @@ func seedPublicListMatch(t *testing.T, db *gorm.DB, match Match) {
 
 	if match.MatchTime.IsZero() {
 		match.MatchTime = time.Date(2026, 4, 29, 12, 0, 0, 0, time.UTC)
+	}
+	if match.Visibility == "" {
+		match.Visibility = MatchVisibilityPublic
 	}
 	if err := db.Create(&match).Error; err != nil {
 		t.Fatalf("seed match %d: %v", match.Id, err)

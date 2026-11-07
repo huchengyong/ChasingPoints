@@ -36,7 +36,7 @@ func TestAdminGetMemberRightsConfigReturnsDefaultsWhenMissing(t *testing.T) {
 	if !resp.Success {
 		t.Fatalf("expected success response, got %#v", resp)
 	}
-	if resp.GrowthRules.DailyCap != 5 || resp.RankingRights.DailyCap != 200 || resp.RankingRights.DailyPositiveCap != 500 {
+	if resp.GrowthRules.DailyCap != 8 || resp.RankingRights.DailyCap != 200 || resp.RankingRights.DailyPositiveCap != 500 {
 		t.Fatalf("unexpected default config response: %#v", resp)
 	}
 }
@@ -46,12 +46,12 @@ func TestAdminUpdateMemberRightsConfigRejectsInvalidValues(t *testing.T) {
 	resp, err := NewAdminUpdateMemberRightsConfigLogic(context.Background(), svcCtx).AdminUpdateMemberRightsConfig(&types.AdminMemberRightsConfigUpdateReq{
 		GrowthRules: types.AdminMemberGrowthRules{
 			PointsPerCompletedMatch: 0,
-			DailyCap:               0,
-			LevelThresholdLv2:      10,
-			LevelThresholdLv3:      60,
-			LevelThresholdLv4:      260,
-			LevelThresholdLv5:      760,
-			ExpireStrategy:         "freeze_preserve",
+			DailyCap:                0,
+			LevelThresholdLv2:       10,
+			LevelThresholdLv3:       60,
+			LevelThresholdLv4:       260,
+			LevelThresholdLv5:       760,
+			ExpireStrategy:          "freeze_preserve",
 		},
 		RankingRights: types.AdminMemberRankingRightsRules{
 			DailyCap:         200,
@@ -76,29 +76,29 @@ func TestAdminMemberRightsConfigRoundTrip(t *testing.T) {
 	updateResp, err := NewAdminUpdateMemberRightsConfigLogic(context.Background(), svcCtx).AdminUpdateMemberRightsConfig(&types.AdminMemberRightsConfigUpdateReq{
 		GrowthRules: types.AdminMemberGrowthRules{
 			PointsPerCompletedMatch: 1,
-			DailyCap:               7,
-			LevelThresholdLv2:      10,
-			LevelThresholdLv3:      60,
-			LevelThresholdLv4:      260,
-			LevelThresholdLv5:      760,
-			ExpireStrategy:         "freeze_preserve",
+			DailyCap:                7,
+			LevelThresholdLv2:       10,
+			LevelThresholdLv3:       60,
+			LevelThresholdLv4:       260,
+			LevelThresholdLv5:       760,
+			ExpireStrategy:          "freeze_preserve",
 		},
 		RankingRights: types.AdminMemberRankingRightsRules{
 			OrdinaryUserAchievementEnabled: false,
-			DailyCap:                      260,
-			DailyPositiveCap:              520,
-			Break50Score:                  8,
-			GoldenBreakScore:              4,
-			BreakAndRunScore:              6,
-			RunOutScore:                   4,
-			Break100Score:                 16,
-			NineOnBreakScore:              6,
-			Break147Score:                 30,
-			Level1Multiplier:              100,
-			Level2Multiplier:              110,
-			Level3Multiplier:              120,
-			Level4Multiplier:              130,
-			Level5Multiplier:              140,
+			DailyCap:                       260,
+			DailyPositiveCap:               520,
+			Break50Score:                   8,
+			GoldenBreakScore:               4,
+			BreakAndRunScore:               6,
+			RunOutScore:                    4,
+			Break100Score:                  16,
+			NineOnBreakScore:               6,
+			Break147Score:                  30,
+			Level1Multiplier:               100,
+			Level2Multiplier:               110,
+			Level3Multiplier:               120,
+			Level4Multiplier:               130,
+			Level5Multiplier:               140,
 		},
 	})
 	if err != nil {

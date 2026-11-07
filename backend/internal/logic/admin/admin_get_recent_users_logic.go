@@ -20,7 +20,7 @@ func NewAdminGetRecentUsersLogic(ctx context.Context, svcCtx *svc.ServiceContext
 	return &AdminGetRecentUsersLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

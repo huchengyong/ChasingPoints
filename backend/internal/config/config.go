@@ -25,6 +25,9 @@ type Config struct {
 	// 合规收口配置
 	Compliance ComplianceConfig
 
+	// 生产安全边界配置
+	Security SecurityConfig
+
 	// MySQL配置
 	MySQL struct {
 		DataSource string
@@ -65,16 +68,23 @@ type Config struct {
 
 	// 球馆地理解析配置
 	Geocode struct {
-		WorkerEnabled    bool   `json:",env=GEOCODE_WORKER_ENABLED,default=true"`
-		PollIntervalMs   int    `json:",env=GEOCODE_POLL_INTERVAL_MS,default=3000"`
-		RequestTimeoutMs int    `json:",env=GEOCODE_REQUEST_TIMEOUT_MS,default=5000"`
-		MaxAttempts      int    `json:",env=GEOCODE_MAX_ATTEMPTS,default=5"`
-		BatchSize        int    `json:",env=GEOCODE_BATCH_SIZE,default=5"`
-		AutoPublish      bool   `json:",env=GEOCODE_AUTO_PUBLISH,default=true"`
-		EncryptSecret    string `json:",env=GEOCODE_ENCRYPT_SECRET,optional"`
+		WorkerEnabled    bool `json:",env=GEOCODE_WORKER_ENABLED,default=true"`
+		PollIntervalMs   int  `json:",env=GEOCODE_POLL_INTERVAL_MS,default=3000"`
+		RequestTimeoutMs int  `json:",env=GEOCODE_REQUEST_TIMEOUT_MS,default=5000"`
+		MaxAttempts      int  `json:",env=GEOCODE_MAX_ATTEMPTS,default=5"`
+		BatchSize        int  `json:",env=GEOCODE_BATCH_SIZE,default=5"`
+		AutoPublish      bool `json:",env=GEOCODE_AUTO_PUBLISH,default=true"`
 	}
 
 	WSTSync WSTSyncConfig
+
+	SeasonLifecycle SeasonLifecycleConfig
+
+	Ranking RankingConfig
+
+	Observability ObservabilityConfig
+
+	CompetitiveReadModel CompetitiveReadModelConfig
 
 	// 支付宝支付配置
 	Alipay struct {
@@ -86,10 +96,8 @@ type Config struct {
 		RootCert   string
 		NotifyUrl  string
 		ReturnUrl  string
-		IsProd     bool
 		Charset    string
 		SignType   string
-		UseCert    bool
 	}
 
 	// 微信支付配置
@@ -101,8 +109,6 @@ type Config struct {
 		ApiV3Key   string
 		PrivateKey string
 		NotifyUrl  string
-		IsProd     bool
-		UseCert    bool
 	}
 
 	// 微信小程序登录配置
@@ -125,4 +131,29 @@ type WSTSyncConfig struct {
 	HotIntervalMinutes int  `json:",env=WST_SYNC_HOT_INTERVAL_MINUTES,default=15"`
 	HotLookbackDays    int  `json:",env=WST_SYNC_HOT_LOOKBACK_DAYS,default=2"`
 	HotLookaheadDays   int  `json:",env=WST_SYNC_HOT_LOOKAHEAD_DAYS,default=7"`
+}
+
+type SeasonLifecycleConfig struct {
+	Enabled       bool   `json:",env=SEASON_LIFECYCLE_ENABLED,default=false"`
+	AnchorDate    string `json:",env=SEASON_LIFECYCLE_ANCHOR_DATE,optional"`
+	InitialNumber int    `json:",env=SEASON_LIFECYCLE_INITIAL_NUMBER,default=1"`
+	CycleMonths   int    `json:",env=SEASON_LIFECYCLE_CYCLE_MONTHS,default=1"`
+	Timezone      string `json:",env=SEASON_LIFECYCLE_TIMEZONE,default=Asia/Shanghai"`
+}
+
+type RankingConfig struct {
+	// RatingV2StartDate 为排位规则 V2 的生效日期（YYYY-MM-DD，按赛季业务时区的 00:00），必须是赛季起点。
+	RatingV2StartDate string `json:",env=RANKING_RATING_V2_START_DATE,optional"`
+	// RatingV2StartAt 为排位规则 V2 的即时生效时刻（RFC3339，如 2026-10-20T18:00:00+08:00），与生效日期二选一。
+	// 即时生效不要求对齐赛季起点：切换时点之前的当前赛季仍按旧赛季口径结算。两项都留空则保持旧规则。
+	RatingV2StartAt string `json:",env=RANKING_RATING_V2_START_AT,optional"`
+}
+
+type ObservabilityConfig struct {
+	SlowSQLThresholdMs int `json:",env=OBSERVABILITY_SLOW_SQL_THRESHOLD_MS,default=500"`
+}
+
+type CompetitiveReadModelConfig struct {
+	// ReadMode must remain disabled until completed_at backfill, rebuild and audit converge.
+	ReadMode string `json:",env=COMPETITIVE_READ_MODEL_READ_MODE,default=disabled"`
 }

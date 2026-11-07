@@ -8,53 +8,53 @@ import (
 )
 
 const (
-	defaultDailyPositiveCap     = 500
+	defaultDailyPositiveCap          = 500
 	defaultMemberAchievementDailyCap = 200
-	minimumWinnerBaseScore      = 2
-	lossMinimumDeduction        = -2
-	sameOpponentThirdMatchRate  = 80
-	sameOpponentRepeatMatchRate = 30
+	minimumWinnerBaseScore           = 2
+	lossMinimumDeduction             = -2
+	sameOpponentThirdMatchRate       = 80
+	sameOpponentRepeatMatchRate      = 30
 )
 
 const DefaultDailyPositiveCap = defaultDailyPositiveCap
 
 type RankSettlementResult struct {
-	BeforeScore            int
-	AfterScore             int
-	BeforeLevel            int
-	AfterLevel             int
-	BaseScore              int
-	AchievementScore       int
-	FinalChange            int
-	TotalWins              int
-	TotalLosses            int
-	CurrentStreak          int
-	MaxStreak              int
-	LossFloorAdjustment    int
-	SameOpponentAdjustment int
-	DailyCapAdjustment     int
+	BeforeScore                    int
+	AfterScore                     int
+	BeforeLevel                    int
+	AfterLevel                     int
+	BaseScore                      int
+	AchievementScore               int
+	FinalChange                    int
+	TotalWins                      int
+	TotalLosses                    int
+	CurrentStreak                  int
+	MaxStreak                      int
+	LossFloorAdjustment            int
+	SameOpponentAdjustment         int
+	DailyCapAdjustment             int
 	MemberAchievementCapAdjustment int
-	Details                []types.RankDetail
+	Details                        []types.RankDetail
 }
 
 type RankSettlementPolicy struct {
-	TodayPositiveGain        int
-	DailyPositiveCap         int
-	SameOpponentMatchesToday int
-	TodayMemberAchievementGain int
-	DailyMemberAchievementCap  int
-	MemberLevel                int
-	MemberActive               bool
-	MemberMultiplierPercent     int
+	TodayPositiveGain              int
+	DailyPositiveCap               int
+	SameOpponentMatchesToday       int
+	TodayMemberAchievementGain     int
+	DailyMemberAchievementCap      int
+	MemberLevel                    int
+	MemberActive                   bool
+	MemberMultiplierPercent        int
 	OrdinaryUserAchievementEnabled bool
-	CompletedRounds             int
-	OpponentCurrentRankScore    int
+	CompletedRounds                int
+	OpponentCurrentRankScore       int
 }
 
 type rankSettlementRemark struct {
-	LossFloorAdjustment    int `json:"loss_floor_adjustment,omitempty"`
-	SameOpponentAdjustment int `json:"same_opponent_adjustment,omitempty"`
-	DailyCapAdjustment     int `json:"daily_cap_adjustment,omitempty"`
+	LossFloorAdjustment            int `json:"loss_floor_adjustment,omitempty"`
+	SameOpponentAdjustment         int `json:"same_opponent_adjustment,omitempty"`
+	DailyCapAdjustment             int `json:"daily_cap_adjustment,omitempty"`
 	MemberAchievementCapAdjustment int `json:"member_achievement_cap_adjustment,omitempty"`
 }
 
@@ -187,11 +187,11 @@ func (s *RankSettlementService) SettleWithPolicy(
 		{Label: "基础分", Value: baseScore},
 	}
 	if achievementScore != 0 {
-		label := "会员特殊战绩分"
+		label := "VIP特殊战绩分"
 		details = append(details, types.RankDetail{Label: label, Value: achievementScore})
 	}
 	if memberAchievementCapAdjustment != 0 {
-		details = append(details, types.RankDetail{Label: "会员特殊战绩每日封顶", Value: memberAchievementCapAdjustment})
+		details = append(details, types.RankDetail{Label: "VIP特殊战绩每日封顶", Value: memberAchievementCapAdjustment})
 	}
 	if lossFloorAdjustment != 0 {
 		details = append(details, types.RankDetail{Label: "失败保底", Value: lossFloorAdjustment})
@@ -208,22 +208,22 @@ func (s *RankSettlementService) SettleWithPolicy(
 	}
 
 	return RankSettlementResult{
-		BeforeScore:            rankingScoreOrZero(ranking),
-		AfterScore:             current.RankScore,
-		BeforeLevel:            beforeLevel,
-		AfterLevel:             current.RankLevel,
-		BaseScore:              baseScore,
-		AchievementScore:       achievementScore,
-		FinalChange:            finalChange,
-		TotalWins:              current.TotalWins,
-		TotalLosses:            current.TotalLosses,
-		CurrentStreak:          current.CurrentStreak,
-		MaxStreak:              current.MaxStreak,
-		LossFloorAdjustment:    lossFloorAdjustment,
-		SameOpponentAdjustment: sameOpponentAdjustment,
-		DailyCapAdjustment:     dailyCapAdjustment,
+		BeforeScore:                    rankingScoreOrZero(ranking),
+		AfterScore:                     current.RankScore,
+		BeforeLevel:                    beforeLevel,
+		AfterLevel:                     current.RankLevel,
+		BaseScore:                      baseScore,
+		AchievementScore:               achievementScore,
+		FinalChange:                    finalChange,
+		TotalWins:                      current.TotalWins,
+		TotalLosses:                    current.TotalLosses,
+		CurrentStreak:                  current.CurrentStreak,
+		MaxStreak:                      current.MaxStreak,
+		LossFloorAdjustment:            lossFloorAdjustment,
+		SameOpponentAdjustment:         sameOpponentAdjustment,
+		DailyCapAdjustment:             dailyCapAdjustment,
 		MemberAchievementCapAdjustment: memberAchievementCapAdjustment,
-		Details:                details,
+		Details:                        details,
 	}
 }
 
@@ -233,6 +233,8 @@ func (s *RankSettlementService) calculateLevel(score int) int {
 	}
 
 	switch {
+	case score >= 2500:
+		return 6
 	case score >= 2000:
 		return 5
 	case score >= 1500:
@@ -334,9 +336,9 @@ func shouldCountRankStats(policy RankSettlementPolicy) bool {
 
 func buildRankSettlementRemark(settlement RankSettlementResult) string {
 	remark := rankSettlementRemark{
-		LossFloorAdjustment:    settlement.LossFloorAdjustment,
-		SameOpponentAdjustment: settlement.SameOpponentAdjustment,
-		DailyCapAdjustment:     settlement.DailyCapAdjustment,
+		LossFloorAdjustment:            settlement.LossFloorAdjustment,
+		SameOpponentAdjustment:         settlement.SameOpponentAdjustment,
+		DailyCapAdjustment:             settlement.DailyCapAdjustment,
 		MemberAchievementCapAdjustment: settlement.MemberAchievementCapAdjustment,
 	}
 	if remark == (rankSettlementRemark{}) {

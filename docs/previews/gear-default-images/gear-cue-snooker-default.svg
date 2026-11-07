@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<title>球杆 默认图（斯诺克 / 中八风格）</title>
+<g transform="translate(512 512) rotate(-65) translate(-502 0)">
+<path d="M 0,-27.5 L 250,-24.5 L 262,-24.5 L 985,-10.75 L 1000,-10.25 A 10 10.25 0 0 1 1000,10.25 L 985,10.75 L 262,24.5 L 250,24.5 L 0,27.5 A 6 27.5 0 0 1 0,-27.5 Z" fill="none" stroke="#FFF4D8" stroke-opacity="0.42" stroke-width="13" stroke-linejoin="round"/>
+<clipPath id="clip-cue"><path d="M 0,-27.5 L 250,-24.5 L 262,-24.5 L 985,-10.75 L 1000,-10.25 A 10 10.25 0 0 1 1000,10.25 L 985,10.75 L 262,24.5 L 250,24.5 L 0,27.5 A 6 27.5 0 0 1 0,-27.5 Z"/></clipPath>
+<g clip-path="url(#clip-cue)">
+<rect x="-20" y="-90" width="34" height="180" fill="#1E1A17"/>
+<rect x="14" y="-90" width="233" height="180" fill="#2E1D12"/>
+<rect x="247" y="-90" width="3" height="180" fill="#14100C"/>
+<rect x="250" y="-90" width="12" height="180" fill="#E0AE12"/>
+<rect x="262" y="-90" width="3" height="180" fill="#14100C"/>
+<rect x="265" y="-90" width="75" height="180" fill="#2E1D12"/>
+<rect x="340" y="-90" width="625" height="180" fill="#E9C98F"/>
+<rect x="965" y="-90" width="20" height="180" fill="#E0AE12"/>
+<rect x="985" y="-90" width="35" height="180" fill="#8B5A2B"/>
+<polyline points="24,-14.97 330,-12.76" fill="none" stroke="#4A3424" stroke-width="1.6" opacity="0.7" stroke-linecap="round" stroke-dasharray="38 22"/>
+<polyline points="24,-5.44 330,-4.64" fill="none" stroke="#4A3424" stroke-width="1.6" opacity="0.7" stroke-linecap="round" stroke-dasharray="38 22"/>
+<polyline points="24,6.8 330,5.8" fill="none" stroke="#4A3424" stroke-width="1.6" opacity="0.7" stroke-linecap="round" stroke-dasharray="38 22"/>
+<polyline points="24,16.33 330,13.92" fill="none" stroke="#4A3424" stroke-width="1.6" opacity="0.7" stroke-linecap="round" stroke-dasharray="38 22"/>
+<polyline points="600,-2.17 960,-1.35" fill="none" stroke="#C8964F" stroke-width="1.4" opacity="0.45" stroke-linecap="round"/>
+<polyline points="640,5.89 960,3.82" fill="none" stroke="#C8964F" stroke-width="1.4" opacity="0.4" stroke-linecap="round"/>
+<polyline points="612,-11.06 696,0 612,11.06" fill="none" stroke="#BE8A45" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+<polyline points="624,-7.65 685.32,0 624,7.65" fill="none" stroke="#BE8A45" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+<polyline points="636,-4.31 674.64,0 636,4.31" fill="none" stroke="#BE8A45" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+<polyline points="708,-9.93 792,0 708,9.93" fill="none" stroke="#BE8A45" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+<polyline points="720,-6.85 781.32,0 720,6.85" fill="none" stroke="#BE8A45" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+<polyline points="732,-3.86 770.64,0 732,3.86" fill="none" stroke="#BE8A45" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+<polyline points="812,-8.7 896,0 812,8.7" fill="none" stroke="#BE8A45" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+<polyline points="824,-5.99 885.32,0 824,5.99" fill="none" stroke="#BE8A45" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+<polyline points="836,-3.37 874.64,0 836,3.37" fill="none" stroke="#BE8A45" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+<polyline points="340,-21.09 653.51,0 340,21.09" fill="none" stroke="#F6E7C0" stroke-width="2.8" stroke-linejoin="miter"/>
+<polyline points="340,-24.89 709.99,0 340,24.89" fill="none" stroke="#A8452A" stroke-width="2.0" stroke-linejoin="miter"/>
+<polygon points="336,-17.49 600,0 336,17.49" fill="#2E1D12"/>
+<polygon points="336,-27.02 600,-22.07 336,-17.49" fill="#2E1D12"/>
+<polyline points="340,-13.89 578.4,-19.91" fill="none" stroke="#F6E7C0" stroke-width="2.8"/>
+<polyline points="340,-10.09 555.6,-17.63" fill="none" stroke="#A8452A" stroke-width="2.0"/>
+<polygon points="336,27.02 600,22.07 336,17.49" fill="#2E1D12"/>
+<polyline points="340,13.89 578.4,19.91" fill="none" stroke="#F6E7C0" stroke-width="2.8"/>
+<polyline points="340,10.09 555.6,17.63" fill="none" stroke="#A8452A" stroke-width="2.0"/>
+<rect x="85" y="-12.5" width="70" height="23" rx="11.5" fill="#E0AE12" stroke="#6E4A05" stroke-width="1.8"/>
+<rect x="89" y="-9" width="62" height="16" rx="8" fill="none" stroke="#8F6507" stroke-width="1.1" opacity="0.75"/>
+<line x1="98" y1="-1" x2="142" y2="-1" stroke="#8F6507" stroke-width="1.4" opacity="0.6"/>
+<ellipse cx="1006" cy="0" rx="7" ry="11" fill="#5B8DEF" opacity="0.5"/>
+<polygon points="-10,-23.65 0,-23.65 250,-21.07 262,-21.07 985,-9.24 1000,-8.81 1014,-8.81 1014,-2.87 1000,-2.87 985,-3.01 262,-6.86 250,-6.86 0,-7.7 -10,-7.7" fill="#FFFFFF" opacity="0.20"/>
+<polygon points="-10,-19.25 0,-19.25 250,-17.15 262,-17.15 985,-7.53 1000,-7.18 1014,-7.18 1014,-5.74 1000,-5.74 985,-6.02 262,-13.72 250,-13.72 0,-15.4 -10,-15.4" fill="#FFFFFF" opacity="0.55"/>
+<polygon points="-10,9.9 0,9.9 250,8.82 262,8.82 985,3.87 1000,3.69 1014,3.69 1014,11.07 1000,11.07 985,11.61 262,26.46 250,26.46 0,29.7 -10,29.7" fill="#1A0F05" opacity="0.26"/>
+<line x1="14" y1="-29.33" x2="14" y2="29.33" stroke="#2A1A0C" stroke-width="2.4" opacity="0.85"/>
+<line x1="965" y1="-13.13" x2="965" y2="13.13" stroke="#2A1A0C" stroke-width="2.4" opacity="0.85"/>
+<line x1="985" y1="-12.75" x2="985" y2="12.75" stroke="#2A1A0C" stroke-width="2.4" opacity="0.85"/>
+</g>
+<path d="M 0,-27.5 L 250,-24.5 L 262,-24.5 L 985,-10.75 L 1000,-10.25 A 10 10.25 0 0 1 1000,10.25 L 985,10.75 L 262,24.5 L 250,24.5 L 0,27.5 A 6 27.5 0 0 1 0,-27.5 Z" fill="none" stroke="#2A1A0C" stroke-width="5" stroke-linejoin="round"/>
+</g>
+</svg>

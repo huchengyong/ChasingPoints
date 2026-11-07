@@ -36,31 +36,33 @@ func (s *ReputationConfigService) GetConfig() (ReputationRuntimeConfig, error) {
 		return fallback, nil
 	}
 
-	cfg, err := s.svcCtx.ReputationConfigModel.FindByKey(model.DefaultReputationConfigKey)
-	if err != nil {
-		return fallback, err
-	}
-	if cfg == nil {
-		return fallback, nil
-	}
+	return loadRuntimeConfig(s.svcCtx, ReputationRuntimeConfigCacheKey, func() (ReputationRuntimeConfig, error) {
+		cfg, err := s.svcCtx.ReputationConfigModel.FindByKey(model.DefaultReputationConfigKey)
+		if err != nil {
+			return fallback, err
+		}
+		if cfg == nil {
+			return fallback, nil
+		}
 
-	baseRules, err = cfg.BaseRules()
-	if err != nil {
-		return fallback, err
-	}
-	recoveryRules, err = cfg.RecoveryRules()
-	if err != nil {
-		return fallback, err
-	}
-	detectionRules, err = cfg.DetectionRules()
-	if err != nil {
-		return fallback, err
-	}
+		baseRules, err := cfg.BaseRules()
+		if err != nil {
+			return fallback, err
+		}
+		recoveryRules, err := cfg.RecoveryRules()
+		if err != nil {
+			return fallback, err
+		}
+		detectionRules, err := cfg.DetectionRules()
+		if err != nil {
+			return fallback, err
+		}
 
-	return ReputationRuntimeConfig{
-		ConfigKey:      cfg.ConfigKey,
-		BaseRules:      baseRules,
-		RecoveryRules:  recoveryRules,
-		DetectionRules: detectionRules,
-	}, nil
+		return ReputationRuntimeConfig{
+			ConfigKey:      cfg.ConfigKey,
+			BaseRules:      baseRules,
+			RecoveryRules:  recoveryRules,
+			DetectionRules: detectionRules,
+		}, nil
+	})
 }

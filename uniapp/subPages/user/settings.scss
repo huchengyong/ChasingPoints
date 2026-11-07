@@ -1,0 +1,573 @@
+/* 设置页面样式 */
+
+// 主色调
+$primary-color: #E0AE12;
+
+// 浅色模式变量
+$bg-light: #F7F4EC;
+$card-bg-light: #ffffff;
+$text-primary-light: #231C0B;
+$text-secondary-light: #6E6242;
+$border-color-light: #E9E2CF;
+
+// 深色模式变量
+$bg-dark: #141109;
+$card-bg-dark: #1e180d;
+$text-primary-dark: #fff7e1;
+$text-secondary-dark: #c6b78c;
+$border-color-dark: rgba(247, 231, 168, 0.12);
+
+// 页面容器
+.settings-container {
+    min-height: 100vh;
+    background-color: $bg-light;
+    transition: background-color 0.3s ease;
+}
+
+// 主内容区
+.main-content {
+    padding: 32rpx;
+}
+
+// 菜单组
+.menu-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8rpx;
+    padding: 16rpx;
+    background-color: $card-bg-light;
+    border-radius: 24rpx;
+    transition: background-color 0.3s ease;
+}
+
+.section-label {
+	display: block;
+	margin: 28rpx 8rpx 12rpx;
+	font-size: 24rpx;
+	font-weight: 700;
+	color: $text-secondary-light;
+}
+
+.menu-item.preference-menu-item {
+	align-items: flex-start;
+	flex-direction: column;
+}
+
+.preference-options {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12rpx;
+	width: 100%;
+	padding-left: 96rpx;
+	box-sizing: border-box;
+}
+
+.preference-option {
+	height: 64rpx;
+	line-height: 64rpx;
+	margin: 0;
+	padding: 0 12rpx;
+	border-radius: 999rpx;
+	background: #FAF8F2;
+	border: 1rpx solid $border-color-light;
+	box-sizing: border-box;
+	color: $text-secondary-light;
+	font-size: 23rpx;
+
+	&::after {
+		display: none;
+	}
+
+	&.active {
+		background: rgba(224, 174, 18, 0.14);
+		border-color: rgba(224, 174, 18, 0.42);
+		color: #8a6510;
+		font-weight: 600;
+	}
+}
+
+// 菜单项
+.menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24rpx 16rpx;
+    min-height: 88rpx;
+    gap: 24rpx;
+
+    .menu-left {
+        display: flex;
+        align-items: center;
+        gap: 24rpx;
+        min-width: 0;
+        flex: 1;
+
+        .icon-wrapper {
+            width: 72rpx;
+            height: 72rpx;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16rpx;
+            transition: background-color 0.3s ease;
+
+            &.blue {
+                background-color: rgba(224, 174, 18, 0.12);
+            }
+
+            &.gold {
+                background-color: rgba(224, 174, 18, 0.14);
+            }
+
+            &.gold-soft {
+                background-color: rgba(198, 146, 0, 0.1);
+            }
+
+            &.green {
+                background-color: rgba(224, 174, 18, 0.12);
+            }
+
+            &.rose {
+                background-color: rgba(217, 119, 6, 0.12);
+            }
+
+            &.amber {
+                background-color: rgba(180, 83, 9, 0.1);
+            }
+        }
+
+        .menu-text {
+            font-size: 32rpx;
+            color: $text-primary-light;
+            transition: color 0.3s ease;
+            min-width: 0;
+        }
+
+		.menu-copy {
+			min-width: 0;
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+		}
+
+		.menu-description {
+			margin-top: 8rpx;
+			font-size: 22rpx;
+			line-height: 1.45;
+			color: $text-secondary-light;
+		}
+    }
+
+    .menu-right {
+        display: flex;
+        align-items: center;
+        gap: 12rpx;
+        flex-shrink: 0;
+        min-width: 0;
+
+        .menu-value {
+            font-size: 28rpx;
+            color: $text-secondary-light;
+            transition: color 0.3s ease;
+            max-width: 320rpx;
+            text-align: right;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+}
+
+.privacy-switch {
+	position: relative;
+	width: 86rpx;
+	height: 48rpx;
+	flex-shrink: 0;
+	border-radius: 999rpx;
+	background: #E9E2CF;
+	transition: background-color 0.2s ease;
+
+	&.active {
+		background: $primary-color;
+	}
+}
+
+.privacy-switch-thumb {
+	position: absolute;
+	top: 6rpx;
+	left: 6rpx;
+	width: 36rpx;
+	height: 36rpx;
+	border-radius: 50%;
+	background: #ffffff;
+	box-shadow: 0 4rpx 10rpx rgba(15, 23, 42, 0.18);
+	transition: transform 0.2s ease;
+
+	&.active {
+		transform: translateX(38rpx);
+	}
+}
+
+.avatar-preview {
+    width: 72rpx;
+    height: 72rpx;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2rpx solid rgba(224, 174, 18, 0.16);
+    background: rgba(224, 174, 18, 0.08);
+    flex-shrink: 0;
+}
+
+.avatar-image {
+    width: 100%;
+    height: 100%;
+}
+
+.theme-menu-item {
+	align-items: flex-start;
+	flex-direction: column;
+}
+
+.theme-options {
+	display: flex;
+	width: 100%;
+	gap: 12rpx;
+	padding-left: 96rpx;
+	box-sizing: border-box;
+}
+
+.theme-option {
+	flex: 1;
+	height: 64rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 999rpx;
+	background: #FAF8F2;
+	border: 1rpx solid $border-color-light;
+	box-sizing: border-box;
+
+	text {
+		font-size: 24rpx;
+		color: $text-secondary-light;
+	}
+
+	&.active {
+		background: rgba(224, 174, 18, 0.14);
+		border-color: rgba(224, 174, 18, 0.42);
+
+		text {
+			color: #8a6510;
+			font-weight: 600;
+		}
+	}
+}
+
+.page-actions {
+    margin-top: 24rpx;
+}
+
+.account-data-group {
+	margin-bottom: 8rpx;
+}
+
+.danger-menu-item {
+	.danger-text {
+		color: #dc2626;
+	}
+}
+
+.deletion-mask {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 40rpx;
+	box-sizing: border-box;
+	background: rgba(20, 17, 9, 0.55);
+}
+
+.deletion-dialog {
+	width: 100%;
+	max-width: 620rpx;
+	padding: 40rpx;
+	box-sizing: border-box;
+	border-radius: 28rpx;
+	background: $card-bg-light;
+}
+
+.deletion-title {
+	display: block;
+	font-size: 36rpx;
+	font-weight: 700;
+	color: $text-primary-light;
+}
+
+.deletion-copy {
+	display: block;
+	margin-top: 18rpx;
+	font-size: 26rpx;
+	line-height: 1.6;
+	color: $text-secondary-light;
+}
+
+.deletion-sms-fields {
+	margin-top: 28rpx;
+}
+
+.deletion-input {
+	width: 100%;
+	height: 82rpx;
+	padding: 0 22rpx;
+	box-sizing: border-box;
+	border: 1rpx solid $border-color-light;
+	border-radius: 16rpx;
+	background: #FAF8F2;
+	color: $text-primary-light;
+	font-size: 28rpx;
+}
+
+.deletion-code-row {
+	display: flex;
+	gap: 16rpx;
+	margin-top: 16rpx;
+}
+
+.deletion-code-input {
+	flex: 1;
+	min-width: 0;
+}
+
+.deletion-send-code-btn {
+	width: 190rpx;
+	height: 82rpx;
+	line-height: 82rpx;
+	margin: 0;
+	padding: 0 12rpx;
+	box-sizing: border-box;
+	border-radius: 18rpx;
+	background: rgba(224, 174, 18, 0.14);
+	color: #8a6510;
+	font-size: 24rpx;
+
+	&::after {
+		display: none;
+	}
+
+	&[disabled] {
+		background: rgba(224, 174, 18, 0.08);
+		color: #9b927a;
+	}
+}
+
+.deletion-actions {
+	display: flex;
+	gap: 18rpx;
+	margin-top: 36rpx;
+}
+
+.dialog-secondary-btn,
+.dialog-danger-btn {
+	flex: 1;
+	height: 84rpx;
+	line-height: 84rpx;
+	margin: 0;
+	padding: 0 16rpx;
+	box-sizing: border-box;
+	border-radius: 18rpx;
+	font-size: 28rpx;
+	font-weight: 700;
+
+	&::after {
+		display: none;
+	}
+
+	&[disabled] {
+		background: #e5e1d7;
+		color: #9b927a;
+	}
+}
+
+.dialog-secondary-btn {
+	background: #F0ECE1;
+	color: $text-secondary-light;
+}
+
+.dialog-danger-btn {
+	background: #dc2626;
+	color: #ffffff;
+}
+
+.logout-btn {
+    width: 100%;
+    height: 92rpx;
+    line-height: 92rpx;
+	margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: 18rpx;
+    background: rgba(239,68,68,0.08);
+    /* box-shadow removed */
+
+    text {
+                                color: #ef4444;
+        font-size: 30rpx;
+        font-weight: 700;
+    }
+
+    &::after {
+        display: none;
+    }
+}
+
+// ========== 深色模式适配 ==========
+.dark-mode {
+    background-color: $bg-dark;
+
+    .menu-group {
+        background-color: $card-bg-dark;
+    }
+
+	.section-label {
+		color: $text-secondary-dark;
+	}
+
+	.preference-option {
+		background: rgba(255, 255, 255, 0.04);
+		border-color: $border-color-dark;
+		color: $text-secondary-dark;
+
+		&.active {
+			background: rgba(224, 174, 18, 0.18);
+			border-color: rgba(224, 174, 18, 0.45);
+			color: #f3d77c;
+		}
+	}
+
+    .menu-item {
+        .menu-left {
+            .icon-wrapper {
+                &.blue {
+                    background-color: rgba(224, 174, 18, 0.16);
+                }
+
+                &.gold {
+                    background-color: rgba(224, 174, 18, 0.18);
+                }
+
+                &.gold-soft {
+                    background-color: rgba(198, 146, 0, 0.18);
+                }
+
+                &.green {
+                    background-color: rgba(247, 216, 106, 0.14);
+                }
+
+                &.rose {
+                    background-color: rgba(217, 119, 6, 0.18);
+                }
+
+                &.amber {
+                    background-color: rgba(180, 83, 9, 0.18);
+                }
+            }
+
+            .menu-text {
+                color: $text-primary-dark;
+            }
+
+			.menu-description {
+				color: $text-secondary-dark;
+			}
+        }
+
+        .menu-right {
+            .menu-value {
+                color: $text-secondary-dark;
+            }
+        }
+    }
+
+	.theme-option {
+		background: rgba(255, 247, 225, 0.05);
+		border-color: $border-color-dark;
+
+		text {
+			color: $text-secondary-dark;
+		}
+
+		&.active {
+			background: rgba(224, 174, 18, 0.18);
+			border-color: rgba(224, 174, 18, 0.5);
+
+			text {
+				color: #f7e7a8;
+			}
+		}
+	}
+
+	.privacy-switch {
+		background: #4b4537;
+
+		&.active {
+			background: $primary-color;
+		}
+	}
+
+	.danger-menu-item {
+		.danger-text {
+			color: #fca5a5;
+		}
+	}
+
+	.deletion-dialog {
+		background: $card-bg-dark;
+	}
+
+	.deletion-title {
+		color: $text-primary-dark;
+	}
+
+	.deletion-copy {
+		color: $text-secondary-dark;
+	}
+
+	.deletion-input {
+		background: rgba(255, 247, 225, 0.05);
+		border-color: $border-color-dark;
+		color: $text-primary-dark;
+	}
+
+	.deletion-send-code-btn {
+		background: rgba(224, 174, 18, 0.18);
+		color: #f3d77c;
+
+		&[disabled] {
+			background: rgba(255, 247, 225, 0.06);
+			color: #92886f;
+		}
+	}
+
+	.dialog-secondary-btn {
+		background: rgba(255, 247, 225, 0.08);
+		color: $text-secondary-dark;
+
+		&[disabled] {
+			background: rgba(255, 247, 225, 0.05);
+			color: #92886f;
+		}
+	}
+
+    .logout-btn {
+        box-shadow: none;
+    }
+
+    .avatar-preview {
+        border-color: rgba(247, 231, 168, 0.18);
+        background: rgba(247, 216, 106, 0.12);
+    }
+}

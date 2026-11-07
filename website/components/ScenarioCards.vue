@@ -37,7 +37,7 @@ defineProps<{
 
 .section-heading__eyebrow {
   margin: 0 0 12px;
-  color: #9f6c00;
+  color: var(--ui-brand-strong);
   font-weight: 600;
 }
 
@@ -60,8 +60,8 @@ defineProps<{
   align-items: start;
   padding: 24px;
   border-radius: 24px;
-  background: rgba(31, 26, 16, 0.94);
-  color: #fff7e1;
+  background: var(--ui-surface-accent);
+  color: var(--ui-text-on-accent);
 }
 
 .scenario-cards__index {
@@ -71,7 +71,7 @@ defineProps<{
   width: 72px;
   height: 72px;
   border-radius: 20px;
-  background: linear-gradient(135deg, #d9a617, #bb8400);
+  background: linear-gradient(135deg, var(--ui-brand-gradient-start), var(--ui-brand-gradient-end));
   color: #fff;
   font-size: 1.2rem;
   font-weight: 700;

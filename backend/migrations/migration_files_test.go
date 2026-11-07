@@ -143,6 +143,28 @@ func TestWSTSyncJobStatesMigrationCreatesCursorTable(t *testing.T) {
 	}
 }
 
+func TestUserOauthProviderOpenIDMigrationAuditsDuplicatesBeforeUniqueIndex(t *testing.T) {
+	content, err := os.ReadFile("20260820110000_add_user_oauth_provider_open_id_unique_constraint.sql")
+	if err != nil {
+		t.Fatalf("read user oauth unique migration: %v", err)
+	}
+
+	text := string(content)
+	requiredSnippets := []string{
+		"duplicate_user_oauth_provider_open_id",
+		"SIGNAL SQLSTATE",
+		"information_schema.STATISTICS",
+		"idx_provider_openid",
+		"uk_user_oauth_provider_open_id",
+		"UNIQUE KEY `uk_user_oauth_provider_open_id` (`provider`, `open_id`)",
+	}
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(text, snippet) {
+			t.Fatalf("expected user oauth unique migration to contain %q", snippet)
+		}
+	}
+}
+
 func TestMemberGrowthMigrationCreatesProfileAndLogTables(t *testing.T) {
 	content, err := os.ReadFile("20260411110000_add_member_growth_tables.sql")
 	if err != nil {
@@ -255,6 +277,41 @@ func TestReputationMigrationCreatesConfigProfileAndLogTables(t *testing.T) {
 	}
 }
 
+func TestLlmConfigsMigrationCreatesConfigTableWithoutCharsetOverride(t *testing.T) {
+	content, err := os.ReadFile("20261016100000_create_llm_configs.sql")
+	if err != nil {
+		t.Fatalf("read llm configs migration: %v", err)
+	}
+
+	text := string(content)
+	requiredSnippets := []string{
+		"-- +goose Up",
+		"-- +goose Down",
+		"CREATE TABLE IF NOT EXISTS `llm_configs`",
+		"`config_key` VARCHAR(64) NOT NULL",
+		"`api_format` VARCHAR(32) NOT NULL",
+		"`endpoint_url` VARCHAR(512) NOT NULL",
+		"`api_key` VARCHAR(512) NOT NULL",
+		"`model` VARCHAR(128) NOT NULL",
+		"`max_tokens` INT NOT NULL",
+		"`updated_by`",
+		"UNIQUE KEY `uniq_llm_configs_key` (`config_key`)",
+		"DROP TABLE IF EXISTS `llm_configs`",
+	}
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(text, snippet) {
+			t.Fatalf("expected llm configs migration to contain %q", snippet)
+		}
+	}
+
+	upper := strings.ToUpper(text)
+	for _, forbidden := range []string{"CHARSET", "CHARACTER SET", "COLLATE"} {
+		if strings.Contains(upper, forbidden) {
+			t.Fatalf("llm configs migration must not specify %s, keep the database default", forbidden)
+		}
+	}
+}
+
 func TestAchievementTitleClosedLoopMigrationContainsClosedLoopSchema(t *testing.T) {
 	content, err := os.ReadFile("20260423110000_achievement_title_closed_loop.sql")
 	if err != nil {
@@ -331,6 +388,204 @@ func TestSeedMinimumAchievementsMigrationContainsClosedLoopDefinitions(t *testin
 	for _, snippet := range requiredSnippets {
 		if !strings.Contains(text, snippet) {
 			t.Fatalf("expected seed minimum achievements migration to contain %q", snippet)
+		}
+	}
+}
+
+func TestSnookerRulesV2MigrationUsesCompatibleConditionalColumns(t *testing.T) {
+	content, err := os.ReadFile("20260730120000_add_snooker_rules_v2.sql")
+	if err != nil {
+		t.Fatalf("read snooker rules migration: %v", err)
+	}
+
+	text := string(content)
+	for _, snippet := range []string{
+		"-- +goose Up",
+		"-- +goose Down",
+		"`snooker_rules_version`",
+		"`best_of_frames`",
+		"`starting_actor`",
+		"information_schema.COLUMNS",
+		"PREPARE stmt FROM @ddl",
+	} {
+		if !strings.Contains(text, snippet) {
+			t.Fatalf("expected snooker rules migration to contain %q", snippet)
+		}
+	}
+	if strings.Contains(text, "ADD COLUMN IF NOT EXISTS") || strings.Contains(text, "DROP COLUMN IF EXISTS") {
+		t.Fatal("snooker rules migration must keep MySQL-compatible information_schema guards")
+	}
+}
+
+func TestContinuousSeasonLifecycleMigrationProtectsUniqueStartDates(t *testing.T) {
+	content, err := os.ReadFile("20260810143000_add_continuous_season_lifecycle_indexes.sql")
+	if err != nil {
+		t.Fatalf("read continuous season lifecycle migration: %v", err)
+	}
+
+	text := string(content)
+	for _, snippet := range []string{
+		"-- +goose Up",
+		"-- +goose Down",
+		"information_schema.STATISTICS",
+		"duplicate season start dates",
+		"duplicate_season_start_dates_must_be_resolved",
+		"uk_seasons_start_date",
+		"`start_date`",
+		"idx_seasons_window",
+	} {
+		if !strings.Contains(text, snippet) {
+			t.Fatalf("expected continuous season lifecycle migration to contain %q", snippet)
+		}
+	}
+
+	downIndex := strings.Index(text, "-- +goose Down")
+	if downIndex < 0 {
+		t.Fatal("expected goose down block")
+	}
+	downBlock := text[downIndex:]
+	if strings.Contains(downBlock, "DELETE FROM `seasons`") || strings.Contains(downBlock, "DROP TABLE") {
+		t.Fatal("continuous season lifecycle down migration must preserve season and user assets")
+	}
+}
+
+func TestHonorWallSeasonAchievementsMigrationContainsRequiredSchema(t *testing.T) {
+	content, err := os.ReadFile("20260723100000_add_honor_wall_season_achievements.sql")
+	if err != nil {
+		t.Fatalf("read honor wall season achievements migration: %v", err)
+	}
+
+	text := string(content)
+	requiredSnippets := []string{
+		"achievement_progress_events",
+		"`occurred_at`",
+		"idx_achievement_progress_events_season_scope",
+		"user_achievements",
+		"`unlocked_source_type`",
+		"`unlocked_source_id`",
+		"matches",
+		"`achievement_synced_at`",
+		"notifications",
+		"`dedupe_key`",
+		"uk_notifications_user_type_dedupe",
+		"CREATE TABLE IF NOT EXISTS `season_challenge_snapshots`",
+		"uk_season_challenge_snapshot",
+		"idx_season_challenge_snapshots_user_season",
+		"CREATE TABLE IF NOT EXISTS `season_settlements`",
+		"uk_season_settlements_season",
+		"idx_season_settlements_status",
+		"information_schema.COLUMNS",
+		"UPDATE `achievement_progress_events`",
+		"`occurred_at` = `created_at`",
+	}
+
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(text, snippet) {
+			t.Fatalf("expected honor wall season achievements migration to contain %q", snippet)
+		}
+	}
+}
+
+func TestRebalanceRankedRatingMigrationIsGuardedAndKeepsDefaultCharset(t *testing.T) {
+	content, err := os.ReadFile("20261019120000_rebalance_ranked_rating.sql")
+	if err != nil {
+		t.Fatalf("read rebalance ranked rating migration: %v", err)
+	}
+
+	text := string(content)
+	upIndex := strings.Index(text, "-- +goose Up")
+	downIndex := strings.Index(text, "-- +goose Down")
+	if upIndex < 0 || downIndex < upIndex {
+		t.Fatal("expected goose up and down blocks")
+	}
+	up, down := text[upIndex:downIndex], text[downIndex:]
+	for _, snippet := range []string{
+		"COLUMN_NAME = 'rating_version'",
+		"ADD COLUMN `rating_version` TINYINT NOT NULL DEFAULT 1",
+		"ADD COLUMN `rated_matches` INT NOT NULL DEFAULT 0",
+		"ADD KEY `idx_user_ranking_rating_version` (`rating_version`, `id`)",
+		"CREATE TABLE IF NOT EXISTS `rank_rating_seeds`",
+		"UNIQUE KEY `uk_rank_rating_seed_user_game` (`user_id`, `game_type`)",
+		"ADD COLUMN `distinct_opponents` INT NOT NULL DEFAULT 0",
+		"ADD COLUMN `qualified` TINYINT NOT NULL DEFAULT 0",
+		"ADD KEY `idx_season_game_qualified_rank` (`season_id`, `game_type`, `qualified`, `end_rank_score`, `wins`, `id`)",
+		"DROP INDEX `idx_season_game_rank`",
+		"ALTER COLUMN `rank_reset_ratio` SET DEFAULT 1.00",
+	} {
+		if !strings.Contains(up, snippet) {
+			t.Fatalf("expected up migration to contain %q", snippet)
+		}
+	}
+	for _, snippet := range []string{
+		"ADD KEY `idx_season_game_rank` (`season_id`, `game_type`, `end_rank_score`, `wins`, `id`)",
+		"DROP INDEX `idx_season_game_qualified_rank`",
+		"DROP TABLE IF EXISTS `rank_rating_seeds`",
+		"DROP COLUMN `rating_version`",
+	} {
+		if !strings.Contains(down, snippet) {
+			t.Fatalf("expected down migration to contain %q", snippet)
+		}
+	}
+	if strings.Contains(up, "ADD COLUMN IF NOT EXISTS") || strings.Contains(down, "DROP COLUMN IF EXISTS") {
+		t.Fatal("MySQL column changes must be guarded through information_schema")
+	}
+
+	upper := strings.ToUpper(text)
+	for _, forbidden := range []string{"CHARSET", "CHARACTER SET", "COLLATE"} {
+		if strings.Contains(upper, forbidden) {
+			t.Fatalf("rebalance ranked rating migration must not specify %s, keep the database default", forbidden)
+		}
+	}
+}
+
+func TestAddGearTablesMigrationCreatesTablesWithoutCharsetOverride(t *testing.T) {
+	content, err := os.ReadFile("20261025115843_add_gear_tables.sql")
+	if err != nil {
+		t.Fatalf("read gear tables migration: %v", err)
+	}
+
+	text := string(content)
+	upBlock, downBlock, found := strings.Cut(text, "-- +goose Down")
+	if !found {
+		t.Fatal("expected gear tables migration to contain a goose Down block")
+	}
+	requiredUpSnippets := []string{
+		"-- +goose Up",
+		"CREATE TABLE IF NOT EXISTS `gear_brands`",
+		"UNIQUE KEY `uniq_gear_brands_name` (`name`)",
+		"CREATE TABLE IF NOT EXISTS `gear_products`",
+		"`category` VARCHAR(16) NOT NULL",
+		"`tip_diameter_mm` DECIMAL(5,2) NOT NULL DEFAULT 0",
+		"UNIQUE KEY `uniq_gear_products_identity` (`category`, `brand_id`, `name`)",
+		"KEY `idx_gear_products_list` (`category`, `status`, `brand_id`, `sort`, `id`)",
+		"CREATE TABLE IF NOT EXISTS `user_gear_items`",
+		"`custom_key` VARCHAR(255) NOT NULL DEFAULT ''",
+		"KEY `idx_user_gear_items_user_status` (`user_id`, `status`, `id`)",
+		"KEY `idx_user_gear_items_pending` (`product_id`, `custom_key`)",
+		"CREATE TABLE IF NOT EXISTS `user_gear_defaults`",
+		"UNIQUE KEY `uniq_user_gear_defaults` (`user_id`, `game_type`, `slot`)",
+		"CREATE TABLE IF NOT EXISTS `match_gear_snapshots`",
+		"UNIQUE KEY `uniq_match_gear_snapshots` (`match_id`, `user_id`)",
+		"KEY `idx_match_gear_snapshots_user` (`user_id`, `match_id`)",
+		"INSERT IGNORE INTO `gear_products`",
+		"('cue', 0, '球房公杆', 1, 0, 1)",
+		"('chalk', 0, '球房巧克', 1, 0, 1)",
+	}
+	for _, snippet := range requiredUpSnippets {
+		if !strings.Contains(upBlock, snippet) {
+			t.Fatalf("expected gear tables migration Up block to contain %q", snippet)
+		}
+	}
+	for _, table := range []string{"gear_brands", "gear_products", "user_gear_items", "user_gear_defaults", "match_gear_snapshots"} {
+		if !strings.Contains(downBlock, "DROP TABLE IF EXISTS `"+table+"`") {
+			t.Fatalf("expected gear tables migration Down block to drop %s", table)
+		}
+	}
+
+	upper := strings.ToUpper(text)
+	for _, forbidden := range []string{"CHARSET", "CHARACTER SET", "COLLATE"} {
+		if strings.Contains(upper, forbidden) {
+			t.Fatalf("gear tables migration must not specify %s, keep the database default", forbidden)
 		}
 	}
 }

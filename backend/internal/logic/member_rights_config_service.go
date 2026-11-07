@@ -33,26 +33,28 @@ func (s *MemberRightsConfigService) GetConfig() (MemberRightsRuntimeConfig, erro
 		return fallback, nil
 	}
 
-	cfg, err := s.svcCtx.MemberRightsConfigModel.FindByKey(model.DefaultMemberRightsConfigKey)
-	if err != nil {
-		return fallback, err
-	}
-	if cfg == nil {
-		return fallback, nil
-	}
+	return loadRuntimeConfig(s.svcCtx, MemberRightsRuntimeConfigCacheKey, func() (MemberRightsRuntimeConfig, error) {
+		cfg, err := s.svcCtx.MemberRightsConfigModel.FindByKey(model.DefaultMemberRightsConfigKey)
+		if err != nil {
+			return fallback, err
+		}
+		if cfg == nil {
+			return fallback, nil
+		}
 
-	growth, err := cfg.GrowthRules()
-	if err != nil {
-		return fallback, err
-	}
-	rights, err := cfg.RankingRightsRules()
-	if err != nil {
-		return fallback, err
-	}
+		growth, err := cfg.GrowthRules()
+		if err != nil {
+			return fallback, err
+		}
+		rights, err := cfg.RankingRightsRules()
+		if err != nil {
+			return fallback, err
+		}
 
-	return MemberRightsRuntimeConfig{
-		ConfigKey:     cfg.ConfigKey,
-		GrowthRules:   growth,
-		RankingRights: rights,
-	}, nil
+		return MemberRightsRuntimeConfig{
+			ConfigKey:     cfg.ConfigKey,
+			GrowthRules:   growth,
+			RankingRights: rights,
+		}, nil
+	})
 }

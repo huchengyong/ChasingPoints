@@ -1,9 +1,7 @@
 package public
 
 import (
-	"context"
 	"net/http"
-	"strings"
 
 	"chasing_points/internal/logic/public"
 	"chasing_points/internal/svc"
@@ -20,15 +18,7 @@ func GetPublicMatchesHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		ctx := r.Context()
-		if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
-			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-			if userId := parseUserIdFromToken(tokenString, svcCtx.Config.Auth.AccessSecret); userId > 0 {
-				ctx = context.WithValue(ctx, "user_id", userId)
-			}
-		}
-
-		l := public.NewGetPublicMatchesLogic(ctx, svcCtx)
+		l := public.NewGetPublicMatchesLogic(r.Context(), svcCtx)
 		resp, err := l.GetPublicMatches(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)

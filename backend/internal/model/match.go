@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 	"time"
 
@@ -12,30 +13,96 @@ import (
 
 var ErrMatchRevisionConflict = errors.New("match revision conflict")
 
+const (
+	MatchModePractice = "practice"
+	MatchModeRanked   = "ranked"
+
+	MatchVisibilityPrivate = "private"
+	MatchVisibilityPublic  = "public"
+
+	FinishStateNone                = "none"
+	FinishStatePendingConfirmation = "pending_confirmation"
+	// FinishRequestTTL 排位结束确认期：期内对方可确认或异议、发起方可撤回，期满按冻结比分完成结算。
+	FinishRequestTTL = 30 * time.Second
+
+	CompletionSourceReferee         = "referee"
+	CompletionSourcePlayerDirect    = "player_direct"
+	CompletionSourcePlayerConfirmed = "player_confirmed"
+	// CompletionSourceFinishTimeout 结束确认期满无人处理，由服务端按冻结比分完成；完成人记为发起方。
+	CompletionSourceFinishTimeout = "finish_timeout"
+	CompletionSourceUnknown       = "unknown"
+
+	SnookerRulesVersionLegacy = 1
+	SnookerRulesVersionWPBSA  = 2
+)
+
+func NormalizeMatchMode(mode string) string {
+	if mode == MatchModePractice {
+		return MatchModePractice
+	}
+	return MatchModeRanked
+}
+
+func NormalizeMatchVisibility(visibility, mode string) string {
+	if visibility == MatchVisibilityPublic {
+		return MatchVisibilityPublic
+	}
+	if visibility == MatchVisibilityPrivate && NormalizeMatchMode(mode) == MatchModePractice {
+		return MatchVisibilityPrivate
+	}
+	return MatchVisibilityPublic
+}
+
+func NormalizeFinishState(state string) string {
+	if state == FinishStatePendingConfirmation {
+		return FinishStatePendingConfirmation
+	}
+	return FinishStateNone
+}
+
 // Match 对局记录
 type Match struct {
-	Id                        int64          `gorm:"primarykey" json:"id"`
-	UserId                    int64          `gorm:"not null;index" json:"user_id"`
-	OpponentId                *int64         `gorm:"index" json:"opponent_id"`
-	OpponentName              string         `gorm:"size:50;not null" json:"opponent_name"`
-	GameType                  int            `gorm:"not null" json:"game_type"` // 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
-	GameMode                  string         `gorm:"size:20" json:"game_mode"`  // 比赛模式
-	RefereeUserId             *int64         `gorm:"index" json:"referee_user_id"`
-	RefereeJoinedAt           *time.Time     `json:"referee_joined_at"`
-	MyScore                   int            `gorm:"not null;default:0" json:"my_score"`
-	OpponentScore             int            `gorm:"not null;default:0" json:"opponent_score"`
-	CurrentFrameMyScore       int            `gorm:"not null;default:0" json:"current_frame_my_score"`
-	CurrentFrameOpponentScore int            `gorm:"not null;default:0" json:"current_frame_opponent_score"`
-	CurrentFrameStarted       bool           `gorm:"not null;default:true" json:"current_frame_started"`
-	SyncRevision              int64          `gorm:"not null;default:0" json:"sync_revision"`
-	Status                    int            `gorm:"not null;default:1" json:"status"` // 1=进行中 2=已完成 3=已取消
-	Result                    *int           `json:"result"`                           // 1=胜利 2=失败 3=平局
-	MatchTime                 time.Time      `gorm:"not null" json:"match_time"`
-	EndTime                   *time.Time     `json:"end_time"`
-	Remark                    string         `gorm:"size:500" json:"remark"`
-	CreatedAt                 time.Time      `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt                 time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
-	DeletedAt                 gorm.DeletedAt `gorm:"index" json:"deleted_at"`
+	Id                         int64          `gorm:"primarykey" json:"id"`
+	UserId                     int64          `gorm:"not null;index" json:"user_id"`
+	OpponentId                 *int64         `gorm:"index" json:"opponent_id"`
+	OpponentName               string         `gorm:"size:50;not null" json:"opponent_name"`
+	GameType                   int            `gorm:"not null" json:"game_type"` // 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
+	GameMode                   string         `gorm:"size:20" json:"game_mode"`  // 比赛模式
+	SnookerRulesVersion        int            `gorm:"not null;default:1" json:"snooker_rules_version"`
+	BestOfFrames               int            `gorm:"not null;default:0" json:"best_of_frames"`
+	SnookerFormat              string         `gorm:"size:20;not null;default:legacy" json:"snooker_format"`
+	SnookerTargetWins          int            `gorm:"not null;default:0" json:"snooker_target_wins"`
+	MatchFormat                string         `gorm:"size:20;not null;default:legacy" json:"match_format"`
+	TargetWins                 int            `gorm:"not null;default:0" json:"target_wins"`
+	StartingActor              int            `gorm:"not null;default:0" json:"starting_actor"`
+	MatchMode                  string         `gorm:"size:20;not null;index" json:"match_mode"`
+	Visibility                 string         `gorm:"size:20;not null;index" json:"visibility"`
+	FinishConfirmationRequired bool           `gorm:"not null;default:false" json:"finish_confirmation_required"`
+	FinishState                string         `gorm:"size:32;not null;index" json:"finish_state"`
+	FinishRequestedBy          *int64         `gorm:"index" json:"finish_requested_by"`
+	FinishRequestedAt          *time.Time     `json:"finish_requested_at"`
+	FinishRequestRevision      int64          `gorm:"not null;default:0" json:"finish_request_revision"`
+	RefereeUserId              *int64         `gorm:"index" json:"referee_user_id"`
+	RefereeJoinedAt            *time.Time     `json:"referee_joined_at"`
+	ChallengeId                *int64         `gorm:"uniqueIndex:uk_matches_challenge_id" json:"challenge_id"`
+	CompletedByUserId          *int64         `gorm:"index" json:"completed_by_user_id"`
+	CompletionSource           string         `gorm:"size:20;not null;default:unknown" json:"completion_source"` // referee/player_direct/player_confirmed/finish_timeout/unknown
+	MyScore                    int            `gorm:"not null;default:0" json:"my_score"`
+	OpponentScore              int            `gorm:"not null;default:0" json:"opponent_score"`
+	CurrentFrameMyScore        int            `gorm:"not null;default:0" json:"current_frame_my_score"`
+	CurrentFrameOpponentScore  int            `gorm:"not null;default:0" json:"current_frame_opponent_score"`
+	CurrentFrameStarted        bool           `gorm:"not null;default:true" json:"current_frame_started"`
+	SyncRevision               int64          `gorm:"not null;default:0" json:"sync_revision"`
+	Status                     int            `gorm:"not null;default:1" json:"status"` // 1=进行中 2=已完成 3=已取消
+	Result                     *int           `json:"result"`                           // 1=胜利 2=失败 3=平局
+	MatchTime                  time.Time      `gorm:"not null" json:"match_time"`
+	EndTime                    *time.Time     `json:"end_time"`
+	CompletedAt                *time.Time     `gorm:"index" json:"completed_at"`
+	AchievementSyncedAt        *time.Time     `json:"achievement_synced_at"`
+	Remark                     string         `gorm:"size:500" json:"remark"`
+	CreatedAt                  time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt                  time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
+	DeletedAt                  gorm.DeletedAt `gorm:"index" json:"deleted_at"`
 }
 
 func (Match) TableName() string {
@@ -154,9 +221,130 @@ func (m *MatchModel) FindByIdForUpdateWithTx(tx *gorm.DB, id int64) (*Match, err
 	return &match, err
 }
 
+// FinishRequestExpiresAt 返回待确认结束请求的截止时刻；没有待确认请求时返回 nil。
+func (m *Match) FinishRequestExpiresAt() *time.Time {
+	if m == nil || m.FinishState != FinishStatePendingConfirmation || m.FinishRequestedAt == nil {
+		return nil
+	}
+	expiresAt := m.FinishRequestedAt.Add(FinishRequestTTL)
+	return &expiresAt
+}
+
+// FinishRequestExpired 判断待确认的结束请求是否已到确认期截止时刻（按服务端时间）；缺少请求时刻的旧数据视为未到期。
+func (m *Match) FinishRequestExpired(now time.Time) bool {
+	expiresAt := m.FinishRequestExpiresAt()
+	return expiresAt != nil && !expiresAt.After(now)
+}
+
+// FinishRequestRemainingSeconds 按服务端时间返回结束确认的剩余秒数（向上取整，最小为 0）。
+func (m *Match) FinishRequestRemainingSeconds(now time.Time) int {
+	expiresAt := m.FinishRequestExpiresAt()
+	if expiresAt == nil || !expiresAt.After(now) {
+		return 0
+	}
+	return int(math.Ceil(expiresAt.Sub(now).Seconds()))
+}
+
+// FinishRequestCountdown 返回读取用的确认截止时刻（RFC3339）与剩余秒数；无待确认请求时为空串和 0。
+func (m *Match) FinishRequestCountdown(now time.Time) (string, int) {
+	expiresAt := m.FinishRequestExpiresAt()
+	if expiresAt == nil {
+		return "", 0
+	}
+	return expiresAt.Format(time.RFC3339), m.FinishRequestRemainingSeconds(now)
+}
+
+func (m *MatchModel) ListStaleFinishRequestIDs(limit int, now time.Time) ([]int64, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	if limit > 1000 {
+		limit = 1000
+	}
+	var ids []int64
+	err := m.db.Model(&Match{}).
+		Where("status = ? AND finish_state = ? AND finish_requested_at <= ?", 1, FinishStatePendingConfirmation, now.Add(-FinishRequestTTL)).
+		Order("finish_requested_at ASC, id ASC").
+		Limit(limit).
+		Pluck("id", &ids).Error
+	return ids, err
+}
+
+func (m *MatchModel) ListCompletedPendingAchievementSync(limit int) ([]Match, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	if limit > 1000 {
+		limit = 1000
+	}
+	var matches []Match
+	err := m.db.Where("status = ? AND achievement_synced_at IS NULL", 2).
+		Order("id ASC").
+		Limit(limit).
+		Find(&matches).Error
+	return matches, err
+}
+
 // FindCurrentByUserId 查找用户进行中的对局
 func (m *MatchModel) FindCurrentByUserId(userId int64) (*Match, error) {
 	return m.FindCurrentByUserIdWithTx(nil, userId)
+}
+
+// ExistsBetweenUsers 双方是否存在真实比赛记录（含已取消，排除约球未打成的情形）。
+func (m *MatchModel) ExistsBetweenUsers(userA, userB int64) (bool, error) {
+	return m.ExistsBetweenUsersWithTx(nil, userA, userB)
+}
+
+func (m *MatchModel) ExistsBetweenUsersWithTx(tx *gorm.DB, userA, userB int64) (bool, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	var count int64
+	err := db.Model(&Match{}).
+		Where("(user_id = ? AND opponent_id = ?) OR (user_id = ? AND opponent_id = ?)", userA, userB, userB, userA).
+		Limit(1).
+		Count(&count).Error
+	return count > 0, err
+}
+
+// FindIdByChallengeId 查询约球关联的比赛 ID。
+func (m *MatchModel) FindIdByChallengeId(challengeId int64) (int64, error) {
+	return m.FindIdByChallengeIdWithTx(nil, challengeId)
+}
+
+func (m *MatchModel) FindIdByChallengeIdWithTx(tx *gorm.DB, challengeId int64) (int64, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	var match Match
+	err := db.Select("id").Where("challenge_id = ?", challengeId).First(&match).Error
+	if err == gorm.ErrRecordNotFound {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return match.Id, nil
+}
+
+// ListChallengeMatchIds 批量查询约球→比赛ID映射，调用方传入有界 ID 列表。
+func (m *MatchModel) ListChallengeMatchIds(challengeIds []int64) (map[int64]int64, error) {
+	result := map[int64]int64{}
+	if len(challengeIds) == 0 {
+		return result, nil
+	}
+	var rows []Match
+	if err := m.db.Select("id, challenge_id").Where("challenge_id IN ?", challengeIds).Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		if row.ChallengeId != nil {
+			result[*row.ChallengeId] = row.Id
+		}
+	}
+	return result, nil
 }
 
 func (m *MatchModel) FindCurrentByUserIdWithTx(tx *gorm.DB, userId int64) (*Match, error) {
@@ -166,7 +354,8 @@ func (m *MatchModel) FindCurrentByUserIdWithTx(tx *gorm.DB, userId int64) (*Matc
 	}
 
 	var match Match
-	err := db.Where("(user_id = ? OR opponent_id = ? OR referee_user_id = ?) AND status = 1", userId, userId, userId).
+	query := db.Where("(user_id = ? OR opponent_id = ? OR referee_user_id = ?) AND status = 1", userId, userId, userId)
+	err := query.
 		Order("match_time DESC").
 		First(&match).Error
 	if err == gorm.ErrRecordNotFound {
@@ -175,17 +364,158 @@ func (m *MatchModel) FindCurrentByUserIdWithTx(tx *gorm.DB, userId int64) (*Matc
 	return &match, err
 }
 
-// ListCompletedForRankingReplay 获取用于段位历史回放的已完成对局
-func (m *MatchModel) ListCompletedForRankingReplay() ([]Match, error) {
+// CancelActiveForAccountDeletionWithTx closes every active match involving the
+// deleted account so no participant is left in an unrecoverable active state.
+func (m *MatchModel) CancelActiveForAccountDeletionWithTx(tx *gorm.DB, userID int64, now time.Time) ([]Match, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	if db == nil {
+		return nil, errors.New("match db is nil")
+	}
+
 	var matches []Match
-	err := m.db.
-		Where("status = ? AND deleted_at IS NULL", 2).
-		Order("CASE WHEN end_time IS NULL THEN 1 ELSE 0 END ASC").
-		Order("end_time ASC").
-		Order("match_time ASC").
+	if err := db.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("(user_id = ? OR opponent_id = ? OR referee_user_id = ?) AND status = ?", userID, userID, userID, 1).
 		Order("id ASC").
+		Find(&matches).Error; err != nil {
+		return nil, err
+	}
+
+	for index := range matches {
+		match := &matches[index]
+		match.Status = 3
+		match.EndTime = &now
+		match.FinishState = FinishStateNone
+		match.FinishRequestedBy = nil
+		match.FinishRequestedAt = nil
+		match.FinishRequestRevision = 0
+		match.CompletedByUserId = nil
+		match.CompletionSource = CompletionSourceUnknown
+		match.Remark = "account_deleted"
+		match.SyncRevision++
+		if err := db.Model(&Match{}).Where("id = ?", match.Id).Updates(map[string]any{
+			"status":                  match.Status,
+			"end_time":                match.EndTime,
+			"finish_state":            match.FinishState,
+			"finish_requested_by":     nil,
+			"finish_requested_at":     nil,
+			"finish_request_revision": 0,
+			"completed_by_user_id":    nil,
+			"completion_source":       match.CompletionSource,
+			"remark":                  match.Remark,
+			"sync_revision":           match.SyncRevision,
+		}).Error; err != nil {
+			return nil, err
+		}
+	}
+	return matches, nil
+}
+
+// ListCompletedForRankingReplay 获取用于段位历史回放的有效排位对局。
+func (m *MatchModel) ListCompletedForRankingReplay() ([]Match, error) {
+	return m.ListCompletedForSeasonRecords()
+}
+
+func completedRankedMatchScope(db *gorm.DB) *gorm.DB {
+	return db.
+		Where("status = ? AND deleted_at IS NULL", 2).
+		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", MatchModeRanked).
+		Where("result IN ?", []int{1, 2}).
+		Where("opponent_id IS NOT NULL AND opponent_id > 0 AND opponent_id <> user_id").
+		Where("EXISTS (SELECT 1 FROM match_rounds WHERE match_rounds.match_id = matches.id AND winner IS NOT NULL AND (win_type IS NULL OR win_type <> ?))", "start")
+}
+
+func (m *MatchModel) ListCompletedForAchievementRebuild() ([]Match, error) {
+	return m.ListCompletedForSeasonRecords()
+}
+
+func (m *MatchModel) ListCompletedForSeasonRecords() ([]Match, error) {
+	var matches []Match
+	err := completedRankedMatchScope(m.db).
+		Order("completed_at ASC, id ASC").
 		Find(&matches).Error
 	return matches, err
+}
+
+// ListCompletedByIDAfterWithTx 为离线读模型回建提供稳定游标，不在在线路径使用。
+func (m *MatchModel) ListCompletedByIDAfterWithTx(tx *gorm.DB, afterID int64, limit int) ([]Match, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	if limit > 1000 {
+		limit = 1000
+	}
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	var matches []Match
+	err := db.Where("status = ? AND deleted_at IS NULL AND id > ?", 2, afterID).
+		Order("id ASC").
+		Limit(limit).
+		Find(&matches).Error
+	return matches, err
+}
+
+// ListCompletedByCompletionAfterWithTx 为离线读模型回放提供按完成时间排序的稳定游标。
+func (m *MatchModel) ListCompletedByCompletionAfterWithTx(tx *gorm.DB, afterCompletedAt *time.Time, afterID int64, limit int) ([]Match, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	if limit > 1000 {
+		limit = 1000
+	}
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	query := db.Where("status = ? AND deleted_at IS NULL AND completed_at IS NOT NULL", 2)
+	if afterCompletedAt != nil {
+		query = query.Where("(completed_at > ?) OR (completed_at = ? AND id > ?)", *afterCompletedAt, *afterCompletedAt, afterID)
+	}
+	var matches []Match
+	err := query.Order("completed_at ASC, id ASC").Limit(limit).Find(&matches).Error
+	return matches, err
+}
+
+// ListCompletedByCompletionBetweenWithTx 为离线排位重放按完成时间读取 [from, to) 内的已完成比赛；from 为零值时不设下限。
+func (m *MatchModel) ListCompletedByCompletionBetweenWithTx(tx *gorm.DB, from, to time.Time, afterCompletedAt *time.Time, afterID int64, limit int) ([]Match, error) {
+	if limit <= 0 || limit > 1000 {
+		limit = 500
+	}
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	query := db.Where("status = ? AND deleted_at IS NULL AND completed_at IS NOT NULL AND completed_at < ?", 2, to)
+	if !from.IsZero() {
+		query = query.Where("completed_at >= ?", from)
+	}
+	if afterCompletedAt != nil {
+		query = query.Where("(completed_at > ?) OR (completed_at = ? AND id > ?)", *afterCompletedAt, *afterCompletedAt, afterID)
+	}
+	var matches []Match
+	err := query.Order("completed_at ASC, id ASC").Limit(limit).Find(&matches).Error
+	return matches, err
+}
+
+// CountCompletedWithoutCompletedAt 统计缺少 completed_at 的已完成比赛；离线排位重放要求其为 0。
+func (m *MatchModel) CountCompletedWithoutCompletedAt() (int64, error) {
+	var count int64
+	err := m.db.Model(&Match{}).Where("status = ? AND completed_at IS NULL", 2).Count(&count).Error
+	return count, err
+}
+
+func (m *MatchModel) SetCompletedAtIfEmptyWithTx(tx *gorm.DB, matchID int64, completedAt time.Time) error {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	return db.Model(&Match{}).
+		Where("id = ? AND completed_at IS NULL", matchID).
+		Update("completed_at", completedAt).Error
 }
 
 func (m *MatchModel) CountCompletedMatchesBetweenUsersByGameTypeBetween(
@@ -202,6 +532,7 @@ func (m *MatchModel) CountCompletedMatchesBetweenUsersByGameTypeBetween(
 
 	query := db.Model(&Match{}).
 		Where("status = ? AND game_type = ?", 2, gameType).
+		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", MatchModeRanked).
 		Where("((user_id = ? AND opponent_id = ?) OR (user_id = ? AND opponent_id = ?))", userA, userB, userB, userA).
 		Where("((end_time IS NOT NULL AND end_time >= ? AND end_time < ?) OR (end_time IS NULL AND match_time >= ? AND match_time < ?))",
 			start, end, start, end)
@@ -224,6 +555,12 @@ func (m *MatchModel) UpdateWithTx(tx *gorm.DB, match *Match) error {
 		return tx.Save(match).Error
 	}
 	return m.Update(match)
+}
+
+func (m *MatchModel) MarkAchievementSynced(matchId int64, syncedAt time.Time) error {
+	return m.db.Model(&Match{}).
+		Where("id = ? AND achievement_synced_at IS NULL", matchId).
+		Update("achievement_synced_at", syncedAt).Error
 }
 
 // MatchWithOpponentAvatar 带对手头像的对局记录
@@ -606,10 +943,61 @@ func (m *MatchModel) ListByOpponentName(
 	return records[offset:end], total, nil
 }
 
-// GetH2HStats 获取交锋统计（按对手名称兜底，仅适用于未绑定用户的历史记录）
 func (m *MatchModel) GetH2HStats(userId int64, opponentName string) (total, myWins, oppWins int, avgDiff float64, err error) {
 	total, myWins, oppWins, avgDiff, _, err = m.GetH2HStatsByOpponent(userId, 0, opponentName)
 	return total, myWins, oppWins, avgDiff, err
+}
+
+// ListByRefereeUserId 获取裁判执裁历史（已完成和已取消）
+func (m *MatchModel) ListByRefereeUserId(refereeUserId int64, offset, limit int) ([]Match, int64, error) {
+	var total int64
+	err := m.db.Model(&Match{}).
+		Where("referee_user_id = ? AND status IN (2, 3) AND deleted_at IS NULL", refereeUserId).
+		Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var matches []Match
+	err = m.db.Where("referee_user_id = ? AND status IN (2, 3) AND deleted_at IS NULL", refereeUserId).
+		Order("end_time DESC, id DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&matches).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return matches, total, nil
+}
+
+type RefereeHistoryMatchRow struct {
+	Match
+	Player1Name   string `gorm:"column:player1_name"`
+	Player1Avatar string `gorm:"column:player1_avatar"`
+	Player2Name   string `gorm:"column:player2_name"`
+	Player2Avatar string `gorm:"column:player2_avatar"`
+}
+
+func (m *MatchModel) ListByRefereeUserIdWithProfiles(refereeUserId int64, offset, limit int) ([]RefereeHistoryMatchRow, int64, error) {
+	var total int64
+	if err := m.db.Model(&Match{}).
+		Where("referee_user_id = ? AND status IN (2, 3) AND deleted_at IS NULL", refereeUserId).
+		Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var matches []RefereeHistoryMatchRow
+	err := m.db.Table("matches").
+		Select(`matches.*, COALESCE(player1.nickname, '') AS player1_name, COALESCE(player1.avatar, '') AS player1_avatar,
+			COALESCE(player2.nickname, '') AS player2_name, COALESCE(player2.avatar, '') AS player2_avatar`).
+		Joins("LEFT JOIN users AS player1 ON player1.id = matches.user_id").
+		Joins("LEFT JOIN users AS player2 ON player2.id = matches.opponent_id").
+		Where("matches.referee_user_id = ? AND matches.status IN (2, 3) AND matches.deleted_at IS NULL", refereeUserId).
+		Order("matches.end_time DESC, matches.id DESC").
+		Offset(offset).
+		Limit(limit).
+		Scan(&matches).Error
+	return matches, total, err
 }
 
 // GetH2HStatsByOpponent 获取交锋统计。
@@ -730,9 +1118,17 @@ func (m *MatchModel) CreateRoundWithTx(tx *gorm.DB, round *MatchRound) error {
 
 // GetRoundCount 获取对局的局数
 func (m *MatchModel) GetRoundCount(matchId int64) (int64, error) {
+	return m.GetRoundCountWithTx(nil, matchId)
+}
+
+func (m *MatchModel) GetRoundCountWithTx(tx *gorm.DB, matchId int64) (int64, error) {
 	var count int64
-	err := m.db.Model(&MatchRound{}).
-		Where("match_id = ? AND winner IS NOT NULL AND win_type <> ?", matchId, "start").
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	err := db.Model(&MatchRound{}).
+		Where("match_id = ? AND winner IS NOT NULL AND (win_type IS NULL OR win_type <> ?)", matchId, "start").
 		Count(&count).Error
 	return count, err
 }
@@ -743,7 +1139,7 @@ func (m *MatchModel) GetLastRoundWithTx(tx *gorm.DB, matchId int64) (*MatchRound
 	if tx != nil {
 		db = tx
 	}
-	err := db.Where("match_id = ? AND winner IS NOT NULL AND win_type <> ?", matchId, "start").
+	err := db.Where("match_id = ? AND winner IS NOT NULL AND (win_type IS NULL OR win_type <> ?)", matchId, "start").
 		Order("id DESC").
 		First(&round).Error
 	if err == gorm.ErrRecordNotFound {
@@ -772,8 +1168,20 @@ func (m *MatchModel) ListCompletedRoundsWithTx(tx *gorm.DB, matchId int64) ([]Ma
 		db = tx
 	}
 	err := db.
-		Where("match_id = ? AND winner IS NOT NULL AND win_type <> ?", matchId, "start").
+		Where("match_id = ? AND winner IS NOT NULL AND (win_type IS NULL OR win_type <> ?)", matchId, "start").
 		Order("round_no ASC").
+		Find(&rounds).Error
+	return rounds, err
+}
+
+func (m *MatchModel) ListCompletedRoundsByMatchIDs(matchIds []int64) ([]MatchRound, error) {
+	if len(matchIds) == 0 {
+		return []MatchRound{}, nil
+	}
+	var rounds []MatchRound
+	err := m.db.
+		Where("match_id IN ? AND winner IS NOT NULL AND (win_type IS NULL OR win_type <> ?)", matchIds, "start").
+		Order("match_id ASC, round_no ASC, id ASC").
 		Find(&rounds).Error
 	return rounds, err
 }
@@ -864,6 +1272,25 @@ func (m *MatchModel) GetLastActionWithTx(tx *gorm.DB, matchId int64) (*MatchActi
 	return &action, err
 }
 
+// matchFinishFlowActionTypes 是结束确认流程留下的记录，不改变比分，撤销时跳过。
+var matchFinishFlowActionTypes = []string{"finish_request", "finish_confirm", "finish_dispute", "finish_withdraw", "finish_expired"}
+
+// GetLastUndoableActionWithTx 获取最后一条可撤销的记分操作，跳过结束确认流程记录。
+func (m *MatchModel) GetLastUndoableActionWithTx(tx *gorm.DB, matchId int64) (*MatchAction, error) {
+	var action MatchAction
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	err := db.Where("match_id = ? AND is_undone = 0 AND action_type NOT IN ?", matchId, matchFinishFlowActionTypes).
+		Order("id DESC").
+		First(&action).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &action, err
+}
+
 // CountScoreActions 统计指定局内未撤销的加分操作次数
 func (m *MatchModel) CountScoreActions(matchId int64, roundNo int, scoreChange int) (int64, error) {
 	var count int64
@@ -877,6 +1304,16 @@ func (m *MatchModel) CountScoreActions(matchId int64, roundNo int, scoreChange i
 // ListActiveActions 获取对局未撤销的操作日志
 func (m *MatchModel) ListActiveActions(matchId int64) ([]MatchAction, error) {
 	return m.ListActiveActionsWithTx(nil, matchId)
+}
+
+func (m *MatchModel) CountActionsWithTx(tx *gorm.DB, matchId int64) (int64, error) {
+	var count int64
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	err := db.Model(&MatchAction{}).Where("match_id = ?", matchId).Count(&count).Error
+	return count, err
 }
 
 func (m *MatchModel) ListActiveActionsWithTx(tx *gorm.DB, matchId int64) ([]MatchAction, error) {
@@ -952,6 +1389,21 @@ func (m *MatchModel) SaveAchievementWithTx(tx *gorm.DB, matchId int64, achieveme
 	}).Error
 }
 
+// DecrementAchievementWithTx 回退一次特殊成绩，计数归零时删除记录。
+func (m *MatchModel) DecrementAchievementWithTx(tx *gorm.DB, matchId int64, achievementType string, actor int) error {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	if err := db.Model(&MatchAchievement{}).
+		Where("match_id = ? AND actor = ? AND achievement_type = ? AND count > 0", matchId, actor, achievementType).
+		Update("count", gorm.Expr("count - 1")).Error; err != nil {
+		return err
+	}
+	return db.Where("match_id = ? AND actor = ? AND achievement_type = ? AND count <= 0", matchId, actor, achievementType).
+		Delete(&MatchAchievement{}).Error
+}
+
 // GetAchievements 获取对局的特殊成绩
 func (m *MatchModel) GetAchievements(matchId int64) ([]MatchAchievement, error) {
 	return m.GetAchievementsWithTx(nil, matchId)
@@ -964,6 +1416,18 @@ func (m *MatchModel) GetAchievementsWithTx(tx *gorm.DB, matchId int64) ([]MatchA
 		db = tx
 	}
 	err := db.Where("match_id = ?", matchId).Find(&list).Error
+	return list, err
+}
+
+func (m *MatchModel) ListAchievementsByMatchIDs(matchIds []int64) ([]MatchAchievement, error) {
+	if len(matchIds) == 0 {
+		return []MatchAchievement{}, nil
+	}
+	var list []MatchAchievement
+	err := m.db.
+		Where("match_id IN ?", matchIds).
+		Order("match_id ASC, actor ASC, achievement_type ASC, id ASC").
+		Find(&list).Error
 	return list, err
 }
 
@@ -1040,6 +1504,81 @@ type UserStats struct {
 	MaxWinStreak int
 }
 
+type CompetitiveScoreCandidate struct {
+	MatchId     int64
+	GameType    int
+	ViewerActor int
+	Score       int
+	MatchTime   time.Time
+	CompletedAt *time.Time
+}
+
+// ListCompetitiveScoreCandidates 为快照缺行兜底读取最高分候选。
+// 两个参与方向分别在数据库内排序和限额，返回量不随用户完整历史增长。
+func (m *MatchModel) ListCompetitiveScoreCandidates(userId int64, gameType, limit int) ([]CompetitiveScoreCandidate, error) {
+	if userId <= 0 || gameType <= 0 {
+		return []CompetitiveScoreCandidate{}, nil
+	}
+	if limit <= 0 {
+		limit = 1
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	var creatorRows []CompetitiveScoreCandidate
+	if err := m.db.Model(&Match{}).
+		Select("id AS match_id, game_type, my_score AS score, match_time, completed_at").
+		Where("user_id = ? AND game_type = ? AND status = ?", userId, gameType, 2).
+		Where("match_mode = ?", MatchModeRanked).
+		Where("result IN ?", []int{1, 2}).
+		Order("my_score DESC, completed_at DESC, id DESC").
+		Limit(limit).
+		Find(&creatorRows).Error; err != nil {
+		return nil, err
+	}
+	for index := range creatorRows {
+		creatorRows[index].ViewerActor = 1
+	}
+
+	var opponentRows []CompetitiveScoreCandidate
+	if err := m.db.Model(&Match{}).
+		Select("id AS match_id, game_type, opponent_score AS score, match_time, completed_at").
+		Where("opponent_id = ? AND user_id <> ? AND game_type = ? AND status = ?", userId, userId, gameType, 2).
+		Where("match_mode = ?", MatchModeRanked).
+		Where("result IN ?", []int{1, 2}).
+		Order("opponent_score DESC, completed_at DESC, id DESC").
+		Limit(limit).
+		Find(&opponentRows).Error; err != nil {
+		return nil, err
+	}
+	for index := range opponentRows {
+		opponentRows[index].ViewerActor = 2
+	}
+
+	rows := append(creatorRows, opponentRows...)
+	candidateTime := func(candidate CompetitiveScoreCandidate) time.Time {
+		if candidate.CompletedAt != nil {
+			return *candidate.CompletedAt
+		}
+		return candidate.MatchTime
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		if rows[i].Score != rows[j].Score {
+			return rows[i].Score > rows[j].Score
+		}
+		left, right := candidateTime(rows[i]), candidateTime(rows[j])
+		if !left.Equal(right) {
+			return left.After(right)
+		}
+		return rows[i].MatchId > rows[j].MatchId
+	})
+	if len(rows) > limit {
+		rows = rows[:limit]
+	}
+	return rows, nil
+}
+
 // GetUserStats 获取用户统计数据（支持双向查询）
 func (m *MatchModel) GetUserStats(userId int64) (*UserStats, error) {
 	// 查询用户参与的所有对局（作为发起方或对手方）
@@ -1050,6 +1589,7 @@ func (m *MatchModel) GetUserStats(userId int64) (*UserStats, error) {
 	err := m.db.Model(&Match{}).
 		Select("user_id, result").
 		Where("(user_id = ? OR opponent_id = ?) AND status = 2", userId, userId).
+		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", MatchModeRanked).
 		Scan(&matches).Error
 	if err != nil {
 		return nil, err
@@ -1102,6 +1642,7 @@ func (m *MatchModel) calculateMaxWinStreak(userId int64) int {
 	err := m.db.Model(&Match{}).
 		Select("user_id, result, match_time").
 		Where("(user_id = ? OR opponent_id = ?) AND status = 2", userId, userId).
+		Where("match_mode = ? OR match_mode = '' OR match_mode IS NULL", MatchModeRanked).
 		Order("match_time ASC").
 		Scan(&matches).Error
 	if err != nil {
@@ -1160,13 +1701,17 @@ type PublicMatchListRow struct {
 	Player1Avatar string `json:"player1_avatar"`
 	Player2Name   string `json:"player2_name"`
 	Player2Avatar string `json:"player2_avatar"`
+	RoundCount    int64  `json:"round_count"`
 }
 
 // ListOngoingMatches 获取所有正在进行的对局列表
 func (m *MatchModel) ListOngoingMatches(offset, limit int) ([]OngoingMatch, int64, error) {
 	// 查询总数
 	var total int64
-	if err := m.db.Model(&Match{}).Where("status = 1").Count(&total).Error; err != nil {
+	if err := m.db.Model(&Match{}).
+		Where("status = 1 AND deleted_at IS NULL").
+		Where("visibility = ?", MatchVisibilityPublic).
+		Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -1180,6 +1725,7 @@ func (m *MatchModel) ListOngoingMatches(offset, limit int) ([]OngoingMatch, int6
 		Joins("LEFT JOIN users u1 ON matches.user_id = u1.id").
 		Joins("LEFT JOIN users u2 ON matches.opponent_id = u2.id").
 		Where("matches.status = 1 AND matches.deleted_at IS NULL").
+		Where("matches.visibility = ?", MatchVisibilityPublic).
 		Order("matches.match_time DESC").
 		Offset(offset).
 		Limit(limit).
@@ -1208,13 +1754,18 @@ func (m *MatchModel) ListPublicMatches(options PublicMatchListOptions) ([]Public
 					OR
 					(friends.friend_id = ? AND (friends.user_id = matches.user_id OR friends.user_id = matches.opponent_id))
 				)
-			)`, options.ViewerUserId, options.ViewerUserId)
+			) OR matches.user_id = ? OR matches.opponent_id = ? OR matches.referee_user_id = ?`,
+				options.ViewerUserId, options.ViewerUserId,
+				options.ViewerUserId, options.ViewerUserId, options.ViewerUserId)
+		base = base.Where("matches.visibility = ? OR matches.user_id = ? OR matches.opponent_id = ? OR matches.referee_user_id = ?",
+			MatchVisibilityPublic, options.ViewerUserId, options.ViewerUserId, options.ViewerUserId)
 	} else {
 		status := options.Status
 		if status != 2 {
 			status = 1
 		}
-		base = base.Where("matches.status = ?", status)
+		base = base.Where("matches.status = ?", status).
+			Where("matches.visibility = ?", MatchVisibilityPublic)
 	}
 
 	if options.GameType > 0 {
@@ -1232,9 +1783,11 @@ func (m *MatchModel) ListPublicMatches(options PublicMatchListOptions) ([]Public
 			COALESCE(u1.nickname, '玩家') as player1_name,
 			COALESCE(u1.avatar, '') as player1_avatar,
 			matches.opponent_name as player2_name,
-			COALESCE(u2.avatar, '') as player2_avatar`).
+			COALESCE(u2.avatar, '') as player2_avatar,
+			COALESCE(rounds.round_count, 0) as round_count`).
 		Joins("LEFT JOIN users u1 ON matches.user_id = u1.id").
 		Joins("LEFT JOIN users u2 ON matches.opponent_id = u2.id").
+		Joins("LEFT JOIN (SELECT match_id, COUNT(*) AS round_count FROM match_rounds WHERE winner IS NOT NULL AND (win_type IS NULL OR win_type <> 'start') GROUP BY match_id) AS rounds ON rounds.match_id = matches.id").
 		Order("matches.match_time DESC").
 		Offset(options.Offset).
 		Limit(limit).
@@ -1287,6 +1840,7 @@ func (m *MatchModel) ListOpponentsWithStats(
 		Select("matches.user_id, matches.opponent_id, matches.opponent_name, matches.result, matches.match_time, COALESCE(u.nickname, '') as creator_nickname").
 		Joins("LEFT JOIN users u ON matches.user_id = u.id").
 		Where("(matches.user_id = ? OR matches.opponent_id = ?) AND matches.status = 2 AND matches.deleted_at IS NULL", userId, userId).
+		Where("matches.match_mode = ? OR matches.match_mode = '' OR matches.match_mode IS NULL", MatchModeRanked).
 		Scan(&matches).Error
 	if err != nil {
 		return nil, 0, err
@@ -1456,6 +2010,7 @@ func (m *MatchModel) GetOverallOpponentStats(userId int64) (totalOpponents, tota
 		Select("matches.user_id, matches.opponent_id, matches.opponent_name, matches.result, COALESCE(u.nickname, '') as creator_nickname").
 		Joins("LEFT JOIN users u ON matches.user_id = u.id").
 		Where("(matches.user_id = ? OR matches.opponent_id = ?) AND matches.status = 2 AND matches.deleted_at IS NULL", userId, userId).
+		Where("matches.match_mode = ? OR matches.match_mode = '' OR matches.match_mode IS NULL", MatchModeRanked).
 		Scan(&matches).Error
 	if err != nil {
 		return 0, 0, err
@@ -1512,6 +2067,7 @@ func (m *MatchModel) GetMaxSingleScore(userId int64) (int, error) {
 	err := m.db.Table("match_rounds mr").
 		Joins("INNER JOIN matches m ON mr.match_id = m.id").
 		Where("m.user_id = ? AND m.status = 2 AND m.deleted_at IS NULL", userId).
+		Where("m.match_mode = ? OR m.match_mode = '' OR m.match_mode IS NULL", MatchModeRanked).
 		Select("COALESCE(MAX(mr.my_score), 0)").
 		Scan(&player1MaxScore).Error
 	if err != nil {
@@ -1523,6 +2079,7 @@ func (m *MatchModel) GetMaxSingleScore(userId int64) (int, error) {
 	err = m.db.Table("match_rounds mr").
 		Joins("INNER JOIN matches m ON mr.match_id = m.id").
 		Where("m.opponent_id = ? AND m.status = 2 AND m.deleted_at IS NULL", userId).
+		Where("m.match_mode = ? OR m.match_mode = '' OR m.match_mode IS NULL", MatchModeRanked).
 		Select("COALESCE(MAX(mr.opponent_score), 0)").
 		Scan(&player2MaxScore).Error
 	if err != nil {

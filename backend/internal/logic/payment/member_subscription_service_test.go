@@ -12,17 +12,18 @@ import (
 )
 
 type memberSubscriptionUserSchema struct {
-	Id              int64          `gorm:"primarykey"`
-	Phone           *string        `gorm:"uniqueIndex;size:20"`
-	Nickname        string         `gorm:"size:50;not null;default:''"`
-	Avatar          string         `gorm:"size:255;not null;default:''"`
-	Status          int            `gorm:"not null;default:1"`
-	PushToken       string         `gorm:"size:255;not null;default:''"`
-	MemberExpiresAt *time.Time     `gorm:"comment:会员到期时间"`
-	HideMatchRecord bool           `gorm:"not null;default:false"`
-	CreatedAt       time.Time      `gorm:"autoCreateTime"`
-	UpdatedAt       time.Time      `gorm:"autoUpdateTime"`
-	DeletedAt       gorm.DeletedAt `gorm:"index"`
+	Id                    int64          `gorm:"primarykey"`
+	Phone                 *string        `gorm:"uniqueIndex;size:20"`
+	Nickname              string         `gorm:"size:50;not null;default:''"`
+	Avatar                string         `gorm:"size:255;not null;default:''"`
+	Status                int            `gorm:"not null;default:1"`
+	PushToken             string         `gorm:"size:255;not null;default:''"`
+	MemberExpiresAt       *time.Time     `gorm:"comment:会员到期时间"`
+	HideMatchRecord       bool           `gorm:"not null;default:false"`
+	FriendsOnlyChallenges bool           `gorm:"not null;default:false"`
+	CreatedAt             time.Time      `gorm:"autoCreateTime"`
+	UpdatedAt             time.Time      `gorm:"autoUpdateTime"`
+	DeletedAt             gorm.DeletedAt `gorm:"index"`
 }
 
 func (memberSubscriptionUserSchema) TableName() string {
@@ -95,7 +96,7 @@ func TestMemberSubscriptionServiceMarksPaidFromCurrentTimeWhenMemberExpired(t *t
 		OrderNo:      "MSO-301",
 		UserId:       301,
 		PlanCode:     "member_monthly",
-		PlanName:     "月卡会员",
+		PlanName:     "月卡VIP",
 		DurationDays: 30,
 		AmountFen:    1900,
 		PayChannel:   "alipay",
@@ -138,7 +139,7 @@ func TestMemberSubscriptionServiceExtendsFromExistingMemberExpiry(t *testing.T) 
 		OrderNo:      "MSO-302",
 		UserId:       302,
 		PlanCode:     "member_monthly",
-		PlanName:     "月卡会员",
+		PlanName:     "月卡VIP",
 		DurationDays: 30,
 		AmountFen:    1900,
 		PayChannel:   "wechat",
@@ -171,7 +172,7 @@ func TestMemberSubscriptionServiceDoesNotDoubleGrantOnDuplicatePaidCallback(t *t
 		OrderNo:      "MSO-303",
 		UserId:       303,
 		PlanCode:     "member_monthly",
-		PlanName:     "月卡会员",
+		PlanName:     "月卡VIP",
 		DurationDays: 30,
 		AmountFen:    1900,
 		PayChannel:   "alipay",
@@ -204,7 +205,7 @@ func TestMemberSubscriptionServiceRejectsAmountMismatch(t *testing.T) {
 		OrderNo:      "MSO-304",
 		UserId:       304,
 		PlanCode:     "member_monthly",
-		PlanName:     "月卡会员",
+		PlanName:     "月卡VIP",
 		DurationDays: 30,
 		AmountFen:    1900,
 		PayChannel:   "wechat",

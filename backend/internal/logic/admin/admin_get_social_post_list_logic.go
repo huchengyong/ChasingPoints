@@ -20,7 +20,7 @@ func NewAdminGetSocialPostListLogic(ctx context.Context, svcCtx *svc.ServiceCont
 	return &AdminGetSocialPostListLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

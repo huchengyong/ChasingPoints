@@ -108,8 +108,8 @@ export const homePageContent = {
       answer: '如果你平时会和朋友约球、在意对局胜负、想留下自己的竞技成长，追分就很适合你。'
     },
     {
-      question: 'iPhone 和 Android 都能下载吗？',
-      answer: '可以，官网下载页会分别提供 iOS 与 Android 的正式入口。'
+      question: '在哪里可以开始使用追分？',
+      answer: '微信小程序扫码即用，鸿蒙版上架后会在下载页开放入口。'
     },
     {
       question: '需要注册才能使用吗？',

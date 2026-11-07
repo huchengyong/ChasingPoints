@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	venuelogic "chasing_points/internal/logic/venue"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -23,7 +24,7 @@ func NewAdminReviewVenueLogic(ctx context.Context, svcCtx *svc.ServiceContext) *
 	return &AdminReviewVenueLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -83,6 +84,10 @@ func (l *AdminReviewVenueLogic) AdminReviewVenue(req *types.AdminVenueReviewReq)
 			Success: false,
 			Message: "审核失败",
 		}, nil
+	}
+
+	if err := venuelogic.BumpVenueCacheVersion(l.ctx, l.svcCtx); err != nil {
+		l.Logger.Errorf("失效球馆缓存失败: venueId=%d err=%v", req.VenueId, err)
 	}
 
 	var msg string

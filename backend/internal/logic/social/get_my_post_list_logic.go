@@ -21,7 +21,7 @@ func NewGetMyPostListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Get
 	return &GetMyPostListLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

@@ -22,7 +22,7 @@ func NewGetUserReputationLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 	return &GetUserReputationLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

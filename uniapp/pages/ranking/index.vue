@@ -1,0 +1,369 @@
+<template>
+	<view class="ranking-container" :class="{ 'dark-mode': isDarkMode }">
+		<!-- 加载状态 -->
+		<view class="loading-wrapper" v-if="isLoading">
+			<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
+			<text class="loading-text">加载中...</text>
+		</view>
+
+		<view v-else-if="pageError" class="empty-state error-state">
+			<uni-icons type="info" size="72" :color="isDarkMode ? '#d7c89b' : '#9A8C67'" class="empty-icon"></uni-icons>
+			<text class="empty-title">{{ pageError.title }}</text>
+			<text class="empty-subtitle">{{ pageError.description }}</text>
+			<button class="start-button" @click="handlePageErrorAction">
+				<text>{{ pageError.actionText }}</text>
+			</button>
+		</view>
+
+			<template v-else>
+				<view v-if="refreshError" class="refresh-error-banner">
+					<text>{{ refreshError.description }}</text>
+					<text class="refresh-error-action" @tap="retryLeaderboard">重试</text>
+				</view>
+				<scroll-view class="game-type-tabs" scroll-x :show-scrollbar="false" enable-flex>
+					<view
+						v-for="item in gameTypeTabs"
+						:key="item.value"
+					class="game-type-tab"
+					:class="{ active: currentGameType === item.value }"
+					@tap="handleGameTypeChange(item.value)"
+				>
+						<text>{{ item.label }}</text>
+					</view>
+				</scroll-view>
+
+			<!-- 空数据状态 -->
+			<view class="empty-state" v-if="isEmpty">
+			    <uni-icons type="medal" size="128" :color="isDarkMode ? '#9F926E' : '#9A8C67'" class="empty-icon"></uni-icons>
+			    <text class="empty-title">暂无排行数据</text>
+			    <text class="empty-subtitle">快去对战提升排名吧！</text>
+			    <button class="start-button" @click="handleStartMatch">
+			        <text>发起PK</text>
+			    </button>
+			</view>
+
+			<scroll-view
+				class="ranking-scroll"
+				scroll-y
+				v-else
+				:refresher-enabled="true"
+				:refresher-triggered="isRefreshing"
+				@refresherrefresh="onRefresh"
+				@scrolltolower="onLoadMore"
+			>
+
+				<!-- 领奖台区域 -->
+				<view class="podium-section">
+				<!-- 领奖台背景 -->
+				<view class="podium-base">
+					<view class="podium-block second">
+						<text class="podium-rank-name" v-if="podiumSlots[0].user">{{ podiumSlots[0].user.rank_name }}</text>
+						<text class="podium-winrate" v-if="podiumSlots[0].user">胜率 {{ podiumSlots[0].user.win_rate }}%</text>
+					</view>
+					<view class="podium-block first">
+						<text class="podium-rank-name" v-if="podiumSlots[1].user">{{ podiumSlots[1].user.rank_name }}</text>
+						<text class="podium-winrate" v-if="podiumSlots[1].user">胜率 {{ podiumSlots[1].user.win_rate }}%</text>
+					</view>
+					<view class="podium-block third">
+						<text class="podium-rank-name" v-if="podiumSlots[2].user">{{ podiumSlots[2].user.rank_name }}</text>
+						<text class="podium-winrate" v-if="podiumSlots[2].user">胜率 {{ podiumSlots[2].user.win_rate }}%</text>
+					</view>
+				</view>
+				
+				<!-- 前三名用户 -->
+				<view class="podium-users">
+					<!-- 第二名 -->
+					<view class="podium-user second" :class="{ 'is-empty': !podiumSlots[0].user }" @click="podiumSlots[0].user && handleUserClick(podiumSlots[0].user)">
+						<template v-if="podiumSlots[0].user">
+							<view class="avatar-wrapper">
+								<view class="avatar">
+									<memberAvatar :avatar="podiumSlots[0].user.avatar" :user-id="podiumSlots[0].user.user_id" :vip-level="podiumSlots[0].user.vip_level" :rank-level="podiumSlots[0].user.rank_level" :size="160" fit-frame ring-color="#9A8C67" badge-corner />
+								</view>
+								<view class="rank-badge silver">2</view>
+							</view>
+							<text class="nickname">{{ podiumSlots[0].user.nickname || '球手' }}</text>
+							<text class="score">{{ podiumSlots[0].user.rank_score }}分</text>
+						</template>
+					</view>
+					
+					<!-- 第一名 -->
+					<view class="podium-user first" :class="{ 'is-empty': !podiumSlots[1].user }" @click="podiumSlots[1].user && handleUserClick(podiumSlots[1].user)">
+						<template v-if="podiumSlots[1].user">
+							<view class="crown-icon">
+								<uni-icons type="medal-filled" size="48" color="#fbbf24"></uni-icons>
+							</view>
+							<view class="avatar-wrapper">
+								<view class="avatar">
+									<memberAvatar :avatar="podiumSlots[1].user.avatar" :user-id="podiumSlots[1].user.user_id" :vip-level="podiumSlots[1].user.vip_level" :rank-level="podiumSlots[1].user.rank_level" :size="224" fit-frame ring-color="#fbbf24" badge-corner />
+								</view>
+								<view class="rank-badge gold">1</view>
+							</view>
+							<text class="nickname">{{ podiumSlots[1].user.nickname || '球手' }}</text>
+							<text class="score">{{ podiumSlots[1].user.rank_score }}分</text>
+						</template>
+					</view>
+					
+					<!-- 第三名 -->
+					<view class="podium-user third" :class="{ 'is-empty': !podiumSlots[2].user }" @click="podiumSlots[2].user && handleUserClick(podiumSlots[2].user)">
+						<template v-if="podiumSlots[2].user">
+							<view class="avatar-wrapper">
+								<view class="avatar">
+									<memberAvatar :avatar="podiumSlots[2].user.avatar" :user-id="podiumSlots[2].user.user_id" :vip-level="podiumSlots[2].user.vip_level" :rank-level="podiumSlots[2].user.rank_level" :size="160" fit-frame ring-color="#a16207" badge-corner />
+								</view>
+								<view class="rank-badge bronze">3</view>
+							</view>
+							<text class="nickname">{{ podiumSlots[2].user.nickname || '球手' }}</text>
+							<text class="score">{{ podiumSlots[2].user.rank_score }}分</text>
+						</template>
+					</view>
+				</view>
+		</view>
+
+			<!-- 排行榜列表 -->
+			<view class="ranking-list">
+				<view 
+					class="ranking-item" 
+					v-for="item in rankList" 
+					:key="item.user_id"
+					@click="handleUserClick(item)"
+				>
+					<text class="item-rank">{{ item.rank }}</text>
+					<view class="item-info">
+						<memberAvatar class="item-avatar" :avatar="item.avatar" :user-id="item.user_id" :vip-level="item.vip_level" :rank-level="item.rank_level" :size="96" reserve-frame />
+						<view class="item-details">
+							<text class="item-nickname">{{ item.nickname || '球手' }}</text>
+							<text class="item-rank-name">{{ item.rank_name }} | {{ item.rank_score }}分</text>
+						</view>
+					</view>
+					<text class="item-winrate">胜率: {{ item.win_rate }}%</text>
+				</view>
+				</view>
+			</scroll-view>
+	</template>
+
+			<!-- 我的排名卡片（固定在底部） -->
+			<view class="my-ranking-card" v-if="myRanking">
+				<text class="my-rank">{{ myRanking.rank > 0 ? myRanking.rank : '-' }}</text>
+				<view class="my-info">
+					<memberAvatar :avatar="myRanking.avatar" :user-id="myRanking.user_id" :vip-level="myRanking.vip_level" :rank-level="myRanking.rank_level" :size="80" reserve-frame />
+					<view class="my-details">
+						<text class="my-label">{{ myRanking.rank > 0 ? '我的排名' : '暂未上榜' }}</text>
+						<text class="my-rank-name">{{ myRanking.rank > 0 ? myRanking.rank_name : '完成首场该模式对局后入榜' }}</text>
+					</view>
+				</view>
+				<text class="my-score">{{ myRanking.rank > 0 ? `${myRanking.rank_score}分` : '未记录榜单分数' }}</text>
+			</view>
+	</view>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue'
+import { onLoad, onShow } from '@dcloudio/uni-app'
+import { useUserStore } from '@/store/user.js'
+import { usePublicReadStore } from '@/store/publicRead.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+import memberAvatar from '@/components/memberAvatar.vue'
+import { GAME_TYPE_TABS } from '@/utils/game-types.js'
+import { buildLeaderboardPodiumSlots } from '@/utils/ranking-podium.js'
+import { startQuickScan } from '@/utils/quick-scan-entry.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
+
+const { isDarkMode } = usePageTheme()
+
+// ========== 响应式数据 ==========
+const userStore = useUserStore()
+const publicReadStore = usePublicReadStore()
+const leaderboardState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: []
+}))
+const isEmpty = computed(() => leaderboardState.value.status === ASYNC_PAGE_STATUS.EMPTY)
+const isLoading = computed(() => leaderboardState.value.status === ASYNC_PAGE_STATUS.LOADING)
+const isRefreshing = computed(() => (
+	leaderboardState.value.status === ASYNC_PAGE_STATUS.REFRESHING && !isLoadingMore.value
+))
+const pageError = computed(() => {
+	if (leaderboardState.value.status !== ASYNC_PAGE_STATUS.ERROR) return null
+	return resolveAsyncPageErrorFeedback(leaderboardState.value.error, { resource: '排行榜' })
+})
+const refreshError = computed(() => (
+	leaderboardState.value.refreshError
+		? resolveAsyncPageErrorFeedback(leaderboardState.value.refreshError, { resource: '排行榜' })
+		: null
+))
+const isLoadingMore = ref(false)
+const hasMore = ref(true)
+
+const topThree = ref([])
+const myRanking = ref(null)
+const rankList = ref([])
+const currentPage = ref(1)
+const pageSize = 20
+const total = ref(0)
+const currentGameType = ref(3)
+const gameTypeTabs = GAME_TYPE_TABS
+const podiumSlots = computed(() => buildLeaderboardPodiumSlots(topThree.value))
+
+onLoad((options) => {
+	const gameType = Number(options?.game_type || 0)
+	if (gameType > 0) {
+		currentGameType.value = gameType
+	}
+})
+
+// ========== 生命周期 ==========
+onShow(() => {
+	fetchLeaderboard()
+})
+
+// ========== 方法 ==========
+
+/**
+ * 获取排行榜数据
+ */
+const fetchLeaderboard = async (isRefresh = false, isLoadMore = false) => {
+	if ((isLoading.value && !isRefresh) || isLoadingMore.value || (isLoadMore && !hasMore.value)) return
+	const previousPage = currentPage.value
+	const previousHasMore = hasMore.value
+	const currentGeneration = userStore.authGeneration
+	const nextState = beginAsyncPageLoad(leaderboardState.value, {
+		authGeneration: currentGeneration,
+		emptyData: []
+	})
+	const request = getAsyncPageRequest(nextState)
+	const identityChanged = leaderboardState.value.authGeneration !== currentGeneration
+	if (identityChanged) {
+		topThree.value = []
+		myRanking.value = null
+		rankList.value = []
+		total.value = 0
+		hasMore.value = true
+	}
+	leaderboardState.value = nextState
+	
+	if (isRefresh) {
+		currentPage.value = 1
+		hasMore.value = true
+	} else if (isLoadMore) {
+		isLoadingMore.value = true
+		currentPage.value++
+	}
+	
+	try {
+		const res = await publicReadStore.loadLeaderboard({
+			game_type: currentGameType.value,
+			page: currentPage.value,
+			page_size: pageSize
+		}, {
+			force: isRefresh,
+			identity: {
+				userId: userStore.userId,
+				authGeneration: userStore.authGeneration
+			}
+		})
+		
+		if (!res?.success) {
+			throw createRequestError({
+				message: res?.message || '获取排行榜失败',
+				category: 'business'
+			})
+		}
+		if (leaderboardState.value.authGeneration !== request.authGeneration || leaderboardState.value.requestId !== request.requestId) return
+
+		// 前三名只在第一页或刷新时更新
+		if (currentPage.value === 1 || isRefresh) {
+			topThree.value = res.top_three || []
+			myRanking.value = res.my_ranking
+		}
+
+		total.value = res.total || 0
+
+		const list = res.list || []
+		if (isRefresh || currentPage.value === 1) {
+			rankList.value = list
+		} else if (isLoadMore) {
+			rankList.value = [...rankList.value, ...list]
+		} else {
+			rankList.value = list
+		}
+
+		// 判断是否还有更多
+		hasMore.value = (topThree.value.length + rankList.value.length) < total.value
+		leaderboardState.value = resolveAsyncPageLoad(leaderboardState.value, request, {
+			data: [...topThree.value, ...rankList.value]
+		})
+	} catch (error) {
+		const nextErrorState = rejectAsyncPageLoad(leaderboardState.value, request, error)
+		if (nextErrorState !== leaderboardState.value && isLoadMore) {
+			currentPage.value = previousPage
+			hasMore.value = previousHasMore
+		}
+		leaderboardState.value = nextErrorState
+	} finally {
+		isLoadingMore.value = false
+	}
+}
+
+const retryLeaderboard = () => fetchLeaderboard(true, false)
+
+const handlePageErrorAction = () => {
+	if (leaderboardState.value.error?.category === 'permission' || leaderboardState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryLeaderboard()
+}
+
+/**
+ * 下拉刷新
+ */
+const onRefresh = () => {
+	fetchLeaderboard(true, false)
+}
+
+/**
+ * 上拉加载更多
+ */
+const onLoadMore = () => {
+	fetchLeaderboard(false, true)
+}
+
+const handleGameTypeChange = (gameType) => {
+	if (currentGameType.value === gameType) return
+	currentGameType.value = gameType
+	currentPage.value = 1
+	hasMore.value = true
+	fetchLeaderboard(true, false)
+}
+
+/**
+ * 点击用户查看详情
+ */
+const handleUserClick = (user) => {
+	uni.showToast({
+		title: '对方隐藏战绩，无法查看',
+		icon: 'none',
+		duration: 2000
+	})
+}
+
+/**
+ * 发起PK：走统一扫码流程，先扫对手二维码，再在确认页选球种和对局类型
+ */
+const handleStartMatch = () => {
+	startQuickScan()
+}
+</script>
+
+<style lang="scss" scoped>
+@import './index.scss';
+</style>

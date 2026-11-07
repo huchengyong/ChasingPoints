@@ -3,13 +3,19 @@ package auth
 import (
 	"context"
 	"fmt"
+	"strings"
+	"sync"
 
 	"chasing_points/internal/model"
+	oauthverify "chasing_points/internal/pkg/oauth"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
 	"github.com/zeromicro/go-zero/core/logx"
+	"gorm.io/gorm"
 )
+
+var oauthIdentityCreateMu sync.Mutex
 
 type LoginByOauthLogic struct {
 	logx.Logger
@@ -22,17 +28,42 @@ func NewLoginByOauthLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Logi
 	return &LoginByOauthLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
 func (l *LoginByOauthLogic) LoginByOauth(req *types.LoginByOauthReq) (resp *types.LoginByOauthResp, err error) {
-	if req == nil || req.Provider == wechatMiniProvider {
+	if req == nil {
 		return &types.LoginByOauthResp{Success: false}, nil
+	}
+	requestedProvider := strings.ToLower(strings.TrimSpace(req.Provider))
+	if requestedProvider == "" || requestedProvider == wechatMiniProvider {
+		return &types.LoginByOauthResp{Success: false}, nil
+	}
+	if l.svcCtx.OAuthVerifier == nil {
+		return &types.LoginByOauthResp{Success: false}, fmt.Errorf("OAuth验证服务未配置")
+	}
+
+	identity, err := l.svcCtx.OAuthVerifier.Verify(l.ctx, oauthverify.VerifyRequest{
+		Provider:       requestedProvider,
+		Credential:     req.Credential,
+		CredentialType: req.CredentialType,
+		Platform:       req.Platform,
+	})
+	if err != nil {
+		category := oauthverify.CategoryOf(err)
+		l.Logger.Errorf("OAuth服务端验证失败: provider=%s category=%s err=%v", requestedProvider, category, err)
+		if category == oauthverify.ErrorUnsupportedProvider {
+			return &types.LoginByOauthResp{Success: false}, fmt.Errorf("不支持的登录方式")
+		}
+		return &types.LoginByOauthResp{Success: false}, err
+	}
+	if identity == nil || identity.Provider == "" || identity.Subject == "" || identity.Provider == wechatMiniProvider {
+		return &types.LoginByOauthResp{Success: false}, fmt.Errorf("第三方身份验证响应无效")
 	}
 
 	// 查找OAuth关联
-	oauth, err := l.svcCtx.OauthModel.FindByProviderAndOpenId(req.Provider, req.OpenId)
+	oauth, err := l.svcCtx.OauthModel.FindByProviderAndOpenId(identity.Provider, identity.Subject)
 	if err != nil {
 		l.Logger.Errorf("查找OAuth关联失败: %v", err)
 		return &types.LoginByOauthResp{Success: false}, err
@@ -53,45 +84,75 @@ func (l *LoginByOauthLogic) LoginByOauth(req *types.LoginByOauthReq) (resp *type
 			return &types.LoginByOauthResp{Success: false}, fmt.Errorf("用户数据异常")
 		}
 
-		// 检查是否绑定手机
-		if user.Phone == nil || *user.Phone == "" {
-			needBindPhone = true
-		}
 	} else {
-		// 没有OAuth关联，创建新用户
-		nickname := req.NickName
+		nickname := strings.TrimSpace(req.NickName)
 		if nickname == "" {
-			nickname = "华为用户"
+			nickname = randomDefaultNickname()
 		}
+		avatar := strings.TrimSpace(req.AvatarUrl)
+		oauthIdentityCreateMu.Lock()
+		err = func() error {
+			defer oauthIdentityCreateMu.Unlock()
+			return l.svcCtx.UserModel.Transaction(func(tx *gorm.DB) error {
+				existingOauth, err := l.svcCtx.OauthModel.FindByProviderAndOpenIdWithTx(tx, identity.Provider, identity.Subject)
+				if err != nil {
+					return err
+				}
+				if existingOauth != nil {
+					oauth = existingOauth
+					return nil
+				}
 
-		user = &model.User{
-			Nickname:        nickname,
-			Avatar:          req.AvatarUrl,
-			Status:          1,
-			MemberExpiresAt: resolveWelcomeMemberExpiresAt(l.svcCtx),
-		}
-		if err := l.svcCtx.UserModel.Create(user); err != nil {
-			l.Logger.Errorf("创建用户失败: %v", err)
-			return &types.LoginByOauthResp{Success: false}, err
-		}
+				user = &model.User{
+					Nickname:        nickname,
+					Avatar:          avatar,
+					Status:          1,
+					MemberExpiresAt: resolveWelcomeMemberExpiresAt(l.svcCtx),
+				}
+				if err := l.svcCtx.UserModel.CreateWithTx(tx, user); err != nil {
+					return err
+				}
 
-		// 创建OAuth关联
-		var unionId *string
-		if req.UnionId != "" {
-			unionId = &req.UnionId
+				var unionId *string
+				if identity.UnionID != "" {
+					unionIDValue := identity.UnionID
+					unionId = &unionIDValue
+				}
+				return l.svcCtx.OauthModel.CreateWithTx(tx, &model.UserOauth{
+					UserId:   user.Id,
+					Provider: identity.Provider,
+					OpenId:   identity.Subject,
+					UnionId:  unionId,
+				})
+			})
+		}()
+		if err != nil {
+			oauth, findErr := l.svcCtx.OauthModel.FindByProviderAndOpenId(identity.Provider, identity.Subject)
+			if findErr != nil || oauth == nil {
+				l.Logger.Errorf("创建OAuth用户关联失败: provider=%s err=%v", identity.Provider, err)
+				return &types.LoginByOauthResp{Success: false}, err
+			}
 		}
-		oauthRecord := &model.UserOauth{
-			UserId:   user.Id,
-			Provider: req.Provider,
-			OpenId:   req.OpenId,
-			UnionId:  unionId,
+		if oauth != nil {
+			user, err = l.svcCtx.UserModel.FindById(oauth.UserId)
+			if err != nil {
+				l.Logger.Errorf("查找并发创建OAuth用户失败: %v", err)
+				return &types.LoginByOauthResp{Success: false}, err
+			}
 		}
-		if err := l.svcCtx.OauthModel.Create(oauthRecord); err != nil {
-			l.Logger.Errorf("创建OAuth关联失败: %v", err)
-			return &types.LoginByOauthResp{Success: false}, err
-		}
-
+	}
+	if user == nil {
+		return &types.LoginByOauthResp{Success: false}, fmt.Errorf("用户数据异常")
+	}
+	if user.Phone == nil || *user.Phone == "" {
 		needBindPhone = true
+	}
+	if user.Status != 1 {
+		return &types.LoginByOauthResp{Success: false}, fmt.Errorf("%s", loginUnavailableMessage)
+	}
+	if err := ensureUserRankingProfiles(l.svcCtx, user.Id); err != nil {
+		l.Logger.Errorf("初始化用户段位失败: %v", err)
+		return &types.LoginByOauthResp{Success: false}, err
 	}
 
 	tokenPair, err := issueAuthTokenPair(user.Id, l.svcCtx)

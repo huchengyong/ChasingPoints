@@ -2,7 +2,6 @@ package match
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"chasing_points/internal/svc"
@@ -11,6 +10,9 @@ import (
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
+
+// 匹配码统一用普通链接二维码，微信、端内扫码和系统相机都能识别。
+const matchInviteEntryLinkPrefix = "https://www.zhuifen.cn/go/?j="
 
 type GetMatchQRCodeLogic struct {
 	logx.Logger
@@ -23,16 +25,8 @@ func NewGetMatchQRCodeLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Ge
 	return &GetMatchQRCodeLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
-}
-
-// QRCodeData 二维码数据结构
-type QRCodeData struct {
-	UserId   int64  `json:"user_id"`
-	Nickname string `json:"nickname"`
-	Avatar   string `json:"avatar"`
-	Ts       int64  `json:"ts"` // 时间戳，用于标识二维码有效期
 }
 
 func (l *GetMatchQRCodeLogic) GetMatchQRCode() (resp *types.GetMatchQRCodeResp, err error) {
@@ -50,25 +44,34 @@ func (l *GetMatchQRCodeLogic) GetMatchQRCode() (resp *types.GetMatchQRCodeResp, 
 		return &types.GetMatchQRCodeResp{Success: false}, nil
 	}
 
-	// 构建二维码数据
-	qrData := QRCodeData{
-		UserId:   user.Id,
-		Nickname: user.Nickname,
-		Avatar:   user.Avatar,
-		Ts:       time.Now().Unix(),
+	if user.Status != 1 {
+		return &types.GetMatchQRCodeResp{Success: false}, nil
+	}
+	signer, err := newMatchInviteSigner(l.svcCtx)
+	if err != nil {
+		l.Logger.Errorf("初始化匹配邀请签名器失败: %v", err)
+		return &types.GetMatchQRCodeResp{Success: false}, nil
+	}
+	inviteToken, claims, err := signer.Issue(user.Id)
+	if err != nil {
+		l.Logger.Errorf("签发匹配邀请失败: userId=%d err=%v", userId, err)
+		return &types.GetMatchQRCodeResp{Success: false}, nil
 	}
 
-	// 序列化为JSON
-	jsonData, err := json.Marshal(qrData)
+	// 短码有效期跟随 token，写入失败时不返回无法兑换的码。
+	ttl := time.Duration(claims.ExpiresAt-claims.IssuedAt) * time.Second
+	code, err := l.svcCtx.MatchInviteCodeStore.Save(l.ctx, inviteToken, ttl)
 	if err != nil {
-		l.Logger.Errorf("序列化二维码数据失败: %v", err)
+		l.Logger.Errorf("写入匹配邀请短码失败: userId=%d err=%v", userId, err)
 		return &types.GetMatchQRCodeResp{Success: false}, nil
 	}
 
 	l.Logger.Infof("用户 %d 获取匹配二维码", userId)
 
 	return &types.GetMatchQRCodeResp{
-		Success:    true,
-		QrcodeData: string(jsonData),
+		Success:          true,
+		QrcodeData:       matchInviteEntryLinkPrefix + code,
+		InviteToken:      inviteToken,
+		ExpiresInSeconds: claims.ExpiresAt - claims.IssuedAt,
 	}, nil
 }

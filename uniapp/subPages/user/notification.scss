@@ -1,0 +1,198 @@
+/* 通知管理页面样式 */
+
+// 主色调
+$primary-color: #E0AE12;
+
+// 浅色模式变量
+$bg-light: #F7F4EC;
+$card-bg-light: #ffffff;
+$text-primary-light: #231C0B;
+$text-secondary-light: #6E6242;
+$border-color-light: #E9E2CF;
+
+// 深色模式变量
+$bg-dark: #141109;
+$card-bg-dark: #1E180D;
+$text-primary-dark: #FFF7E1;
+$text-secondary-dark: #9F926E;
+$border-color-dark: #3A2E16;
+
+// 页面容器
+.notification-container {
+  min-height: 100vh;
+  background-color: $bg-light;
+  transition: background-color 0.3s ease;
+  padding: 32rpx;
+}
+
+.loading-state,
+.error-state {
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+  text-align: center;
+}
+
+.loading-state text,
+.error-text {
+  font-size: 26rpx;
+  line-height: 1.7;
+  color: $text-secondary-light;
+}
+
+.error-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: $text-primary-light;
+}
+
+.retry-btn {
+  min-width: 200rpx;
+  height: 76rpx;
+  line-height: 76rpx;
+  margin: 16rpx 0 0;
+  padding: 0 32rpx;
+  border-radius: 38rpx;
+  background: $primary-color;
+  color: #ffffff;
+  font-size: 28rpx;
+  font-weight: 600;
+
+  &::after {
+    display: none;
+  }
+}
+
+.refresh-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-bottom: 20rpx;
+  padding: 18rpx 22rpx;
+  border-radius: 14rpx;
+  background: rgba(224, 174, 18, 0.12);
+  color: #8a5b00;
+  font-size: 24rpx;
+}
+
+.refresh-error-action {
+  flex-shrink: 0;
+  color: #a86f00;
+  font-weight: 600;
+}
+
+// 设置列表
+.settings-list {
+  background-color: $card-bg-light;
+  border-radius: 24rpx;
+  overflow: hidden;
+  transition: background-color 0.3s ease;
+}
+
+// 设置项
+.settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx 24rpx;
+  border-bottom: 1rpx solid $border-color-light;
+  transition: border-color 0.3s ease;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  .item-left {
+    display: flex;
+    align-items: center;
+    gap: 24rpx;
+
+    .icon-wrapper {
+      width: 72rpx;
+      height: 72rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 16rpx;
+      transition: background-color 0.3s ease;
+
+      &.green {
+        background-color: rgba(224, 174, 18, 0.12);
+      }
+
+      &.blue {
+        background-color: rgba(59, 130, 246, 0.1);
+      }
+
+      &.purple {
+        background-color: rgba(99, 102, 241, 0.1);
+      }
+    }
+
+    .item-text {
+      font-size: 32rpx;
+      color: $text-primary-light;
+      transition: color 0.3s ease;
+    }
+  }
+}
+
+// 说明文字
+.description-text {
+  margin-top: 32rpx;
+  padding: 0 16rpx;
+  font-size: 24rpx;
+  color: $text-secondary-light;
+  line-height: 1.5;
+  transition: color 0.3s ease;
+}
+
+// 深色模式适配
+.dark-mode {
+  background-color: $bg-dark;
+
+  .settings-list {
+    background-color: $card-bg-dark;
+  }
+
+  .settings-item {
+    border-bottom-color: $border-color-dark;
+
+    .item-left {
+      .icon-wrapper {
+        &.green {
+          background-color: rgba(224, 174, 18, 0.18);
+        }
+
+        &.blue {
+          background-color: rgba(59, 130, 246, 0.2);
+        }
+
+        &.purple {
+          background-color: rgba(99, 102, 241, 0.2);
+        }
+      }
+
+      .item-text {
+        color: $text-primary-dark;
+      }
+    }
+  }
+
+  .description-text {
+    color: $text-secondary-dark;
+  }
+
+  .loading-state text,
+  .error-text {
+    color: $text-secondary-dark;
+  }
+
+  .error-title {
+    color: $text-primary-dark;
+  }
+}

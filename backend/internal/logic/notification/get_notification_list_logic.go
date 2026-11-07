@@ -21,7 +21,7 @@ func NewGetNotificationListLogic(ctx context.Context, svcCtx *svc.ServiceContext
 	return &GetNotificationListLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -32,7 +32,13 @@ func (l *GetNotificationListLogic) GetNotificationList(req *types.GetNotificatio
 		return &types.GetNotificationListResp{Success: false}, nil
 	}
 
-	list, total, err := l.svcCtx.NotificationModel.FindByUserId(userIdInt, req.Page, req.PageSize, req.Type)
+	if l.svcCtx == nil || l.svcCtx.NotificationModel == nil {
+		return &types.GetNotificationListResp{Success: false}, nil
+	}
+	if req == nil {
+		req = &types.GetNotificationListReq{}
+	}
+	list, total, unreadCount, err := l.svcCtx.NotificationModel.FindPageWithUnreadCount(userIdInt, req.Page, req.PageSize, req.Type)
 	if err != nil {
 		l.Logger.Errorf("查询通知列表失败: %v", err)
 		return &types.GetNotificationListResp{Success: false}, nil
@@ -57,8 +63,9 @@ func (l *GetNotificationListLogic) GetNotificationList(req *types.GetNotificatio
 	}
 
 	return &types.GetNotificationListResp{
-		Success: true,
-		Total:   total,
-		List:    items,
+		Success:     true,
+		Total:       total,
+		UnreadCount: int(unreadCount),
+		List:        items,
 	}, nil
 }

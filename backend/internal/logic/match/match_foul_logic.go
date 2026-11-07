@@ -24,7 +24,7 @@ func NewMatchFoulLogic(ctx context.Context, svcCtx *svc.ServiceContext) *MatchFo
 	return &MatchFoulLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -52,7 +52,8 @@ func (l *MatchFoulLogic) MatchFoul(req *types.MatchFoulReq) (resp *types.MatchSc
 		l.Logger.Errorf("对局状态不是进行中: matchId=%d, status=%d", match.Id, match.Status)
 		return &types.MatchScoreResp{Success: false}, nil
 	}
-	if _, authorityErr := validateMatchWriteAuthority(match, userId); authorityErr != nil {
+	capabilities, authorityErr := validateMatchWriteAuthority(match, userId)
+	if authorityErr != nil {
 		if authorityErr == errMatchViewerNotParticipant {
 			l.Logger.Errorf("用户不是对局参与者: matchUserId=%d, matchOpponentId=%v, refereeUserId=%v, currentUserId=%d",
 				match.UserId, match.OpponentId, match.RefereeUserId, userId)
@@ -82,6 +83,41 @@ func (l *MatchFoulLogic) MatchFoul(req *types.MatchFoulReq) (resp *types.MatchSc
 			OpponentScore:                 scoreView.OpponentScore,
 		}, nil
 	}
+	if req.Actor != 1 && req.Actor != 2 {
+		return &types.MatchScoreResp{Success: false, Accepted: false, Message: "参与方只能是选手1或选手2"}, nil
+	}
+	if isSnookerV2Match(match) {
+		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
+		if stateErr != nil {
+			return &types.MatchScoreResp{Success: false, Accepted: false, Message: "加载对局快照失败"}, nil
+		}
+		return &types.MatchScoreResp{
+			Success:        false,
+			Accepted:       false,
+			Message:        "版本2斯诺克请使用击球结果接口",
+			ServerRevision: view.Snapshot.ServerRevision,
+			Snapshot:       view.Snapshot,
+		}, nil
+	}
+	if isPoolRoundMatch(match) {
+		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
+		if stateErr != nil {
+			return &types.MatchScoreResp{Success: false, Accepted: false, Message: "加载对局快照失败"}, nil
+		}
+		scoreView := buildMatchWriteScoreView(userId, match)
+		return &types.MatchScoreResp{
+			Success:                   false,
+			Accepted:                  false,
+			Message:                   errPoolRoundScoreUnsupported.Error(),
+			ServerRevision:            view.Snapshot.ServerRevision,
+			Snapshot:                  view.Snapshot,
+			CurrentFrameStarted:       match.CurrentFrameStarted,
+			CurrentFrameMyScore:       scoreView.CurrentFrameMyScore,
+			CurrentFrameOpponentScore: scoreView.CurrentFrameOpponentScore,
+			MyScore:                   scoreView.MyScore,
+			OpponentScore:             scoreView.OpponentScore,
+		}, nil
+	}
 	if req.ClientActionId == "" {
 		return &types.MatchScoreResp{
 			Success:  false,
@@ -94,7 +130,7 @@ func (l *MatchFoulLogic) MatchFoul(req *types.MatchFoulReq) (resp *types.MatchSc
 		l.Logger.Errorf("查询幂等操作失败: matchId=%d, clientActionId=%s, err=%v", match.Id, req.ClientActionId, err)
 		return &types.MatchScoreResp{Success: false, Accepted: false}, nil
 	}
-	if existingAction != nil {
+	if isMatchActionReplay(existingAction, "foul", req.Actor, req.BaseRevision) {
 		view, stateErr := loadMatchWriteState(l.svcCtx, userId, match)
 		if stateErr != nil {
 			l.Logger.Errorf("加载重放快照失败: matchId=%d, clientActionId=%s, err=%v", match.Id, req.ClientActionId, stateErr)
@@ -119,7 +155,7 @@ func (l *MatchFoulLogic) MatchFoul(req *types.MatchFoulReq) (resp *types.MatchSc
 			OpponentScore:                 scoreView.OpponentScore,
 		}, nil
 	}
-	if err := validateMatchActionMeta(matchActionMeta{
+	if err := validateNewMatchAction(existingAction, matchActionMeta{
 		ClientActionID: req.ClientActionId,
 		BaseRevision:   req.BaseRevision,
 	}, match.SyncRevision); err != nil {
@@ -150,10 +186,24 @@ func (l *MatchFoulLogic) MatchFoul(req *types.MatchFoulReq) (resp *types.MatchSc
 	}
 
 	score := req.Score
-	if score <= 0 {
+	if match.GameType == 1 {
+		if score < 4 || score > 7 {
+			return &types.MatchScoreResp{Success: false, Accepted: false, Message: "斯诺克犯规罚分必须为4至7分"}, nil
+		}
+	} else if isNineBallMatch(match) {
+		nineBallScore, ruleErr := resolveNineBallFoulScore(capabilities.ViewerRole, req.Actor, score)
+		if ruleErr != nil {
+			return &types.MatchScoreResp{Success: false, Accepted: false, Message: ruleErr.Error()}, nil
+		}
+		score = nineBallScore
+	} else if score <= 0 {
 		score = 1
 	}
-	roundCount, _ := l.svcCtx.MatchModel.GetRoundCount(match.Id)
+	roundCount, err := l.svcCtx.MatchModel.GetRoundCount(match.Id)
+	if err != nil {
+		l.Logger.Errorf("查询局数失败: matchId=%d, err=%v", match.Id, err)
+		return &types.MatchScoreResp{Success: false, Accepted: false}, nil
+	}
 	currentRound := int(roundCount) + 1
 
 	if match.GameType == 1 && !match.CurrentFrameStarted {
@@ -201,7 +251,7 @@ func (l *MatchFoulLogic) MatchFoul(req *types.MatchFoulReq) (resp *types.MatchSc
 				return &types.MatchScoreResp{Success: false, Accepted: false}, nil
 			}
 			scoreView := buildMatchWriteScoreView(userId, replayState.Match)
-			if replayState.ExistingAction != nil {
+			if isMatchActionReplay(replayState.ExistingAction, "foul", req.Actor, req.BaseRevision) {
 				return &types.MatchScoreResp{
 					Accepted:                      true,
 					Success:                       true,
@@ -286,6 +336,9 @@ func (l *MatchFoulLogic) MatchFoul(req *types.MatchFoulReq) (resp *types.MatchSc
 				SnookerClearedColors:          snookerState.ClearedColors,
 				SnookerExpectedClearanceScore: snookerState.ExpectedClearanceScore,
 				SnookerClearanceCompleted:     snookerState.ClearanceCompleted,
+				MatchFormat:                   view.Snapshot.MatchFormat,
+				TargetWins:                    view.Snapshot.TargetWins,
+				CanChangeMatchFormat:          view.Snapshot.CanChangeMatchFormat,
 				Status:                        match.Status,
 			},
 		})

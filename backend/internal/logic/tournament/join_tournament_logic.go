@@ -26,7 +26,7 @@ func NewJoinTournamentLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Jo
 	return &JoinTournamentLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

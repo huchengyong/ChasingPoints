@@ -198,3 +198,32 @@ func TestGetFavoriteVenueRewardStatusKeepsVenueRewardAvailableForOlderUsers(t *t
 		t.Fatalf("expected not_started status, got %#v", resp)
 	}
 }
+
+func TestGetFavoriteVenueRewardStatusDisablesRewardAfterActivityEnds(t *testing.T) {
+	svcCtx := newFavoriteVenueRewardUserTestSvc(t)
+	endedAt := time.Now().Add(-time.Hour)
+	if err := svcCtx.FavoriteVenueRewardConfigModel.Upsert(&model.FavoriteVenueRewardConfig{
+		ActivityKey:       model.FavoriteVenueRewardActivityKey,
+		Enabled:           true,
+		PopupEnabled:      true,
+		RewardDays:        30,
+		NewUserWindowDays: 7,
+		EndAt:             &endedAt,
+	}); err != nil {
+		t.Fatalf("seed reward config: %v", err)
+	}
+	seedRewardUser(t, svcCtx, &model.User{
+		Id:        106,
+		Nickname:  "活动已结束用户",
+		CreatedAt: time.Now().Add(-2 * 24 * time.Hour),
+	})
+
+	logic := NewGetFavoriteVenueRewardStatusLogic(userRewardCtx(106), svcCtx)
+	resp, err := logic.GetFavoriteVenueRewardStatus()
+	if err != nil {
+		t.Fatalf("get reward status: %v", err)
+	}
+	if !resp.Success || resp.Enabled {
+		t.Fatalf("expected reward disabled after activity end, got %#v", resp)
+	}
+}

@@ -5,35 +5,46 @@ import (
 	"net/http"
 	"time"
 
+	"chasing_points/internal/pkg/wsticket"
 	"chasing_points/internal/svc"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
 // UserWSHandler 用户级WebSocket处理器
-// 连接地址: ws://host:port/api/user/ws?token=xxx
+// 连接地址: ws://host:port/api/user/ws?ticket=xxx
 // 用于接收匹配通知等用户级别的消息
 func UserWSHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// 获取token
-		token := r.URL.Query().Get("token")
-
-		if token == "" {
-			http.Error(w, "missing token", http.StatusBadRequest)
+		if rejectWebSocketQueryToken(w, r) {
 			return
 		}
 
-		// 验证token
-		userId, err := parseUserToken(token, svcCtx.Config.Auth.AccessSecret)
+		ticket := r.URL.Query().Get("ticket")
+		if ticket == "" {
+			http.Error(w, "missing ticket", http.StatusBadRequest)
+			return
+		}
+
+		claims, err := consumeWebSocketTicket(r.Context(), svcCtx, ticket, wsticket.ScopeUser)
 		if err != nil {
-			logx.Errorf("WebSocket token验证失败: %v", err)
-			http.Error(w, "invalid token", http.StatusUnauthorized)
+			writeWebSocketTicketError(w, err)
+			return
+		}
+		userId := claims.UserID
+		active, err := isActiveWebSocketUser(svcCtx, userId)
+		if err != nil {
+			logx.Errorf("用户WebSocket状态校验失败: userId=%d err=%v", userId, err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		if !active {
+			http.Error(w, "invalid user session", http.StatusUnauthorized)
 			return
 		}
 
 		// 升级为WebSocket连接
-		conn, err := upgrader.Upgrade(w, r, nil)
+		conn, err := newWebSocketUpgrader(svcCtx.Config).Upgrade(w, r, nil)
 		if err != nil {
 			logx.Errorf("WebSocket升级失败: %v", err)
 			return
@@ -57,24 +68,6 @@ func UserWSHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 
 		logx.Infof("用户WebSocket连接建立: UserId=%d", userId)
 	}
-}
-
-// parseUserToken 解析用户JWT token
-func parseUserToken(tokenString string, secret string) (int64, error) {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		return []byte(secret), nil
-	})
-	if err != nil {
-		return 0, err
-	}
-
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		if userIdFloat, ok := claims["user_id"].(float64); ok {
-			return int64(userIdFloat), nil
-		}
-	}
-
-	return 0, jwt.ErrTokenInvalidClaims
 }
 
 // userReadPump 用户连接的读取方法（使用UnregisterUser而非Unregister）
@@ -107,8 +100,9 @@ func (c *Client) handleUserMessage(message []byte) {
 	var msg Message
 	if err := json.Unmarshal(message, &msg); err == nil {
 		if msg.Type == "ping" {
+			// 连接已被踢出或缓冲已满时丢弃，不阻塞读协程
 			pongMsg, _ := json.Marshal(Message{Type: "pong"})
-			c.Send <- pongMsg
+			c.trySend(pongMsg)
 		}
 	}
 }

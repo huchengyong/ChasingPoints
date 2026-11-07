@@ -23,7 +23,7 @@ func NewEquipTitleLogic(ctx context.Context, svcCtx *svc.ServiceContext) *EquipT
 	return &EquipTitleLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

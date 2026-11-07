@@ -6,6 +6,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	publiclogic "chasing_points/internal/logic/public"
+	seasonlogic "chasing_points/internal/logic/season"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -24,7 +26,7 @@ func NewUpdateUserProfileLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 	return &UpdateUserProfileLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -79,6 +81,12 @@ func (l *UpdateUserProfileLogic) UpdateUserProfile(req *types.UpdateUserProfileR
 			Success: false,
 			Message: "更新失败",
 		}, nil
+	}
+	if err := publiclogic.BumpAllLeaderboardCacheVersions(l.ctx, l.svcCtx); err != nil {
+		l.Logger.Errorf("失效排行榜资料缓存失败: userId=%d err=%v", userID, err)
+	}
+	if err := seasonlogic.BumpSeasonLeaderboardProfileVersion(l.ctx, l.svcCtx); err != nil {
+		l.Logger.Errorf("失效赛季榜单资料缓存失败: userId=%d err=%v", userID, err)
 	}
 
 	return &types.UpdateUserProfileResp{

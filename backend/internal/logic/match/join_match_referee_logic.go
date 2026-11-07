@@ -25,7 +25,7 @@ func NewJoinMatchRefereeLogic(ctx context.Context, svcCtx *svc.ServiceContext) *
 	return &JoinMatchRefereeLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -48,6 +48,9 @@ func (l *JoinMatchRefereeLogic) JoinMatchReferee(req *types.JoinMatchRefereeReq)
 		}
 		if lockedMatch == nil || lockedMatch.Status != 1 {
 			return errMatchRefereeJoinUnavailable
+		}
+		if model.NormalizeFinishState(lockedMatch.FinishState) == model.FinishStatePendingConfirmation {
+			return errMatchRefereeFinishPending
 		}
 		if lockedMatch.RefereeUserId != nil && *lockedMatch.RefereeUserId > 0 {
 			return errMatchRefereeAlreadyBound
@@ -78,6 +81,8 @@ func (l *JoinMatchRefereeLogic) JoinMatchReferee(req *types.JoinMatchRefereeReq)
 			return &types.JoinMatchRefereeResp{Success: false, Message: "本场已绑定裁判"}, nil
 		case errMatchRefereeJoinUnavailable:
 			return &types.JoinMatchRefereeResp{Success: false, Message: "当前对局无法加入裁判"}, nil
+		case errMatchRefereeFinishPending:
+			return &types.JoinMatchRefereeResp{Success: false, Message: "请先处理当前结束请求，再加入裁判"}, nil
 		case errMatchRefereeCodeInvalid:
 			return &types.JoinMatchRefereeResp{Success: false, Message: "裁判二维码已失效"}, nil
 		default:

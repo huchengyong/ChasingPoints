@@ -8,8 +8,13 @@ import (
 
 	"chasing_points/internal/config"
 	"chasing_points/internal/handler"
+	logicx "chasing_points/internal/logic"
+	matchlogic "chasing_points/internal/logic/match"
+	ranklogic "chasing_points/internal/logic/rank"
+	tournamentlogic "chasing_points/internal/logic/tournament"
 	"chasing_points/internal/logic/wstsync"
 	"chasing_points/internal/middleware"
+	"chasing_points/internal/pkg/httperror"
 	"chasing_points/internal/pkg/ws"
 	"chasing_points/internal/svc"
 
@@ -30,15 +35,21 @@ func main() {
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c, conf.UseEnv())
+	if err := c.ValidateProductionSecurity(); err != nil {
+		log.Fatalf("生产安全配置校验失败: %v", err)
+	}
+	httperror.Configure()
 
-	server := rest.MustNewServer(c.RestConf, rest.WithCors("*", "http://localhost:3000", "https://admin-bm.dianzaozao.com"))
+	server := newAPIServer(c)
 	defer server.Stop()
 
 	svcCtx := svc.NewServiceContext(c)
+	if err := logicx.EnsureDefaultRulesContent(svcCtx); err != nil {
+		log.Fatalf("初始化规则内容失败: %v", err)
+	}
 	handler.RegisterHandlers(server, svcCtx)
 
-	// 注册全局中间件
-	server.Use(middleware.RequestContextMiddleware)
+	registerGlobalMiddlewares(server, c, svcCtx)
 
 	// 初始化 WebSocket Hub
 	ws.InitGlobalHub()
@@ -66,7 +77,27 @@ func main() {
 			go wstsync.NewHotAutoSyncWorker(svcCtx, c.WSTSync).Start(context.Background())
 		}
 	}
+	go logicx.NewSeasonRolloverWorker(svcCtx).Start(context.Background())
+	go ranklogic.NewRatingRulesWorker(svcCtx).Start(context.Background())
+	go logicx.NewChallengeExpiryWorker(svcCtx).Start(context.Background())
+	go matchlogic.NewFinishRequestExpiryWorker(svcCtx).Start(context.Background())
+	go matchlogic.NewAchievementSyncWorker(svcCtx).Start(context.Background())
+	go tournamentlogic.NewTournamentBracketGenerationWorker(svcCtx).Start(context.Background())
 
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
 	server.StartWithOpts(withWechatMessagePushRoute(c))
+}
+
+// registerGlobalMiddlewares 注册全局中间件；先注册的在外层，后台访问控制放在用户会话校验之前，
+// 这样普通用户令牌访问后台接口时直接拒绝，不再查用户表。
+func registerGlobalMiddlewares(server *rest.Server, c config.Config, svcCtx *svc.ServiceContext) {
+	server.Use(middleware.RequestContextMiddleware)
+	server.Use(middleware.RequestObservabilityMiddleware)
+	server.Use(middleware.NewOptionalPublicJWTMiddleware(c.Auth.AccessSecret).Handle)
+	server.Use(middleware.NewAdminAccessMiddleware().Handle)
+	server.Use(middleware.NewActiveUserSessionMiddleware(svcCtx.UserModel).Handle)
+}
+
+func newAPIServer(c config.Config) *rest.Server {
+	return rest.MustNewServer(c.RestConf, rest.WithCors(c.Security.HTTPOriginList()...))
 }

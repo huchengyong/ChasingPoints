@@ -23,7 +23,7 @@ func NewAcceptFriendRequestLogic(ctx context.Context, svcCtx *svc.ServiceContext
 	return &AcceptFriendRequestLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -75,6 +75,8 @@ func (l *AcceptFriendRequestLogic) AcceptFriendRequest(req *types.HandleFriendRe
 	}); notifyErr != nil {
 		l.Logger.Errorf("分发好友通知失败: %v", notifyErr)
 	}
+	sendFriendRequestCountUpdated(l.svcCtx, userIdInt, "friend_requests", "opponents")
+	logicx.SendUserDataUpdated(request.FromUserId, logicx.UserDataUpdatedEvent{Scopes: []string{"opponents"}})
 
 	return &types.CommonResp{Success: true, Message: "操作成功"}, nil
 }

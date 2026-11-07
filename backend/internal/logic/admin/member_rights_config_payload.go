@@ -90,13 +90,13 @@ func validateMemberRightsConfigUpdateReq(req *types.AdminMemberRightsConfigUpdat
 		req.GrowthRules.LevelThresholdLv2 >= req.GrowthRules.LevelThresholdLv3 ||
 		req.GrowthRules.LevelThresholdLv3 >= req.GrowthRules.LevelThresholdLv4 ||
 		req.GrowthRules.LevelThresholdLv4 >= req.GrowthRules.LevelThresholdLv5 {
-		return errors.New("会员成长等级门槛必须严格递增")
+		return errors.New("VIP成长等级门槛必须严格递增")
 	}
 	if req.GrowthRules.ExpireStrategy != "" && req.GrowthRules.ExpireStrategy != "freeze_preserve" {
-		return errors.New("会员成长到期策略不支持")
+		return errors.New("VIP成长到期策略不支持")
 	}
 	if req.RankingRights.DailyCap <= 0 {
-		return errors.New("会员特殊战绩日上限必须大于 0")
+		return errors.New("VIP特殊战绩日上限必须大于 0")
 	}
 	if req.RankingRights.DailyPositiveCap <= 0 {
 		return errors.New("每日总正向上限必须大于 0")
@@ -124,10 +124,10 @@ func validateMemberRightsConfigUpdateReq(req *types.AdminMemberRightsConfigUpdat
 	}
 	for i, multiplier := range multipliers {
 		if multiplier <= 0 {
-			return errors.New("会员等级倍率必须大于 0")
+			return errors.New("VIP等级倍率必须大于 0")
 		}
 		if i > 0 && multiplier < multipliers[i-1] {
-			return errors.New("会员等级倍率必须递增或持平")
+			return errors.New("VIP等级倍率必须递增或持平")
 		}
 	}
 	return nil

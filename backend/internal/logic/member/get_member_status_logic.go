@@ -5,6 +5,7 @@ import (
 
 	logicx "chasing_points/internal/logic"
 	paymentlogic "chasing_points/internal/logic/payment"
+	"chasing_points/internal/requestctx"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -23,7 +24,7 @@ func NewGetMemberStatusLogic(ctx context.Context, svcCtx *svc.ServiceContext) *G
 	return &GetMemberStatusLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -34,10 +35,13 @@ func (l *GetMemberStatusLogic) GetMemberStatus() (resp *types.GetMemberStatusRes
 		return &types.GetMemberStatusResp{Success: false}, nil
 	}
 
-	user, err := l.svcCtx.UserModel.FindById(userID)
-	if err != nil {
-		l.Logger.Errorf("查询用户失败: userId=%d err=%v", userID, err)
-		return &types.GetMemberStatusResp{Success: false}, nil
+	user := requestctx.ActiveUser(l.ctx)
+	if user == nil || user.Id != userID {
+		user, err = l.svcCtx.UserModel.FindById(userID)
+		if err != nil {
+			l.Logger.Errorf("查询用户失败: userId=%d err=%v", userID, err)
+			return &types.GetMemberStatusResp{Success: false}, nil
+		}
 	}
 	if user == nil {
 		return &types.GetMemberStatusResp{Success: false}, nil
@@ -49,7 +53,7 @@ func (l *GetMemberStatusLogic) GetMemberStatus() (resp *types.GetMemberStatusRes
 	}
 
 	growthService := logicx.NewMemberGrowthService(l.svcCtx, logicx.NowUTC8)
-	snapshot, growthErr := growthService.GetSnapshotForUser(userID)
+	snapshot, growthErr := growthService.GetSnapshot(user)
 	if growthErr != nil {
 		l.Logger.Errorf("读取会员成长快照失败: userId=%d err=%v", userID, growthErr)
 		return resp, nil

@@ -171,14 +171,14 @@ async function submitFeedbackTicket() {
   display: grid;
   gap: 18px;
   padding: 28px;
-  border-radius: 8px;
+  border-radius: 24px;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(31, 26, 16, 0.08);
 }
 
 .contact-card__label {
   margin: 0 0 10px;
-  color: #9f6c00;
+  color: var(--ui-brand-strong);
   font-weight: 600;
 }
 
@@ -193,8 +193,8 @@ async function submitFeedbackTicket() {
   gap: 24px;
   margin-top: 24px;
   padding: 28px;
-  border-radius: 8px;
-  background: #ffffff;
+  border-radius: 24px;
+  background: var(--ui-surface-card);
   border: 1px solid rgba(31, 26, 16, 0.08);
 }
 
@@ -209,7 +209,7 @@ async function submitFeedbackTicket() {
 }
 
 .feedback-panel__intro h2 {
-  color: #1f1a10;
+  color: var(--ui-text-primary);
   font-size: 24px;
 }
 
@@ -219,7 +219,7 @@ async function submitFeedbackTicket() {
 }
 
 .feedback-panel__eyebrow {
-  color: #9f6c00;
+  color: var(--ui-brand-strong);
   font-weight: 700;
 }
 
@@ -231,7 +231,7 @@ async function submitFeedbackTicket() {
 .feedback-form label {
   display: grid;
   gap: 8px;
-  color: #1f1a10;
+  color: var(--ui-text-primary);
   font-weight: 600;
 }
 
@@ -239,10 +239,10 @@ async function submitFeedbackTicket() {
 .feedback-form textarea,
 .feedback-form input {
   width: 100%;
-  border: 1px solid rgba(31, 26, 16, 0.18);
-  border-radius: 8px;
+  border: 1px solid var(--ui-border-default);
+  border-radius: 12px;
   box-sizing: border-box;
-  color: #1f1a10;
+  color: var(--ui-text-primary);
   font: inherit;
 }
 
@@ -262,8 +262,8 @@ async function submitFeedbackTicket() {
   width: 132px;
   height: 44px;
   border: 0;
-  border-radius: 8px;
-  background: #1f1a10;
+  border-radius: 12px;
+  background: var(--ui-surface-accent);
   color: #ffffff;
   cursor: pointer;
   font-weight: 700;

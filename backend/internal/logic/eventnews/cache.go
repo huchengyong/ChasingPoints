@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"chasing_points/internal/observability"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -17,12 +18,22 @@ import (
 )
 
 const (
-	eventNewsCacheVersionKey   = "eventnews:version"
-	eventNewsListCachePrefix   = "eventnews:list"
-	eventNewsViewCachePrefix   = "eventnews:view"
-	eventNewsListCacheTTL      = 5 * time.Minute
-	eventNewsViewCacheTTL      = 3 * time.Minute
+	eventNewsCacheVersionKey = "eventnews:version"
+	eventNewsListCachePrefix = "eventnews:list"
+	eventNewsViewCachePrefix = "eventnews:view"
+	eventNewsListCacheTTL    = 5 * time.Minute
+	eventNewsViewCacheTTL    = 3 * time.Minute
 )
+
+var eventNewsCacheMetrics observability.CacheMetrics
+
+func EventNewsCacheMetrics() observability.CacheSnapshot {
+	return eventNewsCacheMetrics.Snapshot()
+}
+
+func ResetEventNewsCacheMetricsForTest() {
+	eventNewsCacheMetrics.Reset()
+}
 
 type eventNewsListCacheParams struct {
 	Page     int    `json:"page"`
@@ -82,6 +93,7 @@ func BumpEventNewsCacheVersion(ctx context.Context, svcCtx *svc.ServiceContext) 
 	}
 
 	if err := svcCtx.Redis.Incr(ctx, eventNewsCacheVersionKey).Err(); err != nil {
+		eventNewsCacheMetrics.WriteError(ctx)
 		return err
 	}
 	return nil
@@ -100,6 +112,7 @@ func getEventNewsCacheVersion(ctx context.Context, svcCtx *svc.ServiceContext) i
 		return 0
 	}
 
+	eventNewsCacheMetrics.RedisError(ctx)
 	logx.WithContext(ctx).Errorf("读取赛讯缓存版本失败: err=%v", err)
 	return 0
 }
@@ -139,16 +152,22 @@ func loadCachedJSON(ctx context.Context, svcCtx *svc.ServiceContext, key string,
 	payload, err := svcCtx.Redis.Get(ctx, key).Bytes()
 	if err == nil {
 		if err := json.Unmarshal(payload, target); err == nil {
+			eventNewsCacheMetrics.Hit(ctx)
 			return true
 		}
+		eventNewsCacheMetrics.DecodeError(ctx)
 		logx.WithContext(ctx).Errorf("解析赛讯缓存失败: key=%s err=%v", key, err)
-		_ = svcCtx.Redis.Del(ctx, key).Err()
+		if delErr := svcCtx.Redis.Del(ctx, key).Err(); delErr != nil {
+			eventNewsCacheMetrics.WriteError(ctx)
+		}
 		return false
 	}
 	if err == redis.Nil {
+		eventNewsCacheMetrics.Miss(ctx)
 		return false
 	}
 
+	eventNewsCacheMetrics.RedisError(ctx)
 	logx.WithContext(ctx).Errorf("读取赛讯缓存失败: key=%s err=%v", key, err)
 	return false
 }
@@ -160,10 +179,12 @@ func storeCachedJSON(ctx context.Context, svcCtx *svc.ServiceContext, key string
 
 	payload, err := json.Marshal(value)
 	if err != nil {
+		eventNewsCacheMetrics.WriteError(ctx)
 		logx.WithContext(ctx).Errorf("序列化赛讯缓存失败: key=%s err=%v", key, err)
 		return
 	}
 	if err := svcCtx.Redis.Set(ctx, key, payload, ttl).Err(); err != nil {
+		eventNewsCacheMetrics.WriteError(ctx)
 		logx.WithContext(ctx).Errorf("写入赛讯缓存失败: key=%s err=%v", key, err)
 	}
 }

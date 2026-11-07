@@ -20,7 +20,7 @@ func NewAdminExistsLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Admin
 	return &AdminExistsLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

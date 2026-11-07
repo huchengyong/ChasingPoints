@@ -21,7 +21,7 @@ func NewAdminGetReputationLogListLogic(ctx context.Context, svcCtx *svc.ServiceC
 	return &AdminGetReputationLogListLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

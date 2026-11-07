@@ -22,7 +22,7 @@ func NewAdminGetEventNewsListLogic(ctx context.Context, svcCtx *svc.ServiceConte
 	return &AdminGetEventNewsListLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

@@ -101,8 +101,8 @@ func TestAdminSocialPostReviewApproveTransitionsToPublished(t *testing.T) {
 
 	logic := NewAdminReviewSocialPostLogic(adminCtx(9002), svcCtx)
 	resp, err := logic.AdminReviewSocialPost(&types.AdminSocialPostReviewReq{
-		PostId:  303,
-		Status:  model.SocialPostStatusPublished,
+		PostId: 303,
+		Status: model.SocialPostStatusPublished,
 	})
 	if err != nil {
 		t.Fatalf("approve social post: %v", err)

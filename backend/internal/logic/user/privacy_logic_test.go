@@ -22,6 +22,7 @@ type userPrivacySchema struct {
 	PushToken       string         `gorm:"size:255;not null;default:''"`
 	MemberExpiresAt *time.Time     `gorm:"comment:会员到期时间"`
 	HideMatchRecord bool           `gorm:"not null;default:false"`
+	FriendsOnlyChallenges bool     `gorm:"not null;default:false"`
 	CreatedAt       time.Time      `gorm:"autoCreateTime"`
 	UpdatedAt       time.Time      `gorm:"autoUpdateTime"`
 	DeletedAt       gorm.DeletedAt `gorm:"index"`
@@ -88,8 +89,9 @@ func TestUpdateUserPrivacyPersistsHiddenState(t *testing.T) {
 	})
 
 	updateLogic := NewUpdateUserPrivacyLogic(userPrivacyCtx(202), svcCtx)
+	hide := true
 	updateResp, err := updateLogic.UpdateUserPrivacy(&types.UpdateUserPrivacyReq{
-		HideMatchRecord: true,
+		HideMatchRecord: &hide,
 	})
 	if err != nil {
 		t.Fatalf("update user privacy: %v", err)

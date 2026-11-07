@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"math"
 	"strings"
 	"time"
 
@@ -35,6 +36,7 @@ type Venue struct {
 	GeoUpdatedAt       *time.Time `json:"geo_updated_at"`
 	DuplicateOfVenueId *int64     `gorm:"default:null" json:"duplicate_of_venue_id"`
 	RejectReason       string     `gorm:"size:255;not null;default:'';comment:审核拒绝原因" json:"reject_reason"`
+	CheckinCount       int64      `gorm:"->;-:migration" json:"-"`
 	CreatedAt          time.Time  `gorm:"autoCreateTime" json:"created_at"`
 }
 
@@ -206,6 +208,32 @@ func (m *VenueModel) FindList(page, pageSize int, city string) ([]Venue, int64, 
 	return list, total, err
 }
 
+func (m *VenueModel) FindListWithCheckinCount(page, pageSize int, city string) ([]Venue, int64, error) {
+	page, pageSize = normalizePage(page, pageSize)
+	offset := (page - 1) * pageSize
+	countQuery := m.db.Model(&Venue{}).
+		Where("status = ? AND geo_status = ?", VenueStatusPublished, VenueGeoStatusSuccess).
+		Where("duplicate_of_venue_id IS NULL")
+	if city != "" {
+		countQuery = countQuery.Where("city = ?", city)
+	}
+	var total int64
+	if err := countQuery.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var list []Venue
+	listQuery := m.db.Table("venues").
+		Select("venues.*, COALESCE(checkins.checkin_count, 0) AS checkin_count").
+		Joins("LEFT JOIN (SELECT venue_id, COUNT(*) AS checkin_count FROM venue_checkins GROUP BY venue_id) AS checkins ON checkins.venue_id = venues.id").
+		Where("venues.status = ? AND venues.geo_status = ?", VenueStatusPublished, VenueGeoStatusSuccess).
+		Where("venues.duplicate_of_venue_id IS NULL")
+	if city != "" {
+		listQuery = listQuery.Where("venues.city = ?", city)
+	}
+	err := listQuery.Order("venues.id DESC").Offset(offset).Limit(pageSize).Scan(&list).Error
+	return list, total, err
+}
+
 // FindListForAdmin 管理员查询球馆列表（不受状态限制）
 func (m *VenueModel) FindListForAdmin(page, pageSize int, status int, city string) ([]Venue, int64, error) {
 	page, pageSize = normalizePage(page, pageSize)
@@ -280,6 +308,14 @@ func (m *VenueModel) FindByFullAddress(fullAddress string) (*Venue, error) {
 }
 
 func (m *VenueModel) FindNearby(latitude, longitude float64, radiusMeters, limit int) ([]Venue, error) {
+	return m.findNearbyWithCheckinCount(latitude, longitude, radiusMeters, limit, false)
+}
+
+func (m *VenueModel) FindNearbyWithCheckinCount(latitude, longitude float64, radiusMeters, limit int) ([]Venue, error) {
+	return m.findNearbyWithCheckinCount(latitude, longitude, radiusMeters, limit, true)
+}
+
+func (m *VenueModel) findNearbyWithCheckinCount(latitude, longitude float64, radiusMeters, limit int, includeCheckinCount bool) ([]Venue, error) {
 	if radiusMeters <= 0 {
 		radiusMeters = 5000
 	}
@@ -290,19 +326,45 @@ func (m *VenueModel) FindNearby(latitude, longitude float64, radiusMeters, limit
 		limit = 100
 	}
 
+	minLatitude, maxLatitude, minLongitude, maxLongitude := nearbyBounds(latitude, longitude, float64(radiusMeters))
 	distanceSQL := "(6371000 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude))))"
-
+	table := "venues"
+	if m.db.Dialector.Name() == "mysql" {
+		table = "venues FORCE INDEX (idx_venues_nearby_candidates)"
+	}
+	query := m.db.Table(table).
+		Select("venues.*, "+distanceSQL+" AS distance", latitude, longitude, latitude).
+		Where("venues.status = ? AND venues.geo_status = ?", VenueStatusPublished, VenueGeoStatusSuccess).
+		Where("venues.duplicate_of_venue_id IS NULL").
+		Where("venues.latitude <> 0 AND venues.longitude <> 0").
+		Where("venues.latitude BETWEEN ? AND ?", minLatitude, maxLatitude)
+	if minLongitude < -180 {
+		query = query.Where("(venues.longitude >= ? OR venues.longitude <= ?)", minLongitude+360, maxLongitude)
+	} else if maxLongitude > 180 {
+		query = query.Where("(venues.longitude >= ? OR venues.longitude <= ?)", minLongitude, maxLongitude-360)
+	} else {
+		query = query.Where("venues.longitude BETWEEN ? AND ?", minLongitude, maxLongitude)
+	}
+	if includeCheckinCount {
+		query = query.Select("venues.*, COALESCE(checkins.checkin_count, 0) AS checkin_count, "+distanceSQL+" AS distance", latitude, longitude, latitude).
+			Joins("LEFT JOIN (SELECT venue_id, COUNT(*) AS checkin_count FROM venue_checkins GROUP BY venue_id) AS checkins ON checkins.venue_id = venues.id")
+	}
 	var list []Venue
-	err := m.db.Model(&Venue{}).
-		Select("venues.*, "+distanceSQL+" as distance", latitude, longitude, latitude).
-		Where("status = ? AND geo_status = ?", VenueStatusPublished, VenueGeoStatusSuccess).
-		Where("duplicate_of_venue_id IS NULL").
-		Where("latitude <> 0 AND longitude <> 0").
-		Having("distance < ?", radiusMeters).
-		Order("distance ASC").
-		Limit(limit).
-		Find(&list).Error
+	err := query.Having("distance < ?", radiusMeters).Order("distance ASC").Limit(limit).Scan(&list).Error
 	return list, err
+}
+
+func nearbyBounds(latitude, longitude, radiusMeters float64) (float64, float64, float64, float64) {
+	const metersPerDegree = 111320.0
+	latitudeDelta := radiusMeters / metersPerDegree
+	longitudeScale := math.Cos(latitude * math.Pi / 180)
+	if math.Abs(longitudeScale) < 0.01 {
+		longitudeScale = 0.01
+	}
+	longitudeDelta := radiusMeters / (metersPerDegree * math.Abs(longitudeScale))
+	minLatitude := math.Max(-90, latitude-latitudeDelta)
+	maxLatitude := math.Min(90, latitude+latitudeDelta)
+	return minLatitude, maxLatitude, longitude - longitudeDelta, longitude + longitudeDelta
 }
 
 func (m *VenueModel) GetCheckinCount(venueId int64) (int64, error) {

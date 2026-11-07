@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"chasing_points/internal/model"
+	"chasing_points/internal/ranking"
+	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -24,7 +26,7 @@ func NewGetSeasonReportLogic(ctx context.Context, svcCtx *svc.ServiceContext) *G
 	return &GetSeasonReportLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -50,6 +52,10 @@ func (l *GetSeasonReportLogic) GetSeasonReport(req *types.GetSeasonReportReq) (r
 	if season == nil {
 		return nil, fmt.Errorf("season not found")
 	}
+	startAt, endExclusive, err := seasonx.BoundsForConfig(l.svcCtx.Config.SeasonLifecycle, season)
+	if err != nil {
+		return nil, err
+	}
 
 	record, err := l.svcCtx.SeasonRecordModel.FindBySeasonAndUserAndGameType(season.Id, userIdInt, gameType)
 	if err != nil {
@@ -58,28 +64,32 @@ func (l *GetSeasonReportLogic) GetSeasonReport(req *types.GetSeasonReportReq) (r
 
 	var recordInfo *types.SeasonRecordInfo
 	if record != nil {
-		recordInfo = buildSeasonRecordInfo(record, season.Name)
+		recordInfo = buildSeasonRecordInfo(record, season.Name, seasonHasQualification(l.svcCtx, season))
 	}
 
-	seasonLogs, err := l.svcCtx.RankingModel.ListRankChangesByUserAndGameTypeBetween(userIdInt, gameType, season.StartDate, season.EndDate)
+	seasonLogs, err := l.svcCtx.RankingModel.ListRankChangesByUserAndGameTypeBetweenHalfOpen(userIdInt, gameType, startAt, endExclusive)
 	if err != nil {
 		return nil, err
 	}
-	beforeLog, err := l.svcCtx.RankingModel.FindLatestRankChangeBeforeByGameType(userIdInt, gameType, season.StartDate)
+	beforeLog, err := l.svcCtx.RankingModel.FindLatestRankChangeBeforeByGameType(userIdInt, gameType, startAt)
 	if err != nil {
 		return nil, err
+	}
+	// 排位规则 V2 切换后，旧规则下最后一场的分数不是 V2 赛季的起点；改用本季首场的赛前分（即切换后的初始分）。
+	if rules := ranking.RulesFor(l.svcCtx.Config); beforeLog != nil && rules.V2Configured() && !startAt.Before(rules.V2StartAt()) && beforeLog.EffectiveAt.Before(rules.V2StartAt()) {
+		beforeLog = nil
 	}
 
 	startScore, endScore, peakScore := buildSeasonSnapshotFromLogs(beforeLog, seasonLogs)
 	rankTrend := buildSeasonRankTrendFromLogs(seasonLogs)
 	recordInfo = applyHistoricalMatchSeasonSnapshot(recordInfo, season, startScore, endScore, peakScore, len(seasonLogs) > 0)
 
-	winRateByType, err := l.svcCtx.SeasonRecordModel.FindUserWinByTypeInSeason(userIdInt, season.StartDate, season.EndDate)
+	winRateByType, err := l.svcCtx.SeasonRecordModel.FindUserWinsBySeason(season.Id, userIdInt)
 	if err != nil {
 		return nil, err
 	}
 
-	topAchievements, err := l.getTopAchievementsInSeason(userIdInt, season.StartDate, season.EndDate)
+	topAchievements, err := l.getTopAchievementsInSeason(userIdInt, startAt, endExclusive)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +106,7 @@ func (l *GetSeasonReportLogic) GetSeasonReport(req *types.GetSeasonReportReq) (r
 }
 
 func (l *GetSeasonReportLogic) getTopAchievementsInSeason(userId int64, startDate, endDate time.Time) ([]types.AchievementDef, error) {
-	unlockedAchievements, err := l.svcCtx.UserAchievementModel.FindUnlockedByUserIdBetween(userId, startDate, endDate, 3)
+	unlockedAchievements, err := l.svcCtx.UserAchievementModel.FindUnlockedByUserIdBetweenHalfOpen(userId, startDate, endDate, 3)
 	if err != nil {
 		return nil, err
 	}
@@ -140,16 +150,18 @@ func buildSeasonTopAchievements(unlockedAchievements []model.UserAchievement, ac
 		}
 
 		list = append(list, types.AchievementDef{
-			Id:          def.Id,
-			Key:         def.Key,
-			Name:        def.Name,
-			Description: def.Description,
-			Icon:        def.Icon,
-			Category:    def.Category,
-			Threshold:   def.Threshold,
-			Progress:    unlocked.Progress,
-			Unlocked:    unlocked.Unlocked == 1,
-			UnlockedAt:  unlockedAt,
+			Id:              def.Id,
+			Key:             def.Key,
+			Name:            def.Name,
+			Description:     def.Description,
+			Icon:            def.Icon,
+			Category:        def.Category,
+			GameType:        def.GameType,
+			RewardTitleName: def.RewardTitleName,
+			Threshold:       def.Threshold,
+			Progress:        unlocked.Progress,
+			Unlocked:        unlocked.Unlocked == 1,
+			UnlockedAt:      unlockedAt,
 		})
 	}
 

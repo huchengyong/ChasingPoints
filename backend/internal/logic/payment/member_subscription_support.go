@@ -10,6 +10,7 @@ import (
 	"time"
 
 	logicx "chasing_points/internal/logic"
+	"chasing_points/internal/config"
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -48,7 +49,7 @@ func MemberPlans() []MemberPlan {
 	return []MemberPlan{
 		{
 			Code:         memberMonthlyPlanCode,
-			Name:         "月卡会员",
+			Name:         "月卡VIP",
 			PriceFen:     1900,
 			DurationDays: 30,
 			Description:  "APP 端月卡订阅，支付成功后立即生效。",
@@ -496,7 +497,7 @@ func (s *GatewayService) newAlipayClient() (*gopayalipay.Client, error) {
 		return nil, errors.New("alipay config is incomplete")
 	}
 
-	client, err := gopayalipay.NewClient(appID, cfg.PrivateKey, cfg.IsProd)
+	client, err := gopayalipay.NewClient(appID, cfg.PrivateKey, config.IsProductionEnv(s.svcCtx.Config.AppEnv))
 	if err != nil {
 		return nil, err
 	}

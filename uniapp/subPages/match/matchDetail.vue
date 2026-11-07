@@ -1,0 +1,565 @@
+<template>
+	<view class="match-detail-container" :class="{ 'dark-mode': isDarkMode, 'has-spectate-login': showSpectateLoginHint }">
+		<!-- 加载状态 -->
+		<view v-if="loading" class="loading-container">
+			<uni-icons type="spinner-cycle" size="48" color="#E0AE12"></uni-icons>
+			<text class="loading-text">加载中...</text>
+		</view>
+
+		<template v-else>
+			<!-- 观战模式标识 -->
+			<view v-if="isSpectateMode" class="spectate-badge">
+				<uni-icons type="eye" size="16" color="#ffffff"></uni-icons>
+				<text>观战模式</text>
+			</view>
+
+			<!-- 双方信息卡片 -->
+			<view class="players-card">
+				<!-- 双方头像 -->
+				<view class="avatars-section">
+					<view class="player-info">
+						<view class="avatar-wrapper">
+							<view class="avatar">
+								<memberAvatar
+									:avatar="player1Info.avatar"
+									:user-id="player1UserId"
+									:vip-level="player1Info.vipLevel"
+									:rank-level="player1Info.rankLevel"
+									:size="100"
+								/>
+							</view>
+						</view>
+						<text class="player-name">{{ player1Info.name || '玩家1' }}</text>
+					</view>
+
+					<view class="vs-section">
+						<text class="vs-text">VS</text>
+					</view>
+
+					<view class="player-info">
+						<view class="avatar-wrapper">
+							<view class="avatar">
+								<memberAvatar
+									:avatar="player2Info.avatar"
+									:user-id="player2UserId"
+									:vip-level="player2Info.vipLevel"
+									:rank-level="player2Info.rankLevel"
+									:size="100"
+								/>
+							</view>
+						</view>
+						<text class="player-name">{{ player2Info.name || '玩家2' }}</text>
+					</view>
+				</view>
+
+				<!-- 比分展示 -->
+				<view class="score-display">
+					<text class="score-text">{{ matchData.player1_score }} : {{ matchData.player2_score }}</text>
+				</view>
+
+				<!-- 对局信息 -->
+				<view class="match-info-text">
+					{{ gameTypeName }} · {{ formatDuration(matchData.duration_seconds) }}
+				</view>
+
+				<!-- 统计数据 -->
+				<view class="stats-grid">
+					<view class="stat-item">
+						<text class="stat-label">总局数</text>
+						<text class="stat-value">{{ matchData.total_rounds || 0 }}</text>
+					</view>
+					<view class="stat-item">
+						<text class="stat-label">当前局</text>
+						<text class="stat-value">{{ matchData.current_round || 1 }}</text>
+					</view>
+					<view class="stat-item">
+						<text class="stat-label">状态</text>
+						<text class="stat-value" :class="matchData.status === 2 ? 'status-finished' : 'status-ongoing'">{{ matchStatusText }}</text>
+					</view>
+				</view>
+			</view>
+
+			<view v-if="refereeCard.hasReferee" class="referee-card">
+				<image
+					class="referee-card__avatar"
+					:src="resolveAvatarUrl(refereeCard.refereeAvatar, refereeCard.refereeUserId)"
+					mode="aspectFill"
+				/>
+				<view class="referee-card__content">
+					<text class="referee-card__label">{{ refereeCard.neutralLabel }}</text>
+					<text class="referee-card__name">{{ refereeCard.refereeName }}</text>
+					<text v-if="refereeCard.refereeJoinedAt" class="referee-card__meta">加入时间 {{ refereeCard.refereeJoinedAt }}</text>
+					<text v-if="refereeCard.refereeDurationText" class="referee-card__meta">执裁时长 {{ refereeCard.refereeDurationText }}</text>
+					<text v-if="refereeCard.hasReliableAttribution" class="referee-card__meta">{{ refereeCard.completionLabel }}</text>
+					<text v-else-if="matchData.status === 2" class="referee-card__meta">本场曾绑定裁判</text>
+				</view>
+			</view>
+
+			<view class="detail-entry-row" v-if="showH2H || showRematch || showReplay">
+				<button v-if="showReplay" class="h2h-entry-button" @tap="handleOpenReplay">单场复盘</button>
+				<button v-if="showH2H" class="h2h-entry-button" @tap="handleOpenH2H">查看双方交锋记录</button>
+				<button v-if="showRematch" class="h2h-entry-button rematch-button" @tap="handleRematch">再约一场</button>
+			</view>
+
+			<!-- 本场用杆：只对已完成对局的选手展示，读取失败只影响这张卡片 -->
+			<matchGearCard :match-id="matchId" :enabled="showMatchGear" />
+
+			<!-- 局记录列表 -->
+			<view class="round-history">
+				<text class="section-title">局记录</text>
+				
+				<view v-if="roundRecords.length === 0" class="empty-rounds">
+					<text class="empty-text">暂无已完成的局</text>
+				</view>
+
+				<view 
+					v-for="(round, index) in roundRecords" 
+					:key="index"
+					:class="['round-card', getRoundResultClass(round)]"
+				>
+					<view class="round-info">
+						<text class="round-date">第 {{ round.round_number }} 局</text>
+						<text class="round-game-type">{{ gameTypeName }}</text>
+					</view>
+					<view class="round-result">
+						<text class="round-score">{{ round.player1_score }} - {{ round.player2_score }}</text>
+						<view class="result-badge">
+							<text :class="['result-text', getRoundResultTone(round)]">
+								{{ getRoundResultText(round) }}
+							</text>
+						</view>
+						<uni-icons type="right" size="16" color="#6E6242"></uni-icons>
+					</view>
+				</view>
+			</view>
+		</template>
+
+		<!-- 观战未登录引导：从分享卡片或海报进来的路人 -->
+		<view v-if="showSpectateLoginHint" class="spectate-login">
+			<text class="spectate-login__text">用追分记录你的比赛</text>
+			<button class="spectate-login__btn" @tap="handleLoginFromSpectate">登录</button>
+		</view>
+	</view>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { onHide, onLoad, onShareAppMessage, onShow } from '@dcloudio/uni-app'
+import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
+import { getMatchDetail, getPublicMatchDetail } from '@/api/match.js'
+import memberAvatar from '@/components/memberAvatar.vue'
+import matchGearCard from '@/components/matchGearCard.vue'
+import { shouldShowMatchGear } from '@/utils/gear-match.js'
+import { buildMatchShareCard } from '@/utils/share-card.js'
+import { useUserStore } from '@/store/user.js'
+import { buildMatchReplayUrl, canOpenMatchReplay } from '@/utils/match-replay-entry.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+import {
+	normalizeMatchDetailPayload,
+	shouldShowSpectateBadge,
+	shouldUsePublicMatchDetail
+} from '@/utils/match-detail.js'
+import { resolveAvatarUrl } from '@/utils/user-profile.js'
+import { resolveRefereeIdentityCard } from '@/utils/match-referee-view.js'
+
+// ========== 响应式数据 ==========
+const loading = ref(true)
+const matchId = ref(null)
+const isSpectateMode = ref(false)
+const detailSource = ref('')
+const perspectiveUserId = ref(0)
+const matchData = ref({
+	player1_score: 0,
+	player2_score: 0,
+	game_type: 3,
+	status: 0,
+	duration_seconds: 0,
+	current_round: 1,
+	total_rounds: 0,
+	viewer_role: '',
+	referee_bound: false,
+	referee_user_id: 0,
+	referee_name: '',
+	referee_avatar: '',
+	referee_joined_at: '',
+	referee_duration_seconds: 0,
+	completed_by_user_id: 0,
+	completion_source: 'unknown'
+})
+// 原始详情只用于分享卡片：卡片要选手 1/选手 2 的稳定顺序，不用展示用的归一化视角。
+const shareSource = ref({})
+const showSpectateLoginHint = computed(() => isSpectateMode.value && !userStore.isLoggedIn)
+const player1Info = ref({
+	name: '',
+	avatar: ''
+})
+const player2Info = ref({
+	name: '',
+	avatar: ''
+})
+const player1UserId = ref(0)
+const player2UserId = ref(0)
+const roundRecords = ref([])
+let wsHandlersReady = false
+
+const pageLog = (message, payload) => {
+	if (payload === undefined) {
+		console.log(`[MatchDetail] ${message}`)
+		return
+	}
+	console.log(`[MatchDetail] ${message}`, payload)
+}
+
+// ========== 状态管理 ==========
+const { isDarkMode } = usePageTheme()
+
+// ========== 计算属性 ==========
+
+// ========== 计算属性 ==========
+const gameTypeName = computed(() => {
+	switch (matchData.value.game_type) {
+		case 1: return '斯诺克'
+		case 2: return '九球追分'
+		case 3: return '中式八球'
+		case 4: return '美式九球'
+		default: return '未知'
+	}
+})
+
+const matchStatusText = computed(() => {
+	if (matchData.value.status === 2) return '已结束'
+	if (matchData.value.status === 3) return '已取消'
+	return '进行中'
+})
+
+const refereeCard = computed(() => resolveRefereeIdentityCard({
+	refereeBound: matchData.value.referee_bound,
+	refereeUserId: matchData.value.referee_user_id,
+	refereeName: matchData.value.referee_name,
+	refereeAvatar: matchData.value.referee_avatar,
+	refereeJoinedAt: matchData.value.referee_joined_at,
+	refereeDurationSeconds: matchData.value.referee_duration_seconds,
+	completedByUserId: matchData.value.completed_by_user_id,
+	completionSource: matchData.value.completion_source,
+	status: matchData.value.status
+}))
+
+const userStore = useUserStore()
+// 单场复盘只给本场选手；本人详情看 viewer_role，战绩列表进入的历史详情看视角用户是否就是自己。资格由服务端最终判断。
+const showReplay = computed(() => canOpenMatchReplay({
+	status: matchData.value.status,
+	viewerRole: matchData.value.viewer_role,
+	source: detailSource.value,
+	perspectiveUserId: perspectiveUserId.value,
+	currentUserId: userStore.userId
+}))
+const showH2H = computed(() => matchData.value.status === 2 && matchData.value.viewer_role !== 'referee')
+const showMatchGear = computed(() => shouldShowMatchGear({
+	status: matchData.value.status,
+	viewerRole: matchData.value.viewer_role,
+	isPlayer1: matchData.value.is_player1,
+	isSpectate: isSpectateMode.value
+}))
+// 再约一场：本人是选手且对手为平台用户时展示（扫码对局同样可用；仅旁观/裁判不显示）。
+const showRematch = computed(() => {
+	const detail = matchData.value
+	if (!detail || detail.viewer_role === 'referee') return false
+	const isParticipant = detail.is_player1 || detail.viewer_role === 'player1' || detail.viewer_role === 'player2'
+	return isParticipant && Number(detail.opponent_id) > 0
+})
+
+// ========== 生命周期 ==========
+onLoad((options) => {
+	if (options.match_id) {
+		matchId.value = parseInt(options.match_id)
+	}
+	detailSource.value = options.source || ''
+	perspectiveUserId.value = Number(options.perspective_user_id || 0)
+	isSpectateMode.value = shouldShowSpectateBadge(options)
+	if (isSpectateMode.value) {
+		// 设置导航栏标题
+		uni.setNavigationBarTitle({
+			title: '观战'
+		})
+	} else {
+		uni.setNavigationBarTitle({
+			title: '对局详情'
+		})
+	}
+	
+	loadMatchData()
+})
+
+onMounted(() => {
+	// 注册WebSocket消息处理
+	wsHandlersReady = true
+	matchWS.on(WS_MESSAGE_TYPES.SCORE_UPDATE, handleScoreUpdate)
+	matchWS.on(WS_MESSAGE_TYPES.ROUND_END, handleRoundEnd)
+	matchWS.on(WS_MESSAGE_TYPES.MATCH_END, handleMatchEnd)
+	matchWS.on(WS_MESSAGE_TYPES.SYNC, handleSync)
+	if (matchData.value.status === 1) {
+		connectWebSocket()
+	}
+})
+
+// #ifdef MP-WEIXIN
+onShareAppMessage(() => buildMatchShareCard(shareSource.value))
+// #endif
+
+const handleLoginFromSpectate = () => {
+	uni.navigateTo({ url: '/pages/login/login' })
+}
+
+onShow(() => {
+	matchWS.setTargetActive(true)
+	if (wsHandlersReady && matchId.value && matchData.value.status === 1) {
+		if (matchWS.isConnected()) {
+			matchWS.requestSync()
+		} else {
+			connectWebSocket()
+		}
+	}
+})
+
+onHide(() => {
+	matchWS.setTargetActive(false)
+})
+
+onUnmounted(() => {
+	wsHandlersReady = false
+	matchWS.off(WS_MESSAGE_TYPES.SCORE_UPDATE, handleScoreUpdate)
+	matchWS.off(WS_MESSAGE_TYPES.ROUND_END, handleRoundEnd)
+	matchWS.off(WS_MESSAGE_TYPES.MATCH_END, handleMatchEnd)
+	matchWS.off(WS_MESSAGE_TYPES.SYNC, handleSync)
+	// 断开WebSocket
+	matchWS.disconnect()
+})
+
+// ========== 方法 ==========
+
+/**
+ * 加载对局数据
+ */
+const loadMatchData = async () => {
+	if (!matchId.value) {
+		loading.value = false
+		return
+	}
+	
+	try {
+		const apiCall = shouldUsePublicMatchDetail({
+			mode: isSpectateMode.value ? 'spectate' : '',
+			source: detailSource.value
+		}) ? getPublicMatchDetail : getMatchDetail
+		const res = await apiCall({ match_id: matchId.value })
+		if (res.success && res.match) {
+			const normalized = normalizeMatchDetailPayload(res.match, {
+				perspectiveUserId: perspectiveUserId.value
+			})
+			matchData.value = normalized.matchData
+			shareSource.value = res.match
+			player1Info.value = normalized.player1Info
+			player2Info.value = normalized.player2Info
+			const player1Id = Number(res.match.player1_id || res.match.my_user_id || res.match.my_id || 0)
+			const player2Id = Number(res.match.player2_id || res.match.opponent_id || 0)
+			const shouldSwap = perspectiveUserId.value > 0 && player2Id === perspectiveUserId.value && player1Id !== perspectiveUserId.value
+			player1UserId.value = shouldSwap ? player2Id : player1Id
+			player2UserId.value = shouldSwap ? player1Id : player2Id
+			roundRecords.value = normalized.roundRecords
+			if (matchData.value.viewer_role === 'referee') {
+				uni.setNavigationBarTitle({ title: '执裁详情' })
+			}
+			if (wsHandlersReady && matchData.value.status === 1 && !matchWS.isConnected()) {
+				connectWebSocket()
+			}
+		}
+	} catch (error) {
+		console.error('[MatchDetail] 加载对局详情失败', { matchId: matchId.value, error })
+		uni.showToast({ title: '加载失败', icon: 'none' })
+	} finally {
+		loading.value = false
+	}
+}
+
+/**
+ * 连接WebSocket (观战模式)
+ */
+const connectWebSocket = async () => {
+	if (!matchId.value) return
+	if (matchData.value.status !== 1) return
+	
+	try {
+		await matchWS.connect(matchId.value, { allowAnonymous: isSpectateMode.value })
+		pageLog('WebSocket连接成功', { matchId: matchId.value, spectate: isSpectateMode.value })
+	} catch (error) {
+		console.error('[MatchDetail] WebSocket连接失败', { matchId: matchId.value, spectate: isSpectateMode.value, error })
+	}
+}
+
+/**
+ * 处理分数更新消息
+ */
+const handleScoreUpdate = (data) => {
+	matchData.value.player1_score = data.player1_score ?? data.my_score
+	matchData.value.player2_score = data.player2_score ?? data.opponent_score
+	matchData.value.current_round = data.current_round
+	pageLog('收到比分更新', {
+		matchId: data.match_id,
+		currentRound: data.current_round,
+		player1Score: data.player1_score ?? data.my_score,
+		player2Score: data.player2_score ?? data.opponent_score
+	})
+}
+
+/**
+ * 处理局结束消息
+ */
+const handleRoundEnd = (data) => {
+	matchData.value.player1_score = data.player1_score ?? data.my_score
+	matchData.value.player2_score = data.player2_score ?? data.opponent_score
+	matchData.value.current_round = data.current_round
+	pageLog('收到单局结束', {
+		matchId: data.match_id,
+		roundNumber: data.round_number,
+		winner: data.winner,
+		currentRound: data.current_round
+	})
+
+	if (data.round_number) {
+		roundRecords.value.push({
+			round_number: data.round_number,
+			player1_score: data.round_player1_score,
+			player2_score: data.round_player2_score,
+			winner: data.winner
+		})
+	} else {
+		matchWS.requestSync()
+	}
+}
+
+/**
+ * 处理对局结束消息
+ */
+const handleMatchEnd = (data) => {
+	pageLog('收到对局结束', {
+		matchId: data.match_id,
+		player1Score: data.player1_score ?? data.my_score,
+		player2Score: data.player2_score ?? data.opponent_score,
+		status: data.status
+	})
+	uni.showModal({
+		title: '对局结束',
+		content: `最终比分: ${data.player1_score ?? data.my_score} : ${data.player2_score ?? data.opponent_score}`,
+		showCancel: false,
+		success: () => {
+			uni.navigateBack()
+		}
+	})
+}
+
+const handleSync = (data) => {
+	matchData.value.player1_score = data.player1_score || 0
+	matchData.value.player2_score = data.player2_score || 0
+	matchData.value.current_round = data.current_round || 1
+	matchData.value.total_rounds = data.total_rounds || 0
+	if (typeof data.referee_bound === 'boolean') matchData.value.referee_bound = data.referee_bound
+	if (data.referee_user_id !== undefined) matchData.value.referee_user_id = Number(data.referee_user_id || 0)
+	if (data.referee_name !== undefined) matchData.value.referee_name = data.referee_name || ''
+	if (data.referee_avatar !== undefined) matchData.value.referee_avatar = data.referee_avatar || ''
+	if (data.referee_joined_at !== undefined) matchData.value.referee_joined_at = data.referee_joined_at || ''
+	if (data.referee_duration_seconds !== undefined) matchData.value.referee_duration_seconds = Number(data.referee_duration_seconds || 0)
+	if (data.completed_by_user_id !== undefined) matchData.value.completed_by_user_id = Number(data.completed_by_user_id || 0)
+	if (data.completion_source !== undefined) matchData.value.completion_source = data.completion_source || 'unknown'
+	if (Array.isArray(data.rounds)) {
+		roundRecords.value = data.rounds
+	}
+	pageLog('收到同步快照', {
+		matchId: data.match_id,
+		currentRound: data.current_round,
+		totalRounds: data.total_rounds,
+		status: data.status
+	})
+}
+
+/**
+ * 格式化时长
+ */
+const formatDuration = (durationSeconds) => {
+	if (!durationSeconds || durationSeconds < 0) return '0分'
+
+	const totalMinutes = Math.floor(durationSeconds / 60)
+
+	if (totalMinutes < 1) {
+		return `${durationSeconds}秒`
+	}
+
+	if (totalMinutes < 60) {
+		return `${totalMinutes}分`
+	}
+
+	const hours = Math.floor(totalMinutes / 60)
+	const remainMinutes = totalMinutes % 60
+
+	if (hours < 24) {
+		if (remainMinutes > 0) {
+			return `${hours}小时${remainMinutes}分`
+		}
+		return `${hours}小时`
+	}
+
+	const days = Math.floor(hours / 24)
+	const remainHours = hours % 24
+
+	if (remainHours > 0) {
+		return `${days}天${remainHours}小时`
+	}
+	return `${days}天`
+}
+
+/**
+ * 获取局结果样式类
+ */
+const getRoundResultClass = (round) => {
+	if (round.result === 'win' || round.winner === 1) return 'win-round'
+	return 'loss-round'
+}
+
+const getRoundResultTone = (round) => {
+	return round.result === 'win' || round.winner === 1 ? 'win' : 'loss'
+}
+
+const getRoundResultText = (round) => {
+	return round.resultText || (round.result === 'win' || round.winner === 1 ? '胜' : '负')
+}
+
+const handleRematch = () => {
+	const detail = matchData.value
+	if (!detail) return
+	const query = [
+		`opponent_id=${Number(detail.opponent_id) || 0}`,
+		`opponent_name=${encodeURIComponent(detail.opponent_name || '')}`,
+		`opponent_avatar=${encodeURIComponent(detail.opponent_avatar || '')}`,
+		`game_type=${Number(detail.game_type) || 3}`,
+		`match_mode=${detail.match_mode === 'practice' ? 'practice' : 'ranked'}`
+	]
+	uni.navigateTo({ url: `/subPages/match/challengeCompose?${query.join('&')}` })
+}
+
+const handleOpenReplay = () => {
+	uni.navigateTo({ url: buildMatchReplayUrl(matchId.value) })
+}
+
+const handleOpenH2H = () => {
+	const player1Id = Number(player1UserId.value || 0)
+	const player2Id = Number(player2UserId.value || 0)
+	if (!player1Id || !player2Id) {
+		uni.showToast({ title: '暂无可用的交锋记录', icon: 'none' })
+		return
+	}
+	uni.navigateTo({ url: `/subPages/user/h2hRecord?target_user_id=${player1Id}&opponent_id=${player2Id}` })
+}
+</script>
+
+<style lang="scss" scoped>
+@import './matchDetail.scss';
+</style>

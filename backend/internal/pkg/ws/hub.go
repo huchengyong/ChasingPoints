@@ -2,11 +2,13 @@ package ws
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
+	"chasing_points/internal/types"
 
 	"github.com/gorilla/websocket"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -20,6 +22,37 @@ type Client struct {
 	MatchId int64
 	UserId  int64
 	Send    chan []byte
+
+	// sendMu 保护 Send 的关闭状态：Hub、读协程和快照协程都会向 Send 写入，
+	// 关闭与写入必须互斥，避免向已关闭的 channel 发送而 panic。
+	sendMu     sync.Mutex
+	sendClosed bool
+}
+
+// trySend 非阻塞地投递消息；连接已关闭或发送缓冲已满时返回 false。
+func (c *Client) trySend(payload []byte) bool {
+	c.sendMu.Lock()
+	defer c.sendMu.Unlock()
+	if c.sendClosed {
+		return false
+	}
+	select {
+	case c.Send <- payload:
+		return true
+	default:
+		return false
+	}
+}
+
+// closeSend 关闭发送通道，可重复调用。
+func (c *Client) closeSend() {
+	c.sendMu.Lock()
+	defer c.sendMu.Unlock()
+	if c.sendClosed {
+		return
+	}
+	c.sendClosed = true
+	close(c.Send)
 }
 
 // Message WebSocket消息结构
@@ -52,6 +85,28 @@ type ScoreUpdateData struct {
 	SnookerClearedColors          []int  `json:"snooker_cleared_colors,omitempty"`
 	SnookerExpectedClearanceScore int    `json:"snooker_expected_clearance_score,omitempty"`
 	SnookerClearanceCompleted     bool   `json:"snooker_clearance_completed,omitempty"`
+	SnookerRulesVersion           int    `json:"snooker_rules_version,omitempty"`
+	BestOfFrames                  int    `json:"best_of_frames,omitempty"`
+	SnookerFormat                 string `json:"snooker_format,omitempty"`
+	SnookerTargetWins             int    `json:"snooker_target_wins,omitempty"`
+	CanChangeSnookerFormat        bool   `json:"can_change_snooker_format"`
+	MatchFormat                   string `json:"match_format,omitempty"`
+	TargetWins                    int    `json:"target_wins,omitempty"`
+	CanChangeMatchFormat          bool   `json:"can_change_match_format"`
+	StartingActor                 int    `json:"starting_actor,omitempty"`
+	SnookerPhase                  string `json:"snooker_phase,omitempty"`
+	SnookerBallOn                 string `json:"snooker_ball_on,omitempty"`
+	SnookerStriker                int    `json:"snooker_striker,omitempty"`
+	SnookerVisitNo                int    `json:"snooker_visit_no,omitempty"`
+	SnookerCurrentBreak           int    `json:"snooker_current_break,omitempty"`
+	SnookerRedsRemaining          int    `json:"snooker_reds_remaining,omitempty"`
+	SnookerFreeBallAvailable      bool   `json:"snooker_free_ball_available,omitempty"`
+	SnookerCueBallInHand          bool   `json:"snooker_cue_ball_in_hand,omitempty"`
+	SnookerMissWarningActive      bool   `json:"snooker_miss_warning_active,omitempty"`
+	SnookerRespottedBlackPending  bool   `json:"snooker_respotted_black_pending,omitempty"`
+	SnookerPendingConcessionActor int    `json:"snooker_pending_concession_actor,omitempty"`
+	SnookerPendingConcessionScope string `json:"snooker_pending_concession_scope,omitempty"`
+	SnookerFrameEndReason         string `json:"snooker_frame_end_reason,omitempty"`
 	Status                        int    `json:"status"`
 }
 
@@ -63,22 +118,72 @@ type MatchSyncRound struct {
 }
 
 type MatchSyncData struct {
-	MatchId                       int64            `json:"match_id"`
-	Status                        int              `json:"status"`
-	ServerRevision                int64            `json:"server_revision"`
-	Player1Score                  int              `json:"player1_score"`
-	Player2Score                  int              `json:"player2_score"`
-	CurrentFramePlayer1Score      int              `json:"current_frame_player1_score"`
-	CurrentFramePlayer2Score      int              `json:"current_frame_player2_score"`
-	CurrentFrameStarted           bool             `json:"current_frame_started"`
-	RedBallCount                  int              `json:"red_ball_count"`
-	SnookerClearanceStarted       bool             `json:"snooker_clearance_started"`
-	SnookerClearedColors          []int            `json:"snooker_cleared_colors,omitempty"`
-	SnookerExpectedClearanceScore int              `json:"snooker_expected_clearance_score,omitempty"`
-	SnookerClearanceCompleted     bool             `json:"snooker_clearance_completed,omitempty"`
-	CurrentRound                  int              `json:"current_round"`
-	TotalRounds                   int              `json:"total_rounds"`
-	Rounds                        []MatchSyncRound `json:"rounds"`
+	MatchId                       int64                  `json:"match_id"`
+	ChallengeId                   int64                  `json:"challenge_id,optional"`
+	Status                        int                    `json:"status"`
+	ServerRevision                int64                  `json:"server_revision"`
+	Player1Score                  int                    `json:"player1_score"`
+	Player2Score                  int                    `json:"player2_score"`
+	CurrentFramePlayer1Score      int                    `json:"current_frame_player1_score"`
+	CurrentFramePlayer2Score      int                    `json:"current_frame_player2_score"`
+	CurrentFrameStarted           bool                   `json:"current_frame_started"`
+	RedBallCount                  int                    `json:"red_ball_count"`
+	SnookerClearanceStarted       bool                   `json:"snooker_clearance_started"`
+	SnookerClearedColors          []int                  `json:"snooker_cleared_colors,omitempty"`
+	SnookerExpectedClearanceScore int                    `json:"snooker_expected_clearance_score,omitempty"`
+	SnookerClearanceCompleted     bool                   `json:"snooker_clearance_completed,omitempty"`
+	SnookerRulesVersion           int                    `json:"snooker_rules_version,omitempty"`
+	BestOfFrames                  int                    `json:"best_of_frames,omitempty"`
+	SnookerFormat                 string                 `json:"snooker_format,omitempty"`
+	SnookerTargetWins             int                    `json:"snooker_target_wins,omitempty"`
+	CanChangeSnookerFormat        bool                   `json:"can_change_snooker_format"`
+	MatchFormat                   string                 `json:"match_format,omitempty"`
+	TargetWins                    int                    `json:"target_wins,omitempty"`
+	CanChangeMatchFormat          bool                   `json:"can_change_match_format"`
+	StartingActor                 int                    `json:"starting_actor,omitempty"`
+	SnookerPhase                  string                 `json:"snooker_phase,omitempty"`
+	SnookerBallOn                 string                 `json:"snooker_ball_on,omitempty"`
+	SnookerStriker                int                    `json:"snooker_striker,omitempty"`
+	SnookerVisitNo                int                    `json:"snooker_visit_no,omitempty"`
+	SnookerCurrentBreak           int                    `json:"snooker_current_break,omitempty"`
+	SnookerRedsRemaining          int                    `json:"snooker_reds_remaining,omitempty"`
+	SnookerFreeBallAvailable      bool                   `json:"snooker_free_ball_available,omitempty"`
+	SnookerCueBallInHand          bool                   `json:"snooker_cue_ball_in_hand,omitempty"`
+	SnookerMissWarningActive      bool                   `json:"snooker_miss_warning_active,omitempty"`
+	SnookerRespottedBlackPending  bool                   `json:"snooker_respotted_black_pending,omitempty"`
+	SnookerPendingConcessionActor int                    `json:"snooker_pending_concession_actor,omitempty"`
+	SnookerPendingConcessionScope string                 `json:"snooker_pending_concession_scope,omitempty"`
+	SnookerFrameEndReason         string                 `json:"snooker_frame_end_reason,omitempty"`
+	CurrentRound                  int                    `json:"current_round"`
+	TotalRounds                   int                    `json:"total_rounds"`
+	Rounds                        []MatchSyncRound       `json:"rounds"`
+	MatchMode                     string                 `json:"match_mode,optional"`
+	Visibility                    string                 `json:"visibility,optional"`
+	FinishState                   string                 `json:"finish_state,optional"`
+	FinishRequestedBy             int64                  `json:"finish_requested_by,optional"`
+	FinishRequestExpiresAt        string                 `json:"finish_request_expires_at,optional"`
+	FinishRequestRemainingSeconds int                    `json:"finish_request_remaining_seconds,optional"`
+	ViewerRole                    string                 `json:"viewer_role,optional"`
+	RefereeBound                  bool                   `json:"referee_bound,optional"`
+	RefereeUserId                 int64                  `json:"referee_user_id,optional"`
+	RefereeName                   string                 `json:"referee_name,optional"`
+	RefereeAvatar                 string                 `json:"referee_avatar,optional"`
+	RefereeJoinedAt               string                 `json:"referee_joined_at,optional"`
+	RefereeDurationSeconds        int64                  `json:"referee_duration_seconds,optional"`
+	CompletedByUserId             int64                  `json:"completed_by_user_id,optional"`
+	CompletionSource              string                 `json:"completion_source,optional"`
+	CanScore                      bool                   `json:"can_score,optional"`
+	CanUndo                       bool                   `json:"can_undo,optional"`
+	CanFinish                     bool                   `json:"can_finish,optional"`
+	CanRequestFinish              bool                   `json:"can_request_finish,optional"`
+	CanConfirmFinish              bool                   `json:"can_confirm_finish,optional"`
+	CanDisputeFinish              bool                   `json:"can_dispute_finish,optional"`
+	CanWithdrawFinish             bool                   `json:"can_withdraw_finish,optional"`
+	LastAction                    *types.MatchLastAction `json:"last_action,optional"`
+	MyScore                       int                    `json:"my_score"`
+	OpponentScore                 int                    `json:"opponent_score"`
+	CurrentFrameMyScore           int                    `json:"current_frame_my_score,optional"`
+	CurrentFrameOpponentScore     int                    `json:"current_frame_opponent_score,optional"`
 }
 
 // Hub WebSocket连接管理器
@@ -113,8 +218,9 @@ type Hub struct {
 
 // BroadcastMessage 广播消息
 type BroadcastMessage struct {
-	MatchId int64
-	Message []byte
+	MatchId        int64
+	Message        []byte
+	ViewerMessages map[int64][]byte
 }
 
 // UserMessage 用户消息
@@ -158,7 +264,7 @@ func (h *Hub) Run() {
 			if room, ok := h.rooms[client.MatchId]; ok {
 				if _, ok := room[client]; ok {
 					delete(room, client)
-					close(client.Send)
+					client.closeSend()
 					// 如果房间为空，删除房间
 					if len(room) == 0 {
 						delete(h.rooms, client.MatchId)
@@ -169,18 +275,33 @@ func (h *Hub) Run() {
 			logx.Infof("客户端断开: MatchId=%d, UserId=%d", client.MatchId, client.UserId)
 
 		case message := <-h.Broadcast:
-			h.mu.RLock()
+			// 慢连接会被踢出房间（修改 map），需要写锁
+			h.mu.Lock()
 			if room, ok := h.rooms[message.MatchId]; ok {
-				for client := range room {
-					select {
-					case client.Send <- message.Message:
-					default:
-						close(client.Send)
-						delete(room, client)
+				if len(message.ViewerMessages) > 0 {
+					for client := range room {
+						payload, ok := message.ViewerMessages[client.UserId]
+						if !ok {
+							continue
+						}
+						if !client.trySend(payload) {
+							client.closeSend()
+							delete(room, client)
+						}
+					}
+				} else {
+					for client := range room {
+						if !client.trySend(message.Message) {
+							client.closeSend()
+							delete(room, client)
+						}
 					}
 				}
+				if len(room) == 0 {
+					delete(h.rooms, message.MatchId)
+				}
 			}
-			h.mu.RUnlock()
+			h.mu.Unlock()
 
 		case client := <-h.RegisterUser:
 			h.mu.Lock()
@@ -196,7 +317,7 @@ func (h *Hub) Run() {
 			if room, ok := h.userRooms[client.UserId]; ok {
 				if _, ok := room[client]; ok {
 					delete(room, client)
-					close(client.Send)
+					client.closeSend()
 					if len(room) == 0 {
 						delete(h.userRooms, client.UserId)
 					}
@@ -206,18 +327,20 @@ func (h *Hub) Run() {
 			logx.Infof("用户连接断开: UserId=%d", client.UserId)
 
 		case message := <-h.SendUser:
-			h.mu.RLock()
+			// 慢连接会被踢出用户房间（修改 map），需要写锁
+			h.mu.Lock()
 			if room, ok := h.userRooms[message.UserId]; ok {
 				for client := range room {
-					select {
-					case client.Send <- message.Message:
-					default:
-						close(client.Send)
+					if !client.trySend(message.Message) {
+						client.closeSend()
 						delete(room, client)
 					}
 				}
+				if len(room) == 0 {
+					delete(h.userRooms, message.UserId)
+				}
 			}
-			h.mu.RUnlock()
+			h.mu.Unlock()
 		}
 	}
 }
@@ -236,6 +359,29 @@ func (h *Hub) BroadcastToMatch(matchId int64, msg *Message) {
 		MatchId: matchId,
 		Message: data,
 	}
+}
+
+func (h *Hub) BroadcastToMatchForUsers(matchId int64, messages map[int64]*Message) {
+	if len(messages) == 0 {
+		return
+	}
+	payloads := make(map[int64][]byte, len(messages))
+	var firstPayload []byte
+	for userId, msg := range messages {
+		data, err := json.Marshal(msg)
+		if err != nil {
+			logx.Errorf("序列化用户视角消息失败: matchId=%d, userId=%d, err=%v", matchId, userId, err)
+			continue
+		}
+		payloads[userId] = data
+		if firstPayload == nil {
+			firstPayload = data
+		}
+	}
+	if len(payloads) == 0 {
+		return
+	}
+	h.Broadcast <- &BroadcastMessage{MatchId: matchId, Message: firstPayload, ViewerMessages: payloads}
 }
 
 // GetRoomClientCount 获取房间客户端数量
@@ -263,6 +409,47 @@ func (h *Hub) SendToUser(userId int64, msg *Message) {
 		UserId:  userId,
 		Message: data,
 	}
+}
+
+// DisconnectUser closes every user and match channel owned by an account after
+// its session becomes invalid (for example, after account deletion).
+func (h *Hub) DisconnectUser(userID int64) {
+	if h == nil || userID <= 0 {
+		return
+	}
+	payload, err := json.Marshal(&Message{
+		Type: "session_invalid",
+		Data: map[string]string{"reason": "SESSION_INVALID"},
+	})
+	if err != nil {
+		return
+	}
+
+	h.mu.Lock()
+	clients := make(map[*Client]struct{})
+	for matchID, room := range h.rooms {
+		for client := range room {
+			if client.UserId == userID {
+				delete(room, client)
+				clients[client] = struct{}{}
+			}
+		}
+		if len(room) == 0 {
+			delete(h.rooms, matchID)
+		}
+	}
+	if room, ok := h.userRooms[userID]; ok {
+		for client := range room {
+			delete(room, client)
+			clients[client] = struct{}{}
+		}
+		delete(h.userRooms, userID)
+	}
+	for client := range clients {
+		client.trySend(payload)
+		client.closeSend()
+	}
+	h.mu.Unlock()
 }
 
 const (
@@ -302,19 +489,24 @@ func (c *Client) ReadPump() {
 			break
 		}
 
-		// 处理客户端消息（如同步请求）
-		var msg Message
-		if err := json.Unmarshal(message, &msg); err == nil {
-			if msg.Type == "ping" {
-				// 响应心跳
-				pongMsg, _ := json.Marshal(Message{Type: "pong"})
-				c.Send <- pongMsg
-			}
-			if msg.Type == "sync" {
-				logx.Infof("收到对局同步请求: MatchId=%d, UserId=%d", c.MatchId, c.UserId)
-				c.sendMatchSync()
-			}
-		}
+		c.handleMatchMessage(message)
+	}
+}
+
+// handleMatchMessage 处理对局连接的客户端消息（心跳、同步请求）
+func (c *Client) handleMatchMessage(message []byte) {
+	var msg Message
+	if err := json.Unmarshal(message, &msg); err != nil {
+		return
+	}
+	switch msg.Type {
+	case "ping":
+		// 响应心跳；连接已被踢出或缓冲已满时丢弃，不阻塞读协程
+		pongMsg, _ := json.Marshal(Message{Type: "pong"})
+		c.trySend(pongMsg)
+	case "sync":
+		logx.Infof("收到对局同步请求: MatchId=%d, UserId=%d", c.MatchId, c.UserId)
+		c.sendMatchSync()
 	}
 }
 
@@ -362,12 +554,59 @@ func InitGlobalHub() {
 }
 
 func buildMatchSyncData(match *model.Match, completedRoundCount int64, snookerState model.SnookerRoundState, rounds []model.MatchRound) MatchSyncData {
+	return buildMatchSyncDataForViewer(match, 0, completedRoundCount, snookerState, rounds)
+}
+
+func buildMatchSyncDataForViewer(match *model.Match, userId int64, completedRoundCount int64, snookerState model.SnookerRoundState, rounds []model.MatchRound) MatchSyncData {
 	currentRound := int(completedRoundCount) + 1
 	if match != nil && match.Status != 1 && !match.CurrentFrameStarted {
 		currentRound = int(completedRoundCount)
 	}
+	viewerRole, refereeBound, refereeUserId, canScore, canUndo, canFinish, canRequestFinish, canConfirmFinish, canDisputeFinish, canWithdrawFinish := resolveMatchSyncCapabilities(match, userId)
+	myScore := match.MyScore
+	opponentScore := match.OpponentScore
+	currentFrameMyScore := match.CurrentFrameMyScore
+	currentFrameOpponentScore := match.CurrentFrameOpponentScore
+	if viewerRole == "player2" {
+		myScore, opponentScore = opponentScore, myScore
+		currentFrameMyScore, currentFrameOpponentScore = currentFrameOpponentScore, currentFrameMyScore
+	}
+	finishRequestExpiresAt, finishRequestRemainingSeconds := match.FinishRequestCountdown(time.Now())
+	refereeJoinedAt := ""
+	refereeDurationSeconds := int64(0)
+	if match.RefereeJoinedAt != nil {
+		refereeJoinedAt = match.RefereeJoinedAt.Format("2006-01-02T15:04:05+08:00")
+		end := time.Now()
+		if match.EndTime != nil {
+			end = *match.EndTime
+		}
+		refereeDurationSeconds = int64(end.Sub(*match.RefereeJoinedAt).Seconds())
+		if refereeDurationSeconds < 0 {
+			refereeDurationSeconds = 0
+		}
+	}
+	completedByUserId := int64(0)
+	completionSource := model.CompletionSourceUnknown
+	if match.Status == 2 {
+		if match.CompletedByUserId != nil {
+			completedByUserId = *match.CompletedByUserId
+		}
+		if match.CompletionSource != "" {
+			completionSource = match.CompletionSource
+		}
+	}
+	snookerFormat, snookerTargetWins, _ := model.NormalizeSnookerFormat(match.SnookerFormat, match.SnookerTargetWins, match.BestOfFrames)
+	matchFormat, targetWins := "", 0
+	if model.IsPoolMatchFormatGameType(match.GameType) {
+		matchFormat, targetWins, _ = model.NormalizePoolMatchFormat(match.GameType, match.MatchFormat, match.TargetWins)
+	}
+	challengeID := int64(0)
+	if match.ChallengeId != nil && *match.ChallengeId > 0 {
+		challengeID = *match.ChallengeId
+	}
 	return MatchSyncData{
 		MatchId:                       match.Id,
+		ChallengeId:                   challengeID,
 		Status:                        match.Status,
 		ServerRevision:                match.SyncRevision,
 		Player1Score:                  match.MyScore,
@@ -380,9 +619,225 @@ func buildMatchSyncData(match *model.Match, completedRoundCount int64, snookerSt
 		SnookerClearedColors:          snookerState.ClearedColors,
 		SnookerExpectedClearanceScore: snookerState.ExpectedClearanceScore,
 		SnookerClearanceCompleted:     snookerState.ClearanceCompleted,
+		SnookerRulesVersion:           match.SnookerRulesVersion,
+		BestOfFrames:                  match.BestOfFrames,
+		SnookerFormat:                 snookerFormat,
+		SnookerTargetWins:             snookerTargetWins,
+		MatchFormat:                   matchFormat,
+		TargetWins:                    targetWins,
+		StartingActor:                 match.StartingActor,
+		SnookerPhase:                  snookerState.Phase,
+		SnookerBallOn:                 snookerState.BallOn,
+		SnookerStriker:                snookerState.Striker,
+		SnookerVisitNo:                snookerState.VisitNo,
+		SnookerCurrentBreak:           snookerState.CurrentBreak,
+		SnookerRedsRemaining:          snookerState.RedsRemaining,
+		SnookerFreeBallAvailable:      snookerState.FreeBallAvailable,
+		SnookerCueBallInHand:          snookerState.CueBallInHand,
+		SnookerMissWarningActive:      snookerState.MissWarningActive,
+		SnookerRespottedBlackPending:  snookerState.Phase == model.SnookerPhaseRespottedBlackPending,
+		SnookerPendingConcessionActor: snookerState.PendingConcessionActor,
+		SnookerPendingConcessionScope: snookerState.PendingConcessionScope,
+		SnookerFrameEndReason:         snookerState.FrameEndReason,
 		CurrentRound:                  currentRound,
 		TotalRounds:                   int(completedRoundCount),
 		Rounds:                        buildMatchSyncRounds(rounds),
+		MatchMode:                     model.NormalizeMatchMode(match.MatchMode),
+		Visibility:                    model.NormalizeMatchVisibility(match.Visibility, match.MatchMode),
+		FinishState:                   model.NormalizeFinishState(match.FinishState),
+		FinishRequestedBy:             resolveFinishRequestedBy(match),
+		FinishRequestExpiresAt:        finishRequestExpiresAt,
+		FinishRequestRemainingSeconds: finishRequestRemainingSeconds,
+		ViewerRole:                    viewerRole,
+		RefereeBound:                  refereeBound,
+		RefereeUserId:                 refereeUserId,
+		RefereeJoinedAt:               refereeJoinedAt,
+		RefereeDurationSeconds:        refereeDurationSeconds,
+		CompletedByUserId:             completedByUserId,
+		CompletionSource:              completionSource,
+		CanScore:                      canScore,
+		CanUndo:                       canUndo,
+		CanFinish:                     canFinish,
+		CanRequestFinish:              canRequestFinish,
+		CanConfirmFinish:              canConfirmFinish,
+		CanDisputeFinish:              canDisputeFinish,
+		CanWithdrawFinish:             canWithdrawFinish,
+		MyScore:                       myScore,
+		OpponentScore:                 opponentScore,
+		CurrentFrameMyScore:           currentFrameMyScore,
+		CurrentFrameOpponentScore:     currentFrameOpponentScore,
+	}
+}
+
+func hydrateMatchSyncRefereeProfile(svcCtx *svc.ServiceContext, data *MatchSyncData) {
+	if svcCtx == nil || svcCtx.UserModel == nil || data == nil || !data.RefereeBound || data.RefereeUserId <= 0 {
+		return
+	}
+	if referee, err := svcCtx.UserModel.FindById(data.RefereeUserId); err == nil && referee != nil {
+		data.RefereeName = referee.Nickname
+		data.RefereeAvatar = referee.Avatar
+	}
+}
+
+func resolveMatchSyncCapabilities(match *model.Match, userId int64) (string, bool, int64, bool, bool, bool, bool, bool, bool, bool) {
+	if match == nil || userId <= 0 {
+		return "", false, 0, false, false, false, false, false, false, false
+	}
+	refereeBound := match.RefereeUserId != nil && *match.RefereeUserId > 0
+	refereeUserId := int64(0)
+	if refereeBound {
+		refereeUserId = *match.RefereeUserId
+	}
+	viewerRole := ""
+	switch {
+	case refereeBound && refereeUserId == userId:
+		viewerRole = "referee"
+	case match.UserId == userId:
+		viewerRole = "player1"
+	case match.OpponentId != nil && *match.OpponentId == userId:
+		viewerRole = "player2"
+	}
+	if viewerRole == "" {
+		return "", refereeBound, refereeUserId, false, false, false, false, false, false, false
+	}
+	if viewerRole == "referee" {
+		canFinish := true
+		if match.GameType == 1 && match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA {
+			canFinish = snookerNormalFinishEligibleForSync(match)
+		}
+		pending := model.NormalizeFinishState(match.FinishState) == model.FinishStatePendingConfirmation
+		// 灵活赛制未到合法结束点时，裁判与参赛者同样不可结束（与 HTTP 快照一致）。
+		if model.IsFlexiblePoolMatch(match) && !pending && !poolNormalFinishEligibleForSync(match) {
+			canFinish = false
+		}
+		return viewerRole, refereeBound, refereeUserId, true, true, canFinish, false, false, false, false
+	}
+	mode := model.NormalizeMatchMode(match.MatchMode)
+	pending := model.NormalizeFinishState(match.FinishState) == model.FinishStatePendingConfirmation
+	// 约球创建且绑定裁判时参赛方仍可直接结束；未绑定裁判的约球排位与扫码排位一样走结束确认。
+	challengeMatch := match.ChallengeId != nil && *match.ChallengeId > 0
+	canScore := !refereeBound && !pending
+	canUndo := !refereeBound && !pending
+	canFinish := match.Status == 1 && !pending &&
+		((!refereeBound && (mode == model.MatchModePractice || !match.FinishConfirmationRequired)) || (challengeMatch && refereeBound))
+	canRequestFinish := !refereeBound && match.FinishConfirmationRequired && mode == model.MatchModeRanked && !pending && match.Status == 1
+	requestedBy := resolveFinishRequestedBy(match)
+	// 确认期满后只等服务端按冻结比分结束，不再提供撤回、确认或异议。
+	answerable := !refereeBound && pending && !match.FinishRequestExpired(time.Now())
+	canConfirmFinish := answerable && requestedBy > 0 && requestedBy != userId
+	canDisputeFinish := canConfirmFinish
+	canWithdrawFinish := answerable && requestedBy == userId
+	if match.GameType == 1 && match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA && !pending && !snookerNormalFinishEligibleForSync(match) {
+		canFinish = false
+		canRequestFinish = false
+	}
+	// 灵活赛制未到合法结束点时不得放行结束/发起确认（与 HTTP 快照一致）。
+	if model.IsFlexiblePoolMatch(match) && !pending && !poolNormalFinishEligibleForSync(match) {
+		canFinish = false
+		canRequestFinish = false
+	}
+	return viewerRole, refereeBound, refereeUserId, canScore, canUndo, canFinish, canRequestFinish, canConfirmFinish, canDisputeFinish, canWithdrawFinish
+}
+
+// poolNormalFinishEligibleForSync 与 logic/match 的 poolNormalFinishEligible 保持一致；
+// pkg/ws 不能反向导入 logic 层，这里按同一模型规则复算。
+func poolNormalFinishEligibleForSync(match *model.Match) bool {
+	if match == nil || !model.IsFlexiblePoolMatch(match) || match.Status != 1 {
+		return false
+	}
+	format, targetWins, ok := model.NormalizePoolMatchFormat(match.GameType, match.MatchFormat, match.TargetWins)
+	if !ok {
+		format = model.MatchFormatLegacy
+	}
+	switch format {
+	case model.MatchFormatFree:
+		return match.MyScore+match.OpponentScore >= 1
+	case model.MatchFormatRaceTo:
+		return targetWins > 0 && (match.MyScore >= targetWins || match.OpponentScore >= targetWins)
+	default:
+		return true
+	}
+}
+
+func snookerNormalFinishEligibleForSync(match *model.Match) bool {
+	if match == nil || match.Status != 1 || match.CurrentFrameStarted {
+		return false
+	}
+	format, targetWins, ok := model.NormalizeSnookerFormat(match.SnookerFormat, match.SnookerTargetWins, match.BestOfFrames)
+	if !ok {
+		return false
+	}
+	if format == model.SnookerFormatFree {
+		return match.MyScore+match.OpponentScore >= 1
+	}
+	return format == model.SnookerFormatRaceTo && targetWins > 0 && (match.MyScore >= targetWins || match.OpponentScore >= targetWins)
+}
+
+func resolveFinishRequestedBy(match *model.Match) int64 {
+	if match == nil || match.FinishRequestedBy == nil {
+		return 0
+	}
+	return *match.FinishRequestedBy
+}
+
+func buildMatchSyncLastAction(svcCtx *svc.ServiceContext, match *model.Match, userId int64) *types.MatchLastAction {
+	if svcCtx == nil || svcCtx.MatchModel == nil || match == nil {
+		return nil
+	}
+	action, err := svcCtx.MatchModel.GetLastAction(match.Id)
+	if err != nil || action == nil {
+		return nil
+	}
+	role, _, _, _, _, _, _, _, _, _ := resolveMatchSyncCapabilities(match, userId)
+	actorName := "对手"
+	if role == "referee" {
+		actorName = "选手2"
+		if action.Actor == 1 {
+			actorName = "选手1"
+		}
+	} else if (role == "player1" && action.Actor == 1) || (role == "player2" && action.Actor == 2) {
+		actorName = "我方"
+	}
+	description := action.ActionType
+	switch action.ActionType {
+	case "score":
+		description = fmt.Sprintf("%s加%d分", actorName, action.ScoreChange)
+	case "foul":
+		description = fmt.Sprintf("%s犯规，计%d分", actorName, action.ScoreChange)
+	case "win":
+		description = fmt.Sprintf("%s结束本局", actorName)
+	case "undo":
+		description = "撤销了最近一次操作"
+	case "finish_request":
+		description = fmt.Sprintf("%s发起结束确认", actorName)
+	case "finish_confirm":
+		description = fmt.Sprintf("%s确认结束", actorName)
+	case "finish_dispute":
+		description = fmt.Sprintf("%s提出异议", actorName)
+	case "finish_withdraw":
+		description = fmt.Sprintf("%s撤回结束请求", actorName)
+	case "finish_expired":
+		description = "结束请求已过期，对局恢复进行中"
+	case model.MatchActionTypeSnookerStroke:
+		if event, err := model.DecodeSnookerEvent(action.ExtraData); err == nil {
+			switch event.Outcome {
+			case model.SnookerOutcomePot:
+				description = fmt.Sprintf("%s本杆得%d分", actorName, action.ScoreChange)
+			case model.SnookerOutcomeNoScore:
+				description = fmt.Sprintf("%s未进球，上手结束", actorName)
+			case model.SnookerOutcomeFoul:
+				description = fmt.Sprintf("%s犯规，对方获%d分", actorName, action.ScoreChange)
+			}
+		}
+	case model.MatchActionTypeSnookerFrameAction:
+		description = "斯诺克局状态已更新"
+	}
+	return &types.MatchLastAction{
+		ActionType:     action.ActionType,
+		Actor:          action.Actor,
+		ScoreChange:    action.ScoreChange,
+		ServerRevision: action.ServerRevision,
+		Description:    description,
 	}
 }
 
@@ -428,15 +883,39 @@ func (c *Client) sendMatchSync() {
 	snookerState := model.SnookerRoundState{}
 	if match.GameType == 1 {
 		if actions, actionsErr := c.SvcCtx.MatchModel.ListActiveActions(c.MatchId); actionsErr == nil {
-			snookerState = model.BuildSnookerRoundState(actions, int(roundCount)+1)
+			roundNo := int(roundCount) + 1
+			if !match.CurrentFrameStarted && roundCount > 0 {
+				roundNo = int(roundCount)
+			}
+			if match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA {
+				starter := model.SnookerStartingActor(match.StartingActor, roundNo)
+				if state, replayErr := model.ReplaySnookerRoundV2(actions, roundNo, starter); replayErr == nil {
+					snookerState = state
+				} else {
+					logx.Errorf("回放斯诺克版本2当前局失败: matchId=%d, err=%v", c.MatchId, replayErr)
+				}
+			} else {
+				snookerState = model.BuildSnookerRoundState(actions, roundNo)
+			}
 		} else {
 			logx.Errorf("获取斯诺克当前局操作失败: matchId=%d, err=%v", c.MatchId, actionsErr)
 		}
 	}
-
 	msg := &Message{
 		Type: "sync",
-		Data: buildMatchSyncData(match, roundCount, snookerState, rounds),
+		Data: func() MatchSyncData {
+			data := buildMatchSyncDataForViewer(match, c.UserId, roundCount, snookerState, rounds)
+			actionCount, _ := c.SvcCtx.MatchModel.CountActionsWithTx(nil, match.Id)
+			data.CanChangeSnookerFormat = match.GameType == 1 && match.SnookerRulesVersion == model.SnookerRulesVersionWPBSA &&
+				match.UserId == c.UserId && match.Status == 1 && model.NormalizeFinishState(match.FinishState) == model.FinishStateNone &&
+				match.RefereeUserId == nil && roundCount == 0 && actionCount == 0
+			data.CanChangeMatchFormat = model.IsFlexiblePoolMatch(match) &&
+				match.UserId == c.UserId && match.Status == 1 && model.NormalizeFinishState(match.FinishState) == model.FinishStateNone &&
+				match.RefereeUserId == nil && roundCount == 0 && actionCount == 0
+			hydrateMatchSyncRefereeProfile(c.SvcCtx, &data)
+			data.LastAction = buildMatchSyncLastAction(c.SvcCtx, match, c.UserId)
+			return data
+		}(),
 	}
 
 	logx.Infof("发送对局同步快照: MatchId=%d, UserId=%d, CurrentRound=%d, TotalRounds=%d, Status=%d",
@@ -448,9 +927,7 @@ func (c *Client) sendMatchSync() {
 		return
 	}
 
-	select {
-	case c.Send <- payload:
-	default:
+	if !c.trySend(payload) {
 		logx.Errorf("发送对局同步快照失败: matchId=%d, userId=%d", c.MatchId, c.UserId)
 	}
 }

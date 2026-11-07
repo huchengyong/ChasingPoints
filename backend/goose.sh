@@ -36,7 +36,6 @@ show_help() {
     echo "  version         显示当前数据库版本"
     echo "  create <名称>   创建新的迁移文件"
     echo "  fix             修复迁移版本顺序"
-    echo "  validate        验证迁移文件"
     echo ""
     echo "示例:"
     echo "  $0 up            # 执行所有迁移"
@@ -106,10 +105,6 @@ main() {
         fix)
             echo "正在修复迁移版本..."
             goose -dir "$MIGRATIONS_DIR" fix
-            ;;
-        validate)
-            echo "正在验证迁移文件..."
-            goose -dir "$MIGRATIONS_DIR" mysql "$DB_DSN" validate
             ;;
         help|--help|-h)
             show_help

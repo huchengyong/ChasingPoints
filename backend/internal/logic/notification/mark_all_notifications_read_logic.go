@@ -21,7 +21,7 @@ func NewMarkAllNotificationsReadLogic(ctx context.Context, svcCtx *svc.ServiceCo
 	return &MarkAllNotificationsReadLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

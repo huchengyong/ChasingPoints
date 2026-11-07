@@ -12,14 +12,31 @@ defineProps<{
       <div>
         <h2>追分</h2>
         <p>把对局、战绩和竞技感，认真留给真正爱打球的人。</p>
-        <a
-          class="site-footer__icp"
-          :href="siteConfig.icpRecordUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {{ siteConfig.icpRecordNumber }}
-        </a>
+        <div class="site-footer__records">
+          <a
+            class="site-footer__record"
+            :href="siteConfig.icpRecordUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {{ siteConfig.icpRecordNumber }}
+          </a>
+          <a
+            class="site-footer__record site-footer__police-record"
+            :href="siteConfig.policeRecordUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img
+              :src="siteConfig.policeRecordIconUrl"
+              width="18"
+              height="18"
+              alt=""
+              aria-hidden="true"
+            >
+            <span>{{ siteConfig.policeRecordNumber }}</span>
+          </a>
+        </div>
       </div>
 
       <nav class="site-footer__nav" aria-label="页脚导航">
@@ -63,11 +80,22 @@ defineProps<{
   line-height: 1.7;
 }
 
-.site-footer__icp {
-  display: inline-flex;
+.site-footer__records {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
   margin-top: 10px;
+}
+
+.site-footer__record {
+  display: inline-flex;
+  align-items: center;
   color: rgba(31, 26, 16, 0.62);
   font-size: 0.92rem;
+}
+
+.site-footer__police-record {
+  gap: 6px;
 }
 
 .site-footer__nav {

@@ -2,6 +2,7 @@ package season
 
 import (
 	"context"
+	"time"
 
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
@@ -22,11 +23,14 @@ func NewGetMySeasonRecordLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 	return &GetMySeasonRecordLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
 func (l *GetMySeasonRecordLogic) GetMySeasonRecord(req *types.GetMySeasonRecordReq) (resp *types.GetMySeasonRecordResp, err error) {
+	if req == nil {
+		req = &types.GetMySeasonRecordReq{}
+	}
 	userIdInt, err := utils.GetUserIDFromCtx(l.ctx)
 	if err != nil {
 		l.Logger.Errorf("获取用户ID失败: %v", err)
@@ -37,9 +41,9 @@ func (l *GetMySeasonRecordLogic) GetMySeasonRecord(req *types.GetMySeasonRecordR
 	var season *model.Season
 
 	if seasonId == 0 {
-		season, err = l.svcCtx.SeasonModel.FindCurrent()
+		season, _, err = ResolveCurrentSeasonLifecycle(l.svcCtx, time.Now())
 		if err != nil {
-			l.Logger.Errorf("查询当前赛季失败: err=%v", err)
+			l.Logger.Errorf("解析当前赛季失败: err=%v", err)
 			return &types.GetMySeasonRecordResp{Success: false}, nil
 		}
 	} else {
@@ -70,23 +74,26 @@ func (l *GetMySeasonRecordLogic) GetMySeasonRecord(req *types.GetMySeasonRecordR
 
 	return &types.GetMySeasonRecordResp{
 		Success: true,
-		Record:  buildSeasonRecordInfo(record, season.Name),
+		Record:  buildSeasonRecordInfo(record, season.Name, seasonHasQualification(l.svcCtx, season)),
 	}, nil
 }
 
-func buildSeasonRecordInfo(record *model.SeasonRecord, seasonName string) *types.SeasonRecordInfo {
+// buildSeasonRecordInfo 组装赛季记录；没有达标门槛的赛季全员参与排名，qualified 恒为 true。
+func buildSeasonRecordInfo(record *model.SeasonRecord, seasonName string, hasQualification bool) *types.SeasonRecordInfo {
 	if record == nil {
 		return nil
 	}
 
 	return &types.SeasonRecordInfo{
-		SeasonId:       record.SeasonId,
-		SeasonName:     seasonName,
-		StartRankScore: record.StartRankScore,
-		EndRankScore:   record.EndRankScore,
-		PeakRankScore:  record.PeakRankScore,
-		MatchesPlayed:  record.MatchesPlayed,
-		Wins:           record.Wins,
-		FinalRank:      record.FinalRank,
+		SeasonId:          record.SeasonId,
+		SeasonName:        seasonName,
+		StartRankScore:    record.StartRankScore,
+		EndRankScore:      record.EndRankScore,
+		PeakRankScore:     record.PeakRankScore,
+		MatchesPlayed:     record.MatchesPlayed,
+		Wins:              record.Wins,
+		FinalRank:         record.FinalRank,
+		DistinctOpponents: record.DistinctOpponents,
+		Qualified:         !hasQualification || record.Qualified == 1,
 	}
 }

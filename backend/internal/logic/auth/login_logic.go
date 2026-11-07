@@ -23,7 +23,7 @@ func NewLoginLogic(ctx context.Context, svcCtx *svc.ServiceContext) *LoginLogic 
 	return &LoginLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -61,8 +61,7 @@ func (l *LoginLogic) Login(req *types.LoginReq) (resp *types.LoginResp, err erro
 	if user == nil {
 		user = &model.User{
 			Phone:           &req.Phone,
-			Nickname:        fmt.Sprintf("用户%s", req.Phone[7:]),
-			Avatar:          "https://cdn.dianzaozao.com/avatars/f512f44051984823941dd0d214ed84f6.jpg",
+			Nickname:        randomDefaultNickname(),
 			Status:          1,
 			MemberExpiresAt: resolveWelcomeMemberExpiresAt(l.svcCtx),
 		}
@@ -72,6 +71,13 @@ func (l *LoginLogic) Login(req *types.LoginReq) (resp *types.LoginResp, err erro
 				Success: false,
 			}, fmt.Errorf("注册失败")
 		}
+	}
+	if user.Status != 1 {
+		return &types.LoginResp{Success: false}, fmt.Errorf("%s", loginUnavailableMessage)
+	}
+	if err := ensureUserRankingProfiles(l.svcCtx, user.Id); err != nil {
+		l.Logger.Errorf("初始化用户段位失败: %v", err)
+		return &types.LoginResp{Success: false}, fmt.Errorf("系统错误")
 	}
 
 	tokenPair, err := issueAuthTokenPair(user.Id, l.svcCtx)

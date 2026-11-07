@@ -123,6 +123,21 @@ func TestModelConstructorsDoNotAutoMigrate(t *testing.T) {
 			tableName: "achievement_progress_events",
 			construct: func(db *gorm.DB) { NewAchievementProgressEventModel(db) },
 		},
+		{
+			name:      "season challenge snapshot model",
+			tableName: "season_challenge_snapshots",
+			construct: func(db *gorm.DB) { NewSeasonChallengeSnapshotModel(db) },
+		},
+		{
+			name:      "season settlement model",
+			tableName: "season_settlements",
+			construct: func(db *gorm.DB) { NewSeasonSettlementModel(db) },
+		},
+		{
+			name:      "llm config model",
+			tableName: "llm_configs",
+			construct: func(db *gorm.DB) { NewLlmConfigModel(db) },
+		},
 	}
 
 	for _, tc := range testCases {

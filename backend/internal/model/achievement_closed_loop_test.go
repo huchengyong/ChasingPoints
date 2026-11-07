@@ -29,6 +29,8 @@ func TestAchievementClosedLoopTableNames(t *testing.T) {
 		{name: "user title", got: (UserTitle{}).TableName(), want: "user_titles"},
 		{name: "match achievement", got: (MatchAchievement{}).TableName(), want: "match_achievements"},
 		{name: "achievement progress event", got: (AchievementProgressEvent{}).TableName(), want: "achievement_progress_events"},
+		{name: "season challenge snapshot", got: (SeasonChallengeSnapshot{}).TableName(), want: "season_challenge_snapshots"},
+		{name: "season settlement", got: (SeasonSettlement{}).TableName(), want: "season_settlements"},
 	}
 
 	for _, tc := range testCases {
@@ -40,7 +42,7 @@ func TestAchievementClosedLoopTableNames(t *testing.T) {
 
 func TestAchievementClosedLoopSchemaIncludesNewFields(t *testing.T) {
 	db := newAchievementClosedLoopTestDB(t)
-	if err := db.AutoMigrate(&Achievement{}, &UserAchievement{}, &UserTitle{}, &MatchAchievement{}, &AchievementProgressEvent{}); err != nil {
+	if err := db.AutoMigrate(&Achievement{}, &UserAchievement{}, &UserTitle{}, &MatchAchievement{}, &AchievementProgressEvent{}, &Match{}, &Notification{}, &SeasonChallengeSnapshot{}, &SeasonSettlement{}); err != nil {
 		t.Fatalf("auto migrate achievement closed loop schema: %v", err)
 	}
 
@@ -60,6 +62,8 @@ func TestAchievementClosedLoopSchemaIncludesNewFields(t *testing.T) {
 		{name: "user achievement reward granted", model: &UserAchievement{}, column: "reward_granted"},
 		{name: "user achievement reward granted at", model: &UserAchievement{}, column: "reward_granted_at"},
 		{name: "user achievement updated at", model: &UserAchievement{}, column: "updated_at"},
+		{name: "user achievement unlock source type", model: &UserAchievement{}, column: "unlocked_source_type"},
+		{name: "user achievement unlock source id", model: &UserAchievement{}, column: "unlocked_source_id"},
 		{name: "user title title key", model: &UserTitle{}, column: "title_key"},
 		{name: "user title source type", model: &UserTitle{}, column: "source_type"},
 		{name: "user title source ref id", model: &UserTitle{}, column: "source_ref_id"},
@@ -73,6 +77,13 @@ func TestAchievementClosedLoopSchemaIncludesNewFields(t *testing.T) {
 		{name: "progress event game type", model: &AchievementProgressEvent{}, column: "game_type"},
 		{name: "progress event metric key", model: &AchievementProgressEvent{}, column: "metric_key"},
 		{name: "progress event metric value", model: &AchievementProgressEvent{}, column: "metric_value"},
+		{name: "progress event occurred at", model: &AchievementProgressEvent{}, column: "occurred_at"},
+		{name: "match achievement synced at", model: &Match{}, column: "achievement_synced_at"},
+		{name: "notification dedupe key", model: &Notification{}, column: "dedupe_key"},
+		{name: "season challenge key", model: &SeasonChallengeSnapshot{}, column: "challenge_key"},
+		{name: "season challenge archived at", model: &SeasonChallengeSnapshot{}, column: "archived_at"},
+		{name: "season settlement status", model: &SeasonSettlement{}, column: "status"},
+		{name: "season settlement next season", model: &SeasonSettlement{}, column: "next_season_id"},
 	}
 
 	for _, tc := range testCases {

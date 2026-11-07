@@ -6,6 +6,11 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+const (
+	AccessTokenType  = "access"
+	RefreshTokenType = "refresh"
+)
+
 type JwtClaims struct {
 	UserId    int64  `json:"user_id"`
 	TokenType string `json:"token_type,omitempty"`

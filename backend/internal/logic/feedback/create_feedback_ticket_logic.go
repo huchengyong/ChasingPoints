@@ -21,7 +21,7 @@ func NewCreateFeedbackTicketLogic(ctx context.Context, svcCtx *svc.ServiceContex
 	return &CreateFeedbackTicketLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

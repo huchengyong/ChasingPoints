@@ -3,6 +3,7 @@ package venue
 import (
 	"context"
 
+	"chasing_points/internal/logic/staticread"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -20,7 +21,7 @@ func NewGetVenueAreaOptionsLogic(ctx context.Context, svcCtx *svc.ServiceContext
 	return &GetVenueAreaOptionsLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -30,26 +31,20 @@ func (l *GetVenueAreaOptionsLogic) GetVenueAreaOptions(req *types.GetVenueAreaOp
 		parentId = req.ParentId
 	}
 
-	list, err := l.svcCtx.AreaModel.FindChildren(parentId)
+	result, err := staticread.Load(l.ctx, l.svcCtx, staticread.Key("areas", parentId), func() (types.GetVenueAreaOptionsResp, error) {
+		list, loadErr := l.svcCtx.AreaModel.FindChildren(parentId)
+		if loadErr != nil {
+			return types.GetVenueAreaOptionsResp{}, loadErr
+		}
+		options := make([]types.VenueAreaOption, 0, len(list))
+		for _, item := range list {
+			options = append(options, types.VenueAreaOption{AreaId: item.AreaId, ParentId: item.ParentId, Name: item.Name})
+		}
+		return types.GetVenueAreaOptionsResp{Success: true, List: options}, nil
+	})
 	if err != nil {
 		l.Logger.Errorf("获取地区选项失败: parentId=%d err=%v", parentId, err)
-		return &types.GetVenueAreaOptionsResp{
-			Success: false,
-			List:    []types.VenueAreaOption{},
-		}, nil
+		return &types.GetVenueAreaOptionsResp{Success: false, List: []types.VenueAreaOption{}}, nil
 	}
-
-	options := make([]types.VenueAreaOption, 0, len(list))
-	for _, item := range list {
-		options = append(options, types.VenueAreaOption{
-			AreaId:   item.AreaId,
-			ParentId: item.ParentId,
-			Name:     item.Name,
-		})
-	}
-
-	return &types.GetVenueAreaOptionsResp{
-		Success: true,
-		List:    options,
-	}, nil
+	return &result, nil
 }

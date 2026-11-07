@@ -21,7 +21,7 @@ func NewRejectFriendRequestLogic(ctx context.Context, svcCtx *svc.ServiceContext
 	return &RejectFriendRequestLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -36,6 +36,7 @@ func (l *RejectFriendRequestLogic) RejectFriendRequest(req *types.HandleFriendRe
 		l.Logger.Errorf("拒绝好友请求失败: %v", err)
 		return &types.CommonResp{Success: false, Message: "操作失败"}, nil
 	}
+	sendFriendRequestCountUpdated(l.svcCtx, userIdInt, "friend_requests")
 
 	return &types.CommonResp{Success: true, Message: "操作成功"}, nil
 }

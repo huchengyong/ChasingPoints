@@ -20,7 +20,7 @@ func NewWechatMemberSubscriptionNotifyLogic(ctx context.Context, svcCtx *svc.Ser
 	return &WechatMemberSubscriptionNotifyLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

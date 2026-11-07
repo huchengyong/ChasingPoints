@@ -1,0 +1,377 @@
+<template>
+	<view class="friend-homepage-page" :class="{ 'dark-mode': isDarkMode }">
+		<view v-if="loading" class="loading-state">
+			<uni-icons type="spinner-cycle" size="38" color="#E0AE12"></uni-icons>
+			<text class="loading-text">加载好友主页中...</text>
+		</view>
+
+		<view v-else-if="friendHomePageError" class="error-state">
+			<uni-icons type="info-filled" size="38" color="#E0AE12"></uni-icons>
+			<text class="error-title">{{ friendHomePageError.title }}</text>
+			<text class="error-text">{{ friendHomePageError.description }}</text>
+			<button class="retry-btn" @tap="handleFriendHomeErrorAction">
+				<text>{{ friendHomePageError.actionText }}</text>
+			</button>
+		</view>
+
+		<scroll-view v-else scroll-y class="page-scroll">
+			<view v-if="friendHomeRefreshError" class="refresh-error-banner">
+				<text>{{ friendHomeRefreshError.description }}</text>
+				<text class="refresh-error-action" @tap="retryFriendHomepage">重试</text>
+			</view>
+			<view class="hero-card">
+				<text class="hero-kicker">好友名片</text>
+
+				<view class="identity-row">
+					<memberAvatar
+						v-if="friendProfile.avatar || friendProfile.vipLevel > 0"
+						class="avatar-member"
+						:avatar="friendProfile.avatar"
+						:user-id="friendProfile.id"
+						:vip-level="friendProfile.vipLevel"
+						:rank-level="friendProfile.rankLevel"
+						:size="120"
+						reserve-frame
+					/>
+					<view v-else class="avatar avatar-placeholder">
+						<text>{{ avatarText }}</text>
+					</view>
+					<view class="identity-content">
+						<view class="name-row">
+							<text class="friend-name">{{ friendProfile.name || '球友' }}</text>
+							<text v-if="friendProfile.rankName" class="friend-rank">{{ friendProfile.rankName }}</text>
+						</view>
+						<text class="friend-id">ID: {{ friendProfile.id || '--' }}</text>
+					</view>
+				</view>
+
+				<view class="status-row">
+					<view class="status-chip">
+						<text>已是好友</text>
+					</view>
+					<text class="status-desc">这里直接看 TA 的公开战绩，想看你们之间的对比就去 PK 报表。</text>
+				</view>
+
+				<view class="hero-insight">
+					<text class="insight-label">好友近况</text>
+					<text class="insight-title">{{ summary.heroTitle }}</text>
+					<text class="insight-desc">{{ summary.heroDesc }}</text>
+				</view>
+
+				<view class="hero-facts">
+					<view class="fact-chip">
+						<text>{{ summary.totalMatchesText }}</text>
+					</view>
+					<view class="fact-chip">
+						<text>{{ summary.recordText }}</text>
+					</view>
+					<view class="fact-chip">
+						<text>{{ summary.recentMatchText }}</text>
+					</view>
+				</view>
+
+				<view class="hero-action-grid">
+					<button class="primary-btn hero-primary-btn" @tap="goToPkReport">
+						<text>PK 报表</text>
+					</button>
+					<button class="secondary-btn" @tap="goToHonorWall">
+						<text>查看荣誉墙</text>
+					</button>
+					<button class="secondary-btn hero-gear-btn" @tap="goToFriendGear">
+						<text>TA 的装备</text>
+					</button>
+				</view>
+			</view>
+
+			<view class="section-card">
+				<view class="section-header">
+					<text class="section-title">{{ summary.battleSectionTitle }}</text>
+					<text class="section-tip">{{ summary.battleSectionTip }}</text>
+				</view>
+
+				<view v-if="battleListHidden" class="battle-empty-card">
+					<text class="battle-empty-title">{{ summary.hiddenTitle }}</text>
+					<text class="battle-empty-desc">{{ summary.hiddenDesc }}</text>
+				</view>
+
+				<view v-else-if="battleCardViewModels.length === 0" class="battle-empty-card">
+					<text class="battle-empty-title">{{ summary.emptyTitle }}</text>
+					<text class="battle-empty-desc">{{ summary.emptyDesc }}</text>
+				</view>
+
+				<view v-else class="battle-list">
+					<view
+						v-for="item in battleCardViewModels"
+						:key="item.id || item.name"
+						class="battle-item"
+						:class="item.toneClass"
+						@tap="goToBattleDetail(item)"
+					>
+						<view class="battle-left">
+							<image
+								v-if="item.avatar"
+								class="battle-avatar"
+								:src="item.avatar"
+								mode="aspectFill"
+							/>
+							<view v-else class="battle-avatar battle-avatar-placeholder">
+								<text>{{ getBattleAvatarText(item.name) }}</text>
+							</view>
+							<view class="battle-copy">
+								<view class="battle-name-row">
+									<text class="battle-name">{{ item.name || '对手' }}</text>
+									<view v-if="item.isMeOpponent" class="me-badge">
+										<text>我</text>
+									</view>
+									<view class="battle-badge" :class="item.toneClass">
+										<text>{{ item.relationshipBadge }}</text>
+									</view>
+								</view>
+								<text class="battle-desc">{{ item.relationshipText }}</text>
+								<view class="battle-meta-row">
+									<text class="battle-meta">{{ item.recordText }}</text>
+									<text class="battle-meta">{{ item.lastMatchText }}</text>
+								</view>
+							</view>
+						</view>
+
+						<view class="battle-right">
+							<text class="battle-win-rate" :class="item.toneClass">{{ item.winRateText }}</text>
+							<text class="battle-sample">{{ item.sampleText }}</text>
+							<text class="battle-link">查看交锋</text>
+						</view>
+					</view>
+				</view>
+			</view>
+		</scroll-view>
+	</view>
+</template>
+
+<script setup>
+import { computed, reactive, ref } from 'vue'
+import { onLoad, onShow } from '@dcloudio/uni-app'
+import { usePageTheme } from '@/utils/page-theme.js'
+import { useUserStore } from '@/store/user.js'
+import { useUserDataInvalidationStore } from '@/store/userDataInvalidation.js'
+import { getOpponentList } from '@/api/match.js'
+import memberAvatar from '@/components/memberAvatar.vue'
+import { buildFriendPkReportUrl } from '@/utils/friend-entry.js'
+import { buildHonorWallUrl } from '@/utils/honor-wall.js'
+import { buildFriendGearUrl } from '@/utils/gear-display.js'
+import {
+	buildOpponentCardViewModels,
+	buildOpponentH2HUrl,
+	buildOpponentRecordRequestParams
+} from '@/utils/opponent-record.js'
+import {
+	buildFriendHomepageSummary,
+	normalizeFriendHomepageOptions
+} from '@/utils/friend-homepage.js'
+import {
+	ASYNC_PAGE_STATUS,
+	beginAsyncPageLoad,
+	createAsyncPageState,
+	getAsyncPageRequest,
+	rejectAsyncPageLoad,
+	resolveAsyncPageErrorFeedback,
+	resolveAsyncPageLoad
+} from '@/utils/async-page-state.js'
+import { createRequestError } from '@/utils/request-errors.js'
+
+const { isDarkMode } = usePageTheme()
+const userStore = useUserStore()
+const userDataInvalidationStore = useUserDataInvalidationStore()
+
+const loading = ref(true)
+const lastMatchAt = ref('')
+const battleListHidden = ref(false)
+const battleOpponents = ref([])
+const hasLoadedOnce = ref(false)
+const latestRequestId = ref(0)
+const loadedIdentityKey = ref('')
+const loadedOpponentScopeVersion = ref(0)
+const friendHomeState = ref(createAsyncPageState({
+	authGeneration: userStore.authGeneration,
+	data: null
+}))
+const friendHomePageError = computed(() => (
+	friendHomeState.value.status === ASYNC_PAGE_STATUS.ERROR
+		? resolveAsyncPageErrorFeedback(friendHomeState.value.error, { resource: '好友主页' })
+		: null
+))
+const friendHomeRefreshError = computed(() => (
+	friendHomeState.value.refreshError
+		? resolveAsyncPageErrorFeedback(friendHomeState.value.refreshError, { resource: '好友主页' })
+		: null
+))
+
+const currentReadIdentity = () => ({
+	userId: userStore.userId,
+	authGeneration: userStore.authGeneration
+})
+
+const currentIdentityKey = () => {
+	const identity = currentReadIdentity()
+	return `${identity.userId}:${identity.authGeneration}`
+}
+
+const friendProfile = reactive({
+	id: 0,
+	name: '',
+	avatar: '',
+	rankName: '',
+	vipLevel: 0,
+	rankLevel: 0
+})
+
+const stats = reactive({
+	total_matches: 0,
+	total_wins: 0
+})
+
+const summary = computed(() => buildFriendHomepageSummary({
+	stats,
+	lastMatchAt: lastMatchAt.value
+}))
+
+const avatarText = computed(() => {
+	if (!friendProfile.name) return '友'
+	return friendProfile.name.slice(0, 1).toUpperCase()
+})
+
+const friendPayload = computed(() => ({
+	user_id: friendProfile.id,
+	nickname: friendProfile.name || '球友',
+	avatar: friendProfile.avatar || '',
+	rank_name: friendProfile.rankName || ''
+}))
+
+const battleCardViewModels = computed(() => buildOpponentCardViewModels({
+	opponents: battleOpponents.value,
+	subjectName: friendProfile.name || 'TA',
+	currentUserId: userStore.userId,
+	showWinRateLabel: true
+}))
+
+const getBattleAvatarText = (name = '') => {
+	if (!name) return '友'
+	return String(name).slice(0, 1).toUpperCase()
+}
+
+const loadData = async ({ force = false } = {}) => {
+	const requestId = latestRequestId.value + 1
+	const requestIdentityKey = currentIdentityKey()
+	const requestScopeVersion = userDataInvalidationStore.versionOf('opponents')
+	if (hasLoadedOnce.value && !force && loadedIdentityKey.value === requestIdentityKey && loadedOpponentScopeVersion.value === requestScopeVersion) return
+	latestRequestId.value = requestId
+	if (friendHomeState.value.authGeneration !== userStore.authGeneration) {
+		battleOpponents.value = []
+		lastMatchAt.value = ''
+		stats.total_matches = 0
+		stats.total_wins = 0
+		hasLoadedOnce.value = false
+		friendHomeState.value = createAsyncPageState({ authGeneration: userStore.authGeneration, data: null })
+	}
+	const nextState = beginAsyncPageLoad(friendHomeState.value, {
+		authGeneration: userStore.authGeneration,
+		emptyData: null
+	})
+	const pageRequest = getAsyncPageRequest(nextState)
+	friendHomeState.value = nextState
+	loading.value = nextState.status === ASYNC_PAGE_STATUS.LOADING
+	if (!friendProfile.id) {
+		friendHomeState.value = rejectAsyncPageLoad(friendHomeState.value, pageRequest, createRequestError({
+			message: '好友信息异常，请返回好友列表后重试。',
+			category: 'not-found'
+		}))
+		loading.value = false
+		return
+	}
+
+	try {
+		const response = await getOpponentList(buildOpponentRecordRequestParams({
+			page: 1,
+			pageSize: 100,
+			targetUserId: friendProfile.id
+		}))
+		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey || friendHomeState.value.requestId !== pageRequest.requestId || friendHomeState.value.authGeneration !== pageRequest.authGeneration) return
+		if (!response?.success) throw createRequestError({ message: response?.message || '加载好友主页失败', category: 'business' })
+		const list = Array.isArray(response.list) ? response.list : []
+		battleListHidden.value = Boolean(response.hidden || response.is_hidden || response.message === '对方已隐藏战绩')
+		battleOpponents.value = battleListHidden.value ? [] : list
+		stats.total_matches = Number(response.total_matches) || list.reduce((sum, item = {}) => sum + Number(item.total_matches || 0), 0)
+		stats.total_wins = Number(response.total_wins || 0)
+		lastMatchAt.value = list[0]?.last_match_at || ''
+		hasLoadedOnce.value = true
+		loadedIdentityKey.value = requestIdentityKey
+		loadedOpponentScopeVersion.value = requestScopeVersion
+		friendHomeState.value = resolveAsyncPageLoad(friendHomeState.value, pageRequest, {
+			data: response,
+			isEmpty: () => false
+		})
+	} catch (error) {
+		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey || friendHomeState.value.requestId !== pageRequest.requestId || friendHomeState.value.authGeneration !== pageRequest.authGeneration) return
+		friendHomeState.value = rejectAsyncPageLoad(friendHomeState.value, pageRequest, error)
+	} finally {
+		if (requestId !== latestRequestId.value || currentIdentityKey() !== requestIdentityKey || friendHomeState.value.requestId !== pageRequest.requestId || friendHomeState.value.authGeneration !== pageRequest.authGeneration) return
+		loading.value = false
+	}
+}
+
+const retryFriendHomepage = () => loadData({ force: true })
+
+const handleFriendHomeErrorAction = () => {
+	if (friendHomeState.value.error?.category === 'permission' || friendHomeState.value.error?.category === 'not-found') {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	retryFriendHomepage()
+}
+
+const goToBattleDetail = (item) => {
+	uni.navigateTo({
+		url: buildOpponentH2HUrl({
+			opponent: item,
+			targetUserId: friendProfile.id,
+			targetName: friendProfile.name,
+			targetAvatar: friendProfile.avatar
+		})
+	})
+}
+
+const goToPkReport = () => {
+	uni.navigateTo({ url: buildFriendPkReportUrl(friendPayload.value) })
+}
+
+const goToHonorWall = () => {
+	uni.navigateTo({
+		url: buildHonorWallUrl({ userId: friendProfile.id, gameType: 3 })
+	})
+}
+
+const goToFriendGear = () => {
+	uni.navigateTo({
+		url: buildFriendGearUrl({ userId: friendProfile.id, name: friendProfile.name })
+	})
+}
+
+onLoad((options) => {
+	const normalized = normalizeFriendHomepageOptions(options)
+	friendProfile.id = normalized.opponentId
+	friendProfile.name = normalized.opponentName
+	friendProfile.avatar = normalized.opponentAvatar
+	friendProfile.rankName = normalized.rankName
+	friendProfile.vipLevel = normalized.vipLevel
+	friendProfile.rankLevel = normalized.rankLevel
+})
+
+onShow(() => {
+	if (!hasLoadedOnce.value || loadedIdentityKey.value !== currentIdentityKey() || loadedOpponentScopeVersion.value !== userDataInvalidationStore.versionOf('opponents')) {
+		loadData()
+	}
+})
+</script>
+
+<style lang="scss" scoped>
+@import './friendHomepage.scss';
+</style>

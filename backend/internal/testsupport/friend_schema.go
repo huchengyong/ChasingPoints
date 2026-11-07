@@ -15,6 +15,7 @@ type friendUserSchema struct {
 	PushToken       string  `gorm:"size:255;not null;default:''"`
 	MemberExpiresAt *time.Time
 	HideMatchRecord bool           `gorm:"not null;default:false"`
+	FriendsOnlyChallenges bool `gorm:"not null;default:false"`
 	CreatedAt       time.Time      `gorm:"autoCreateTime"`
 	UpdatedAt       time.Time      `gorm:"autoUpdateTime"`
 	DeletedAt       gorm.DeletedAt `gorm:"index"`
@@ -63,8 +64,9 @@ func (friendBlacklistSchema) TableName() string {
 
 type friendNotificationSchema struct {
 	Id        int64     `gorm:"primarykey"`
-	UserId    int64     `gorm:"not null;index"`
-	Type      string    `gorm:"size:30;not null"`
+	UserId    int64     `gorm:"not null;index;uniqueIndex:uk_notifications_user_type_dedupe,priority:1"`
+	Type      string    `gorm:"size:30;not null;uniqueIndex:uk_notifications_user_type_dedupe,priority:2"`
+	DedupeKey *string   `gorm:"size:128;uniqueIndex:uk_notifications_user_type_dedupe,priority:3"`
 	Title     string    `gorm:"size:200;not null"`
 	Content   string    `gorm:"size:500"`
 	Data      *string   `gorm:"type:json"`

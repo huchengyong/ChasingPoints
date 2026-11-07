@@ -2,7 +2,9 @@ package rank
 
 import (
 	"context"
+	"time"
 
+	"chasing_points/internal/ranking"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -21,7 +23,7 @@ func NewGetRankListLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetRa
 	return &GetRankListLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -42,13 +44,16 @@ func (l *GetRankListLogic) GetRankList(req *types.GetRankListReq) (resp *types.G
 		gameType = req.GameType
 	}
 
-	ranking, err := l.svcCtx.RankingModel.FindOrCreateByGameType(userId, gameType)
+	row, err := l.svcCtx.RankingModel.FindByUserIdAndGameType(userId, gameType)
 	if err != nil {
 		l.Logger.Errorf("获取用户段位失败: %v", err)
 		return &types.GetRankListResp{
 			Success: false,
 			List:    []types.RankItem{},
 		}, nil
+	}
+	if row == nil {
+		row = defaultRankingRow(ranking.RulesFor(l.svcCtx.Config), userId, gameType, time.Now())
 	}
 
 	// 获取所有段位配置
@@ -69,7 +74,7 @@ func (l *GetRankListLogic) GetRankList(req *types.GetRankListReq) (resp *types.G
 			Name:      config.Name,
 			Icon:      config.Icon,
 			MinScore:  config.MinScore,
-			IsCurrent: config.Level == ranking.RankLevel,
+			IsCurrent: config.Level == row.RankLevel,
 		})
 	}
 

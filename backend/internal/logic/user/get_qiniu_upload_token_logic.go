@@ -22,7 +22,7 @@ func NewGetQiniuUploadTokenLogic(ctx context.Context, svcCtx *svc.ServiceContext
 	return &GetQiniuUploadTokenLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

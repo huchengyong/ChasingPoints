@@ -32,14 +32,10 @@ func BuildMatchSummary(gameType int, myActor int, myScore int, opponentScore int
 
 func buildSnookerSummary(myActor int, myWinRate float64, opponentWinRate float64, myMaxScore int, opponentMaxScore int, _ int, createdAt string, actions []model.MatchAction) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
 	myBreakStats, opponentBreakStats := calculateSnookerBreakStatsForActors(actions, myActor)
-	if myBreakStats.Highest > 0 || opponentBreakStats.Highest > 0 {
-		myMaxScore = myBreakStats.Highest
-		opponentMaxScore = opponentBreakStats.Highest
-	}
 
 	highlights := []types.MatchSummaryItem{}
 	if myMaxScore > 0 {
-		highlights = append(highlights, buildSummaryItem("最高单杆", fmt.Sprintf("%d 分", myMaxScore), "本场个人连续得分上限", "flag", "emerald"))
+		highlights = append(highlights, buildSummaryItem("最高单杆", fmt.Sprintf("%d 分", myMaxScore), "当前个人单杆得分上限", "flag", "emerald"))
 	}
 	if myBreakStats.FiftyPlus > 0 {
 		highlights = append(highlights, buildSummaryItem("50+次数", fmt.Sprintf("%d 次", myBreakStats.FiftyPlus), "本场个人打出 50+ 的杆数", "fire", "gold"))
@@ -51,8 +47,8 @@ func buildSnookerSummary(myActor int, myWinRate float64, opponentWinRate float64
 	stats := []types.MatchSummaryItem{
 		buildSummaryItem("我的胜率", formatPercent(myWinRate), "当前历史胜率表现", "person", "blue"),
 		buildSummaryItem("对手胜率", formatPercent(opponentWinRate), "用于感知本场对手强度", "person-filled", "purple"),
-		buildSummaryItem("我的最高单杆", fmt.Sprintf("%d 分", myMaxScore), "斯诺克单杆得分上限", "flag", "emerald"),
-		buildSummaryItem("对手最高单杆", fmt.Sprintf("%d 分", opponentMaxScore), "对手斯诺克单杆表现", "flag-filled", "orange"),
+		buildSummaryItem("我的最高单杆", fmt.Sprintf("%d 分", myMaxScore), "当前个人单杆得分上限", "flag", "emerald"),
+		buildSummaryItem("对手最高单杆", fmt.Sprintf("%d 分", opponentMaxScore), "当前对手单杆得分上限", "flag-filled", "orange"),
 		buildSummaryItem("我的50+次数", fmt.Sprintf("%d 次", myBreakStats.FiftyPlus), "本场个人打出 50+ 的杆数", "fire", "gold"),
 		buildSummaryItem("对手50+次数", fmt.Sprintf("%d 次", opponentBreakStats.FiftyPlus), "对手本场打出 50+ 的杆数", "fire", "orange"),
 		buildSummaryItem("我的破百次数", fmt.Sprintf("%d 次", myBreakStats.Centuries), "本场个人完成破百的次数", "medal", "purple"),
@@ -240,6 +236,22 @@ func calculateSnookerBreakStatsForActors(actions []model.MatchAction, myActor in
 
 func calculateSnookerBreakStats(actions []model.MatchAction, actor int) snookerBreakStats {
 	stats := snookerBreakStats{}
+	if breaks, version2, err := collectSnookerBreaksByActor(actions); version2 {
+		if err != nil {
+			return stats
+		}
+		for _, score := range breaks[actor] {
+			if score > stats.Highest {
+				stats.Highest = score
+			}
+			if score >= 100 {
+				stats.Centuries++
+			} else if score >= 50 {
+				stats.FiftyPlus++
+			}
+		}
+		return stats
+	}
 	current := 0
 	currentRound := 0
 	finalize := func() {
@@ -285,43 +297,23 @@ func calculateSnookerBreakStats(actions []model.MatchAction, actor int) snookerB
 }
 
 func calculateSnookerHighestBreak(actions []model.MatchAction, actor int) int {
-	best := 0
-	current := 0
-	currentRound := 0
-
-	for _, action := range actions {
-		if action.RoundNo != currentRound {
-			currentRound = action.RoundNo
-			current = 0
-		}
-
-		switch action.ActionType {
-		case "score":
-			if action.Actor == actor && action.ScoreChange > 0 {
-				current += action.ScoreChange
-				if current > best {
-					best = current
-				}
-				continue
-			}
-			current = 0
-		case "foul", "win", "round_start":
-			current = 0
-		default:
-			if action.Actor != actor {
-				current = 0
-			}
-		}
-	}
-
-	return best
+	return calculateSnookerBreakStats(actions, actor).Highest
 }
 
 func calculateSnookerRedBallPots(actions []model.MatchAction, actor int) int {
 	count := 0
 	for _, action := range actions {
-		if action.Actor == actor && action.ActionType == "score" && action.ScoreChange == 1 {
+		if action.Actor != actor {
+			continue
+		}
+		if action.ActionType == "score" && action.ScoreChange == 1 {
 			count++
+			continue
+		}
+		if action.ActionType == model.MatchActionTypeSnookerStroke {
+			if event, err := model.DecodeSnookerEvent(action.ExtraData); err == nil && event.Outcome == model.SnookerOutcomePot {
+				count += event.PottedReds
+			}
 		}
 	}
 	return count

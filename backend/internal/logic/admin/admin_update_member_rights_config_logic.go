@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 
+	logicx "chasing_points/internal/logic"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -21,7 +22,7 @@ func NewAdminUpdateMemberRightsConfigLogic(ctx context.Context, svcCtx *svc.Serv
 	return &AdminUpdateMemberRightsConfigLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -44,6 +45,7 @@ func (l *AdminUpdateMemberRightsConfigLogic) AdminUpdateMemberRightsConfig(req *
 			Message: "保存配置失败",
 		}, nil
 	}
+	logicx.InvalidateRuntimeConfigCache(l.ctx, l.svcCtx, logicx.MemberRightsRuntimeConfigCacheKey)
 
 	return &types.AdminWriteResp{
 		Code:    0,

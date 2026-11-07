@@ -3,7 +3,6 @@ package rules
 import (
 	"context"
 
-	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -21,16 +20,11 @@ func NewGetRuleCategoriesLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 	return &GetRuleCategoriesLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
 func (l *GetRuleCategoriesLogic) GetRuleCategories() (resp *types.GetRuleCategoriesResp, err error) {
-	if err = l.svcCtx.RulesContentModel.SeedData(model.GetDefaultRulesContent()); err != nil {
-		l.Logger.Errorf("初始化规则内容失败: %v", err)
-		return &types.GetRuleCategoriesResp{Success: false, List: []types.RuleCategoryInfo{}}, nil
-	}
-
 	defs := []struct {
 		Category    string
 		Name        string

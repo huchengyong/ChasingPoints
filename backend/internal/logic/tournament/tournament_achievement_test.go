@@ -57,6 +57,15 @@ func tournamentAchievementCtx(userID int64) context.Context {
 	return context.WithValue(context.Background(), "user_id", userID)
 }
 
+func TestTournamentAchievementOccurredAtUsesFinishTime(t *testing.T) {
+	endedAt := time.Date(2026, 7, 20, 18, 0, 0, 0, time.UTC)
+	tournament := &model.Tournament{EndTime: &endedAt}
+	got := tournamentAchievementOccurredAt(tournament, achievementx.SourceTypeTournamentFinish)
+	if !got.Equal(endedAt) {
+		t.Fatalf("expected finish time %v, got %v", endedAt, got)
+	}
+}
+
 func TestJoinTournamentWritesAchievementProgressIdempotently(t *testing.T) {
 	svcCtx := newTournamentAchievementTestSvc(t)
 	seedTournamentAchievementDefinitions(t, svcCtx)

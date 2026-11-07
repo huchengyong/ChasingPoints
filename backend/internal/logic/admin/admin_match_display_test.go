@@ -48,17 +48,17 @@ func TestAdminGetMatchListUsesObjectivePlayerNames(t *testing.T) {
 	}
 
 	if err := svcCtx.MatchModel.Create(&model.Match{
-		Id:           1,
-		UserId:       101,
-		OpponentId:   int64Ptr(202),
-		GameType:     2,
-		OpponentName: "用户1194",
-		MyScore:      31,
+		Id:            1,
+		UserId:        101,
+		OpponentId:    int64Ptr(202),
+		GameType:      2,
+		OpponentName:  "用户1194",
+		MyScore:       31,
 		OpponentScore: 50,
-		Status:       2,
-		Result:       intPtr(2),
-		MatchTime:    matchTime,
-		CreatedAt:    matchTime,
+		Status:        2,
+		Result:        intPtr(2),
+		MatchTime:     matchTime,
+		CreatedAt:     matchTime,
 	}); err != nil {
 		t.Fatalf("create match: %v", err)
 	}

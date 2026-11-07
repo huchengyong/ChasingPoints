@@ -1,0 +1,390 @@
+<template>
+	<view v-if="shouldShow" class="welcome-container" :class="{ 'dark-mode': isDarkMode }">
+		<view class="content">
+			<view class="brand-row" :style="{ marginTop: `${headerLayout.top}px`, minHeight: `${headerLayout.minHeight}px` }">
+				<image class="brand-logo" src="/static/logo.png" mode="aspectFit"></image>
+				<view class="brand-copy">
+					<text class="brand-name">追分竞技</text>
+					<text class="brand-en">ZHUIFEN</text>
+				</view>
+			</view>
+
+			<view class="hero-section">
+				<text class="eyebrow">台球竞技记录</text>
+				<text class="main-title">每一杆，</text>
+				<text class="main-title">都值得被记录</text>
+				<view class="sub-title">
+					<text>记录战绩、生成战报，</text>
+					<text>找到真正旗鼓相当的对手。</text>
+				</view>
+			</view>
+
+			<view class="preview-section">
+				<view class="preview-card" aria-hidden="true">
+					<text class="preview-badge">示例数据</text>
+					<view
+						v-for="(item, index) in previewStats"
+						:key="item.title"
+						class="preview-row"
+						:class="{ 'with-divider': index > 0 }"
+					>
+						<view class="preview-icon">
+							<uni-icons :type="item.icon" size="20" :color="isDarkMode ? '#F0C542' : '#C69200'"></uni-icons>
+						</view>
+						<view class="preview-copy">
+							<text class="preview-title">{{ item.title }}</text>
+							<text class="preview-detail">{{ item.detail }}</text>
+						</view>
+						<text class="preview-value">{{ item.value }}</text>
+					</view>
+				</view>
+			</view>
+
+			<view class="button-section">
+				<button
+					class="btn-primary"
+					:class="{ 'wechat-primary': isWechatMiniProgram, authenticating: authGate.isAuthenticating }"
+					:disabled="welcomeActions.primaryDisabled"
+					:open-type="wechatPhoneOpenType"
+					@getphonenumber="handleWechatPhoneNumber"
+					@click="handlePrimaryEntry"
+				>
+					{{ welcomeActions.primaryText }}
+				</button>
+				<view
+					v-if="authFeedback.visible"
+					class="auth-feedback-card"
+					:class="`is-${authFeedback.phase}`"
+				>
+					<view class="auth-feedback-progress"></view>
+					<view class="auth-feedback-dot"></view>
+					<text class="auth-feedback-message">{{ authFeedback.message }}</text>
+				</view>
+
+				<button
+					v-if="welcomeActions.showPhoneLogin"
+					class="phone-login-btn"
+					:disabled="authGate.isAuthenticating"
+					@click="navigateToLogin"
+				>
+					{{ welcomeActions.secondaryText }}
+				</button>
+
+				<button
+					v-if="welcomeActions.showHuaweiLogin"
+					class="btn-secondary"
+					:disabled="welcomeActions.secondaryDisabled"
+					@click="handleHuaweiLogin"
+				>
+					<image class="button-icon" src="/static/images/huawei.svg" mode="aspectFit"></image>
+					<text>{{ welcomeActions.secondaryText }}</text>
+				</button>
+
+				<button class="btn-tertiary" :disabled="authGate.isAuthenticating" @click="handleBrowse">
+					{{ welcomeActions.tertiaryText }}
+				</button>
+			</view>
+
+			<view class="agreement">
+				<view class="agreement-row" :class="{ disabled: authGate.isAuthenticating }" @click="toggleAgreement">
+					<view class="checkbox" :class="{ checked: isAgreed }">
+						<uni-icons v-if="isAgreed" type="checkmarkempty" size="14" color="#231c0b"></uni-icons>
+					</view>
+					<text class="agreement-text">我已阅读并同意</text>
+				</view>
+				<view class="agreement-links" :class="{ disabled: authGate.isAuthenticating }">
+					<text class="link" @click.stop="openUserAgreement">《用户协议》</text>
+					<text class="separator">和</text>
+					<text class="link" @click.stop="openPrivacyPolicy">《隐私政策》</text>
+				</view>
+			</view>
+		</view>
+
+		<agreementConsentSheet
+			:show="showAgreementSheet"
+			:is-dark-mode="isDarkMode"
+			:phone-authorize="isWechatPhoneAuthorizing"
+			@close="closeAgreementSheet"
+			@agree="handleAgreementAccepted"
+			@phone-number="handleWechatPhoneNumber"
+			@open-user="openUserAgreement"
+			@open-privacy="openPrivacyPolicy"
+		/>
+	</view>
+</template>
+
+<script setup>
+import { computed, ref } from 'vue'
+import { onShow, onUnload } from '@dcloudio/uni-app'
+import agreementConsentSheet from '@/components/agreementConsentSheet.vue'
+import { wechatMiniLogin } from '@/api/auth.js'
+import { useUserStore } from '@/store/user.js'
+import { usePageTheme } from '@/utils/page-theme.js'
+import { getWechatPhoneNumberCode } from '@/utils/bind-phone-flow.js'
+import {
+	AUTH_SLOW_FEEDBACK_DELAY,
+	resolveAuthErrorMessage,
+	resolveAuthenticationFeedback,
+	resolveAuthenticationGate,
+	resolveEntryFunnelAgreementState,
+	resolveWechatPhoneAuthMessage,
+	resolveWelcomeActions,
+	resolveWelcomeHeaderLayout,
+	shouldClearEntryFunnelAgreementSession
+} from '@/utils/entry-funnel.js'
+
+// 示例数据沿用官网 Hero 预览卡片，仅作产品展示，不读取当前用户战绩。
+const previewStats = [
+	{ icon: 'medal', title: '今日战绩', value: '12 胜 5 负', detail: '最近 7 天稳定输出' },
+	{ icon: 'fire', title: '精彩战报', value: '3 份', detail: '刚结束的强强对局' },
+	{ icon: 'staff', title: '常约对手', value: '8 位', detail: '常一起较量的球友' }
+]
+
+const WELCOME_PAGE_VIEWED_KEY = 'welcome_page_viewed'
+const ENTRY_FUNNEL_AGREEMENT_KEY = 'entry_funnel_agreement_accepted'
+const ENTRY_FUNNEL_SESSION_KEY = 'entry_funnel_session_active'
+
+let isHarmonyPlatform = false
+// #ifdef APP-HARMONY
+isHarmonyPlatform = true
+// #endif
+
+let isWechatMiniProgram = false
+let menuButtonRect = null
+// #ifdef MP-WEIXIN
+isWechatMiniProgram = true
+menuButtonRect = uni.getMenuButtonBoundingClientRect()
+// #endif
+
+const headerLayout = resolveWelcomeHeaderLayout({
+	statusBarHeight: uni.getSystemInfoSync().statusBarHeight,
+	menuButton: menuButtonRect
+})
+
+const { isDarkMode } = usePageTheme()
+const userStore = useUserStore()
+const shouldShow = ref(false)
+const isPageActive = ref(true)
+const isAgreed = ref(false)
+const isWechatLogging = ref(false)
+const isSlowLogging = ref(false)
+const showAgreementSheet = ref(false)
+const pendingAgreementAction = ref('')
+const authGate = computed(() => resolveAuthenticationGate({
+	isWechatLogging: isWechatLogging.value,
+	isPageActive: isPageActive.value
+}))
+const authFeedback = computed(() => resolveAuthenticationFeedback({
+	isAuthenticating: authGate.value.isAuthenticating,
+	isSlow: isSlowLogging.value
+}))
+let authSlowFeedbackTimer = null
+
+const startAuthFeedback = () => {
+	isSlowLogging.value = false
+	if (authSlowFeedbackTimer) clearTimeout(authSlowFeedbackTimer)
+	authSlowFeedbackTimer = setTimeout(() => {
+		if (authGate.value.isAuthenticating) isSlowLogging.value = true
+	}, AUTH_SLOW_FEEDBACK_DELAY)
+}
+
+const clearAuthFeedback = () => {
+	if (authSlowFeedbackTimer) {
+		clearTimeout(authSlowFeedbackTimer)
+		authSlowFeedbackTimer = null
+	}
+	isSlowLogging.value = false
+}
+// 协议已勾选时主按钮本身就是微信手机号授权按钮；未勾选时点击先弹协议。
+const wechatPhoneOpenType = computed(() => (
+	isWechatMiniProgram && isAgreed.value ? 'getPhoneNumber' : ''
+))
+const isWechatPhoneAuthorizing = computed(() => (
+	isWechatMiniProgram && pendingAgreementAction.value === 'wechat-mini'
+))
+const welcomeActions = computed(() => resolveWelcomeActions({
+	isHarmony: isHarmonyPlatform,
+	isWechatMini: isWechatMiniProgram,
+	isAgreed: isAgreed.value,
+	isLogging: isWechatLogging.value,
+	isSlowLogging: isSlowLogging.value
+}))
+
+onShow(() => {
+	isPageActive.value = true
+	const sessionActive = Boolean(uni.getStorageSync(ENTRY_FUNNEL_SESSION_KEY))
+	isAgreed.value = resolveEntryFunnelAgreementState({
+		storedAgreement: uni.getStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY),
+		sessionActive
+	})
+	uni.setStorageSync(ENTRY_FUNNEL_SESSION_KEY, true)
+
+	if (!sessionActive) {
+		uni.removeStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY)
+	}
+
+	const hasViewed = uni.getStorageSync(WELCOME_PAGE_VIEWED_KEY)
+	if (hasViewed) {
+		navigateToHome()
+		return
+	}
+
+	shouldShow.value = true
+})
+
+onUnload(() => {
+	isPageActive.value = false
+	clearAuthFeedback()
+	const visibleRoutes = getCurrentPages().map((page) => page.route)
+	if (shouldClearEntryFunnelAgreementSession({
+		currentRoute: 'pages/welcome/index',
+		visibleRoutes
+	})) {
+		uni.removeStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY)
+		uni.removeStorageSync(ENTRY_FUNNEL_SESSION_KEY)
+	}
+})
+
+const persistAgreementState = (value) => {
+	uni.setStorageSync(ENTRY_FUNNEL_AGREEMENT_KEY, Boolean(value))
+}
+
+const toggleAgreement = () => {
+	if (authGate.value.isAuthenticating) return
+	isAgreed.value = !isAgreed.value
+	persistAgreementState(isAgreed.value)
+}
+
+const requestAgreementFor = (action) => {
+	pendingAgreementAction.value = action
+	showAgreementSheet.value = true
+}
+
+const closeAgreementSheet = () => {
+	showAgreementSheet.value = false
+	pendingAgreementAction.value = ''
+}
+
+const navigateToHome = () => {
+	uni.reLaunch({
+		url: '/pages/index/index'
+	})
+}
+
+const markAsViewedAndNavigate = () => {
+	uni.setStorageSync(WELCOME_PAGE_VIEWED_KEY, true)
+	navigateToHome()
+}
+
+const handleBrowse = () => {
+	if (!authGate.value.canLeave) return
+	markAsViewedAndNavigate()
+}
+
+const navigateToLogin = () => {
+	if (!authGate.value.canLeave) return
+	uni.setStorageSync(WELCOME_PAGE_VIEWED_KEY, true)
+	uni.navigateTo({
+		url: '/pages/login/login?method=phone'
+	})
+}
+
+const handlePrimaryEntry = () => {
+	if (isWechatMiniProgram) {
+		// 已同意协议时按钮是 getPhoneNumber 原生按钮，登录由 @getphonenumber 接管。
+		if (!isAgreed.value) requestAgreementFor('wechat-mini')
+		return
+	}
+
+	if (!isAgreed.value) {
+		requestAgreementFor('primary')
+		return
+	}
+	navigateToLogin()
+}
+
+const handleWechatPhoneNumber = async (event) => {
+	if (!authGate.value.canStart) return
+	closeAgreementSheet()
+	const phoneCode = getWechatPhoneNumberCode(event)
+	if (!phoneCode) {
+		uni.showToast({
+			title: resolveWechatPhoneAuthMessage(event),
+			icon: 'none'
+		})
+		return
+	}
+
+	isWechatLogging.value = true
+	startAuthFeedback()
+	try {
+		const loginResult = await new Promise((resolve, reject) => {
+			uni.login({
+				success: resolve,
+				fail: reject
+			})
+		})
+		if (!authGate.value.shouldHandleResult) return
+		if (!loginResult?.code) {
+			throw new Error('微信登录失败，请重试')
+		}
+
+		const response = await wechatMiniLogin(loginResult.code, phoneCode)
+		if (!authGate.value.shouldHandleResult) return
+		userStore.login(response)
+		uni.setStorageSync(WELCOME_PAGE_VIEWED_KEY, true)
+		navigateToHome()
+	} catch (error) {
+		if (!authGate.value.shouldHandleResult) return
+		uni.showToast({
+			title: resolveAuthErrorMessage(error, '微信登录失败，请重试'),
+			icon: 'none'
+		})
+	} finally {
+		isWechatLogging.value = false
+		clearAuthFeedback()
+	}
+}
+
+const handleHuaweiLogin = () => {
+	if (!isAgreed.value) {
+		requestAgreementFor('huawei')
+		return
+	}
+	navigateToLogin()
+}
+
+const handleAgreementAccepted = () => {
+	isAgreed.value = true
+	persistAgreementState(true)
+	const action = pendingAgreementAction.value
+	// 微信入口的确认按钮同时拉起手机号授权，弹层保留到 @phone-number 回调再关闭。
+	if (isWechatPhoneAuthorizing.value) return
+	closeAgreementSheet()
+
+	if (action === 'huawei') {
+		handleHuaweiLogin()
+		return
+	}
+
+	handlePrimaryEntry()
+}
+
+const openUserAgreement = () => {
+	if (authGate.value.isAuthenticating) return
+	uni.navigateTo({
+		url: '/subPages/agreement/userAgreement'
+	})
+}
+
+const openPrivacyPolicy = () => {
+	if (authGate.value.isAuthenticating) return
+	uni.navigateTo({
+		url: '/subPages/agreement/privacyPolicy'
+	})
+}
+</script>
+
+<style lang="scss" scoped>
+@import './index.scss';
+</style>

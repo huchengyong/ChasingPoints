@@ -22,7 +22,7 @@ func NewAdminChangePasswordLogic(ctx context.Context, svcCtx *svc.ServiceContext
 	return &AdminChangePasswordLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 

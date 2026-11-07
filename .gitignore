@@ -5,6 +5,8 @@ Thumbs.db
 # Editors / IDEs
 .idea/
 .vscode/
+# Xcode personal workspace and scheme state
+**/xcuserdata/
 *.iml
 *.suo
 *.user
@@ -14,6 +16,10 @@ Thumbs.db
 # Logs
 *.log
 logs/
+.run/
+
+# Temp (any level, e.g. backend/tmp/logs)
+tmp/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -41,11 +47,39 @@ coverage/
 unpackage/
 .hbuilderx/
 
+# HBuilderX 将以下图标目录作为 Manifest 的构建输入；其余 unpackage 产物仍不入库。
+!uniapp/unpackage/
+uniapp/unpackage/*
+!uniapp/unpackage/res/
+uniapp/unpackage/res/*
+!uniapp/unpackage/res/icons/
+uniapp/unpackage/res/icons/*
+!uniapp/unpackage/res/icons/*.png
+
 # Go
 bin/
 *.test
 *.out
 coverage.out
+
+# Signing / certificate files (release keys should never enter repo)
+*.keystore
+*.jks
+*.pfx
+*.p12
+*.pem
+*.key
+*.csr
+*.crt
+*.cer
+*.der
+*.mobileprovision
+*.p8
+*.pem.enc
+signing.properties
+signing.gradle
+uniapp/.harmony-signing.local.json
+uniapp/harmony-configs/build-profile.json5
 
 # Project-specific local backend config overrides
 backend/etc/*.local.yaml
@@ -56,3 +90,9 @@ docs/plans
 .omx/
 .gocache
 .gomodcache
+.claude/
+.codex/
+.opencode/
+.pi/
+.codegraph/
+.pi/

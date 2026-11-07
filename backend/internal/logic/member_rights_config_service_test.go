@@ -31,7 +31,7 @@ func TestMemberRightsConfigServiceFallsBackToDefaultsWhenMissing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get config: %v", err)
 	}
-	if cfg.GrowthRules.DailyCap != 5 || cfg.RankingRights.DailyCap != 200 || cfg.RankingRights.DailyPositiveCap != 500 {
+	if cfg.GrowthRules.DailyCap != 8 || cfg.RankingRights.DailyCap != 200 || cfg.RankingRights.DailyPositiveCap != 500 {
 		t.Fatalf("unexpected default config: %+v", cfg)
 	}
 }

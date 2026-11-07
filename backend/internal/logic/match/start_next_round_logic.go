@@ -24,7 +24,7 @@ func NewStartNextRoundLogic(ctx context.Context, svcCtx *svc.ServiceContext) *St
 	return &StartNextRoundLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -132,14 +132,34 @@ func (l *StartNextRoundLogic) StartNextRound(req *types.StartNextRoundReq) (resp
 		return &types.StartNextRoundResp{Success: false}, nil
 	}
 
+	// 中八/美九按结束一局逐局记录，没有开局动作；写入 round_start 只会产生可被撤销的空操作。
+	if isPoolRoundMatch(match) {
+		l.Logger.Errorf("当前球种不支持开始下一局: matchId=%d, gameType=%d", match.Id, match.GameType)
+		return &types.StartNextRoundResp{Success: false, Accepted: false}, nil
+	}
+
 	// 获取当前局数
-	roundCount, _ := l.svcCtx.MatchModel.GetRoundCount(match.Id)
+	roundCount, err := l.svcCtx.MatchModel.GetRoundCount(match.Id)
+	if err != nil {
+		l.Logger.Errorf("查询局数失败: matchId=%d, err=%v", match.Id, err)
+		return &types.StartNextRoundResp{Success: false, Accepted: false}, nil
+	}
 	newRoundNo := int(roundCount) + 1
 
 	if match.GameType == 1 {
+		if snookerFormatLimitReached(match) {
+			l.Logger.Errorf("斯诺克赛制已达到结束条件: matchId=%d", match.Id)
+			return &types.StartNextRoundResp{Success: false, Accepted: false}, nil
+		}
 		if match.CurrentFrameStarted {
 			l.Logger.Errorf("斯诺克当前局尚未结束: matchId=%d, roundNo=%d", match.Id, newRoundNo)
 			return &types.StartNextRoundResp{Success: false}, nil
+		}
+		if isSnookerV2Match(match) {
+			state, stateErr := loadSnookerStateForMatch(l.svcCtx, match, int(roundCount))
+			if stateErr != nil || !state.FrameEnded {
+				return &types.StartNextRoundResp{Success: false}, nil
+			}
 		}
 		match.CurrentFrameStarted = true
 		match.CurrentFrameMyScore = 0
@@ -234,7 +254,28 @@ func (l *StartNextRoundLogic) StartNextRound(req *types.StartNextRoundReq) (resp
 				SnookerClearanceStarted:       false,
 				SnookerClearedColors:          []int{},
 				SnookerExpectedClearanceScore: 0,
-				SnookerClearanceCompleted:     false,
+				SnookerClearanceCompleted:     view.SnookerState.ClearanceCompleted,
+				SnookerRulesVersion:           match.SnookerRulesVersion,
+				BestOfFrames:                  match.BestOfFrames,
+				SnookerFormat:                 match.SnookerFormat,
+				SnookerTargetWins:             match.SnookerTargetWins,
+				MatchFormat:                   view.Snapshot.MatchFormat,
+				TargetWins:                    view.Snapshot.TargetWins,
+				CanChangeMatchFormat:          view.Snapshot.CanChangeMatchFormat,
+				StartingActor:                 match.StartingActor,
+				SnookerPhase:                  view.SnookerState.Phase,
+				SnookerBallOn:                 view.SnookerState.BallOn,
+				SnookerStriker:                view.SnookerState.Striker,
+				SnookerVisitNo:                view.SnookerState.VisitNo,
+				SnookerCurrentBreak:           view.SnookerState.CurrentBreak,
+				SnookerRedsRemaining:          view.SnookerState.RedsRemaining,
+				SnookerFreeBallAvailable:      view.SnookerState.FreeBallAvailable,
+				SnookerCueBallInHand:          view.SnookerState.CueBallInHand,
+				SnookerMissWarningActive:      view.SnookerState.MissWarningActive,
+				SnookerRespottedBlackPending:  view.SnookerState.Phase == model.SnookerPhaseRespottedBlackPending,
+				SnookerPendingConcessionActor: view.SnookerState.PendingConcessionActor,
+				SnookerPendingConcessionScope: view.SnookerState.PendingConcessionScope,
+				SnookerFrameEndReason:         view.SnookerState.FrameEndReason,
 				Status:                        match.Status,
 			},
 		})

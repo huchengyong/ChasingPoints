@@ -35,9 +35,9 @@ func newRefereeFlowTestSvc(t *testing.T) (*svc.ServiceContext, *miniredis.Minire
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 
 	return &svc.ServiceContext{
-		DB:        db,
-		Redis:     rdb,
-		UserModel: model.NewUserModel(db),
+		DB:         db,
+		Redis:      rdb,
+		UserModel:  model.NewUserModel(db),
 		MatchModel: model.NewMatchModel(db),
 	}, mr
 }
@@ -160,5 +160,106 @@ func TestJoinMatchRefereeBindsUserAndReturnsRefereeView(t *testing.T) {
 	}
 	if mr.Exists(buildMatchRefereeJoinTokenKey(92)) {
 		t.Fatalf("expected join token to be consumed after referee binding")
+	}
+}
+
+func TestJoinMatchRefereeRejectsPendingFinishConfirmation(t *testing.T) {
+	svcCtx, mr := newRefereeFlowTestSvc(t)
+	defer mr.Close()
+
+	opponentID := int64(2002)
+	requesterID := int64(1001)
+	refereeID := int64(3003)
+	requestedAt := time.Now()
+	seedRefereeFlowUser(t, svcCtx, requesterID, "选手甲")
+	seedRefereeFlowUser(t, svcCtx, opponentID, "选手乙")
+	seedRefereeFlowUser(t, svcCtx, refereeID, "裁判")
+	seedRefereeFlowMatch(t, svcCtx, &model.Match{
+		Id: 93, UserId: requesterID, OpponentId: &opponentID, OpponentName: "选手乙", GameType: 3,
+		MatchMode: model.MatchModeRanked, FinishConfirmationRequired: true,
+		FinishState: model.FinishStatePendingConfirmation, FinishRequestedBy: &requesterID, FinishRequestedAt: &requestedAt,
+		Status: 1, MatchTime: time.Now(),
+	})
+	if err := svcCtx.Redis.Set(context.Background(), buildMatchRefereeJoinTokenKey(93), "token-93", 5*time.Minute).Err(); err != nil {
+		t.Fatalf("seed join token: %v", err)
+	}
+
+	resp, err := NewJoinMatchRefereeLogic(refereeTestCtx(refereeID), svcCtx).JoinMatchReferee(&types.JoinMatchRefereeReq{MatchId: 93, JoinToken: "token-93"})
+	if err != nil || resp.Success || resp.Message != "请先处理当前结束请求，再加入裁判" {
+		t.Fatalf("expected pending finish rejection: resp=%#v err=%v", resp, err)
+	}
+	stored, _ := svcCtx.MatchModel.FindById(93)
+	if stored == nil || stored.RefereeUserId != nil || !mr.Exists(buildMatchRefereeJoinTokenKey(93)) {
+		t.Fatalf("pending finish rejection mutated referee state: stored=%+v", stored)
+	}
+}
+
+func TestJoinMatchRefereeRejectsExpiredTokenWithoutBinding(t *testing.T) {
+	svcCtx, mr := newRefereeFlowTestSvc(t)
+	defer mr.Close()
+
+	opponentID := int64(2002)
+	refereeID := int64(3003)
+	seedRefereeFlowUser(t, svcCtx, 1001, "选手甲")
+	seedRefereeFlowUser(t, svcCtx, opponentID, "选手乙")
+	seedRefereeFlowUser(t, svcCtx, refereeID, "裁判")
+	seedRefereeFlowMatch(t, svcCtx, &model.Match{
+		Id: 94, UserId: 1001, OpponentId: &opponentID, OpponentName: "选手乙", GameType: 3,
+		Status: 1, MatchTime: time.Now(),
+	})
+
+	resp, err := NewJoinMatchRefereeLogic(refereeTestCtx(refereeID), svcCtx).JoinMatchReferee(&types.JoinMatchRefereeReq{
+		MatchId: 94, JoinToken: "expired-token",
+	})
+	if err != nil || resp.Success || resp.Message != "裁判二维码已失效" {
+		t.Fatalf("expected expired token rejection: resp=%#v err=%v", resp, err)
+	}
+	stored, findErr := svcCtx.MatchModel.FindById(94)
+	if findErr != nil || stored == nil || stored.RefereeUserId != nil {
+		t.Fatalf("expired join mutated referee state: match=%+v err=%v", stored, findErr)
+	}
+}
+
+func TestCancelMatchClearsCompletionAttribution(t *testing.T) {
+	svcCtx, mr := newRefereeFlowTestSvc(t)
+	defer mr.Close()
+
+	opponentID := int64(2002)
+	refereeID := int64(3003)
+	legacyCompletedBy := refereeID
+	seedRefereeFlowUser(t, svcCtx, 1001, "选手甲")
+	seedRefereeFlowUser(t, svcCtx, opponentID, "选手乙")
+	seedRefereeFlowUser(t, svcCtx, refereeID, "裁判")
+	seedRefereeFlowMatch(t, svcCtx, &model.Match{
+		Id: 95, UserId: 1001, OpponentId: &opponentID, OpponentName: "选手乙", GameType: 3,
+		RefereeUserId: &refereeID, CompletedByUserId: &legacyCompletedBy,
+		CompletionSource: model.CompletionSourceReferee, Status: 1, MatchTime: time.Now(),
+	})
+
+	resp, err := NewCancelMatchLogic(refereeTestCtx(1001), svcCtx).CancelMatch(&types.CancelMatchReq{MatchId: 95})
+	if err != nil || !resp.Success {
+		t.Fatalf("cancel match: resp=%#v err=%v", resp, err)
+	}
+	stored, findErr := svcCtx.MatchModel.FindById(95)
+	if findErr != nil || stored == nil {
+		t.Fatalf("reload cancelled match: match=%+v err=%v", stored, findErr)
+	}
+	if stored.Status != 3 || stored.EndTime == nil || stored.CompletedByUserId != nil || stored.CompletionSource != model.CompletionSourceUnknown {
+		t.Fatalf("cancelled match kept completion attribution: %+v", stored)
+	}
+}
+
+func TestGetMatchDetailRejectsPrivateMatchForNonParticipant(t *testing.T) {
+	svcCtx, mr := newRefereeFlowTestSvc(t)
+	defer mr.Close()
+
+	opponentID := int64(2002)
+	seedRefereeFlowMatch(t, svcCtx, &model.Match{
+		Id: 96, UserId: 1001, OpponentId: &opponentID, OpponentName: "选手乙", GameType: 3,
+		Visibility: model.MatchVisibilityPrivate, Status: 1, MatchTime: time.Now(),
+	})
+	resp, err := NewGetMatchDetailLogic(refereeTestCtx(4004), svcCtx).GetMatchDetail(&types.GetMatchDetailReq{MatchId: 96})
+	if err != nil || resp.Success {
+		t.Fatalf("private match detail leaked to non-participant: resp=%#v err=%v", resp, err)
 	}
 }

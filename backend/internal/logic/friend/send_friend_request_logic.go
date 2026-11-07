@@ -23,7 +23,7 @@ func NewSendFriendRequestLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 	return &SendFriendRequestLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -110,6 +110,7 @@ func (l *SendFriendRequestLogic) SendFriendRequest(req *types.SendFriendRequestR
 	}); notifyErr != nil {
 		l.Logger.Errorf("分发好友申请通知失败: %v", notifyErr)
 	}
+	sendFriendRequestCountUpdated(l.svcCtx, req.ToUserId, "friend_requests")
 
 	return &types.CommonResp{Success: true, Message: "发送成功"}, nil
 }

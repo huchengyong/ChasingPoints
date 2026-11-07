@@ -79,6 +79,30 @@ const routes = [
         meta: { title: '奖励发放记录', parent: '/venues' }
       },
       {
+        path: 'gear',
+        name: 'Gear',
+        redirect: '/gear/pending',
+        meta: { title: '装备目录', icon: 'Box' }
+      },
+      {
+        path: 'gear/pending',
+        name: 'GearPending',
+        component: () => import('@/views/gear/pending.vue'),
+        meta: { title: '待收录型号', parent: '/gear' }
+      },
+      {
+        path: 'gear/products',
+        name: 'GearProducts',
+        component: () => import('@/views/gear/products.vue'),
+        meta: { title: '型号管理', parent: '/gear' }
+      },
+      {
+        path: 'gear/brands',
+        name: 'GearBrands',
+        component: () => import('@/views/gear/brands.vue'),
+        meta: { title: '品牌管理', parent: '/gear' }
+      },
+      {
         path: 'settings',
         name: 'Settings',
         redirect: '/settings/member-rewards',
@@ -88,19 +112,25 @@ const routes = [
         path: 'settings/member-rewards',
         name: 'MemberRewardSettings',
         component: () => import('@/views/config/member-rewards.vue'),
-        meta: { title: '会员奖励配置', parent: '/settings' }
+        meta: { title: 'VIP奖励配置', parent: '/settings' }
       },
       {
         path: 'settings/member-ranking-rights',
         name: 'MemberRankingRightsSettings',
         component: () => import('@/views/config/member-ranking-rights.vue'),
-        meta: { title: '会员排位权益配置', parent: '/settings' }
+        meta: { title: 'VIP排位权益配置', parent: '/settings' }
       },
       {
         path: 'settings/reputation',
         name: 'ReputationSettings',
         component: () => import('@/views/config/reputation.vue'),
         meta: { title: '信誉制度配置', parent: '/settings' }
+      },
+      {
+        path: 'settings/llm',
+        name: 'LlmSettings',
+        component: () => import('@/views/config/llm.vue'),
+        meta: { title: '大模型配置', parent: '/settings' }
       }
     // 合规收口：动态审核入口暂时隐藏，页面文件保留以便后续持证后快速恢复。
     ].concat(socialReviewRoutes)

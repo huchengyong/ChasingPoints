@@ -5,6 +5,7 @@ import (
 
 	logicx "chasing_points/internal/logic"
 	paymentlogic "chasing_points/internal/logic/payment"
+	"chasing_points/internal/logic/staticread"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -22,7 +23,7 @@ func NewGetMemberPlansLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Ge
 	return &GetMemberPlansLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
-		svcCtx: svcCtx,
+		svcCtx: svcCtx.WithContext(ctx),
 	}
 }
 
@@ -33,15 +34,17 @@ func (l *GetMemberPlansLogic) GetMemberPlans() (resp *types.GetMemberPlansResp, 
 		}, nil
 	}
 
-	plans := paymentlogic.MemberPlans()
-	items := make([]types.MemberPlanInfo, 0, len(plans))
-	for _, item := range plans {
-		items = append(items, paymentlogic.BuildMemberPlanInfo(item))
+	items, err := staticread.Load(l.ctx, l.svcCtx, "member-plans", func() ([]types.MemberPlanInfo, error) {
+		plans := paymentlogic.MemberPlans()
+		result := make([]types.MemberPlanInfo, 0, len(plans))
+		for _, item := range plans {
+			result = append(result, paymentlogic.BuildMemberPlanInfo(item))
+		}
+		return result, nil
+	})
+	if err != nil {
+		l.Logger.Errorf("获取会员套餐缓存失败: %v", err)
+		return &types.GetMemberPlansResp{Success: false}, nil
 	}
-
-	return &types.GetMemberPlansResp{
-		Success:     true,
-		CurrentTime: logicx.FormatUTC8Time(logicx.NowUTC8()),
-		Plans:       items,
-	}, nil
+	return &types.GetMemberPlansResp{Success: true, CurrentTime: logicx.FormatUTC8Time(logicx.NowUTC8()), Plans: items}, nil
 }

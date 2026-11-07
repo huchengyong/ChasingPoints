@@ -49,6 +49,76 @@ func TestValidateStartMatchReqRejectsSelfMatch(t *testing.T) {
 	}
 }
 
+func TestValidateStartMatchReqNegotiatesSnookerRulesVersion(t *testing.T) {
+	legacy := &types.StartMatchReq{GameType: 1, OpponentId: 200}
+	if message := validateStartMatchReq(100, legacy); message != "" {
+		t.Fatalf("legacy client should remain compatible: %q", message)
+	}
+	if legacy.SnookerRulesVersion != model.SnookerRulesVersionLegacy || legacy.BestOfFrames != 0 || legacy.SnookerFormat != model.SnookerFormatLegacy || legacy.SnookerTargetWins != 0 || legacy.StartingActor != 0 {
+		t.Fatalf("unexpected legacy negotiation: %+v", legacy)
+	}
+
+	version2 := &types.StartMatchReq{
+		GameType: 1, OpponentId: 200, SnookerRulesVersion: model.SnookerRulesVersionWPBSA,
+		BestOfFrames: 7, StartingActor: 2,
+	}
+	if message := validateStartMatchReq(100, version2); message != "" {
+		t.Fatalf("valid version 2 rejected: %q", message)
+	}
+	if version2.SnookerFormat != model.SnookerFormatRaceTo || version2.SnookerTargetWins != 4 {
+		t.Fatalf("legacy best-of should map to race-to threshold: %+v", version2)
+	}
+	free := &types.StartMatchReq{
+		GameType: 1, OpponentId: 200, SnookerRulesVersion: model.SnookerRulesVersionWPBSA,
+		SnookerFormat: model.SnookerFormatFree,
+	}
+	if message := validateStartMatchReq(100, free); message != "" || free.SnookerTargetWins != 0 || free.StartingActor != 1 {
+		t.Fatalf("valid free format rejected or not normalized: req=%+v message=%q", free, message)
+	}
+	raceTo := &types.StartMatchReq{
+		GameType: 1, OpponentId: 200, SnookerRulesVersion: model.SnookerRulesVersionWPBSA,
+		SnookerFormat: model.SnookerFormatRaceTo, SnookerTargetWins: 10,
+	}
+	if message := validateStartMatchReq(100, raceTo); message != "" || raceTo.StartingActor != 1 {
+		t.Fatalf("valid race-to format rejected or not normalized: req=%+v message=%q", raceTo, message)
+	}
+	if message := validateStartMatchReq(100, &types.StartMatchReq{
+		GameType: 1, OpponentId: 200, SnookerRulesVersion: model.SnookerRulesVersionWPBSA,
+		SnookerFormat: model.SnookerFormatFree, SnookerTargetWins: 1,
+	}); message != "请选择有效的斯诺克赛制" {
+		t.Fatalf("unexpected invalid free format message: %q", message)
+	}
+	if message := validateStartMatchReq(100, &types.StartMatchReq{
+		GameType: 1, OpponentId: 200, SnookerRulesVersion: model.SnookerRulesVersionWPBSA,
+		SnookerFormat: model.SnookerFormatRaceTo, SnookerTargetWins: 26,
+	}); message != "请选择有效的斯诺克赛制" {
+		t.Fatalf("unexpected invalid race-to format message: %q", message)
+	}
+	if message := validateStartMatchReq(100, &types.StartMatchReq{
+		GameType: 1, OpponentId: 200, SnookerRulesVersion: model.SnookerRulesVersionWPBSA,
+		SnookerFormat: model.SnookerFormatLegacy,
+	}); message != "请选择有效的斯诺克赛制" {
+		t.Fatalf("version 2 must reject legacy format that can never finish: %q", message)
+	}
+	legacyBestOf := &types.StartMatchReq{
+		GameType: 1, OpponentId: 200, SnookerRulesVersion: model.SnookerRulesVersionWPBSA,
+		SnookerFormat: model.SnookerFormatLegacy, BestOfFrames: 5, StartingActor: 1,
+	}
+	if message := validateStartMatchReq(100, legacyBestOf); message != "" || legacyBestOf.SnookerFormat != model.SnookerFormatRaceTo || legacyBestOf.SnookerTargetWins != 3 {
+		t.Fatalf("explicit legacy with best-of should still map to race-to: req=%+v message=%q", legacyBestOf, message)
+	}
+	if message := validateStartMatchReq(100, &types.StartMatchReq{
+		GameType: 1, OpponentId: 200, SnookerRulesVersion: model.SnookerRulesVersionWPBSA,
+	}); message != "斯诺克总局数必须为正奇数" {
+		t.Fatalf("unexpected invalid format message: %q", message)
+	}
+	if message := validateStartMatchReq(100, &types.StartMatchReq{
+		GameType: 1, OpponentId: 200, SnookerRulesVersion: 3,
+	}); message != "不支持的斯诺克规则版本" {
+		t.Fatalf("unexpected unsupported version message: %q", message)
+	}
+}
+
 func TestEvaluateStartMatchDecisionResumesExistingMatchForSameOpponentAndGameType(t *testing.T) {
 	existing := &model.Match{
 		Id:           88,

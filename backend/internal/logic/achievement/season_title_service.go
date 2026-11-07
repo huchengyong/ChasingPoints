@@ -5,14 +5,21 @@ import (
 	"time"
 
 	"chasing_points/internal/model"
+	seasonx "chasing_points/internal/season"
 	"chasing_points/internal/svc"
 
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
 func GrantSeasonTitles(svcCtx *svc.ServiceContext, seasons []model.Season, records []model.SeasonRecord) error {
+	_, err := GrantSeasonTitlesWithTx(svcCtx, nil, seasons, records)
+	return err
+}
+
+func GrantSeasonTitlesWithTx(svcCtx *svc.ServiceContext, tx *gorm.DB, seasons []model.Season, records []model.SeasonRecord) (int, error) {
 	if svcCtx == nil || svcCtx.DB == nil {
-		return nil
+		return 0, nil
 	}
 
 	seasonByID := make(map[int64]model.Season, len(seasons))
@@ -20,6 +27,7 @@ func GrantSeasonTitles(svcCtx *svc.ServiceContext, seasons []model.Season, recor
 		seasonByID[season.Id] = season
 	}
 
+	granted := 0
 	for _, record := range records {
 		season, ok := seasonByID[record.SeasonId]
 		if !ok {
@@ -29,15 +37,36 @@ func GrantSeasonTitles(svcCtx *svc.ServiceContext, seasons []model.Season, recor
 		if !ok {
 			continue
 		}
-		if err := grantSeasonTitle(svcCtx, record.UserId, season, record.GameType, record.FinalRank, titleName); err != nil {
-			return err
+		grantedAt, err := seasonTitleGrantedAt(svcCtx, season)
+		if err != nil {
+			return 0, err
+		}
+		created, err := grantSeasonTitleWithTx(svcCtx, tx, record.UserId, season, record.GameType, record.FinalRank, titleName, grantedAt)
+		if err != nil {
+			return 0, err
+		}
+		if created {
+			granted++
 		}
 	}
-	return nil
+	return granted, nil
 }
 
 func grantSeasonTitle(svcCtx *svc.ServiceContext, userId int64, season model.Season, gameType int, finalRank int, titleName string) error {
-	now := time.Now()
+	grantedAt, err := seasonTitleGrantedAt(svcCtx, season)
+	if err != nil {
+		return err
+	}
+	_, err = grantSeasonTitleWithTx(svcCtx, nil, userId, season, gameType, finalRank, titleName, grantedAt)
+	return err
+}
+
+func seasonTitleGrantedAt(svcCtx *svc.ServiceContext, season model.Season) (time.Time, error) {
+	_, endExclusive, err := seasonx.BoundsForConfig(svcCtx.Config.SeasonLifecycle, &season)
+	return endExclusive, err
+}
+
+func grantSeasonTitleWithTx(svcCtx *svc.ServiceContext, tx *gorm.DB, userId int64, season model.Season, gameType int, finalRank int, titleName string, grantedAt time.Time) (bool, error) {
 	title := &model.UserTitle{
 		UserId:        userId,
 		TitleKey:      fmt.Sprintf("season_%d_game_%d_rank_%d", season.Id, gameType, finalRank),
@@ -46,10 +75,14 @@ func grantSeasonTitle(svcCtx *svc.ServiceContext, userId int64, season model.Sea
 		SourceType:    SourceTypeSeason,
 		SourceRefId:   season.Id,
 		SourceRefName: season.Name,
-		GrantedAt:     &now,
+		GrantedAt:     &grantedAt,
 	}
 
-	return svcCtx.DB.Clauses(clause.OnConflict{
+	db := svcCtx.DB
+	if tx != nil {
+		db = tx
+	}
+	result := db.Clauses(clause.OnConflict{
 		Columns: []clause.Column{
 			{Name: "user_id"},
 			{Name: "title_key"},
@@ -57,7 +90,11 @@ func grantSeasonTitle(svcCtx *svc.ServiceContext, userId int64, season model.Sea
 			{Name: "source_ref_id"},
 		},
 		DoNothing: true,
-	}).Create(title).Error
+	}).Create(title)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
 }
 
 func seasonTitleName(seasonName string, gameType int, finalRank int) (string, bool) {

@@ -1,0 +1,1041 @@
+/* 我的：颜色取值对应 DESIGN.md 语义 Token */
+
+.user-container {
+	--me-surface: #FFFFFF;
+	--me-surface-secondary: #FAF8F2;
+	--me-text-primary: #231C0B;
+	--me-text-secondary: #6E6242;
+	--me-text-muted: #9A8C67;
+	--me-border: #E9E2CF;
+	--me-accent: #E0AE12;
+	--me-accent-strong: #C69200;
+	--me-accent-soft: rgba(224, 174, 18, 0.14);
+	--me-danger: #EF4444;
+	--me-danger-soft: rgba(239, 68, 68, 0.1);
+	--me-shadow: 0 2rpx 8rpx rgba(31, 26, 16, 0.05);
+	--me-mask: rgba(20, 17, 9, 0.56);
+	min-height: 100vh;
+	box-sizing: border-box;
+	background: #F7F4EC;
+	color: var(--me-text-primary);
+
+	&.dark-mode {
+		--me-surface: #1E180D;
+		--me-surface-secondary: #241D10;
+		--me-text-primary: #FFF7E1;
+		--me-text-secondary: #D7C89B;
+		--me-text-muted: #9F926E;
+		--me-border: #3A2E16;
+		--me-accent-strong: #F0C542;
+		--me-accent-soft: rgba(224, 174, 18, 0.2);
+		--me-danger-soft: rgba(239, 68, 68, 0.16);
+		--me-shadow: none;
+		--me-mask: rgba(0, 0, 0, 0.64);
+		background: #141109;
+	}
+}
+
+.main-content {
+	// 小程序的自定义 TabBar（--ui-tab-bar-space）已含安全区，其他端取安全区本身
+	padding: 24rpx 24rpx calc(48rpx + max(env(safe-area-inset-bottom), var(--ui-tab-bar-space, 0px)));
+	box-sizing: border-box;
+
+	&.has-float-reward {
+		padding-bottom: calc(200rpx + max(env(safe-area-inset-bottom), var(--ui-tab-bar-space, 0px)));
+	}
+}
+
+// ========== 资料头 ==========
+.profile-header {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+	padding: 4rpx 4rpx 28rpx;
+}
+
+.profile-main {
+	min-width: 0;
+	flex: 1;
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+}
+
+.profile-avatar {
+	position: relative;
+	width: 112rpx;
+	height: 112rpx;
+	flex-shrink: 0;
+	border: 4rpx solid var(--me-surface);
+	border-radius: 50%;
+	background: var(--me-surface-secondary);
+	box-shadow: 0 8rpx 24rpx rgba(31, 26, 16, 0.1);
+	box-sizing: border-box;
+}
+
+.profile-avatar-image {
+	width: 100%;
+	height: 100%;
+	border-radius: 50%;
+}
+
+.profile-avatar.has-rank-frame {
+	width: 124rpx;
+	height: 124rpx;
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+}
+
+.profile-avatar.has-rank-frame .profile-avatar-image {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 96rpx;
+	height: 96rpx;
+	border: 4rpx solid var(--me-surface);
+	border-radius: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 1;
+	box-sizing: border-box;
+}
+
+.profile-avatar-frame {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 156rpx;
+	height: 156rpx;
+	transform: translate(-50%, -50%);
+	z-index: 2;
+	pointer-events: none;
+}
+
+.profile-copy {
+	min-width: 0;
+	flex: 1;
+	overflow: hidden;
+}
+
+.profile-name {
+	display: block;
+	overflow: hidden;
+	font-size: 38rpx;
+	font-weight: 800;
+	line-height: 1.25;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--me-text-primary);
+}
+
+// 头部右侧有四个图标，窄屏放不下两个标签时换行，避免把标签截成省略号
+.profile-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10rpx;
+	margin-top: 12rpx;
+	min-width: 0;
+}
+
+.profile-chip {
+	min-width: 0;
+	height: 40rpx;
+	display: flex;
+	align-items: center;
+	padding: 0 16rpx;
+	border: 1rpx solid var(--me-border);
+	border-radius: 999rpx;
+	background: var(--me-surface);
+	box-sizing: border-box;
+
+	text {
+		overflow: hidden;
+		font-size: 22rpx;
+		font-weight: 600;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		color: var(--me-text-secondary);
+	}
+
+	&.profile-chip--vip {
+		border-color: transparent;
+		background: var(--me-accent-soft);
+
+		text { color: var(--me-accent-strong); }
+	}
+
+	&.profile-chip--danger {
+		border-color: transparent;
+		background: var(--me-danger-soft);
+
+		text { color: var(--me-danger); }
+	}
+}
+
+.profile-actions {
+	display: flex;
+	gap: 12rpx;
+	flex-shrink: 0;
+}
+
+.icon-btn {
+	position: relative;
+	width: 72rpx;
+	height: 72rpx;
+	line-height: 72rpx;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: visible;
+	border: 1rpx solid var(--me-border);
+	border-radius: 50%;
+	background: var(--me-surface);
+	box-sizing: border-box;
+
+	&::after {
+		display: none;
+	}
+}
+
+// uni-icons 没有二维码字形：三个定位角 + 点阵，颜色与相邻图标一致
+.qr-glyph {
+	position: relative;
+	width: 36rpx;
+	height: 36rpx;
+	box-sizing: border-box;
+}
+
+.qr-glyph-finder {
+	position: absolute;
+	width: 16rpx;
+	height: 16rpx;
+	border: 4rpx solid var(--me-text-secondary);
+	border-radius: 4rpx;
+	box-sizing: border-box;
+
+	&::after {
+		content: '';
+		position: absolute;
+		top: 2rpx;
+		left: 2rpx;
+		width: 4rpx;
+		height: 4rpx;
+		background: var(--me-text-secondary);
+	}
+
+	&--top-left {
+		top: 0;
+		left: 0;
+	}
+
+	&--top-right {
+		top: 0;
+		right: 0;
+	}
+
+	&--bottom-left {
+		bottom: 0;
+		left: 0;
+	}
+}
+
+.qr-glyph-dots {
+	position: absolute;
+	top: 20rpx;
+	left: 20rpx;
+	width: 4rpx;
+	height: 4rpx;
+	background: var(--me-text-secondary);
+	box-shadow:
+		12rpx 0 0 var(--me-text-secondary),
+		6rpx 6rpx 0 var(--me-text-secondary),
+		0 12rpx 0 var(--me-text-secondary),
+		12rpx 12rpx 0 var(--me-text-secondary);
+}
+
+// ========== 段位卡（高价值表面） ==========
+.rank-card {
+	padding: 20rpx 24rpx 28rpx;
+	border-radius: 32rpx;
+	background:
+		radial-gradient(circle at 12% 0%, rgba(255, 237, 171, 0.2), transparent 32%),
+		linear-gradient(135deg, #3C2B08 0%, #8F6507 58%, #C69200 100%);
+	box-shadow: 0 16rpx 40rpx rgba(60, 43, 8, 0.18);
+	color: #FFFFFF;
+}
+
+.rank-tabs {
+	display: flex;
+	gap: 4rpx;
+	padding: 4rpx;
+	border-radius: 999rpx;
+	background: rgba(0, 0, 0, 0.18);
+}
+
+.rank-tab {
+	flex: 1;
+	min-width: 0;
+	height: 56rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 6rpx;
+	border-radius: 999rpx;
+	box-sizing: border-box;
+
+	text {
+		overflow: hidden;
+		font-size: 22rpx;
+		font-weight: 600;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		color: rgba(255, 255, 255, 0.72);
+	}
+
+	&.active {
+		background: #FFFFFF;
+
+		text { color: #4F3707; }
+	}
+}
+
+// 只有一个相关球种时不显示切换，只标出当前球种。
+.rank-game-label {
+	display: block;
+	padding: 8rpx 4rpx 0;
+	font-size: 24rpx;
+	font-weight: 600;
+	color: rgba(255, 255, 255, 0.8);
+}
+
+.rank-body,
+.rank-skeleton {
+	margin-top: 28rpx;
+}
+
+.rank-main,
+.rank-skeleton {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+}
+
+.rank-icon {
+	width: 96rpx;
+	height: 96rpx;
+	flex-shrink: 0;
+}
+
+.rank-copy,
+.rank-skeleton-copy {
+	min-width: 0;
+	flex: 1;
+}
+
+.rank-name {
+	display: block;
+	overflow: hidden;
+	font-size: 40rpx;
+	font-weight: 800;
+	line-height: 1.2;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: #FFFFFF;
+}
+
+.rank-score {
+	display: block;
+	margin-top: 6rpx;
+	font-size: 24rpx;
+	color: rgba(255, 255, 255, 0.8);
+}
+
+.rank-more {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	gap: 2rpx;
+
+	text {
+		font-size: 22rpx;
+		color: rgba(255, 255, 255, 0.72);
+	}
+}
+
+.rank-progress {
+	height: 12rpx;
+	margin-top: 26rpx;
+	overflow: hidden;
+	border-radius: 999rpx;
+	background: rgba(255, 255, 255, 0.2);
+}
+
+.rank-progress-fill {
+	height: 100%;
+	border-radius: 999rpx;
+	background: #FFE6A0;
+}
+
+.rank-hint {
+	display: block;
+	margin-top: 12rpx;
+	font-size: 22rpx;
+	color: rgba(255, 255, 255, 0.8);
+}
+
+.rank-picker {
+	margin-top: 24rpx;
+	padding-top: 20rpx;
+	border-top: 1rpx solid rgba(255, 255, 255, 0.16);
+}
+
+.rank-picker-title {
+	display: block;
+	font-size: 22rpx;
+	color: rgba(255, 255, 255, 0.8);
+}
+
+.rank-picker-options {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 12rpx;
+	margin-top: 16rpx;
+}
+
+.rank-picker-option {
+	min-width: 0;
+	height: 56rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 6rpx;
+	border-radius: 999rpx;
+	box-sizing: border-box;
+	background: rgba(0, 0, 0, 0.18);
+
+	text {
+		overflow: hidden;
+		font-size: 22rpx;
+		font-weight: 600;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		color: #FFFFFF;
+	}
+}
+
+// ========== 区块 ==========
+.me-section {
+	margin-top: 40rpx;
+}
+
+.section-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20rpx;
+	margin-bottom: 16rpx;
+	padding: 0 4rpx;
+}
+
+.section-title-row {
+	display: flex;
+	align-items: baseline;
+	gap: 12rpx;
+	min-width: 0;
+}
+
+.section-title {
+	font-size: 32rpx;
+	font-weight: 700;
+	color: var(--me-text-primary);
+}
+
+.section-caption {
+	font-size: 22rpx;
+	color: var(--me-text-muted);
+}
+
+.section-more {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	gap: 4rpx;
+
+	text {
+		font-size: 24rpx;
+		color: var(--me-text-muted);
+	}
+}
+
+.metrics-card,
+.career-empty,
+.shortcuts-card,
+.list-card,
+.guest-card,
+.reward-entry {
+	border: 1rpx solid var(--me-border);
+	border-radius: 24rpx;
+	background: var(--me-surface);
+	box-shadow: var(--me-shadow);
+	box-sizing: border-box;
+}
+
+.metrics-card {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	padding: 28rpx 8rpx;
+}
+
+.metric-item {
+	min-width: 0;
+	text-align: center;
+}
+
+.metric-item + .metric-item {
+	border-left: 1rpx solid var(--me-border);
+}
+
+.metric-value {
+	display: block;
+	overflow: hidden;
+	font-size: 36rpx;
+	font-weight: 800;
+	line-height: 1.2;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--me-text-primary);
+
+	&.accent {
+		color: var(--me-accent-strong);
+	}
+}
+
+.metric-label {
+	display: block;
+	margin-top: 8rpx;
+	font-size: 22rpx;
+	color: var(--me-text-secondary);
+}
+
+.career-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	padding: 28rpx 24rpx;
+}
+
+.empty-title {
+	font-size: 28rpx;
+	font-weight: 600;
+	color: var(--me-text-primary);
+}
+
+.empty-desc {
+	margin-top: 10rpx;
+	font-size: 24rpx;
+	line-height: 1.55;
+	color: var(--me-text-secondary);
+}
+
+.career-error {
+	margin-top: 12rpx;
+	padding: 0 4rpx;
+
+	text {
+		font-size: 22rpx;
+		color: var(--me-danger);
+	}
+}
+
+// ========== 常用入口 ==========
+.shortcuts-card {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 8rpx;
+	margin-top: 24rpx;
+	padding: 28rpx 8rpx 24rpx;
+}
+
+.shortcut-item {
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12rpx;
+}
+
+.shortcut-icon {
+	width: 80rpx;
+	height: 80rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 24rpx;
+	background: var(--me-accent-soft);
+}
+
+.shortcut-label {
+	max-width: 100%;
+	overflow: hidden;
+	font-size: 22rpx;
+	font-weight: 600;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--me-text-primary);
+}
+
+// ========== 列表 ==========
+.list-card {
+	margin-top: 24rpx;
+	padding: 0 24rpx;
+}
+
+.list-row {
+	min-height: 104rpx;
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+	padding: 20rpx 0;
+	box-sizing: border-box;
+}
+
+.list-row + .list-row {
+	border-top: 1rpx solid var(--me-border);
+}
+
+.row-icon {
+	width: 56rpx;
+	height: 56rpx;
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 16rpx;
+	background: var(--me-accent-soft);
+}
+
+.row-copy {
+	min-width: 0;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+}
+
+.row-title {
+	min-width: 0;
+	flex: 1;
+	font-size: 28rpx;
+	font-weight: 600;
+	color: var(--me-text-primary);
+}
+
+.row-desc {
+	margin-top: 6rpx;
+	font-size: 22rpx;
+	line-height: 1.45;
+	color: var(--me-text-secondary);
+}
+
+.row-value {
+	flex-shrink: 0;
+	font-size: 24rpx;
+	color: var(--me-text-muted);
+}
+
+// ========== 游客 ==========
+.guest-card {
+	padding: 32rpx 28rpx 28rpx;
+	border-radius: 32rpx;
+}
+
+.guest-head {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+}
+
+.guest-avatar {
+	width: 112rpx;
+	height: 112rpx;
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1rpx solid var(--me-border);
+	border-radius: 50%;
+	background: var(--me-surface-secondary);
+	box-sizing: border-box;
+}
+
+.guest-sub {
+	display: block;
+	margin-top: 8rpx;
+	font-size: 24rpx;
+	line-height: 1.5;
+	color: var(--me-text-secondary);
+}
+
+.guest-benefits {
+	display: flex;
+	flex-direction: column;
+	gap: 14rpx;
+	margin-top: 28rpx;
+	padding: 22rpx 24rpx;
+	border-radius: 20rpx;
+	background: var(--me-surface-secondary);
+}
+
+.guest-benefit {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+
+	text {
+		font-size: 24rpx;
+		color: var(--me-text-secondary);
+	}
+}
+
+.login-btn {
+	height: 88rpx;
+	line-height: 88rpx;
+	margin: 28rpx 0 0;
+	padding: 0;
+	border-radius: 18rpx;
+	background: var(--me-accent);
+	box-shadow: 0 8rpx 32rpx rgba(224, 174, 18, 0.22);
+	font-size: 28rpx;
+	font-weight: 600;
+	color: #FFFFFF;
+
+	&::after {
+		display: none;
+	}
+}
+
+// ========== 常去球馆奖励 ==========
+.reward-entry {
+	margin-top: 24rpx;
+	padding: 24rpx;
+}
+
+.reward-entry-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16rpx;
+}
+
+.reward-entry-title {
+	min-width: 0;
+	overflow: hidden;
+	font-size: 28rpx;
+	font-weight: 600;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--me-text-primary);
+}
+
+.reward-entry-status {
+	flex-shrink: 0;
+	font-size: 22rpx;
+	font-weight: 600;
+	color: var(--me-accent-strong);
+}
+
+.reward-entry-description {
+	display: block;
+	margin-top: 8rpx;
+	font-size: 24rpx;
+	line-height: 1.5;
+	color: var(--me-text-secondary);
+}
+
+// H5 的 TabBar 在页面内，需要让开 --window-bottom；App/小程序该变量为 0。
+.float-reward-entry {
+	position: fixed;
+	right: 24rpx;
+	bottom: calc(24rpx + var(--window-bottom, 0px) + var(--ui-tab-bar-space, 0px));
+	left: 24rpx;
+	z-index: 90;
+	padding: 20rpx 20rpx 20rpx 24rpx;
+	border: 1rpx solid rgba(224, 174, 18, 0.32);
+	border-radius: 24rpx;
+	background:
+		linear-gradient(180deg, var(--me-accent-soft) 0%, rgba(224, 174, 18, 0) 80%),
+		var(--me-surface);
+	box-shadow: 0 8rpx 32rpx rgba(31, 26, 16, 0.12);
+	box-sizing: border-box;
+}
+
+.float-reward-body {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+}
+
+.float-reward-copy {
+	min-width: 0;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 6rpx;
+}
+
+.float-reward-title {
+	overflow: hidden;
+	font-size: 26rpx;
+	font-weight: 700;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--me-text-primary);
+}
+
+.float-reward-description {
+	display: -webkit-box;
+	overflow: hidden;
+	font-size: 22rpx;
+	line-height: 1.45;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	color: var(--me-text-secondary);
+}
+
+.float-reward-action {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+
+	text {
+		font-size: 24rpx;
+		font-weight: 600;
+		color: var(--me-accent-strong);
+	}
+}
+
+.float-reward-close {
+	width: 44rpx;
+	height: 44rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	border-radius: 50%;
+}
+
+// ========== 匹配二维码弹窗 ==========
+.qr-mask {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 40rpx;
+	box-sizing: border-box;
+	background: var(--me-mask);
+}
+
+.qr-panel {
+	width: 100%;
+	max-width: 620rpx;
+	padding: 32rpx;
+	border-radius: 32rpx;
+	box-sizing: border-box;
+	background: var(--me-surface);
+	box-shadow: 0 30rpx 80rpx rgba(20, 17, 9, 0.24);
+}
+
+.qr-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 20rpx;
+}
+
+.qr-title,
+.qr-subtitle {
+	display: block;
+}
+
+.qr-title {
+	font-size: 32rpx;
+	font-weight: 700;
+	color: var(--me-text-primary);
+}
+
+.qr-subtitle {
+	margin-top: 8rpx;
+	font-size: 24rpx;
+	line-height: 1.5;
+	color: var(--me-text-secondary);
+}
+
+.qr-close {
+	flex-shrink: 0;
+	width: 64rpx;
+	height: 64rpx;
+	line-height: 64rpx;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background: var(--me-surface-secondary);
+
+	&::after {
+		display: none;
+	}
+}
+
+.qr-body {
+	position: relative;
+	min-height: 480rpx;
+	margin: 28rpx 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 24rpx;
+	background: var(--me-surface-secondary);
+}
+
+.qr-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 20rpx;
+	font-size: 26rpx;
+	color: var(--me-text-secondary);
+}
+
+.qr-error {
+	color: var(--me-danger);
+}
+
+// 二维码始终白底，保证扫码识别率
+// 用 px 与画布绘制尺寸 240 对齐：rpx 换算出不同像素宽度，会让码在框内偏几像素、模块被非整数放大
+.qr-image {
+	width: 240px;
+	height: 240px;
+	border-radius: 16rpx;
+	background: #FFFFFF;
+
+	&.is-loading {
+		position: absolute;
+		opacity: 0;
+	}
+}
+
+.qr-retry,
+.qr-done {
+	margin: 0;
+	padding: 0 28rpx;
+	border-radius: 999rpx;
+	font-size: 26rpx;
+	font-weight: 600;
+
+	&::after {
+		display: none;
+	}
+}
+
+.qr-retry {
+	height: 68rpx;
+	line-height: 68rpx;
+	background: var(--me-accent-soft);
+	color: var(--me-accent-strong);
+}
+
+.qr-done {
+	width: 100%;
+	height: 80rpx;
+	line-height: 80rpx;
+	background: var(--me-accent);
+	color: #FFFFFF;
+}
+
+// ========== 骨架屏 ==========
+.skeleton-circle,
+.skeleton-line {
+	background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.12));
+	background-size: 200% 100%;
+	animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-circle {
+	width: 96rpx;
+	height: 96rpx;
+	flex-shrink: 0;
+	border-radius: 50%;
+}
+
+.skeleton-line {
+	height: 24rpx;
+	border-radius: 999rpx;
+}
+
+.skeleton-line-wide { width: 48%; }
+.skeleton-line-short { width: 72%; margin-top: 16rpx; }
+
+@keyframes skeleton-shimmer {
+	0% { background-position: 200% 0; }
+	100% { background-position: -200% 0; }
+}
+
+// ========== 暗色：段位卡改用暖黑表面 ==========
+.dark-mode {
+	.profile-avatar {
+		box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.28);
+	}
+
+	.rank-card {
+		border: 1rpx solid #3A2E16;
+		background:
+			radial-gradient(circle at 12% 0%, rgba(224, 174, 18, 0.22), transparent 40%),
+			#241D10;
+		box-shadow: 0 16rpx 40rpx rgba(0, 0, 0, 0.2);
+	}
+
+	.rank-tabs {
+		background: rgba(0, 0, 0, 0.24);
+	}
+
+	.rank-tab.active {
+		background: #E0AE12;
+
+		text { color: #141109; }
+	}
+
+	.rank-picker {
+		border-top-color: rgba(255, 247, 225, 0.12);
+	}
+
+	.rank-picker-option {
+		background: rgba(0, 0, 0, 0.24);
+
+		text { color: #FFF7E1; }
+	}
+
+	.rank-name {
+		color: #FFF7E1;
+	}
+
+	.rank-progress {
+		background: rgba(255, 247, 225, 0.12);
+	}
+
+	.rank-progress-fill {
+		background: #F0C542;
+	}
+
+	.float-reward-entry {
+		box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.32);
+	}
+}

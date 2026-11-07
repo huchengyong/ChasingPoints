@@ -1,10 +1,13 @@
 package model
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"chasing_points/internal/observability"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -87,11 +90,17 @@ func TestSeasonRecordUsesMigratedUniqueIndexName(t *testing.T) {
 }
 
 func TestLeaderboardEligibilityConditionFiltersUsersWithoutMatches(t *testing.T) {
-	got := leaderboardEligibilityCondition("ur")
+	got := leaderboardEligibilityCondition("ur", LeaderboardScope{})
 	want := "(ur.total_wins + ur.total_losses) > 0"
 
 	if got != want {
 		t.Fatalf("expected leaderboard eligibility condition %q, got %q", want, got)
+	}
+
+	gotV2 := leaderboardEligibilityCondition("ur", LeaderboardScope{RatingV2: true})
+	wantV2 := "(ur.rating_version = 2 AND ur.rated_matches > 0)"
+	if gotV2 != wantV2 {
+		t.Fatalf("expected rating V2 eligibility condition %q, got %q", wantV2, gotV2)
 	}
 }
 
@@ -140,6 +149,34 @@ func TestApplyRankChangeLogGameTypeFilterCanSkipGameTypeConstraint(t *testing.T)
 	})
 	if strings.Contains(sql, "game_type") {
 		t.Fatalf("expected sql without game_type filter, got %q", sql)
+	}
+}
+
+func TestRankingModelWithDBReusesSchemaCapabilities(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{Logger: observability.NewGormLogger(time.Hour)})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&RankChangeLog{}); err != nil {
+		t.Fatalf("prepare rank change schema: %v", err)
+	}
+	firstMetrics := observability.NewRequestMetrics(time.Now())
+	firstDB := db.WithContext(observability.WithRequestMetrics(context.Background(), firstMetrics))
+	rankingModel := NewRankingModel(firstDB)
+	if _, err := rankingModel.ListRankChangesByUserAndGameType(1, 3, 10); err != nil {
+		t.Fatalf("first rank change read: %v", err)
+	}
+	if firstMetrics.Snapshot().SQLCount < 2 {
+		t.Fatalf("first read must include schema capability detection: %+v", firstMetrics.Snapshot())
+	}
+
+	secondMetrics := observability.NewRequestMetrics(time.Now())
+	secondDB := db.WithContext(observability.WithRequestMetrics(context.Background(), secondMetrics))
+	if _, err := rankingModel.WithDB(secondDB).ListRankChangesByUserAndGameType(1, 3, 10); err != nil {
+		t.Fatalf("second rank change read: %v", err)
+	}
+	if secondMetrics.Snapshot().SQLCount != 1 {
+		t.Fatalf("request-scoped clone must reuse schema capability: %+v", secondMetrics.Snapshot())
 	}
 }
 

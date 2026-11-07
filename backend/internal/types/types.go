@@ -3,17 +3,34 @@
 
 package types
 
+type AcceptChallengeReq struct {
+	ChallengeId            int64 `json:"challenge_id"`
+	ConfirmCloseOwnPending bool  `json:"confirm_close_own_pending,optional"` // 换人接受确认
+}
+
+type AcceptChallengeResp struct {
+	Success             bool   `json:"success"`
+	ChallengeId         int64  `json:"challenge_id"`      // 主记录 ID（含重复点击/已合并重放）
+	MatchId             int64  `json:"match_id,optional"` // 已开局时指向比赛
+	Message             string `json:"message,optional"`
+	TypeConflict        bool   `json:"type_conflict,optional"`          // 互邀但球种/类型不同
+	NeedConfirmCloseOwn bool   `json:"need_confirm_close_own,optional"` // 换人接受需要确认
+	PendingChallengeId  int64  `json:"pending_challenge_id,optional"`   // 需要关闭的自己待回应邀请
+}
+
 type AchievementDef struct {
-	Id          int64  `json:"id"`
-	Key         string `json:"key"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Icon        string `json:"icon"`
-	Category    string `json:"category"`
-	Threshold   int    `json:"threshold"`
-	Progress    int    `json:"progress"`
-	Unlocked    bool   `json:"unlocked"`
-	UnlockedAt  string `json:"unlocked_at,omitempty"`
+	Id              int64  `json:"id"`
+	Key             string `json:"key"`
+	Name            string `json:"name"`
+	Description     string `json:"description"`
+	Icon            string `json:"icon"`
+	Category        string `json:"category"`
+	GameType        int    `json:"game_type"`
+	RewardTitleName string `json:"reward_title_name,optional"`
+	Threshold       int    `json:"threshold"`
+	Progress        int    `json:"progress"`
+	Unlocked        bool   `json:"unlocked"`
+	UnlockedAt      string `json:"unlocked_at,omitempty"`
 }
 
 type AchievementItem struct {
@@ -213,6 +230,131 @@ type AdminFeedbackTicketProcessReq struct {
 	ProcessResult string `json:"process_result,optional"`
 }
 
+type AdminGearBrandInfo struct {
+	Id           int64  `json:"id"`
+	Name         string `json:"name"`
+	Aliases      string `json:"aliases"` // 搜索别名，逗号分隔
+	Sort         int    `json:"sort"`
+	Status       int    `json:"status"` // 1=启用 0=停用
+	ProductCount int64  `json:"product_count"`
+}
+
+type AdminGearBrandListReq struct {
+	Keyword  string `form:"keyword,optional"`
+	Page     int    `form:"page,optional,default=1"`
+	PageSize int    `form:"page_size,optional,default=20"`
+}
+
+type AdminGearBrandListResp struct {
+	Code    int                  `json:"code"`
+	Success bool                 `json:"success"`
+	Message string               `json:"message"`
+	Total   int64                `json:"total"`
+	List    []AdminGearBrandInfo `json:"list"`
+}
+
+type AdminGearBrandSaveReq struct {
+	Id      int64  `json:"id,optional"` // 0 表示新增
+	Name    string `json:"name"`
+	Aliases string `json:"aliases,optional"`
+	Sort    int    `json:"sort,optional"`
+	Status  int    `json:"status,optional,default=1"`
+}
+
+type AdminGearPendingInfo struct {
+	CustomKey string   `json:"custom_key"`
+	Category  string   `json:"category"`
+	BrandName string   `json:"brand_name"`
+	ModelName string   `json:"model_name"`
+	CueStyle  string   `json:"cue_style"`
+	Roles     []string `json:"roles"`
+	Count     int64    `json:"count"`
+	LastAt    string   `json:"last_at"`
+}
+
+type AdminGearPendingLinkReq struct {
+	CustomKey string `json:"custom_key"`
+	ProductId int64  `json:"product_id"`
+}
+
+type AdminGearPendingLinkResp struct {
+	Code      int    `json:"code"`
+	Success   bool   `json:"success"`
+	Message   string `json:"message"`
+	Updated   int64  `json:"updated"`
+	Remaining int64  `json:"remaining"` // 仍未关联的登记数，大于 0 时可以再次执行
+}
+
+type AdminGearPendingListReq struct {
+	Category string `form:"category,optional"`
+	Page     int    `form:"page,optional,default=1"`
+	PageSize int    `form:"page_size,optional,default=20"`
+}
+
+type AdminGearPendingListResp struct {
+	Code    int                    `json:"code"`
+	Success bool                   `json:"success"`
+	Message string                 `json:"message"`
+	Total   int64                  `json:"total"`
+	List    []AdminGearPendingInfo `json:"list"`
+}
+
+type AdminGearProductInfo struct {
+	Id            int64    `json:"id"`
+	Category      string   `json:"category"`
+	BrandId       int64    `json:"brand_id"`
+	BrandName     string   `json:"brand_name"`
+	Name          string   `json:"name"`
+	House         bool     `json:"house"`
+	CueStyle      string   `json:"cue_style"`
+	Roles         []string `json:"roles"`
+	LengthMm      int      `json:"length_mm"`
+	WeightG       int      `json:"weight_g"`
+	TipDiameterMm float64  `json:"tip_diameter_mm"`
+	ImagePath     string   `json:"image_path"`
+	Sort          int      `json:"sort"`
+	Status        int      `json:"status"` // 1=启用 0=停用
+}
+
+type AdminGearProductListReq struct {
+	Category string `form:"category,optional"`
+	BrandId  int64  `form:"brand_id,optional"`
+	Keyword  string `form:"keyword,optional"`
+	Status   int    `form:"status,optional,default=-1"` // -1=全部 1=启用 0=停用
+	Page     int    `form:"page,optional,default=1"`
+	PageSize int    `form:"page_size,optional,default=20"`
+}
+
+type AdminGearProductListResp struct {
+	Code    int                    `json:"code"`
+	Success bool                   `json:"success"`
+	Message string                 `json:"message"`
+	Total   int64                  `json:"total"`
+	List    []AdminGearProductInfo `json:"list"`
+}
+
+type AdminGearProductSaveReq struct {
+	Id            int64    `json:"id,optional"` // 0 表示新增
+	Category      string   `json:"category"`
+	BrandId       int64    `json:"brand_id,optional"` // 球房公用条目为 0
+	Name          string   `json:"name"`
+	CueStyle      string   `json:"cue_style,optional"`
+	Roles         []string `json:"roles,optional"`
+	LengthMm      int      `json:"length_mm,optional"`
+	WeightG       int      `json:"weight_g,optional"`
+	TipDiameterMm float64  `json:"tip_diameter_mm,optional"`
+	ImagePath     string   `json:"image_path,optional"`
+	Sort          int      `json:"sort,optional"`
+	Status        int      `json:"status,optional,default=1"`
+}
+
+type AdminGearSaveResp struct {
+	Code    int    `json:"code"`
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Id      int64  `json:"id,optional"`
+}
+
 type AdminInfo struct {
 	Id       int64  `json:"id"`
 	Email    string `json:"email"`
@@ -233,6 +375,26 @@ type AdminInitResp struct {
 	Message string `json:"message"`
 }
 
+type AdminLlmConfigResp struct {
+	Code         int    `json:"code"`
+	Success      bool   `json:"success"`
+	Message      string `json:"message"`
+	ApiFormat    string `json:"api_format"` // anthropic:Anthropic Messages；openai:OpenAI 兼容 Chat Completions；未配置时为空
+	EndpointUrl  string `json:"endpoint_url"`
+	HasApiKey    bool   `json:"has_api_key"`
+	ApiKeyMasked string `json:"api_key_masked"`
+	Model        string `json:"model"`
+	MaxTokens    int    `json:"max_tokens"`
+}
+
+type AdminLlmConfigUpdateReq struct {
+	ApiFormat   string `json:"api_format"` // anthropic / openai
+	EndpointUrl string `json:"endpoint_url"`
+	ApiKey      string `json:"api_key,optional"` // 留空表示沿用已保存的 API Key
+	Model       string `json:"model"`
+	MaxTokens   int    `json:"max_tokens"`
+}
+
 type AdminLoginReq struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -250,6 +412,9 @@ type AdminMatchInfo struct {
 	Id            int64  `json:"id"`
 	GameType      int    `json:"game_type"`
 	GameTypeName  string `json:"game_type_name"`
+	MatchMode     string `json:"match_mode,optional"`
+	Visibility    string `json:"visibility,optional"`
+	FinishState   string `json:"finish_state,optional"`
 	Player1Name   string `json:"player1_name"`
 	Player2Name   string `json:"player2_name"`
 	MyScore       int    `json:"my_score"`
@@ -322,6 +487,9 @@ type AdminRecentMatch struct {
 	Id            int64  `json:"id"`
 	GameType      int    `json:"game_type"`
 	GameTypeName  string `json:"game_type_name"`
+	MatchMode     string `json:"match_mode,optional"`
+	Visibility    string `json:"visibility,optional"`
+	FinishState   string `json:"finish_state,optional"`
 	Player1Name   string `json:"player1_name"`
 	Player2Name   string `json:"player2_name"`
 	MyScore       int    `json:"my_score"`
@@ -581,7 +749,7 @@ type AdminVenueRewardConfigUpdateReq struct {
 	Enabled              bool   `json:"enabled"`
 	PopupEnabled         bool   `json:"popup_enabled"`
 	RewardDays           int    `json:"reward_days"`
-	NewUserWindowDays    int    `json:"new_user_window_days"`
+	NewUserWindowDays    int    `json:"new_user_window_days,optional"`
 	WelcomeRewardEnabled bool   `json:"welcome_reward_enabled"`
 	WelcomeRewardDays    int    `json:"welcome_reward_days"`
 	StartAt              string `json:"start_at,optional"`
@@ -628,9 +796,14 @@ type BindPhoneReq struct {
 }
 
 type BindPhoneResp struct {
-	Success       bool   `json:"success"`
-	Message       string `json:"message"`
-	MergedAccount bool   `json:"merged_account"`
+	Success       bool      `json:"success"`
+	Message       string    `json:"message"`
+	MergedAccount bool      `json:"merged_account"`
+	AccessToken   string    `json:"access_token,optional"`
+	RefreshToken  string    `json:"refresh_token,optional"`
+	ExpiresIn     int64     `json:"expires_in,optional"`
+	NeedBindPhone bool      `json:"need_bind_phone"`
+	UserInfo      *UserInfo `json:"user_info,optional"`
 }
 
 type BlacklistFriendReq struct {
@@ -641,18 +814,35 @@ type CancelMatchReq struct {
 	MatchId int64 `json:"match_id"`
 }
 
+type ChallengeActionResp struct {
+	Success     bool   `json:"success"`
+	Message     string `json:"message,optional"`
+	ChallengeId int64  `json:"challenge_id,optional"`
+	MatchId     int64  `json:"match_id,optional"` // 已开局时返回真实比赛
+}
+
 type ChallengeInfo struct {
-	Id           int64  `json:"id"`
-	FromUserId   int64  `json:"from_user_id"`
-	FromNickname string `json:"from_nickname"`
-	FromAvatar   string `json:"from_avatar"`
-	ToUserId     int64  `json:"to_user_id"`
-	ToNickname   string `json:"to_nickname"`
-	ToAvatar     string `json:"to_avatar"`
-	GameType     int    `json:"game_type"`
-	Message      string `json:"message"`
-	Status       int    `json:"status"`
-	CreatedAt    string `json:"created_at"`
+	Id            int64  `json:"id"`
+	MatchId       int64  `json:"match_id,optional"`
+	FromUserId    int64  `json:"from_user_id"`
+	FromNickname  string `json:"from_nickname"`
+	FromAvatar    string `json:"from_avatar"`
+	FromVipLevel  int    `json:"from_vip_level,optional"` // 有效会员的成长等级 1-5，0=非会员
+	ToUserId      int64  `json:"to_user_id"`
+	ToNickname    string `json:"to_nickname"`
+	ToAvatar      string `json:"to_avatar"`
+	ToVipLevel    int    `json:"to_vip_level,optional"`
+	GameType      int    `json:"game_type"`
+	MatchMode     string `json:"match_mode,optional"`
+	Message       string `json:"message"`
+	Status        int    `json:"status"`
+	CloseReason   string `json:"close_reason,optional"`
+	WaitingUserId int64  `json:"waiting_user_id,optional"`
+	ScheduledDate string `json:"scheduled_date,optional"`
+	StartHour     int    `json:"start_hour,optional"`
+	EndHour       int    `json:"end_hour,optional"`
+	ExpiresAt     string `json:"expires_at,optional"`
+	CreatedAt     string `json:"created_at"`
 }
 
 type CommentPostReq struct {
@@ -676,6 +866,18 @@ type CreateFeedbackTicketResp struct {
 	Success  bool   `json:"success"`
 	Message  string `json:"message"`
 	TicketId int64  `json:"ticket_id"`
+}
+
+type CreateGearItemReq struct {
+	Category       string   `json:"category"` // cue/break_jump
+	ProductId      int64    `json:"product_id,optional"`
+	BrandId        int64    `json:"brand_id,optional"`   // 未收录：目录品牌
+	BrandName      string   `json:"brand_name,optional"` // 未收录：目录没有该品牌时自填，不超过 32 字
+	ModelName      string   `json:"model_name,optional"` // 未收录：型号名，不超过 64 字
+	CueStyle       string   `json:"cue_style,optional"`
+	Roles          []string `json:"roles,optional"`
+	TipProductId   int64    `json:"tip_product_id,optional"`
+	ChalkProductId int64    `json:"chalk_product_id,optional"`
 }
 
 type CreateMemberSubscriptionOrderReq struct {
@@ -739,33 +941,92 @@ type CreateVenueResp struct {
 }
 
 type CurrentMatchInfo struct {
-	Id                        int64  `json:"id"`
-	GameType                  int    `json:"game_type"`
-	GameTypeName              string `json:"game_type_name"`
-	GameMode                  string `json:"game_mode"`
-	ViewerRole                string `json:"viewer_role,optional"`
-	RefereeBound              bool   `json:"referee_bound,optional"`
-	RefereeUserId             int64  `json:"referee_user_id,optional"`
-	RefereeName               string `json:"referee_name,optional"`
-	CanScore                  bool   `json:"can_score,optional"`
-	CanUndo                   bool   `json:"can_undo,optional"`
-	CanFinish                 bool   `json:"can_finish,optional"`
-	OpponentId                int64  `json:"opponent_id,optional"`
-	OpponentName              string `json:"opponent_name"`
-	OpponentAvatar            string `json:"opponent_avatar,optional"`
-	MyScore                   int    `json:"my_score"`
-	OpponentScore             int    `json:"opponent_score"`
-	CurrentFrameStarted       bool   `json:"current_frame_started,optional"`
-	CurrentFrameMyScore       int    `json:"current_frame_my_score,optional"`
-	CurrentFrameOpponentScore int    `json:"current_frame_opponent_score,optional"`
-	CurrentRound              int    `json:"current_round"`
-	ServerRevision            int64  `json:"server_revision"`
-	MatchTime                 string `json:"match_time"`
-	DurationSeconds           int64  `json:"duration_seconds"` // 对局已持续秒数
+	Id                            int64            `json:"id"`
+	ChallengeId                   int64            `json:"challenge_id,optional"`
+	GameType                      int              `json:"game_type"`
+	GameTypeName                  string           `json:"game_type_name"`
+	GameMode                      string           `json:"game_mode"`
+	MatchMode                     string           `json:"match_mode,optional"`
+	Visibility                    string           `json:"visibility,optional"`
+	FinishState                   string           `json:"finish_state,optional"`
+	FinishRequestedBy             int64            `json:"finish_requested_by,optional"`
+	FinishRequestExpiresAt        string           `json:"finish_request_expires_at,optional"`        // 结束确认截止时刻（RFC3339），无待确认请求时为空
+	FinishRequestRemainingSeconds int              `json:"finish_request_remaining_seconds,optional"` // 按服务端时间计算的确认剩余秒数，最小为 0
+	ViewerRole                    string           `json:"viewer_role,optional"`
+	RefereeBound                  bool             `json:"referee_bound,optional"`
+	RefereeUserId                 int64            `json:"referee_user_id,optional"`
+	RefereeName                   string           `json:"referee_name,optional"`
+	RefereeAvatar                 string           `json:"referee_avatar,optional"`
+	RefereeJoinedAt               string           `json:"referee_joined_at,optional"`
+	CompletedByUserId             int64            `json:"completed_by_user_id,optional"`
+	CompletionSource              string           `json:"completion_source,optional"`
+	CanScore                      bool             `json:"can_score,optional"`
+	CanUndo                       bool             `json:"can_undo,optional"`
+	CanFinish                     bool             `json:"can_finish,optional"`
+	CanRequestFinish              bool             `json:"can_request_finish,optional"`
+	CanConfirmFinish              bool             `json:"can_confirm_finish,optional"`
+	CanDisputeFinish              bool             `json:"can_dispute_finish,optional"`
+	CanWithdrawFinish             bool             `json:"can_withdraw_finish,optional"`
+	LastAction                    *MatchLastAction `json:"last_action,optional"`
+	Player1Id                     int64            `json:"player1_id"`
+	Player1Name                   string           `json:"player1_name"`
+	Player1Avatar                 string           `json:"player1_avatar"`
+	Player2Id                     int64            `json:"player2_id"`
+	Player2Name                   string           `json:"player2_name"`
+	Player2Avatar                 string           `json:"player2_avatar"`
+	OpponentId                    int64            `json:"opponent_id,optional"`
+	OpponentName                  string           `json:"opponent_name"`
+	OpponentAvatar                string           `json:"opponent_avatar,optional"`
+	MyScore                       int              `json:"my_score"`
+	OpponentScore                 int              `json:"opponent_score"`
+	CurrentFrameStarted           bool             `json:"current_frame_started,optional"`
+	CurrentFrameMyScore           int              `json:"current_frame_my_score,optional"`
+	CurrentFrameOpponentScore     int              `json:"current_frame_opponent_score,optional"`
+	CurrentRound                  int              `json:"current_round"`
+	SnookerRulesVersion           int              `json:"snooker_rules_version,optional"`
+	BestOfFrames                  int              `json:"best_of_frames,optional"`
+	SnookerFormat                 string           `json:"snooker_format,optional"`
+	SnookerTargetWins             int              `json:"snooker_target_wins,optional"`
+	CanChangeSnookerFormat        bool             `json:"can_change_snooker_format,optional"`
+	MatchFormat                   string           `json:"match_format,optional"`
+	TargetWins                    int              `json:"target_wins,optional"`
+	CanChangeMatchFormat          bool             `json:"can_change_match_format,optional"`
+	StartingActor                 int              `json:"starting_actor,optional"`
+	SnookerPhase                  string           `json:"snooker_phase,optional"`
+	SnookerBallOn                 string           `json:"snooker_ball_on,optional"`
+	SnookerStriker                int              `json:"snooker_striker,optional"`
+	SnookerVisitNo                int              `json:"snooker_visit_no,optional"`
+	SnookerCurrentBreak           int              `json:"snooker_current_break,optional"`
+	SnookerRedsRemaining          int              `json:"snooker_reds_remaining,optional"`
+	SnookerFreeBallAvailable      bool             `json:"snooker_free_ball_available,optional"`
+	SnookerCueBallInHand          bool             `json:"snooker_cue_ball_in_hand,optional"`
+	SnookerMissWarningActive      bool             `json:"snooker_miss_warning_active,optional"`
+	SnookerRespottedBlackPending  bool             `json:"snooker_respotted_black_pending,optional"`
+	SnookerPendingConcessionActor int              `json:"snooker_pending_concession_actor,optional"`
+	SnookerPendingConcessionScope string           `json:"snooker_pending_concession_scope,optional"`
+	SnookerFrameEndReason         string           `json:"snooker_frame_end_reason,optional"`
+	ServerRevision                int64            `json:"server_revision"`
+	MatchTime                     string           `json:"match_time"`
+	DurationSeconds               int64            `json:"duration_seconds"`                  // 对局已持续秒数
+	RefereeDurationSeconds        int64            `json:"referee_duration_seconds,optional"` // 裁判执裁时长
+}
+
+type DeleteAccountReq struct {
+	ConfirmText    string `json:"confirm_text"`
+	VerifyType     string `json:"verify_type"` // sms/oauth
+	SmsCode        string `json:"sms_code,optional"`
+	Provider       string `json:"provider,optional"`
+	Credential     string `json:"credential,optional"`
+	CredentialType string `json:"credential_type,optional"`
+	Platform       string `json:"platform,optional"`
 }
 
 type DeleteFriendReq struct {
 	FriendUserId int64 `json:"friend_user_id"`
+}
+
+type DeleteGearItemReq struct {
+	ItemId int64 `json:"item_id"`
 }
 
 type DurationStats struct {
@@ -777,7 +1038,7 @@ type DurationStats struct {
 
 type EndRoundReq struct {
 	MatchId        int64  `json:"match_id"`
-	Winner         int    `json:"winner"`                   // 1=我 2=对手
+	Winner         int    `json:"winner"`                   // 1=选手1 2=选手2
 	WinType        string `json:"win_type,optional"`        // 获胜方式
 	Score          int    `json:"score,optional,default=1"` // 获胜得分，默认1分
 	ClientActionId string `json:"client_action_id"`
@@ -796,6 +1057,20 @@ type EndRoundResp struct {
 	CurrentFrameOpponentScore int               `json:"current_frame_opponent_score,optional"`
 	MyScore                   int               `json:"my_score"`
 	OpponentScore             int               `json:"opponent_score"`
+}
+
+type EnterChallengeReq struct {
+	ChallengeId  int64 `json:"challenge_id"`
+	ConfirmEarly bool  `json:"confirm_early,optional"` // 提前进入确认
+}
+
+type EnterChallengeResp struct {
+	Success      bool              `json:"success"`
+	Action       string            `json:"action,optional"` // waiting/match_created/confirm_early
+	ChallengeId  int64             `json:"challenge_id,optional"`
+	MatchId      int64             `json:"match_id,optional"`
+	Message      string            `json:"message,optional"`
+	OngoingMatch *CurrentMatchInfo `json:"ongoing_match,optional"`
 }
 
 type EquipTitleReq struct {
@@ -835,35 +1110,37 @@ type EventNewsInfo struct {
 }
 
 type EventNewsMatchInfo struct {
-	Id                  int64  `json:"id"`
-	EventId             int64  `json:"event_id"`
-	TournamentId        int64  `json:"tournament_id"`
-	SourceType          string `json:"source_type"`
-	SourceMatchId       string `json:"source_match_id"`
-	RoundName           string `json:"round_name"`
-	RoundOrder          int    `json:"round_order"`
-	MatchOrder          int    `json:"match_order"`
-	StartTime           string `json:"start_time"`
-	Status              int    `json:"status"`
-	BestOf              int    `json:"best_of"`
-	HomePlayerId        int64  `json:"home_player_id"`
-	HomePlayerName      string `json:"home_player_name"`
-	HomePlayerFirstName string `json:"home_player_first_name,optional"`
-	HomePlayerLastName  string `json:"home_player_last_name,optional"`
-	HomePlayerFlagEmoji string `json:"home_player_flag_emoji,optional"`
-	HomePlayerAvatar    string `json:"home_player_avatar,optional"`
-	AwayPlayerId        int64  `json:"away_player_id"`
-	AwayPlayerName      string `json:"away_player_name"`
-	AwayPlayerFirstName string `json:"away_player_first_name,optional"`
-	AwayPlayerLastName  string `json:"away_player_last_name,optional"`
-	AwayPlayerFlagEmoji string `json:"away_player_flag_emoji,optional"`
-	AwayPlayerAvatar    string `json:"away_player_avatar,optional"`
-	HomeScore           int    `json:"home_score"`
-	AwayScore           int    `json:"away_score"`
-	WinnerSide          int    `json:"winner_side"`
-	IsPlaceholder       bool   `json:"is_placeholder"`
-	CreatedAt           string `json:"created_at"`
-	UpdatedAt           string `json:"updated_at"`
+	Id                    int64  `json:"id"`
+	EventId               int64  `json:"event_id"`
+	TournamentId          int64  `json:"tournament_id"`
+	SourceType            string `json:"source_type"`
+	SourceMatchId         string `json:"source_match_id"`
+	RoundName             string `json:"round_name"`
+	RoundOrder            int    `json:"round_order"`
+	MatchOrder            int    `json:"match_order"`
+	StartTime             string `json:"start_time"`
+	Status                int    `json:"status"`
+	BestOf                int    `json:"best_of"`
+	HomePlayerId          int64  `json:"home_player_id"`
+	HomePlayerName        string `json:"home_player_name"`
+	HomePlayerFirstName   string `json:"home_player_first_name,optional"`
+	HomePlayerLastName    string `json:"home_player_last_name,optional"`
+	HomePlayerFlagEmoji   string `json:"home_player_flag_emoji,optional"`
+	HomePlayerCountryCode string `json:"home_player_country_code,optional"`
+	HomePlayerAvatar      string `json:"home_player_avatar,optional"`
+	AwayPlayerId          int64  `json:"away_player_id"`
+	AwayPlayerName        string `json:"away_player_name"`
+	AwayPlayerFirstName   string `json:"away_player_first_name,optional"`
+	AwayPlayerLastName    string `json:"away_player_last_name,optional"`
+	AwayPlayerFlagEmoji   string `json:"away_player_flag_emoji,optional"`
+	AwayPlayerCountryCode string `json:"away_player_country_code,optional"`
+	AwayPlayerAvatar      string `json:"away_player_avatar,optional"`
+	HomeScore             int    `json:"home_score"`
+	AwayScore             int    `json:"away_score"`
+	WinnerSide            int    `json:"winner_side"`
+	IsPlaceholder         bool   `json:"is_placeholder"`
+	CreatedAt             string `json:"created_at"`
+	UpdatedAt             string `json:"updated_at"`
 }
 
 type FavoriteVenueRewardStatusResp struct {
@@ -879,6 +1156,26 @@ type FavoriteVenueRewardStatusResp struct {
 	RejectReason       string `json:"reject_reason,optional"`
 }
 
+type FinishMatchActionReq struct {
+	MatchId        int64  `json:"match_id"`
+	ClientActionId string `json:"client_action_id"`
+	BaseRevision   int64  `json:"base_revision"`
+}
+
+type FinishMatchActionResp struct {
+	Accepted          bool              `json:"accepted"`
+	Success           bool              `json:"success"`
+	Action            string            `json:"action,optional"`
+	Message           string            `json:"message,optional"`
+	CompletedByUserId int64             `json:"completed_by_user_id,optional"`
+	CompletionSource  string            `json:"completion_source,optional"`
+	ClientActionId    string            `json:"client_action_id,optional"`
+	ServerRevision    int64             `json:"server_revision"`
+	FinishState       string            `json:"finish_state,optional"`
+	FinishRequestedBy int64             `json:"finish_requested_by,optional"`
+	Snapshot          MatchSyncSnapshot `json:"snapshot"`
+}
+
 type FinishMatchReq struct {
 	MatchId        int64  `json:"match_id"`
 	Remark         string `json:"remark,optional"`
@@ -887,14 +1184,18 @@ type FinishMatchReq struct {
 }
 
 type FinishMatchResp struct {
-	Accepted       bool              `json:"accepted"`
-	Success        bool              `json:"success"`
-	Result         int               `json:"result"` // 1=胜利 2=失败 3=平局
-	ClientActionId string            `json:"client_action_id,optional"`
-	ServerRevision int64             `json:"server_revision"`
-	Snapshot       MatchSyncSnapshot `json:"snapshot"`
-	MyScore        int               `json:"my_score"`
-	OpponentScore  int               `json:"opponent_score"`
+	Accepted          bool              `json:"accepted"`
+	Success           bool              `json:"success"`
+	Message           string            `json:"message,optional"`
+	ViewerRole        string            `json:"viewer_role,optional"`
+	CompletedByUserId int64             `json:"completed_by_user_id,optional"`
+	CompletionSource  string            `json:"completion_source,optional"`
+	Result            int               `json:"result"` // 1=胜利 2=失败 3=平局
+	ClientActionId    string            `json:"client_action_id,optional"`
+	ServerRevision    int64             `json:"server_revision"`
+	Snapshot          MatchSyncSnapshot `json:"snapshot"`
+	MyScore           int               `json:"my_score"`
+	OpponentScore     int               `json:"opponent_score"`
 }
 
 type FollowReq struct {
@@ -916,6 +1217,7 @@ type FriendInfo struct {
 	Avatar    string `json:"avatar"`
 	RankLevel int    `json:"rank_level"`
 	RankName  string `json:"rank_name"`
+	VipLevel  int    `json:"vip_level,optional"` // 有效会员的成长等级 1-5，0=非会员
 	CreatedAt string `json:"created_at"`
 }
 
@@ -939,6 +1241,73 @@ type GameTypeStats struct {
 	HighestScore int     `json:"highest_score"`
 }
 
+type GearBrandInfo struct {
+	Id   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+type GearDefaultInfo struct {
+	GameType int    `json:"game_type"` // 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
+	Slot     string `json:"slot"`      // cue/break
+	ItemId   int64  `json:"item_id"`
+}
+
+type GearItemInfo struct {
+	Id           int64            `json:"id"`
+	Category     string           `json:"category"` // cue/break_jump
+	Status       int              `json:"status"`   // 1=在用 2=退役 3=已删除（仅可能出现在对局用杆记录里）
+	Unlisted     bool             `json:"unlisted"` // true=未收录型号
+	House        bool             `json:"house"`
+	BrandName    string           `json:"brand_name"` // 球房公用条目为空
+	ModelName    string           `json:"model_name"`
+	CueStyle     string           `json:"cue_style,optional"`
+	Roles        []string         `json:"roles,optional"`
+	Product      *GearProductInfo `json:"product,optional"`       // 已关联目录型号时返回，含官方规格与目录图
+	TipProduct   *GearProductInfo `json:"tip_product,optional"`   // 对局用杆记录里为记录当时的皮头
+	ChalkProduct *GearProductInfo `json:"chalk_product,optional"` // 对局用杆记录里为记录当时的巧克
+	CreatedAt    string           `json:"created_at"`
+}
+
+type GearItemResp struct {
+	Success bool          `json:"success"`
+	Message string        `json:"message"`
+	Item    *GearItemInfo `json:"item,optional"`
+}
+
+type GearMatchSide struct {
+	UserId       int64            `json:"user_id"`
+	Recorded     bool             `json:"recorded"`        // false=未记录
+	Source       string           `json:"source,optional"` // auto/manual
+	Cue          *GearItemInfo    `json:"cue,optional"`
+	TipProduct   *GearProductInfo `json:"tip_product,optional"`
+	ChalkProduct *GearProductInfo `json:"chalk_product,optional"`
+	BreakCue     *GearItemInfo    `json:"break_cue,optional"`
+}
+
+type GearProductInfo struct {
+	Id            int64    `json:"id"`
+	Category      string   `json:"category"` // cue/break_jump/tip/chalk
+	BrandId       int64    `json:"brand_id"`
+	BrandName     string   `json:"brand_name"` // 球房公用条目为空
+	Name          string   `json:"name"`
+	House         bool     `json:"house"`              // 球房公用条目
+	CueStyle      string   `json:"cue_style,optional"` // 球杆杆型 snooker/pool
+	Roles         []string `json:"roles,optional"`     // 冲跳身份 break/jump
+	LengthMm      int      `json:"length_mm,optional"`
+	WeightG       int      `json:"weight_g,optional"`
+	TipDiameterMm float64  `json:"tip_diameter_mm,optional"`
+	ImagePath     string   `json:"image_path,optional"` // 目录图路径，为空时客户端按类别显示默认图
+}
+
+type GetAchievementDetailReq struct {
+	AchievementId int64 `form:"achievement_id"`
+}
+
+type GetAchievementDetailResp struct {
+	Success     bool            `json:"success"`
+	Achievement *AchievementDef `json:"achievement"`
+}
+
 type GetAchievementListReq struct {
 	Category string `form:"category,optional"`
 }
@@ -948,14 +1317,42 @@ type GetAchievementListResp struct {
 	List    []AchievementDef `json:"list"`
 }
 
+type GetChallengeDetailReq struct {
+	Id int64 `form:"id"`
+}
+
+type GetChallengeDetailResp struct {
+	Success   bool           `json:"success"`
+	Challenge *ChallengeInfo `json:"challenge"`
+}
+
+type GetChallengeHistoryReq struct {
+	BeforeId int64 `form:"before_id,optional"`
+	PageSize int   `form:"page_size,optional"`
+}
+
+type GetChallengeHistoryResp struct {
+	Success      bool            `json:"success"`
+	List         []ChallengeInfo `json:"list"`
+	NextBeforeId int64           `json:"next_before_id,optional"`
+}
+
+type GetChallengeSummaryResp struct {
+	Success              bool           `json:"success"`
+	CurrentChallenge     *ChallengeInfo `json:"current_challenge"`
+	ReceivedPendingCount int            `json:"received_pending_count"`
+	ServerTime           string         `json:"server_time"`
+}
+
 type GetCurrentMatchResp struct {
 	Success bool              `json:"success"`
 	Match   *CurrentMatchInfo `json:"match"`
 }
 
 type GetCurrentSeasonResp struct {
-	Success bool        `json:"success"`
-	Season  *SeasonInfo `json:"season"`
+	Success     bool        `json:"success"`
+	SeasonState string      `json:"season_state"`
+	Season      *SeasonInfo `json:"season"`
 }
 
 type GetEventNewsListReq struct {
@@ -1020,6 +1417,70 @@ type GetFriendRequestsResp struct {
 	List    []FriendRequestInfo `json:"list"`
 }
 
+type GetGearBrandsReq struct {
+	Category string `form:"category"` // cue/break_jump/tip/chalk
+}
+
+type GetGearBrandsResp struct {
+	Success bool            `json:"success"`
+	Message string          `json:"message"`
+	List    []GearBrandInfo `json:"list"`
+}
+
+type GetGearMatchReq struct {
+	MatchId int64 `form:"match_id"`
+}
+
+type GetGearMatchResp struct {
+	Success       bool          `json:"success"`
+	Message       string        `json:"message"`
+	Reason        string        `json:"reason,optional"` // not_completed/not_participant/not_found
+	MatchId       int64         `json:"match_id,optional"`
+	GameType      int           `json:"game_type,optional"`
+	SupportsBreak bool          `json:"supports_break,optional"` // 该球种是否记录冲杆
+	Me            GearMatchSide `json:"me,optional"`
+	HasOpponent   bool          `json:"has_opponent,optional"` // 对手是否为注册用户
+	Opponent      GearMatchSide `json:"opponent,optional"`
+	Editable      bool          `json:"editable,optional"`
+	EditDeadline  string        `json:"edit_deadline,optional"` // RFC3339
+}
+
+type GetGearMineResp struct {
+	Success  bool              `json:"success"`
+	Message  string            `json:"message"`
+	MaxItems int               `json:"max_items"`
+	Items    []GearItemInfo    `json:"items"`
+	Defaults []GearDefaultInfo `json:"defaults"`
+}
+
+type GetGearProductsReq struct {
+	Category string `form:"category"`
+	BrandId  int64  `form:"brand_id,optional"`
+	Keyword  string `form:"keyword,optional"`
+	House    bool   `form:"house,optional"` // true 只看球房公用条目
+	Page     int    `form:"page,optional,default=1"`
+	PageSize int    `form:"page_size,optional,default=20"` // 上限 50
+}
+
+type GetGearProductsResp struct {
+	Success bool              `json:"success"`
+	Message string            `json:"message"`
+	Total   int64             `json:"total"`
+	List    []GearProductInfo `json:"list"`
+}
+
+type GetGearUserReq struct {
+	UserId int64 `form:"user_id"`
+}
+
+type GetGearUserResp struct {
+	Success  bool              `json:"success"`
+	Message  string            `json:"message"`
+	Reason   string            `json:"reason,optional"` // not_friend：不是好友
+	Items    []GearItemInfo    `json:"items"`
+	Defaults []GearDefaultInfo `json:"defaults"`
+}
+
 type GetGlossaryReq struct {
 	Category string `form:"category,optional"`
 }
@@ -1027,6 +1488,27 @@ type GetGlossaryReq struct {
 type GetGlossaryResp struct {
 	Success bool               `json:"success"`
 	List    []GlossaryItemInfo `json:"list"`
+}
+
+type GetHonorWallReq struct {
+	UserId          int64 `form:"user_id,optional"`
+	GameType        int   `form:"game_type,optional,default=3"`
+	HistorySeasonId int64 `form:"history_season_id,optional"`
+	HistoryPage     int   `form:"history_page,optional,default=1"`
+	HistoryPageSize int   `form:"history_page_size,optional,default=20"`
+}
+
+type GetHonorWallResp struct {
+	Success            bool                 `json:"success"`
+	SeasonState        string               `json:"season_state"`
+	ViewerScope        string               `json:"viewer_scope"`
+	Profile            HonorWallProfile     `json:"profile"`
+	EquippedTitle      *TitleInfo           `json:"equipped_title,optional"`
+	Summary            HonorWallSummary     `json:"summary"`
+	RecentHonors       []HonorItem          `json:"recent_honors"`
+	CareerAchievements []AchievementDef     `json:"career_achievements"`
+	CurrentSeason      *HonorWallSeasonInfo `json:"current_season,optional"`
+	History            HonorWallHistory     `json:"history"`
 }
 
 type GetLeaderboardReq struct {
@@ -1041,6 +1523,17 @@ type GetLeaderboardResp struct {
 	TopThree  []LeaderboardItem `json:"top_three"`  // 前三名
 	MyRanking *LeaderboardItem  `json:"my_ranking"` // 我的排名
 	List      []LeaderboardItem `json:"list"`       // 第4名开始的列表
+}
+
+type GetLeaderboardSummaryReq struct {
+	GameType int `form:"game_type,optional,default=3"`
+}
+
+type GetLeaderboardSummaryResp struct {
+	Success   bool              `json:"success"`
+	TopThree  []LeaderboardItem `json:"top_three"`
+	MyRanking *LeaderboardItem  `json:"my_ranking"`
+	Version   string            `json:"version"`
 }
 
 type GetMatchDetailReq struct {
@@ -1062,8 +1555,10 @@ type GetMatchDurationStatsResp struct {
 }
 
 type GetMatchQRCodeResp struct {
-	Success    bool   `json:"success"`
-	QrcodeData string `json:"qrcode_data"` // 二维码内容JSON: {"user_id":xxx,"nickname":"xxx","avatar":"xxx","ts":xxx}
+	Success          bool   `json:"success"`
+	QrcodeData       string `json:"qrcode_data"` // 二维码正文，包含服务端可验证 invite_token
+	InviteToken      string `json:"invite_token,optional"`
+	ExpiresInSeconds int64  `json:"expires_in_seconds,optional"`
 }
 
 type GetMatchRefereeQRCodeReq struct {
@@ -1076,6 +1571,17 @@ type GetMatchRefereeQRCodeResp struct {
 	ExpiresInSeconds int64  `json:"expires_in_seconds"`
 }
 
+type GetMatchRewardSummaryReq struct {
+	MatchId int64 `form:"match_id"`
+}
+
+type GetMatchRewardSummaryResp struct {
+	Success bool              `json:"success"`
+	Status  string            `json:"status"`
+	Message string            `json:"message,optional"`
+	List    []MatchRewardItem `json:"list"`
+}
+
 type GetMatchShareDataReq struct {
 	MatchId int64 `form:"match_id"`
 }
@@ -1083,6 +1589,38 @@ type GetMatchShareDataReq struct {
 type GetMatchShareDataResp struct {
 	Success bool            `json:"success"`
 	Data    *MatchShareData `json:"data"`
+}
+
+type GetMemberMatchReplayReq struct {
+	MatchId int64 `form:"match_id"`
+}
+
+type GetMemberMatchReplayResp struct {
+	Success         bool           `json:"success"`
+	MatchId         int64          `json:"match_id"`
+	GameType        int            `json:"game_type"`
+	Locked          bool           `json:"locked"` // true=非有效会员，只返回局数
+	FrameCount      int            `json:"frame_count"`
+	FrameOnly       bool           `json:"frame_only,optional"`       // true=本该有逐动作明细但只有局级数据：旧斯诺克对局、动作超出上限或明细损坏
+	DetailTruncated bool           `json:"detail_truncated,optional"` // 动作数超出上限
+	Summary         *ReplaySummary `json:"summary,optional"`
+	Frames          []ReplayFrame  `json:"frames,optional"`
+}
+
+type GetMemberPerformanceReq struct {
+	GameType int `form:"game_type,optional,default=3"`
+}
+
+type GetMemberPerformanceResp struct {
+	Success      bool                     `json:"success"`
+	GameType     int                      `json:"game_type"`
+	Locked       bool                     `json:"locked"`                 // true=非有效会员，只返回样本数与本月预览
+	SampleCount  int                      `json:"sample_count"`           // 最近 90 天可分析的 V2 已计分排位场数，上限 200
+	MonthPreview *PerformanceMonthPreview `json:"month_preview,optional"` // 仅 locked 时返回
+	Summary      *PerformanceSummary      `json:"summary,optional"`       // 以下四项仅有效会员返回
+	BestWin      *PerformanceMatchItem    `json:"best_win,optional"`
+	WorstLoss    *PerformanceMatchItem    `json:"worst_loss,optional"`
+	Months       []PerformanceMonthItem   `json:"months,optional"` // 最近 6 个自然月
 }
 
 type GetMemberPlansResp struct {
@@ -1168,9 +1706,10 @@ type GetNotificationListReq struct {
 }
 
 type GetNotificationListResp struct {
-	Success bool               `json:"success"`
-	Total   int64              `json:"total"`
-	List    []NotificationInfo `json:"list"`
+	Success     bool               `json:"success"`
+	Total       int64              `json:"total"`
+	UnreadCount int                `json:"unread_count"`
+	List        []NotificationInfo `json:"list"`
 }
 
 type GetOngoingMatchesReq struct {
@@ -1182,6 +1721,19 @@ type GetOngoingMatchesResp struct {
 	Success bool               `json:"success"`
 	Total   int64              `json:"total"`
 	List    []OngoingMatchItem `json:"list"`
+}
+
+type GetOpponentCandidatesReq struct {
+	GameType int `form:"game_type,optional"`
+	Limit    int `form:"limit,default=30"`
+}
+
+type GetOpponentCandidatesResp struct {
+	Success             bool                `json:"success"`
+	List                []OpponentCandidate `json:"list"`
+	CompetitiveRevision int64               `json:"competitive_revision"`
+	Availability        map[string]bool     `json:"availability"`
+	PartialErrors       []ReadPartialError  `json:"partial_errors"`
 }
 
 type GetOpponentListReq struct {
@@ -1196,6 +1748,7 @@ type GetOpponentListResp struct {
 	Message        string               `json:"message,optional"`
 	Hidden         bool                 `json:"hidden"`
 	TotalOpponents int                  `json:"total_opponents"` // 总对手数
+	TotalMatches   int                  `json:"total_matches"`   // 总交手场次
 	TotalWins      int                  `json:"total_wins"`      // 总胜场
 	Total          int64                `json:"total"`
 	List           []OpponentRecordItem `json:"list"`
@@ -1260,6 +1813,14 @@ type GetQiniuUploadTokenResp struct {
 	Domain      string `json:"domain,optional"`
 }
 
+type GetRankConfigsResp struct {
+	Success          bool             `json:"success"`
+	Version          string           `json:"version"`
+	List             []RankConfigItem `json:"list"`
+	RulesVersion     int              `json:"rules_version"`      // 当前生效的排位规则：1=旧规则 2=V2
+	RulesEffectiveAt string           `json:"rules_effective_at"` // 排位规则 V2 生效时刻（RFC3339），未配置为空
+}
+
 type GetRankListReq struct {
 	GameType int `form:"game_type,optional,default=3"`
 }
@@ -1304,6 +1865,18 @@ type GetRuleContentResp struct {
 	List    []RuleContentItem `json:"list"`
 }
 
+type GetSeasonHistoryReq struct {
+	GameType int `form:"game_type,optional,default=3"`
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=10"`
+}
+
+type GetSeasonHistoryResp struct {
+	Success bool                `json:"success"`
+	Total   int64               `json:"total"`
+	List    []SeasonHistoryItem `json:"list"`
+}
+
 type GetSeasonLeaderboardReq struct {
 	SeasonId int64 `form:"season_id,optional"`
 	GameType int   `form:"game_type,optional,default=3"`
@@ -1316,6 +1889,22 @@ type GetSeasonLeaderboardResp struct {
 	Season  *SeasonInfo             `json:"season"`
 	Total   int64                   `json:"total"`
 	List    []SeasonLeaderboardItem `json:"list"`
+}
+
+type GetSeasonOverviewReq struct {
+	GameType int `form:"game_type,optional,default=3"`
+}
+
+type GetSeasonOverviewResp struct {
+	Success             bool                    `json:"success"`
+	SeasonState         string                  `json:"season_state"`
+	Season              *SeasonInfo             `json:"season"`
+	Record              *SeasonRecordInfo       `json:"record"`
+	MyRank              int                     `json:"my_rank"` // 本人当前赛季实时名次，0 表示尚无记录
+	Leaderboard         []SeasonLeaderboardItem `json:"leaderboard"`
+	CompetitiveRevision int64                   `json:"competitive_revision"`
+	Availability        map[string]bool         `json:"availability"`
+	PartialErrors       []ReadPartialError      `json:"partial_errors"`
 }
 
 type GetSeasonReportReq struct {
@@ -1341,6 +1930,24 @@ type GetSingleHighScoreResp struct {
 type GetStatsByGameTypeResp struct {
 	Success bool            `json:"success"`
 	List    []GameTypeStats `json:"list"`
+}
+
+type GetStatsOverviewReq struct {
+	GameType   int `form:"game_type,optional,default=3"`
+	TrendLimit int `form:"trend_limit,default=60"`
+}
+
+type GetStatsOverviewResp struct {
+	Success             bool                    `json:"success"`
+	ByGameType          []GameTypeStats         `json:"by_game_type"`
+	RecentTrend         []TrendPoint            `json:"recent_trend"`
+	RankScoreTrend      []TrendPoint            `json:"rank_score_trend"`
+	SingleHighScores    []SingleHighScoreRecord `json:"single_high_scores"`
+	Duration            *DurationStats          `json:"duration"`
+	OpponentStrength    []OpponentStrengthItem  `json:"opponent_strength"`
+	CompetitiveRevision int64                   `json:"competitive_revision"`
+	Availability        map[string]bool         `json:"availability"`
+	PartialErrors       []ReadPartialError      `json:"partial_errors"`
 }
 
 type GetTournamentBracketReq struct {
@@ -1397,14 +2004,41 @@ type GetUserAchievementsResp struct {
 	List    []AchievementDef `json:"list"`
 }
 
+type GetUserBootstrapResp struct {
+	Success                       bool               `json:"success"`
+	UserInfo                      *UserInfo          `json:"user_info"`
+	CurrentMatch                  *CurrentMatchInfo  `json:"current_match"`
+	CurrentChallenge              *ChallengeInfo     `json:"current_challenge"`
+	ReceivedPendingChallengeCount int                `json:"received_pending_challenge_count"`
+	ServerTime                    string             `json:"server_time"`
+	UnreadCount                   int                `json:"unread_count"`
+	PendingFriendRequestCount     int                `json:"pending_friend_request_count"`
+	LatestSeasonRollover          *NotificationInfo  `json:"latest_season_rollover"`
+	CompetitiveRevision           int64              `json:"competitive_revision"`
+	Availability                  map[string]bool    `json:"availability"`
+	PartialErrors                 []ReadPartialError `json:"partial_errors"`
+}
+
 type GetUserInfoResp struct {
 	Success  bool      `json:"success"`
 	UserInfo *UserInfo `json:"user_info"`
 }
 
+type GetUserOverviewResp struct {
+	Success             bool                           `json:"success"`
+	Stats               *UserStatsResp                 `json:"stats"`
+	Reputation          *GetUserReputationResp         `json:"reputation"`
+	MemberStatus        *GetMemberStatusResp           `json:"member_status"`
+	FavoriteVenueReward *FavoriteVenueRewardStatusResp `json:"favorite_venue_reward"`
+	CompetitiveRevision int64                          `json:"competitive_revision"`
+	Availability        map[string]bool                `json:"availability"`
+	PartialErrors       []ReadPartialError             `json:"partial_errors"`
+}
+
 type GetUserPrivacyResp struct {
-	Success         bool `json:"success"`
-	HideMatchRecord bool `json:"hide_match_record"`
+	Success               bool `json:"success"`
+	HideMatchRecord       bool `json:"hide_match_record"`
+	FriendsOnlyChallenges bool `json:"friends_only_challenges"`
 }
 
 type GetUserRankInfoReq struct {
@@ -1414,6 +2048,11 @@ type GetUserRankInfoReq struct {
 type GetUserRankInfoResp struct {
 	Success  bool      `json:"success"`
 	RankInfo *RankInfo `json:"rank_info"`
+}
+
+type GetUserRankInfosResp struct {
+	Success   bool               `json:"success"`
+	RankInfos []UserRankInfoItem `json:"rank_infos"`
 }
 
 type GetUserReputationResp struct {
@@ -1493,6 +2132,28 @@ type H2HOpponent struct {
 	Avatar string `json:"avatar"`
 }
 
+type H2HOverviewReq struct {
+	TargetUserId int64  `form:"target_user_id,optional"`
+	OpponentId   int64  `form:"opponent_id,optional"`
+	OpponentName string `form:"opponent_name,optional"`
+	GameType     int    `form:"game_type,optional"`
+	PageSize     int    `form:"page_size,default=20"`
+	StartDate    string `form:"start_date,optional"`
+	EndDate      string `form:"end_date,optional"`
+}
+
+type H2HOverviewResp struct {
+	Success             bool               `json:"success"`
+	Opponent            *H2HOpponent       `json:"opponent"`
+	Stats               *H2HStats          `json:"stats"`
+	Total               int64              `json:"total"`
+	List                []MatchListItem    `json:"list"`
+	HasMore             bool               `json:"has_more"`
+	CompetitiveRevision int64              `json:"competitive_revision"`
+	Availability        map[string]bool    `json:"availability"`
+	PartialErrors       []ReadPartialError `json:"partial_errors"`
+}
+
 type H2HStats struct {
 	TotalMatches int     `json:"total_matches"`
 	MyWins       int     `json:"my_wins"`
@@ -1523,6 +2184,54 @@ type HandleFriendRequestReq struct {
 	RequestId int64 `json:"request_id"`
 }
 
+type HonorItem struct {
+	Id              int64  `json:"id"`
+	Type            string `json:"type"`
+	Name            string `json:"name"`
+	Description     string `json:"description,optional"`
+	Icon            string `json:"icon,optional"`
+	SourceType      string `json:"source_type"`
+	SourceRefId     int64  `json:"source_ref_id,optional"`
+	SourceRefName   string `json:"source_ref_name,optional"`
+	RewardTitleName string `json:"reward_title_name,optional"`
+	EarnedAt        string `json:"earned_at"`
+}
+
+type HonorWallHistory struct {
+	Total            int64                 `json:"total"`
+	Honors           []HonorItem           `json:"honors"`
+	ChallengeSeason  *HonorWallSeasonInfo  `json:"challenge_season,optional"`
+	ChallengeRecords []SeasonChallengeInfo `json:"challenge_records"`
+}
+
+type HonorWallProfile struct {
+	UserId   int64  `json:"user_id"`
+	Nickname string `json:"nickname"`
+	Avatar   string `json:"avatar"`
+}
+
+type HonorWallSeasonInfo struct {
+	SeasonId   int64                 `json:"season_id"`
+	SeasonName string                `json:"season_name"`
+	StartDate  string                `json:"start_date"`
+	EndDate    string                `json:"end_date"`
+	Status     int                   `json:"status"`
+	GameType   int                   `json:"game_type"`
+	Challenges []SeasonChallengeInfo `json:"challenges"`
+}
+
+type HonorWallSummary struct {
+	CareerUnlocked    int `json:"career_unlocked"`
+	CareerTotal       int `json:"career_total"`
+	UniversalUnlocked int `json:"universal_unlocked"`
+	UniversalTotal    int `json:"universal_total"`
+	SpecialtyGameType int `json:"specialty_game_type"`
+	SpecialtyUnlocked int `json:"specialty_unlocked"`
+	SpecialtyTotal    int `json:"specialty_total"`
+	SeasonHonors      int `json:"season_honors"`
+	TournamentHonors  int `json:"tournament_honors"`
+}
+
 type JoinMatchRefereeReq struct {
 	MatchId   int64  `json:"match_id"`
 	JoinToken string `json:"join_token"`
@@ -1540,19 +2249,20 @@ type LeaderboardItem struct {
 	UserId    int64  `json:"user_id"`
 	Nickname  string `json:"nickname"`
 	Avatar    string `json:"avatar"`
-	RankLevel int    `json:"rank_level"` // 段位等级
-	RankName  string `json:"rank_name"`  // 段位名称
-	RankScore int    `json:"rank_score"` // 排位分
-	WinRate   int    `json:"win_rate"`   // 胜率百分比
+	RankLevel int    `json:"rank_level"`         // 段位等级
+	RankName  string `json:"rank_name"`          // 段位名称
+	RankScore int    `json:"rank_score"`         // 排位分
+	WinRate   int    `json:"win_rate"`           // 胜率百分比
+	VipLevel  int    `json:"vip_level,optional"` // 有效会员的成长等级 1-5，0=非会员
 }
 
 type LoginByOauthReq struct {
-	Provider  string `json:"provider"` // huawei
-	OpenId    string `json:"open_id"`
-	UnionId   string `json:"union_id,optional"`
-	NickName  string `json:"nick_name,optional"`
-	AvatarUrl string `json:"avatar_url,optional"`
-	Platform  string `json:"platform,optional"`
+	Provider       string `json:"provider"` // huawei
+	Credential     string `json:"credential"`
+	CredentialType string `json:"credential_type,optional"` // authorization_code/id_token/access_token
+	Platform       string `json:"platform,optional"`
+	NickName       string `json:"nick_name,optional"`
+	AvatarUrl      string `json:"avatar_url,optional"`
 }
 
 type LoginByOauthResp struct {
@@ -1589,23 +2299,48 @@ type MatchAchievement struct {
 
 type MatchDetailData struct {
 	Id                            int64              `json:"id"`
+	ChallengeId                   int64              `json:"challenge_id,optional"`
+	Player1Id                     int64              `json:"player1_id"`
+	Player2Id                     int64              `json:"player2_id"`
+	OpponentId                    int64              `json:"opponent_id,optional"`
 	GameType                      int                `json:"game_type"`
-	Status                        int                `json:"status"` // 1=进行中 2=已完成 3=已取消
+	MatchMode                     string             `json:"match_mode,optional"`
+	Visibility                    string             `json:"visibility,optional"`
+	FinishState                   string             `json:"finish_state,optional"`
+	FinishRequestedBy             int64              `json:"finish_requested_by,optional"`
+	FinishRequestExpiresAt        string             `json:"finish_request_expires_at,optional"`        // 结束确认截止时刻（RFC3339），无待确认请求时为空
+	FinishRequestRemainingSeconds int                `json:"finish_request_remaining_seconds,optional"` // 按服务端时间计算的确认剩余秒数，最小为 0
+	Status                        int                `json:"status"`                                    // 1=进行中 2=已完成 3=已取消
 	ServerRevision                int64              `json:"server_revision"`
 	IsPlayer1                     bool               `json:"is_player1"` // 当前用户是否是创建者(用于视角判断)
 	ViewerRole                    string             `json:"viewer_role,optional"`
 	RefereeBound                  bool               `json:"referee_bound,optional"`
 	RefereeUserId                 int64              `json:"referee_user_id,optional"`
 	RefereeName                   string             `json:"referee_name,optional"`
+	RefereeAvatar                 string             `json:"referee_avatar,optional"`
+	RefereeJoinedAt               string             `json:"referee_joined_at,optional"`
+	RefereeDurationSeconds        int64              `json:"referee_duration_seconds,optional"`
+	CompletedByUserId             int64              `json:"completed_by_user_id,optional"`
+	CompletionSource              string             `json:"completion_source,optional"`
 	CanScore                      bool               `json:"can_score,optional"`
 	CanUndo                       bool               `json:"can_undo,optional"`
 	CanFinish                     bool               `json:"can_finish,optional"`
-	MyScore                       int                `json:"my_score"`       // 从当前用户视角的分数
-	OpponentScore                 int                `json:"opponent_score"` // 从当前用户视角的对手分数
+	CanRequestFinish              bool               `json:"can_request_finish,optional"`
+	CanConfirmFinish              bool               `json:"can_confirm_finish,optional"`
+	CanDisputeFinish              bool               `json:"can_dispute_finish,optional"`
+	CanWithdrawFinish             bool               `json:"can_withdraw_finish,optional"`
+	LastAction                    *MatchLastAction   `json:"last_action,optional"`
+	MyScore                       int                `json:"my_score"`        // 从当前用户视角的分数
+	OpponentScore                 int                `json:"opponent_score"`  // 从当前用户视角的对手分数
+	Result                        int                `json:"result,optional"` // 当前用户视角的整场结果：1=胜 2=负 3=平，未结算为0；整场认输时可与局分大小不一致
 	MyName                        string             `json:"my_name"`
 	OpponentName                  string             `json:"opponent_name"`
 	MyAvatar                      string             `json:"my_avatar"`
 	OpponentAvatar                string             `json:"opponent_avatar"`
+	MyVipLevel                    int                `json:"my_vip_level,optional"` // 有效会员的成长等级 1-5，0=非会员；按请求时刻解析
+	OpponentVipLevel              int                `json:"opponent_vip_level,optional"`
+	MyRankLevel                   int                `json:"my_rank_level,optional"` // 本场球种的当前段位等级，用于选头像框；只为有效会员返回，其余为 0
+	OpponentRankLevel             int                `json:"opponent_rank_level,optional"`
 	MyWinRate                     float64            `json:"my_win_rate"`        // 我方胜率(百分比)
 	OpponentWinRate               float64            `json:"opponent_win_rate"`  // 对手胜率(百分比)
 	MyMaxScore                    int                `json:"my_max_score"`       // 我方单杆最高
@@ -1613,6 +2348,7 @@ type MatchDetailData struct {
 	MyRankChange                  int                `json:"my_rank_change"`
 	OpponentRankChange            int                `json:"opponent_rank_change"`
 	MyRankDetails                 []RankDetail       `json:"my_rank_details"`
+	RankRulesVersion              int                `json:"rank_rules_version,optional"` // 本场排位分按哪套规则结算：0=未计分 1=旧规则 2=V2
 	CurrentFrameStarted           bool               `json:"current_frame_started,optional"`
 	CurrentFrameMyScore           int                `json:"current_frame_my_score,optional"`
 	CurrentFrameOpponentScore     int                `json:"current_frame_opponent_score,optional"`
@@ -1621,6 +2357,28 @@ type MatchDetailData struct {
 	SnookerClearedColors          []int              `json:"snooker_cleared_colors,optional"`
 	SnookerExpectedClearanceScore int                `json:"snooker_expected_clearance_score,optional"`
 	SnookerClearanceCompleted     bool               `json:"snooker_clearance_completed,optional"`
+	SnookerRulesVersion           int                `json:"snooker_rules_version,optional"`
+	BestOfFrames                  int                `json:"best_of_frames,optional"`
+	SnookerFormat                 string             `json:"snooker_format,optional"`
+	SnookerTargetWins             int                `json:"snooker_target_wins,optional"`
+	CanChangeSnookerFormat        bool               `json:"can_change_snooker_format,optional"`
+	MatchFormat                   string             `json:"match_format,optional"`
+	TargetWins                    int                `json:"target_wins,optional"`
+	CanChangeMatchFormat          bool               `json:"can_change_match_format,optional"`
+	StartingActor                 int                `json:"starting_actor,optional"`
+	SnookerPhase                  string             `json:"snooker_phase,optional"`
+	SnookerBallOn                 string             `json:"snooker_ball_on,optional"`
+	SnookerStriker                int                `json:"snooker_striker,optional"`
+	SnookerVisitNo                int                `json:"snooker_visit_no,optional"`
+	SnookerCurrentBreak           int                `json:"snooker_current_break,optional"`
+	SnookerRedsRemaining          int                `json:"snooker_reds_remaining,optional"`
+	SnookerFreeBallAvailable      bool               `json:"snooker_free_ball_available,optional"`
+	SnookerCueBallInHand          bool               `json:"snooker_cue_ball_in_hand,optional"`
+	SnookerMissWarningActive      bool               `json:"snooker_miss_warning_active,optional"`
+	SnookerRespottedBlackPending  bool               `json:"snooker_respotted_black_pending,optional"`
+	SnookerPendingConcessionActor int                `json:"snooker_pending_concession_actor,optional"`
+	SnookerPendingConcessionScope string             `json:"snooker_pending_concession_scope,optional"`
+	SnookerFrameEndReason         string             `json:"snooker_frame_end_reason,optional"`
 	SummaryHighlights             []MatchSummaryItem `json:"summary_highlights,optional"`
 	SummaryStats                  []MatchSummaryItem `json:"summary_stats,optional"`
 	Achievements                  MatchAchievement   `json:"achievements"`
@@ -1629,10 +2387,46 @@ type MatchDetailData struct {
 
 type MatchFoulReq struct {
 	MatchId        int64  `json:"match_id"`
-	Actor          int    `json:"actor"`          // 犯规方
-	Score          int    `json:"score,optional"` // 犯规加分，默认1
+	Actor          int    `json:"actor"`          // 犯规方：1=选手1 2=选手2
+	Score          int    `json:"score,optional"` // 斯诺克旧规则兼容；版本2只允许专用动作接口
 	ClientActionId string `json:"client_action_id"`
 	BaseRevision   int64  `json:"base_revision"`
+}
+
+type MatchInvitePreviewInfo struct {
+	OpponentId     int64  `json:"opponent_id"`
+	OpponentName   string `json:"opponent_name"`
+	OpponentAvatar string `json:"opponent_avatar"`
+	ExpiresAt      string `json:"expires_at"`
+}
+
+type MatchInvitePreviewReq struct {
+	InviteToken string `json:"invite_token"`
+}
+
+type MatchInvitePreviewResp struct {
+	Success bool                    `json:"success"`
+	Message string                  `json:"message,optional"`
+	Preview *MatchInvitePreviewInfo `json:"preview,optional"`
+}
+
+type MatchInviteResolveReq struct {
+	InviteCode string `json:"invite_code"`
+}
+
+type MatchInviteResolveResp struct {
+	Success     bool                    `json:"success"`
+	Message     string                  `json:"message,optional"`
+	InviteToken string                  `json:"invite_token,optional"`
+	Preview     *MatchInvitePreviewInfo `json:"preview,optional"`
+}
+
+type MatchLastAction struct {
+	ActionType     string `json:"action_type,optional"`
+	Actor          int    `json:"actor,optional"`
+	ScoreChange    int    `json:"score_change,optional"`
+	ServerRevision int64  `json:"server_revision,optional"`
+	Description    string `json:"description,optional"`
 }
 
 type MatchListItem struct {
@@ -1640,6 +2434,9 @@ type MatchListItem struct {
 	OpponentId     int64  `json:"opponent_id"` // 对手ID（注册用户才有）
 	GameType       int    `json:"game_type"`
 	GameTypeName   string `json:"game_type_name"`
+	MatchMode      string `json:"match_mode,optional"`
+	Visibility     string `json:"visibility,optional"`
+	FinishState    string `json:"finish_state,optional"`
 	OpponentName   string `json:"opponent_name"`
 	OpponentAvatar string `json:"opponent_avatar"`
 	MyScore        int    `json:"my_score"`
@@ -1661,9 +2458,20 @@ type MatchListResp struct {
 	List    []MatchListItem `json:"list"`
 }
 
+type MatchRewardItem struct {
+	AchievementId   int64  `json:"achievement_id"`
+	AchievementKey  string `json:"achievement_key"`
+	AchievementName string `json:"achievement_name"`
+	Description     string `json:"description"`
+	Icon            string `json:"icon"`
+	RewardTitleId   int64  `json:"reward_title_id,optional"`
+	RewardTitleName string `json:"reward_title_name,optional"`
+	UnlockedAt      string `json:"unlocked_at"`
+}
+
 type MatchScoreReq struct {
 	MatchId        int64  `json:"match_id"`
-	Actor          int    `json:"actor"` // 1=我 2=对手
+	Actor          int    `json:"actor"` // 1=选手1 2=选手2
 	Score          int    `json:"score"` // 加的分数
 	ClientActionId string `json:"client_action_id"`
 	BaseRevision   int64  `json:"base_revision"`
@@ -1698,9 +2506,15 @@ type MatchShareData struct {
 	OpponentName      string             `json:"opponent_name"`
 	OpponentAvatar    string             `json:"opponent_avatar"`
 	OpponentScore     int                `json:"opponent_score"`
+	MyVipLevel        int                `json:"my_vip_level,optional"` // 有效会员的成长等级 1-5，0=非会员
+	OpponentVipLevel  int                `json:"opponent_vip_level,optional"`
+	MyRankLevel       int                `json:"my_rank_level,optional"` // 本场球种的当前段位等级，用于选头像框；只为有效会员返回，其余为 0
+	OpponentRankLevel int                `json:"opponent_rank_level,optional"`
 	Result            string             `json:"result"`
 	MatchTime         string             `json:"match_time"`
 	RankChange        int                `json:"rank_change"`
+	Visibility        string             `json:"visibility,optional"` // public/private，海报据此选择二维码链接
+	MatchMode         string             `json:"match_mode,optional"` // ranked/practice，练习赛海报不显示排位变化
 	SummaryHighlights []MatchSummaryItem `json:"summary_highlights,optional"`
 	SummaryStats      []MatchSummaryItem `json:"summary_stats,optional"`
 }
@@ -1714,28 +2528,67 @@ type MatchSummaryItem struct {
 }
 
 type MatchSyncSnapshot struct {
-	MatchId                       int64  `json:"match_id"`
-	Status                        int    `json:"status"`
-	ServerRevision                int64  `json:"server_revision"`
-	ViewerRole                    string `json:"viewer_role,optional"`
-	RefereeBound                  bool   `json:"referee_bound,optional"`
-	RefereeUserId                 int64  `json:"referee_user_id,optional"`
-	RefereeName                   string `json:"referee_name,optional"`
-	CanScore                      bool   `json:"can_score,optional"`
-	CanUndo                       bool   `json:"can_undo,optional"`
-	CanFinish                     bool   `json:"can_finish,optional"`
-	MyScore                       int    `json:"my_score"`
-	OpponentScore                 int    `json:"opponent_score"`
-	CurrentFrameStarted           bool   `json:"current_frame_started,optional"`
-	CurrentFrameMyScore           int    `json:"current_frame_my_score,optional"`
-	CurrentFrameOpponentScore     int    `json:"current_frame_opponent_score,optional"`
-	CurrentRound                  int    `json:"current_round"`
-	TotalRounds                   int    `json:"total_rounds"`
-	RedBallCount                  int    `json:"red_ball_count,optional"`
-	SnookerClearanceStarted       bool   `json:"snooker_clearance_started,optional"`
-	SnookerClearedColors          []int  `json:"snooker_cleared_colors,optional"`
-	SnookerExpectedClearanceScore int    `json:"snooker_expected_clearance_score,optional"`
-	SnookerClearanceCompleted     bool   `json:"snooker_clearance_completed,optional"`
+	MatchId                       int64            `json:"match_id"`
+	ChallengeId                   int64            `json:"challenge_id,optional"`
+	Status                        int              `json:"status"`
+	ServerRevision                int64            `json:"server_revision"`
+	MatchMode                     string           `json:"match_mode,optional"`
+	Visibility                    string           `json:"visibility,optional"`
+	FinishState                   string           `json:"finish_state,optional"`
+	FinishRequestedBy             int64            `json:"finish_requested_by,optional"`
+	FinishRequestExpiresAt        string           `json:"finish_request_expires_at,optional"`        // 结束确认截止时刻（RFC3339），无待确认请求时为空
+	FinishRequestRemainingSeconds int              `json:"finish_request_remaining_seconds,optional"` // 按服务端时间计算的确认剩余秒数，最小为 0
+	ViewerRole                    string           `json:"viewer_role,optional"`
+	RefereeBound                  bool             `json:"referee_bound,optional"`
+	RefereeUserId                 int64            `json:"referee_user_id,optional"`
+	RefereeName                   string           `json:"referee_name,optional"`
+	RefereeAvatar                 string           `json:"referee_avatar,optional"`
+	RefereeJoinedAt               string           `json:"referee_joined_at,optional"`
+	CompletedByUserId             int64            `json:"completed_by_user_id,optional"`
+	CompletionSource              string           `json:"completion_source,optional"`
+	RefereeDurationSeconds        int64            `json:"referee_duration_seconds,optional"`
+	CanScore                      bool             `json:"can_score,optional"`
+	CanUndo                       bool             `json:"can_undo,optional"`
+	CanFinish                     bool             `json:"can_finish,optional"`
+	CanRequestFinish              bool             `json:"can_request_finish,optional"`
+	CanConfirmFinish              bool             `json:"can_confirm_finish,optional"`
+	CanDisputeFinish              bool             `json:"can_dispute_finish,optional"`
+	CanWithdrawFinish             bool             `json:"can_withdraw_finish,optional"`
+	LastAction                    *MatchLastAction `json:"last_action,optional"`
+	MyScore                       int              `json:"my_score"`
+	OpponentScore                 int              `json:"opponent_score"`
+	CurrentFrameStarted           bool             `json:"current_frame_started,optional"`
+	CurrentFrameMyScore           int              `json:"current_frame_my_score,optional"`
+	CurrentFrameOpponentScore     int              `json:"current_frame_opponent_score,optional"`
+	CurrentRound                  int              `json:"current_round"`
+	TotalRounds                   int              `json:"total_rounds"`
+	RedBallCount                  int              `json:"red_ball_count,optional"`
+	SnookerClearanceStarted       bool             `json:"snooker_clearance_started,optional"`
+	SnookerClearedColors          []int            `json:"snooker_cleared_colors,optional"`
+	SnookerExpectedClearanceScore int              `json:"snooker_expected_clearance_score,optional"`
+	SnookerClearanceCompleted     bool             `json:"snooker_clearance_completed,optional"`
+	SnookerRulesVersion           int              `json:"snooker_rules_version,optional"`
+	BestOfFrames                  int              `json:"best_of_frames,optional"`
+	SnookerFormat                 string           `json:"snooker_format,optional"`
+	SnookerTargetWins             int              `json:"snooker_target_wins,optional"`
+	CanChangeSnookerFormat        bool             `json:"can_change_snooker_format,optional"`
+	MatchFormat                   string           `json:"match_format,optional"`
+	TargetWins                    int              `json:"target_wins,optional"`
+	CanChangeMatchFormat          bool             `json:"can_change_match_format,optional"`
+	StartingActor                 int              `json:"starting_actor,optional"`
+	SnookerPhase                  string           `json:"snooker_phase,optional"`
+	SnookerBallOn                 string           `json:"snooker_ball_on,optional"`
+	SnookerStriker                int              `json:"snooker_striker,optional"`
+	SnookerVisitNo                int              `json:"snooker_visit_no,optional"`
+	SnookerCurrentBreak           int              `json:"snooker_current_break,optional"`
+	SnookerRedsRemaining          int              `json:"snooker_reds_remaining,optional"`
+	SnookerFreeBallAvailable      bool             `json:"snooker_free_ball_available,optional"`
+	SnookerCueBallInHand          bool             `json:"snooker_cue_ball_in_hand,optional"`
+	SnookerMissWarningActive      bool             `json:"snooker_miss_warning_active,optional"`
+	SnookerRespottedBlackPending  bool             `json:"snooker_respotted_black_pending,optional"`
+	SnookerPendingConcessionActor int              `json:"snooker_pending_concession_actor,optional"`
+	SnookerPendingConcessionScope string           `json:"snooker_pending_concession_scope,optional"`
+	SnookerFrameEndReason         string           `json:"snooker_frame_end_reason,optional"`
 }
 
 type MatchUndoReq struct {
@@ -1756,6 +2609,10 @@ type MatchUndoResp struct {
 	MyScore                   int               `json:"my_score"`
 	OpponentScore             int               `json:"opponent_score"`
 	Message                   string            `json:"message"`
+}
+
+type MatchWSTicketReq struct {
+	MatchId int64 `json:"match_id"`
 }
 
 type MemberPlanInfo struct {
@@ -1796,6 +2653,9 @@ type OngoingMatchItem struct {
 	Id              int64  `json:"id"`
 	GameType        int    `json:"game_type"`
 	GameTypeName    string `json:"game_type_name"`
+	MatchMode       string `json:"match_mode,optional"`
+	Visibility      string `json:"visibility,optional"`
+	FinishState     string `json:"finish_state,optional"`
 	Player1Id       int64  `json:"player1_id"` // 玩家1(创建者)ID
 	Player1Name     string `json:"player1_name"`
 	Player1Avatar   string `json:"player1_avatar"`
@@ -1807,6 +2667,15 @@ type OngoingMatchItem struct {
 	CurrentRound    int    `json:"current_round"`
 	MatchTime       string `json:"match_time"`       // 开始时间 ISO格式
 	DurationSeconds int64  `json:"duration_seconds"` // 对局已持续秒数，由服务端计算
+}
+
+type OpponentCandidate struct {
+	UserId      int64  `json:"user_id"`
+	Name        string `json:"name"`
+	Avatar      string `json:"avatar"`
+	RankName    string `json:"rank_name,optional"`
+	Source      string `json:"source"`
+	LastMatchAt string `json:"last_match_at,optional"`
 }
 
 type OpponentItem struct {
@@ -1834,6 +2703,62 @@ type OpponentStrengthItem struct {
 	WinRate   float64 `json:"win_rate"`
 }
 
+type PerformanceMatchItem struct {
+	MatchId             int64   `json:"match_id"`
+	OpponentName        string  `json:"opponent_name"`
+	OpponentAvatar      string  `json:"opponent_avatar"`
+	OpponentBeforeScore int     `json:"opponent_before_score"` // 对手赛前排位分
+	ExpectedWinRate     float64 `json:"expected_win_rate"`     // 赛前整场胜率(百分比)
+	PlayedAt            string  `json:"played_at"`
+}
+
+type PerformanceMonthItem struct {
+	Month        string             `json:"month"` // 业务时区自然月 YYYY-MM
+	SampleCount  int                `json:"sample_count"`
+	Rating       *PerformanceRating `json:"rating"`              // 该月少于 3 场时为 null
+	EndRankScore int                `json:"end_rank_score"`      // 月末排位分，该月没有对局时为 0
+	Incomplete   bool               `json:"incomplete,optional"` // 读取上限截断了该月数据
+}
+
+type PerformanceMonthPreview struct {
+	Month       string             `json:"month"` // 业务时区自然月 YYYY-MM
+	SampleCount int                `json:"sample_count"`
+	Rating      *PerformanceRating `json:"rating"` // 本月少于 3 场时为 null
+}
+
+type PerformanceRating struct {
+	Rating int    `json:"rating"`
+	Bound  string `json:"bound,optional"` // at_least=至少 at_most=至多，缺省为精确值
+}
+
+type PerformanceSummary struct {
+	Wins         int                `json:"wins"`          // 实际胜场
+	ExpectedWins float64            `json:"expected_wins"` // 期望胜场
+	WinsDiff     float64            `json:"wins_diff"`     // 实际胜场减期望胜场
+	Rating       *PerformanceRating `json:"rating"`        // 样本少于 5 场时为 null
+}
+
+type PersonalDataExportItem struct {
+	Category string `json:"category"`
+	Id       string `json:"id"`
+	DataJson string `json:"data_json"`
+}
+
+type PersonalDataExportReq struct {
+	Cursor string `json:"cursor,optional"`
+}
+
+type PersonalDataExportResp struct {
+	Success       bool                     `json:"success"`
+	Message       string                   `json:"message,optional"`
+	FormatVersion string                   `json:"format_version"`
+	SnapshotAt    string                   `json:"snapshot_at"`
+	Items         []PersonalDataExportItem `json:"items"`
+	NextCursor    string                   `json:"next_cursor,optional"`
+	Complete      bool                     `json:"complete"`
+	ItemCount     int                      `json:"item_count"`
+}
+
 type PostCommentInfo struct {
 	Id        int64  `json:"id"`
 	UserId    int64  `json:"user_id"`
@@ -1848,32 +2773,85 @@ type PostIdReq struct {
 }
 
 type PublicMatchDetailData struct {
-	Id                       int64         `json:"id"`
-	GameType                 int           `json:"game_type"`
-	Status                   int           `json:"status"` // 1=进行中 2=已完成 3=已取消
-	ServerRevision           int64         `json:"server_revision"`
-	Player1Id                int64         `json:"player1_id"`
-	Player1Name              string        `json:"player1_name"`
-	Player1Avatar            string        `json:"player1_avatar"`
-	Player2Id                int64         `json:"player2_id"`
-	Player2Name              string        `json:"player2_name"`
-	Player2Avatar            string        `json:"player2_avatar"`
-	Player1Score             int           `json:"player1_score"`
-	Player2Score             int           `json:"player2_score"`
-	CurrentFramePlayer1Score int           `json:"current_frame_player1_score,optional"`
-	CurrentFramePlayer2Score int           `json:"current_frame_player2_score,optional"`
-	CurrentFrameStarted      bool          `json:"current_frame_started,optional"`
-	CurrentRound             int           `json:"current_round"`
-	TotalRounds              int           `json:"total_rounds"`
-	DurationSeconds          int64         `json:"duration_seconds"`
-	Rounds                   []RoundRecord `json:"rounds"` // 局记录
-	CreatedAt                string        `json:"created_at"`
+	Id                            int64         `json:"id"`
+	GameType                      int           `json:"game_type"`
+	MatchMode                     string        `json:"match_mode,optional"`
+	Visibility                    string        `json:"visibility,optional"`
+	FinishState                   string        `json:"finish_state,optional"`
+	Status                        int           `json:"status"` // 1=进行中 2=已完成 3=已取消
+	ServerRevision                int64         `json:"server_revision"`
+	Player1Id                     int64         `json:"player1_id"`
+	Player1Name                   string        `json:"player1_name"`
+	Player1Avatar                 string        `json:"player1_avatar"`
+	Player2Id                     int64         `json:"player2_id"`
+	Player2Name                   string        `json:"player2_name"`
+	Player2Avatar                 string        `json:"player2_avatar"`
+	RefereeBound                  bool          `json:"referee_bound,optional"`
+	RefereeUserId                 int64         `json:"referee_user_id,optional"`
+	RefereeName                   string        `json:"referee_name,optional"`
+	RefereeAvatar                 string        `json:"referee_avatar,optional"`
+	RefereeJoinedAt               string        `json:"referee_joined_at,optional"`
+	CompletedByUserId             int64         `json:"completed_by_user_id,optional"`
+	CompletionSource              string        `json:"completion_source,optional"`
+	ViewerRole                    string        `json:"viewer_role,optional"`
+	Player1Score                  int           `json:"player1_score"`
+	Player2Score                  int           `json:"player2_score"`
+	CurrentFramePlayer1Score      int           `json:"current_frame_player1_score,optional"`
+	CurrentFramePlayer2Score      int           `json:"current_frame_player2_score,optional"`
+	CurrentFrameStarted           bool          `json:"current_frame_started,optional"`
+	SnookerRulesVersion           int           `json:"snooker_rules_version,optional"`
+	BestOfFrames                  int           `json:"best_of_frames,optional"`
+	SnookerFormat                 string        `json:"snooker_format,optional"`
+	SnookerTargetWins             int           `json:"snooker_target_wins,optional"`
+	CanChangeSnookerFormat        bool          `json:"can_change_snooker_format,optional"`
+	MatchFormat                   string        `json:"match_format,optional"`
+	TargetWins                    int           `json:"target_wins,optional"`
+	CanChangeMatchFormat          bool          `json:"can_change_match_format,optional"`
+	StartingActor                 int           `json:"starting_actor,optional"`
+	SnookerPhase                  string        `json:"snooker_phase,optional"`
+	SnookerBallOn                 string        `json:"snooker_ball_on,optional"`
+	SnookerStriker                int           `json:"snooker_striker,optional"`
+	SnookerVisitNo                int           `json:"snooker_visit_no,optional"`
+	SnookerCurrentBreak           int           `json:"snooker_current_break,optional"`
+	SnookerRedsRemaining          int           `json:"snooker_reds_remaining,optional"`
+	SnookerFreeBallAvailable      bool          `json:"snooker_free_ball_available,optional"`
+	SnookerCueBallInHand          bool          `json:"snooker_cue_ball_in_hand,optional"`
+	SnookerMissWarningActive      bool          `json:"snooker_miss_warning_active,optional"`
+	SnookerRespottedBlackPending  bool          `json:"snooker_respotted_black_pending,optional"`
+	SnookerPendingConcessionActor int           `json:"snooker_pending_concession_actor,optional"`
+	SnookerPendingConcessionScope string        `json:"snooker_pending_concession_scope,optional"`
+	SnookerFrameEndReason         string        `json:"snooker_frame_end_reason,optional"`
+	CurrentRound                  int           `json:"current_round"`
+	TotalRounds                   int           `json:"total_rounds"`
+	DurationSeconds               int64         `json:"duration_seconds"`
+	RefereeDurationSeconds        int64         `json:"referee_duration_seconds,optional"`
+	Rounds                        []RoundRecord `json:"rounds"` // 局记录
+	CreatedAt                     string        `json:"created_at"`
+}
+
+type PublicMatchInvitePreviewInfo struct {
+	InviterName   string `json:"inviter_name"`
+	InviterAvatar string `json:"inviter_avatar"`
+	ExpiresAt     string `json:"expires_at"`
+}
+
+type PublicMatchInvitePreviewReq struct {
+	InviteCode string `json:"invite_code"`
+}
+
+type PublicMatchInvitePreviewResp struct {
+	Success bool                          `json:"success"`
+	Message string                        `json:"message,optional"`
+	Preview *PublicMatchInvitePreviewInfo `json:"preview,optional"`
 }
 
 type PublicMatchListItem struct {
 	Id              int64  `json:"id"`
 	GameType        int    `json:"game_type"`
 	GameTypeName    string `json:"game_type_name"`
+	MatchMode       string `json:"match_mode,optional"`
+	Visibility      string `json:"visibility,optional"`
+	FinishState     string `json:"finish_state,optional"`
 	Status          int    `json:"status"`
 	StatusText      string `json:"status_text"`
 	Player1Id       int64  `json:"player1_id"`
@@ -1906,23 +2884,32 @@ type PublicMatchListResp struct {
 	List    []PublicMatchListItem `json:"list"`
 }
 
+type RankConfigItem struct {
+	GameType int    `json:"game_type"`
+	Level    int    `json:"level"`
+	Name     string `json:"name"`
+	Icon     string `json:"icon"`
+	MinScore int    `json:"min_score"`
+}
+
 type RankDetail struct {
 	Label string `json:"label"`
 	Value int    `json:"value"`
 }
 
 type RankInfo struct {
-	Level       int    `json:"level"`        // 段位等级 1-5
-	Name        string `json:"name"`         // 段位名称
-	Icon        string `json:"icon"`         // 段位图标URL
-	RankScore   int    `json:"rank_score"`   // 当前排位分
-	TotalWins   int    `json:"total_wins"`   // 总胜场
-	TotalLosses int    `json:"total_losses"` // 总败场
-	MaxStreak   int    `json:"max_streak"`   // 最高连胜
-	NextLevel   int    `json:"next_level"`   // 下一段位等级
-	NextName    string `json:"next_name"`    // 下一段位名称
-	NextScore   int    `json:"next_score"`   // 晋级所需分数
-	Progress    int    `json:"progress"`     // 晋级进度百分比
+	Level              int    `json:"level"`               // 段位等级 1-6
+	Name               string `json:"name"`                // 段位名称
+	Icon               string `json:"icon"`                // 段位图标URL
+	RankScore          int    `json:"rank_score"`          // 当前排位分
+	TotalWins          int    `json:"total_wins"`          // 总胜场
+	TotalLosses        int    `json:"total_losses"`        // 总败场
+	MaxStreak          int    `json:"max_streak"`          // 最高连胜
+	NextLevel          int    `json:"next_level"`          // 下一段位等级
+	NextName           string `json:"next_name"`           // 下一段位名称
+	NextScore          int    `json:"next_score"`          // 晋级所需分数
+	Progress           int    `json:"progress"`            // 晋级进度百分比
+	PlacementRemaining int    `json:"placement_remaining"` // 排位规则 V2 下剩余定级赛场次，0 表示已定级或旧规则
 }
 
 type RankItem struct {
@@ -1933,6 +2920,73 @@ type RankItem struct {
 	IsCurrent bool   `json:"is_current"` // 是否当前段位
 }
 
+type ReadPartialError struct {
+	Scope   string `json:"scope"`
+	Message string `json:"message"`
+}
+
+type RefereeHistoryItem struct {
+	Id                     int64  `json:"id"`
+	Player1Id              int64  `json:"player1_id"`
+	Player1Name            string `json:"player1_name"`
+	Player1Avatar          string `json:"player1_avatar"`
+	Player2Id              int64  `json:"player2_id"`
+	Player2Name            string `json:"player2_name"`
+	Player2Avatar          string `json:"player2_avatar"`
+	Player1Score           int    `json:"player1_score"`
+	Player2Score           int    `json:"player2_score"`
+	GameType               int    `json:"game_type"`
+	GameTypeName           string `json:"game_type_name"`
+	MatchMode              string `json:"match_mode,optional"`
+	Visibility             string `json:"visibility,optional"`
+	Status                 int    `json:"status"`
+	StatusText             string `json:"status_text"`
+	RefereeJoinedAt        string `json:"referee_joined_at,optional"`
+	EndTime                string `json:"end_time,optional"`
+	RefereeDurationSeconds int64  `json:"referee_duration_seconds"`
+	CompletedByUserId      int64  `json:"completed_by_user_id,optional"`
+	CompletionSource       string `json:"completion_source,optional"`
+}
+
+type RefereeHistoryReq struct {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+}
+
+type RefereeHistoryResp struct {
+	Success bool                 `json:"success"`
+	Total   int64                `json:"total"`
+	List    []RefereeHistoryItem `json:"list"`
+}
+
+type RefereePreviewInfo struct {
+	Player1Id     int64  `json:"player1_id"`
+	Player1Name   string `json:"player1_name"`
+	Player1Avatar string `json:"player1_avatar"`
+	Player2Id     int64  `json:"player2_id"`
+	Player2Name   string `json:"player2_name"`
+	Player2Avatar string `json:"player2_avatar"`
+	Player1Score  int    `json:"player1_score"`
+	Player2Score  int    `json:"player2_score"`
+	GameType      int    `json:"game_type"`
+	GameTypeName  string `json:"game_type_name"`
+	MatchMode     string `json:"match_mode,optional"`
+	Visibility    string `json:"visibility,optional"`
+	Status        int    `json:"status"`
+	StatusText    string `json:"status_text"`
+}
+
+type RefereePreviewReq struct {
+	MatchId   int64  `json:"match_id"`
+	JoinToken string `json:"join_token"`
+}
+
+type RefereePreviewResp struct {
+	Success bool                `json:"success"`
+	Message string              `json:"message,optional"`
+	Preview *RefereePreviewInfo `json:"preview,optional"`
+}
+
 type RefreshTokenReq struct {
 	RefreshToken string `json:"refresh_token"`
 }
@@ -1940,9 +2994,50 @@ type RefreshTokenReq struct {
 type RefreshTokenResp struct {
 	Success      bool   `json:"success"`
 	Message      string `json:"message,optional"`
+	Reason       string `json:"reason,optional"`
 	AccessToken  string `json:"access_token,optional"`
 	RefreshToken string `json:"refresh_token,optional"`
 	ExpiresIn    int64  `json:"expires_in,optional"`
+}
+
+type ReplayFrame struct {
+	FrameNo            int                `json:"frame_no"`
+	Winner             int                `json:"winner"`   // 1=我 2=对手 0=未分胜负
+	MyScore            int                `json:"my_score"` // 本局得分：斯诺克为本局比分，其余球种为本局新增的得分
+	OpponentScore      int                `json:"opponent_score"`
+	WinType            string             `json:"win_type,optional"`         // 胜局方式代码
+	DurationSeconds    int                `json:"duration_seconds,optional"` // 本局用时，0=缺少时间
+	MaxDeficit         int                `json:"max_deficit"`               // 胜方在本局曾落后的最大分差
+	KeyTags            []string           `json:"key_tags,optional"`         // decider=决胜局 comeback=落后分差最大
+	MyMaxRun           int                `json:"my_max_run,optional"`       // 斯诺克为单杆最高，九球追分为最大连续得分
+	OpponentMaxRun     int                `json:"opponent_max_run,optional"`
+	MyFoulCount        int                `json:"my_foul_count,optional"` // 犯规次数
+	OpponentFoulCount  int                `json:"opponent_foul_count,optional"`
+	MyFoulPoints       int                `json:"my_foul_points,optional"` // 本方犯规送给对手的罚分
+	OpponentFoulPoints int                `json:"opponent_foul_points,optional"`
+	Trend              []ReplayTrendPoint `json:"trend,optional"` // 不超过 60 个点
+}
+
+type ReplaySummary struct {
+	MyFrameWins           int                 `json:"my_frame_wins"`
+	OpponentFrameWins     int                 `json:"opponent_frame_wins"`
+	MyMaxRun              int                 `json:"my_max_run,optional"`
+	OpponentMaxRun        int                 `json:"opponent_max_run,optional"`
+	MyLongestStreak       int                 `json:"my_longest_streak,optional"` // 中式八球、美式九球的最长连胜局数
+	OpponentLongestStreak int                 `json:"opponent_longest_streak,optional"`
+	WinTypeStats          []ReplayWinTypeStat `json:"win_type_stats,optional"`
+}
+
+type ReplayTrendPoint struct {
+	Step int `json:"step"` // 本局第几次得分变化，0 为开局；降采样后不再连续
+	Diff int `json:"diff"` // 我方减对手的累计分差
+}
+
+type ReplayWinTypeStat struct {
+	WinType       string `json:"win_type"`
+	Label         string `json:"label"`
+	MyCount       int    `json:"my_count"`
+	OpponentCount int    `json:"opponent_count"`
 }
 
 type RoundRecord struct {
@@ -2011,13 +3106,31 @@ type SearchUserResp struct {
 	List    []SearchUserItem `json:"list"`
 }
 
+type SeasonChallengeInfo struct {
+	Key         string `json:"key"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Threshold   int    `json:"threshold"`
+	Progress    int    `json:"progress"`
+	Completed   bool   `json:"completed"`
+}
+
+type SeasonHistoryItem struct {
+	Season *SeasonInfo       `json:"season"`
+	Record *SeasonRecordInfo `json:"record"` // 本人未参加该球种排位时为 null
+}
+
 type SeasonInfo struct {
-	Id             int64   `json:"id"`
-	Name           string  `json:"name"`
-	StartDate      string  `json:"start_date"`
-	EndDate        string  `json:"end_date"`
-	Status         int     `json:"status"`
-	RankResetRatio float64 `json:"rank_reset_ratio"`
+	Id                  int64   `json:"id"`
+	Name                string  `json:"name"`
+	StartDate           string  `json:"start_date"`
+	EndDate             string  `json:"end_date"`
+	StartAt             string  `json:"start_at"`
+	EndAtExclusive      string  `json:"end_at_exclusive"`
+	Status              int     `json:"status"`
+	RankResetRatio      float64 `json:"rank_reset_ratio"`      // 恒为 1：不做赛季软重置
+	QualifyMinMatches   int     `json:"qualify_min_matches"`   // 参与赛季名次的最少场次，0 表示无门槛（旧赛季）
+	QualifyMinOpponents int     `json:"qualify_min_opponents"` // 参与赛季名次的最少不同对手数，0 表示无门槛
 }
 
 type SeasonLeaderboardItem struct {
@@ -2029,17 +3142,20 @@ type SeasonLeaderboardItem struct {
 	PeakScore     int    `json:"peak_score"`
 	MatchesPlayed int    `json:"matches_played"`
 	Wins          int    `json:"wins"`
+	Qualified     bool   `json:"qualified"` // 是否达到赛季名次门槛；未达标时 rank 为 0
 }
 
 type SeasonRecordInfo struct {
-	SeasonId       int64  `json:"season_id"`
-	SeasonName     string `json:"season_name"`
-	StartRankScore int    `json:"start_rank_score"`
-	EndRankScore   int    `json:"end_rank_score"`
-	PeakRankScore  int    `json:"peak_rank_score"`
-	MatchesPlayed  int    `json:"matches_played"`
-	Wins           int    `json:"wins"`
-	FinalRank      int    `json:"final_rank"`
+	SeasonId          int64  `json:"season_id"`
+	SeasonName        string `json:"season_name"`
+	StartRankScore    int    `json:"start_rank_score"`
+	EndRankScore      int    `json:"end_rank_score"`
+	PeakRankScore     int    `json:"peak_rank_score"`
+	MatchesPlayed     int    `json:"matches_played"`
+	Wins              int    `json:"wins"`
+	FinalRank         int    `json:"final_rank"`
+	DistinctOpponents int    `json:"distinct_opponents"` // 本季该球种不同对手数（仅有门槛的赛季维护）
+	Qualified         bool   `json:"qualified"`          // 是否达到赛季名次门槛
 }
 
 type SeasonReportData struct {
@@ -2050,14 +3166,20 @@ type SeasonReportData struct {
 }
 
 type SendChallengeReq struct {
-	ToUserId int64  `json:"to_user_id"`
-	GameType int    `json:"game_type"`
-	Message  string `json:"message,optional"`
+	ToUserId      int64  `json:"to_user_id"`
+	GameType      int    `json:"game_type"`
+	MatchMode     string `json:"match_mode,optional"` // ranked/practice，缺省 ranked；赛制与公开范围由球种和类型决定
+	Message       string `json:"message,optional"`
+	ScheduledDate string `json:"scheduled_date"` // 北京时间实际预约日 YYYY-MM-DD，仅限今天到后天
+	StartHour     int    `json:"start_hour"`
+	EndHour       int    `json:"end_hour"`
 }
 
 type SendChallengeResp struct {
-	Success     bool  `json:"success"`
-	ChallengeId int64 `json:"challenge_id"`
+	Success            bool   `json:"success"`
+	ChallengeId        int64  `json:"challenge_id"`
+	Message            string `json:"message,optional"`
+	PendingChallengeId int64  `json:"pending_challenge_id,optional"` // 被拦截时指向自己仍待回应的邀请
 }
 
 type SendFriendRequestReq struct {
@@ -2067,12 +3189,18 @@ type SendFriendRequestReq struct {
 
 type SendSmsReq struct {
 	Phone string `json:"phone"`
-	Scene string `json:"scene,optional,default=login"` // login/bind
+	Scene string `json:"scene,optional,default=login"` // login/bind/delete_account
 }
 
 type SendSmsResp struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
+}
+
+type SetGearDefaultReq struct {
+	GameType int    `json:"game_type"`
+	Slot     string `json:"slot"` // cue/break
+	ItemId   int64  `json:"item_id"`
 }
 
 type SingleHighScoreRecord struct {
@@ -2082,6 +3210,46 @@ type SingleHighScoreRecord struct {
 	GameTypeName string `json:"game_type_name"`
 	OpponentName string `json:"opponent_name"`
 	Date         string `json:"date"`
+}
+
+type SnookerActionResp struct {
+	Accepted       bool              `json:"accepted"`
+	Success        bool              `json:"success"`
+	Message        string            `json:"message,optional"`
+	ClientActionId string            `json:"client_action_id,optional"`
+	ServerRevision int64             `json:"server_revision"`
+	Snapshot       MatchSyncSnapshot `json:"snapshot"`
+}
+
+type SnookerFrameActionReq struct {
+	MatchId        int64  `json:"match_id"`
+	Actor          int    `json:"actor"`
+	Action         string `json:"action"`
+	Scope          string `json:"scope,optional"`
+	Winner         int    `json:"winner,optional"`
+	Reason         string `json:"reason,optional"`
+	ClientActionId string `json:"client_action_id"`
+	BaseRevision   int64  `json:"base_revision"`
+}
+
+type SnookerStrokeReq struct {
+	MatchId              int64  `json:"match_id"`
+	Actor                int    `json:"actor"`
+	Outcome              string `json:"outcome"`
+	BallOnValue          int    `json:"ball_on_value,optional"`
+	PottedReds           int    `json:"potted_reds,optional"`
+	BallOnPotted         bool   `json:"ball_on_potted,optional"`
+	FreeBallValue        int    `json:"free_ball_value,optional"`
+	FreeBallPotted       bool   `json:"free_ball_potted,optional"`
+	Penalty              int    `json:"penalty,optional"`
+	RedsRemoved          int    `json:"reds_removed,optional"`
+	FoulAndMiss          bool   `json:"foul_and_miss,optional"`
+	MissSequenceEligible bool   `json:"miss_sequence_eligible,optional"`
+	FoulResolution       string `json:"foul_resolution,optional"`
+	FreeBallAwarded      bool   `json:"free_ball_awarded,optional"`
+	CueBallInHand        bool   `json:"cue_ball_in_hand,optional"`
+	ClientActionId       string `json:"client_action_id"`
+	BaseRevision         int64  `json:"base_revision"`
 }
 
 type SocialPostInfo struct {
@@ -2104,11 +3272,21 @@ type SocialPostInfo struct {
 }
 
 type StartMatchReq struct {
-	GameType       int    `json:"game_type"`                // 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
-	GameMode       string `json:"game_mode,optional"`       // 比赛模式
-	OpponentId     int64  `json:"opponent_id"`              // 对手ID（平台用户，必填）
-	OpponentName   string `json:"opponent_name"`            // 对手昵称
-	OpponentAvatar string `json:"opponent_avatar,optional"` // 对手头像
+	GameType            int    `json:"game_type"`                      // 1=斯诺克 2=九球追分 3=中式八球 4=美式九球
+	GameMode            string `json:"game_mode,optional"`             // 比赛模式
+	MatchMode           string `json:"match_mode,optional"`            // practice/ranked，缺省按 ranked
+	Visibility          string `json:"visibility,optional"`            // private/public，排位固定 public
+	OpponentId          int64  `json:"opponent_id,optional"`           // 旧客户端展示字段；新开局以 invite_token 为准
+	OpponentName        string `json:"opponent_name,optional"`         // 旧客户端展示字段；不得作为授权依据
+	OpponentAvatar      string `json:"opponent_avatar,optional"`       // 对手头像
+	InviteToken         string `json:"invite_token,optional"`          // 服务端签发的匹配邀请凭据
+	SnookerRulesVersion int    `json:"snooker_rules_version,optional"` // 斯诺克规则版本：旧客户端缺省为1，新客户端显式提交2
+	BestOfFrames        int    `json:"best_of_frames,optional"`        // 版本2斯诺克总局数，必须为正奇数
+	SnookerFormat       string `json:"snooker_format,optional"`        // legacy/free/race_to
+	SnookerTargetWins   int    `json:"snooker_target_wins,optional"`   // 抢 N 局目标胜局，自由局数为0
+	MatchFormat         string `json:"match_format,optional"`          // 中八/美九赛制：legacy/free/race_to
+	TargetWins          int    `json:"target_wins,optional"`           // 中八/美九抢 N 局目标胜局，自由局数为0
+	StartingActor       int    `json:"starting_actor,optional"`        // 版本2斯诺克首局开球方：1/2
 }
 
 type StartMatchResp struct {
@@ -2117,6 +3295,7 @@ type StartMatchResp struct {
 	BlockReason  string            `json:"block_reason,optional"` // self_ongoing/opponent_ongoing
 	Message      string            `json:"message,optional"`
 	MatchId      int64             `json:"match_id"`
+	Match        *CurrentMatchInfo `json:"match,optional"`
 	OngoingMatch *CurrentMatchInfo `json:"ongoing_match,optional"`
 }
 
@@ -2141,11 +3320,15 @@ type StartNextRoundResp struct {
 }
 
 type TitleInfo struct {
-	Id        int64  `json:"id"`
-	TitleName string `json:"title_name"`
-	Source    string `json:"source"`
-	Equipped  bool   `json:"equipped"`
-	CreatedAt string `json:"created_at"`
+	Id            int64  `json:"id"`
+	TitleName     string `json:"title_name"`
+	Source        string `json:"source"`
+	SourceType    string `json:"source_type,optional"`
+	SourceRefId   int64  `json:"source_ref_id,optional"`
+	SourceRefName string `json:"source_ref_name,optional"`
+	Equipped      bool   `json:"equipped"`
+	GrantedAt     string `json:"granted_at,optional"`
+	CreatedAt     string `json:"created_at"`
 }
 
 type TournamentBracketMatch struct {
@@ -2213,6 +3396,38 @@ type TrendPoint struct {
 	Result    int     `json:"result"`
 }
 
+type UpdateGearItemReq struct {
+	ItemId         int64 `json:"item_id"`
+	Status         int   `json:"status,optional"` // 1=在用 2=退役
+	UpdateTip      bool  `json:"update_tip,optional"`
+	TipProductId   int64 `json:"tip_product_id,optional"`
+	UpdateChalk    bool  `json:"update_chalk,optional"`
+	ChalkProductId int64 `json:"chalk_product_id,optional"`
+}
+
+type UpdateGearMatchReq struct {
+	MatchId        int64 `json:"match_id"`
+	CueItemId      int64 `json:"cue_item_id,optional"`
+	TipProductId   int64 `json:"tip_product_id,optional"`
+	ChalkProductId int64 `json:"chalk_product_id,optional"`
+	BreakItemId    int64 `json:"break_item_id,optional"`
+}
+
+type UpdateMatchFormatReq struct {
+	MatchId      int64  `json:"match_id"`
+	MatchFormat  string `json:"match_format"`
+	TargetWins   int    `json:"target_wins,optional"`
+	BaseRevision int64  `json:"base_revision"`
+}
+
+type UpdateMatchFormatResp struct {
+	Accepted       bool              `json:"accepted"`
+	Success        bool              `json:"success"`
+	Message        string            `json:"message,optional"`
+	ServerRevision int64             `json:"server_revision"`
+	Snapshot       MatchSyncSnapshot `json:"snapshot"`
+}
+
 type UpdateNicknameReq struct {
 	Nickname string `json:"nickname"`
 }
@@ -2227,6 +3442,21 @@ type UpdatePushTokenReq struct {
 	PushClientId string `json:"push_client_id"`
 }
 
+type UpdateSnookerFormatReq struct {
+	MatchId           int64  `json:"match_id"`
+	SnookerFormat     string `json:"snooker_format"`
+	SnookerTargetWins int    `json:"snooker_target_wins,optional"`
+	BaseRevision      int64  `json:"base_revision"`
+}
+
+type UpdateSnookerFormatResp struct {
+	Accepted       bool              `json:"accepted"`
+	Success        bool              `json:"success"`
+	Message        string            `json:"message,optional"`
+	ServerRevision int64             `json:"server_revision"`
+	Snapshot       MatchSyncSnapshot `json:"snapshot"`
+}
+
 type UpdateTournamentMatchReq struct {
 	TournamentMatchId int64 `json:"tournament_match_id"`
 	WinnerId          int64 `json:"winner_id"`
@@ -2234,13 +3464,15 @@ type UpdateTournamentMatchReq struct {
 }
 
 type UpdateUserPrivacyReq struct {
-	HideMatchRecord bool `json:"hide_match_record"`
+	HideMatchRecord       *bool `json:"hide_match_record,optional"`
+	FriendsOnlyChallenges *bool `json:"friends_only_challenges,optional"`
 }
 
 type UpdateUserPrivacyResp struct {
-	Success         bool   `json:"success"`
-	Message         string `json:"message"`
-	HideMatchRecord bool   `json:"hide_match_record"`
+	Success               bool   `json:"success"`
+	Message               string `json:"message"`
+	HideMatchRecord       bool   `json:"hide_match_record"`
+	FriendsOnlyChallenges bool   `json:"friends_only_challenges"`
 }
 
 type UpdateUserProfileReq struct {
@@ -2261,6 +3493,11 @@ type UserInfo struct {
 	Avatar    string `json:"avatar"`
 	Status    int    `json:"status"`
 	CreatedAt string `json:"created_at"`
+}
+
+type UserRankInfoItem struct {
+	GameType int       `json:"game_type"`
+	RankInfo *RankInfo `json:"rank_info"`
 }
 
 type UserReputationLogItem struct {
@@ -2332,6 +3569,13 @@ type VenueInfo struct {
 	Status        int      `json:"status"`
 }
 
+type WSTicketResp struct {
+	Success          bool   `json:"success"`
+	Ticket           string `json:"ticket"`
+	Scope            string `json:"scope"`
+	ExpiresInSeconds int64  `json:"expires_in_seconds"`
+}
+
 type WechatAppPayParams struct {
 	Appid     string `json:"appid"`
 	Partnerid string `json:"partnerid"`
@@ -2358,7 +3602,8 @@ type WechatMiniBindPhoneResp struct {
 }
 
 type WechatMiniLoginReq struct {
-	Code string `json:"code"`
+	Code      string `json:"code"`
+	PhoneCode string `json:"phone_code,optional"`
 }
 
 type WechatMiniLoginResp struct {
