@@ -7,7 +7,7 @@
 # 用法：
 #   backend/deploy-prod.sh
 #
-# 依赖：~/.ssh/config 中的 chasingpoints-prod 别名（可用 CHASING_POINTS_PROD_HOST 覆盖），HEAD 已推送到远端。
+# 依赖：~/.ssh/config 中的 chasingpoints-prod 别名（可用 CHASING_POINTS_PROD_HOST 覆盖），HEAD 已合入 origin/main（main 是生产分支）。
 # CHASING_POINTS_DEPLOY_NO_MIGRATIONS=1：有待执行迁移时取消发布（GitHub Actions 发布使用）。
 set -Eeuo pipefail
 
@@ -31,8 +31,13 @@ if [ -n "$(git -C "$backend_dir" status --porcelain --untracked-files=no -- .)" 
     git -C "$backend_dir" status --short -- . >&2
     exit 1
 fi
-if [ -z "$(git -C "$backend_dir" branch -r --contains HEAD)" ]; then
-    printf 'HEAD 尚未推送到任何远端分支，请先推送再发布生产。\n' >&2
+# main 是生产分支：只发布已合入 origin/main 的提交
+if ! git -C "$backend_dir" fetch --quiet origin main; then
+    printf '无法获取 origin/main，请检查网络后重试。\n' >&2
+    exit 1
+fi
+if ! git -C "$backend_dir" merge-base --is-ancestor HEAD origin/main; then
+    printf 'HEAD 不在 origin/main 上。生产只从 main 发布，请先把改动合入 main 并切换到 main。\n' >&2
     exit 1
 fi
 revision="$(git -C "$backend_dir" rev-parse HEAD)"
