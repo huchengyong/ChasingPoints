@@ -266,7 +266,7 @@ func TestBuildMatchSummaryForNineBallDoesNotCountOwnFoulsAsRun(t *testing.T) {
 		{RoundNo: 2, Actor: 1, ActionType: "foul", ScoreChange: 1},
 	}
 
-	highlights, _ := buildMatchSummary(
+	highlights, stats := buildMatchSummary(
 		2,
 		1,
 		4,
@@ -287,6 +287,22 @@ func TestBuildMatchSummaryForNineBallDoesNotCountOwnFoulsAsRun(t *testing.T) {
 	}
 	if hasSummaryItem(highlights, "最高连续得分", "6 分") {
 		t.Fatalf("nine-ball highlight should not add foul points to fouling actor, got %#v", highlights)
+	}
+	// 胜法次数由对照表承载，总结条目只保留胜率、合计得分、最高连续得分与记录时间。
+	wantStats := []string{"我的胜率", "对手胜率", "总得分", "最高连续得分", "记录时间"}
+	if len(stats) != len(wantStats) {
+		t.Fatalf("nine-ball stats: got %#v, want %v", stats, wantStats)
+	}
+	for i, label := range wantStats {
+		if stats[i].Label != label {
+			t.Fatalf("nine-ball stats order: got %q at %d, want %q (%#v)", stats[i].Label, i, label, stats)
+		}
+	}
+	if !hasSummaryItem(stats, "总得分", "6 分") || !hasSummaryItem(stats, "最高连续得分", "4 分") {
+		t.Fatalf("nine-ball stats values: %#v", stats)
+	}
+	if hasSummaryLabel(stats, "我的普胜") || hasSummaryLabel(stats, "我的小金") || hasSummaryLabel(stats, "我的大金") {
+		t.Fatalf("nine-ball stats must not repeat win-type counts from the comparison table: %#v", stats)
 	}
 }
 

@@ -42,6 +42,7 @@ test('locked replay carries only the frame count and the purchase entry follows 
 
 test('snooker replay shows frame scores, single breaks, fouls, tags and the comeback description', () => {
   const view = resolveReplayView(snookerResponse)
+  assert.equal(view.wholeMatch, false)
   assert.equal(view.title, '斯诺克复盘')
   assert.equal(view.scoreText, '1 : 1')
   assert.deepEqual(view.summaryRows.map((row) => [row.label, row.mine, row.opponent]), [['赢下局数', '1', '1'], ['单杆最高', '68', '41']])
@@ -65,11 +66,114 @@ test('snooker replay shows frame scores, single breaks, fouls, tags and the come
   assert.equal(view.hasDetail, true)
 })
 
-test('nine-ball chase uses the longest-run wording', () => {
-  const view = resolveReplayView({ game_type: 2, frame_count: 1, summary: { my_frame_wins: 1, opponent_frame_wins: 0, my_max_run: 9, opponent_max_run: 3 }, frames: [{ frame_no: 1, winner: 1, my_score: 9, opponent_score: 3, my_max_run: 9, opponent_max_run: 3 }] })
-  assert.equal(view.summaryRows[1].label, '最大连续得分')
-  assert.equal(view.frames[0].details[0].label, '最大连续得分')
-  assert.equal(view.frames[0].scoreText, '9 : 3')
+const nineBallBreakdown = {
+  available: true,
+  player1: { score: 21, normal_wins: 3, small_golds: 1, big_golds: 1, foul_count: 2, foul_points_given: 2, other_points: 0 },
+  player2: { score: 15, normal_wins: 1, small_golds: 2, big_golds: 0, foul_count: 1, foul_points_given: 1, other_points: 0 },
+  events: [],
+  events_truncated: false
+}
+
+const nineBallResponse = {
+  success: true,
+  match_id: 21,
+  game_type: 2,
+  viewer_actor: 1,
+  locked: false,
+  frame_count: 3,
+  summary: { my_frame_wins: 0, opponent_frame_wins: 0, my_max_run: 12, opponent_max_run: 5, score_breakdown: nineBallBreakdown },
+  frames: [{
+    frame_no: 1,
+    winner: 1,
+    my_score: 21,
+    opponent_score: 15,
+    duration_seconds: 1500,
+    max_deficit: 4,
+    my_max_run: 12,
+    opponent_max_run: 5,
+    my_foul_count: 2,
+    opponent_foul_count: 1,
+    my_foul_points: 2,
+    opponent_foul_points: 1,
+    trend: [{ step: 0, diff: 0 }, { step: 1, diff: -4 }, { step: 2, diff: 3 }, { step: 3, diff: 6 }]
+  }]
+}
+
+test('nine-ball chase replays the whole match instead of per-frame results', () => {
+  const view = resolveReplayView(nineBallResponse)
+  assert.equal(view.wholeMatch, true)
+  assert.equal(view.scoreText, '21 : 15')
+  assert.deepEqual(view.summaryRows.map((row) => [row.label, row.mine, row.opponent]), [
+    ['总分', '21', '15'],
+    ['普胜', '3', '1'],
+    ['小金', '1', '2'],
+    ['大金', '1', '0'],
+    ['犯规', '2', '1'],
+    ['犯规送分', '2', '1'],
+    ['最大连续得分', '12', '5']
+  ])
+  assert.equal(view.summaryRows.some((row) => row.label.includes('赢下局数')), false)
+  assert.deepEqual(view.winTypeRows, [])
+  assert.deepEqual(view.sequence, [])
+  assert.deepEqual(view.keyFrames, [])
+
+  assert.equal(view.frames.length, 1)
+  const [frame] = view.frames
+  assert.equal(frame.title, '整场走势')
+  assert.equal(frame.winTypeText, '')
+  assert.deepEqual(frame.tags, [])
+  assert.equal(frame.isKey, false)
+  assert.equal(frame.winnerText, '我赢')
+  assert.equal(frame.scoreText, '21 : 15')
+  assert.equal(frame.durationText, '25分')
+  assert.equal(frame.deficitText, '我曾落后 4 分后赢下')
+  assert.equal(frame.trend.hasData, true)
+  assert.equal(view.notice, '')
+  assert.equal(view.hasDetail, true)
+  assert.equal(view.empty, false)
+})
+
+test('nine-ball chase swaps the comparison for the player 2 perspective', () => {
+  const view = resolveReplayView({
+    ...nineBallResponse,
+    viewer_actor: 2,
+    frames: [{ ...nineBallResponse.frames[0], winner: 2, my_score: 15, opponent_score: 21 }]
+  })
+  assert.equal(view.scoreText, '15 : 21')
+  assert.deepEqual(view.summaryRows.slice(0, 4).map((row) => [row.label, row.mine, row.opponent]), [
+    ['总分', '15', '21'],
+    ['普胜', '1', '3'],
+    ['小金', '2', '1'],
+    ['大金', '0', '1']
+  ])
+  assert.equal(view.frames[0].winnerText, '对手赢')
+  // 连续得分只在整场数据里出现一次，片段不重复。
+  assert.deepEqual(view.frames[0].details, [])
+  assert.equal(view.summaryRows.at(-1).label, '最大连续得分')
+})
+
+test('nine-ball chase says why only the total score is shown', () => {
+  const frameOnly = resolveReplayView({ ...nineBallResponse, frame_only: true })
+  assert.equal(frameOnly.notice, '这场对局的记分记录不完整，只显示总分。')
+  assert.equal(frameOnly.hasDetail, false)
+
+  const truncated = resolveReplayView({ ...nineBallResponse, detail_truncated: true, frame_only: true })
+  assert.equal(truncated.notice, '这场对局的记录太长，只显示总分。')
+  assert.equal(truncated.hasDetail, false)
+})
+
+test('locked nine-ball chase lists whole-match features without frame counts', () => {
+  const view = resolveReplayView({ locked: true, game_type: 2, frame_count: 7 }, { canShowPurchase: true })
+  assert.equal(view.wholeMatch, true)
+  assert.equal(view.frameCount, 7)
+  assert.equal(view.showPurchase, true)
+  assert.deepEqual(view.features, [
+    '整场走势：谁领先、什么时候被追上',
+    '双方普胜、小金、大金次数对照',
+    '犯规次数与送分',
+    '最大连续得分'
+  ])
+  assert.doesNotMatch(JSON.stringify(view), /第 \d+ 局|局数/)
 })
 
 test('Chinese eight-ball shows the win sequence, longest streak, win types and no score per frame', () => {
@@ -87,6 +191,7 @@ test('Chinese eight-ball shows the win sequence, longest streak, win types and n
     ]
   })
   assert.deepEqual(view.sequence.map((item) => item.winner), ['me', 'opponent', 'me'])
+  assert.equal(view.wholeMatch, false)
   assert.deepEqual(view.summaryRows.map((row) => row.label), ['赢下局数', '最长连胜（局）'])
   assert.deepEqual(view.winTypeRows, [{ label: '普胜', mine: '3', opponent: '3' }, { label: '炸清', mine: '2', opponent: '0' }])
   assert.equal(view.frames[0].scoreText, '')

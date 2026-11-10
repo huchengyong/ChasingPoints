@@ -260,6 +260,17 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 	} else {
 		lastAction = buildMatchLastAction(l.svcCtx, userId, match)
 	}
+	// 九球追分的得分构成复用已加载的局记录与动作，不新增查询；动作超长时降级为只给总分。
+	var scoreBreakdown *types.ChasingScoreBreakdown
+	if match.GameType == 2 {
+		var breakdown *logicx.ChasingScoreBreakdown
+		if len(actions) > logicx.MaxReplayActions {
+			breakdown = logicx.UnavailableChasingScoreBreakdown(match)
+		} else {
+			breakdown = logicx.BuildChasingScoreBreakdown(match, completedRounds, actions)
+		}
+		scoreBreakdown = logicx.ChasingScoreBreakdownPayload(breakdown, true)
+	}
 	snookerState := model.SnookerRoundState{ClearedColors: make([]int, 0, 6)}
 	if match.GameType == 1 {
 		stateRound := currentRound
@@ -404,6 +415,7 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			SnookerFrameEndReason:         snookerState.FrameEndReason,
 			SummaryHighlights:             summaryHighlights,
 			SummaryStats:                  summaryStats,
+			ScoreBreakdown:                scoreBreakdown,
 			Achievements:                  achievements,
 			CreatedAt:                     match.CreatedAt.Format("2006-01-02 15:04:05"),
 		},

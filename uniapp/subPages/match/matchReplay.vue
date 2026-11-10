@@ -23,8 +23,9 @@
 				<view class="card hero-card">
 					<text class="hero-kicker">会员权益</text>
 					<text class="hero-title">单场复盘</text>
-					<text class="hero-desc">回看这场{{ view.gameTypeLabel }}每一局的走势、关键局和胜局方式。</text>
-					<text class="hero-meta">这场共打了 {{ view.frameCount }} 局</text>
+					<text v-if="view.wholeMatch" class="hero-desc">回看这场九球追分的整场走势、双方得分构成与犯规。</text>
+					<text v-else class="hero-desc">回看这场{{ view.gameTypeLabel }}每一局的走势、关键局和胜局方式。</text>
+					<text v-if="!view.wholeMatch" class="hero-meta">这场共打了 {{ view.frameCount }} 局</text>
 				</view>
 				<view class="card">
 					<text class="card-title">完整复盘包含</text>
@@ -41,7 +42,7 @@
 				<view class="card hero-card">
 					<text class="hero-kicker">{{ view.title }}</text>
 					<text class="hero-score">{{ view.scoreText }}</text>
-					<text class="hero-meta">共 {{ view.frameCount }} 局 · 左为我，右为对手</text>
+					<text class="hero-meta">{{ view.wholeMatch ? '左为我，右为对手' : `共 ${view.frameCount} 局 · 左为我，右为对手` }}</text>
 				</view>
 
 				<view v-if="view.notice" class="notice-banner"><text>{{ view.notice }}</text></view>
@@ -86,7 +87,7 @@
 				</view>
 
 				<view v-if="view.frames.length" class="card">
-					<text class="card-title">每局详情</text>
+					<text class="card-title">{{ view.wholeMatch ? '得分走势' : '每局详情' }}</text>
 					<view v-for="frame in view.frames" :key="frame.frameNo" class="frame-block">
 						<view class="frame-head">
 							<text class="frame-title">{{ frame.title }}</text>
@@ -120,7 +121,7 @@
 					</view>
 				</view>
 
-				<text v-if="view.empty" class="empty-hint">这场对局没有可展示的局记录</text>
+				<text v-if="view.empty" class="empty-hint">{{ view.wholeMatch ? '这场对局没有可展示的得分走势' : '这场对局没有可展示的局记录' }}</text>
 			</template>
 		</template>
 	</view>

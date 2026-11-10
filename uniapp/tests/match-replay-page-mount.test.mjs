@@ -73,6 +73,34 @@ const snookerReplay = {
   }]
 }
 
+const nineBallReplay = {
+  success: true,
+  match_id: 66,
+  game_type: 2,
+  locked: false,
+  frame_count: 24,
+  viewer_actor: 2,
+  summary: {
+    my_max_run: 12,
+    opponent_max_run: 8,
+    score_breakdown: {
+      available: true,
+      player1: { score: 16, normal_wins: 2, small_golds: 1, big_golds: 0, foul_count: 3, foul_points_given: 3, other_points: 0 },
+      player2: { score: 13, normal_wins: 0, small_golds: 0, big_golds: 1, foul_count: 1, foul_points_given: 1, other_points: 0 },
+      events: [],
+      events_truncated: false
+    }
+  },
+  frames: [{
+    frame_no: 1,
+    my_score: 13,
+    opponent_score: 16,
+    my_max_run: 12,
+    opponent_max_run: 8,
+    trend: [{ step: 0, diff: 0 }, { step: 1, diff: 3 }]
+  }]
+}
+
 test('replay page: pool, snooker, locked, failure, identity and compliance behavior', async () => {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'http://localhost/' })
   const previousGlobals = installDOMGlobals(dom.window)
@@ -223,6 +251,34 @@ test('replay page: pool, snooker, locked, failure, identity and compliance behav
     await flushPromises()
     await nextTick()
     assert.match(wrapper.text(), /这场共打了 2 局/)
+
+    // 九球追分：整场口径，走势单列，不出现任何按局文案。
+    state.versions.member = 7
+    state.hooks.onShow.forEach((hook) => hook())
+    await nextTick()
+    gates.at(-1).resolve(nineBallReplay)
+    await flushPromises()
+    await nextTick()
+    assert.match(wrapper.text(), /九球追分复盘/)
+    assert.match(wrapper.text(), /13 : 16/)
+    assert.match(wrapper.text(), /整场走势/)
+    assert.match(wrapper.text(), /得分走势/)
+    assert.match(wrapper.text(), /最大连续得分/)
+    assert.match(wrapper.text(), /普胜/)
+    assert.equal(wrapper.find('.hero-meta').text(), '左为我，右为对手')
+    assert.equal(wrapper.findAll('.trend-chart').length, 1)
+    assert.equal(wrapper.findAll('.sequence-item').length, 0)
+    assert.doesNotMatch(wrapper.text(), /第 \d+ 局|关键局|赢下局数|共 \d+ 局|每局详情|逐局胜负/)
+
+    // 九球追分锁定态：不展示局数，文案改成整场口径。
+    state.versions.member = 8
+    state.hooks.onShow.forEach((hook) => hook())
+    await nextTick()
+    gates.at(-1).resolve({ success: true, match_id: 66, game_type: 2, locked: true, frame_count: 24 })
+    await flushPromises()
+    await nextTick()
+    assert.match(wrapper.text(), /回看这场九球追分的整场走势、双方得分构成与犯规。/)
+    assert.doesNotMatch(wrapper.text(), /这场共打了|共 24 局|第 \d+ 局|赢下局数/)
 
     // 未登录：不读取，转登录。
     const before = requests.length

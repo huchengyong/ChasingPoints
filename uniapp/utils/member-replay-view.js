@@ -1,5 +1,6 @@
 // 单场复盘页的展示规则。数据来自服务端 GET /api/member/match-replay，统一为「我 / 对手」视角，这里只负责文案与图表比例。
 import { getGameTypeLabel } from './game-types.js'
+import { resolveChasingScoreView } from './chasing-score.js'
 
 const toNumber = (value) => {
   const parsed = Number(value)
@@ -137,25 +138,86 @@ export const buildFrameSequence = (frames = []) => (
 )
 
 /**
+ * 九球追分整场口径的展示模型：单片段代表整场，得分构成来自 score_breakdown。
+ */
+const resolveChasingReplayView = (response, base) => {
+  const frame = Array.isArray(response?.frames) ? response.frames[0] : null
+  const myScore = toCount(frame?.my_score)
+  const opponentScore = toCount(frame?.opponent_score)
+  const scoreView = resolveChasingScoreView(response?.summary?.score_breakdown, {
+    swap: toCount(response?.viewer_actor) === 2
+  })
+  const summaryRows = scoreView
+    ? scoreView.rows.map((row) => ({ label: row.label, mine: row.left, opponent: row.right }))
+    : [{ label: '总分', mine: String(myScore), opponent: String(opponentScore) }]
+  const myRun = toCount(response?.summary?.my_max_run)
+  const opponentRun = toCount(response?.summary?.opponent_max_run)
+  if (myRun > 0 || opponentRun > 0) {
+    summaryRows.push({ label: '最大连续得分', mine: String(myRun), opponent: String(opponentRun) })
+  }
+  const frames = frame
+    ? [{
+      ...resolveFrameView(frame, GAME_TYPE_NINE_BALL, {}),
+      title: '整场走势',
+      // 整场只有一个片段，连续得分已在上方整场数据里。
+      details: [],
+      winTypeText: '',
+      tags: [],
+      isKey: false
+    }]
+    : []
+  const truncated = Boolean(response?.detail_truncated)
+  const frameOnly = Boolean(response?.frame_only)
+  return {
+    ...base,
+    locked: false,
+    showPurchase: false,
+    title: `${getGameTypeLabel(base.gameType)}复盘`,
+    scoreText: `${myScore} : ${opponentScore}`,
+    summaryRows,
+    winTypeRows: [],
+    sequence: [],
+    frames,
+    keyFrames: [],
+    notice: truncated
+      ? '这场对局的记录太长，只显示总分。'
+      : frameOnly
+        ? '这场对局的记分记录不完整，只显示总分。'
+        : '',
+    hasDetail: !truncated && !frameOnly,
+    empty: frames.length === 0
+  }
+}
+
+/**
  * 复盘页的完整展示模型。locked 时只带局数，不含任何明细。
  */
 export const resolveReplayView = (response, { canShowPurchase = false } = {}) => {
   const gameType = toCount(response?.game_type)
   const frameCount = toCount(response?.frame_count)
-  const base = { gameType, gameTypeLabel: getGameTypeLabel(gameType), frameCount }
+  const wholeMatch = gameType === GAME_TYPE_NINE_BALL
+  const base = { gameType, gameTypeLabel: getGameTypeLabel(gameType), frameCount, wholeMatch }
   if (response?.locked) {
     return {
       ...base,
       locked: true,
       showPurchase: Boolean(canShowPurchase),
-      features: [
-        '每局走势：谁领先、什么时候被追上',
-        '单杆与连续得分、犯规统计',
-        '逐局胜负序列与胜局方式',
-        '决胜局与逆转局标注'
-      ]
+      features: wholeMatch
+        ? [
+          '整场走势：谁领先、什么时候被追上',
+          '双方普胜、小金、大金次数对照',
+          '犯规次数与送分',
+          '最大连续得分'
+        ]
+        : [
+          '每局走势：谁领先、什么时候被追上',
+          '单杆与连续得分、犯规统计',
+          '逐局胜负序列与胜局方式',
+          '决胜局与逆转局标注'
+        ]
     }
   }
+  if (wholeMatch) return resolveChasingReplayView(response, base)
   const frames = Array.isArray(response?.frames) ? response.frames : []
   const winTypeLabels = Object.fromEntries(
     (Array.isArray(response?.summary?.win_type_stats) ? response.summary.win_type_stats : [])

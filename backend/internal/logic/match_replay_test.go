@@ -195,6 +195,9 @@ func TestBuildMatchReplayEightBallStreaksAndWinTypes(t *testing.T) {
 	if resp.FrameOnly {
 		t.Fatalf("pool games are complete at frame level, they are not degraded: %+v", resp)
 	}
+	if resp.ViewerActor != 1 {
+		t.Fatalf("other game types report the viewer actor too: %+v", resp)
+	}
 	s := resp.Summary
 	if s.MyFrameWins != 5 || s.OpponentFrameWins != 3 || s.MyLongestStreak != 4 || s.OpponentLongestStreak != 2 {
 		t.Fatalf("5:3 with a four-rack run: %+v", s)
@@ -228,52 +231,231 @@ func TestBuildMatchReplayEightBallStreaksAndWinTypes(t *testing.T) {
 	}
 }
 
-func TestBuildMatchReplayChasingPointsRunsFoulsAndComeback(t *testing.T) {
+// chasingReplayFixture：整场 34:21。选手1 三次大金加一次普胜，选手2 一次大金、一次小金、一次普胜。
+func chasingReplayFixture() MatchReplayInput {
 	actions := []model.MatchAction{
-		// 第 1 局：本人连得 3、2 分后被对手打断，对手犯规送 2 分，再得 1 分。
-		replayLegacyAction(1, "score", 1, 3, 0),
-		replayLegacyAction(1, "score", 1, 2, 10*time.Second),
-		replayLegacyAction(1, "score", 2, 4, 20*time.Second),
-		replayLegacyAction(1, "foul", 2, 2, 30*time.Second),
-		replayLegacyAction(1, "score", 1, 1, 40*time.Second),
-		replayLegacyAction(1, "win", 1, 0, 50*time.Second),
-		// 第 2 局：本人先落后 6 分，再连得 3、4，最后一分以 win 动作计入。
-		replayLegacyAction(2, "score", 2, 6, 5*time.Minute),
-		replayLegacyAction(2, "score", 1, 3, 5*time.Minute+10*time.Second),
-		replayLegacyAction(2, "score", 1, 4, 5*time.Minute+20*time.Second),
-		replayLegacyAction(2, "win", 1, 1, 5*time.Minute+30*time.Second),
-		{RoundNo: 2, ActionType: "undo", Actor: 1, CreatedAt: replayTestStart.Add(5*time.Minute + 31*time.Second)},
+		chasingWin(1, 2, 10, "big_gold", 0),
+		chasingWin(2, 1, 10, "big_gold", time.Minute),
+		chasingWin(3, 1, 10, "big_gold", 2*time.Minute),
+		chasingWin(4, 2, 7, "small_gold", 3*time.Minute),
+		chasingWin(5, 1, 10, "big_gold", 4*time.Minute),
+		chasingWin(6, 1, 4, "normal", 5*time.Minute),
+		chasingWin(7, 2, 4, "normal", 10*time.Minute),
 	}
-	resp := BuildMatchReplay(MatchReplayInput{
-		Match:       &model.Match{Id: 3, UserId: 1, GameType: 2, Status: 2},
-		Rounds:      []model.MatchRound{replayRound(1, 8, 4, 1, "normal"), replayRound(2, 16, 10, 1, "small_gold")}, // 局记录保存累计比分
-		Actions:     actions,
-		ViewerActor: 1,
-	})
-	if resp.FrameOnly || len(resp.Frames) != 2 {
+	rounds := []model.MatchRound{
+		chasingRound(1, 0, 10, 2, "big_gold"),
+		chasingRound(2, 10, 10, 1, "big_gold"),
+		chasingRound(3, 20, 10, 1, "big_gold"),
+		chasingRound(4, 20, 17, 2, "small_gold"),
+		chasingRound(5, 30, 17, 1, "big_gold"),
+		chasingRound(6, 34, 17, 1, "normal"),
+		chasingRound(7, 34, 21, 2, "normal"),
+	}
+	return MatchReplayInput{Match: chasingMatch(34, 21), Rounds: rounds, Actions: actions, ViewerActor: 1}
+}
+
+func TestBuildMatchReplayChasingPointsIsOneWholeMatchFrame(t *testing.T) {
+	resp := BuildMatchReplay(chasingReplayFixture())
+	if resp.FrameCount != 7 || len(resp.Frames) != 1 || resp.FrameOnly || resp.DetailTruncated || resp.ViewerActor != 1 {
 		t.Fatalf("unexpected shape: %+v", resp)
 	}
-	f1, f2 := resp.Frames[0], resp.Frames[1]
-	if f1.MyScore != 8 || f1.OpponentScore != 4 || f2.MyScore != 8 || f2.OpponentScore != 6 {
-		t.Fatalf("per-frame points come from the cumulative scores: f1=%d:%d f2=%d:%d", f1.MyScore, f1.OpponentScore, f2.MyScore, f2.OpponentScore)
+	frame := resp.Frames[0]
+	if frame.FrameNo != 1 || frame.MyScore != 34 || frame.OpponentScore != 21 || frame.Winner != 1 || frame.WinType != "" {
+		t.Fatalf("whole-match frame: %+v", frame)
 	}
-	if f1.MyMaxRun != 5 || f1.OpponentMaxRun != 4 || f2.MyMaxRun != 8 || f2.OpponentMaxRun != 6 {
-		t.Fatalf("consecutive scoring runs: f1=%d/%d f2=%d/%d", f1.MyMaxRun, f1.OpponentMaxRun, f2.MyMaxRun, f2.OpponentMaxRun)
+	if len(frame.KeyTags) != 0 {
+		t.Fatalf("九球追分 has no decider and no comeback tag here: %v", frame.KeyTags)
 	}
-	if f1.OpponentFoulCount != 1 || f1.OpponentFoulPoints != 2 || f1.MyFoulCount != 0 {
-		t.Fatalf("frame 1 fouls: %+v", f1)
+	if len(frame.Trend) > MaxReplayTrendPoints || frame.Trend[0] != (types.ReplayTrendPoint{Step: 0, Diff: 0}) || frame.Trend[len(frame.Trend)-1].Diff != 13 {
+		t.Fatalf("trend must start at 0 and end at the final lead of 13: %+v", frame.Trend)
 	}
-	if f1.MaxDeficit != 0 || f2.MaxDeficit != 6 {
-		t.Fatalf("winner's deficits: %d %d", f1.MaxDeficit, f2.MaxDeficit)
+	if frame.MyMaxRun != 20 || frame.OpponentMaxRun != 10 || frame.MaxDeficit != 10 {
+		t.Fatalf("runs and deficit: %+v", frame)
 	}
-	if len(f1.KeyTags) != 0 || !slices.Equal(f2.KeyTags, []string{replayKeyTagComeback}) {
-		t.Fatalf("only frame 2 is the comeback and 九球追分 has no decider: %v %v", f1.KeyTags, f2.KeyTags)
+	if frame.MyFoulCount != 0 || frame.OpponentFoulCount != 0 || frame.MyFoulPoints != 0 || frame.OpponentFoulPoints != 0 {
+		t.Fatalf("no fouls in this match: %+v", frame)
 	}
-	if got := []int{f2.Trend[0].Diff, f2.Trend[1].Diff, f2.Trend[2].Diff, f2.Trend[3].Diff, f2.Trend[4].Diff}; !slices.Equal(got, []int{0, -6, -3, 1, 2}) {
-		t.Fatalf("frame 2 trend: %v", got)
+	if frame.DurationSeconds != 600 {
+		t.Fatalf("duration between the first and last valid action: %d", frame.DurationSeconds)
 	}
-	if resp.Summary.MyMaxRun != 8 || resp.Summary.OpponentMaxRun != 6 {
-		t.Fatalf("summary: %+v", resp.Summary)
+
+	summary := resp.Summary
+	if summary.MyFrameWins != 0 || summary.OpponentFrameWins != 0 || summary.MyLongestStreak != 0 || summary.OpponentLongestStreak != 0 || len(summary.WinTypeStats) != 0 {
+		t.Fatalf("九球追分 replay must not report frame wins or streaks: %+v", summary)
+	}
+	if summary.MyMaxRun != 20 || summary.OpponentMaxRun != 10 {
+		t.Fatalf("summary runs: %+v", summary)
+	}
+	breakdown := summary.ScoreBreakdown
+	if breakdown == nil || !breakdown.Available || len(breakdown.Events) != 0 {
+		t.Fatalf("summary breakdown without events: %+v", breakdown)
+	}
+	if breakdown.Player1.Score != 34 || breakdown.Player1.NormalWins != 1 || breakdown.Player1.SmallGolds != 0 || breakdown.Player1.BigGolds != 3 {
+		t.Fatalf("player 1 breakdown: %+v", breakdown.Player1)
+	}
+	if breakdown.Player2.Score != 21 || breakdown.Player2.NormalWins != 1 || breakdown.Player2.SmallGolds != 1 || breakdown.Player2.BigGolds != 1 {
+		t.Fatalf("player 2 breakdown: %+v", breakdown.Player2)
+	}
+}
+
+func TestBuildMatchReplayChasingPointsKeepsRunsThroughOpponentFouls(t *testing.T) {
+	input := MatchReplayInput{
+		Match: chasingMatch(12, 0),
+		Rounds: []model.MatchRound{
+			chasingRound(1, 4, 0, 1, "normal"),
+			chasingRound(2, 12, 0, 1, "small_gold"),
+		},
+		Actions: []model.MatchAction{ // 普胜 4 + 对手犯规 1 + 小金 7，中间对手没有得分
+			chasingWin(1, 1, 4, "normal", 0),
+			chasingFoul(2, 2, 1, time.Minute),
+			chasingWin(2, 1, 7, "small_gold", 2*time.Minute),
+		},
+		ViewerActor: 1,
+	}
+	resp := BuildMatchReplay(input)
+	frame := resp.Frames[0]
+	if resp.FrameOnly || frame.MyMaxRun < 12 || frame.OpponentMaxRun != 0 {
+		t.Fatalf("opponent fouls do not break my run: %+v", frame)
+	}
+	if frame.OpponentFoulCount != 1 || frame.OpponentFoulPoints != 1 || frame.MyFoulCount != 0 {
+		t.Fatalf("fouls belong to the opponent: %+v", frame)
+	}
+	if frame.Trend[len(frame.Trend)-1].Diff != 12 {
+		t.Fatalf("trend ends at the final 12-point lead: %+v", frame.Trend)
+	}
+	if resp.Summary.MyMaxRun != frame.MyMaxRun {
+		t.Fatalf("summary runs: %+v", resp.Summary)
+	}
+}
+
+func TestBuildMatchReplayChasingPointsCountsFoulsAfterTheLastWin(t *testing.T) {
+	input := MatchReplayInput{
+		Match:  chasingMatch(6, 0),
+		Rounds: []model.MatchRound{chasingRound(1, 4, 0, 1, "normal")},
+		Actions: []model.MatchAction{
+			chasingWin(1, 1, 4, "normal", 0),
+			chasingFoul(2, 2, 2, 10*time.Minute), // 最后一次胜局之后才犯规，没有对应局记录
+		},
+		ViewerActor: 1,
+	}
+	resp := BuildMatchReplay(input)
+	frame := resp.Frames[0]
+	if resp.FrameOnly || frame.OpponentFoulCount != 1 || frame.OpponentFoulPoints != 2 {
+		t.Fatalf("the foul after the last win must count: %+v", frame)
+	}
+	if frame.MyScore != 6 || frame.Trend[len(frame.Trend)-1].Diff != 6 {
+		t.Fatalf("the tail foul adds to the score and the trend: %+v", frame)
+	}
+	if frame.DurationSeconds != 600 {
+		t.Fatalf("duration includes the tail foul: %d", frame.DurationSeconds)
+	}
+	if b := resp.Summary.ScoreBreakdown; b == nil || !b.Available || b.Player1.Score != 6 || b.Player2.FoulPointsGiven != 2 {
+		t.Fatalf("breakdown includes the tail foul: %+v", b)
+	}
+}
+
+func TestBuildMatchReplayChasingPointsKeepsBreakdownInAbsolutePositions(t *testing.T) {
+	in := chasingReplayFixture()
+	in.ViewerActor = 2
+	resp := BuildMatchReplay(in)
+	frame := resp.Frames[0]
+	if resp.ViewerActor != 2 || frame.MyScore != 21 || frame.OpponentScore != 34 || frame.Winner != 2 {
+		t.Fatalf("viewer 2 sees the match from their side: %+v", frame)
+	}
+	if frame.MyMaxRun != 10 || frame.OpponentMaxRun != 20 {
+		t.Fatalf("runs swap with the viewer: %+v", frame)
+	}
+	if frame.Trend[len(frame.Trend)-1].Diff != -13 {
+		t.Fatalf("trend is signed from viewer 2: %+v", frame.Trend)
+	}
+	b := resp.Summary.ScoreBreakdown
+	if b == nil || !b.Available || b.Player1.Score != 34 || b.Player2.Score != 21 {
+		t.Fatalf("the breakdown stays in absolute positions: %+v", b)
+	}
+}
+
+func TestBuildMatchReplayChasingPointsFallsBackWhenActionsDoNotReconcile(t *testing.T) {
+	in := chasingReplayFixture()
+	in.Match = chasingMatch(35, 21) // 动作累计 34:21，与最终比分对不上
+	resp := BuildMatchReplay(in)
+	if !resp.FrameOnly || len(resp.Frames) != 1 {
+		t.Fatalf("mismatched actions must degrade to the total score: %+v", resp)
+	}
+	frame := resp.Frames[0]
+	if frame.MyScore != 35 || frame.OpponentScore != 21 || frame.Winner != 1 {
+		t.Fatalf("the total score and winner remain: %+v", frame)
+	}
+	if len(frame.Trend) != 0 || frame.MyMaxRun != 0 || frame.OpponentMaxRun != 0 || frame.DurationSeconds != 0 || len(frame.KeyTags) != 0 {
+		t.Fatalf("no detail when the breakdown is unavailable: %+v", frame)
+	}
+	b := resp.Summary.ScoreBreakdown
+	if b == nil || b.Available || b.Player1.Score != 35 || b.Player2.Score != 21 || b.Player1.NormalWins != 0 {
+		t.Fatalf("unavailable breakdown keeps only totals: %+v", b)
+	}
+	if resp.Summary.MyFrameWins != 0 || resp.Summary.OpponentFrameWins != 0 {
+		t.Fatalf("no frame wins: %+v", resp.Summary)
+	}
+}
+
+func TestBuildMatchReplayChasingPointsTruncatedReturnsScoresOnly(t *testing.T) {
+	in := chasingReplayFixture()
+	in.Actions, in.Truncated = nil, true
+	resp := BuildMatchReplay(in)
+	if !resp.DetailTruncated || !resp.FrameOnly || len(resp.Frames) != 1 {
+		t.Fatalf("truncated replay: %+v", resp)
+	}
+	frame := resp.Frames[0]
+	if frame.MyScore != 34 || frame.OpponentScore != 21 || frame.Winner != 1 || len(frame.Trend) != 0 || frame.MyMaxRun != 0 {
+		t.Fatalf("truncated replay keeps only the scores: %+v", frame)
+	}
+	b := resp.Summary.ScoreBreakdown
+	if b == nil || b.Available || b.Player1.Score != 34 || b.Player2.Score != 21 {
+		t.Fatalf("truncated breakdown: %+v", b)
+	}
+}
+
+func TestBuildMatchReplayChasingPointsIgnoresUndoneActions(t *testing.T) {
+	undone := chasingWin(2, 1, 7, "small_gold", 2*time.Minute)
+	undone.IsUndone = 1
+	resp := BuildMatchReplay(MatchReplayInput{
+		Match:  chasingMatch(4, 0),
+		Rounds: []model.MatchRound{chasingRound(1, 4, 0, 1, "normal")},
+		Actions: []model.MatchAction{
+			chasingWin(1, 1, 4, "normal", 0),
+			undone,
+			{RoundNo: 2, ActionType: "undo", Actor: 1, CreatedAt: chasingTestStart.Add(3 * time.Minute)},
+		},
+		ViewerActor: 1,
+	})
+	if resp.FrameOnly {
+		t.Fatalf("the undone action leaves a reconciled match: %+v", resp)
+	}
+	frame := resp.Frames[0]
+	if frame.MyScore != 4 || frame.MyMaxRun != 4 || frame.Trend[len(frame.Trend)-1].Diff != 4 {
+		t.Fatalf("the undone small gold must not count: %+v", frame)
+	}
+	b := resp.Summary.ScoreBreakdown
+	if b == nil || !b.Available || b.Player1.SmallGolds != 0 || b.Player1.NormalWins != 1 || b.Player1.Score != 4 {
+		t.Fatalf("breakdown ignores the undone action: %+v", b)
+	}
+}
+
+func TestBuildMatchReplayChasingPointsLimitsTheWholeMatchTrendTo60Points(t *testing.T) {
+	actions := make([]model.MatchAction, 0, 200)
+	for i := 0; i < 200; i++ {
+		actions = append(actions, chasingScoreAction(1, 1+i%2, 1, time.Duration(i)*time.Second))
+	}
+	resp := BuildMatchReplay(MatchReplayInput{Match: chasingMatch(100, 100), Actions: actions, ViewerActor: 1})
+	if resp.FrameOnly || len(resp.Frames) != 1 {
+		t.Fatalf("unexpected shape: %+v", resp)
+	}
+	frame := resp.Frames[0]
+	if frame.Winner != 0 || frame.MyScore != 100 || frame.OpponentScore != 100 {
+		t.Fatalf("a tie has no winner: %+v", frame)
+	}
+	trend := frame.Trend
+	if len(trend) > MaxReplayTrendPoints || trend[0] != (types.ReplayTrendPoint{Step: 0, Diff: 0}) || trend[len(trend)-1].Step != 200 || trend[len(trend)-1].Diff != 0 {
+		t.Fatalf("trend must be downsampled to at most %d points and keep both endpoints: %+v", MaxReplayTrendPoints, trend)
 	}
 }
 

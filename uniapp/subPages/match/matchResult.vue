@@ -216,6 +216,9 @@
 					</view>
 				</view>
 
+				<!-- 九球追分：双方得分构成，明细在详情页看 -->
+				<matchChasingScoreCard v-if="scoreBreakdown" :view="scoreBreakdown" :show-events="false" />
+
 				<view class="stats-section info-card">
 					<view class="section-head">
 						<view>
@@ -265,6 +268,8 @@ import { getMatchDetail, getMatchRewardSummary } from '@/api/match.js'
 import { formatDateTime, formatRelativeTime } from '@/utils/format.js'
 import memberAvatar from '@/components/memberAvatar.vue'
 import matchGearCard from '@/components/matchGearCard.vue'
+import matchChasingScoreCard from '@/components/matchChasingScoreCard.vue'
+import { resolveChasingScoreView } from '@/utils/chasing-score.js'
 import { shouldShowMatchGear } from '@/utils/gear-match.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveMatchRankingRightsSummary } from '@/utils/member-ranking-rights.js'
@@ -341,6 +346,14 @@ const systemInfo = uni.getSystemInfoSync()
 statusBarHeight.value = systemInfo.statusBarHeight || 20
 
 const isReferee = computed(() => matchData.value.viewer_role === 'referee')
+// 参与者详情按 is_player1 标记当前查看者是不是选手1；裁判固定选手1 / 选手2 视角。
+const scoreBreakdown = computed(() => {
+	if (matchData.value.game_type !== 2 || !matchData.value.score_breakdown) return null
+	return resolveChasingScoreView(matchData.value.score_breakdown, {
+		swap: matchData.value.is_player1 === false,
+		neutral: isReferee.value
+	})
+})
 const showMatchGear = computed(() => shouldShowMatchGear({
 	status: matchData.value.status,
 	viewerRole: matchData.value.viewer_role,

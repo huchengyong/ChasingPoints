@@ -1,3 +1,5 @@
+import { resolveChasingScoreView } from './chasing-score.js'
+
 const pickValue = (...values) => values.find((value) => value !== undefined && value !== null && value !== '')
 
 const pickNumber = (...values) => {
@@ -34,6 +36,14 @@ export const normalizeMatchDetailPayload = (match = {}, { perspectiveUserId = 0 
   const shouldSwapPerspective = Number(perspectiveUserId) > 0 &&
     Number(match.player2_id) === Number(perspectiveUserId) &&
     Number(match.player1_id) !== Number(perspectiveUserId)
+  // 参与者详情接口已按查看者返回「我 / 对手」并带 is_player1；公开详情没有这个字段，靠 perspectiveUserId 判断。
+  const isReferee = match.viewer_role === 'referee'
+  const isOwnMatchPayload = typeof match.is_player1 === 'boolean' && !isReferee
+  const isPerspectivePlayer = Number(perspectiveUserId) > 0 &&
+    (Number(match.player1_id) === Number(perspectiveUserId) || Number(match.player2_id) === Number(perspectiveUserId))
+  // 未登录、观战者或裁判看固定选手1 / 选手2，不跟随查看者换边。
+  const neutralPerspective = isReferee || !(isOwnMatchPayload || isPerspectivePlayer)
+  const swapScoreBreakdown = shouldSwapPerspective || (isOwnMatchPayload && match.is_player1 === false)
 
   return {
     matchData: {
@@ -87,6 +97,9 @@ export const normalizeMatchDetailPayload = (match = {}, { perspectiveUserId = 0 
         ? pickNumber(match.player1_rank_level, match.my_rank_level)
         : pickNumber(match.player2_rank_level, match.opponent_rank_level)
     },
-    roundRecords: Array.isArray(match.rounds) ? normalizeRoundRecords(match.rounds, shouldSwapPerspective) : []
+    roundRecords: Array.isArray(match.rounds) ? normalizeRoundRecords(match.rounds, shouldSwapPerspective) : [],
+    scoreBreakdown: pickNumber(match.game_type) === 2
+      ? resolveChasingScoreView(match.score_breakdown, { swap: swapScoreBreakdown, neutral: neutralPerspective })
+      : null
   }
 }

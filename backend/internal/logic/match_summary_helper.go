@@ -91,7 +91,6 @@ func buildEightBallSummary(myActor int, myScore int, opponentScore int, myWinRat
 func buildNineBallSummary(myActor int, myScore int, opponentScore int, myWinRate float64, opponentWinRate float64, createdAt string, rounds []model.MatchRound, actions []model.MatchAction) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
 	mySmallGold := countRoundWinsByType(rounds, myActor, "small_gold")
 	myBigGold := countRoundWinsByType(rounds, myActor, "big_gold")
-	myNormalWins := countRoundWinsByType(rounds, myActor, "normal")
 	highestRun := calculateHighestScoringRun(actions, myActor)
 
 	highlights := []types.MatchSummaryItem{}
@@ -105,13 +104,12 @@ func buildNineBallSummary(myActor int, myScore int, opponentScore int, myWinRate
 		highlights = append(highlights, buildSummaryItem("最高连续得分", fmt.Sprintf("%d 分", highestRun), "不被对手打断的连续得分峰值", "fire", "red"))
 	}
 
+	// 普胜 / 小金 / 大金 / 犯规的双方数字由详情与结算的对照表承载，这里不重复。
 	stats := []types.MatchSummaryItem{
 		buildSummaryItem("我的胜率", formatPercent(myWinRate), "当前历史胜率表现", "person", "blue"),
 		buildSummaryItem("对手胜率", formatPercent(opponentWinRate), "用于感知本场对手强度", "person-filled", "purple"),
 		buildSummaryItem("总得分", fmt.Sprintf("%d 分", myScore+opponentScore), "双方本场合计得分", "bars", "cyan"),
-		buildSummaryItem("我的普胜", fmt.Sprintf("%d 次", myNormalWins), "常规胜局得分次数", "checkbox", "green"),
-		buildSummaryItem("我的小金", fmt.Sprintf("%d 次", mySmallGold), "小金完成次数", "star", "blue"),
-		buildSummaryItem("我的大金", fmt.Sprintf("%d 次", myBigGold), "大金完成次数", "medal", "gold"),
+		buildSummaryItem("最高连续得分", fmt.Sprintf("%d 分", highestRun), "不被对手打断的连续得分峰值", "fire", "red"),
 		buildSummaryItem("记录时间", createdAt, "本场总结生成时间", "calendar", "slate"),
 	}
 	return highlights, stats

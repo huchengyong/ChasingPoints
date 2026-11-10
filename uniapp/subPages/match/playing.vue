@@ -57,8 +57,8 @@
 					</view>
 				</view>
 				<view class="scoreboard-meta">
-					<text class="scoreboard-meta__text">{{ currentRoundText }}</text>
-					<text class="scoreboard-meta__divider">·</text>
+					<text v-if="gameType !== 2" class="scoreboard-meta__text">{{ currentRoundText }}</text>
+					<text v-if="gameType !== 2" class="scoreboard-meta__divider">·</text>
 					<view class="status-chip" :class="{ syncing: isSyncing }">
 						<text class="status-chip__dot"></text>
 						<text class="status-chip__text">{{ syncStatusText }}</text>
