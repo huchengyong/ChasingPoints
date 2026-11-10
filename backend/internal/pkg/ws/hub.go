@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"chasing_points/internal/model"
+	"chasing_points/internal/pkg/matchtext"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 
@@ -803,9 +804,17 @@ func buildMatchSyncLastAction(svcCtx *svc.ServiceContext, match *model.Match, us
 	case "score":
 		description = fmt.Sprintf("%s加%d分", actorName, action.ScoreChange)
 	case "foul":
-		description = fmt.Sprintf("%s犯规，计%d分", actorName, action.ScoreChange)
+		if match.GameType == 2 {
+			description = matchtext.NineBallLastActionDescription(role, action)
+		} else {
+			description = fmt.Sprintf("%s犯规，计%d分", actorName, action.ScoreChange)
+		}
 	case "win":
-		description = fmt.Sprintf("%s结束本局", actorName)
+		if match.GameType == 2 {
+			description = matchtext.NineBallLastActionDescription(role, action)
+		} else {
+			description = fmt.Sprintf("%s结束本局", actorName)
+		}
 	case "undo":
 		description = "撤销了最近一次操作"
 	case "finish_request":

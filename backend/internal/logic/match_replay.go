@@ -29,10 +29,15 @@ type MatchReplayInput struct {
 // BuildMatchReplay 按球种从局记录与动作日志生成单场复盘，统一为「我 / 对手」视角。
 // 只使用该场数据，宁缺勿错：某一局的动作与局记录对不上时，只丢掉这一局的明细，局级数据仍保留。
 func BuildMatchReplay(in MatchReplayInput) *types.GetMemberMatchReplayResp {
-	resp := &types.GetMemberMatchReplayResp{Frames: []types.ReplayFrame{}}
 	if in.Match == nil {
-		return resp
+		return &types.GetMemberMatchReplayResp{Frames: []types.ReplayFrame{}}
 	}
+	// 九球追分没有局的概念，整场复盘为一个片段，走独立口径。
+	if in.Match.GameType == 2 {
+		return buildChasingMatchReplay(in)
+	}
+
+	resp := &types.GetMemberMatchReplayResp{Frames: []types.ReplayFrame{}}
 	resp.MatchId, resp.GameType, resp.FrameCount = in.Match.Id, in.Match.GameType, len(in.Rounds)
 	resp.DetailTruncated = in.Truncated
 
@@ -40,6 +45,7 @@ func BuildMatchReplay(in MatchReplayInput) *types.GetMemberMatchReplayResp {
 	if me != 2 {
 		me = 1
 	}
+	resp.ViewerActor = me
 	opp := opponentActor(me)
 	mode := replayModeOf(in)
 	actionsByRound := groupReplayActions(in.Actions)
@@ -132,7 +138,7 @@ func BuildMatchReplay(in MatchReplayInput) *types.GetMemberMatchReplayResp {
 	if comebackIndex >= 0 {
 		resp.Frames[comebackIndex].KeyTags = append(resp.Frames[comebackIndex].KeyTags, replayKeyTagComeback)
 	}
-	resp.FrameOnly = (in.Match.GameType == 1 || in.Match.GameType == 2) && detailFrames == 0
+	resp.FrameOnly = in.Match.GameType == 1 && detailFrames == 0
 
 	summary := &types.ReplaySummary{MyMaxRun: maxRun[1], OpponentMaxRun: maxRun[2]}
 	for _, frame := range resp.Frames {
@@ -153,6 +159,77 @@ func BuildMatchReplay(in MatchReplayInput) *types.GetMemberMatchReplayResp {
 	return resp
 }
 
+// buildChasingMatchReplay 把九球追分复盘成单个代表整场的片段：以有效动作日志为事实，不按胜局切分。
+// 得分构成不可用（对账失败或动作超长）时只返回双方总分与胜方。
+func buildChasingMatchReplay(in MatchReplayInput) *types.GetMemberMatchReplayResp {
+	resp := &types.GetMemberMatchReplayResp{Frames: []types.ReplayFrame{}}
+	resp.MatchId, resp.GameType, resp.FrameCount = in.Match.Id, in.Match.GameType, len(in.Rounds)
+	resp.DetailTruncated = in.Truncated
+
+	me := in.ViewerActor
+	if me != 2 {
+		me = 1
+	}
+	opp := opponentActor(me)
+	resp.ViewerActor = me
+
+	frame := types.ReplayFrame{
+		FrameNo:       1, // 整场只有一个片段
+		MyScore:       in.Match.MyScore,
+		OpponentScore: in.Match.OpponentScore,
+	}
+	if me == 2 {
+		frame.MyScore, frame.OpponentScore = frame.OpponentScore, frame.MyScore
+	}
+	switch {
+	case frame.MyScore > frame.OpponentScore:
+		frame.Winner = 1
+	case frame.OpponentScore > frame.MyScore:
+		frame.Winner = 2
+	}
+
+	breakdown := UnavailableChasingScoreBreakdown(in.Match) // 默认降级为只有总分
+	detail := false
+	if !in.Truncated {
+		if built := BuildChasingScoreBreakdown(in.Match, in.Rounds, in.Actions); built != nil && built.Available {
+			actions := chasingReplayActions(in.Actions)
+			if acc, ok := replayModeChasingPoints.accumulate(actions, me, [3]int{0, in.Match.MyScore, in.Match.OpponentScore}); ok {
+				breakdown, detail = built, true
+				frame.Trend = downsampleReplayTrend(acc.trend, MaxReplayTrendPoints)
+				frame.MaxDeficit = acc.maxDeficit(frame.Winner)
+				frame.MyMaxRun, frame.OpponentMaxRun = acc.bestRun[me], acc.bestRun[opp]
+				frame.MyFoulCount, frame.OpponentFoulCount = acc.foulCount[me], acc.foulCount[opp]
+				frame.MyFoulPoints, frame.OpponentFoulPoints = acc.foulPoints[me], acc.foulPoints[opp]
+				frame.DurationSeconds = replayDurationSeconds(actions)
+			}
+		}
+	}
+	resp.FrameOnly = !detail
+
+	summary := &types.ReplaySummary{ScoreBreakdown: ChasingScoreBreakdownPayload(breakdown, false)}
+	if detail {
+		summary.MyMaxRun, summary.OpponentMaxRun = frame.MyMaxRun, frame.OpponentMaxRun
+	}
+	resp.Summary = summary
+	resp.Frames = append(resp.Frames, frame)
+	return resp
+}
+
+// chasingReplayActions 保留未撤销的记分动作并按传入顺序返回：不按局分组，最后一次胜局之后的犯规也要计入。
+func chasingReplayActions(actions []model.MatchAction) []model.MatchAction {
+	valid := make([]model.MatchAction, 0, len(actions))
+	for _, action := range actions {
+		if action.IsUndone != 0 {
+			continue
+		}
+		switch action.ActionType {
+		case "score", "foul", "win":
+			valid = append(valid, action)
+		}
+	}
+	return valid
+}
+
 // replayMode 区分各球种的明细口径。
 type replayMode int
 
@@ -170,8 +247,6 @@ func replayModeOf(in MatchReplayInput) replayMode {
 				return replayModeSnookerV2
 			}
 		}
-	case 2:
-		return replayModeChasingPoints
 	}
 	return replayModeFramesOnly
 }

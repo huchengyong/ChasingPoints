@@ -31,7 +31,7 @@
 								<uni-icons :type="isReferee ? 'person-filled' : (isWin ? 'medal' : 'flag')" size="14" color="#ffffff"></uni-icons>
 								<text>{{ resultTagText }}</text>
 							</view>
-							<text class="hero-time">{{ createdAtRelativeText }}</text>
+							<text class="hero-time">{{ matchTimeRelativeText }}</text>
 						</view>
 
 						<view class="hero-copy">
@@ -42,7 +42,7 @@
 						<view class="versus-board">
 							<view class="player-panel">
 								<view :class="['avatar-shell', isReferee ? 'is-neutral' : (isWin ? 'is-winner' : 'is-neutral')]">
-									<memberAvatar :avatar="matchData.my_avatar" :user-id="matchData.my_user_id || matchData.user_id" :vip-level="matchData.my_vip_level" :rank-level="matchData.my_rank_level" :size="92" />
+									<memberAvatar :avatar="matchData.my_avatar" :user-id="avatarUserIds.left" :vip-level="matchData.my_vip_level" :rank-level="matchData.my_rank_level" :size="92" />
 								</view>
 								<text class="player-name">{{ matchData.my_name || '我' }}</text>
 								<text class="player-extra">{{ isReferee ? '选手' : (formatWinRate(matchData.my_win_rate) + ' 胜率') }}</text>
@@ -59,7 +59,7 @@
 
 							<view class="player-panel">
 								<view :class="['avatar-shell', isReferee ? 'is-neutral' : (!isWin ? 'is-winner' : 'is-neutral')]">
-									<memberAvatar :avatar="matchData.opponent_avatar" :user-id="matchData.opponent_id" :vip-level="matchData.opponent_vip_level" :rank-level="matchData.opponent_rank_level" :size="92" />
+									<memberAvatar :avatar="matchData.opponent_avatar" :user-id="avatarUserIds.right" :vip-level="matchData.opponent_vip_level" :rank-level="matchData.opponent_rank_level" :size="92" />
 								</view>
 								<text class="player-name">{{ matchData.opponent_name || '对手' }}</text>
 								<text class="player-extra">{{ isReferee ? '选手' : (formatWinRate(matchData.opponent_win_rate) + ' 胜率') }}</text>
@@ -166,7 +166,7 @@
 				<!-- 本场用杆：只对已完成对局的选手展示，读取失败只影响这张卡片 -->
 				<matchGearCard :match-id="matchId" :enabled="showMatchGear" />
 
-				<view class="referee-card" v-if="refereeCard.hasReferee">
+				<view class="referee-card info-card" v-if="refereeCard.hasReferee">
 					<view class="referee-card-head">
 						<uni-icons type="person-filled" size="18" color="#E0AE12"></uni-icons>
 						<text class="referee-card-title">{{ refereeCard.neutralLabel }}</text>
@@ -183,7 +183,7 @@
 					</view>
 				</view>
 
-				<view class="insight-section info-card">
+				<view class="insight-section info-card" v-if="refereeViewConfig.showPersonalInsights">
 					<view class="section-head">
 						<view>
 							<text class="section-title">本场亮点</text>
@@ -216,7 +216,10 @@
 					</view>
 				</view>
 
-				<view class="stats-section info-card">
+				<!-- 九球追分：双方得分构成，明细在详情页看 -->
+				<matchChasingScoreCard v-if="scoreBreakdown" :view="scoreBreakdown" :show-events="false" />
+
+				<view class="stats-section info-card" v-if="refereeViewConfig.showPersonalInsights">
 					<view class="section-head">
 						<view>
 							<text class="section-title">本场数据</text>
@@ -262,9 +265,11 @@
 import { computed, ref } from 'vue'
 import { onLoad, onShareAppMessage, onUnload } from '@dcloudio/uni-app'
 import { getMatchDetail, getMatchRewardSummary } from '@/api/match.js'
-import { formatDateTime, formatRelativeTime } from '@/utils/format.js'
+import { formatDateTime, formatRelativeTime, parseDateTime } from '@/utils/format.js'
 import memberAvatar from '@/components/memberAvatar.vue'
 import matchGearCard from '@/components/matchGearCard.vue'
+import matchChasingScoreCard from '@/components/matchChasingScoreCard.vue'
+import { resolveChasingScoreView } from '@/utils/chasing-score.js'
 import { shouldShowMatchGear } from '@/utils/gear-match.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveMatchRankingRightsSummary } from '@/utils/member-ranking-rights.js'
@@ -292,6 +297,8 @@ const isRedirecting = ref(false)
 const rewardSummary = ref(resolveMatchRewardSummary({ success: true, status: 'ready', list: [] }))
 let rewardRetryTimer = null
 let rewardSummaryDisposed = false
+// 对局数据回来后才知道查看者角色，奖励请求只发一次。
+let rewardSummaryRequested = false
 const matchData = ref({
 	my_score: 0,
 	opponent_score: 0,
@@ -325,7 +332,8 @@ const refereeCard = computed(() => resolveRefereeIdentityCard({
 	refereeJoinedAt: matchData.value.referee_joined_at,
 	refereeDurationSeconds: matchData.value.referee_duration_seconds,
 	completedByUserId: matchData.value.completed_by_user_id,
-	completionSource: matchData.value.completion_source
+	completionSource: matchData.value.completion_source,
+	status: matchData.value.status
 }))
 
 const refereeViewConfig = computed(() => resolveRefereeResultViewConfig({
@@ -341,6 +349,32 @@ const systemInfo = uni.getSystemInfoSync()
 statusBarHeight.value = systemInfo.statusBarHeight || 20
 
 const isReferee = computed(() => matchData.value.viewer_role === 'referee')
+// 详情接口只返回双方选手 ID：裁判视角固定选手1/选手2，选手视角按 is_player1 对齐「我/对手」。
+const toUserId = (value) => {
+	const id = Number(value)
+	return Number.isFinite(id) && id > 0 ? id : 0
+}
+const avatarUserIds = computed(() => {
+	const data = matchData.value
+	const player1Id = toUserId(data.player1_id)
+	const player2Id = toUserId(data.player2_id)
+	const fallbackMine = toUserId(data.my_user_id || data.user_id)
+	const fallbackOpponent = toUserId(data.opponent_id)
+	if (isReferee.value) {
+		return { left: player1Id || fallbackMine, right: player2Id || fallbackOpponent }
+	}
+	return data.is_player1
+		? { left: player1Id || fallbackMine, right: player2Id || fallbackOpponent }
+		: { left: player2Id || fallbackMine, right: player1Id || fallbackOpponent }
+})
+// 参与者详情按 is_player1 标记当前查看者是不是选手1；裁判固定选手1 / 选手2 视角。
+const scoreBreakdown = computed(() => {
+	if (matchData.value.game_type !== 2 || !matchData.value.score_breakdown) return null
+	return resolveChasingScoreView(matchData.value.score_breakdown, {
+		swap: matchData.value.is_player1 === false,
+		neutral: isReferee.value
+	})
+})
 const showMatchGear = computed(() => shouldShowMatchGear({
 	status: matchData.value.status,
 	viewerRole: matchData.value.viewer_role,
@@ -403,15 +437,29 @@ const resultSubtitle = computed(() => {
 	return '这场被对手带走节奏，回看数据后更容易找到突破口。'
 })
 
-const createdAtRelativeText = computed(() => {
-	if (!matchData.value.created_at) return '刚刚结束'
-	return formatRelativeTime(matchData.value.created_at)
+// 接口只给开始时间；已完成且有时长时按「开始时间 + 时长」还原结束时刻。
+const matchEndTime = computed(() => {
+	const data = matchData.value
+	const duration = Number(data.duration_seconds) || 0
+	if (data.status !== 2 || duration <= 0) return null
+	const start = parseDateTime(data.created_at)
+	if (!(start instanceof Date) || Number.isNaN(start.getTime())) return null
+	return new Date(start.getTime() + duration * 1000)
 })
 
-const createdAtFullText = computed(() => {
-	if (!matchData.value.created_at) return '时间待同步'
-	return formatDateTime(matchData.value.created_at)
+const matchTimeRelativeText = computed(() => {
+	const time = matchEndTime.value || matchData.value.created_at
+	if (!time) return '刚刚结束'
+	return formatRelativeTime(time)
 })
+
+const matchTimeFullText = computed(() => {
+	const time = matchEndTime.value || matchData.value.created_at
+	if (!time) return '时间待同步'
+	return formatDateTime(time)
+})
+
+const matchTimeMetaLabel = computed(() => (matchEndTime.value ? '结束时间' : '开始时间'))
 
 const scoreGapUnit = computed(() => (matchData.value.game_type === 2 ? '分' : '局'))
 const scoreGapLabel = computed(() => (matchData.value.game_type === 2 ? '分差' : '局差'))
@@ -427,7 +475,7 @@ const scoreSummaryText = computed(() => {
 const heroMetaItems = computed(() => [
 	{ label: '项目', value: gameTypeName.value },
 	{ label: scoreGapLabel.value, value: scoreGap.value === 0 ? '平局' : `${scoreGap.value} ${scoreGapUnit.value}` },
-	{ label: '结束时间', value: createdAtFullText.value }
+	{ label: matchTimeMetaLabel.value, value: matchTimeFullText.value }
 ])
 
 const myRankScoreClass = computed(() => getRankClass(matchData.value.my_rank_change))
@@ -485,7 +533,6 @@ onLoad((options) => {
 	}
 	fromHistory.value = options.from === 'history'
 	loadMatchData()
-	loadRewardSummary()
 })
 
 // #ifdef MP-WEIXIN
@@ -511,6 +558,11 @@ const loadMatchData = async () => {
 			matchData.value = {
 				...matchData.value,
 				...res.match
+			}
+			// 裁判不是参与者，本场荣誉奖励接口会直接拒绝，不发起请求。
+			if (!rewardSummaryRequested && matchData.value.viewer_role !== 'referee') {
+				rewardSummaryRequested = true
+				loadRewardSummary()
 			}
 			return
 		}

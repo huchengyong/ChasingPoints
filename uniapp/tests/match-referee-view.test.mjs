@@ -17,6 +17,13 @@ test('referee view keeps player and referee result modes distinct', () => {
   assert.equal(referee.showRematchButton, false)
 })
 
+test('personal insights only belong to player views', () => {
+  assert.equal(resolveRefereeResultViewConfig({ viewerRole: 'referee', status: 2 }).showPersonalInsights, false)
+  assert.equal(resolveRefereeResultViewConfig({ viewerRole: 'referee', status: 1 }).showPersonalInsights, false)
+  assert.equal(resolveRefereeResultViewConfig({ viewerRole: 'player1', status: 2 }).showPersonalInsights, true)
+  assert.equal(resolveRefereeResultViewConfig({ viewerRole: 'player2', status: 2 }).showPersonalInsights, true)
+})
+
 test('unknown and cancelled attribution never claims referee settlement', () => {
   const unknown = resolveRefereeIdentityCard({
     refereeBound: true,

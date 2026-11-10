@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"chasing_points/internal/model"
+	"chasing_points/internal/pkg/matchtext"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 )
@@ -43,9 +44,17 @@ func buildMatchLastActionFromAction(userId int64, match *model.Match, action *mo
 	case "score":
 		result.Description = fmt.Sprintf("%s加%d分", actorName, action.ScoreChange)
 	case "foul":
-		result.Description = fmt.Sprintf("%s犯规，计%d分", actorName, action.ScoreChange)
+		if match.GameType == 2 {
+			result.Description = matchtext.NineBallLastActionDescription(role, action)
+		} else {
+			result.Description = fmt.Sprintf("%s犯规，计%d分", actorName, action.ScoreChange)
+		}
 	case "win":
-		result.Description = fmt.Sprintf("%s结束本局", actorName)
+		if match.GameType == 2 {
+			result.Description = matchtext.NineBallLastActionDescription(role, action)
+		} else {
+			result.Description = fmt.Sprintf("%s结束本局", actorName)
+		}
 	case "undo":
 		result.Description = "撤销了最近一次操作"
 	case "finish_request":

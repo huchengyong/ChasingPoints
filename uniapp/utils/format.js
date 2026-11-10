@@ -11,7 +11,8 @@ export const formatRelativeTime = (dateTime) => {
   if (!dateTime) return ''
 
   const now = new Date()
-  const date = typeof dateTime === 'string' ? new Date(dateTime) : dateTime
+  const date = parseDateTime(dateTime)
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ''
 
   // 计算时间差（毫秒）
   const diff = now.getTime() - date.getTime()
@@ -40,6 +41,16 @@ export const formatRelativeTime = (dateTime) => {
 }
 
 /**
+ * 解析日期输入。iOS 小程序无法解析 'YYYY-MM-DD HH:mm:ss'，把日期分隔符换成斜杠；
+ * 带 T 的 ISO 串保持原样（iOS 支持 ISO 8601）。
+ */
+export const parseDateTime = (dateTime) => {
+  if (dateTime instanceof Date) return dateTime
+  if (typeof dateTime !== 'string') return new Date(dateTime)
+  return new Date(dateTime.trim().replace(/^(\d{4})-(\d{2})-(\d{2}) /, '$1/$2/$3 '))
+}
+
+/**
  * 格式化日期
  * @param {string|Date} dateTime 日期时间字符串或 Date 对象
  * @param {string} format 格式化模板，默认 'YYYY年MM月DD日'
@@ -48,7 +59,8 @@ export const formatRelativeTime = (dateTime) => {
 export const formatDate = (dateTime, format = 'YYYY年MM月DD日') => {
   if (!dateTime) return ''
 
-  const date = typeof dateTime === 'string' ? new Date(dateTime) : dateTime
+  const date = parseDateTime(dateTime)
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ''
 
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')

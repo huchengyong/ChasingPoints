@@ -155,3 +155,97 @@ test('normalizeMatchDetailPayload converts public rounds to the requested user p
     { score: '10-21', result: 'win', resultText: '胜' }
   ])
 })
+
+const chasingBreakdown = {
+  available: true,
+  player1: { score: 16, normal_wins: 2, small_golds: 1, big_golds: 0, foul_count: 3, foul_points_given: 3, other_points: 0 },
+  player2: { score: 13, normal_wins: 0, small_golds: 0, big_golds: 1, foul_count: 1, foul_points_given: 1, other_points: 0 },
+  events: [
+    { seq: 1, kind: 'big_gold', scorer: 2, points: 10, player1_score: 5, player2_score: 10, created_at: '2026-11-10 12:00:03' },
+    { seq: 2, kind: 'foul', scorer: 1, points: 1, player1_score: 11, player2_score: 10, created_at: '2026-11-10 12:00:04' }
+  ],
+  events_truncated: false
+}
+
+const chasingMatch = {
+  player1_id: 1,
+  player2_id: 2,
+  player1_name: '创建者',
+  player2_name: '当前用户',
+  player1_score: 16,
+  player2_score: 13,
+  game_type: 2,
+  status: 2,
+  score_breakdown: chasingBreakdown
+}
+
+test('normalizeMatchDetailPayload maps chasing score breakdown for player 2 with swapped sides', () => {
+  const detail = normalizeMatchDetailPayload(chasingMatch, { perspectiveUserId: 2 })
+  const view = detail.scoreBreakdown
+  assert.deepEqual([view.leftLabel, view.rightLabel], ['我', '对手'])
+  assert.deepEqual([view.leftScore, view.rightScore], [13, 16])
+  assert.deepEqual(view.rows.slice(0, 4).map((row) => [row.label, row.left, row.right]), [
+    ['总分', '13', '16'],
+    ['普胜', '0', '2'],
+    ['小金', '0', '1'],
+    ['大金', '1', '0']
+  ])
+  assert.deepEqual([view.events[0].side, view.events[0].desc], ['right', '我犯规'])
+  assert.equal(view.events[0].scoreText, '10 : 11')
+  assert.deepEqual([view.events[1].side, view.events[1].scoreText], ['left', '10 : 5'])
+})
+
+test('normalizeMatchDetailPayload keeps player1 and player2 labels for spectators', () => {
+  const view = normalizeMatchDetailPayload(chasingMatch, { perspectiveUserId: 0 }).scoreBreakdown
+  assert.deepEqual([view.leftLabel, view.rightLabel], ['选手1', '选手2'])
+  assert.deepEqual([view.leftScore, view.rightScore], [16, 13])
+  assert.deepEqual([view.events[0].side, view.events[0].sideLabel], ['left', '选手1'])
+  assert.equal(view.events[0].desc, '选手2犯规')
+  assert.deepEqual([view.events[1].side, view.events[1].sideLabel], ['right', '选手2'])
+})
+
+test('normalizeMatchDetailPayload keeps the referee perspective neutral even for a player', () => {
+  const view = normalizeMatchDetailPayload({ ...chasingMatch, viewer_role: 'referee' }, { perspectiveUserId: 2 }).scoreBreakdown
+  assert.deepEqual([view.leftLabel, view.rightLabel], ['选手1', '选手2'])
+  assert.deepEqual([view.leftScore, view.rightScore], [16, 13])
+})
+
+test('normalizeMatchDetailPayload has no score breakdown for other game types or missing data', () => {
+  assert.equal(normalizeMatchDetailPayload({ ...chasingMatch, game_type: 3 }).scoreBreakdown, null)
+  assert.equal(normalizeMatchDetailPayload({ ...chasingMatch, score_breakdown: undefined }).scoreBreakdown, null)
+  assert.equal(normalizeMatchDetailPayload({ game_type: 3, player1_score: 5, player2_score: 3 }).scoreBreakdown, null)
+})
+
+// 参与者详情接口：比分已按查看者返回「我 / 对手」，得分构成仍是固定的选手1 / 选手2。
+const ownChasingMatch = (overrides = {}) => ({
+  player1_id: 1,
+  player2_id: 2,
+  my_name: '我',
+  opponent_name: '对手',
+  game_type: 2,
+  status: 2,
+  score_breakdown: chasingBreakdown,
+  ...overrides
+})
+
+test('normalizeMatchDetailPayload follows the viewer on the participant detail without a perspective user', () => {
+  const asPlayer2 = normalizeMatchDetailPayload(ownChasingMatch({
+    is_player1: false, viewer_role: 'player2', my_score: 13, opponent_score: 16
+  }))
+  assert.deepEqual([asPlayer2.matchData.player1_score, asPlayer2.matchData.player2_score], [13, 16])
+  assert.deepEqual([asPlayer2.scoreBreakdown.leftLabel, asPlayer2.scoreBreakdown.rightLabel], ['我', '对手'])
+  assert.deepEqual([asPlayer2.scoreBreakdown.leftScore, asPlayer2.scoreBreakdown.rightScore], [13, 16])
+
+  const asPlayer1 = normalizeMatchDetailPayload(ownChasingMatch({
+    is_player1: true, viewer_role: 'player1', my_score: 16, opponent_score: 13
+  }))
+  assert.deepEqual([asPlayer1.scoreBreakdown.leftLabel, asPlayer1.scoreBreakdown.leftScore, asPlayer1.scoreBreakdown.rightScore], ['我', 16, 13])
+})
+
+test('normalizeMatchDetailPayload keeps the referee neutral on the participant detail', () => {
+  const view = normalizeMatchDetailPayload(ownChasingMatch({
+    is_player1: false, viewer_role: 'referee', my_score: 16, opponent_score: 13
+  })).scoreBreakdown
+  assert.deepEqual([view.leftLabel, view.rightLabel], ['选手1', '选手2'])
+  assert.deepEqual([view.leftScore, view.rightScore], [16, 13])
+})

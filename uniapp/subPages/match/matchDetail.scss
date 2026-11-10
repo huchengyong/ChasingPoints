@@ -335,6 +335,11 @@ $loss-color: #E57373;
     margin-top: 16rpx;
 }
 
+// 九球追分只留"状态"一项，单列铺满，避免网格塌成三分之一宽。
+.stats-grid--chasing {
+    grid-template-columns: 1fr;
+}
+
 .stat-item {
     display: flex;
     flex-direction: column;

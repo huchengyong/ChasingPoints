@@ -59,3 +59,11 @@ test('playing page exposes referee controls for all four game types without fixe
   assert.match(page, /actor: convertActor\(foulingActor\)/)
   assert.doesNotMatch(page, /actor: convertActor\(2\)/)
 })
+
+test('playing page hides the round meta for nine ball chasing only', () => {
+  const page = readFileSync(new URL('../subPages/match/playing.vue', import.meta.url), 'utf8')
+
+  assert.match(page, /v-if="gameType !== 2" class="scoreboard-meta__text"/)
+  assert.match(page, /v-if="gameType !== 2" class="scoreboard-meta__divider"/)
+  assert.match(page, /class="status-chip"/)
+})

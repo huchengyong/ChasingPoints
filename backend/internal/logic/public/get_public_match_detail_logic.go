@@ -99,13 +99,8 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 		}
 	}
 
-	// 计算对局持续时间（秒）
-	var durationSeconds int64 = 0
-	if match.Status == 1 { // 进行中
-		durationSeconds = int64(time.Since(match.CreatedAt).Seconds())
-	} else if match.EndTime != nil {
-		durationSeconds = int64(match.EndTime.Sub(match.CreatedAt).Seconds())
-	}
+	// 计算对局持续时间（秒），口径与参与者详情一致
+	durationSeconds := logicx.MatchDurationSeconds(match, time.Now())
 
 	var rounds []types.RoundRecord
 	var matchRounds []model.MatchRound
@@ -125,6 +120,34 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 			Player2Score: r.OpponentScore,
 			Winner:       winner,
 		})
+	}
+
+	// 九球追分的得分构成：已完成对局复用核心摘要里的动作；进行中对局先计数再按对局 id 读取有效动作。
+	// 读取失败时只降级得分构成，不影响整个详情。
+	var scoreBreakdown *types.ChasingScoreBreakdown
+	if match.GameType == 2 {
+		var breakdown *logicx.ChasingScoreBreakdown
+		if completedCore != nil {
+			if len(completedCore.Actions) > logicx.MaxReplayActions {
+				breakdown = logicx.UnavailableChasingScoreBreakdown(match)
+			} else {
+				breakdown = logicx.BuildChasingScoreBreakdown(match, matchRounds, completedCore.Actions)
+			}
+		} else {
+			actionCount, countErr := l.svcCtx.MatchModel.CountActionsWithTx(nil, match.Id)
+			if countErr != nil {
+				l.Logger.Errorf("统计对局动作数失败: matchId=%d err=%v", match.Id, countErr)
+				breakdown = logicx.UnavailableChasingScoreBreakdown(match)
+			} else if actionCount > logicx.MaxReplayActions {
+				breakdown = logicx.UnavailableChasingScoreBreakdown(match)
+			} else if actions, listErr := l.svcCtx.MatchModel.ListActiveActions(match.Id); listErr != nil {
+				l.Logger.Errorf("读取对局动作失败: matchId=%d err=%v", match.Id, listErr)
+				breakdown = logicx.UnavailableChasingScoreBreakdown(match)
+			} else {
+				breakdown = logicx.BuildChasingScoreBreakdown(match, matchRounds, actions)
+			}
+		}
+		scoreBreakdown = logicx.ChasingScoreBreakdownPayload(breakdown, true)
 	}
 
 	// 获取当前局数和总局数
@@ -224,6 +247,7 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 			TotalRounds:                   totalRounds,
 			DurationSeconds:               durationSeconds,
 			Rounds:                        rounds,
+			ScoreBreakdown:                scoreBreakdown,
 			CreatedAt:                     match.CreatedAt.Format("2006-01-02 15:04:05"),
 		},
 	}, nil

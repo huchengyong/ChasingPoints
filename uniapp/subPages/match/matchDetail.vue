@@ -59,16 +59,16 @@
 
 				<!-- 对局信息 -->
 				<view class="match-info-text">
-					{{ gameTypeName }} · {{ formatDuration(matchData.duration_seconds) }}
+					{{ matchInfoText }}
 				</view>
 
 				<!-- 统计数据 -->
-				<view class="stats-grid">
-					<view class="stat-item">
+				<view :class="['stats-grid', { 'stats-grid--chasing': isChasingScore }]">
+					<view v-if="!isChasingScore" class="stat-item">
 						<text class="stat-label">总局数</text>
 						<text class="stat-value">{{ matchData.total_rounds || 0 }}</text>
 					</view>
-					<view class="stat-item">
+					<view v-if="!isChasingScore" class="stat-item">
 						<text class="stat-label">当前局</text>
 						<text class="stat-value">{{ matchData.current_round || 1 }}</text>
 					</view>
@@ -88,7 +88,7 @@
 				<view class="referee-card__content">
 					<text class="referee-card__label">{{ refereeCard.neutralLabel }}</text>
 					<text class="referee-card__name">{{ refereeCard.refereeName }}</text>
-					<text v-if="refereeCard.refereeJoinedAt" class="referee-card__meta">加入时间 {{ refereeCard.refereeJoinedAt }}</text>
+					<text v-if="refereeCard.refereeJoinedAtText" class="referee-card__meta">加入时间 {{ refereeCard.refereeJoinedAtText }}</text>
 					<text v-if="refereeCard.refereeDurationText" class="referee-card__meta">执裁时长 {{ refereeCard.refereeDurationText }}</text>
 					<text v-if="refereeCard.hasReliableAttribution" class="referee-card__meta">{{ refereeCard.completionLabel }}</text>
 					<text v-else-if="matchData.status === 2" class="referee-card__meta">本场曾绑定裁判</text>
@@ -104,8 +104,11 @@
 			<!-- 本场用杆：只对已完成对局的选手展示，读取失败只影响这张卡片 -->
 			<matchGearCard :match-id="matchId" :enabled="showMatchGear" />
 
+			<!-- 九球追分：按总分与得分明细展示，不按局 -->
+			<matchChasingScoreCard v-if="isChasingScore && scoreBreakdown" :view="scoreBreakdown" />
+
 			<!-- 局记录列表 -->
-			<view class="round-history">
+			<view v-if="!isChasingScore" class="round-history">
 				<text class="section-title">局记录</text>
 				
 				<view v-if="roundRecords.length === 0" class="empty-rounds">
@@ -149,6 +152,7 @@ import { matchWS, WS_MESSAGE_TYPES } from '@/utils/websocket.js'
 import { getMatchDetail, getPublicMatchDetail } from '@/api/match.js'
 import memberAvatar from '@/components/memberAvatar.vue'
 import matchGearCard from '@/components/matchGearCard.vue'
+import matchChasingScoreCard from '@/components/matchChasingScoreCard.vue'
 import { shouldShowMatchGear } from '@/utils/gear-match.js'
 import { buildMatchShareCard } from '@/utils/share-card.js'
 import { useUserStore } from '@/store/user.js'
@@ -200,7 +204,11 @@ const player2Info = ref({
 const player1UserId = ref(0)
 const player2UserId = ref(0)
 const roundRecords = ref([])
+const scoreBreakdown = ref(null)
 let wsHandlersReady = false
+let scoreRefreshTimer = null
+// 递增序号丢弃迟到的静默刷新响应。
+let scoreRefreshToken = 0
 
 const pageLog = (message, payload) => {
 	if (payload === undefined) {
@@ -216,6 +224,8 @@ const { isDarkMode } = usePageTheme()
 // ========== 计算属性 ==========
 
 // ========== 计算属性 ==========
+const isChasingScore = computed(() => matchData.value.game_type === 2)
+
 const gameTypeName = computed(() => {
 	switch (matchData.value.game_type) {
 		case 1: return '斯诺克'
@@ -230,6 +240,12 @@ const matchStatusText = computed(() => {
 	if (matchData.value.status === 2) return '已结束'
 	if (matchData.value.status === 3) return '已取消'
 	return '进行中'
+})
+
+// 时长缺失、为 0 或非法时只显示球种名，不带分隔点。
+const matchInfoText = computed(() => {
+	const duration = formatDuration(matchData.value.duration_seconds)
+	return duration ? `${gameTypeName.value} · 用时 ${duration}` : gameTypeName.value
 })
 
 const refereeCard = computed(() => resolveRefereeIdentityCard({
@@ -323,9 +339,13 @@ onShow(() => {
 
 onHide(() => {
 	matchWS.setTargetActive(false)
+	clearScoreRefreshTimer()
 })
 
 onUnmounted(() => {
+	clearScoreRefreshTimer()
+	// 卸载后不再回写任何迟到的静默刷新响应。
+	scoreRefreshToken += 1
 	wsHandlersReady = false
 	matchWS.off(WS_MESSAGE_TYPES.SCORE_UPDATE, handleScoreUpdate)
 	matchWS.off(WS_MESSAGE_TYPES.ROUND_END, handleRoundEnd)
@@ -337,6 +357,51 @@ onUnmounted(() => {
 
 // ========== 方法 ==========
 
+const clearScoreRefreshTimer = () => {
+	if (scoreRefreshTimer) {
+		clearTimeout(scoreRefreshTimer)
+		scoreRefreshTimer = null
+	}
+}
+
+// 400ms 内合并连续消息，再叠加 0–600ms 随机延迟，避免大量观战者同时请求详情。
+const scheduleScoreRefresh = () => {
+	if (!isChasingScore.value || matchData.value.status !== 1) return
+	clearScoreRefreshTimer()
+	// 新消息到达后，仍在途中的刷新已经过期，不能回写覆盖刚更新的比分。
+	scoreRefreshToken += 1
+	scoreRefreshTimer = setTimeout(() => {
+		scoreRefreshTimer = null
+		refreshScoreBreakdown()
+	}, 400 + Math.floor(Math.random() * 600))
+}
+
+/**
+ * 静默刷新得分构成：不切整页 loading，失败保留旧数据。
+ */
+const refreshScoreBreakdown = async () => {
+	if (!matchId.value) return
+	const token = ++scoreRefreshToken
+	try {
+		const apiCall = shouldUsePublicMatchDetail({
+			mode: isSpectateMode.value ? 'spectate' : '',
+			source: detailSource.value
+		}) ? getPublicMatchDetail : getMatchDetail
+		const res = await apiCall({ match_id: matchId.value })
+		if (token !== scoreRefreshToken) return
+		if (!res.success || !res.match) return
+		const normalized = normalizeMatchDetailPayload(res.match, {
+			perspectiveUserId: perspectiveUserId.value
+		})
+		matchData.value = normalized.matchData
+		scoreBreakdown.value = normalized.scoreBreakdown
+		player1Info.value = normalized.player1Info
+		player2Info.value = normalized.player2Info
+	} catch (error) {
+		console.error('[MatchDetail] 刷新得分构成失败', { matchId: matchId.value, error })
+	}
+}
+
 /**
  * 加载对局数据
  */
@@ -345,6 +410,8 @@ const loadMatchData = async () => {
 		loading.value = false
 		return
 	}
+	// 整页读取后，之前发出的静默刷新响应不再回写。
+	scoreRefreshToken += 1
 	
 	try {
 		const apiCall = shouldUsePublicMatchDetail({
@@ -366,6 +433,7 @@ const loadMatchData = async () => {
 			player1UserId.value = shouldSwap ? player2Id : player1Id
 			player2UserId.value = shouldSwap ? player1Id : player2Id
 			roundRecords.value = normalized.roundRecords
+			scoreBreakdown.value = normalized.scoreBreakdown
 			if (matchData.value.viewer_role === 'referee') {
 				uni.setNavigationBarTitle({ title: '执裁详情' })
 			}
@@ -409,6 +477,7 @@ const handleScoreUpdate = (data) => {
 		player1Score: data.player1_score ?? data.my_score,
 		player2Score: data.player2_score ?? data.opponent_score
 	})
+	scheduleScoreRefresh()
 }
 
 /**
@@ -425,16 +494,19 @@ const handleRoundEnd = (data) => {
 		currentRound: data.current_round
 	})
 
-	if (data.round_number) {
-		roundRecords.value.push({
-			round_number: data.round_number,
-			player1_score: data.round_player1_score,
-			player2_score: data.round_player2_score,
-			winner: data.winner
-		})
-	} else {
-		matchWS.requestSync()
+	if (!isChasingScore.value) {
+		if (data.round_number) {
+			roundRecords.value.push({
+				round_number: data.round_number,
+				player1_score: data.round_player1_score,
+				player2_score: data.round_player2_score,
+				winner: data.winner
+			})
+		} else {
+			matchWS.requestSync()
+		}
 	}
+	scheduleScoreRefresh()
 }
 
 /**
@@ -447,6 +519,11 @@ const handleMatchEnd = (data) => {
 		player2Score: data.player2_score ?? data.opponent_score,
 		status: data.status
 	})
+	if (isChasingScore.value) {
+		// 对局结束后再拉一次，补齐最后一次记分后的明细。
+		clearScoreRefreshTimer()
+		refreshScoreBreakdown()
+	}
 	uni.showModal({
 		title: '对局结束',
 		content: `最终比分: ${data.player1_score ?? data.my_score} : ${data.player2_score ?? data.opponent_score}`,
@@ -479,13 +556,14 @@ const handleSync = (data) => {
 		totalRounds: data.total_rounds,
 		status: data.status
 	})
+	scheduleScoreRefresh()
 }
 
 /**
  * 格式化时长
  */
 const formatDuration = (durationSeconds) => {
-	if (!durationSeconds || durationSeconds < 0) return '0分'
+	if (!durationSeconds || durationSeconds <= 0) return ''
 
 	const totalMinutes = Math.floor(durationSeconds / 60)
 
@@ -494,7 +572,7 @@ const formatDuration = (durationSeconds) => {
 	}
 
 	if (totalMinutes < 60) {
-		return `${totalMinutes}分`
+		return `${totalMinutes}分钟`
 	}
 
 	const hours = Math.floor(totalMinutes / 60)
@@ -502,7 +580,7 @@ const formatDuration = (durationSeconds) => {
 
 	if (hours < 24) {
 		if (remainMinutes > 0) {
-			return `${hours}小时${remainMinutes}分`
+			return `${hours}小时${remainMinutes}分钟`
 		}
 		return `${hours}小时`
 	}

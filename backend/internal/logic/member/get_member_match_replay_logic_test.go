@@ -92,7 +92,7 @@ func TestMemberMatchReplayReturnsFullReplayToAMemberParticipant(t *testing.T) {
 	f := newReplayFixture(t)
 
 	resp, queries := f.get(1, 10)
-	if !resp.Success || resp.Locked || resp.MatchId != 10 || resp.GameType != 3 || resp.FrameCount != 8 || len(resp.Frames) != 8 || resp.FrameOnly || resp.DetailTruncated {
+	if !resp.Success || resp.Locked || resp.MatchId != 10 || resp.GameType != 3 || resp.FrameCount != 8 || len(resp.Frames) != 8 || resp.FrameOnly || resp.DetailTruncated || resp.ViewerActor != 1 {
 		t.Fatalf("full replay: %+v", resp)
 	}
 	if s := resp.Summary; s == nil || s.MyFrameWins != 5 || s.OpponentFrameWins != 3 || s.MyLongestStreak != 4 || s.OpponentLongestStreak != 2 {
@@ -115,7 +115,7 @@ func TestMemberMatchReplayUsesTheParticipantsOwnPerspective(t *testing.T) {
 	}
 
 	resp, _ := f.get(2, 10)
-	if !resp.Success || resp.Locked || resp.Summary.MyFrameWins != 3 || resp.Summary.OpponentFrameWins != 5 || resp.Summary.MyLongestStreak != 2 || resp.Summary.OpponentLongestStreak != 4 {
+	if !resp.Success || resp.Locked || resp.ViewerActor != 2 || resp.Summary.MyFrameWins != 3 || resp.Summary.OpponentFrameWins != 5 || resp.Summary.MyLongestStreak != 2 || resp.Summary.OpponentLongestStreak != 4 {
 		t.Fatalf("the opponent sees the same match from their side: %+v", resp.Summary)
 	}
 	if resp.Frames[0].Winner != 1 || resp.Frames[1].Winner != 2 {

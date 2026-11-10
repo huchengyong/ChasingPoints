@@ -13,6 +13,8 @@ export const GEAR_MATCH_COMPLETED_STATUS = 2
  */
 export const shouldShowMatchGear = ({ status, viewerRole = '', isPlayer1 = false, isSpectate = false } = {}) => {
   if (isSpectate) return false
+  // 裁判不是参与者，is_player1 可能为 true，但用杆接口只对本场选手开放。
+  if (viewerRole === 'referee') return false
   if (Number(status) !== GEAR_MATCH_COMPLETED_STATUS) return false
   return Boolean(isPlayer1) || viewerRole === 'player1' || viewerRole === 'player2'
 }
