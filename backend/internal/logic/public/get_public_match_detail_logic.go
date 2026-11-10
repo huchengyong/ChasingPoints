@@ -99,13 +99,8 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 		}
 	}
 
-	// 计算对局持续时间（秒）
-	var durationSeconds int64 = 0
-	if match.Status == 1 { // 进行中
-		durationSeconds = int64(time.Since(match.CreatedAt).Seconds())
-	} else if match.EndTime != nil {
-		durationSeconds = int64(match.EndTime.Sub(match.CreatedAt).Seconds())
-	}
+	// 计算对局持续时间（秒），口径与参与者详情一致
+	durationSeconds := logicx.MatchDurationSeconds(match, time.Now())
 
 	var rounds []types.RoundRecord
 	var matchRounds []model.MatchRound

@@ -2349,6 +2349,7 @@ type MatchDetailData struct {
 	RefereeAvatar                 string                 `json:"referee_avatar,optional"`
 	RefereeJoinedAt               string                 `json:"referee_joined_at,optional"`
 	RefereeDurationSeconds        int64                  `json:"referee_duration_seconds,optional"`
+	DurationSeconds               int64                  `json:"duration_seconds,optional"` // 对局已持续秒数，由服务端计算
 	CompletedByUserId             int64                  `json:"completed_by_user_id,optional"`
 	CompletionSource              string                 `json:"completion_source,optional"`
 	CanScore                      bool                   `json:"can_score,optional"`

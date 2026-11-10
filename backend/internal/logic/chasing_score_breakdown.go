@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"chasing_points/internal/model"
+	"chasing_points/internal/pkg/matchtext"
 	"chasing_points/internal/types"
 )
 
@@ -200,14 +201,5 @@ func chasingWinType(action model.MatchAction, roundWinTypes map[int]string) stri
 
 // normalizeChasingWinType 把胜法归一到 normal / small_gold / big_gold，其余计为 other。
 func normalizeChasingWinType(winType string) string {
-	switch winType {
-	case "normal":
-		return "normal"
-	case "small_gold", "golden_break": // golden_break 是旧版小金的代码
-		return "small_gold"
-	case "big_gold", "nine_on_break": // nine_on_break 是旧版大金的代码
-		return "big_gold"
-	default:
-		return "other"
-	}
+	return matchtext.NormalizeChasingWinType(winType)
 }

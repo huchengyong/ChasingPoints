@@ -354,6 +354,7 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			RefereeAvatar:                 refereeAvatar,
 			RefereeJoinedAt:               refereeJoinedAt,
 			RefereeDurationSeconds:        refereeDurationSeconds,
+			DurationSeconds:               logicx.MatchDurationSeconds(match, time.Now()),
 			CompletedByUserId:             completedByUserId,
 			CompletionSource:              resolveCompletionSource(match),
 			CanScore:                      capabilities.CanScore,
