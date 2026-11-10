@@ -28,6 +28,8 @@ test('only completed matches viewed by a player request the gear record', () => 
   assert.equal(shouldShowMatchGear({ status: 2, viewerRole: 'player2' }), true)
   assert.equal(shouldShowMatchGear({ status: 2, isPlayer1: true }), true)
   assert.equal(shouldShowMatchGear({ status: 2, viewerRole: 'referee' }), false)
+  // 参与者详情可能把裁判的 is_player1 标成 true，裁判仍需保持在用杆接口之外。
+  assert.equal(shouldShowMatchGear({ status: 2, viewerRole: 'referee', isPlayer1: true }), false)
   assert.equal(shouldShowMatchGear({ status: 2, viewerRole: 'spectator' }), false)
   assert.equal(shouldShowMatchGear({ status: 2 }), false)
   assert.equal(shouldShowMatchGear({ status: 1, viewerRole: 'player1' }), false)

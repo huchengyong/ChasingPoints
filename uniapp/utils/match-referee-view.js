@@ -3,6 +3,8 @@
  * 统一解析参赛/执裁记录卡片、裁判身份卡、执裁完成回执以及 completion_source 的安全文案
  */
 
+import { formatDateTime } from './format.js'
+
 /**
  * 解析 completion_source 为安全展示文案
  * @param {string} source - completion_source 值
@@ -68,6 +70,8 @@ export const resolveRefereeIdentityCard = ({
     refereeName: refereeName || '本场裁判',
     refereeAvatar,
     refereeJoinedAt,
+    // 原始串可能是 ISO 带时区或 'YYYY-MM-DD HH:mm:ss'，统一成本地可读时间；解析失败为空串，由模板隐藏整行。
+    refereeJoinedAtText: formatDateTime(refereeJoinedAt),
     refereeDurationSeconds,
     refereeDurationText: formatDuration(refereeDurationSeconds),
     completedByUserId,
@@ -119,6 +123,8 @@ export const resolveRefereeResultViewConfig = ({
       showShareResultButton: false,
       showH2HActions: false,
       showRefereeCard: true,
+      // 亮点与数据按选手「我 / 对手」视角生成，裁判没有个人视角。
+      showPersonalInsights: false,
       roleHint: '裁判视角，展示双方选手和执裁归因'
     }
   }
@@ -132,6 +138,7 @@ export const resolveRefereeResultViewConfig = ({
       showShareResultButton: false,
       showH2HActions: false,
       showRefereeCard: true,
+      showPersonalInsights: false,
       roleHint: '已完赛，可查看执裁详情'
     }
   }
@@ -145,6 +152,7 @@ export const resolveRefereeResultViewConfig = ({
     showShareResultButton: true,
     showH2HActions: true,
     showRefereeCard: true,
+    showPersonalInsights: true,
     roleHint: ''
   }
 }

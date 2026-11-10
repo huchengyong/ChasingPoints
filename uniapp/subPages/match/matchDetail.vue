@@ -59,7 +59,7 @@
 
 				<!-- 对局信息 -->
 				<view class="match-info-text">
-					{{ gameTypeName }} · {{ formatDuration(matchData.duration_seconds) }}
+					{{ matchInfoText }}
 				</view>
 
 				<!-- 统计数据 -->
@@ -88,7 +88,7 @@
 				<view class="referee-card__content">
 					<text class="referee-card__label">{{ refereeCard.neutralLabel }}</text>
 					<text class="referee-card__name">{{ refereeCard.refereeName }}</text>
-					<text v-if="refereeCard.refereeJoinedAt" class="referee-card__meta">加入时间 {{ refereeCard.refereeJoinedAt }}</text>
+					<text v-if="refereeCard.refereeJoinedAtText" class="referee-card__meta">加入时间 {{ refereeCard.refereeJoinedAtText }}</text>
 					<text v-if="refereeCard.refereeDurationText" class="referee-card__meta">执裁时长 {{ refereeCard.refereeDurationText }}</text>
 					<text v-if="refereeCard.hasReliableAttribution" class="referee-card__meta">{{ refereeCard.completionLabel }}</text>
 					<text v-else-if="matchData.status === 2" class="referee-card__meta">本场曾绑定裁判</text>
@@ -240,6 +240,12 @@ const matchStatusText = computed(() => {
 	if (matchData.value.status === 2) return '已结束'
 	if (matchData.value.status === 3) return '已取消'
 	return '进行中'
+})
+
+// 时长缺失、为 0 或非法时只显示球种名，不带分隔点。
+const matchInfoText = computed(() => {
+	const duration = formatDuration(matchData.value.duration_seconds)
+	return duration ? `${gameTypeName.value} · 用时 ${duration}` : gameTypeName.value
 })
 
 const refereeCard = computed(() => resolveRefereeIdentityCard({
@@ -557,7 +563,7 @@ const handleSync = (data) => {
  * 格式化时长
  */
 const formatDuration = (durationSeconds) => {
-	if (!durationSeconds || durationSeconds < 0) return '0分'
+	if (!durationSeconds || durationSeconds <= 0) return ''
 
 	const totalMinutes = Math.floor(durationSeconds / 60)
 
@@ -566,7 +572,7 @@ const formatDuration = (durationSeconds) => {
 	}
 
 	if (totalMinutes < 60) {
-		return `${totalMinutes}分`
+		return `${totalMinutes}分钟`
 	}
 
 	const hours = Math.floor(totalMinutes / 60)
@@ -574,7 +580,7 @@ const formatDuration = (durationSeconds) => {
 
 	if (hours < 24) {
 		if (remainMinutes > 0) {
-			return `${hours}小时${remainMinutes}分`
+			return `${hours}小时${remainMinutes}分钟`
 		}
 		return `${hours}小时`
 	}

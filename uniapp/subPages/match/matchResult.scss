@@ -168,6 +168,11 @@ $shadow-dark: 0 24rpx 80rpx rgba(2, 6, 23, 0.5);
 	&.is-lose {
 		background: linear-gradient(135deg, $lose-start 0%, $lose-end 100%);
 	}
+
+	// 裁判视角：中性暖黑金表面，避免胜负色；对比度按最亮的渐变末端核对。
+	&.is-neutral {
+		background: linear-gradient(135deg, #3C2B08 0%, #432F07 55%, #4A3306 100%);
+	}
 }
 
 .hero-topbar,
@@ -361,6 +366,79 @@ $shadow-dark: 0 24rpx 80rpx rgba(2, 6, 23, 0.5);
 .insight-section,
 .stats-section {
 	padding: 28rpx;
+}
+
+// 裁判身份卡：跟随本页 info-card 外观，内部只补自己的层级与头像尺寸。
+.referee-card {
+	padding: 28rpx;
+}
+
+.referee-card-head {
+	display: flex;
+	align-items: center;
+	gap: 10rpx;
+}
+
+.referee-card-title {
+	font-size: 26rpx;
+	font-weight: 700;
+	line-height: 1.3;
+	color: $text-primary-light;
+}
+
+.referee-card-body {
+	margin-top: 20rpx;
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+	min-width: 0;
+}
+
+.referee-card-avatar {
+	width: 88rpx;
+	height: 88rpx;
+	flex-shrink: 0;
+	border-radius: 50%;
+	background: rgba(148, 163, 184, 0.14);
+}
+
+.referee-card-info {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 8rpx;
+}
+
+.referee-card-name {
+	display: block;
+	font-size: 30rpx;
+	font-weight: 700;
+	line-height: 1.3;
+	color: $text-primary-light;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.referee-card-duration {
+	display: block;
+	font-size: 22rpx;
+	line-height: 1.45;
+	color: $text-secondary-light;
+}
+
+.referee-card-footer {
+	margin-top: 20rpx;
+	padding-top: 18rpx;
+	border-top: 2rpx solid $border-light;
+}
+
+.referee-attribution-label {
+	display: block;
+	font-size: 22rpx;
+	line-height: 1.45;
+	color: $text-secondary-light;
 }
 
 .reward-section {
@@ -1032,6 +1110,24 @@ $shadow-dark: 0 24rpx 80rpx rgba(2, 6, 23, 0.5);
 	.ranking-rights-badge,
 	.ranking-rights-title {
 		color: $text-primary-dark;
+	}
+
+	.referee-card-title,
+	.referee-card-name {
+		color: $text-primary-dark;
+	}
+
+	.referee-card-duration,
+	.referee-attribution-label {
+		color: $text-secondary-dark;
+	}
+
+	.referee-card-avatar {
+		background: rgba(255, 255, 255, 0.08);
+	}
+
+	.referee-card-footer {
+		border-top-color: $border-dark;
 	}
 
 	.rank-card {

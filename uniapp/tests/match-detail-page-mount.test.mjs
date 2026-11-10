@@ -250,6 +250,46 @@ test('match detail page replaces nine ball round stats with a silently refreshed
 		assert.match(poolText, /局记录/)
 		assert.match(poolText, /第 1 局/)
 		assert.doesNotMatch(poolText, /得分构成/)
+
+		// 裁判视角：加入时间走本地可读格式，时长带「用时」前缀。
+		globalThis.__DETAIL_PAGE__.hooks.onLoad.forEach((hook) => hook({ match_id: '9' }))
+		await settle()
+		requests[7].resolve({
+			success: true,
+			match: {
+				...buildDetail({ player1Score: 3, player2Score: 1, status: 2 }),
+				game_type: 3,
+				viewer_role: 'referee',
+				duration_seconds: 480,
+				referee_bound: true,
+				referee_user_id: 3,
+				referee_name: '裁判丙',
+				referee_joined_at: '2026-11-10T20:28:53+08:00',
+				referee_duration_seconds: 480,
+				completion_source: 'referee'
+			}
+		})
+		await settle()
+		const refereeText = wrapper.text()
+		assert.match(refereeText, /加入时间 \d{4}年\d{2}月\d{2}日 \d{2}:\d{2}/)
+		assert.doesNotMatch(refereeText, /T\d{2}:\d{2}:\d{2}|\+08:00/)
+		assert.equal(wrapper.find('.match-info-text').text(), '中式八球 · 用时 8分钟')
+
+		// 时长为 0 时副标题只留球种名。
+		globalThis.__DETAIL_PAGE__.hooks.onLoad.forEach((hook) => hook({ match_id: '9' }))
+		await settle()
+		requests[8].resolve({
+			success: true,
+			match: {
+				...buildDetail({ player1Score: 3, player2Score: 1, status: 2 }),
+				game_type: 3,
+				viewer_role: 'referee',
+				duration_seconds: 0
+			}
+		})
+		await settle()
+		assert.equal(wrapper.find('.match-info-text').text(), '中式八球')
+		assert.doesNotMatch(wrapper.find('.match-info-text').text(), /0分/)
 	} finally {
 		wrapper?.unmount()
 		delete globalThis.__DETAIL_PAGE__

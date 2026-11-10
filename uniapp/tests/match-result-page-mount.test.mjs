@@ -20,10 +20,42 @@ export const onShareAppMessage = register('onShareAppMessage')
 `,
 	'@/api/match.js': `
 export const getMatchDetail = () => globalThis.__RESULT_PAGE__.request()
-export const getMatchRewardSummary = () => Promise.resolve({ success: true, status: 'ready', list: [] })
+export const getMatchRewardSummary = () => {
+	globalThis.__RESULT_PAGE__.rewardRequests += 1
+	return Promise.resolve({ success: true, status: 'ready', list: [] })
+}
 `,
-	'@/components/memberAvatar.vue': 'export default { render: () => null }\n',
-	'@/components/matchGearCard.vue': 'export default { render: () => null }\n',
+	'@/components/memberAvatar.vue': `
+import { h } from 'vue'
+export default {
+	props: {
+		avatar: { type: String, default: '' },
+		userId: { type: [Number, String], default: 0 },
+		vipLevel: { type: [Number, String], default: 0 },
+		rankLevel: { type: [Number, String], default: 0 },
+		size: { type: Number, default: 96 }
+	},
+	render() {
+		return h('span', {
+			class: 'member-avatar-stub',
+			'data-user-id': String(this.userId),
+			'data-avatar': this.avatar || ''
+		})
+	}
+}
+`,
+	'@/components/matchGearCard.vue': `
+import { h } from 'vue'
+export default {
+	props: {
+		matchId: { type: [Number, String], default: null },
+		enabled: { type: Boolean, default: false }
+	},
+	render() {
+		return this.enabled ? h('text', '本场用杆') : null
+	}
+}
+`,
 	'@/utils/page-theme.js': `
 import { ref } from 'vue'
 export const usePageTheme = () => ({ isDarkMode: ref(false) })
@@ -89,6 +121,7 @@ async function mountResultPage(match) {
 		const requests = []
 		globalThis.__RESULT_PAGE__ = {
 			hooks: { onLoad: [], onUnload: [], onShareAppMessage: [] },
+			rewardRequests: 0,
 			request: () => {
 				let resolve
 				const promise = new Promise((res) => { resolve = res })
@@ -112,7 +145,7 @@ async function mountResultPage(match) {
 		requests[0].resolve({ success: true, match })
 		await flushPromises()
 		await nextTick()
-		return { wrapper, text: wrapper.text() }
+		return { wrapper, text: wrapper.text(), rewardRequests: globalThis.__RESULT_PAGE__.rewardRequests }
 	} finally {
 		wrapper?.unmount()
 		delete globalThis.__RESULT_PAGE__
@@ -158,6 +191,133 @@ test('match result page keeps other game types free of the score breakdown card'
 	assert.match(text, /本场数据/)
 	assert.match(text, /炸清/)
 })
+
+test('referee result page hides player-only sections and skips the reward request', async () => {
+	const { text, rewardRequests } = await mountResultPage({
+		game_type: 2,
+		status: 2,
+		viewer_role: 'referee',
+		is_player1: true,
+		my_score: 16,
+		opponent_score: 13,
+		my_name: '甲',
+		opponent_name: '乙',
+		referee_bound: true,
+		referee_user_id: 3,
+		referee_name: '裁判丙',
+		referee_duration_seconds: 720,
+		completion_source: 'referee',
+		score_breakdown: chasingBreakdown,
+		summary_highlights: [{ label: '连续得分', value: '6', desc: '连续得分' }],
+		summary_stats: [{ label: '最高连续得分', value: '12', desc: '本场最长连续得分' }]
+	})
+
+	assert.match(text, /本场裁判/)
+	assert.match(text, /执裁时长 12分钟/)
+	assert.match(text, /完成方式：裁判结算/)
+	assert.match(text, /得分构成/)
+	assert.match(text, /选手1/)
+	assert.match(text, /选手2/)
+	assert.doesNotMatch(text, /本场用杆/)
+	assert.doesNotMatch(text, /本场亮点/)
+	assert.doesNotMatch(text, /本场数据/)
+	assert.doesNotMatch(text, /高光仅记录/)
+	assert.equal(rewardRequests, 0)
+})
+
+test('player result page keeps personal sections and requests rewards once', async () => {
+	const { text, rewardRequests } = await mountResultPage({
+		game_type: 3,
+		status: 2,
+		viewer_role: 'player1',
+		is_player1: true,
+		my_score: 3,
+		opponent_score: 1,
+		summary_stats: [{ label: '炸清', value: '1', desc: '本场炸清次数' }]
+	})
+
+	assert.match(text, /本场用杆/)
+	assert.match(text, /本场亮点/)
+	assert.match(text, /本场数据/)
+	assert.equal(rewardRequests, 1)
+})
+
+test('player 2 result page maps hero avatars to player2 then player1', async () => {
+	const { wrapper } = await mountResultPage({
+		game_type: 3,
+		status: 2,
+		viewer_role: 'player2',
+		is_player1: false,
+		player1_id: 101,
+		player2_id: 202,
+		opponent_id: 101,
+		my_score: 1,
+		opponent_score: 3
+	})
+
+	assert.deepEqual(heroAvatarUserIds(wrapper), ['202', '101'])
+})
+
+test('referee result page maps hero avatars to player1 then player2', async () => {
+	const { wrapper } = await mountResultPage({
+		game_type: 3,
+		status: 2,
+		viewer_role: 'referee',
+		is_player1: true,
+		player1_id: 101,
+		player2_id: 202,
+		opponent_id: 202,
+		my_score: 1,
+		opponent_score: 3
+	})
+
+	assert.deepEqual(heroAvatarUserIds(wrapper), ['101', '202'])
+})
+
+test('completed match with duration shows the end time derived from start plus duration', async () => {
+	const { text } = await mountResultPage({
+		game_type: 3,
+		status: 2,
+		viewer_role: 'player1',
+		is_player1: true,
+		created_at: '2026-11-10 23:30:00',
+		duration_seconds: 3600,
+		my_score: 3,
+		opponent_score: 1
+	})
+
+	assert.match(text, /结束时间/)
+	assert.match(text, /2026年11月11日 00:30/)
+	assert.doesNotMatch(text, /2026年11月10日 23:30/)
+})
+
+test('completed match without duration labels the start time instead of the end time', async () => {
+	const { text } = await mountResultPage({
+		game_type: 3,
+		status: 2,
+		viewer_role: 'player1',
+		is_player1: true,
+		created_at: '2026-11-10 23:30:00',
+		duration_seconds: 0,
+		my_score: 3,
+		opponent_score: 1
+	})
+
+	assert.match(text, /开始时间/)
+	assert.doesNotMatch(text, /结束时间/)
+	assert.match(text, /2026年11月10日 23:30/)
+})
+
+test('match result style gives the referee hero a neutral background and a fixed avatar size', async () => {
+	const style = await readFile(join(appDir, 'subPages/match/matchResult.scss'), 'utf8')
+	assert.match(style, /&\.is-neutral\s*\{[^}]*background:\s*linear-gradient/)
+	assert.match(style, /\.referee-card-avatar\s*\{[^}]*width:\s*88rpx;[^}]*height:\s*88rpx;/s)
+})
+
+function heroAvatarUserIds(wrapper) {
+	return [...wrapper.element.querySelectorAll('.member-avatar-stub')]
+		.map((node) => node.getAttribute('data-user-id'))
+}
 
 function installDOMGlobals(window) {
 	const keys = ['window', 'document', 'navigator', 'Node', 'Element', 'HTMLElement', 'SVGElement', 'Event']
