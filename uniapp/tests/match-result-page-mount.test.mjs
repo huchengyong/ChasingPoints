@@ -314,6 +314,13 @@ test('match result style gives the referee hero a neutral background and a fixed
 	assert.match(style, /\.referee-card-avatar\s*\{[^}]*width:\s*88rpx;[^}]*height:\s*88rpx;/s)
 })
 
+test('match result dark cards use the warm surface tokens instead of cool slate', async () => {
+	const style = await readFile(join(appDir, 'subPages/match/matchResult.scss'), 'utf8')
+	assert.match(style, /\$card-dark:\s*#1E180D;/)
+	assert.match(style, /\$border-dark:\s*#3A2E16;/)
+	assert.doesNotMatch(style, /rgba\(30,\s*41,\s*59/)
+})
+
 function heroAvatarUserIds(wrapper) {
 	return [...wrapper.element.querySelectorAll('.member-avatar-stub')]
 		.map((node) => node.getAttribute('data-user-id'))
