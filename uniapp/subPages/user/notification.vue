@@ -55,7 +55,7 @@
 					<view class="icon-wrapper purple">
 						<uni-icons type="notification-filled" size="24" color="#E0AE12"></uni-icons>
 					</view>
-					<text class="item-text">挑战提醒</text>
+					<text class="item-text">约球提醒</text>
 				</view>
 				<switch
 					:checked="preferences.challenge_enabled"
@@ -82,7 +82,7 @@
 				/>
 			</view>
 
-			<view class="settings-item">
+			<view v-if="showFollowPreference" class="settings-item">
 				<view class="item-left">
 					<view class="icon-wrapper gold">
 						<uni-icons type="notification-filled" size="24" color="#E0AE12"></uni-icons>
@@ -112,6 +112,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { getNotificationPreferences, saveNotificationPreferences } from '@/api/notification.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { useUserStore } from '@/store/user.js'
+import { canShowSocialPublishing } from '@/utils/compliance-mode.js'
 import {
 	ASYNC_PAGE_STATUS,
 	beginAsyncPageLoad,
@@ -125,6 +126,8 @@ import { createRequestError } from '@/utils/request-errors.js'
 
 const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
+// 合规模式下产品没有关注入口，隐藏该项但仍按原值保存，避免改写服务端偏好。
+const showFollowPreference = canShowSocialPublishing()
 const isSaving = ref(false)
 const preferences = reactive({
 	match_result_enabled: true,

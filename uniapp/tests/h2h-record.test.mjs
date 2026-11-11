@@ -9,6 +9,8 @@ import {
   shiftH2HMonthKey,
   buildH2HLoadFailureAction,
   buildH2HViewModel,
+  H2H_HIDDEN_EMPTY_STATE,
+  isH2HHiddenResponse,
   normalizeH2HRecordOptions,
   shouldApplyH2HHistoryResponse
 } from '../utils/h2h-record.js'
@@ -200,6 +202,25 @@ test('buildH2HLoadFailureAction ignores generic self-mode failures', () => {
     }),
     null
   )
+})
+
+test('isH2HHiddenResponse only treats an explicit hidden flag as hidden', () => {
+  assert.equal(isH2HHiddenResponse({ success: true, hidden: true }), true)
+  assert.equal(isH2HHiddenResponse({ success: true, hidden: false }), false)
+  assert.equal(isH2HHiddenResponse({ success: true, stats: {} }), false)
+  assert.deepEqual(H2H_HIDDEN_EMPTY_STATE, {
+    title: '对方已隐藏战绩',
+    description: '这位好友暂时没有公开自己的战绩'
+  })
+})
+
+test('h2h record page renders the hidden empty state instead of fake stats', () => {
+  const source = readFileSync(new URL('../subPages/user/h2hRecord.vue', import.meta.url), 'utf8')
+
+  assert.match(source, /H2H_HIDDEN_EMPTY_STATE/)
+  assert.match(source, /isH2HHiddenResponse\(res\)/)
+  assert.match(source, /class="hidden-wrapper" v-if="h2hHidden"/)
+  assert.match(source, /h2hHidden\.value = true[\s\S]*hasMore\.value = false/)
 })
 
 test('shouldApplyH2HHistoryResponse ignores stale filter responses', () => {

@@ -15,7 +15,7 @@ const apiSource = readFileSync(
 test('notification settings page aligns switches with five real business notification types', () => {
   assert.match(pageSource, /对局结果/)
   assert.match(pageSource, /好友申请/)
-  assert.match(pageSource, /挑战提醒/)
+  assert.match(pageSource, /约球提醒/)
   assert.match(pageSource, /赛事报名提醒/)
   assert.match(pageSource, /新关注提醒/)
   assert.match(pageSource, /match_result_enabled/)
@@ -23,6 +23,13 @@ test('notification settings page aligns switches with five real business notific
   assert.match(pageSource, /challenge_enabled/)
   assert.match(pageSource, /tournament_enabled/)
   assert.match(pageSource, /follow_enabled/)
+})
+
+test('notification settings hides the follow row without dropping its stored value', () => {
+  assert.match(pageSource, /canShowSocialPublishing/)
+  assert.match(pageSource, /<view v-if="showFollowPreference" class="settings-item">/)
+  // 隐藏只影响展示，保存仍带原值。
+  assert.match(pageSource, /follow_enabled:\s*preferences\.follow_enabled/)
 })
 
 test('notification settings page reads and saves server-backed preferences instead of local-only storage', () => {

@@ -58,6 +58,15 @@ export const commentPost = (data) => {
 }
 
 /**
+ * 删除评论（评论作者或动态作者）
+ * @param {Object} data { comment_id }
+ * @returns {Promise}
+ */
+export const deleteComment = (data) => {
+  return post('/api/social/comment/delete', data)
+}
+
+/**
  * 删除动态
  * @param {Object} data { post_id }
  * @returns {Promise}

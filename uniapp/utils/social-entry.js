@@ -45,3 +45,13 @@ export const resolveSocialEmptyState = ({ tab, isLoggedIn }) => {
 export const filterReportPosts = (list = []) => {
   return list.filter((item) => item?.post_type === 1)
 }
+
+export const SOCIAL_COMPLIANCE_TITLE = '动态功能暂未开放'
+
+export const canDeleteComment = ({ post = {}, comment = {}, currentUserId = 0 } = {}) => {
+  const viewerId = Number(currentUserId) || 0
+  if (viewerId <= 0) return false
+  return Number(comment.user_id || 0) === viewerId ||
+    Boolean(post.is_mine) ||
+    Number(post.user_id || 0) === viewerId
+}

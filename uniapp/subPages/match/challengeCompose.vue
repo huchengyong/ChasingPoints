@@ -64,7 +64,8 @@
 			<text class="form-hint">预计时间仅作提醒，明天早晨7点失效</text>
 
 			<text class="form-label">附言（选填）</text>
-			<input class="message-input" v-model="message" placeholder-style="color: #9A8C67" placeholder="给对方捎句话" maxlength="50" />
+			<input class="message-input" v-model="message" placeholder-style="color: #9A8C67" placeholder="给对方捎句话" maxlength="200" />
+			<text class="message-count">{{ message.length }}/200</text>
 		</view>
 
 		<button class="submit-btn" :disabled="submitting" @tap="submit">
@@ -308,7 +309,7 @@ const submit = async () => {
 			uni.switchTab({ url: '/pages/index/index' })
 		}, 600)
 	} catch (error) {
-		if (pageActive && isSameIdentity(identity) && generation === pageGeneration) uni.showToast({ title: '发送失败', icon: 'none' })
+		if (pageActive && isSameIdentity(identity) && generation === pageGeneration) uni.showToast({ title: error?.message || '发送失败', icon: 'none' })
 	} finally {
 		submitting.value = false
 	}

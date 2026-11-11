@@ -70,9 +70,10 @@
 				<button
 					v-else
 					class="status-btn add"
+					:disabled="isAdding(item)"
 					@tap="handleAdd(item)"
 				>
-					<text>添加</text>
+					<text>{{ isAdding(item) ? '发送中…' : '添加' }}</text>
 				</button>
 			</view>
 		</view>
@@ -88,6 +89,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { searchUser, sendFriendRequest } from '@/api/friend.js'
+import { normalizeSearchResultItem } from '@/utils/friend-entry.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { useUserStore } from '@/store/user.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
@@ -109,6 +111,7 @@ const keyword = ref('')
 const searching = ref(false)
 const hasSearched = ref(false)
 const resultList = ref([])
+const addingUserIds = ref({})
 const searchState = ref(createAsyncPageState({
 	authGeneration: userStore.authGeneration,
 	data: []
@@ -144,7 +147,7 @@ const doSearch = async () => {
 		const res = await searchUser({ keyword: kw, page: 1, page_size: 20 })
 		if (currentIdentityKey() !== requestIdentityKey || searchState.value.requestId !== pageRequest.requestId || searchState.value.authGeneration !== pageRequest.authGeneration) return
 		if (!res || res.success === false) throw createRequestError({ message: res?.message || '搜索用户失败', category: 'business' })
-		resultList.value = res.list || []
+		resultList.value = (res.list || []).map(normalizeSearchResultItem)
 		searchState.value = resolveAsyncPageLoad(searchState.value, pageRequest, { data: resultList.value })
 	} catch (e) {
 		if (currentIdentityKey() !== requestIdentityKey || searchState.value.requestId !== pageRequest.requestId || searchState.value.authGeneration !== pageRequest.authGeneration) return
@@ -180,9 +183,25 @@ const handleSearchErrorAction = () => {
 	retrySearch()
 }
 
+const isAdding = (item) => Boolean(addingUserIds.value[item?.user_id])
+
+const setAdding = (userId, adding) => {
+	const next = { ...addingUserIds.value }
+	if (adding) {
+		next[userId] = true
+	} else {
+		delete next[userId]
+	}
+	addingUserIds.value = next
+}
+
 const handleAdd = async (item) => {
+	if (isAdding(item)) return
+	const requestIdentityKey = currentIdentityKey()
+	setAdding(item.user_id, true)
 	try {
 		const res = await sendFriendRequest({ to_user_id: item.user_id, message: '' })
+		if (currentIdentityKey() !== requestIdentityKey) return
 		if (res.success) {
 			item.status = 'pending'
 			uni.showToast({ title: '请求已发送', icon: 'success' })
@@ -190,7 +209,10 @@ const handleAdd = async (item) => {
 			uni.showToast({ title: res.message || '发送失败', icon: 'none' })
 		}
 	} catch (e) {
-		uni.showToast({ title: '发送失败', icon: 'none' })
+		if (currentIdentityKey() !== requestIdentityKey) return
+		uni.showToast({ title: e?.message || '发送失败', icon: 'none' })
+	} finally {
+		setAdding(item.user_id, false)
 	}
 }
 </script>
@@ -307,6 +329,10 @@ const handleAdd = async (item) => {
 			&.add {
 				background: linear-gradient(135deg, #E0AE12 0%, #F59E0B 100%);
 				color: #ffffff;
+
+				&[disabled] {
+					opacity: 0.6;
+				}
 			}
 			&.pending {
 				background: #E9E2CF;

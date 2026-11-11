@@ -80,12 +80,32 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { createPost } from '@/api/social.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { buildPostReviewSuccessCopy } from '@/utils/social-review.js'
+import { canShowSocialPublishing } from '@/utils/compliance-mode.js'
+import { SOCIAL_COMPLIANCE_TITLE } from '@/utils/social-entry.js'
 
 const content = ref('')
 const imageList = ref([])
 const postType = ref(3)
 const publishing = ref(false)
 const { isDarkMode } = usePageTheme()
+// 合规模式下入口已隐藏，直达链接进入时提示并退出。
+const socialEnabled = canShowSocialPublishing()
+let socialBlocked = false
+
+const leaveSocialPage = () => {
+	if (getCurrentPages().length > 1) {
+		uni.navigateBack({ delta: 1 })
+		return
+	}
+	uni.switchTab({ url: '/pages/index/index' })
+}
+
+const blockByCompliance = () => {
+	if (socialBlocked) return
+	socialBlocked = true
+	uni.showToast({ title: SOCIAL_COMPLIANCE_TITLE, icon: 'none' })
+	leaveSocialPage()
+}
 
 
 const canPublish = computed(() => {
@@ -93,6 +113,10 @@ const canPublish = computed(() => {
 })
 
 onLoad((options) => {
+	if (!socialEnabled) {
+		blockByCompliance()
+		return
+	}
 	if (options.content) {
 		content.value = decodeURIComponent(options.content)
 	}
@@ -102,6 +126,7 @@ onLoad((options) => {
 })
 
 onShow(() => {
+	if (!socialEnabled) blockByCompliance()
 })
 
 const chooseImage = () => {
@@ -143,7 +168,7 @@ const handlePublish = async () => {
 		}
 	} catch (e) {
 		console.error('发布动态失败:', e)
-		uni.showToast({ title: '发布失败', icon: 'none' })
+		uni.showToast({ title: e?.message || '发布失败', icon: 'none' })
 	} finally {
 		publishing.value = false
 	}

@@ -8,7 +8,12 @@ import {
   buildFriendHomepageUrl,
   buildFriendOpponentRecordUrl,
   buildFriendPkReportUrl,
+  buildUnblacklistConfirmCopy,
+  buildUnblacklistPayload,
   normalizeFriendListItem,
+  normalizeSearchResultItem,
+  removeBlacklistItem,
+  resolveFriendRequestUserId,
   resolveFriendUserId
 } from '../utils/friend-entry.js'
 
@@ -90,4 +95,31 @@ test('buildDeleteFriendPayload uses friend_user_id expected by backend contract'
 
 test('buildBlacklistFriendPayload uses friend_user_id expected by backend contract', () => {
   assert.deepEqual(buildBlacklistFriendPayload({ friend_id: 88 }), { friend_user_id: 88 })
+})
+
+test('normalizeSearchResultItem maps has_pending_request to the existing pending status', () => {
+  assert.equal(normalizeSearchResultItem({ user_id: 1, status: 'friend', has_pending_request: true }).status, 'friend')
+  assert.equal(normalizeSearchResultItem({ user_id: 2, has_pending_request: true }).status, 'pending')
+  assert.equal(normalizeSearchResultItem({ user_id: 3, status: 'pending' }).status, 'pending')
+  assert.equal(normalizeSearchResultItem({ user_id: 4 }).status, undefined)
+})
+
+test('resolveFriendRequestUserId reads the applicant id from from_user_id first', () => {
+  assert.equal(resolveFriendRequestUserId({ id: 9, from_user_id: 52, user_id: 18 }), 52)
+  assert.equal(resolveFriendRequestUserId({ id: 9, user_id: 18 }), 18)
+})
+
+test('blacklist removal helpers keep the canonical user id and confirmation copy', () => {
+  assert.deepEqual(buildUnblacklistPayload({ user_id: 66 }), { friend_user_id: 66 })
+  assert.deepEqual(
+    removeBlacklistItem([
+      { user_id: 66, nickname: 'A' },
+      { user_id: 67, nickname: 'B' }
+    ], 66),
+    [{ user_id: 67, nickname: 'B' }]
+  )
+  assert.equal(
+    buildUnblacklistConfirmCopy('球友 B'),
+    '确定将「球友 B」移出黑名单吗？移出后对方可以重新搜索并添加你。'
+  )
 })
