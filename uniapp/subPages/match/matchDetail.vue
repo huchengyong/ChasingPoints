@@ -122,7 +122,10 @@
 				>
 					<view class="round-info">
 						<text class="round-date">第 {{ round.round_number }} 局</text>
-						<text class="round-game-type">{{ gameTypeName }}</text>
+						<view class="round-meta">
+							<text class="round-game-type">{{ gameTypeName }}</text>
+							<text v-if="round.winTypeLabel" class="round-win-type">{{ round.winTypeLabel }}</text>
+						</view>
 					</view>
 					<view class="round-result">
 						<text class="round-score">{{ round.player1_score }} - {{ round.player2_score }}</text>
@@ -131,7 +134,6 @@
 								{{ getRoundResultText(round) }}
 							</text>
 						</view>
-						<uni-icons type="right" size="16" color="#6E6242"></uni-icons>
 					</view>
 				</view>
 			</view>
@@ -207,6 +209,8 @@ const player2UserId = ref(0)
 const roundRecords = ref([])
 // WS 推来的局记录与 HTTP 同为选手1 / 选手2 固定视角，沿用页面加载时算好的换边方向。
 const roundRecordsSwapped = ref(false)
+// 裁判、观战与公开详情不站在任何一方，局记录右侧显示该局胜者而不是「胜 / 负」。
+const roundRecordsNeutral = ref(false)
 const scoreBreakdown = ref(null)
 let wsHandlersReady = false
 let scoreRefreshTimer = null
@@ -437,6 +441,7 @@ const loadMatchData = async () => {
 			player2UserId.value = shouldSwap ? player1Id : player2Id
 			roundRecords.value = normalized.roundRecords
 			roundRecordsSwapped.value = normalized.roundRecordsSwapped
+			roundRecordsNeutral.value = normalized.roundRecordsNeutral
 			scoreBreakdown.value = normalized.scoreBreakdown
 			if (matchData.value.viewer_role === 'referee') {
 				uni.setNavigationBarTitle({ title: '执裁详情' })
@@ -505,7 +510,8 @@ const handleRoundEnd = (data) => {
 				round_number: data.round_number,
 				player1_score: data.round_player1_score,
 				player2_score: data.round_player2_score,
-				winner: data.winner
+				winner: data.winner,
+				win_type: data.round_win_type
 			}], roundRecordsSwapped.value))
 		} else {
 			matchWS.requestSync()
@@ -603,15 +609,22 @@ const formatDuration = (durationSeconds) => {
  * 获取局结果样式类
  */
 const getRoundResultClass = (round) => {
+	if (roundRecordsNeutral.value) return 'neutral-round'
 	if (round.result === 'win' || round.winner === 1) return 'win-round'
 	return 'loss-round'
 }
 
 const getRoundResultTone = (round) => {
+	if (roundRecordsNeutral.value) return 'neutral'
 	return round.result === 'win' || round.winner === 1 ? 'win' : 'loss'
 }
 
 const getRoundResultText = (round) => {
+	if (roundRecordsNeutral.value) {
+		const isRightWinner = round.winner === 2
+		const winnerInfo = isRightWinner ? player2Info.value : player1Info.value
+		return `${winnerInfo.name || (isRightWinner ? '选手2' : '选手1')} 胜`
+	}
 	return round.resultText || (round.result === 'win' || round.winner === 1 ? '胜' : '负')
 }
 

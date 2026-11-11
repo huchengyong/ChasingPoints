@@ -127,6 +127,10 @@ $loss-color: #E57373;
         .round-card {
             background-color: $card-bg-dark;
             box-shadow: none;
+
+            &.neutral-round {
+                border-left-color: $text-muted-dark;
+            }
         }
 
         .round-info {
@@ -137,11 +141,19 @@ $loss-color: #E57373;
             .round-game-type {
                 color: $text-muted-dark;
             }
+
+            .round-win-type {
+                color: $text-secondary-dark;
+            }
         }
 
         .round-result {
             .round-score {
                 color: $text-primary-dark;
+            }
+
+            .result-text.neutral {
+                color: $text-secondary-dark;
             }
         }
     }
@@ -423,6 +435,10 @@ $loss-color: #E57373;
     &.loss-round {
         border-left-color: $loss-color;
     }
+
+    &.neutral-round {
+        border-left-color: $text-muted-light;
+    }
 }
 
 .round-info {
@@ -437,9 +453,24 @@ $loss-color: #E57373;
         color: $text-primary-light;
     }
 
+    .round-meta {
+        display: flex;
+        align-items: center;
+        gap: 12rpx;
+    }
+
     .round-game-type {
         font-size: 24rpx;
         color: $text-muted-light;
+    }
+
+    .round-win-type {
+        padding: 0 8rpx;
+        font-size: 20rpx;
+        line-height: 28rpx;
+        border-radius: 6rpx;
+        color: $text-secondary-light;
+        background-color: rgba(224, 174, 18, 0.16);
     }
 }
 
@@ -456,12 +487,17 @@ $loss-color: #E57373;
 }
 
 .result-badge {
-    width: 120rpx;
+    min-width: 120rpx;
+    max-width: 240rpx;
     text-align: center;
 
     .result-text {
+        display: block;
+        overflow: hidden;
         font-size: 26rpx;
         font-weight: 700;
+        white-space: nowrap;
+        text-overflow: ellipsis;
 
         &.win {
             color: $win-color;
@@ -469,6 +505,10 @@ $loss-color: #E57373;
 
         &.loss {
             color: $loss-color;
+        }
+
+        &.neutral {
+            color: $text-secondary-light;
         }
     }
 }
