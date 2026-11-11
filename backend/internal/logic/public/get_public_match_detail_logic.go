@@ -148,7 +148,8 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 	}
 	currentRound := int(roundCount) + 1 // 当前进行的是下一局
 	totalRounds := int(roundCount)      // 已完成的局数
-	if match.Status != 1 && !match.CurrentFrameStarted {
+	if match.Status != 1 {
+		// 已结束的对局没有进行中的局，与参与者详情保持一致。
 		currentRound = totalRounds
 	}
 	snookerState := model.SnookerRoundState{ClearedColors: make([]int, 0, 6)}

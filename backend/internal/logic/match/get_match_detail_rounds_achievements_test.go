@@ -66,8 +66,8 @@ func TestGetMatchDetailRoundsUseFixedPlayerPerspective(t *testing.T) {
 		if len(detail.Rounds) != 3 || detail.TotalRounds != 3 {
 			t.Fatalf("%s rounds: rounds=%+v total=%d current=%d", testCase.name, detail.Rounds, detail.TotalRounds, detail.CurrentRound)
 		}
-		wantFirst := types.RoundRecord{RoundNumber: 1, Player1Score: 60, Player2Score: 20, Winner: 1}
-		wantSecond := types.RoundRecord{RoundNumber: 2, Player1Score: 61, Player2Score: 21, Winner: 2}
+		wantFirst := types.RoundRecord{RoundNumber: 1, Player1Score: 60, Player2Score: 20, Winner: 1, WinType: "normal"}
+		wantSecond := types.RoundRecord{RoundNumber: 2, Player1Score: 61, Player2Score: 21, Winner: 2, WinType: "normal"}
 		if detail.Rounds[0] != wantFirst || detail.Rounds[1] != wantSecond {
 			t.Fatalf("%s rounds must stay in player1/player2 positions: %+v", testCase.name, detail.Rounds)
 		}
