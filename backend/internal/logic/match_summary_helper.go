@@ -7,30 +7,41 @@ import (
 	"chasing_points/internal/types"
 )
 
-func buildMatchSummary(gameType int, myActor int, myScore int, opponentScore int, myWinRate float64, opponentWinRate float64, myMaxScore int, opponentMaxScore int, redBallCount int, createdAt string, rounds []model.MatchRound, actions []model.MatchAction, achievements types.MatchAchievement) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
+func buildMatchSummary(gameType int, myActor int, myScore int, opponentScore int, myWinRate float64, opponentWinRate float64, myMaxScore int, opponentMaxScore int, redBallCount int, createdAt string, endedAt string, rounds []model.MatchRound, actions []model.MatchAction, achievements types.MatchAchievement) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
+	var highlights, stats []types.MatchSummaryItem
 	switch gameType {
 	case 1:
 		snookerActions := actions
 		if len(rounds) > 0 {
 			snookerActions = filterSnookerActionsToCompletedRounds(actions, rounds)
 		}
-		return buildSnookerSummary(myActor, myWinRate, opponentWinRate, myMaxScore, opponentMaxScore, redBallCount, createdAt, snookerActions)
+		highlights, stats = buildSnookerSummary(myActor, myWinRate, opponentWinRate, myMaxScore, opponentMaxScore, redBallCount, snookerActions)
 	case 2:
-		return buildNineBallSummary(myActor, myScore, opponentScore, myWinRate, opponentWinRate, createdAt, rounds, actions)
+		highlights, stats = buildNineBallSummary(myActor, myScore, opponentScore, myWinRate, opponentWinRate, rounds, actions)
 	case 3:
-		return buildEightBallSummary(myActor, myScore, opponentScore, myWinRate, opponentWinRate, createdAt, rounds)
+		highlights, stats = buildEightBallSummary(myActor, myScore, opponentScore, myWinRate, opponentWinRate, rounds)
 	case 4:
-		return buildAmericanNineSummary(myActor, myScore, opponentScore, myWinRate, opponentWinRate, createdAt, rounds)
+		highlights, stats = buildAmericanNineSummary(myActor, myScore, opponentScore, myWinRate, opponentWinRate, rounds)
 	default:
 		return []types.MatchSummaryItem{}, []types.MatchSummaryItem{}
 	}
+	stats = append(stats, summaryTimeItem(createdAt, endedAt))
+	return highlights, stats
 }
 
-func BuildMatchSummary(gameType int, myActor int, myScore int, opponentScore int, myWinRate float64, opponentWinRate float64, myMaxScore int, opponentMaxScore int, redBallCount int, createdAt string, rounds []model.MatchRound, actions []model.MatchAction, achievements types.MatchAchievement) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
-	return buildMatchSummary(gameType, myActor, myScore, opponentScore, myWinRate, opponentWinRate, myMaxScore, opponentMaxScore, redBallCount, createdAt, rounds, actions, achievements)
+// summaryTimeItem 说明本场总结的时间口径：已结束对局用结束时间，其余保持原有的记录时间。
+func summaryTimeItem(createdAt string, endedAt string) types.MatchSummaryItem {
+	if endedAt != "" {
+		return buildSummaryItem("结束时间", endedAt, "本场对局结束时间", "calendar", "slate")
+	}
+	return buildSummaryItem("记录时间", createdAt, "本场总结生成时间", "calendar", "slate")
 }
 
-func buildSnookerSummary(myActor int, myWinRate float64, opponentWinRate float64, myMaxScore int, opponentMaxScore int, _ int, createdAt string, actions []model.MatchAction) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
+func BuildMatchSummary(gameType int, myActor int, myScore int, opponentScore int, myWinRate float64, opponentWinRate float64, myMaxScore int, opponentMaxScore int, redBallCount int, createdAt string, endedAt string, rounds []model.MatchRound, actions []model.MatchAction, achievements types.MatchAchievement) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
+	return buildMatchSummary(gameType, myActor, myScore, opponentScore, myWinRate, opponentWinRate, myMaxScore, opponentMaxScore, redBallCount, createdAt, endedAt, rounds, actions, achievements)
+}
+
+func buildSnookerSummary(myActor int, myWinRate float64, opponentWinRate float64, myMaxScore int, opponentMaxScore int, _ int, actions []model.MatchAction) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
 	myBreakStats, opponentBreakStats := calculateSnookerBreakStatsForActors(actions, myActor)
 
 	highlights := []types.MatchSummaryItem{}
@@ -53,12 +64,11 @@ func buildSnookerSummary(myActor int, myWinRate float64, opponentWinRate float64
 		buildSummaryItem("对手50+次数", fmt.Sprintf("%d 次", opponentBreakStats.FiftyPlus), "对手本场打出 50+ 的杆数", "fire", "orange"),
 		buildSummaryItem("我的破百次数", fmt.Sprintf("%d 次", myBreakStats.Centuries), "本场个人完成破百的次数", "medal", "purple"),
 		buildSummaryItem("对手破百次数", fmt.Sprintf("%d 次", opponentBreakStats.Centuries), "对手本场完成破百的次数", "medal", "slate"),
-		buildSummaryItem("记录时间", createdAt, "本场总结生成时间", "calendar", "slate"),
 	}
 	return highlights, stats
 }
 
-func buildEightBallSummary(myActor int, myScore int, opponentScore int, myWinRate float64, opponentWinRate float64, createdAt string, rounds []model.MatchRound) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
+func buildEightBallSummary(myActor int, myScore int, opponentScore int, myWinRate float64, opponentWinRate float64, rounds []model.MatchRound) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
 	highestStreak := calculateHighestWinStreak(rounds, myActor)
 	myNormalWins := countRoundWinsByType(rounds, myActor, "normal")
 	myBreakClears := countRoundWinsByType(rounds, myActor, "break_clear")
@@ -83,12 +93,11 @@ func buildEightBallSummary(myActor int, myScore int, opponentScore int, myWinRat
 		buildSummaryItem("本场分差", fmt.Sprintf("%d 局", absInt(myScore-opponentScore)), "以当前视角统计的领先/落后局差", "minus", "slate"),
 		buildSummaryItem("我的普胜局", fmt.Sprintf("%d 局", myNormalWins), "常规胜局数量", "checkbox", "green"),
 		buildSummaryItem("我的特殊胜局", fmt.Sprintf("%d 局", mySpecialWins), "炸清与接清合计", "medal", "gold"),
-		buildSummaryItem("记录时间", createdAt, "本场总结生成时间", "calendar", "slate"),
 	}
 	return highlights, stats
 }
 
-func buildNineBallSummary(myActor int, myScore int, opponentScore int, myWinRate float64, opponentWinRate float64, createdAt string, rounds []model.MatchRound, actions []model.MatchAction) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
+func buildNineBallSummary(myActor int, myScore int, opponentScore int, myWinRate float64, opponentWinRate float64, rounds []model.MatchRound, actions []model.MatchAction) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
 	mySmallGold := countRoundWinsByType(rounds, myActor, "small_gold")
 	myBigGold := countRoundWinsByType(rounds, myActor, "big_gold")
 	highestRun := calculateHighestScoringRun(actions, myActor)
@@ -110,12 +119,11 @@ func buildNineBallSummary(myActor int, myScore int, opponentScore int, myWinRate
 		buildSummaryItem("对手胜率", formatPercent(opponentWinRate), "用于感知本场对手强度", "person-filled", "purple"),
 		buildSummaryItem("总得分", fmt.Sprintf("%d 分", myScore+opponentScore), "双方本场合计得分", "bars", "cyan"),
 		buildSummaryItem("最高连续得分", fmt.Sprintf("%d 分", highestRun), "不被对手打断的连续得分峰值", "fire", "red"),
-		buildSummaryItem("记录时间", createdAt, "本场总结生成时间", "calendar", "slate"),
 	}
 	return highlights, stats
 }
 
-func buildAmericanNineSummary(myActor int, myScore int, opponentScore int, myWinRate float64, opponentWinRate float64, createdAt string, rounds []model.MatchRound) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
+func buildAmericanNineSummary(myActor int, myScore int, opponentScore int, myWinRate float64, opponentWinRate float64, rounds []model.MatchRound) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
 	mySmallGold := countRoundWinsByType(rounds, myActor, "small_gold")
 	myBigGold := countRoundWinsByType(rounds, myActor, "big_gold")
 	myNormalWins := countRoundWinsByType(rounds, myActor, "normal")
@@ -140,7 +148,6 @@ func buildAmericanNineSummary(myActor int, myScore int, opponentScore int, myWin
 		buildSummaryItem("我的普胜局", fmt.Sprintf("%d 局", myNormalWins), "常规赢下的局数", "checkbox", "green"),
 		buildSummaryItem("我的小金", fmt.Sprintf("%d 次", mySmallGold), "小金完成次数", "star", "blue"),
 		buildSummaryItem("我的大金", fmt.Sprintf("%d 次", myBigGold), "大金完成次数", "medal", "gold"),
-		buildSummaryItem("记录时间", createdAt, "本场总结生成时间", "calendar", "slate"),
 	}
 	return highlights, stats
 }
@@ -242,10 +249,11 @@ func calculateSnookerBreakStats(actions []model.MatchAction, actor int) snookerB
 			if score > stats.Highest {
 				stats.Highest = score
 			}
+			if score >= 50 {
+				stats.FiftyPlus++
+			}
 			if score >= 100 {
 				stats.Centuries++
-			} else if score >= 50 {
-				stats.FiftyPlus++
 			}
 		}
 		return stats
@@ -260,10 +268,11 @@ func calculateSnookerBreakStats(actions []model.MatchAction, actor int) snookerB
 		if current > stats.Highest {
 			stats.Highest = current
 		}
+		if current >= 50 {
+			stats.FiftyPlus++
+		}
 		if current >= 100 {
 			stats.Centuries++
-		} else if current >= 50 {
-			stats.FiftyPlus++
 		}
 		current = 0
 	}

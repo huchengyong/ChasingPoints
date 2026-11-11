@@ -41,20 +41,8 @@ func buildMatchLastActionFromAction(userId int64, match *model.Match, action *mo
 		actorName = "我方"
 	}
 	switch action.ActionType {
-	case "score":
-		result.Description = fmt.Sprintf("%s加%d分", actorName, action.ScoreChange)
-	case "foul":
-		if match.GameType == 2 {
-			result.Description = matchtext.NineBallLastActionDescription(role, action)
-		} else {
-			result.Description = fmt.Sprintf("%s犯规，计%d分", actorName, action.ScoreChange)
-		}
-	case "win":
-		if match.GameType == 2 {
-			result.Description = matchtext.NineBallLastActionDescription(role, action)
-		} else {
-			result.Description = fmt.Sprintf("%s结束本局", actorName)
-		}
+	case "score", "round_start", "match_end", "foul", "win":
+		result.Description = matchtext.LastActionDescription(role, match.GameType, action)
 	case "undo":
 		result.Description = "撤销了最近一次操作"
 	case "finish_request":
@@ -73,7 +61,7 @@ func buildMatchLastActionFromAction(userId int64, match *model.Match, action *mo
 			case model.SnookerOutcomeNoScore:
 				result.Description = fmt.Sprintf("%s未进球，上手结束", actorName)
 			case model.SnookerOutcomeFoul:
-				result.Description = fmt.Sprintf("%s犯规，对方获%d分", actorName, action.ScoreChange)
+				result.Description = matchtext.FoulDescription(role, action)
 			}
 		}
 	case model.MatchActionTypeSnookerFrameAction:

@@ -246,9 +246,11 @@ test('match detail page replaces nine ball round stats with a silently refreshed
 		await settle()
 		const poolText = wrapper.text()
 		assert.match(poolText, /总局数/)
-		assert.match(poolText, /当前局/)
+		// 已结束对局不再展示“当前局”。
+		assert.doesNotMatch(poolText, /当前局/)
 		assert.match(poolText, /局记录/)
 		assert.match(poolText, /第 1 局/)
+		assert.match(poolText, /21 - 10/)
 		assert.doesNotMatch(poolText, /得分构成/)
 
 		// 裁判视角：加入时间走本地可读格式，时长带「用时」前缀。
@@ -273,6 +275,7 @@ test('match detail page replaces nine ball round stats with a silently refreshed
 		const refereeText = wrapper.text()
 		assert.match(refereeText, /加入时间 \d{4}年\d{2}月\d{2}日 \d{2}:\d{2}/)
 		assert.doesNotMatch(refereeText, /T\d{2}:\d{2}:\d{2}|\+08:00/)
+		assert.doesNotMatch(refereeText, /当前局/)
 		assert.equal(wrapper.find('.match-info-text').text(), '中式八球 · 用时 8分钟')
 
 		// 时长为 0 时副标题只留球种名。
@@ -290,6 +293,38 @@ test('match detail page replaces nine ball round stats with a silently refreshed
 		await settle()
 		assert.equal(wrapper.find('.match-info-text').text(), '中式八球')
 		assert.doesNotMatch(wrapper.find('.match-info-text').text(), /0分/)
+
+		// 选手2 视角：进行中显示当前局，HTTP 与 WS 的固定选手1/2 局记录都换边。
+		globalThis.__DETAIL_PAGE__.hooks.onLoad.forEach((hook) => hook({ match_id: '9' }))
+		await settle()
+		requests[9].resolve({
+			success: true,
+			match: {
+				...buildDetail({ player1Score: 3, player2Score: 1, status: 1 }),
+				game_type: 3,
+				viewer_role: 'player2',
+				is_player1: false,
+				total_rounds: 2,
+				current_round: 3,
+				rounds: [{ round_number: 1, player1_score: 21, player2_score: 10, winner: 1 }]
+			}
+		})
+		await settle()
+		assert.match(wrapper.text(), /当前局/)
+		const player2Round = wrapper.find('.round-card')
+		assert.match(player2Round.text(), /10 - 21/)
+		assert.match(player2Round.text(), /负/)
+
+		handlers.sync({
+			player1_score: 3,
+			player2_score: 1,
+			current_round: 3,
+			total_rounds: 2,
+			rounds: [{ round_number: 1, player1_score: 21, player2_score: 10, winner: 1 }]
+		})
+		await settle()
+		assert.match(wrapper.find('.round-card').text(), /10 - 21/)
+		assert.match(wrapper.find('.round-card').text(), /负/)
 	} finally {
 		wrapper?.unmount()
 		delete globalThis.__DETAIL_PAGE__

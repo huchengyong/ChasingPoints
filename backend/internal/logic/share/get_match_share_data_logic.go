@@ -137,11 +137,17 @@ func (l *GetMatchShareDataLogic) GetMatchShareData(req *types.GetMatchShareDataR
 		}
 	}
 
-	achievements := types.MatchAchievement{}
+	player1Achievements := types.MatchAchievement{}
+	player2Achievements := types.MatchAchievement{}
 	if completedCore != nil {
-		achievements = completedCore.Achievements
+		player1Achievements, player2Achievements = completedCore.Player1Achievements, completedCore.Player2Achievements
 	} else if achList, achErr := l.svcCtx.MatchModel.GetAchievements(match.Id); achErr == nil {
-		achievements = buildMatchAchievementPayload(achList)
+		player1Achievements, player2Achievements = buildMatchAchievementsByActor(achList)
+	}
+	// 分享数据按查看者视角组装，战绩与同一响应的"我方"一致。
+	achievements := player1Achievements
+	if !isPlayer1 {
+		achievements = player2Achievements
 	}
 
 	player1Profile, _ := logicx.LoadCurrentCompetitiveProfile(l.svcCtx, match.UserId, match.GameType)
@@ -207,6 +213,10 @@ func (l *GetMatchShareDataLogic) GetMatchShareData(req *types.GetMatchShareDataR
 			actionsForSummary = filterSnookerActionsToCompletedRounds(actions, completedRounds)
 		}
 	}
+	endedAt := ""
+	if match.Status == 2 && match.EndTime != nil {
+		endedAt = match.EndTime.Format("2006-01-02 15:04:05")
+	}
 	summaryHighlights, summaryStats := buildMatchSummary(
 		match.GameType,
 		myActor,
@@ -218,6 +228,7 @@ func (l *GetMatchShareDataLogic) GetMatchShareData(req *types.GetMatchShareDataR
 		opponentMaxScore,
 		redBallCount,
 		match.CreatedAt.Format("2006-01-02 15:04:05"),
+		endedAt,
 		completedRounds,
 		actionsForSummary,
 		achievements,

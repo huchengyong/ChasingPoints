@@ -9,6 +9,7 @@ import (
 	"chasing_points/internal/model"
 	"chasing_points/internal/observability"
 	"chasing_points/internal/svc"
+	"chasing_points/internal/types"
 
 	miniredis "github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
@@ -215,11 +216,72 @@ func TestCompletedMatchCoreSummaryOnlyLoadsTargetMatchFacts(t *testing.T) {
 	if len(core.Rounds) != 1 || core.Rounds[0].MatchId != 10 || len(core.Actions) != 1 || core.Actions[0].MatchId != 10 {
 		t.Fatalf("core must only include target match actions/rounds: %+v", core)
 	}
-	if core.Achievements.Break50 != 1 {
-		t.Fatalf("core must include target achievements: %+v", core.Achievements)
+	if core.Player1Achievements.Break50 != 1 {
+		t.Fatalf("core must include target achievements: %+v", core.Player1Achievements)
 	}
 	viewer := core.ViewerPerspective(2)
 	if viewer.IsPlayer1 || viewer.MyName != "乙" || viewer.OpponentName != "甲" || viewer.MyScore != 5 || viewer.OpponentScore != 7 {
 		t.Fatalf("unexpected player-two perspective: %+v", viewer)
+	}
+}
+
+func TestCompletedMatchCoreSummaryKeepsPerActorAchievementsAcrossCachePaths(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&model.User{}, &model.Match{}, &model.MatchRound{}, &model.MatchAction{}, &model.MatchAchievement{}, &model.RankChangeLog{}); err != nil {
+		t.Fatalf("prepare core schema: %v", err)
+	}
+	if err := db.Create(&[]model.User{{Id: 1, Nickname: "甲"}, {Id: 2, Nickname: "乙"}}).Error; err != nil {
+		t.Fatalf("seed users: %v", err)
+	}
+	result := 1
+	opponentID := int64(2)
+	completedAt := time.Now()
+	match := model.Match{Id: 30, UserId: 1, OpponentId: &opponentID, OpponentName: "乙", GameType: 3, Status: 2, Result: &result, MyScore: 3, OpponentScore: 0, MatchTime: completedAt.Add(-time.Minute), CompletedAt: &completedAt, EndTime: &completedAt, AchievementSyncedAt: &completedAt}
+	if err := db.Create(&match).Error; err != nil {
+		t.Fatalf("seed match: %v", err)
+	}
+	if err := db.Create(&[]model.MatchAchievement{
+		{MatchId: match.Id, Actor: 1, AchievementType: "break_clear", Count: 2},
+		{MatchId: match.Id, Actor: 2, AchievementType: "break_clear", Count: 1},
+		{MatchId: match.Id, Actor: 2, AchievementType: "continue_clear", Count: 1},
+	}).Error; err != nil {
+		t.Fatalf("seed achievements: %v", err)
+	}
+	miniRedis := miniredis.RunT(t)
+	redisClient := redis.NewClient(&redis.Options{Addr: miniRedis.Addr()})
+	t.Cleanup(func() { _ = redisClient.Close() })
+	ResetCompletedMatchCoreCacheForTest()
+	svcCtx := &svc.ServiceContext{Redis: redisClient, UserModel: model.NewUserModel(db), MatchModel: model.NewMatchModel(db), RankingModel: model.NewRankingModel(db)}
+	load := func() *CompletedMatchCoreSummary {
+		core, loadErr := BuildCompletedMatchCoreSummary(context.Background(), svcCtx, &match)
+		if loadErr != nil {
+			t.Fatalf("build core: %v", loadErr)
+		}
+		return core
+	}
+	wantPlayer1 := types.MatchAchievement{BreakClear: 2}
+	wantPlayer2 := types.MatchAchievement{BreakClear: 1, ContinueClear: 1}
+	miss := load()
+	hit := load()
+	for name, core := range map[string]*CompletedMatchCoreSummary{"miss": miss, "hit": hit} {
+		if core.Player1Achievements != wantPlayer1 || core.Player2Achievements != wantPlayer2 {
+			t.Fatalf("%s path achievements: player1=%+v player2=%+v", name, core.Player1Achievements, core.Player2Achievements)
+		}
+	}
+	if metrics := CompletedMatchCoreCacheMetrics(); metrics.Misses != 1 || metrics.Hits != 1 {
+		t.Fatalf("cache metrics: %+v", metrics)
+	}
+
+	uncachedMatch := match
+	uncachedMatch.AchievementSyncedAt = nil
+	bestEffort, err := BuildCompletedMatchCoreSummary(context.Background(), svcCtx, &uncachedMatch)
+	if err != nil {
+		t.Fatalf("build best-effort core: %v", err)
+	}
+	if bestEffort.Player1Achievements != wantPlayer1 || bestEffort.Player2Achievements != wantPlayer2 {
+		t.Fatalf("best-effort achievements: player1=%+v player2=%+v", bestEffort.Player1Achievements, bestEffort.Player2Achievements)
 	}
 }

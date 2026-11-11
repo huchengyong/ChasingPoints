@@ -25,22 +25,24 @@ var (
 // CompletedMatchCoreSummary contains only immutable, match-scoped result data.
 // Current user aggregates intentionally stay outside this structure.
 type CompletedMatchCoreSummary struct {
-	Match        *model.Match
-	Player1      *model.User
-	Player2      *model.User
-	Referee      *model.User
-	Rounds       []model.MatchRound
-	Actions      []model.MatchAction
-	Achievements types.MatchAchievement
-	RankChanges  []model.RankChangeLog
+	Match               *model.Match
+	Player1             *model.User
+	Player2             *model.User
+	Referee             *model.User
+	Rounds              []model.MatchRound
+	Actions             []model.MatchAction
+	Player1Achievements types.MatchAchievement
+	Player2Achievements types.MatchAchievement
+	RankChanges         []model.RankChangeLog
 }
 
 type completedMatchCoreCachePayload struct {
-	Match        model.Match            `json:"match"`
-	Rounds       []model.MatchRound     `json:"rounds"`
-	Actions      []model.MatchAction    `json:"actions"`
-	Achievements types.MatchAchievement `json:"achievements"`
-	RankChanges  []model.RankChangeLog  `json:"rank_changes"`
+	Match               model.Match            `json:"match"`
+	Rounds              []model.MatchRound     `json:"rounds"`
+	Actions             []model.MatchAction    `json:"actions"`
+	Player1Achievements types.MatchAchievement `json:"player1_achievements"`
+	Player2Achievements types.MatchAchievement `json:"player2_achievements"`
+	RankChanges         []model.RankChangeLog  `json:"rank_changes"`
 }
 
 type CompletedMatchViewerPerspective struct {
@@ -97,7 +99,7 @@ func BuildCompletedMatchCoreSummary(ctx context.Context, svcCtx *svc.ServiceCont
 		if svcCtx != nil {
 			client = svcCtx.Redis
 		}
-		cached, err := readcache.LoadJSON(ctx, client, fmt.Sprintf("completed-match-core:v1:%d", match.Id), completedMatchCoreCacheTTL, &completedMatchCoreCacheMetrics, &completedMatchCoreCacheGroup, func() (completedMatchCoreCachePayload, error) {
+		cached, err := readcache.LoadJSON(ctx, client, fmt.Sprintf("completed-match-core:v2:%d", match.Id), completedMatchCoreCacheTTL, &completedMatchCoreCacheMetrics, &completedMatchCoreCacheGroup, func() (completedMatchCoreCachePayload, error) {
 			return loadCompletedMatchCorePayload(svcCtx, match)
 		})
 		if err == nil {
@@ -110,7 +112,8 @@ func BuildCompletedMatchCoreSummary(ctx context.Context, svcCtx *svc.ServiceCont
 	}
 	core := &CompletedMatchCoreSummary{
 		Match: &payload.Match, Rounds: payload.Rounds, Actions: payload.Actions,
-		Achievements: payload.Achievements, RankChanges: payload.RankChanges,
+		Player1Achievements: payload.Player1Achievements, Player2Achievements: payload.Player2Achievements,
+		RankChanges: payload.RankChanges,
 	}
 	hydrateCompletedMatchUsers(svcCtx, core)
 	return core, nil
@@ -132,7 +135,7 @@ func loadCompletedMatchCorePayload(svcCtx *svc.ServiceContext, match *model.Matc
 	if err != nil {
 		return payload, err
 	}
-	payload.Achievements = BuildMatchAchievementPayload(achievements)
+	payload.Player1Achievements, payload.Player2Achievements = BuildMatchAchievementsByActor(achievements)
 	if svcCtx.RankingModel != nil {
 		logs, err := svcCtx.RankingModel.ListRankChangesByMatchAndGameType(match.Id, match.GameType)
 		if err != nil {
@@ -152,7 +155,7 @@ func completedMatchCoreBestEffort(svcCtx *svc.ServiceContext, match *model.Match
 		payload.Actions = actions
 	}
 	if achievements, err := svcCtx.MatchModel.GetAchievements(match.Id); err == nil {
-		payload.Achievements = BuildMatchAchievementPayload(achievements)
+		payload.Player1Achievements, payload.Player2Achievements = BuildMatchAchievementsByActor(achievements)
 	}
 	if svcCtx.RankingModel != nil {
 		if logs, err := svcCtx.RankingModel.ListRankChangesByMatchAndGameType(match.Id, match.GameType); err == nil {

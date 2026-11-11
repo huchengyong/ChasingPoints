@@ -27,7 +27,7 @@
 									</view>
 									<view class="player-meta">
 										<text class="player-meta__item">胜率 {{ myInfo.winRate || 0 }}%</text>
-										<text class="player-meta__item">单杆 {{ myInfo.maxScore || 0 }}</text>
+										<text v-if="gameType === 1" class="player-meta__item">单杆 {{ myInfo.maxScore || 0 }}</text>
 									</view>
 								</view>
 							</view>
@@ -45,7 +45,7 @@
 									</view>
 									<view class="player-meta is-right">
 										<text class="player-meta__item">胜率 {{ opponentInfo.winRate || 0 }}%</text>
-										<text class="player-meta__item">单杆 {{ opponentInfo.maxScore || 0 }}</text>
+										<text v-if="gameType === 1" class="player-meta__item">单杆 {{ opponentInfo.maxScore || 0 }}</text>
 									</view>
 								</view>
 								<view class="avatar-wrapper">
@@ -243,6 +243,7 @@
 							</button>
 						</view>
 						<view class="snooker-v2-actions">
+							<button v-if="snookerV2State.ballOn === 'red' && snookerV2State.redsRemaining >= 2" class="snooker-v2-action" @click="handleSnookerV2MultiRed">一杆多颗红球</button>
 							<button v-if="snookerV2State.freeBallAvailable" class="snooker-v2-action is-highlight" @click="handleSnookerV2FreeBall">记录自由球</button>
 							<button class="snooker-v2-action" @click="handleSnookerV2NoScore">合法未进球 / 上手结束</button>
 							<button class="snooker-v2-action is-danger" @click="showSnookerFoulEditor = !showSnookerFoulEditor">记录犯规</button>
@@ -2151,14 +2152,12 @@ const handleSnookerV2Pot = async (item) => {
 	const actor = snookerV2State.value.striker
 	if (!actor) return
 	if (item.value === 1) {
-		const maxReds = Math.max(0, snookerV2State.value.redsRemaining)
-		const count = await selectSnookerCount(1, maxReds, value => `${value} 颗红球入袋（${value}分）`)
-		if (count === null) return
+		// 单击红球默认进 1 颗；一杆多颗另走单独入口。
 		await submitSnookerV2Stroke(buildSnookerV2PotPayload({
 			state: snookerV2State.value,
 			actor,
-			pottedReds: count
-		}), `已记录${count}颗红球`)
+			pottedReds: 1
+		}), '已记录1颗红球')
 		return
 	}
 	await submitSnookerV2Stroke(buildSnookerV2PotPayload({
@@ -2167,6 +2166,18 @@ const handleSnookerV2Pot = async (item) => {
 		ballOnValue: item.value,
 		ballOnPotted: true
 	}), `已记录${item.label} ${item.value}分`)
+}
+
+const handleSnookerV2MultiRed = async () => {
+	const actor = snookerV2State.value.striker
+	if (!actor) return
+	const count = await selectSnookerCount(2, Math.max(0, snookerV2State.value.redsRemaining), value => `${value} 颗红球入袋（${value}分）`)
+	if (count === null) return
+	await submitSnookerV2Stroke(buildSnookerV2PotPayload({
+		state: snookerV2State.value,
+		actor,
+		pottedReds: count
+	}), `已记录${count}颗红球`)
 }
 
 const handleSnookerV2FreeBall = async () => {

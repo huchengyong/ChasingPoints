@@ -8,6 +8,7 @@ import {
   MATCH_REWARD_MAX_ATTEMPTS,
   MATCH_REWARD_RETRY_DELAY_MS,
   resolveMatchRewardSummary,
+  resolveMatchViewerOutcome,
   resolveMatchViewerWin
 } from '../utils/match-result-page.js'
 
@@ -148,15 +149,20 @@ test('match result page queries the current user summary by match id and renders
   assert.equal(MATCH_REWARD_RETRY_DELAY_MS, 800)
 })
 
-test('resolveMatchViewerWin prefers the settled result over frame scores', () => {
+test('resolveMatchViewerOutcome prefers the settled result over frame scores', () => {
   // 自由局数整场认输：认输方局分领先但结果为负，胜方局分落后但结果为胜。
-  assert.equal(resolveMatchViewerWin({ result: 2, myScore: 2, opponentScore: 1 }), false)
-  assert.equal(resolveMatchViewerWin({ result: 1, myScore: 1, opponentScore: 2 }), true)
+  assert.equal(resolveMatchViewerOutcome({ result: 2, myScore: 2, opponentScore: 1 }), 'loss')
+  assert.equal(resolveMatchViewerOutcome({ result: 1, myScore: 1, opponentScore: 2 }), 'win')
+  // 已结算平局不按局分判胜负。
+  assert.equal(resolveMatchViewerOutcome({ result: 3, myScore: 2, opponentScore: 1 }), 'draw')
+  // 旧响应缺少 result 或对局未结算时按比分判断，比分相等为平局。
+  assert.equal(resolveMatchViewerOutcome({ myScore: 3, opponentScore: 1 }), 'win')
+  assert.equal(resolveMatchViewerOutcome({ myScore: 1, opponentScore: 3 }), 'loss')
+  assert.equal(resolveMatchViewerOutcome({ myScore: 2, opponentScore: 2 }), 'draw')
+  assert.equal(resolveMatchViewerOutcome({ result: 0, myScore: 1, opponentScore: 3 }), 'loss')
+  // 旧 API 仍然只回答是否获胜。
   assert.equal(resolveMatchViewerWin({ result: 3, myScore: 2, opponentScore: 1 }), false)
-  // 旧响应缺少 result 或对局未结算时按比分判断。
-  assert.equal(resolveMatchViewerWin({ myScore: 3, opponentScore: 1 }), true)
-  assert.equal(resolveMatchViewerWin({ result: 0, myScore: 1, opponentScore: 3 }), false)
-  assert.match(matchResultSource, /resolveMatchViewerWin\(\{\s*result: matchData\.value\.result/)
+  assert.match(matchResultSource, /resolveMatchViewerOutcome\(\{\s*result: matchData\.value\.result/)
 })
 
 test('resolveMatchRewardSummary resolves achievement icons stored as static paths to the CDN', () => {

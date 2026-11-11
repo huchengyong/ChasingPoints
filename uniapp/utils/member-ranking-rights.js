@@ -43,6 +43,20 @@ const formatAchievementRecordText = (records = []) => {
 
 export const resolveMatchRankingRightsSummary = (match = {}) => {
   const achievementRecords = resolveAchievementRecords(match.achievements || {})
+  const practiceRecordText = formatAchievementRecordText(achievementRecords)
+  if (match.match_mode === 'practice') {
+    return {
+      badgeText: '练习赛',
+      title: '练习赛不计入排位',
+      description: practiceRecordText
+        ? `本场记录了 ${practiceRecordText}，高光会保留在战报和成就里。`
+        : '练习赛的胜负和战绩不影响排位分。',
+      tone: 'slate',
+      countedInRanking: false,
+      capped: false,
+      recordedAchievementsText: practiceRecordText
+    }
+  }
   if (Number(match.rank_rules_version) === 2) {
     const recordText = formatAchievementRecordText(achievementRecords)
     return recordText

@@ -109,18 +109,7 @@ func (l *GetPublicMatchDetailLogic) GetPublicMatchDetail(req *types.GetPublicMat
 	} else {
 		matchRounds, _ = l.svcCtx.MatchModel.ListCompletedRounds(match.Id)
 	}
-	for _, r := range matchRounds {
-		winner := 0
-		if r.Winner != nil {
-			winner = *r.Winner
-		}
-		rounds = append(rounds, types.RoundRecord{
-			RoundNumber:  r.RoundNo,
-			Player1Score: r.MyScore,
-			Player2Score: r.OpponentScore,
-			Winner:       winner,
-		})
-	}
+	rounds = logicx.BuildRoundRecords(matchRounds)
 
 	// 九球追分的得分构成：已完成对局复用核心摘要里的动作；进行中对局先计数再按对局 id 读取有效动作。
 	// 读取失败时只降级得分构成，不影响整个详情。

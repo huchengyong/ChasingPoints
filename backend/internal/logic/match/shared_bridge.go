@@ -68,10 +68,6 @@ func resolveReplayAchievementScoresStrict(
 	return logic.ResolveReplayAchievementScoresStrict(gameType, rounds, actions, storedAchievements, rewardMap)
 }
 
-func buildMatchAchievementPayload(list []model.MatchAchievement) types.MatchAchievement {
-	return logic.BuildMatchAchievementPayload(list)
-}
-
 func calculateSnookerAchievementScoresByActor(actions []model.MatchAction, rewardMap map[string]int) (int, int) {
 	return logic.CalculateSnookerAchievementScoresByActor(actions, rewardMap)
 }
@@ -92,8 +88,8 @@ func calculateSnookerHighestBreaks(actions []model.MatchAction, myActor int) (in
 	return logic.CalculateSnookerHighestBreaks(actions, myActor)
 }
 
-func buildMatchSummary(gameType int, myActor int, myScore int, opponentScore int, myWinRate float64, opponentWinRate float64, myMaxScore int, opponentMaxScore int, redBallCount int, createdAt string, rounds []model.MatchRound, actions []model.MatchAction, achievements types.MatchAchievement) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
-	return logic.BuildMatchSummary(gameType, myActor, myScore, opponentScore, myWinRate, opponentWinRate, myMaxScore, opponentMaxScore, redBallCount, createdAt, rounds, actions, achievements)
+func buildMatchSummary(gameType int, myActor int, myScore int, opponentScore int, myWinRate float64, opponentWinRate float64, myMaxScore int, opponentMaxScore int, redBallCount int, createdAt string, endedAt string, rounds []model.MatchRound, actions []model.MatchAction, achievements types.MatchAchievement) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
+	return logic.BuildMatchSummary(gameType, myActor, myScore, opponentScore, myWinRate, opponentWinRate, myMaxScore, opponentMaxScore, redBallCount, createdAt, endedAt, rounds, actions, achievements)
 }
 
 func rankLogToDetails(log *model.RankChangeLog) []types.RankDetail {

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"chasing_points/internal/model"
+	"chasing_points/internal/types"
 )
 
 func TestNormalizeStoredAchievementType(t *testing.T) {
@@ -23,36 +24,27 @@ func TestNormalizeStoredAchievementType(t *testing.T) {
 	}
 }
 
-func TestBuildMatchAchievementPayload(t *testing.T) {
-	payload := buildMatchAchievementPayload([]model.MatchAchievement{
-		{AchievementType: "break_clear", Count: 1},
-		{AchievementType: "continue_clear", Count: 2},
-		{AchievementType: "golden_break", Count: 3},
-		{AchievementType: "nine_on_break", Count: 4},
-		{AchievementType: "break_50", Count: 5},
-		{AchievementType: "break_100", Count: 6},
-		{AchievementType: "break_147", Count: 7},
+func TestBuildMatchAchievementsByActor(t *testing.T) {
+	player1, player2 := BuildMatchAchievementsByActor([]model.MatchAchievement{
+		{Actor: 1, AchievementType: "break_clear", Count: 1},
+		{Actor: 1, AchievementType: "break_and_run", Count: 1}, // 历史别名与 break_clear 累加
+		{Actor: 1, AchievementType: "continue_clear", Count: 2},
+		{Actor: 1, AchievementType: "golden_break", Count: 3},
+		{Actor: 1, AchievementType: "nine_on_break", Count: 4},
+		{Actor: 1, AchievementType: "break_50", Count: 5},
+		{Actor: 1, AchievementType: "break_100", Count: 6},
+		{Actor: 1, AchievementType: "break_147", Count: 7},
+		{Actor: 2, AchievementType: "break_clear", Count: 1},
+		{Actor: 2, AchievementType: "continue_clear", Count: 1},
 	})
 
-	if payload.BreakClear != 1 {
-		t.Fatalf("expected break_clear=1, got %d", payload.BreakClear)
+	if player1 != (types.MatchAchievement{BreakClear: 2, ContinueClear: 2, GoldenBreak: 3, NineOnBreak: 4, Break50: 5, Break100: 6, Break147: 7}) {
+		t.Fatalf("player1 achievements = %+v", player1)
 	}
-	if payload.ContinueClear != 2 {
-		t.Fatalf("expected continue_clear=2, got %d", payload.ContinueClear)
+	if player2.BreakClear != 1 || player2.ContinueClear != 1 {
+		t.Fatalf("player2 achievements = %+v", player2)
 	}
-	if payload.GoldenBreak != 3 {
-		t.Fatalf("expected golden_break=3, got %d", payload.GoldenBreak)
-	}
-	if payload.NineOnBreak != 4 {
-		t.Fatalf("expected nine_on_break=4, got %d", payload.NineOnBreak)
-	}
-	if payload.Break50 != 5 {
-		t.Fatalf("expected break_50=5, got %d", payload.Break50)
-	}
-	if payload.Break100 != 6 {
-		t.Fatalf("expected break_100=6, got %d", payload.Break100)
-	}
-	if payload.Break147 != 7 {
-		t.Fatalf("expected break_147=7, got %d", payload.Break147)
+	if player2.GoldenBreak != 0 || player2.NineOnBreak != 0 || player2.Break50 != 0 {
+		t.Fatalf("player2 must not inherit player1 achievements: %+v", player2)
 	}
 }

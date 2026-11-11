@@ -59,7 +59,7 @@ cd backend
 | 球馆 | `venue:version` | 列表/详情 2 分钟、附近 1 分钟 | 创建、审核、资料可见性变化 |
 | 赛季信息 | `season:info:version` | 当前窗口 5 分钟且 key 含 policy window | 排期创建、repair、换季发布 |
 | 赛季榜单 | `season:leaderboard:version:{season}:{game}`、`season:leaderboard:profile-version` | 30 秒 | 比赛结算、资料更新 |
-| 完成对局核心 | `completed-match-core:v1:{match_id}` | 24 小时，只缓存 achievement ready 的不可变事实 | 无常规失效；pending 不写入 |
+| 完成对局核心 | `completed-match-core:v2:{match_id}` | 24 小时，只缓存 achievement ready 的不可变事实 | 无常规失效；pending 不写入 |
 
 附近球馆 key 使用离散经纬度桶、`radius`、`limit` 和领域版本，不使用完整坐标。完成对局当前胜率、最高分和用户资料不在长期核心中，每次从当前用户/竞技快照组装。
 

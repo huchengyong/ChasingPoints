@@ -28,6 +28,7 @@ func TestBuildMatchSummaryForAmericanNine(t *testing.T) {
 		0,
 		0,
 		"2026-03-14 20:00",
+		"",
 		rounds,
 		nil,
 		types.MatchAchievement{},
@@ -79,6 +80,7 @@ func TestBuildMatchSummaryForSnookerUsesCurrentCompetitiveProfiles(t *testing.T)
 		129,
 		0,
 		"2026-03-15 19:31:52",
+		"",
 		nil,
 		actions,
 		types.MatchAchievement{},
@@ -137,6 +139,7 @@ func TestBuildMatchSummaryForSnookerIgnoresUnfinishedFrameActions(t *testing.T) 
 		0,
 		0,
 		"2026-03-17 20:00",
+		"",
 		rounds,
 		actions,
 		types.MatchAchievement{},
@@ -231,6 +234,7 @@ func TestBuildMatchSummaryForSnookerTracksFiftyPlusAndCenturies(t *testing.T) {
 		0,
 		0,
 		"2026-03-18 12:15:00",
+		"",
 		nil,
 		actions,
 		types.MatchAchievement{},
@@ -239,14 +243,14 @@ func TestBuildMatchSummaryForSnookerTracksFiftyPlusAndCenturies(t *testing.T) {
 	if !hasSummaryItem(highlights, "最高单杆", "147 分") {
 		t.Fatalf("expected snooker highlights to show current actor highest break, got %#v", highlights)
 	}
-	if !hasSummaryItem(highlights, "50+次数", "1 次") {
-		t.Fatalf("expected snooker highlights to show current actor fifty-plus count, got %#v", highlights)
+	if !hasSummaryItem(highlights, "50+次数", "2 次") {
+		t.Fatalf("expected snooker highlights to count centuries in fifty-plus, got %#v", highlights)
 	}
 	if !hasSummaryItem(highlights, "破百次数", "1 次") {
 		t.Fatalf("expected snooker highlights to show current actor century count, got %#v", highlights)
 	}
-	if !hasSummaryItem(stats, "我的50+次数", "1 次") {
-		t.Fatalf("expected snooker stats to show my fifty-plus count, got %#v", stats)
+	if !hasSummaryItem(stats, "我的50+次数", "2 次") {
+		t.Fatalf("expected snooker stats to count centuries in my fifty-plus, got %#v", stats)
 	}
 	if !hasSummaryItem(stats, "我的破百次数", "1 次") {
 		t.Fatalf("expected snooker stats to show my century count, got %#v", stats)
@@ -277,6 +281,7 @@ func TestBuildMatchSummaryForNineBallDoesNotCountOwnFoulsAsRun(t *testing.T) {
 		0,
 		0,
 		"2026-03-15 18:51:34",
+		"",
 		nil,
 		actions,
 		types.MatchAchievement{},
@@ -327,6 +332,7 @@ func TestBuildMatchSummaryForEightBallUsesCurrentActorSpecialWins(t *testing.T) 
 		0,
 		0,
 		"2026-03-15 18:24:40",
+		"",
 		rounds,
 		nil,
 		types.MatchAchievement{
@@ -362,4 +368,85 @@ func hasSummaryLabel(items []types.MatchSummaryItem, label string) bool {
 		}
 	}
 	return false
+}
+
+func TestBuildMatchSummaryCountsCenturyBreakInFiftyPlus(t *testing.T) {
+	extra, err := model.EncodeSnookerEvent(model.SnookerEvent{
+		Version: 2, Kind: model.SnookerEventKindStroke, Actor: 1, VisitNo: 1, Outcome: model.SnookerOutcomePot,
+	})
+	if err != nil {
+		t.Fatalf("encode snooker event: %v", err)
+	}
+	actions := []model.MatchAction{
+		{RoundNo: 1, Actor: 1, ActionType: model.MatchActionTypeSnookerStroke, ScoreChange: 123, ExtraData: &extra},
+	}
+
+	highlights, stats := buildMatchSummary(
+		1,
+		1,
+		123,
+		0,
+		0.5,
+		0.5,
+		0,
+		0,
+		0,
+		"2026-03-19 20:00:00",
+		"",
+		nil,
+		actions,
+		types.MatchAchievement{},
+	)
+
+	if !hasSummaryItem(highlights, "50+次数", "1 次") || !hasSummaryItem(stats, "我的50+次数", "1 次") {
+		t.Fatalf("century break must also count as fifty-plus: highlights=%#v stats=%#v", highlights, stats)
+	}
+	if !hasSummaryItem(highlights, "破百次数", "1 次") || !hasSummaryItem(stats, "我的破百次数", "1 次") {
+		t.Fatalf("century break must still count as century: highlights=%#v stats=%#v", highlights, stats)
+	}
+}
+
+func TestBuildMatchSummaryUsesEndTimeForCompletedMatch(t *testing.T) {
+	_, completedStats := buildMatchSummary(
+		3,
+		1,
+		1,
+		0,
+		0.5,
+		0.5,
+		0,
+		0,
+		0,
+		"2026-03-20 19:00:00",
+		"2026-03-20 19:45:00",
+		nil,
+		nil,
+		types.MatchAchievement{},
+	)
+	if !hasSummaryItem(completedStats, "结束时间", "2026-03-20 19:45:00") {
+		t.Fatalf("completed match must show end time: %#v", completedStats)
+	}
+	if hasSummaryLabel(completedStats, "记录时间") {
+		t.Fatalf("completed match must not keep the old record-time label: %#v", completedStats)
+	}
+
+	_, ongoingStats := buildMatchSummary(
+		3,
+		1,
+		1,
+		0,
+		0.5,
+		0.5,
+		0,
+		0,
+		0,
+		"2026-03-20 19:00:00",
+		"",
+		nil,
+		nil,
+		types.MatchAchievement{},
+	)
+	if !hasSummaryItem(ongoingStats, "记录时间", "2026-03-20 19:00:00") {
+		t.Fatalf("ongoing match must keep record time fallback: %#v", ongoingStats)
+	}
 }

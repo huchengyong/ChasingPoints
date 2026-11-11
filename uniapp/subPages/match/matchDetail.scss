@@ -340,6 +340,11 @@ $loss-color: #E57373;
     grid-template-columns: 1fr;
 }
 
+// 已结束对局只留总局数与状态，两列铺满，避免第三列留空。
+.stats-grid--two {
+    grid-template-columns: repeat(2, 1fr);
+}
+
 .stat-item {
     display: flex;
     flex-direction: column;

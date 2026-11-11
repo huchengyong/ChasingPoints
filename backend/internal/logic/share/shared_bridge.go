@@ -7,8 +7,8 @@ import (
 	"chasing_points/internal/types"
 )
 
-func buildMatchAchievementPayload(list []model.MatchAchievement) types.MatchAchievement {
-	return logic.BuildMatchAchievementPayload(list)
+func buildMatchAchievementsByActor(list []model.MatchAchievement) (types.MatchAchievement, types.MatchAchievement) {
+	return logic.BuildMatchAchievementsByActor(list)
 }
 
 func loadUserMaxSingleScore(svcCtx *svc.ServiceContext, userId int64, gameType int) (int, error) {
@@ -23,8 +23,8 @@ func calculateSnookerHighestBreaks(actions []model.MatchAction, myActor int) (in
 	return logic.CalculateSnookerHighestBreaks(actions, myActor)
 }
 
-func buildMatchSummary(gameType int, myActor int, myScore int, opponentScore int, myWinRate float64, opponentWinRate float64, myMaxScore int, opponentMaxScore int, redBallCount int, createdAt string, rounds []model.MatchRound, actions []model.MatchAction, achievements types.MatchAchievement) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
-	return logic.BuildMatchSummary(gameType, myActor, myScore, opponentScore, myWinRate, opponentWinRate, myMaxScore, opponentMaxScore, redBallCount, createdAt, rounds, actions, achievements)
+func buildMatchSummary(gameType int, myActor int, myScore int, opponentScore int, myWinRate float64, opponentWinRate float64, myMaxScore int, opponentMaxScore int, redBallCount int, createdAt string, endedAt string, rounds []model.MatchRound, actions []model.MatchAction, achievements types.MatchAchievement) ([]types.MatchSummaryItem, []types.MatchSummaryItem) {
+	return logic.BuildMatchSummary(gameType, myActor, myScore, opponentScore, myWinRate, opponentWinRate, myMaxScore, opponentMaxScore, redBallCount, createdAt, endedAt, rounds, actions, achievements)
 }
 
 func GetGameTypeName(gameType int) string {

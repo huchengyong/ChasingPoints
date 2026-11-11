@@ -63,12 +63,12 @@
 				</view>
 
 				<!-- 统计数据 -->
-				<view :class="['stats-grid', { 'stats-grid--chasing': isChasingScore }]">
+				<view :class="['stats-grid', { 'stats-grid--chasing': isChasingScore, 'stats-grid--two': !isChasingScore && matchData.status === 2 }]">
 					<view v-if="!isChasingScore" class="stat-item">
 						<text class="stat-label">总局数</text>
 						<text class="stat-value">{{ matchData.total_rounds || 0 }}</text>
 					</view>
-					<view v-if="!isChasingScore" class="stat-item">
+					<view v-if="!isChasingScore && matchData.status !== 2" class="stat-item">
 						<text class="stat-label">当前局</text>
 						<text class="stat-value">{{ matchData.current_round || 1 }}</text>
 					</view>
@@ -160,6 +160,7 @@ import { buildMatchReplayUrl, canOpenMatchReplay } from '@/utils/match-replay-en
 import { usePageTheme } from '@/utils/page-theme.js'
 import {
 	normalizeMatchDetailPayload,
+	normalizeMatchRoundRecords,
 	shouldShowSpectateBadge,
 	shouldUsePublicMatchDetail
 } from '@/utils/match-detail.js'
@@ -204,6 +205,8 @@ const player2Info = ref({
 const player1UserId = ref(0)
 const player2UserId = ref(0)
 const roundRecords = ref([])
+// WS 推来的局记录与 HTTP 同为选手1 / 选手2 固定视角，沿用页面加载时算好的换边方向。
+const roundRecordsSwapped = ref(false)
 const scoreBreakdown = ref(null)
 let wsHandlersReady = false
 let scoreRefreshTimer = null
@@ -433,6 +436,7 @@ const loadMatchData = async () => {
 			player1UserId.value = shouldSwap ? player2Id : player1Id
 			player2UserId.value = shouldSwap ? player1Id : player2Id
 			roundRecords.value = normalized.roundRecords
+			roundRecordsSwapped.value = normalized.roundRecordsSwapped
 			scoreBreakdown.value = normalized.scoreBreakdown
 			if (matchData.value.viewer_role === 'referee') {
 				uni.setNavigationBarTitle({ title: '执裁详情' })
@@ -496,12 +500,13 @@ const handleRoundEnd = (data) => {
 
 	if (!isChasingScore.value) {
 		if (data.round_number) {
-			roundRecords.value.push({
+			// WS 局记录同样是选手1 / 选手2 固定视角，沿用页面加载时算好的换边方向。
+			roundRecords.value.push(...normalizeMatchRoundRecords([{
 				round_number: data.round_number,
 				player1_score: data.round_player1_score,
 				player2_score: data.round_player2_score,
 				winner: data.winner
-			})
+			}], roundRecordsSwapped.value))
 		} else {
 			matchWS.requestSync()
 		}
@@ -548,7 +553,7 @@ const handleSync = (data) => {
 	if (data.completed_by_user_id !== undefined) matchData.value.completed_by_user_id = Number(data.completed_by_user_id || 0)
 	if (data.completion_source !== undefined) matchData.value.completion_source = data.completion_source || 'unknown'
 	if (Array.isArray(data.rounds)) {
-		roundRecords.value = data.rounds
+		roundRecords.value = normalizeMatchRoundRecords(data.rounds, roundRecordsSwapped.value)
 	}
 	pageLog('收到同步快照', {
 		matchId: data.match_id,
