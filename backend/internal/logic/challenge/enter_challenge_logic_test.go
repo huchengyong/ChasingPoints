@@ -25,7 +25,7 @@ func newChallengeLogicTestSvc(t *testing.T) *svc.ServiceContext {
 	if err != nil {
 		t.Fatalf("open sqlite db: %v", err)
 	}
-	if err := db.AutoMigrate(&model.User{}, &model.Match{}, &model.Opponent{}, &model.Challenge{}, &model.MatchRound{}, &model.MatchAction{}, &model.Friend{}); err != nil {
+	if err := db.AutoMigrate(&model.User{}, &model.Match{}, &model.Opponent{}, &model.Challenge{}, &model.MatchRound{}, &model.MatchAction{}, &model.Friend{}, &model.FriendBlacklist{}, &model.FriendRequest{}); err != nil {
 		t.Fatalf("prepare challenge schema: %v", err)
 	}
 	sqlDB, err := db.DB()

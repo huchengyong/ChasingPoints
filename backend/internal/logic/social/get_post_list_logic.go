@@ -37,7 +37,8 @@ func (l *GetPostListLogic) GetPostList(req *types.GetPostListReq) (resp *types.G
 	}
 
 	followingIds := make([]int64, 0)
-	if err = l.svcCtx.DB.Table("follows").Where("follower_id = ?", userIdInt).Pluck("following_id", &followingIds).Error; err != nil {
+	// shortcut: 关注动态只取前 2000 个关注对象，超大关注量下按需改为分页/游标。
+	if err = l.svcCtx.DB.Table("follows").Where("follower_id = ?", userIdInt).Limit(2000).Pluck("following_id", &followingIds).Error; err != nil {
 		l.Logger.Errorf("查询关注列表失败: userId=%d err=%v", userIdInt, err)
 		return &types.GetPostListResp{Success: false}, nil
 	}
@@ -52,16 +53,13 @@ func (l *GetPostListLogic) GetPostList(req *types.GetPostListReq) (resp *types.G
 	}
 
 	list := make([]types.SocialPostInfo, 0, len(posts))
+	view, err := loadSocialPostViewData(l.svcCtx, posts, userIdInt)
+	if err != nil {
+		l.Logger.Errorf("加载关注动态作者或点赞信息失败: %v", err)
+		return &types.GetPostListResp{Success: false, List: []types.SocialPostInfo{}}, nil
+	}
 	for _, post := range posts {
-		item, ok, buildErr := buildSocialPostInfo(l.svcCtx, post, userIdInt, false)
-		if buildErr != nil {
-			l.Logger.Errorf("构建关注动态失败: postId=%d err=%v", post.Id, buildErr)
-			continue
-		}
-		if !ok {
-			continue
-		}
-		list = append(list, item)
+		list = append(list, buildSocialPostInfo(post, view, userIdInt, false))
 	}
 
 	return &types.GetPostListResp{Success: true, Total: total, List: list}, nil

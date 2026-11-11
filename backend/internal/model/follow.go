@@ -24,9 +24,13 @@ func NewFollowModel(db *gorm.DB) *FollowModel {
 	return &FollowModel{db: db}
 }
 
-func (m *FollowModel) Follow(followerId, followingId int64) error {
+func (m *FollowModel) Follow(followerId, followingId int64) (bool, error) {
 	follow := &Follow{FollowerId: followerId, FollowingId: followingId}
-	return m.db.Clauses(clause.OnConflict{DoNothing: true}).Create(follow).Error
+	result := m.db.Clauses(clause.OnConflict{DoNothing: true}).Create(follow)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
 }
 
 func (m *FollowModel) Unfollow(followerId, followingId int64) error {
@@ -42,13 +46,29 @@ func (m *FollowModel) IsFollowing(followerId, followingId int64) (bool, error) {
 	return count > 0, nil
 }
 
+// IsFollowingBatch 一次 IN 查询返回 followerId 已关注的目标集合，避免列表逐条查询。
+func (m *FollowModel) IsFollowingBatch(followerId int64, followingIds []int64) (map[int64]bool, error) {
+	result := make(map[int64]bool, len(followingIds))
+	if len(followingIds) == 0 {
+		return result, nil
+	}
+	var ids []int64
+	if err := m.db.Model(&Follow{}).
+		Where("follower_id = ? AND following_id IN ?", followerId, followingIds).
+		Pluck("following_id", &ids).Error; err != nil {
+		return nil, err
+	}
+	for _, id := range ids {
+		result[id] = true
+	}
+	return result, nil
+}
+
 func (m *FollowModel) GetFollowingList(userId int64, page, pageSize int) ([]Follow, int64, error) {
 	if page <= 0 {
 		page = 1
 	}
-	if pageSize <= 0 {
-		pageSize = 20
-	}
+	pageSize = normalizePageSize(pageSize)
 
 	offset := (page - 1) * pageSize
 	db := m.db.Model(&Follow{}).Where("follower_id = ?", userId)
@@ -67,9 +87,7 @@ func (m *FollowModel) GetFollowerList(userId int64, page, pageSize int) ([]Follo
 	if page <= 0 {
 		page = 1
 	}
-	if pageSize <= 0 {
-		pageSize = 20
-	}
+	pageSize = normalizePageSize(pageSize)
 
 	offset := (page - 1) * pageSize
 	db := m.db.Model(&Follow{}).Where("following_id = ?", userId)

@@ -43,16 +43,13 @@ func (l *GetPublicPostsLogic) GetPublicPosts(req *types.GetPostListReq) (resp *t
 	}
 
 	list := make([]types.SocialPostInfo, 0, len(posts))
+	view, err := loadSocialPostViewData(l.svcCtx, posts, userIdInt)
+	if err != nil {
+		l.Logger.Errorf("加载广场动态作者或点赞信息失败: %v", err)
+		return &types.GetPostListResp{Success: false, List: []types.SocialPostInfo{}}, nil
+	}
 	for _, post := range posts {
-		item, ok, buildErr := buildSocialPostInfo(l.svcCtx, post, userIdInt, false)
-		if buildErr != nil {
-			l.Logger.Errorf("构建广场动态失败: postId=%d err=%v", post.Id, buildErr)
-			continue
-		}
-		if !ok {
-			continue
-		}
-		list = append(list, item)
+		list = append(list, buildSocialPostInfo(post, view, userIdInt, false))
 	}
 
 	return &types.GetPostListResp{Success: true, Total: total, List: list}, nil

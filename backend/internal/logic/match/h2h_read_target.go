@@ -13,6 +13,7 @@ type h2hReadTarget struct {
 	opponentName    string
 	opponentAvatar  string
 	opponentNameKey string
+	hidden          bool
 }
 
 func resolveH2HReadTarget(svcCtx *svc.ServiceContext, viewerUserID, targetUserID, opponentUserID int64, opponentName string) (h2hReadTarget, error) {
@@ -29,6 +30,21 @@ func resolveH2HReadTarget(svcCtx *svc.ServiceContext, viewerUserID, targetUserID
 			return target, fmt.Errorf("仅可查看好友的对方战绩")
 		}
 		target.subjectUserID = targetUserID
+		if svcCtx.UserModel == nil {
+			return target, fmt.Errorf("无法查询对方资料")
+		}
+		targetUser, err := svcCtx.UserModel.FindById(targetUserID)
+		if err != nil {
+			return target, err
+		}
+		if targetUser == nil {
+			return target, fmt.Errorf("仅可查看好友的对方战绩")
+		}
+		// 对方隐藏战绩时不返回任何战绩数据，也不继续查对手资料。
+		if targetUser.HideMatchRecord {
+			target.hidden = true
+			return target, nil
+		}
 	}
 	if opponentUserID > 0 {
 		if svcCtx == nil || svcCtx.UserModel == nil {

@@ -11,7 +11,17 @@ const (
 	SocialPostStatusPublished = 1
 	SocialPostStatusPending   = 2
 	SocialPostStatusRejected  = 3
+
+	socialPostPageSizeDefault = 20
+	socialPostPageSizeMax     = 100
 )
+
+func normalizeSocialPageSize(pageSize int) int {
+	if pageSize < 1 || pageSize > socialPostPageSizeMax {
+		return socialPostPageSizeDefault
+	}
+	return pageSize
+}
 
 type SocialPost struct {
 	Id            int64   `gorm:"primarykey"`
@@ -75,9 +85,7 @@ func (m *SocialPostModel) FindPublicPosts(page, pageSize int) ([]SocialPost, int
 	if page <= 0 {
 		page = 1
 	}
-	if pageSize <= 0 {
-		pageSize = 20
-	}
+	pageSize = normalizeSocialPageSize(pageSize)
 
 	offset := (page - 1) * pageSize
 	db := m.db.Model(&SocialPost{}).Where("status = ?", SocialPostStatusPublished)
@@ -99,9 +107,7 @@ func (m *SocialPostModel) FindPostsByUserIds(userIds []int64, page, pageSize int
 	if page <= 0 {
 		page = 1
 	}
-	if pageSize <= 0 {
-		pageSize = 20
-	}
+	pageSize = normalizeSocialPageSize(pageSize)
 
 	offset := (page - 1) * pageSize
 	db := m.db.Model(&SocialPost{}).Where("user_id IN ? AND status = ?", userIds, SocialPostStatusPublished)
@@ -120,9 +126,7 @@ func (m *SocialPostModel) FindPostsByUser(userId int64, page, pageSize int) ([]S
 	if page <= 0 {
 		page = 1
 	}
-	if pageSize <= 0 {
-		pageSize = 20
-	}
+	pageSize = normalizeSocialPageSize(pageSize)
 
 	offset := (page - 1) * pageSize
 	db := m.db.Model(&SocialPost{}).Where("user_id = ?", userId)
@@ -141,9 +145,7 @@ func (m *SocialPostModel) FindListForAdmin(page, pageSize, status int) ([]Social
 	if page <= 0 {
 		page = 1
 	}
-	if pageSize <= 0 {
-		pageSize = 20
-	}
+	pageSize = normalizeSocialPageSize(pageSize)
 
 	offset := (page - 1) * pageSize
 	db := m.db.Model(&SocialPost{})
@@ -162,14 +164,19 @@ func (m *SocialPostModel) FindListForAdmin(page, pageSize, status int) ([]Social
 }
 
 func (m *SocialPostModel) Delete(userId, postId int64) error {
-	result := m.db.Where("id = ? AND user_id = ?", postId, userId).Delete(&SocialPost{})
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
-	}
-	return nil
+	return m.db.Transaction(func(tx *gorm.DB) error {
+		result := tx.Where("id = ? AND user_id = ?", postId, userId).Delete(&SocialPost{})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		if err := tx.Where("post_id = ?", postId).Delete(&SocialPostLike{}).Error; err != nil {
+			return err
+		}
+		return tx.Where("post_id = ?", postId).Delete(&SocialPostComment{}).Error
+	})
 }
 
 func (m *SocialPostModel) AddLike(postId, userId int64) error {
@@ -236,15 +243,58 @@ func (m *SocialPostModel) RemoveLike(postId, userId int64) error {
 	})
 }
 
-func (m *SocialPostModel) HasLiked(postId, userId int64) (bool, error) {
-	var count int64
-	err := m.db.Model(&SocialPostLike{}).
-		Where("post_id = ? AND user_id = ?", postId, userId).
-		Count(&count).Error
-	if err != nil {
-		return false, err
+// FindLikedPostIds 批量返回当前用户在这一页动态里点过赞的动态 ID。
+func (m *SocialPostModel) FindLikedPostIds(userId int64, postIds []int64) (map[int64]struct{}, error) {
+	liked := make(map[int64]struct{}, len(postIds))
+	if userId <= 0 || len(postIds) == 0 {
+		return liked, nil
 	}
-	return count > 0, nil
+
+	var ids []int64
+	err := m.db.Model(&SocialPostLike{}).
+		Where("user_id = ? AND post_id IN ?", userId, postIds).
+		Pluck("post_id", &ids).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range ids {
+		liked[id] = struct{}{}
+	}
+	return liked, nil
+}
+
+// CountRecentComments 统计用户在 since 之后（含）发出的评论数，用于评论频率限制。
+func (m *SocialPostModel) CountRecentComments(userId int64, since time.Time) (int64, error) {
+	var count int64
+	err := m.db.Model(&SocialPostComment{}).
+		Where("user_id = ? AND created_at >= ?", userId, since).
+		Count(&count).Error
+	return count, err
+}
+
+func (m *SocialPostModel) FindCommentById(commentId int64) (*SocialPostComment, error) {
+	var comment SocialPostComment
+	err := m.db.First(&comment, commentId).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &comment, err
+}
+
+// DeleteComment 在事务内删除评论并把动态评论数减一（不低于 0）。
+func (m *SocialPostModel) DeleteComment(commentId int64) error {
+	return m.db.Transaction(func(tx *gorm.DB) error {
+		var comment SocialPostComment
+		if err := tx.First(&comment, commentId).Error; err != nil {
+			return err
+		}
+		if err := tx.Delete(&SocialPostComment{}, commentId).Error; err != nil {
+			return err
+		}
+		return tx.Model(&SocialPost{}).
+			Where("id = ?", comment.PostId).
+			Update("comments_count", gorm.Expr("CASE WHEN comments_count > 0 THEN comments_count - 1 ELSE 0 END")).Error
+	})
 }
 
 func (m *SocialPostModel) AddComment(comment *SocialPostComment) error {
@@ -271,9 +321,7 @@ func (m *SocialPostModel) GetComments(postId int64, page, pageSize int) ([]Socia
 	if page <= 0 {
 		page = 1
 	}
-	if pageSize <= 0 {
-		pageSize = 20
-	}
+	pageSize = normalizeSocialPageSize(pageSize)
 
 	offset := (page - 1) * pageSize
 	db := m.db.Model(&SocialPostComment{}).Where("post_id = ?", postId)

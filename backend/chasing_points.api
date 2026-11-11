@@ -1391,6 +1391,7 @@ type H2HStats {
 type H2HStatsResp {
 	Success  bool         `json:"success"`
 	Message  string       `json:"message,optional"`
+	Hidden   bool         `json:"hidden,optional"`
 	Opponent *H2HOpponent `json:"opponent"`
 	Stats    *H2HStats    `json:"stats"`
 }
@@ -1410,6 +1411,7 @@ type H2HHistoryReq {
 type H2HHistoryResp {
 	Success bool            `json:"success"`
 	Message string          `json:"message,optional"`
+	Hidden  bool            `json:"hidden,optional"`
 	Total   int64           `json:"total"`
 	List    []MatchListItem `json:"list"`
 }
@@ -1426,6 +1428,8 @@ type H2HOverviewReq {
 
 type H2HOverviewResp {
 	Success             bool               `json:"success"`
+	Message             string             `json:"message,optional"`
+	Hidden              bool               `json:"hidden,optional"`
 	Opponent            *H2HOpponent       `json:"opponent"`
 	Stats               *H2HStats          `json:"stats"`
 	Total               int64              `json:"total"`
@@ -2297,9 +2301,8 @@ type HandleFriendRequestReq {
 }
 
 type GetFriendListReq {
-	Page     int    `form:"page,default=1"`
-	PageSize int    `form:"page_size,default=20"`
-	Keyword  string `form:"keyword,optional"`
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
 }
 
 type GetFriendListResp {
@@ -2314,6 +2317,29 @@ type DeleteFriendReq {
 
 type BlacklistFriendReq {
 	FriendUserId int64 `json:"friend_user_id"`
+}
+
+type UnblacklistFriendReq {
+	FriendUserId int64 `json:"friend_user_id"`
+}
+
+type FriendBlacklistItem {
+	UserId    int64  `json:"user_id"`
+	Nickname  string `json:"nickname"`
+	Avatar    string `json:"avatar"`
+	CreatedAt string `json:"created_at"`
+}
+
+type GetFriendBlacklistReq {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+}
+
+type GetFriendBlacklistResp {
+	Success bool                  `json:"success"`
+	Message string                `json:"message,optional"`
+	Total   int64                 `json:"total"`
+	List    []FriendBlacklistItem `json:"list"`
 }
 
 type GetFriendRequestsReq {
@@ -2332,11 +2358,12 @@ type SearchUserReq {
 }
 
 type SearchUserItem {
-	UserId   int64  `json:"user_id"`
-	Nickname string `json:"nickname"`
-	Avatar   string `json:"avatar"`
-	RankName string `json:"rank_name"`
-	IsFriend bool   `json:"is_friend"`
+	UserId            int64  `json:"user_id"`
+	Nickname          string `json:"nickname"`
+	Avatar            string `json:"avatar"`
+	RankName          string `json:"rank_name"`
+	IsFriend          bool   `json:"is_friend"`
+	HasPendingRequest bool   `json:"has_pending_request"`
 }
 
 type SearchUserResp {
@@ -2374,6 +2401,14 @@ service chasing_points-api {
 	@handler BlacklistFriend
 	post /blacklist (BlacklistFriendReq) returns (CommonResp)
 
+	@doc "获取黑名单列表"
+	@handler GetFriendBlacklist
+	get /blacklist/list (GetFriendBlacklistReq) returns (GetFriendBlacklistResp)
+
+	@doc "移出黑名单"
+	@handler UnblacklistFriend
+	post /unblacklist (UnblacklistFriendReq) returns (CommonResp)
+
 	@doc "获取好友请求列表"
 	@handler GetFriendRequests
 	get /requests (GetFriendRequestsReq) returns (GetFriendRequestsResp)
@@ -2403,6 +2438,7 @@ type GetFollowListReq {
 
 type GetFollowListResp {
 	Success bool             `json:"success"`
+	Message string           `json:"message,optional"`
 	Total   int64            `json:"total"`
 	List    []FollowUserInfo `json:"list"`
 }
@@ -2458,8 +2494,9 @@ type CreatePostReq {
 }
 
 type CreatePostResp {
-	Success bool  `json:"success"`
-	PostId  int64 `json:"post_id"`
+	Success bool   `json:"success"`
+	PostId  int64  `json:"post_id"`
+	Message string `json:"message,optional"`
 }
 
 type GetPostListReq {
@@ -2480,6 +2517,10 @@ type PostIdReq {
 type CommentPostReq {
 	PostId  int64  `json:"post_id"`
 	Content string `json:"content"`
+}
+
+type DeleteCommentReq {
+	CommentId int64 `json:"comment_id"`
 }
 
 type PostCommentInfo {
@@ -2542,6 +2583,10 @@ service chasing_points-api {
 	@doc "评论动态"
 	@handler CommentPost
 	post /comment (CommentPostReq) returns (CommonResp)
+
+	@doc "删除评论"
+	@handler DeletePostComment
+	post /comment/delete (DeleteCommentReq) returns (CommonResp)
 
 	@doc "删除动态"
 	@handler DeletePost

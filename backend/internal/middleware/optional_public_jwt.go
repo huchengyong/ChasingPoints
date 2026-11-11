@@ -20,9 +20,15 @@ func NewOptionalPublicJWTMiddleware(accessSecret string) *OptionalPublicJWTMiddl
 	return &OptionalPublicJWTMiddleware{accessSecret: accessSecret}
 }
 
+// allowsOptionalViewer reports whether path is an anonymous read route that may
+// still carry a signed viewer identity.
+func allowsOptionalViewer(path string) bool {
+	return strings.HasPrefix(path, "/api/public/") || path == "/api/social/public"
+}
+
 func (m *OptionalPublicJWTMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasPrefix(r.URL.Path, "/api/public/") || r.Context().Value("user_id") != nil {
+		if !allowsOptionalViewer(r.URL.Path) || r.Context().Value("user_id") != nil {
 			next(w, r)
 			return
 		}

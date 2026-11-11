@@ -43,16 +43,13 @@ func (l *GetMyPostListLogic) GetMyPostList(req *types.GetPostListReq) (resp *typ
 	}
 
 	list := make([]types.SocialPostInfo, 0, len(posts))
+	view, err := loadSocialPostViewData(l.svcCtx, posts, userIdInt)
+	if err != nil {
+		l.Logger.Errorf("加载我的动态作者或点赞信息失败: %v", err)
+		return &types.GetPostListResp{Success: false, List: []types.SocialPostInfo{}}, nil
+	}
 	for _, post := range posts {
-		item, ok, buildErr := buildSocialPostInfo(l.svcCtx, post, userIdInt, true)
-		if buildErr != nil {
-			l.Logger.Errorf("构建我的动态失败: postId=%d err=%v", post.Id, buildErr)
-			continue
-		}
-		if !ok {
-			continue
-		}
-		list = append(list, item)
+		list = append(list, buildSocialPostInfo(post, view, userIdInt, true))
 	}
 
 	return &types.GetPostListResp{Success: true, Total: total, List: list}, nil

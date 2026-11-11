@@ -3,6 +3,7 @@ package follow
 import (
 	"context"
 
+	"chasing_points/internal/config"
 	logicx "chasing_points/internal/logic"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
@@ -27,6 +28,10 @@ func NewFollowUserLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Follow
 }
 
 func (l *FollowUserLogic) FollowUser(req *types.FollowReq) (resp *types.CommonResp, err error) {
+	if !l.svcCtx.Config.SocialEnabled() {
+		return &types.CommonResp{Success: false, Message: config.DisabledFeatureMessage("social")}, nil
+	}
+
 	userIdInt, err := utils.GetUserIDFromCtx(l.ctx)
 	if err != nil {
 		l.Logger.Errorf("获取用户ID失败: %v", err)
@@ -41,21 +46,43 @@ func (l *FollowUserLogic) FollowUser(req *types.FollowReq) (resp *types.CommonRe
 		return &types.CommonResp{Success: false, Message: "不能关注自己"}, nil
 	}
 
-	if err = l.svcCtx.FollowModel.Follow(userIdInt, req.TargetUserId); err != nil {
+	targetUser, err := l.svcCtx.UserModel.FindById(req.TargetUserId)
+	if err != nil {
+		l.Logger.Errorf("查询目标用户失败: target=%d err=%v", req.TargetUserId, err)
+		return &types.CommonResp{Success: false, Message: "关注失败"}, nil
+	}
+	if targetUser == nil || targetUser.Status != 1 {
+		return &types.CommonResp{Success: false, Message: "用户不存在"}, nil
+	}
+
+	blacklisted, err := l.svcCtx.FriendModel.HasBlacklistRelation(userIdInt, req.TargetUserId)
+	if err != nil {
+		l.Logger.Errorf("检查黑名单关系失败: follower=%d following=%d err=%v", userIdInt, req.TargetUserId, err)
+		return &types.CommonResp{Success: false, Message: "关注失败"}, nil
+	}
+	if blacklisted {
+		return &types.CommonResp{Success: false, Message: "由于隐私设置，无法关注对方"}, nil
+	}
+
+	created, err := l.svcCtx.FollowModel.Follow(userIdInt, req.TargetUserId)
+	if err != nil {
 		l.Logger.Errorf("关注用户失败: follower=%d following=%d err=%v", userIdInt, req.TargetUserId, err)
 		return &types.CommonResp{Success: false, Message: "关注失败"}, nil
 	}
 
-	if notifyErr := logicx.DispatchNotification(l.svcCtx, logicx.NotificationDispatchInput{
-		UserId:      req.TargetUserId,
-		Type:        "follow",
-		Title:       "你有新的关注",
-		Content:     "有用户关注了你",
-		PushTitle:   "你有新的关注",
-		PushContent: "有用户关注了你",
-		WSCategory:  "follow",
-	}); notifyErr != nil {
-		l.Logger.Errorf("分发关注通知失败: target=%d err=%v", req.TargetUserId, notifyErr)
+	// 重复关注仍然成功，但不再重复通知对方。
+	if created {
+		if notifyErr := logicx.DispatchNotification(l.svcCtx, logicx.NotificationDispatchInput{
+			UserId:      req.TargetUserId,
+			Type:        "follow",
+			Title:       "你有新的关注",
+			Content:     "有用户关注了你",
+			PushTitle:   "你有新的关注",
+			PushContent: "有用户关注了你",
+			WSCategory:  "follow",
+		}); notifyErr != nil {
+			l.Logger.Errorf("分发关注通知失败: target=%d err=%v", req.TargetUserId, notifyErr)
+		}
 	}
 
 	return &types.CommonResp{Success: true, Message: "关注成功"}, nil

@@ -935,8 +935,9 @@ type CreatePostReq struct {
 }
 
 type CreatePostResp struct {
-	Success bool  `json:"success"`
-	PostId  int64 `json:"post_id"`
+	Success bool   `json:"success"`
+	PostId  int64  `json:"post_id"`
+	Message string `json:"message,optional"`
 }
 
 type CreateTournamentReq struct {
@@ -1047,6 +1048,10 @@ type DeleteAccountReq struct {
 	Credential     string `json:"credential,optional"`
 	CredentialType string `json:"credential_type,optional"`
 	Platform       string `json:"platform,optional"`
+}
+
+type DeleteCommentReq struct {
+	CommentId int64 `json:"comment_id"`
 }
 
 type DeleteFriendReq struct {
@@ -1238,6 +1243,13 @@ type FollowUserInfo struct {
 	IsFollowing bool   `json:"is_following"`
 }
 
+type FriendBlacklistItem struct {
+	UserId    int64  `json:"user_id"`
+	Nickname  string `json:"nickname"`
+	Avatar    string `json:"avatar"`
+	CreatedAt string `json:"created_at"`
+}
+
 type FriendInfo struct {
 	Id        int64  `json:"id"`
 	UserId    int64  `json:"user_id"`
@@ -1418,14 +1430,26 @@ type GetFollowListReq struct {
 
 type GetFollowListResp struct {
 	Success bool             `json:"success"`
+	Message string           `json:"message,optional"`
 	Total   int64            `json:"total"`
 	List    []FollowUserInfo `json:"list"`
 }
 
+type GetFriendBlacklistReq struct {
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
+}
+
+type GetFriendBlacklistResp struct {
+	Success bool                  `json:"success"`
+	Message string                `json:"message,optional"`
+	Total   int64                 `json:"total"`
+	List    []FriendBlacklistItem `json:"list"`
+}
+
 type GetFriendListReq struct {
-	Page     int    `form:"page,default=1"`
-	PageSize int    `form:"page_size,default=20"`
-	Keyword  string `form:"keyword,optional"`
+	Page     int `form:"page,default=1"`
+	PageSize int `form:"page_size,default=20"`
 }
 
 type GetFriendListResp struct {
@@ -2151,6 +2175,7 @@ type H2HHistoryReq struct {
 type H2HHistoryResp struct {
 	Success bool            `json:"success"`
 	Message string          `json:"message,optional"`
+	Hidden  bool            `json:"hidden,optional"`
 	Total   int64           `json:"total"`
 	List    []MatchListItem `json:"list"`
 }
@@ -2173,6 +2198,8 @@ type H2HOverviewReq struct {
 
 type H2HOverviewResp struct {
 	Success             bool               `json:"success"`
+	Message             string             `json:"message,optional"`
+	Hidden              bool               `json:"hidden,optional"`
 	Opponent            *H2HOpponent       `json:"opponent"`
 	Stats               *H2HStats          `json:"stats"`
 	Total               int64              `json:"total"`
@@ -2201,6 +2228,7 @@ type H2HStatsReq struct {
 type H2HStatsResp struct {
 	Success  bool         `json:"success"`
 	Message  string       `json:"message,optional"`
+	Hidden   bool         `json:"hidden,optional"`
 	Opponent *H2HOpponent `json:"opponent"`
 	Stats    *H2HStats    `json:"stats"`
 }
@@ -3128,11 +3156,12 @@ type SearchRulesResp struct {
 }
 
 type SearchUserItem struct {
-	UserId   int64  `json:"user_id"`
-	Nickname string `json:"nickname"`
-	Avatar   string `json:"avatar"`
-	RankName string `json:"rank_name"`
-	IsFriend bool   `json:"is_friend"`
+	UserId            int64  `json:"user_id"`
+	Nickname          string `json:"nickname"`
+	Avatar            string `json:"avatar"`
+	RankName          string `json:"rank_name"`
+	IsFriend          bool   `json:"is_friend"`
+	HasPendingRequest bool   `json:"has_pending_request"`
 }
 
 type SearchUserReq struct {
@@ -3432,6 +3461,10 @@ type TrendPoint struct {
 	WinRate   float64 `json:"win_rate"`
 	RankScore int     `json:"rank_score,omitempty"`
 	Result    int     `json:"result"`
+}
+
+type UnblacklistFriendReq struct {
+	FriendUserId int64 `json:"friend_user_id"`
 }
 
 type UpdateGearItemReq struct {

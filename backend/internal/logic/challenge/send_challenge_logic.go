@@ -2,7 +2,9 @@ package challenge
 
 import (
 	"context"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
@@ -53,6 +55,11 @@ func (l *SendChallengeLogic) SendChallenge(req *types.SendChallengeReq) (resp *t
 		EndHour:       req.EndHour,
 	}, time.Now()); scheduleErr != nil {
 		resp.Message = scheduleErr.Error()
+		return resp, nil
+	}
+	trimmedMessage := strings.TrimSpace(req.Message)
+	if utf8.RuneCountInString(trimmedMessage) > 200 {
+		resp.Message = "留言不能超过 200 字"
 		return resp, nil
 	}
 
@@ -122,7 +129,7 @@ func (l *SendChallengeLogic) SendChallenge(req *types.SendChallengeReq) (resp *t
 			StartHour:     &req.StartHour,
 			EndHour:       &req.EndHour,
 			MatchMode:     startReq.MatchMode,
-			Message:       req.Message,
+			Message:       trimmedMessage,
 			Status:        model.ChallengeStatusPending,
 			ExpiresAt:     expiresAt,
 		}

@@ -295,6 +295,15 @@ func (m *ChallengeModel) MarkMatchCancelledWithTx(tx *gorm.DB, challengeId int64
 		map[string]interface{}{"close_reason": reason})
 }
 
+// ClosePendingBetweenUsers 拉黑时关闭双方仍有效的待回应邀请；已接受/已开赛不动，也不发通知。
+func (m *ChallengeModel) ClosePendingBetweenUsers(userId1, userId2 int64, now time.Time) (int64, error) {
+	result := m.db.Model(&Challenge{}).
+		Where("status = ? AND expires_at > ?", ChallengeStatusPending, now).
+		Where("(from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)", userId1, userId2, userId2, userId1).
+		Updates(map[string]interface{}{"status": ChallengeStatusCancelled, "close_reason": ChallengeCloseReasonCancelled})
+	return result.RowsAffected, result.Error
+}
+
 // CountReceivedPending 收到的有效待回应邀请数量。
 func (m *ChallengeModel) CountReceivedPending(userId int64, now time.Time) (int64, error) {
 	var count int64

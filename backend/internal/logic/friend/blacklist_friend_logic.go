@@ -3,7 +3,9 @@ package friend
 import (
 	"context"
 	"fmt"
+	"time"
 
+	logicx "chasing_points/internal/logic"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -55,6 +57,16 @@ func (l *BlacklistFriendLogic) BlacklistFriend(req *types.BlacklistFriendReq) (r
 	if err = l.svcCtx.FriendModel.BlacklistFriend(userIdInt, req.FriendUserId); err != nil {
 		l.Logger.Errorf("加入黑名单失败: %v", err)
 		return &types.CommonResp{Success: false, Message: "加入黑名单失败"}, nil
+	}
+
+	// 拉黑成功后关闭双方仍待回应的约球；失败只记日志，不回滚已完成的拉黑。
+	if l.svcCtx.ChallengeModel != nil {
+		if _, closeErr := l.svcCtx.ChallengeModel.ClosePendingBetweenUsers(userIdInt, req.FriendUserId, time.Now()); closeErr != nil {
+			l.Logger.Errorf("关闭待回应约球失败: user=%d blocked=%d err=%v", userIdInt, req.FriendUserId, closeErr)
+		}
+		// 通知偏好只控制提醒，不影响约球状态在另一端的失效刷新。
+		logicx.SendUserDataUpdated(userIdInt, logicx.UserDataUpdatedEvent{Scopes: []string{"challenge"}})
+		logicx.SendUserDataUpdated(req.FriendUserId, logicx.UserDataUpdatedEvent{Scopes: []string{"challenge"}})
 	}
 
 	for _, request := range pendingRequests {

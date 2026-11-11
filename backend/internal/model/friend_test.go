@@ -114,3 +114,127 @@ func TestFriendModelSearchUsersHidesBlacklistedPairs(t *testing.T) {
 		t.Fatalf("expected visible user 202, got %#v", list[0])
 	}
 }
+
+func TestFriendModelSearchEscapesLikeWildcards(t *testing.T) {
+	db := newFriendModelTestDB(t)
+	friendModel := NewFriendModel(db)
+	userModel := NewUserModel(db)
+
+	if err := db.AutoMigrate(&UserRanking{}, &RankConfig{}); err != nil {
+		t.Fatalf("prepare ranking schema: %v", err)
+	}
+	seedFriendTestUser(t, userModel, 101, "搜索用户")
+	seedFriendTestUser(t, userModel, 202, "普通球友")
+	seedFriendTestUser(t, userModel, 303, "百分百%球友")
+	seedFriendTestUser(t, userModel, 404, "下划线_球友")
+
+	percentList, err := friendModel.SearchUsers(101, "%", 20)
+	if err != nil {
+		t.Fatalf("search percent: %v", err)
+	}
+	if len(percentList) != 1 || percentList[0].Id != 303 {
+		t.Fatalf("percent wildcard must match literal only: %#v", percentList)
+	}
+	underscoreList, err := friendModel.SearchUsers(101, "_", 20)
+	if err != nil {
+		t.Fatalf("search underscore: %v", err)
+	}
+	if len(underscoreList) != 1 || underscoreList[0].Id != 404 {
+		t.Fatalf("underscore wildcard must match literal only: %#v", underscoreList)
+	}
+
+	profiles, err := friendModel.SearchUserProfiles(101, "%", 20)
+	if err != nil {
+		t.Fatalf("search profiles percent: %v", err)
+	}
+	if len(profiles) != 1 || profiles[0].UserId != 303 {
+		t.Fatalf("profile search must escape wildcards too: %#v", profiles)
+	}
+}
+
+func TestFriendModelSearchMatchesPhoneOnlyForElevenDigits(t *testing.T) {
+	db := newFriendModelTestDB(t)
+	friendModel := NewFriendModel(db)
+	userModel := NewUserModel(db)
+
+	seedFriendTestUser(t, userModel, 101, "搜索用户")
+	phone := "13800138000"
+	if err := userModel.Create(&User{Id: 202, Nickname: "手机号球友", Status: 1, Phone: &phone}); err != nil {
+		t.Fatalf("create phone user: %v", err)
+	}
+
+	byPhone, err := friendModel.SearchUsers(101, phone, 20)
+	if err != nil {
+		t.Fatalf("search by phone: %v", err)
+	}
+	if len(byPhone) != 1 || byPhone[0].Id != 202 {
+		t.Fatalf("eleven-digit keyword must match phone exactly: %#v", byPhone)
+	}
+	partial, err := friendModel.SearchUsers(101, "1380013800", 20)
+	if err != nil {
+		t.Fatalf("search by partial phone: %v", err)
+	}
+	if len(partial) != 0 {
+		t.Fatalf("partial phone must not match: %#v", partial)
+	}
+}
+
+func TestFriendModelSearchReportsPendingRequest(t *testing.T) {
+	db := newFriendModelTestDB(t)
+	friendModel := NewFriendModel(db)
+	userModel := NewUserModel(db)
+
+	if err := db.AutoMigrate(&UserRanking{}, &RankConfig{}); err != nil {
+		t.Fatalf("prepare ranking schema: %v", err)
+	}
+	seedFriendTestUser(t, userModel, 101, "搜索用户")
+	seedFriendTestUser(t, userModel, 202, "待处理球友")
+	if _, err := friendModel.SendRequest(101, 202, "一起打球"); err != nil {
+		t.Fatalf("send request: %v", err)
+	}
+
+	profiles, err := friendModel.SearchUserProfiles(101, "待处理", 20)
+	if err != nil {
+		t.Fatalf("search profiles: %v", err)
+	}
+	if len(profiles) != 1 || !profiles[0].HasPendingRequest {
+		t.Fatalf("expected has_pending_request=true: %#v", profiles)
+	}
+}
+
+func TestFriendAndFollowModelClampPageSize(t *testing.T) {
+	db := newFriendModelTestDB(t)
+	friendModel := NewFriendModel(db)
+	followModel := NewFollowModel(db)
+	userModel := NewUserModel(db)
+	seedFriendTestUser(t, userModel, 101, "我")
+
+	if err := db.AutoMigrate(&Follow{}); err != nil {
+		t.Fatalf("prepare follow schema: %v", err)
+	}
+	for i := 0; i < 25; i++ {
+		if err := db.Create(&Friend{UserId: 101, FriendId: int64(1000 + i), Status: 1}).Error; err != nil {
+			t.Fatalf("seed friend: %v", err)
+		}
+		if _, err := followModel.Follow(101, int64(2000+i)); err != nil {
+			t.Fatalf("seed follow: %v", err)
+		}
+	}
+
+	for _, pageSize := range []int{0, -1, 101, 1000} {
+		friends, _, err := friendModel.GetFriendList(101, 1, pageSize)
+		if err != nil {
+			t.Fatalf("friend list pageSize %d: %v", pageSize, err)
+		}
+		if len(friends) != 20 {
+			t.Fatalf("friend list pageSize %d must fall back to 20, got %d", pageSize, len(friends))
+		}
+		following, _, err := followModel.GetFollowingList(101, 1, pageSize)
+		if err != nil {
+			t.Fatalf("following list pageSize %d: %v", pageSize, err)
+		}
+		if len(following) != 20 {
+			t.Fatalf("following list pageSize %d must fall back to 20, got %d", pageSize, len(following))
+		}
+	}
+}

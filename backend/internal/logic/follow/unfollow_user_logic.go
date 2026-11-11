@@ -3,6 +3,7 @@ package follow
 import (
 	"context"
 
+	"chasing_points/internal/config"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
 	"chasing_points/internal/utils"
@@ -26,6 +27,10 @@ func NewUnfollowUserLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Unfo
 }
 
 func (l *UnfollowUserLogic) UnfollowUser(req *types.FollowReq) (resp *types.CommonResp, err error) {
+	if !l.svcCtx.Config.SocialEnabled() {
+		return &types.CommonResp{Success: false, Message: config.DisabledFeatureMessage("social")}, nil
+	}
+
 	userIdInt, err := utils.GetUserIDFromCtx(l.ctx)
 	if err != nil {
 		l.Logger.Errorf("获取用户ID失败: %v", err)
