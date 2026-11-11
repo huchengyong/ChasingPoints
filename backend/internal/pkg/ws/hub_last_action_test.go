@@ -52,7 +52,9 @@ func TestBuildMatchSyncLastActionNineBallDescriptions(t *testing.T) {
 		{"player2 sees player1 foul", 2, 2, hubNineBallAction("foul", 1, 1, ""), "对手犯规，我方得1分"},
 		{"referee sees player1 foul", 2, 3, hubNineBallAction("foul", 1, 1, ""), "选手1犯规，选手2得1分"},
 		{"referee sees player2 foul", 2, 3, hubNineBallAction("foul", 2, 1, ""), "选手2犯规，选手1得1分"},
-		{"pool win keeps end round text", 3, 1, hubNineBallAction("win", 1, 1, "normal"), "我方结束本局"},
+		{"pool win uses round winner text", 3, 1, hubNineBallAction("win", 1, 1, "normal"), "我方赢下本局"},
+		{"pool break clear shows win method", 3, 1, hubNineBallAction("win", 1, 1, "break_clear"), "我方炸清，赢下本局"},
+		{"pool round start shows round number", 3, 1, hubNineBallAction("round_start", 0, 0, ""), "开始新一局"},
 	}
 	for _, testCase := range cases {
 		match := matches[testCase.gameType]

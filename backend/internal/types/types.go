@@ -2411,8 +2411,12 @@ type MatchDetailData struct {
 	SnookerFrameEndReason         string                 `json:"snooker_frame_end_reason,optional"`
 	SummaryHighlights             []MatchSummaryItem     `json:"summary_highlights,optional"`
 	SummaryStats                  []MatchSummaryItem     `json:"summary_stats,optional"`
-	ScoreBreakdown                *ChasingScoreBreakdown `json:"score_breakdown,optional"` // 仅九球追分
-	Achievements                  MatchAchievement       `json:"achievements"`
+	ScoreBreakdown                *ChasingScoreBreakdown `json:"score_breakdown,optional"`       // 仅九球追分
+	TotalRounds                   int                    `json:"total_rounds,optional"`          // 已完成局数；九球追分为0
+	CurrentRound                  int                    `json:"current_round,optional"`         // 与公开详情一致；九球追分为0
+	Rounds                        []RoundRecord          `json:"rounds,optional"`                // 局记录，固定选手1/选手2视角，不随查看者交换；九球追分不返回
+	Achievements                  MatchAchievement       `json:"achievements"`                   // 与 my_* 同视角：参与者为本人，裁判为选手1
+	OpponentAchievements          MatchAchievement       `json:"opponent_achievements,optional"` // 另一方战绩
 	CreatedAt                     string                 `json:"created_at"`
 }
 

@@ -53,7 +53,12 @@ func TestBuildMatchLastActionFromActionKeepsPoolWinDescription(t *testing.T) {
 	match := &model.Match{Id: 2, UserId: 1, OpponentId: &opponentID, GameType: 3}
 
 	got := buildMatchLastActionFromAction(1, match, nineBallTestAction("win", 1, 1, "normal"))
-	if got == nil || got.Description != "我方结束本局" {
-		t.Fatalf("pool win description = %#v, want 我方结束本局", got)
+	if got == nil || got.Description != "我方赢下本局" {
+		t.Fatalf("pool win description = %#v, want 我方赢下本局", got)
+	}
+
+	got = buildMatchLastActionFromAction(1, match, nineBallTestAction("win", 1, 1, "break_clear"))
+	if got == nil || got.Description != "我方炸清，赢下本局" {
+		t.Fatalf("pool break-clear description = %#v, want 我方炸清，赢下本局", got)
 	}
 }

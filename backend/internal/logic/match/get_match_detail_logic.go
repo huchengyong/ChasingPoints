@@ -154,11 +154,16 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 		opponentId = match.UserId
 	}
 
-	achievements := types.MatchAchievement{}
+	player1Achievements := types.MatchAchievement{}
+	player2Achievements := types.MatchAchievement{}
 	if completedCore != nil {
-		achievements = completedCore.Achievements
+		player1Achievements, player2Achievements = completedCore.Player1Achievements, completedCore.Player2Achievements
 	} else if achList, err := l.svcCtx.MatchModel.GetAchievements(match.Id); err == nil {
-		achievements = buildMatchAchievementPayload(achList)
+		player1Achievements, player2Achievements = logicx.BuildMatchAchievementsByActor(achList)
+	}
+	achievements, opponentAchievements := player1Achievements, player2Achievements
+	if !isPlayer1 {
+		achievements, opponentAchievements = player2Achievements, player1Achievements
 	}
 
 	player1Profile, _ := logicx.LoadCurrentCompetitiveProfile(l.svcCtx, match.UserId, match.GameType)
@@ -254,6 +259,19 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 		actions, _ = l.svcCtx.MatchModel.ListActiveActions(match.Id)
 	}
 	actionsForSummary := actions
+	// 局记录与公开详情保持同样的固定选手1/选手2视角；九球追分没有局，仍用得分构成。
+	totalRounds := int(roundCount)
+	detailCurrentRound := totalRounds + 1
+	if match.Status != 1 {
+		// 已结束的对局没有进行中的局。
+		detailCurrentRound = totalRounds
+	}
+	var rounds []types.RoundRecord
+	if match.GameType != 2 {
+		rounds = logicx.BuildRoundRecords(completedRounds)
+	} else {
+		totalRounds, detailCurrentRound = 0, 0
+	}
 	var lastAction *types.MatchLastAction
 	if completedCore != nil && len(actions) > 0 {
 		lastAction = buildMatchLastActionFromAction(userId, match, &actions[len(actions)-1])
@@ -308,6 +326,10 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 	if !isPlayer1 {
 		myActor = 2
 	}
+	endedAt := ""
+	if match.Status == 2 && match.EndTime != nil {
+		endedAt = match.EndTime.Format("2006-01-02 15:04:05")
+	}
 	summaryHighlights, summaryStats := buildMatchSummary(
 		match.GameType,
 		myActor,
@@ -319,6 +341,7 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 		opponentMaxScore,
 		redBallCount,
 		match.CreatedAt.Format("2006-01-02 15:04:05"),
+		endedAt,
 		completedRounds,
 		actionsForSummary,
 		achievements,
@@ -417,7 +440,11 @@ func (l *GetMatchDetailLogic) GetMatchDetail(req *types.GetMatchDetailReq) (resp
 			SummaryHighlights:             summaryHighlights,
 			SummaryStats:                  summaryStats,
 			ScoreBreakdown:                scoreBreakdown,
+			TotalRounds:                   totalRounds,
+			CurrentRound:                  detailCurrentRound,
+			Rounds:                        rounds,
 			Achievements:                  achievements,
+			OpponentAchievements:          opponentAchievements,
 			CreatedAt:                     match.CreatedAt.Format("2006-01-02 15:04:05"),
 		},
 	}, nil
