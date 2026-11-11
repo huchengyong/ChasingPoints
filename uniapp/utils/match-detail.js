@@ -1,4 +1,5 @@
 import { resolveChasingScoreView } from './chasing-score.js'
+import { WIN_TYPE_LABELS } from './member-replay-view.js'
 
 const pickValue = (...values) => values.find((value) => value !== undefined && value !== null && value !== '')
 
@@ -8,12 +9,18 @@ const pickNumber = (...values) => {
   return Number.isFinite(numberValue) ? numberValue : 0
 }
 
+// 详情页只标注四个九球胜法；普胜、斯诺克取值和缺失都留空。
+const ROUND_WIN_TYPES = new Set(['break_clear', 'continue_clear', 'small_gold', 'big_gold'])
+const resolveRoundWinTypeLabel = (winType) => (ROUND_WIN_TYPES.has(winType) ? WIN_TYPE_LABELS[winType] : '')
+
 export const normalizeMatchRoundRecords = (rounds = [], shouldSwapPerspective = false) => rounds.map((round = {}) => {
   const winner = pickNumber(round.winner)
   const perspectiveWinner = shouldSwapPerspective && winner > 0 ? (winner === 1 ? 2 : 1) : winner
 
   return {
     ...round,
+    win_type: round.win_type || '',
+    winTypeLabel: resolveRoundWinTypeLabel(round.win_type),
     player1_score: shouldSwapPerspective
       ? pickNumber(round.player2_score, round.opponent_score)
       : pickNumber(round.player1_score, round.my_score),
@@ -101,6 +108,7 @@ export const normalizeMatchDetailPayload = (match = {}, { perspectiveUserId = 0 
     },
     roundRecords: Array.isArray(match.rounds) ? normalizeMatchRoundRecords(match.rounds, swapRoundRecords) : [],
     roundRecordsSwapped: swapRoundRecords,
+    roundRecordsNeutral: neutralPerspective,
     scoreBreakdown: pickNumber(match.game_type) === 2
       ? resolveChasingScoreView(match.score_breakdown, { swap: swapScoreBreakdown, neutral: neutralPerspective })
       : null

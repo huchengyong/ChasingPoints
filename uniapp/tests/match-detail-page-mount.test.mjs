@@ -80,6 +80,8 @@ test('match detail page replaces nine ball round stats with a silently refreshed
 		await writeFile(join(tempDir, 'MatchChasingScoreCard.mjs'), compiledComponent.content)
 
 		const source = await readFile(pagePath, 'utf8')
+		// 局记录卡片没有点击行为，不应再渲染右侧箭头。
+		assert.doesNotMatch(source, /uni-icons[^>]*type="right"/)
 		const { descriptor, errors } = parse(source, { filename: pagePath })
 		assert.deepEqual(errors, [])
 		const compiled = compileScript(descriptor, {
@@ -240,7 +242,7 @@ test('match detail page replaces nine ball round stats with a silently refreshed
 				game_type: 3,
 				total_rounds: 2,
 				current_round: 2,
-				rounds: [{ round_number: 1, player1_score: 21, player2_score: 10, winner: 1 }]
+				rounds: [{ round_number: 1, player1_score: 21, player2_score: 10, winner: 1, win_type: 'small_gold' }]
 			}
 		})
 		await settle()
@@ -252,6 +254,9 @@ test('match detail page replaces nine ball round stats with a silently refreshed
 		assert.match(poolText, /第 1 局/)
 		assert.match(poolText, /21 - 10/)
 		assert.doesNotMatch(poolText, /得分构成/)
+		const poolRound = wrapper.find('.round-card')
+		assert.equal(poolRound.find('.round-win-type').text(), '小金')
+		assert.equal(poolRound.find('.result-text').text(), '胜')
 
 		// 裁判视角：加入时间走本地可读格式，时长带「用时」前缀。
 		globalThis.__DETAIL_PAGE__.hooks.onLoad.forEach((hook) => hook({ match_id: '9' }))
@@ -268,7 +273,8 @@ test('match detail page replaces nine ball round stats with a silently refreshed
 				referee_name: '裁判丙',
 				referee_joined_at: '2026-11-10T20:28:53+08:00',
 				referee_duration_seconds: 480,
-				completion_source: 'referee'
+				completion_source: 'referee',
+				rounds: [{ round_number: 1, player1_score: 21, player2_score: 10, winner: 1 }]
 			}
 		})
 		await settle()
@@ -277,6 +283,11 @@ test('match detail page replaces nine ball round stats with a silently refreshed
 		assert.doesNotMatch(refereeText, /T\d{2}:\d{2}:\d{2}|\+08:00/)
 		assert.doesNotMatch(refereeText, /当前局/)
 		assert.equal(wrapper.find('.match-info-text').text(), '中式八球 · 用时 8分钟')
+		// 裁判是中立视角：显示这一局的胜者，不按选手1视角标「胜 / 负」。
+		const refereeRound = wrapper.find('.round-card')
+		assert.equal(refereeRound.find('.result-text').text(), '甲 胜')
+		assert.ok(refereeRound.find('.result-text').classes().includes('neutral'))
+		assert.ok(refereeRound.classes().includes('neutral-round'))
 
 		// 时长为 0 时副标题只留球种名。
 		globalThis.__DETAIL_PAGE__.hooks.onLoad.forEach((hook) => hook({ match_id: '9' }))
@@ -314,6 +325,9 @@ test('match detail page replaces nine ball round stats with a silently refreshed
 		const player2Round = wrapper.find('.round-card')
 		assert.match(player2Round.text(), /10 - 21/)
 		assert.match(player2Round.text(), /负/)
+		// 没有胜法时不渲染多余标签。
+		assert.equal(player2Round.find('.round-win-type').exists(), false)
+		assert.equal(player2Round.find('.result-text').classes().includes('neutral'), false)
 
 		handlers.sync({
 			player1_score: 3,

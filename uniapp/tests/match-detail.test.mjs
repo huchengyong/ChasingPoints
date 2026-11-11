@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import {
   normalizeMatchDetailPayload,
+  normalizeMatchRoundRecords,
   shouldShowSpectateBadge,
   shouldUsePublicMatchDetail
 } from '../utils/match-detail.js'
@@ -199,6 +200,55 @@ test('normalizeMatchDetailPayload keeps round records for player 1 and referees'
   const asReferee = normalizeMatchDetailPayload({ is_player1: false, viewer_role: 'referee', rounds })
   assert.deepEqual(asReferee.roundRecords.map((round) => [round.player1_score, round.player2_score, round.resultText]), [[21, 10, '胜']])
   assert.equal(asReferee.roundRecordsSwapped, false)
+})
+
+test('normalizeMatchRoundRecords labels only the four nine ball win types', () => {
+  const records = normalizeMatchRoundRecords([
+    { round_number: 1, winner: 1, win_type: 'break_clear' },
+    { round_number: 2, winner: 1, win_type: 'continue_clear' },
+    { round_number: 3, winner: 2, win_type: 'small_gold' },
+    { round_number: 4, winner: 2, win_type: 'big_gold' },
+    { round_number: 5, winner: 1, win_type: 'normal' },
+    { round_number: 6, winner: 1 },
+    { round_number: 7, winner: 1, win_type: '' },
+    { round_number: 8, winner: 1, win_type: 'snooker_century' }
+  ])
+
+  assert.deepEqual(records.map((round) => round.winTypeLabel), ['炸清', '接清', '小金', '大金', '', '', '', ''])
+  assert.deepEqual(records.map((round) => round.win_type), [
+    'break_clear', 'continue_clear', 'small_gold', 'big_gold', 'normal', '', '', 'snooker_century'
+  ])
+})
+
+test('normalizeMatchDetailPayload keeps win_type attached to the swapped round', () => {
+  const detail = normalizeMatchDetailPayload({
+    is_player1: false,
+    viewer_role: 'player2',
+    rounds: [
+      { round_number: 1, player1_score: 21, player2_score: 10, winner: 1, win_type: 'break_clear' },
+      { round_number: 2, player1_score: 10, player2_score: 21, winner: 2, win_type: 'big_gold' }
+    ]
+  })
+
+  assert.deepEqual(detail.roundRecords.map((round) => ({
+    winner: round.winner,
+    win_type: round.win_type,
+    winTypeLabel: round.winTypeLabel
+  })), [
+    { winner: 2, win_type: 'break_clear', winTypeLabel: '炸清' },
+    { winner: 1, win_type: 'big_gold', winTypeLabel: '大金' }
+  ])
+})
+
+test('normalizeMatchDetailPayload reports neutral round records for referees, spectators and public detail', () => {
+  const asPlayer1 = normalizeMatchDetailPayload({ is_player1: true, viewer_role: 'player1' })
+  assert.equal(asPlayer1.roundRecordsNeutral, false)
+
+  const asReferee = normalizeMatchDetailPayload({ is_player1: false, viewer_role: 'referee' })
+  assert.equal(asReferee.roundRecordsNeutral, true)
+
+  const publicDetail = normalizeMatchDetailPayload({ player1_id: 1, player2_id: 2 })
+  assert.equal(publicDetail.roundRecordsNeutral, true)
 })
 
 const chasingBreakdown = {

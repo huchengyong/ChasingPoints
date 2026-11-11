@@ -21,6 +21,7 @@ func BuildRoundRecords(rounds []model.MatchRound) []types.RoundRecord {
 			Player1Score: r.MyScore,
 			Player2Score: r.OpponentScore,
 			Winner:       winner,
+			WinType:      r.WinType,
 		})
 	}
 	return records

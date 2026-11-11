@@ -68,3 +68,42 @@ func TestGetPublicMatchDetailShowsRefereeOnlyForPublicMatch(t *testing.T) {
 		t.Fatalf("private match must not be available publicly: resp=%#v err=%v", privateResp, err)
 	}
 }
+
+func TestGetPublicMatchDetailCurrentRoundMatchesParticipantDetail(t *testing.T) {
+	svcCtx, db := newPublicScoreBreakdownSvc(t)
+	seedPublicMatch(t, db, 605, 3, 2, 4, 2)
+	// 已结束对局在生产库里 current_frame_started 可能仍为 true，不能再用它判断“没有进行中的局”。
+	if err := db.Model(&model.Match{}).Where("id = ?", 605).Update("current_frame_started", true).Error; err != nil {
+		t.Fatalf("settle completed match frame state: %v", err)
+	}
+	for roundNo := 1; roundNo <= 4; roundNo++ {
+		winner := 1
+		if roundNo%2 == 0 {
+			winner = 2
+		}
+		if err := db.Create(&model.MatchRound{
+			MatchId: 605, RoundNo: roundNo, MyScore: roundNo, OpponentScore: 4 - roundNo, Winner: &winner, WinType: "normal",
+		}).Error; err != nil {
+			t.Fatalf("seed completed round: %v", err)
+		}
+	}
+
+	completed := loadPublicDetail(t, svcCtx, 605)
+	if completed.TotalRounds != 4 || completed.CurrentRound != completed.TotalRounds {
+		t.Fatalf("completed match must not point at a next round: current=%d total=%d", completed.CurrentRound, completed.TotalRounds)
+	}
+
+	seedPublicMatch(t, db, 606, 3, 1, 2, 0)
+	for roundNo := 1; roundNo <= 2; roundNo++ {
+		winner := 1
+		if err := db.Create(&model.MatchRound{
+			MatchId: 606, RoundNo: roundNo, MyScore: roundNo, OpponentScore: 0, Winner: &winner, WinType: "normal",
+		}).Error; err != nil {
+			t.Fatalf("seed ongoing round: %v", err)
+		}
+	}
+	ongoing := loadPublicDetail(t, svcCtx, 606)
+	if ongoing.TotalRounds != 2 || ongoing.CurrentRound != 3 {
+		t.Fatalf("ongoing match must keep pointing at the next round: current=%d total=%d", ongoing.CurrentRound, ongoing.TotalRounds)
+	}
+}

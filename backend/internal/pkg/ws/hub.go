@@ -78,6 +78,7 @@ type ScoreUpdateData struct {
 	RoundNumber                   int    `json:"round_number"`
 	RoundPlayer1Score             int    `json:"round_player1_score"`
 	RoundPlayer2Score             int    `json:"round_player2_score"`
+	RoundWinType                  string `json:"round_win_type,omitempty"`
 	Winner                        int    `json:"winner"`
 	ActionType                    string `json:"action_type"` // score, foul, win, undo
 	Actor                         string `json:"actor"`       // me, opponent
@@ -112,10 +113,11 @@ type ScoreUpdateData struct {
 }
 
 type MatchSyncRound struct {
-	RoundNumber  int `json:"round_number"`
-	Player1Score int `json:"player1_score"`
-	Player2Score int `json:"player2_score"`
-	Winner       int `json:"winner"`
+	RoundNumber  int    `json:"round_number"`
+	Player1Score int    `json:"player1_score"`
+	Player2Score int    `json:"player2_score"`
+	Winner       int    `json:"winner"`
+	WinType      string `json:"win_type,omitempty"`
 }
 
 type MatchSyncData struct {
@@ -849,6 +851,7 @@ func buildMatchSyncRounds(rounds []model.MatchRound) []MatchSyncRound {
 			Player1Score: round.MyScore,
 			Player2Score: round.OpponentScore,
 			Winner:       *round.Winner,
+			WinType:      round.WinType,
 		})
 	}
 	return list

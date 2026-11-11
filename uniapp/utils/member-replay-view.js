@@ -14,7 +14,7 @@ export const GAME_TYPE_NINE_BALL = 2
 export const GAME_TYPE_CHINESE_EIGHT = 3
 export const GAME_TYPE_AMERICAN_NINE = 4
 
-const WIN_TYPE_LABELS = {
+export const WIN_TYPE_LABELS = {
   normal: '普胜',
   break_clear: '炸清',
   continue_clear: '接清',

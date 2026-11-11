@@ -3078,10 +3078,11 @@ type ReplayWinTypeStat struct {
 }
 
 type RoundRecord struct {
-	RoundNumber  int `json:"round_number"`
-	Player1Score int `json:"player1_score"`
-	Player2Score int `json:"player2_score"`
-	Winner       int `json:"winner"` // 1=玩家1胜 2=玩家2胜
+	RoundNumber  int    `json:"round_number"`
+	Player1Score int    `json:"player1_score"`
+	Player2Score int    `json:"player2_score"`
+	Winner       int    `json:"winner"`            // 1=玩家1胜 2=玩家2胜
+	WinType      string `json:"win_type,optional"` // 中式八球/美式九球为该局胜法（normal / break_clear / continue_clear / small_gold / big_gold）；其他球种原样返回存储值，客户端只对认识的值显示标签
 }
 
 type RuleCategoryInfo struct {
