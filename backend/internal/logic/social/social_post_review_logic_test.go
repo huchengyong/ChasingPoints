@@ -30,6 +30,7 @@ func newSocialReviewTestSvc(t *testing.T) *svc.ServiceContext {
 		DB:              db,
 		UserModel:       model.NewUserModel(db),
 		FollowModel:     model.NewFollowModel(db),
+		MatchModel:      model.NewMatchModel(db),
 		SocialPostModel: model.NewSocialPostModel(db),
 	}
 }
@@ -47,7 +48,7 @@ func seedSocialUser(t *testing.T, svcCtx *svc.ServiceContext, user *model.User) 
 
 func seedSocialFollow(t *testing.T, svcCtx *svc.ServiceContext, followerID, followingID int64) {
 	t.Helper()
-	if err := svcCtx.FollowModel.Follow(followerID, followingID); err != nil {
+	if _, err := svcCtx.FollowModel.Follow(followerID, followingID); err != nil {
 		t.Fatalf("create social follow: %v", err)
 	}
 }

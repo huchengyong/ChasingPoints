@@ -138,6 +138,13 @@ func canSendChallengeTo(db *gorm.DB, svcCtx *svc.ServiceContext, senderId, recip
 	if recipient == nil || recipient.Status != 1 {
 		return false, "请选择有效的平台对手", nil
 	}
+	blacklisted, err := svcCtx.FriendModel.HasBlacklistRelationWithTx(db, senderId, recipientId)
+	if err != nil {
+		return false, "", err
+	}
+	if blacklisted {
+		return false, "由于隐私设置，无法向对方约球", nil
+	}
 	areFriends, err := svcCtx.FriendModel.AreFriendsWithTx(db, senderId, recipientId)
 	if err != nil {
 		return false, "", err

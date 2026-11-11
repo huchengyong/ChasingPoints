@@ -85,3 +85,28 @@ export const buildDeleteFriendPayload = (item = {}) => ({
 export const buildBlacklistFriendPayload = (item = {}) => ({
   friend_user_id: resolveFriendUserId(item)
 })
+
+export const buildUnblacklistPayload = (item = {}) => ({
+  friend_user_id: resolveFriendUserId(item)
+})
+
+// 好友申请卡片里申请人 ID 可能在 from_user_id，拉黑时按同一规范取值。
+export const resolveFriendRequestUserId = (item = {}) => (
+  resolveFriendUserId({ ...item, user_id: item.from_user_id || item.user_id })
+)
+
+export const normalizeSearchResultItem = (item = {}) => {
+  if (item.status === 'friend') return item
+  if (item.status === 'pending' || item.has_pending_request) {
+    return { ...item, status: 'pending' }
+  }
+  return item
+}
+
+export const removeBlacklistItem = (list = [], userId = 0) => (
+  list.filter((item) => resolveFriendUserId(item) !== Number(userId))
+)
+
+export const buildUnblacklistConfirmCopy = (nickname = '') => (
+  `确定将「${nickname || '球友'}」移出黑名单吗？移出后对方可以重新搜索并添加你。`
+)

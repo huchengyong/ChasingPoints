@@ -38,7 +38,10 @@
 				:key="item.friend_user_id || item.id"
 				class="friend-swipe-item"
 			>
-				<view class="swipe-actions">
+				<view
+					class="swipe-actions"
+					:class="{ 'is-active': isSwipeItemActive(item) }"
+				>
 					<view class="swipe-action-btn blacklist" @tap.stop="showBlacklistConfirm(item)">
 						<text>拉黑</text>
 					</view>
@@ -266,6 +269,8 @@ const getFriendUserId = (item) => resolveFriendUserId(item)
 
 const getFriendOffset = (friendUserId) => swipeOffsets.value[friendUserId] || 0
 
+const isSwipeItemActive = (item) => getFriendOffset(getFriendUserId(item)) < 0
+
 const setFriendOffset = (friendUserId, offset) => {
 	swipeOffsets.value = {
 		...swipeOffsets.value,
@@ -424,7 +429,7 @@ const showBlacklistConfirm = (item) => {
 	closeSwipeItem(friendUserId)
 	uni.showModal({
 		title: '加入黑名单',
-		content: `确定将「${item.nickname || '球友'}」加入黑名单吗？加入后会自动删除好友，并阻止彼此再次搜索和添加。`,
+		content: `确定将「${item.nickname || '球友'}」加入黑名单吗？加入后会自动删除好友，并阻止彼此再次搜索和添加。可在 设置 - 黑名单 中移出。`,
 		confirmText: '确认拉黑',
 		confirmColor: '#6E6242',
 		success: async (res) => {
@@ -557,6 +562,15 @@ onPullDownRefresh(() => {
 		bottom: 0;
 		width: 280rpx;
 		display: flex;
+		/* 未展开时完全隐藏，避免操作区从卡片圆角/边缘透出。 */
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.18s ease;
+
+		&.is-active {
+			opacity: 1;
+			pointer-events: auto;
+		}
 
 		.swipe-action-btn {
 			flex: 1;

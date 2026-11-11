@@ -48,6 +48,12 @@ func (l *GetH2HOverviewLogic) GetH2HOverview(req *types.H2HOverviewReq) (resp *t
 	if err != nil {
 		return result, nil
 	}
+	if target.hidden {
+		result.Success = true
+		result.Message = "对方已隐藏战绩"
+		result.Hidden = true
+		return result, nil
+	}
 	result.Success = true
 	result.Opponent = &types.H2HOpponent{Id: target.opponentUserID, Name: target.opponentName, Avatar: target.opponentAvatar}
 	result.Availability["opponent"] = true
@@ -94,6 +100,12 @@ func (l *GetH2HOverviewLogic) getLegacyH2HOverview(req *types.H2HOverviewReq) (*
 	})
 	if err != nil || stats == nil || !stats.Success {
 		return result, err
+	}
+	if stats.Hidden {
+		result.Success = true
+		result.Message = stats.Message
+		result.Hidden = true
+		return result, nil
 	}
 	result.Success = true
 	result.Opponent = stats.Opponent

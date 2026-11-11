@@ -47,6 +47,9 @@ func (l *GetH2HStatsLogic) GetH2HStats(req *types.H2HStatsReq) (resp *types.H2HS
 	if err != nil {
 		return &types.H2HStatsResp{Success: false, Message: err.Error()}, nil
 	}
+	if target.hidden {
+		return &types.H2HStatsResp{Success: true, Message: "对方已隐藏战绩", Hidden: true}, nil
+	}
 	if l.svcCtx.CompetitiveReadModel == nil {
 		return &types.H2HStatsResp{Success: false, Message: "竞技读模型不可用"}, nil
 	}
@@ -64,37 +67,14 @@ func (l *GetH2HStatsLogic) GetH2HStats(req *types.H2HStatsReq) (resp *types.H2HS
 }
 
 func (l *GetH2HStatsLogic) getLegacyH2HStats(viewerUserID int64, req *types.H2HStatsReq) (*types.H2HStatsResp, error) {
-	subjectUserID := viewerUserID
-	if req.TargetUserId > 0 && req.TargetUserId != viewerUserID {
-		areFriends, err := l.svcCtx.FriendModel.AreFriends(viewerUserID, req.TargetUserId)
-		if err != nil {
-			return &types.H2HStatsResp{Success: false, Message: "获取对方战绩失败"}, nil
-		}
-		if !areFriends {
-			return &types.H2HStatsResp{Success: false, Message: "仅可查看好友的对方战绩"}, nil
-		}
-		subjectUserID = req.TargetUserId
+	target, err := resolveH2HReadTarget(l.svcCtx, viewerUserID, req.TargetUserId, req.OpponentId, req.OpponentName)
+	if err != nil {
+		return &types.H2HStatsResp{Success: false, Message: err.Error()}, nil
 	}
-	opponentID := req.OpponentId
-	opponentName := req.OpponentName
-	opponentAvatar := ""
-	if opponentID > 0 {
-		user, err := l.svcCtx.UserModel.FindById(opponentID)
-		if err != nil {
-			return &types.H2HStatsResp{Success: false, Message: "获取交锋统计失败"}, nil
-		}
-		if user != nil {
-			if opponentName == "" {
-				opponentName = user.Nickname
-			}
-			opponentAvatar = user.Avatar
-			opponentID = user.Id
-		}
+	if target.hidden {
+		return &types.H2HStatsResp{Success: true, Message: "对方已隐藏战绩", Hidden: true}, nil
 	}
-	if opponentName == "" {
-		return &types.H2HStatsResp{Success: false, Message: "缺少对手信息"}, nil
-	}
-	total, wins, losses, averageDiff, maxStreak, err := l.svcCtx.MatchModel.GetH2HStatsByOpponent(subjectUserID, opponentID, opponentName)
+	total, wins, losses, averageDiff, maxStreak, err := l.svcCtx.MatchModel.GetH2HStatsByOpponent(target.subjectUserID, target.opponentUserID, target.opponentName)
 	if err != nil {
 		l.Logger.Errorf("获取历史交锋统计失败: %v", err)
 		return &types.H2HStatsResp{Success: false, Message: "获取交锋统计失败"}, nil
@@ -105,7 +85,7 @@ func (l *GetH2HStatsLogic) getLegacyH2HStats(viewerUserID int64, req *types.H2HS
 	}
 	return &types.H2HStatsResp{
 		Success:  true,
-		Opponent: &types.H2HOpponent{Id: opponentID, Name: opponentName, Avatar: opponentAvatar},
+		Opponent: &types.H2HOpponent{Id: target.opponentUserID, Name: target.opponentName, Avatar: target.opponentAvatar},
 		Stats: &types.H2HStats{
 			TotalMatches: total,
 			MyWins:       wins,

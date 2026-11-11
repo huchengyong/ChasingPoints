@@ -3,6 +3,8 @@ package social
 import (
 	"context"
 	"strings"
+	"time"
+	"unicode/utf8"
 
 	"chasing_points/internal/config"
 	"chasing_points/internal/model"
@@ -53,6 +55,18 @@ func (l *CommentPostLogic) CommentPost(req *types.CommentPostReq) (resp *types.C
 	content := strings.TrimSpace(req.Content)
 	if content == "" {
 		return &types.CommonResp{Success: false, Message: "评论内容不能为空"}, nil
+	}
+	if utf8.RuneCountInString(content) > 300 {
+		return &types.CommonResp{Success: false, Message: "评论不能超过 300 字"}, nil
+	}
+
+	recentCount, countErr := l.svcCtx.SocialPostModel.CountRecentComments(userIdInt, time.Now().Add(-time.Minute))
+	if countErr != nil {
+		l.Logger.Errorf("统计近期评论失败: userId=%d err=%v", userIdInt, countErr)
+		return &types.CommonResp{Success: false, Message: "评论失败"}, nil
+	}
+	if recentCount >= 10 {
+		return &types.CommonResp{Success: false, Message: "评论太频繁了，稍后再试"}, nil
 	}
 
 	comment := &model.SocialPostComment{

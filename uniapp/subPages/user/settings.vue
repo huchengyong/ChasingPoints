@@ -48,6 +48,20 @@
 					</view>
 					<text v-else class="menu-description">{{ privacyLoading ? '读取中…' : '读取失败，点击重试' }}</text>
 				</view>
+				<view class="menu-item" @click="handleBlacklist">
+					<view class="menu-left">
+						<view class="icon-wrapper rose">
+							<uni-icons type="clear" size="24" color="#c69200"></uni-icons>
+						</view>
+						<view class="menu-copy">
+							<text class="menu-text">黑名单</text>
+							<text class="menu-description">查看并移出已拉黑的用户</text>
+						</view>
+					</view>
+					<view class="menu-right">
+						<uni-icons type="right" size="20" :color="isDarkMode ? '#c6b78c' : '#9A8C67'"></uni-icons>
+					</view>
+				</view>
 				<view class="menu-item" @click="toggleFriendsOnlyChallenges">
 					<view class="menu-left">
 						<view class="icon-wrapper amber">
@@ -267,6 +281,14 @@ const handleNotifications = () => {
 	uni.navigateTo({
 		url: '/subPages/user/notification'
 	})
+}
+
+const handleBlacklist = () => {
+	if (!userStore.isLoggedIn) {
+		uni.navigateTo({ url: '/pages/login/login' })
+		return
+	}
+	uni.navigateTo({ url: '/subPages/social/blacklist' })
 }
 
 const toggleFriendsOnlyChallenges = async () => {

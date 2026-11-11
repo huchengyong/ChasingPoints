@@ -136,3 +136,11 @@ export const shouldApplyH2HHistoryResponse = ({
   requestId = 0,
   latestRequestId = 0
 } = {}) => requestId === latestRequestId
+
+// 对方隐藏战绩是正常业务结果，不按加载失败处理。
+export const H2H_HIDDEN_EMPTY_STATE = Object.freeze({
+  title: '对方已隐藏战绩',
+  description: '这位好友暂时没有公开自己的战绩'
+})
+
+export const isH2HHiddenResponse = (response) => Boolean(response?.hidden)

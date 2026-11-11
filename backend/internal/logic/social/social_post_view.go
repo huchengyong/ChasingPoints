@@ -8,6 +8,8 @@ import (
 	"chasing_points/internal/types"
 )
 
+const deletedUserNickname = "已注销用户"
+
 func socialPostStatusText(status int) string {
 	switch status {
 	case model.SocialPostStatusPublished:
@@ -21,25 +23,42 @@ func socialPostStatusText(status int) string {
 	}
 }
 
-func buildSocialPostInfo(svcCtx *svc.ServiceContext, post model.SocialPost, currentUserID int64, includePrivate bool) (types.SocialPostInfo, bool, error) {
-	nickname := ""
-	avatar := ""
-	user, err := svcCtx.UserModel.FindById(post.UserId)
-	if err != nil {
-		return types.SocialPostInfo{}, false, err
+// socialPostViewData 是一页动态共用的组装数据，避免逐条查作者和点赞。
+type socialPostViewData struct {
+	users map[int64]model.User
+	liked map[int64]struct{}
+}
+
+func loadSocialPostViewData(svcCtx *svc.ServiceContext, posts []model.SocialPost, currentUserID int64) (*socialPostViewData, error) {
+	userIds := make([]int64, 0, len(posts))
+	postIds := make([]int64, 0, len(posts))
+	for _, post := range posts {
+		userIds = append(userIds, post.UserId)
+		if post.Status == model.SocialPostStatusPublished {
+			postIds = append(postIds, post.Id)
+		}
 	}
-	if user != nil {
+
+	users, err := svcCtx.UserModel.FindByIds(userIds)
+	if err != nil {
+		return nil, err
+	}
+	liked, err := svcCtx.SocialPostModel.FindLikedPostIds(currentUserID, postIds)
+	if err != nil {
+		return nil, err
+	}
+	return &socialPostViewData{users: users, liked: liked}, nil
+}
+
+func buildSocialPostInfo(post model.SocialPost, view *socialPostViewData, currentUserID int64, includePrivate bool) types.SocialPostInfo {
+	nickname := deletedUserNickname
+	avatar := ""
+	if user, ok := view.users[post.UserId]; ok {
 		nickname = user.Nickname
 		avatar = user.Avatar
 	}
 
-	isLiked := false
-	if currentUserID > 0 && post.Status == model.SocialPostStatusPublished {
-		isLiked, err = svcCtx.SocialPostModel.HasLiked(post.Id, currentUserID)
-		if err != nil {
-			return types.SocialPostInfo{}, false, err
-		}
-	}
+	_, isLiked := view.liked[post.Id]
 
 	images := make([]string, 0)
 	if post.Images != nil && *post.Images != "" {
@@ -71,5 +90,5 @@ func buildSocialPostInfo(svcCtx *svc.ServiceContext, post model.SocialPost, curr
 		item.IsMine = currentUserID > 0 && currentUserID == post.UserId
 	}
 
-	return item, true, nil
+	return item
 }

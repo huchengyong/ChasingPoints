@@ -58,6 +58,24 @@ export const blacklistFriend = (data) => {
 }
 
 /**
+ * 获取黑名单列表
+ * @param {Object} params { page, page_size }
+ * @returns {Promise}
+ */
+export const getFriendBlacklist = (params = {}) => {
+  return get('/api/friend/blacklist/list', params)
+}
+
+/**
+ * 移出黑名单
+ * @param {Object} data { friend_user_id }
+ * @returns {Promise}
+ */
+export const unblacklistFriend = (data) => {
+  return post('/api/friend/unblacklist', data)
+}
+
+/**
  * 获取好友请求列表
  * @param {Object} params { page, page_size }
  * @returns {Promise}

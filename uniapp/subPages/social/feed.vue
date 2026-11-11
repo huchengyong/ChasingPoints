@@ -1,7 +1,13 @@
 <template>
 	<view class="feed-page" :class="{ 'dark-mode': isDarkMode }">
+		<!-- 合规模式下动态入口整体关闭 -->
+		<view v-if="!socialEnabled" class="empty-state compliance-state">
+			<text class="empty-title">{{ SOCIAL_COMPLIANCE_TITLE }}</text>
+			<text class="empty-sub">暂时无法浏览和发布动态，敬请期待。</text>
+		</view>
+
 		<!-- 顶部 Tab -->
-		<view class="feed-tabs">
+		<view v-if="socialEnabled" class="feed-tabs">
 			<view
 				v-for="tab in tabs"
 				:key="tab.value"
@@ -14,7 +20,7 @@
 		</view>
 
 		<!-- 加载中 -->
-		<view v-if="loading" class="loading-state">
+		<view v-else-if="loading" class="loading-state">
 			<uni-icons type="spinner-cycle" size="36" color="#E0AE12"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
@@ -115,6 +121,7 @@
 								v-for="comment in (item.commentList || [])"
 								:key="comment.id"
 								class="comment-item"
+								@longpress="handleCommentLongPress(item, comment)"
 							>
 								<text class="comment-user">{{ comment.nickname || '球友' }}</text>
 								<text class="comment-text">{{ comment.content }}</text>
@@ -168,7 +175,7 @@
 		</scroll-view>
 
 		<!-- 发布按钮 FAB -->
-		<view class="fab-btn" @tap="goToCreate">
+		<view v-if="socialEnabled" class="fab-btn" @tap="goToCreate">
 			<uni-icons type="plusempty" size="28" color="#fff"></uni-icons>
 		</view>
 	</view>
@@ -177,11 +184,19 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import { getPostList, getPublicPosts, likePost, unlikePost, commentPost, deletePost, getPostComments } from '@/api/social.js'
+import { getPostList, getPublicPosts, likePost, unlikePost, commentPost, deletePost, deleteComment, getPostComments } from '@/api/social.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { useUserStore } from '@/store/user.js'
 import { formatRelativeTime } from '@/utils/format.js'
-import { filterReportPosts, resolveFeedTab, resolveSocialEmptyState, SOCIAL_TABS } from '@/utils/social-entry.js'
+import { canShowSocialPublishing } from '@/utils/compliance-mode.js'
+import {
+	canDeleteComment,
+	filterReportPosts,
+	resolveFeedTab,
+	resolveSocialEmptyState,
+	SOCIAL_COMPLIANCE_TITLE,
+	SOCIAL_TABS
+} from '@/utils/social-entry.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import {
 	ASYNC_PAGE_STATUS,
@@ -197,6 +212,7 @@ import { createRequestError } from '@/utils/request-errors.js'
 const tabs = SOCIAL_TABS
 const { isDarkMode } = usePageTheme()
 const userStore = useUserStore()
+const socialEnabled = canShowSocialPublishing()
 
 const currentTab = ref('recommend')
 const loading = ref(true)
@@ -431,6 +447,29 @@ const submitComment = async (item) => {
 	}
 }
 
+const handleCommentLongPress = (post, comment) => {
+	if (!canDeleteComment({ post, comment, currentUserId: userStore.userId })) return
+	uni.showModal({
+		title: '删除评论',
+		content: '确定删除这条评论吗？',
+		success: async ({ confirm }) => {
+			if (!confirm) return
+			try {
+				const res = await deleteComment({ comment_id: comment.id })
+				if (!res?.success) {
+					uni.showToast({ title: res?.message || '删除失败', icon: 'none' })
+					return
+				}
+				post.commentList = (post.commentList || []).filter((item) => item.id !== comment.id)
+				post.comments_count = Math.max((post.comments_count || 1) - 1, 0)
+				uni.showToast({ title: '已删除', icon: 'success' })
+			} catch (e) {
+				uni.showToast({ title: e?.message || '删除失败', icon: 'none' })
+			}
+		}
+	})
+}
+
 const handleDelete = (item) => {
 	uni.showModal({
 		title: '删除动态',
@@ -482,6 +521,10 @@ const handleEmptyStateCta = () => {
 }
 
 onLoad((options) => {
+	if (!socialEnabled) {
+		loading.value = false
+		return
+	}
 	const requestedTab = tabs.find((item) => item.value === options?.tab)?.value
 	if (requestedTab) {
 		currentTab.value = requestedTab
@@ -490,6 +533,7 @@ onLoad((options) => {
 })
 
 onShow(() => {
+	if (!socialEnabled) return
 	if (!loading.value && shouldRefreshOnShow.value) {
 		shouldRefreshOnShow.value = false
 		loadData(true)
@@ -530,6 +574,18 @@ onShow(() => {
 		.post-text,
 		.empty-title {
 			color: #fff7e1;
+		}
+
+		// 浅色层级更深的昵称选择器会覆盖上组，这里补一层同等深度。
+		.post-card {
+			.post-header .post-user-info .post-nickname {
+				color: #fff7e1;
+			}
+
+			.post-actions,
+			.comment-section {
+				border-top-color: #3a2e16;
+			}
 		}
 
 		.comment-input {

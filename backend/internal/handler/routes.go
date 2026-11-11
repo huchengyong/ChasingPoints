@@ -625,6 +625,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: friend.BlacklistFriendHandler(serverCtx),
 			},
 			{
+				// 获取黑名单列表
+				Method:  http.MethodGet,
+				Path:    "/blacklist/list",
+				Handler: friend.GetFriendBlacklistHandler(serverCtx),
+			},
+			{
 				// 删除好友
 				Method:  http.MethodPost,
 				Path:    "/delete",
@@ -659,6 +665,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodGet,
 				Path:    "/search",
 				Handler: friend.SearchFriendUserHandler(serverCtx),
+			},
+			{
+				// 移出黑名单
+				Method:  http.MethodPost,
+				Path:    "/unblacklist",
+				Handler: friend.UnblacklistFriendHandler(serverCtx),
 			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
@@ -1250,6 +1262,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodPost,
 				Path:    "/comment",
 				Handler: social.CommentPostHandler(serverCtx),
+			},
+			{
+				// 删除评论
+				Method:  http.MethodPost,
+				Path:    "/comment/delete",
+				Handler: social.DeletePostCommentHandler(serverCtx),
 			},
 			{
 				// 获取动态评论

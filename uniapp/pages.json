@@ -357,6 +357,12 @@
 					}
 				},
 				{
+					"path": "blacklist",
+					"style": {
+						"navigationBarTitleText": "黑名单"
+					}
+				},
+				{
 					"path": "challenges",
 					"style": {
 						"navigationBarTitleText": "约球"

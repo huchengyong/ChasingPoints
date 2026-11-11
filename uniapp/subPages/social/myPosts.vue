@@ -92,6 +92,8 @@ import { usePageTheme } from '@/utils/page-theme.js'
 import { useUserStore } from '@/store/user.js'
 import { formatRelativeTime } from '@/utils/format.js'
 import { resolveMyPostReviewMeta } from '@/utils/social-review.js'
+import { canShowSocialPublishing } from '@/utils/compliance-mode.js'
+import { SOCIAL_COMPLIANCE_TITLE } from '@/utils/social-entry.js'
 import {
 	ASYNC_PAGE_STATUS,
 	beginAsyncPageLoad,
@@ -128,11 +130,35 @@ const postRefreshError = computed(() => (
 
 const currentIdentityKey = () => `${userStore.userId}:${userStore.authGeneration}`
 
+// 合规模式下入口已隐藏，直达链接进入时提示并退出。
+const socialEnabled = canShowSocialPublishing()
+let socialBlocked = false
+
+const blockByCompliance = () => {
+	if (socialBlocked) return true
+	socialBlocked = true
+	uni.showToast({ title: SOCIAL_COMPLIANCE_TITLE, icon: 'none' })
+	if (getCurrentPages().length > 1) {
+		uni.navigateBack({ delta: 1 })
+	} else {
+		uni.switchTab({ url: '/pages/index/index' })
+	}
+	return true
+}
+
 onLoad((options) => {
+	if (!socialEnabled) {
+		blockByCompliance()
+		return
+	}
 	pageHint.value = options.hint ? decodeURIComponent(options.hint) : ''
 })
 
 onShow(() => {
+	if (!socialEnabled) {
+		blockByCompliance()
+		return
+	}
 	if (!hasLoadedOnce.value || postState.value.authGeneration !== userStore.authGeneration) loadPosts()
 })
 

@@ -143,6 +143,12 @@
 			box-sizing: border-box;
 			width: 100%;
 		}
+
+		.message-count {
+			align-self: flex-end;
+			font-size: 22rpx;
+			color: #9A8C67;
+		}
 	}
 
 	.submit-btn {
@@ -188,7 +194,8 @@
 
 		.opponent-sub,
 		.form-hint,
-		.hour-sep {
+		.hour-sep,
+		.message-count {
 			color: #9F926E;
 		}
 

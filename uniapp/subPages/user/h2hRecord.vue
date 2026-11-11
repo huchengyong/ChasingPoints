@@ -65,7 +65,13 @@
 			</view>
 		</view>
 
-		<view class="loading-wrapper" v-if="pageStatus === 'loading'">
+		<view class="hidden-wrapper" v-if="h2hHidden">
+			<uni-icons type="locked" size="52" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
+			<text class="hidden-title">{{ hiddenEmptyState.title }}</text>
+			<text class="hidden-desc">{{ hiddenEmptyState.description }}</text>
+		</view>
+
+		<view class="loading-wrapper" v-else-if="pageStatus === 'loading'">
 			<uni-icons type="spinner-cycle" size="40" :color="isDarkMode ? '#9F926E' : '#9A8C67'"></uni-icons>
 			<text class="loading-text">加载中...</text>
 		</view>
@@ -216,6 +222,8 @@ import {
 	buildH2HMonthDateRange,
 	buildH2HLoadFailureAction,
 	buildH2HViewModel,
+	H2H_HIDDEN_EMPTY_STATE,
+	isH2HHiddenResponse,
 	normalizeH2HRecordOptions,
 	shiftH2HMonthKey,
 	shouldApplyH2HHistoryResponse
@@ -242,6 +250,8 @@ const statsLoaded = ref(false)
 const historyLoaded = ref(false)
 const loadErrorMessage = ref('')
 const isOverviewLoading = ref(false)
+const h2hHidden = ref(false)
+const hiddenEmptyState = H2H_HIDDEN_EMPTY_STATE
 const h2hState = ref(createAsyncPageState({
 	authGeneration: userStore.authGeneration,
 	data: []
@@ -463,6 +473,7 @@ const fetchData = async () => {
 	h2hState.value = nextState
 	statsLoaded.value = false
 	historyLoaded.value = false
+	h2hHidden.value = false
 	loadErrorMessage.value = ''
 	currentPage.value = 1
 	hasMore.value = true
@@ -471,6 +482,20 @@ const fetchData = async () => {
 		if (!shouldApplyH2HHistoryResponse({ requestId, latestRequestId: latestHistoryRequestId.value }) || currentIdentityKey() !== requestIdentityKey || h2hState.value.requestId !== pageRequest.requestId || h2hState.value.authGeneration !== pageRequest.authGeneration) return
 		if (!res?.success) {
 			throw createRequestError({ message: res?.message || '交锋数据加载失败', category: 'business' })
+		}
+		// 对方隐藏战绩是正常业务结果：不展示统计与列表，也不当作加载失败。
+		if (isH2HHiddenResponse(res)) {
+			h2hHidden.value = true
+			applyOverviewStats()
+			historyList.value = []
+			summaryHistory.value = []
+			calendarHistory.value = []
+			total.value = 0
+			hasMore.value = false
+			loadedIdentityKey.value = requestIdentityKey
+			loadedH2HScopeVersion.value = requestScopeVersion
+			h2hState.value = resolveAsyncPageLoad(h2hState.value, pageRequest, { data: [] })
+			return
 		}
 		if (res.opponent) {
 			opponentData.id = res.opponent.id || 0
@@ -517,7 +542,7 @@ const fetchData = async () => {
 }
 
 const fetchNextHistory = async () => {
-	if (isLoadingMore.value || !hasMore.value) return
+	if (isLoadingMore.value || !hasMore.value || h2hHidden.value) return
 	const requestId = latestHistoryRequestId.value + 1
 	const requestIdentityKey = currentIdentityKey()
 	const nextState = beginAsyncPageLoad(h2hState.value, {

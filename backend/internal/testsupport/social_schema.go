@@ -7,18 +7,18 @@ import (
 )
 
 type socialUserSchema struct {
-	Id              int64   `gorm:"primarykey"`
-	Phone           *string `gorm:"uniqueIndex;size:20"`
-	Nickname        string  `gorm:"size:50;not null;default:''"`
-	Avatar          string  `gorm:"size:255;not null;default:''"`
-	Status          int     `gorm:"not null;default:1"`
-	PushToken       string  `gorm:"size:255;not null;default:''"`
-	MemberExpiresAt *time.Time
-	HideMatchRecord bool           `gorm:"not null;default:false"`
-	FriendsOnlyChallenges bool `gorm:"not null;default:false"`
-	CreatedAt       time.Time      `gorm:"autoCreateTime"`
-	UpdatedAt       time.Time      `gorm:"autoUpdateTime"`
-	DeletedAt       gorm.DeletedAt `gorm:"index"`
+	Id                    int64   `gorm:"primarykey"`
+	Phone                 *string `gorm:"uniqueIndex;size:20"`
+	Nickname              string  `gorm:"size:50;not null;default:''"`
+	Avatar                string  `gorm:"size:255;not null;default:''"`
+	Status                int     `gorm:"not null;default:1"`
+	PushToken             string  `gorm:"size:255;not null;default:''"`
+	MemberExpiresAt       *time.Time
+	HideMatchRecord       bool           `gorm:"not null;default:false"`
+	FriendsOnlyChallenges bool           `gorm:"not null;default:false"`
+	CreatedAt             time.Time      `gorm:"autoCreateTime"`
+	UpdatedAt             time.Time      `gorm:"autoUpdateTime"`
+	DeletedAt             gorm.DeletedAt `gorm:"index"`
 }
 
 func (socialUserSchema) TableName() string {
@@ -79,6 +79,17 @@ func (socialPostCommentSchema) TableName() string {
 	return "social_post_comments"
 }
 
+type socialMatchSchema struct {
+	Id         int64 `gorm:"primarykey"`
+	UserId     int64 `gorm:"not null;index"`
+	OpponentId *int64
+	DeletedAt  gorm.DeletedAt `gorm:"index"`
+}
+
+func (socialMatchSchema) TableName() string {
+	return "matches"
+}
+
 // PrepareSocialSchema bootstraps sqlite-backed tests for social posting flows.
 func PrepareSocialSchema(db *gorm.DB) error {
 	return db.AutoMigrate(
@@ -87,5 +98,6 @@ func PrepareSocialSchema(db *gorm.DB) error {
 		&socialPostSchema{},
 		&socialPostLikeSchema{},
 		&socialPostCommentSchema{},
+		&socialMatchSchema{},
 	)
 }

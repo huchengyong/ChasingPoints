@@ -50,11 +50,12 @@ func (l *SearchFriendUserLogic) SearchFriendUser(req *types.SearchUserReq) (resp
 			continue
 		}
 		list = append(list, types.SearchUserItem{
-			UserId:   item.UserId,
-			Nickname: item.Nickname,
-			Avatar:   item.Avatar,
-			RankName: item.RankName,
-			IsFriend: false,
+			UserId:            item.UserId,
+			Nickname:          item.Nickname,
+			Avatar:            item.Avatar,
+			RankName:          item.RankName,
+			IsFriend:          false,
+			HasPendingRequest: item.HasPendingRequest,
 		})
 	}
 

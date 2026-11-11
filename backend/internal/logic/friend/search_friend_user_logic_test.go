@@ -49,6 +49,9 @@ func TestSearchFriendUsersFiltersFriendsAndBlacklistAndLoadsPendingRelation(t *t
 		if item.UserId == 2 || item.UserId == 3 || item.IsFriend {
 			t.Fatalf("friend/blacklist relation leaked into visible candidate list: %#v", resp.List)
 		}
+		if item.UserId == 4 && !item.HasPendingRequest {
+			t.Fatalf("expected has_pending_request for candidate with pending request: %#v", resp.List)
+		}
 	}
 }
 

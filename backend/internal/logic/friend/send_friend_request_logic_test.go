@@ -27,12 +27,16 @@ func newFriendLogicTestSvc(t *testing.T) *svc.ServiceContext {
 	if err := testsupport.PrepareFriendSchema(db); err != nil {
 		t.Fatalf("prepare friend schema: %v", err)
 	}
+	if err := db.AutoMigrate(&model.Challenge{}); err != nil {
+		t.Fatalf("prepare challenge schema: %v", err)
+	}
 
 	return &svc.ServiceContext{
 		DB:                db,
 		UserModel:         model.NewUserModel(db),
 		FriendModel:       model.NewFriendModel(db),
 		NotificationModel: model.NewNotificationModel(db),
+		ChallengeModel:    model.NewChallengeModel(db),
 	}
 }
 

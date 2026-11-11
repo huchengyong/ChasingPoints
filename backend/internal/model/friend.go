@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -74,6 +75,21 @@ type SearchUserProfile struct {
 	HasPendingRequest bool   `gorm:"column:has_pending_request"`
 }
 
+type FriendBlacklistProfile struct {
+	UserId    int64     `gorm:"column:user_id"`
+	Nickname  string    `gorm:"column:nickname"`
+	Avatar    string    `gorm:"column:avatar"`
+	CreatedAt time.Time `gorm:"column:created_at"`
+}
+
+// normalizePageSize 列表上限与其他战绩列表保持一致：非法或超限时回落到 20。
+func normalizePageSize(pageSize int) int {
+	if pageSize < 1 || pageSize > 100 {
+		return 20
+	}
+	return pageSize
+}
+
 type FriendModel struct {
 	db *gorm.DB
 }
@@ -103,8 +119,16 @@ func (m *FriendModel) AreFriendsWithTx(tx *gorm.DB, userId1, userId2 int64) (boo
 }
 
 func (m *FriendModel) GetFriendCount(userId int64) (int64, error) {
+	return m.GetFriendCountWithTx(nil, userId)
+}
+
+func (m *FriendModel) GetFriendCountWithTx(tx *gorm.DB, userId int64) (int64, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
 	var count int64
-	err := m.db.Model(&Friend{}).
+	err := db.Model(&Friend{}).
 		Where("user_id = ? AND status = 1", userId).
 		Count(&count).Error
 	return count, err
@@ -114,9 +138,7 @@ func (m *FriendModel) GetFriendList(userId int64, page, pageSize int) ([]Friend,
 	if page <= 0 {
 		page = 1
 	}
-	if pageSize <= 0 {
-		pageSize = 20
-	}
+	pageSize = normalizePageSize(pageSize)
 
 	offset := (page - 1) * pageSize
 
@@ -157,9 +179,7 @@ func (m *FriendModel) GetFriendListWithProfiles(userId int64, page, pageSize int
 	if page <= 0 {
 		page = 1
 	}
-	if pageSize <= 0 {
-		pageSize = 20
-	}
+	pageSize = normalizePageSize(pageSize)
 	offset := (page - 1) * pageSize
 
 	var total int64
@@ -182,11 +202,19 @@ func (m *FriendModel) GetFriendListWithProfiles(userId int64, page, pageSize int
 }
 
 func (m *FriendModel) AddFriend(userId, friendId int64) error {
+	return m.AddFriendWithTx(nil, userId, friendId)
+}
+
+func (m *FriendModel) AddFriendWithTx(tx *gorm.DB, userId, friendId int64) error {
 	if userId == friendId {
 		return fmt.Errorf("cannot add self as friend")
 	}
 
-	return m.db.Transaction(func(tx *gorm.DB) error {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	insert := func(tx *gorm.DB) error {
 		pairs := []Friend{
 			{UserId: userId, FriendId: friendId, Status: 1},
 			{UserId: friendId, FriendId: userId, Status: 1},
@@ -197,7 +225,11 @@ func (m *FriendModel) AddFriend(userId, friendId int64) error {
 			}
 		}
 		return nil
-	})
+	}
+	if tx != nil {
+		return insert(tx)
+	}
+	return db.Transaction(insert)
 }
 
 func (m *FriendModel) DeleteFriend(userId, friendId int64) error {
@@ -210,27 +242,77 @@ func (m *FriendModel) DeleteFriend(userId, friendId int64) error {
 }
 
 func (m *FriendModel) SendRequest(fromUserId, toUserId int64, message string) (*FriendRequest, error) {
+	return m.SendRequestWithTx(nil, fromUserId, toUserId, message)
+}
+
+func (m *FriendModel) SendRequestWithTx(tx *gorm.DB, fromUserId, toUserId int64, message string) (*FriendRequest, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
 	request := &FriendRequest{
 		FromUserId: fromUserId,
 		ToUserId:   toUserId,
 		Status:     0,
 		Message:    message,
 	}
-	if err := m.db.Create(request).Error; err != nil {
+	if err := db.Create(request).Error; err != nil {
 		return nil, err
 	}
 	return request, nil
 }
 
 func (m *FriendModel) HasBlacklistRelation(userId1, userId2 int64) (bool, error) {
+	return m.HasBlacklistRelationWithTx(nil, userId1, userId2)
+}
+
+func (m *FriendModel) HasBlacklistRelationWithTx(tx *gorm.DB, userId1, userId2 int64) (bool, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
 	var count int64
-	err := m.db.Model(&FriendBlacklist{}).
+	err := db.Model(&FriendBlacklist{}).
 		Where("(user_id = ? AND blocked_user_id = ?) OR (user_id = ? AND blocked_user_id = ?)", userId1, userId2, userId2, userId1).
 		Count(&count).Error
 	if err != nil {
 		return false, err
 	}
 	return count > 0, nil
+}
+
+// GetBlacklistWithProfiles 联表返回我拉黑的用户；对方已注销时仍保留该行，便于移出黑名单。
+func (m *FriendModel) GetBlacklistWithProfiles(userId int64, page, pageSize int) ([]FriendBlacklistProfile, int64, error) {
+	if page <= 0 {
+		page = 1
+	}
+	pageSize = normalizePageSize(pageSize)
+
+	var total int64
+	if err := m.db.Model(&FriendBlacklist{}).Where("user_id = ?", userId).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var list []FriendBlacklistProfile
+	err := m.db.Table("friend_blacklists AS b").
+		Select(`b.blocked_user_id AS user_id, b.created_at,
+			CASE WHEN u.id IS NULL OR u.deleted_at IS NOT NULL THEN ? ELSE u.nickname END AS nickname,
+			COALESCE(u.avatar, '') AS avatar`, DeletedUserDisplayName).
+		Joins("LEFT JOIN users AS u ON u.id = b.blocked_user_id").
+		Where("b.user_id = ?", userId).
+		Order("b.created_at DESC, b.id DESC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Scan(&list).Error
+	return list, total, err
+}
+
+// RemoveBlacklist 只删除“我拉黑对方”这一行，移出后不自动恢复好友关系。
+func (m *FriendModel) RemoveBlacklist(userId, blockedUserId int64) (bool, error) {
+	result := m.db.Where("user_id = ? AND blocked_user_id = ?", userId, blockedUserId).Delete(&FriendBlacklist{})
+	if result.Error != nil {
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
 }
 
 func (m *FriendModel) BlacklistFriend(userId, blockedUserId int64) error {
@@ -276,9 +358,7 @@ func (m *FriendModel) GetPendingRequestPageWithProfiles(userId int64, page, page
 	if page <= 0 {
 		page = 1
 	}
-	if pageSize <= 0 {
-		pageSize = 20
-	}
+	pageSize = normalizePageSize(pageSize)
 	var total int64
 	if err := m.db.Model(&FriendRequest{}).Where("to_user_id = ? AND status = 0", userId).Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -305,7 +385,15 @@ func (m *FriendModel) GetPendingRequestsBetweenUsers(userId1, userId2 int64) ([]
 }
 
 func (m *FriendModel) AcceptRequest(requestId, userId int64) error {
-	result := m.db.Model(&FriendRequest{}).
+	return m.AcceptRequestWithTx(nil, requestId, userId)
+}
+
+func (m *FriendModel) AcceptRequestWithTx(tx *gorm.DB, requestId, userId int64) error {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	result := db.Model(&FriendRequest{}).
 		Where("id = ? AND to_user_id = ? AND status = 0", requestId, userId).
 		Update("status", 1)
 	if result.Error != nil {
@@ -331,8 +419,16 @@ func (m *FriendModel) RejectRequest(requestId, userId int64) error {
 }
 
 func (m *FriendModel) GetRequestById(requestId int64) (*FriendRequest, error) {
+	return m.GetRequestByIdWithTx(nil, requestId)
+}
+
+func (m *FriendModel) GetRequestByIdWithTx(tx *gorm.DB, requestId int64) (*FriendRequest, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
 	var request FriendRequest
-	err := m.db.First(&request, requestId).Error
+	err := db.First(&request, requestId).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}
@@ -342,9 +438,49 @@ func (m *FriendModel) GetRequestById(requestId int64) (*FriendRequest, error) {
 	return &request, nil
 }
 
-func (m *FriendModel) HasPendingRequest(userId1, userId2 int64) (bool, error) {
+// FindLatestRequest 返回同一发送方对该接收方的最近一条申请，用于拒绝冷却判断。
+func (m *FriendModel) FindLatestRequestWithTx(tx *gorm.DB, fromUserId, toUserId int64) (*FriendRequest, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	var request FriendRequest
+	err := db.Where("from_user_id = ? AND to_user_id = ?", fromUserId, toUserId).
+		Order("id DESC").
+		First(&request).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &request, nil
+}
+
+// CountRequestsSince 统计发送方从 since 起创建的好友申请数量，用于频率限制。
+func (m *FriendModel) CountRequestsSinceWithTx(tx *gorm.DB, fromUserId int64, since time.Time) (int64, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
 	var count int64
-	err := m.db.Model(&FriendRequest{}).
+	err := db.Model(&FriendRequest{}).
+		Where("from_user_id = ? AND created_at >= ?", fromUserId, since).
+		Count(&count).Error
+	return count, err
+}
+
+func (m *FriendModel) HasPendingRequest(userId1, userId2 int64) (bool, error) {
+	return m.HasPendingRequestWithTx(nil, userId1, userId2)
+}
+
+func (m *FriendModel) HasPendingRequestWithTx(tx *gorm.DB, userId1, userId2 int64) (bool, error) {
+	db := m.db
+	if tx != nil {
+		db = tx
+	}
+	var count int64
+	err := db.Model(&FriendRequest{}).
 		Where("status = 0").
 		Where("(from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)", userId1, userId2, userId2, userId1).
 		Count(&count).Error
@@ -355,6 +491,7 @@ func (m *FriendModel) HasPendingRequest(userId1, userId2 int64) (bool, error) {
 }
 
 func (m *FriendModel) SearchUsers(searcherId int64, keyword string, limit int) ([]User, error) {
+	keyword = normalizeUserSearchKeyword(keyword)
 	if keyword == "" {
 		return []User{}, nil
 	}
@@ -363,11 +500,11 @@ func (m *FriendModel) SearchUsers(searcherId int64, keyword string, limit int) (
 	}
 
 	var list []User
-	err := m.db.Model(&User{}).
+	query := m.db.Model(&User{}).
 		Where("status = 1").
-		Where("id <> ?", searcherId).
-		Where("nickname LIKE ? OR phone = ?", "%"+keyword+"%", keyword).
-		Where(`NOT EXISTS (
+		Where("id <> ?", searcherId)
+	query = m.applyUserSearchKeyword(query, "nickname", keyword)
+	err := query.Where(`NOT EXISTS (
 			SELECT 1
 			FROM friend_blacklists
 			WHERE (user_id = ? AND blocked_user_id = users.id)
@@ -380,6 +517,7 @@ func (m *FriendModel) SearchUsers(searcherId int64, keyword string, limit int) (
 }
 
 func (m *FriendModel) SearchUserProfiles(searcherId int64, keyword string, limit int) ([]SearchUserProfile, error) {
+	keyword = normalizeUserSearchKeyword(keyword)
 	if keyword == "" {
 		return []SearchUserProfile{}, nil
 	}
@@ -387,16 +525,16 @@ func (m *FriendModel) SearchUserProfiles(searcherId int64, keyword string, limit
 		limit = 20
 	}
 	var list []SearchUserProfile
-	err := m.db.Table("users AS u").
+	query := m.db.Table("users AS u").
 		Select(`u.id AS user_id, u.nickname, u.avatar, COALESCE(c.name, '') AS rank_name,
 			CASE WHEN EXISTS (SELECT 1 FROM friends AS f WHERE f.status = 1 AND ((f.user_id = ? AND f.friend_id = u.id) OR (f.user_id = u.id AND f.friend_id = ?))) THEN 1 ELSE 0 END AS is_friend,
 			CASE WHEN EXISTS (SELECT 1 FROM friend_requests AS p WHERE p.status = 0 AND ((p.from_user_id = ? AND p.to_user_id = u.id) OR (p.from_user_id = u.id AND p.to_user_id = ?))) THEN 1 ELSE 0 END AS has_pending_request`,
 			searcherId, searcherId, searcherId, searcherId).
 		Joins("LEFT JOIN user_ranking AS r ON r.user_id = u.id AND r.game_type = ?", defaultRankingGameType).
 		Joins("LEFT JOIN rank_config AS c ON c.level = COALESCE(r.rank_level, 1)").
-		Where("u.status = 1 AND u.id <> ?", searcherId).
-		Where("u.nickname LIKE ? OR u.phone = ?", "%"+keyword+"%", keyword).
-		Where(`NOT EXISTS (
+		Where("u.status = 1 AND u.id <> ?", searcherId)
+	query = m.applyUserSearchKeyword(query, "u.nickname", keyword)
+	err := query.Where(`NOT EXISTS (
 			SELECT 1
 			FROM friend_blacklists
 			WHERE (user_id = ? AND blocked_user_id = u.id)
@@ -406,4 +544,37 @@ func (m *FriendModel) SearchUserProfiles(searcherId int64, keyword string, limit
 		Limit(limit).
 		Scan(&list).Error
 	return list, err
+}
+
+const userSearchKeywordRuneLimit = 30
+
+func normalizeUserSearchKeyword(keyword string) string {
+	keyword = strings.TrimSpace(keyword)
+	runes := []rune(keyword)
+	if len(runes) > userSearchKeywordRuneLimit {
+		keyword = string(runes[:userSearchKeywordRuneLimit])
+	}
+	return keyword
+}
+
+// applyUserSearchKeyword 统一搜索匹配：昵称模糊匹配并对通配符转义，11 位纯数字才额外精确匹配手机号。
+// 转义字符用 '!'，MySQL 与 SQLite 的字符串字面量都不需要额外反斜杠。
+func (m *FriendModel) applyUserSearchKeyword(query *gorm.DB, nicknameColumn, keyword string) *gorm.DB {
+	pattern := "%" + strings.NewReplacer("!", "!!", "%", "!%", "_", "!_").Replace(keyword) + "%"
+	if isPhoneKeyword(keyword) {
+		return query.Where("("+nicknameColumn+" LIKE ? ESCAPE '!' OR phone = ?)", pattern, keyword)
+	}
+	return query.Where(nicknameColumn+" LIKE ? ESCAPE '!'", pattern)
+}
+
+func isPhoneKeyword(keyword string) bool {
+	if len(keyword) != 11 {
+		return false
+	}
+	for _, char := range keyword {
+		if char < '0' || char > '9' {
+			return false
+		}
+	}
+	return true
 }

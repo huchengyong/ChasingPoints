@@ -36,10 +36,13 @@
 					</view>
 				</view>
 				<view v-if="item.status === 0" class="request-actions">
-					<button class="action-button action-reject" @tap="handleReject(item)">
+					<view class="request-more" @tap.stop="openRequestMore(item)">
+						<uni-icons type="more-filled" size="20" color="#9A8C67"></uni-icons>
+					</view>
+					<button class="action-button action-reject" :disabled="isItemBusy(item)" @tap="handleReject(item)">
 						<text>拒绝</text>
 					</button>
-					<button class="action-button action-accept" @tap="handleAccept(item)">
+					<button class="action-button action-accept" :disabled="isItemBusy(item)" @tap="handleAccept(item)">
 						<text>接受</text>
 					</button>
 				</view>
@@ -74,10 +77,11 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { onLoad, onShow, onPullDownRefresh } from '@dcloudio/uni-app'
-import { getFriendRequests, acceptFriendRequest, rejectFriendRequest } from '@/api/friend.js'
+import { getFriendRequests, acceptFriendRequest, rejectFriendRequest, blacklistFriend } from '@/api/friend.js'
 import { useFriendRequestStore } from '@/store/friendRequest.js'
 import { useUserStore } from '@/store/user.js'
 import { formatRelativeTime } from '@/utils/format.js'
+import { resolveFriendRequestUserId } from '@/utils/friend-entry.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import { resolveAvatarUrl } from '@/utils/user-profile.js'
 import {
@@ -108,6 +112,7 @@ const requestState = ref(createAsyncPageState({
 const latestRequestId = ref(0)
 const requestedIdentityKey = ref('')
 const loadedIdentityKey = ref('')
+const busyRequestIds = ref({})
 const requestPageError = computed(() => (
 	requestState.value.status === ASYNC_PAGE_STATUS.ERROR
 		? resolveAsyncPageErrorFeedback(requestState.value.error, { resource: '好友申请' })
@@ -193,8 +198,22 @@ const handleRequestErrorAction = () => {
 	retryRequests()
 }
 
+const isItemBusy = (item) => Boolean(busyRequestIds.value[item?.id])
+
+const setItemBusy = (requestId, busy) => {
+	const next = { ...busyRequestIds.value }
+	if (busy) {
+		next[requestId] = true
+	} else {
+		delete next[requestId]
+	}
+	busyRequestIds.value = next
+}
+
 const handleAccept = async (item) => {
+	if (isItemBusy(item)) return
 	const requestIdentityKey = currentIdentityKey()
+	setItemBusy(item.id, true)
 	try {
 		const res = await acceptFriendRequest({ request_id: item.id })
 		if (currentIdentityKey() !== requestIdentityKey) return
@@ -207,12 +226,17 @@ const handleAccept = async (item) => {
 			uni.showToast({ title: res.message || '操作失败', icon: 'none' })
 		}
 	} catch (e) {
-		uni.showToast({ title: '操作失败', icon: 'none' })
+		if (currentIdentityKey() !== requestIdentityKey) return
+		uni.showToast({ title: e?.message || '操作失败', icon: 'none' })
+	} finally {
+		setItemBusy(item.id, false)
 	}
 }
 
 const handleReject = async (item) => {
+	if (isItemBusy(item)) return
 	const requestIdentityKey = currentIdentityKey()
+	setItemBusy(item.id, true)
 	try {
 		const res = await rejectFriendRequest({ request_id: item.id })
 		if (currentIdentityKey() !== requestIdentityKey) return
@@ -225,7 +249,67 @@ const handleReject = async (item) => {
 			uni.showToast({ title: res.message || '操作失败', icon: 'none' })
 		}
 	} catch (e) {
-		uni.showToast({ title: '操作失败', icon: 'none' })
+		if (currentIdentityKey() !== requestIdentityKey) return
+		uni.showToast({ title: e?.message || '操作失败', icon: 'none' })
+	} finally {
+		setItemBusy(item.id, false)
+	}
+}
+
+const openRequestMore = (item) => {
+	if (item.status !== 0 || isItemBusy(item)) return
+	uni.showActionSheet({
+		itemList: ['拒绝并加入黑名单'],
+		success: ({ tapIndex }) => {
+			if (tapIndex === 0) showRequestBlacklistConfirm(item)
+		}
+	})
+}
+
+const showRequestBlacklistConfirm = (item) => {
+	const applicantId = resolveFriendRequestUserId(item)
+	if (!applicantId) {
+		uni.showToast({ title: '申请人信息异常', icon: 'none' })
+		return
+	}
+	uni.showModal({
+		title: '加入黑名单',
+		content: `确定拒绝并拉黑「${item.nickname || '球友'}」吗？拉黑后对方将无法再搜索或添加你。`,
+		confirmText: '确认拉黑',
+		confirmColor: '#6E6242',
+		success: async ({ confirm }) => {
+			if (!confirm) return
+			await handleRequestBlacklist(item, applicantId)
+		}
+	})
+}
+
+// 后端会同时清掉这条待处理申请，因此成功后与“拒绝”一致地从列表移除。
+const handleRequestBlacklist = async (item, applicantId) => {
+	if (isItemBusy(item)) return
+	const requestIdentityKey = currentIdentityKey()
+	setItemBusy(item.id, true)
+	try {
+		const res = await blacklistFriend({ friend_user_id: applicantId })
+		if (currentIdentityKey() !== requestIdentityKey) return
+		if (!res?.success) {
+			uni.showToast({ title: res?.message || '操作失败', icon: 'none' })
+			return
+		}
+		requestList.value = requestList.value.filter((request) => request.id !== item.id)
+		friendRequestStore.decrementPendingCount(getReadIdentity())
+		total.value = Math.max(total.value - 1, 0)
+		hasMore.value = requestList.value.length < total.value
+		// 删掉最后一条时页面状态要落到空态，否则模板没有任何分支可渲染。
+		if (!requestList.value.length) {
+			requestState.value = resolveAsyncPageLoad(requestState.value, getAsyncPageRequest(requestState.value), { data: [] })
+		}
+		uni.showToast({ title: '已加入黑名单', icon: 'none' })
+	} catch (e) {
+		if (currentIdentityKey() !== requestIdentityKey) return
+		uni.showToast({ title: e?.message || '操作失败', icon: 'none' })
+	} finally {
+		setItemBusy(item.id, false)
 	}
 }
 
@@ -349,10 +433,18 @@ onPullDownRefresh(() => {
 
 		.request-actions {
 			display: flex;
+			align-items: center;
 			justify-content: flex-end;
 			gap: 12rpx;
 			width: 100%;
 			margin-top: 18rpx;
+
+			.request-more {
+				margin-right: auto;
+				display: flex;
+				align-items: center;
+				padding: 8rpx 12rpx;
+			}
 
 			.action-button {
 				min-width: 128rpx;
@@ -368,6 +460,10 @@ onPullDownRefresh(() => {
 
 				&::after {
 					display: none;
+				}
+
+				&[disabled] {
+					opacity: 0.6;
 				}
 			}
 

@@ -26,6 +26,9 @@ func NewGetPostCommentsLogic(ctx context.Context, svcCtx *svc.ServiceContext) *G
 }
 
 func (l *GetPostCommentsLogic) GetPostComments(req *types.GetPostCommentsReq) (resp *types.GetPostCommentsResp, err error) {
+	if req.PostId <= 0 {
+		return &types.GetPostCommentsResp{Success: false, Total: 0, List: []types.PostCommentInfo{}}, nil
+	}
 	if !l.svcCtx.Config.SocialEnabled() {
 		return &types.GetPostCommentsResp{Success: false, Total: 0, List: []types.PostCommentInfo{}}, nil
 	}
@@ -33,28 +36,33 @@ func (l *GetPostCommentsLogic) GetPostComments(req *types.GetPostCommentsReq) (r
 	post, err := l.svcCtx.SocialPostModel.FindById(req.PostId)
 	if err != nil {
 		l.Logger.Errorf("查询动态失败: postId=%d err=%v", req.PostId, err)
-		return &types.GetPostCommentsResp{Success: false}, nil
+		return &types.GetPostCommentsResp{Success: false, Total: 0, List: []types.PostCommentInfo{}}, nil
 	}
 	if post == nil || post.Status != model.SocialPostStatusPublished {
-		return &types.GetPostCommentsResp{Success: false}, nil
+		return &types.GetPostCommentsResp{Success: false, Total: 0, List: []types.PostCommentInfo{}}, nil
 	}
 
 	comments, total, err := l.svcCtx.SocialPostModel.GetComments(req.PostId, req.Page, req.PageSize)
 	if err != nil {
 		l.Logger.Errorf("查询动态评论失败: postId=%d err=%v", req.PostId, err)
-		return &types.GetPostCommentsResp{Success: false}, nil
+		return &types.GetPostCommentsResp{Success: false, Total: 0, List: []types.PostCommentInfo{}}, nil
+	}
+
+	userIds := make([]int64, 0, len(comments))
+	for _, comment := range comments {
+		userIds = append(userIds, comment.UserId)
+	}
+	users, err := l.svcCtx.UserModel.FindByIds(userIds)
+	if err != nil {
+		l.Logger.Errorf("批量查询评论用户失败: postId=%d err=%v", req.PostId, err)
+		return &types.GetPostCommentsResp{Success: false, Total: 0, List: []types.PostCommentInfo{}}, nil
 	}
 
 	list := make([]types.PostCommentInfo, 0, len(comments))
 	for _, comment := range comments {
-		nickname := ""
+		nickname := deletedUserNickname
 		avatar := ""
-		user, userErr := l.svcCtx.UserModel.FindById(comment.UserId)
-		if userErr != nil {
-			l.Logger.Errorf("查询评论用户失败: commentId=%d userId=%d err=%v", comment.Id, comment.UserId, userErr)
-			continue
-		}
-		if user != nil {
+		if user, ok := users[comment.UserId]; ok {
 			nickname = user.Nickname
 			avatar = user.Avatar
 		}

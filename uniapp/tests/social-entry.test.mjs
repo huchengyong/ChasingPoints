@@ -2,8 +2,10 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  SOCIAL_COMPLIANCE_TITLE,
   SOCIAL_TABS,
   buildFeedUrl,
+  canDeleteComment,
   filterReportPosts,
   resolveFeedTab,
   resolveSocialEmptyState
@@ -46,6 +48,38 @@ test('resolveSocialEmptyState keeps report copy actionless when no login is requ
     desc: '真实对局结束后分享的战绩，会优先出现在这里。',
     ctaText: ''
   })
+})
+
+test('canDeleteComment allows the comment author and the post author only', () => {
+  assert.equal(canDeleteComment({
+    post: { user_id: 18 },
+    comment: { user_id: 52 },
+    currentUserId: 52
+  }), true)
+  assert.equal(canDeleteComment({
+    post: { user_id: 18 },
+    comment: { user_id: 52 },
+    currentUserId: 18
+  }), true)
+  assert.equal(canDeleteComment({
+    post: { is_mine: true, user_id: 18 },
+    comment: { user_id: 52 },
+    currentUserId: 18
+  }), true)
+  assert.equal(canDeleteComment({
+    post: { user_id: 18 },
+    comment: { user_id: 52 },
+    currentUserId: 99
+  }), false)
+  assert.equal(canDeleteComment({
+    post: { user_id: 18 },
+    comment: { user_id: 52 },
+    currentUserId: 0
+  }), false)
+})
+
+test('social compliance copy is shared by the dynamic pages', () => {
+  assert.equal(SOCIAL_COMPLIANCE_TITLE, '动态功能暂未开放')
 })
 
 test('filterReportPosts only keeps match share items', () => {
