@@ -25,10 +25,10 @@
 		<scroll-view v-else class="content-scroll" scroll-y>
 			<view class="main-content">
 				<view class="hero-card">
-					<view :class="['hero-banner', isReferee ? 'is-neutral' : (isWin ? 'is-win' : 'is-lose')]">
+					<view :class="['hero-banner', isReferee || isDraw ? 'is-neutral' : (isWin ? 'is-win' : 'is-lose')]">
 						<view class="hero-topbar">
 							<view class="hero-tag">
-								<uni-icons :type="isReferee ? 'person-filled' : (isWin ? 'medal' : 'flag')" size="14" color="#ffffff"></uni-icons>
+								<uni-icons :type="isReferee ? 'person-filled' : (isDraw ? 'info' : (isWin ? 'medal' : 'flag'))" size="14" color="#ffffff"></uni-icons>
 								<text>{{ resultTagText }}</text>
 							</view>
 							<text class="hero-time">{{ matchTimeRelativeText }}</text>
@@ -58,7 +58,7 @@
 							</view>
 
 							<view class="player-panel">
-								<view :class="['avatar-shell', isReferee ? 'is-neutral' : (!isWin ? 'is-winner' : 'is-neutral')]">
+								<view :class="['avatar-shell', isReferee || isDraw ? 'is-neutral' : (!isWin ? 'is-winner' : 'is-neutral')]">
 									<memberAvatar :avatar="matchData.opponent_avatar" :user-id="avatarUserIds.right" :vip-level="matchData.opponent_vip_level" :rank-level="matchData.opponent_rank_level" :size="92" />
 								</view>
 								<text class="player-name">{{ matchData.opponent_name || '对手' }}</text>
@@ -75,7 +75,7 @@
 						<text v-if="finishMethodText" class="finish-method-note">结束方式：{{ finishMethodText }}</text>
 					</view>
 
-					<view class="rank-section" v-if="refereeViewConfig.showRankChange">
+					<view class="rank-section" v-if="showRankChange">
 						<view class="section-head compact">
 							<view>
 								<text class="section-title">排位变化</text>
@@ -285,7 +285,7 @@ import {
 	MATCH_REWARD_MAX_ATTEMPTS,
 	MATCH_REWARD_RETRY_DELAY_MS,
 	resolveMatchRewardSummary,
-	resolveMatchViewerWin
+	resolveMatchViewerOutcome
 } from '@/utils/match-result-page.js'
 
 const SHARE_LINK = 'https://appgallery.huawei.com/app/detail?id=hm.dianzaozao.ballmall&channelId=SHARE&source=appshare'
@@ -385,12 +385,16 @@ const showReplayEntry = computed(() => canOpenMatchReplay({
 	status: matchData.value.status,
 	viewerRole: matchData.value.viewer_role
 }))
-const isWin = computed(() => !isReferee.value && resolveMatchViewerWin({
+const viewerOutcome = computed(() => resolveMatchViewerOutcome({
 	result: matchData.value.result,
 	myScore: matchData.value.my_score,
 	opponentScore: matchData.value.opponent_score
 }))
+const isWin = computed(() => !isReferee.value && viewerOutcome.value === 'win')
+const isDraw = computed(() => !isReferee.value && viewerOutcome.value === 'draw')
 const scoreGap = computed(() => Math.abs((matchData.value.my_score || 0) - (matchData.value.opponent_score || 0)))
+// 练习赛不结算排位，不展示排位变化；缺少 match_mode 的旧响应按排位赛处理。
+const showRankChange = computed(() => refereeViewConfig.value.showRankChange && (!matchData.value.match_mode || matchData.value.match_mode === 'ranked'))
 
 const gameTypeName = computed(() => {
 	switch (matchData.value.game_type) {
@@ -409,16 +413,19 @@ const gameTypeName = computed(() => {
 
 const resultTitle = computed(() => {
 	if (isReferee.value) return '执裁记录'
+	if (isDraw.value) return '握手言和'
 	return isWin.value ? '拿下这一场' : '这场先记下'
 })
 
 const resultTagText = computed(() => {
 	if (isReferee.value) return '裁判视角'
+	if (isDraw.value) return '平局战报'
 	return isWin.value ? '胜利战报' : '复盘战报'
 })
 
 const resultSubtitle = computed(() => {
 	if (isReferee.value) return '你已完成本场执裁，对局结果已录入系统。'
+	if (isDraw.value) return '双方打成平手，下一场再分高下。'
 	// 整场认输按认输事件判定胜负，局分可能与胜负方向不一致，需要明确说明。
 	if (matchData.value.snooker_frame_end_reason === 'match_concession') {
 		return isWin.value ? '对手认输整场，本场判你获胜。' : '你已认输整场，本场记为失利。'
@@ -466,7 +473,7 @@ const scoreGapLabel = computed(() => (matchData.value.game_type === 2 ? '分差'
 
 const scoreSummaryText = computed(() => {
 	if (isReferee.value) return matchData.value.game_type === 2 ? '本场最终比分' : '本场最终局数'
-	if (scoreGap.value === 0) return matchData.value.game_type === 2 ? '双方比分持平' : '双方局数持平'
+	if (isDraw.value) return matchData.value.game_type === 2 ? '双方比分持平' : '双方局数持平'
 	return isWin.value
 		? `领先 ${scoreGap.value} ${scoreGapUnit.value}收下对局`
 		: `落后 ${scoreGap.value} ${scoreGapUnit.value}结束对局`
@@ -474,7 +481,7 @@ const scoreSummaryText = computed(() => {
 
 const heroMetaItems = computed(() => [
 	{ label: '项目', value: gameTypeName.value },
-	{ label: scoreGapLabel.value, value: scoreGap.value === 0 ? '平局' : `${scoreGap.value} ${scoreGapUnit.value}` },
+	{ label: scoreGapLabel.value, value: isDraw.value ? '平局' : `${scoreGap.value} ${scoreGapUnit.value}` },
 	{ label: matchTimeMetaLabel.value, value: matchTimeFullText.value }
 ])
 

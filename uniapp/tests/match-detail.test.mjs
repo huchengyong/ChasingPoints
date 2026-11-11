@@ -156,6 +156,51 @@ test('normalizeMatchDetailPayload converts public rounds to the requested user p
   ])
 })
 
+test('normalizeMatchDetailPayload swaps participant round records once for player 2', () => {
+  const rounds = [
+    { round_number: 1, player1_score: 21, player2_score: 10, winner: 1 },
+    { round_number: 2, player1_score: 33, player2_score: 21, winner: 2 },
+    { round_number: 3, player1_score: 8, player2_score: 60, winner: 2 }
+  ]
+  const asPlayer2 = normalizeMatchDetailPayload({
+    is_player1: false,
+    viewer_role: 'player2',
+    rounds
+  })
+  assert.deepEqual(asPlayer2.roundRecords.map((round) => ({
+    score: `${round.player1_score}-${round.player2_score}`,
+    winner: round.winner,
+    result: round.result,
+    resultText: round.resultText
+  })), [
+    { score: '10-21', winner: 2, result: 'loss', resultText: '负' },
+    { score: '21-33', winner: 1, result: 'win', resultText: '胜' },
+    { score: '60-8', winner: 1, result: 'win', resultText: '胜' }
+  ])
+  assert.equal(asPlayer2.roundRecordsSwapped, true)
+
+  // 参与者详情同时带 perspective_user_id 时也只换一次边。
+  const withPerspective = normalizeMatchDetailPayload({
+    is_player1: false,
+    viewer_role: 'player2',
+    player1_id: 1,
+    player2_id: 2,
+    rounds
+  }, { perspectiveUserId: 2 })
+  assert.deepEqual(withPerspective.roundRecords.map((round) => `${round.player1_score}-${round.player2_score}`), ['10-21', '21-33', '60-8'])
+})
+
+test('normalizeMatchDetailPayload keeps round records for player 1 and referees', () => {
+  const rounds = [{ round_number: 1, player1_score: 21, player2_score: 10, winner: 1 }]
+  const asPlayer1 = normalizeMatchDetailPayload({ is_player1: true, viewer_role: 'player1', rounds })
+  assert.deepEqual(asPlayer1.roundRecords.map((round) => [round.player1_score, round.player2_score, round.resultText]), [[21, 10, '胜']])
+  assert.equal(asPlayer1.roundRecordsSwapped, false)
+
+  const asReferee = normalizeMatchDetailPayload({ is_player1: false, viewer_role: 'referee', rounds })
+  assert.deepEqual(asReferee.roundRecords.map((round) => [round.player1_score, round.player2_score, round.resultText]), [[21, 10, '胜']])
+  assert.equal(asReferee.roundRecordsSwapped, false)
+})
+
 const chasingBreakdown = {
   available: true,
   player1: { score: 16, normal_wins: 2, small_golds: 1, big_golds: 0, foul_count: 3, foul_points_given: 3, other_points: 0 },

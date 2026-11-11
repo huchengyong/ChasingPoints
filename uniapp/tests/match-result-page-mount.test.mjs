@@ -308,6 +308,97 @@ test('completed match without duration labels the start time instead of the end 
 	assert.match(text, /2026年11月10日 23:30/)
 })
 
+test('settled draw shows a neutral banner without a winning side', async () => {
+	const { wrapper, text } = await mountResultPage({
+		game_type: 3,
+		status: 2,
+		viewer_role: 'player1',
+		is_player1: true,
+		my_score: 2,
+		opponent_score: 1,
+		result: 3
+	})
+
+	const banner = wrapper.element.querySelector('.hero-banner')
+	assert.ok(banner.classList.contains('is-neutral'))
+	assert.equal(banner.classList.contains('is-win'), false)
+	assert.equal(banner.classList.contains('is-lose'), false)
+	assert.match(text, /平局战报/)
+	assert.match(text, /握手言和/)
+	assert.match(text, /双方打成平手，下一场再分高下。/)
+	assert.match(text, /双方局数持平/)
+	assert.equal(wrapper.element.querySelectorAll('.avatar-shell.is-winner').length, 0)
+	assert.equal(wrapper.element.querySelectorAll('.avatar-shell.is-neutral').length, 2)
+})
+
+test('equal scores without a settled result are treated as a draw', async () => {
+	const { text } = await mountResultPage({
+		game_type: 2,
+		status: 2,
+		viewer_role: 'player1',
+		is_player1: true,
+		my_score: 13,
+		opponent_score: 13
+	})
+
+	assert.match(text, /平局战报/)
+	assert.match(text, /双方比分持平/)
+})
+
+test('practice match hides the rank change section', async () => {
+	const { text } = await mountResultPage({
+		game_type: 3,
+		status: 2,
+		viewer_role: 'player1',
+		is_player1: true,
+		match_mode: 'practice',
+		my_score: 3,
+		opponent_score: 1,
+		my_rank_change: 20,
+		my_rank_details: [{ label: '基础分', value: 20 }],
+		achievements: { break_clear: 1 }
+	})
+
+	assert.doesNotMatch(text, /排位变化/)
+	assert.doesNotMatch(text, /我的排位分/)
+	assert.match(text, /练习赛不计入排位/)
+	assert.match(text, /本场记录了 炸清x1，高光会保留在战报和成就里。/)
+	assert.doesNotMatch(text, /本场排位只按基础分结算/)
+	assert.doesNotMatch(text, /VIP用户才会/)
+})
+
+test('a response without match_mode still shows the rank change section', async () => {
+	const { text } = await mountResultPage({
+		game_type: 3,
+		status: 2,
+		viewer_role: 'player1',
+		is_player1: true,
+		my_score: 3,
+		opponent_score: 1,
+		my_rank_change: 20,
+		my_rank_details: [{ label: '基础分', value: 20 }]
+	})
+
+	assert.match(text, /排位变化/)
+})
+
+test('ranked match keeps the rank change section', async () => {
+	const { text } = await mountResultPage({
+		game_type: 3,
+		status: 2,
+		viewer_role: 'player1',
+		is_player1: true,
+		match_mode: 'ranked',
+		my_score: 3,
+		opponent_score: 1,
+		my_rank_change: 20,
+		my_rank_details: [{ label: '基础分', value: 20 }]
+	})
+
+	assert.match(text, /排位变化/)
+	assert.match(text, /我的排位分/)
+})
+
 test('match result style gives the referee hero a neutral background and a fixed avatar size', async () => {
 	const style = await readFile(join(appDir, 'subPages/match/matchResult.scss'), 'utf8')
 	assert.match(style, /&\.is-neutral\s*\{[^}]*background:\s*linear-gradient/)

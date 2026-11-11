@@ -43,3 +43,24 @@ test('resolveMatchRankingRightsSummary explains v2 matches without member wordin
   assert.equal(plain.badgeText, '只看胜负')
   assert.match(plain.description, /会员与普通用户规则相同/)
 })
+
+test('resolveMatchRankingRightsSummary marks practice matches as not counted in ranking', () => {
+  const recorded = resolveMatchRankingRightsSummary({
+    match_mode: 'practice',
+    achievements: { break_clear: 1 }
+  })
+  assert.equal(recorded.badgeText, '练习赛')
+  assert.equal(recorded.title, '练习赛不计入排位')
+  assert.equal(recorded.tone, 'slate')
+  assert.equal(recorded.countedInRanking, false)
+  assert.equal(recorded.recordedAchievementsText, '炸清x1')
+  assert.equal(recorded.description, '本场记录了 炸清x1，高光会保留在战报和成就里。')
+
+  const plain = resolveMatchRankingRightsSummary({ match_mode: 'practice' })
+  assert.equal(plain.recordedAchievementsText, '')
+  assert.equal(plain.description, '练习赛的胜负和战绩不影响排位分。')
+
+  // 排位赛规则保持原样。
+  const ranked = resolveMatchRankingRightsSummary({ match_mode: 'ranked', rank_rules_version: 2, achievements: {} })
+  assert.equal(ranked.badgeText, '只看胜负')
+})

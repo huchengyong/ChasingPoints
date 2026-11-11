@@ -8,7 +8,7 @@ const pickNumber = (...values) => {
   return Number.isFinite(numberValue) ? numberValue : 0
 }
 
-const normalizeRoundRecords = (rounds = [], shouldSwapPerspective = false) => rounds.map((round = {}) => {
+export const normalizeMatchRoundRecords = (rounds = [], shouldSwapPerspective = false) => rounds.map((round = {}) => {
   const winner = pickNumber(round.winner)
   const perspectiveWinner = shouldSwapPerspective && winner > 0 ? (winner === 1 ? 2 : 1) : winner
 
@@ -44,6 +44,8 @@ export const normalizeMatchDetailPayload = (match = {}, { perspectiveUserId = 0 
   // 未登录、观战者或裁判看固定选手1 / 选手2，不跟随查看者换边。
   const neutralPerspective = isReferee || !(isOwnMatchPayload || isPerspectivePlayer)
   const swapScoreBreakdown = shouldSwapPerspective || (isOwnMatchPayload && match.is_player1 === false)
+  // 局记录是选手1 / 选手2 的固定视角：参与者详情跟随查看者换边，裁判和公开详情保持选手1在左。
+  const swapRoundRecords = !isReferee && (shouldSwapPerspective || (isOwnMatchPayload && match.is_player1 === false))
 
   return {
     matchData: {
@@ -97,7 +99,8 @@ export const normalizeMatchDetailPayload = (match = {}, { perspectiveUserId = 0 
         ? pickNumber(match.player1_rank_level, match.my_rank_level)
         : pickNumber(match.player2_rank_level, match.opponent_rank_level)
     },
-    roundRecords: Array.isArray(match.rounds) ? normalizeRoundRecords(match.rounds, shouldSwapPerspective) : [],
+    roundRecords: Array.isArray(match.rounds) ? normalizeMatchRoundRecords(match.rounds, swapRoundRecords) : [],
+    roundRecordsSwapped: swapRoundRecords,
     scoreBreakdown: pickNumber(match.game_type) === 2
       ? resolveChasingScoreView(match.score_breakdown, { swap: swapScoreBreakdown, neutral: neutralPerspective })
       : null
