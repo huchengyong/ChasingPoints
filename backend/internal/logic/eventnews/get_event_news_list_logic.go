@@ -56,10 +56,16 @@ func (l *GetEventNewsListLogic) GetEventNewsList(req *types.GetEventNewsListReq)
 	sortEventNewsItems(items, eventNewsNow())
 	pageItems := paginateEventNewsItems(items, req.Page, req.PageSize)
 
+	summaryPlayers, err := l.loadSummaryPlayers(pageItems, matchMap)
+	if err != nil {
+		l.Logger.Errorf("获取赛事情报摘要球员失败: req=%+v err=%v", req, err)
+		return &types.GetEventNewsListResp{Success: false, List: []types.EventNewsInfo{}}, nil
+	}
+
 	respItems := make([]types.EventNewsInfo, 0, len(pageItems))
 	for _, item := range pageItems {
 		tournament := tournamentMap[item.TournamentId]
-		respItems = append(respItems, mapEventNewsInfo(item, tournament, matchMap[item.TournamentId]))
+		respItems = append(respItems, mapEventNewsInfo(item, tournament, matchMap[item.TournamentId], summaryPlayers))
 	}
 	if respItems == nil {
 		respItems = []types.EventNewsInfo{}
@@ -98,4 +104,20 @@ func (l *GetEventNewsListLogic) loadTournamentData(items []model.EventNews) (map
 		return nil, nil, err
 	}
 	return tournamentMap, matchMap, nil
+}
+
+// loadSummaryPlayers 只为当前页各赛讯的摘要比赛批量查一次球员，用于摘要里的中文名；无球员时不查库。
+func (l *GetEventNewsListLogic) loadSummaryPlayers(items []model.EventNews, matchMap map[int64][]model.TournamentMatch) (map[int64]model.Player, error) {
+	if l.svcCtx.PlayerModel == nil {
+		return nil, nil
+	}
+	matchGroups := make([][]model.TournamentMatch, 0, len(items))
+	for _, item := range items {
+		matchGroups = append(matchGroups, matchMap[item.TournamentId])
+	}
+	playerIDs := collectSummaryPlayerIDs(matchGroups...)
+	if len(playerIDs) == 0 {
+		return nil, nil
+	}
+	return l.svcCtx.PlayerModel.FindByIds(playerIDs)
 }

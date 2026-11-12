@@ -75,6 +75,7 @@ func TestUpsertPlayersUpdatesExistingPlayerWithoutChangingID(t *testing.T) {
 		FirstName:      "Neil",
 		LastName:       "Old",
 		DisplayName:    "Neil Old",
+		NameZh:         "尼尔·罗伯逊",
 		Avatar:         "https://example.com/old.png",
 		CountryCode:    "gb-eng",
 		FlagEmoji:      "🏴",
@@ -114,5 +115,9 @@ func TestUpsertPlayersUpdatesExistingPlayerWithoutChangingID(t *testing.T) {
 	}
 	if got.FlagEmoji != "🇦🇺" {
 		t.Fatalf("expected flag emoji to be updated from sync source, got %#v", got)
+	}
+	// 中文名由管理后台维护，WST 同步整行保存时不能被清空
+	if got.NameZh != "尼尔·罗伯逊" {
+		t.Fatalf("expected admin-maintained Chinese name to survive sync, got %#v", got)
 	}
 }

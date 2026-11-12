@@ -79,7 +79,7 @@ func (l *GetEventNewsViewLogic) GetEventNewsView(req *types.GetEventNewsViewReq)
 		matchItems = []types.EventNewsMatchInfo{}
 	}
 
-	eventInfo := mapEventNewsInfo(*item, tournament, matches)
+	eventInfo := mapEventNewsInfo(*item, tournament, matches, playerMap)
 	resp = &types.GetEventNewsViewResp{
 		Success:    true,
 		EventNews:  &eventInfo,

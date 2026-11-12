@@ -153,6 +153,37 @@ type AdminEventNewsMatchUpdateReq struct {
 	SourceMatchId  string `json:"source_match_id,optional"`
 }
 
+type AdminEventNewsPlayerInfo struct {
+	Id             int64  `json:"id"`
+	SourceType     string `json:"source_type"`
+	SourcePlayerId string `json:"source_player_id"`
+	DisplayName    string `json:"display_name"`
+	NameZh         string `json:"name_zh"`
+	CountryCode    string `json:"country_code"`
+	Avatar         string `json:"avatar"`
+	UpdatedAt      string `json:"updated_at"`
+}
+
+type AdminEventNewsPlayerListReq struct {
+	Page      int    `form:"page,default=1"`
+	PageSize  int    `form:"page_size,default=20"`
+	Keyword   string `form:"keyword,optional"`              // 匹配英文名或中文名
+	MissingZh int    `form:"missing_zh,optional,default=0"` // 1:只看未填写中文名的球员
+}
+
+type AdminEventNewsPlayerListResp struct {
+	Code    int                        `json:"code"`
+	Success bool                       `json:"success"`
+	Message string                     `json:"message"`
+	Total   int64                      `json:"total"`
+	List    []AdminEventNewsPlayerInfo `json:"list"`
+}
+
+type AdminEventNewsPlayerUpdateReq struct {
+	PlayerId int64  `json:"player_id"`
+	NameZh   string `json:"name_zh"` // 传空字符串表示清除中文名
+}
+
 type AdminEventNewsPublishReq struct {
 	EventId   int64 `json:"event_id"`
 	Published bool  `json:"published"`
@@ -1156,6 +1187,7 @@ type EventNewsMatchInfo struct {
 	BestOf                int    `json:"best_of"`
 	HomePlayerId          int64  `json:"home_player_id"`
 	HomePlayerName        string `json:"home_player_name"`
+	HomePlayerNameZh      string `json:"home_player_name_zh,optional"` // 管理后台维护的中文名，未维护时为空
 	HomePlayerFirstName   string `json:"home_player_first_name,optional"`
 	HomePlayerLastName    string `json:"home_player_last_name,optional"`
 	HomePlayerFlagEmoji   string `json:"home_player_flag_emoji,optional"`
@@ -1163,6 +1195,7 @@ type EventNewsMatchInfo struct {
 	HomePlayerAvatar      string `json:"home_player_avatar,optional"`
 	AwayPlayerId          int64  `json:"away_player_id"`
 	AwayPlayerName        string `json:"away_player_name"`
+	AwayPlayerNameZh      string `json:"away_player_name_zh,optional"`
 	AwayPlayerFirstName   string `json:"away_player_first_name,optional"`
 	AwayPlayerLastName    string `json:"away_player_last_name,optional"`
 	AwayPlayerFlagEmoji   string `json:"away_player_flag_emoji,optional"`

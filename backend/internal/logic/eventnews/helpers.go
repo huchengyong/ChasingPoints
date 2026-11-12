@@ -168,7 +168,8 @@ func eventNewsDateWindowOverlaps(window eventNewsDateWindow, startDate, endDate 
 	return !(endDate < window.From || startDate > window.To)
 }
 
-func mapEventNewsInfo(item model.EventNews, tournament *model.Tournament, matches []model.TournamentMatch) types.EventNewsInfo {
+// players 用于把摘要比分里的球员名换成中文名，可为 nil。
+func mapEventNewsInfo(item model.EventNews, tournament *model.Tournament, matches []model.TournamentMatch, players map[int64]model.Player) types.EventNewsInfo {
 	resp := types.EventNewsInfo{
 		Id:          item.Id,
 		Title:       item.Title,
@@ -250,7 +251,7 @@ func mapEventNewsInfo(item model.EventNews, tournament *model.Tournament, matche
 	summaryMatch := pickSummaryMatch(matches)
 	if summaryMatch != nil {
 		resp.CurrentRoundText = summaryMatch.RoundName
-		resp.LatestResultText = formatMatchSummary(*summaryMatch)
+		resp.LatestResultText = formatMatchSummary(*summaryMatch, players)
 	}
 
 	return resp
@@ -266,36 +267,38 @@ func mapEventNewsMatchInfo(eventID int64, item model.TournamentMatch, players ma
 	homeFirstName, homeLastName := resolvePlayerNameParts(homePlayer, homePlayerName)
 	awayFirstName, awayLastName := resolvePlayerNameParts(awayPlayer, awayPlayerName)
 	resp := types.EventNewsMatchInfo{
-		Id:                  item.Id,
-		EventId:             eventID,
-		TournamentId:        item.TournamentId,
-		SourceType:          item.SourceType,
-		SourceMatchId:       item.SourceMatchId,
-		RoundName:           item.RoundName,
-		RoundOrder:          item.RoundOrder,
-		MatchOrder:          item.MatchOrder,
-		Status:              item.Status,
-		BestOf:              item.BestOf,
-		HomePlayerId:        homePlayerID,
-		HomePlayerName:      homePlayerName,
-		HomePlayerFirstName: homeFirstName,
-		HomePlayerLastName:  homeLastName,
-		HomePlayerFlagEmoji: strings.TrimSpace(homePlayer.FlagEmoji),
+		Id:                    item.Id,
+		EventId:               eventID,
+		TournamentId:          item.TournamentId,
+		SourceType:            item.SourceType,
+		SourceMatchId:         item.SourceMatchId,
+		RoundName:             item.RoundName,
+		RoundOrder:            item.RoundOrder,
+		MatchOrder:            item.MatchOrder,
+		Status:                item.Status,
+		BestOf:                item.BestOf,
+		HomePlayerId:          homePlayerID,
+		HomePlayerName:        homePlayerName,
+		HomePlayerNameZh:      strings.TrimSpace(homePlayer.NameZh),
+		HomePlayerFirstName:   homeFirstName,
+		HomePlayerLastName:    homeLastName,
+		HomePlayerFlagEmoji:   strings.TrimSpace(homePlayer.FlagEmoji),
 		HomePlayerCountryCode: strings.TrimSpace(homePlayer.CountryCode),
-		HomePlayerAvatar:    resolvePlayerAvatar(players, homePlayerID),
-		AwayPlayerId:        awayPlayerID,
-		AwayPlayerName:      awayPlayerName,
-		AwayPlayerFirstName: awayFirstName,
-		AwayPlayerLastName:  awayLastName,
-		AwayPlayerFlagEmoji: strings.TrimSpace(awayPlayer.FlagEmoji),
+		HomePlayerAvatar:      resolvePlayerAvatar(players, homePlayerID),
+		AwayPlayerId:          awayPlayerID,
+		AwayPlayerName:        awayPlayerName,
+		AwayPlayerNameZh:      strings.TrimSpace(awayPlayer.NameZh),
+		AwayPlayerFirstName:   awayFirstName,
+		AwayPlayerLastName:    awayLastName,
+		AwayPlayerFlagEmoji:   strings.TrimSpace(awayPlayer.FlagEmoji),
 		AwayPlayerCountryCode: strings.TrimSpace(awayPlayer.CountryCode),
-		AwayPlayerAvatar:    resolvePlayerAvatar(players, awayPlayerID),
-		HomeScore:           item.HomeScore,
-		AwayScore:           item.AwayScore,
-		WinnerSide:          normalizeWinnerSide(item),
-		IsPlaceholder:       item.IsPlaceholder,
-		CreatedAt:           item.CreatedAt.Format(eventNewsTimeLayout),
-		UpdatedAt:           item.UpdatedAt.Format(eventNewsTimeLayout),
+		AwayPlayerAvatar:      resolvePlayerAvatar(players, awayPlayerID),
+		HomeScore:             item.HomeScore,
+		AwayScore:             item.AwayScore,
+		WinnerSide:            normalizeWinnerSide(item),
+		IsPlaceholder:         item.IsPlaceholder,
+		CreatedAt:             item.CreatedAt.Format(eventNewsTimeLayout),
+		UpdatedAt:             item.UpdatedAt.Format(eventNewsTimeLayout),
 	}
 	if item.StartTime != nil {
 		resp.StartTime = formatDisplayTimeBySource(item.SourceType, item.StartTime)
@@ -466,9 +469,16 @@ func matchSortValue(item model.TournamentMatch) int64 {
 	return int64(item.RoundOrder)*1_000_000 + int64(item.MatchOrder)*1_000 + int64(item.Id)
 }
 
-func formatMatchSummary(item model.TournamentMatch) string {
-	home := displayPlayerName(item.HomePlayerName, item.Player1Id)
-	away := displayPlayerName(item.AwayPlayerName, item.Player2Id)
+// 有中文名时摘要用中文名，否则用比赛记录里的英文名。
+func formatMatchSummary(item model.TournamentMatch, players map[int64]model.Player) string {
+	home := firstNonEmpty(
+		playerNameZh(players, firstNonZeroInt64(item.HomePlayerId, item.Player1Id)),
+		displayPlayerName(item.HomePlayerName, item.Player1Id),
+	)
+	away := firstNonEmpty(
+		playerNameZh(players, firstNonZeroInt64(item.AwayPlayerId, item.Player2Id)),
+		displayPlayerName(item.AwayPlayerName, item.Player2Id),
+	)
 	scoreText := "-"
 	if item.Status == model.EventNewsStatusLive || item.Status == model.EventNewsStatusFinished {
 		scoreText = strings.TrimSpace(
@@ -479,6 +489,24 @@ func formatMatchSummary(item model.TournamentMatch) string {
 		return scoreText
 	}
 	return strings.TrimSpace(home + " " + scoreText + " " + away)
+}
+
+func playerNameZh(players map[int64]model.Player, playerID int64) string {
+	if playerID <= 0 {
+		return ""
+	}
+	return strings.TrimSpace(players[playerID].NameZh)
+}
+
+// collectSummaryPlayerIDs 收集各赛讯摘要比赛的双方球员，供列表一次批量查询中文名。
+func collectSummaryPlayerIDs(matchGroups ...[]model.TournamentMatch) []int64 {
+	summaryMatches := make([]model.TournamentMatch, 0, len(matchGroups))
+	for _, matches := range matchGroups {
+		if summary := pickSummaryMatch(matches); summary != nil {
+			summaryMatches = append(summaryMatches, *summary)
+		}
+	}
+	return collectMatchPlayerIDs(summaryMatches)
 }
 
 func displayPlayerName(name string, fallbackID int64) string {

@@ -579,13 +579,22 @@ const resolveEffectiveMatchStatus = (match = {}, startAt, now = Date.now()) => {
   return status
 }
 
+// 有后台维护的中文名时主名用中文、英文名作为副名；没有中文名时只显示英文名（占位名已在上一步译成中文）
+const resolveMatchPlayerNames = (nameZh, englishName) => {
+  const zh = String(nameZh || '').trim()
+  if (!zh || zh === englishName) return { name: englishName, subName: '' }
+  return { name: zh, subName: englishName }
+}
+
 const normalizeSaiXunMatch = (match = {}, now = Date.now()) => {
   const startAt = parseDateTime(match.start_time)
   const effectiveStatus = resolveEffectiveMatchStatus(match, startAt, now)
-  const homePlayerName = localizeMatchPlayerName(match.home_player_name) || '待定'
-  const awayPlayerName = localizeMatchPlayerName(match.away_player_name) || '待定'
-  const homePlayerParts = resolvePlayerTextParts(match.home_player_first_name, match.home_player_last_name, homePlayerName)
-  const awayPlayerParts = resolvePlayerTextParts(match.away_player_first_name, match.away_player_last_name, awayPlayerName)
+  const homePlayerEnglishName = localizeMatchPlayerName(match.home_player_name) || '待定'
+  const awayPlayerEnglishName = localizeMatchPlayerName(match.away_player_name) || '待定'
+  const homePlayerNames = resolveMatchPlayerNames(match.home_player_name_zh, homePlayerEnglishName)
+  const awayPlayerNames = resolveMatchPlayerNames(match.away_player_name_zh, awayPlayerEnglishName)
+  const homePlayerParts = resolvePlayerTextParts(match.home_player_first_name, match.home_player_last_name, homePlayerEnglishName)
+  const awayPlayerParts = resolvePlayerTextParts(match.away_player_first_name, match.away_player_last_name, awayPlayerEnglishName)
   // 官方赛事球员不用平台自定义风格头像，缺头像时用中性官方占位图
   const playerAvatarFallback = match.source_type === 'official'
     ? OFFICIAL_PLAYER_AVATAR_PLACEHOLDER
@@ -604,7 +613,8 @@ const normalizeSaiXunMatch = (match = {}, now = Date.now()) => {
     clockText: startAt ? `${pad2(startAt.getHours())}:${pad2(startAt.getMinutes())}` : '时间待定',
     dayKey: startAt ? buildDayKey(startAt) : 'unscheduled',
     dayLabel: startAt ? formatMatchDayLabel(startAt, now) : '时间待定',
-    homePlayerName,
+    homePlayerName: homePlayerNames.name,
+    homePlayerSubName: homePlayerNames.subName,
     homePlayerFirstName: homePlayerParts.firstName,
     homePlayerLastName: homePlayerParts.lastName,
     homePlayerFlagEmoji: sanitizeFlagEmoji(match.home_player_flag_emoji),
@@ -615,7 +625,8 @@ const normalizeSaiXunMatch = (match = {}, now = Date.now()) => {
     ),
     homePlayerAvatar: match.home_player_avatar || playerAvatarFallback,
     homeResultText: buildPlayerResultText(match.winner_side, 1),
-    awayPlayerName,
+    awayPlayerName: awayPlayerNames.name,
+    awayPlayerSubName: awayPlayerNames.subName,
     awayPlayerFirstName: awayPlayerParts.firstName,
     awayPlayerLastName: awayPlayerParts.lastName,
     awayPlayerFlagEmoji: sanitizeFlagEmoji(match.away_player_flag_emoji),
@@ -734,6 +745,7 @@ export const resolveSaiXunChampion = (rounds = []) => {
   const homeWon = finalMatch.winnerSide === 1
   return {
     name: homeWon ? finalMatch.homePlayerName : finalMatch.awayPlayerName,
+    subName: homeWon ? finalMatch.homePlayerSubName : finalMatch.awayPlayerSubName,
     avatar: homeWon ? finalMatch.homePlayerAvatar : finalMatch.awayPlayerAvatar,
     flag: homeWon ? finalMatch.homePlayerFlag : finalMatch.awayPlayerFlag,
     opponentName: homeWon ? finalMatch.awayPlayerName : finalMatch.homePlayerName,

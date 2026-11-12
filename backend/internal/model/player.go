@@ -1,6 +1,7 @@
 package model
 
 import (
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -13,6 +14,7 @@ type Player struct {
 	FirstName      string         `gorm:"size:64;not null;default:''"`
 	LastName       string         `gorm:"size:64;not null;default:''"`
 	DisplayName    string         `gorm:"size:128;not null;default:''"`
+	NameZh         string         `gorm:"column:name_zh;size:64;not null;default:''"`
 	Avatar         string         `gorm:"size:512;not null;default:''"`
 	CountryCode    string         `gorm:"size:32;not null;default:''"`
 	FlagEmoji      string         `gorm:"size:32;not null;default:''"`
@@ -71,4 +73,67 @@ func (m *PlayerModel) FindBySourcePlayerIds(sourceType string, sourcePlayerIds [
 		result[item.SourcePlayerId] = item
 	}
 	return result, nil
+}
+
+// PlayerAdminFilter 是管理后台维护球员中文名时的分页条件。
+type PlayerAdminFilter struct {
+	Page      int
+	PageSize  int
+	Keyword   string
+	MissingZh bool
+}
+
+func (m *PlayerModel) adminListQuery(filter PlayerAdminFilter) *gorm.DB {
+	query := m.db.Model(&Player{})
+	if keyword := strings.TrimSpace(filter.Keyword); keyword != "" {
+		like := "%" + escapeGearLike(keyword) + "%"
+		query = query.Where(
+			"(display_name LIKE ? ESCAPE '!' OR first_name LIKE ? ESCAPE '!' OR last_name LIKE ? ESCAPE '!' OR name_zh LIKE ? ESCAPE '!')",
+			like, like, like, like,
+		)
+	}
+	if filter.MissingZh {
+		query = query.Where("name_zh = ''")
+	}
+	return query
+}
+
+// FindAdminList 在数据库内分页（计数与分页两条 SQL），按最近同步时间倒序、ID 稳定排序；
+// 关键字同时匹配英文名与中文名，并转义 LIKE 通配符。
+func (m *PlayerModel) FindAdminList(filter PlayerAdminFilter) ([]Player, int64, error) {
+	var total int64
+	if err := m.adminListQuery(filter).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if total == 0 {
+		return []Player{}, 0, nil
+	}
+
+	var list []Player
+	err := m.adminListQuery(filter).
+		Order("updated_at DESC").
+		Order("id DESC").
+		Offset((filter.Page - 1) * filter.PageSize).
+		Limit(filter.PageSize).
+		Find(&list).Error
+	if err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
+}
+
+func (m *PlayerModel) FindById(id int64) (*Player, error) {
+	var player Player
+	if err := m.db.Where("id = ?", id).Limit(1).Find(&player).Error; err != nil {
+		return nil, err
+	}
+	if player.Id == 0 {
+		return nil, nil
+	}
+	return &player, nil
+}
+
+// UpdateNameZh 只改中文名，不触碰 WST 同步维护的其他字段；不更新 updated_at，避免打乱按同步时间的排序。
+func (m *PlayerModel) UpdateNameZh(id int64, nameZh string) error {
+	return m.db.Model(&Player{}).Where("id = ?", id).UpdateColumn("name_zh", nameZh).Error
 }

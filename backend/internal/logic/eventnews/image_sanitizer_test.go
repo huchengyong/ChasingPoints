@@ -36,7 +36,7 @@ func TestMapEventNewsInfoPrefersMirroredTournamentCover(t *testing.T) {
 	}, &model.Tournament{
 		Name:       "WST Tournament",
 		CoverImage: "https://cdn.example.com/wst/tournaments/cover.png",
-	}, nil)
+	}, nil, nil)
 
 	if info.CoverImage != "https://cdn.example.com/wst/tournaments/cover.png" {
 		t.Fatalf("expected mirrored tournament cover, got %#v", info)
@@ -52,7 +52,7 @@ func TestEventNewsMappingsDoNotReturnResidualWSTImages(t *testing.T) {
 	}, &model.Tournament{
 		Name:       "WST Tournament",
 		CoverImage: "https://images.gc.wstservices.co.uk/tournament.png",
-	}, nil)
+	}, nil, nil)
 	if info.CoverImage != "" {
 		t.Fatalf("expected residual WST event cover to be empty, got %#v", info)
 	}
