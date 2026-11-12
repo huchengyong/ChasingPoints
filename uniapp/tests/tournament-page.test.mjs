@@ -89,7 +89,18 @@ test('detail page offers round tabs and forced pull-down refresh', () => {
   assert.match(detailSource, /onPullDownRefresh\(async \(\) => \{\s*await fetchDetail\(\{ force: true \}\)\s*uni\.stopPullDownRefresh\(\)/)
   assert.match(detailSource, /publicReadStore\.loadEventNewsView\(\{ event_id: eventNewsId\.value \}, \{ force \}\)/)
   assert.match(detailSource, /v-for="\(round, index\) in eventView\.rounds"[\s\S]*@tap="selectRound\(round\.key\)"/)
-  assert.match(detailSource, /v-for="day in activeRound\.days"/)
+  assert.match(detailSource, /v-for="day in visibleDays"/)
+  assert.match(detailSource, /filterSaiXunRoundDays\(activeRound\.value, activeMatchFilterKey\.value\)/)
+})
+
+test('detail page offers match status filters inside the sticky round bar', () => {
+  const detailSource = readFileSync(new URL('../subPages/tournament/detail.vue', import.meta.url), 'utf8')
+  const stickyBar = detailSource.match(/<view class="round-tabs-bar">[\s\S]*?<view class="round-summary">/)?.[0] || ''
+
+  assert.match(stickyBar, /v-if="matchFilterOptions\.length" class="match-filters"/)
+  assert.match(stickyBar, /@tap="selectMatchFilter\(option\.key\)"/)
+  assert.match(detailSource, /resolveSaiXunMatchFilterKey\(matchFilterOptions\.value, selectedMatchFilterKey\.value\)/)
+  assert.doesNotMatch(detailSource, /DEFAULT_EVENT_COVER/)
 })
 
 test('detail back preserves filter and scroll state via onShow guard', () => {

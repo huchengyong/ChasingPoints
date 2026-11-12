@@ -4,20 +4,26 @@ import assert from 'node:assert/strict'
 import {
   DEFAULT_EVENT_COVER,
   DEFAULT_PLAYER_AVATAR,
+  OFFICIAL_DEFAULT_EVENT_COVER,
   OFFICIAL_PLAYER_AVATAR_PLACEHOLDER,
+  SAIXUN_MATCH_FILTER_ALL,
   buildEventRegionText,
   buildSaiXunDetailRounds,
   buildSaiXunHeroStats,
   buildSaiXunListSections,
+  buildSaiXunMatchFilterOptions,
+  filterSaiXunRoundDays,
   formatBestOfText,
   formatEventCountdownText,
   formatEventDateRange,
   formatEventTimeRange,
+  localizeMatchPlayerName,
   localizeTournamentTitle,
   normalizeSaiXunCard,
   resolvePlayerFlag,
   resolveSaiXunChampion,
   resolveSaiXunFocusRoundKey,
+  resolveSaiXunMatchFilterKey,
   sanitizeFlagEmoji,
   standardizeRoundText
 } from '../utils/saixun.js'
@@ -402,6 +408,106 @@ test('standardizeRoundText localizes WST round names', () => {
   assert.equal(standardizeRoundText('League Phase (STAGE TWO / WEEK 2)'), '联赛阶段（第二阶段 / 第2周）')
   assert.equal(standardizeRoundText('Stage One/WK2'), '第一阶段 / 第2周')
   assert.equal(standardizeRoundText('小组赛'), '小组赛')
+})
+
+// 以下写法均取自生产 WST 同步数据（2026-11-12 全量核对）
+test('standardizeRoundText localizes group knockout, league and pre-qualifier rounds', () => {
+  assert.equal(standardizeRoundText('Group Semi Finals'), '小组半决赛')
+  assert.equal(standardizeRoundText('Group Final'), '小组决赛')
+  assert.equal(standardizeRoundText('Semi-Finals'), '半决赛')
+  assert.equal(standardizeRoundText('Semi Final'), '半决赛')
+  assert.equal(standardizeRoundText('Quarter Final'), '四分之一决赛')
+  assert.equal(standardizeRoundText('League Phase'), '联赛阶段')
+  assert.equal(standardizeRoundText('League Phase (STAGE ONE)'), '联赛阶段（第一阶段）')
+  assert.equal(standardizeRoundText('Pre-Qualifier'), '预资格赛')
+  assert.equal(standardizeRoundText('Pre-Qualifier Round'), '预资格赛')
+  assert.equal(standardizeRoundText('Wildcard Round'), '外卡赛')
+  assert.equal(standardizeRoundText('Round 1 (held over)'), '第1轮（保留赛）')
+  assert.equal(standardizeRoundText('Round 1/Heldover'), '第1轮（保留赛）')
+  assert.equal(standardizeRoundText('Group 3'), '第3组')
+})
+
+test('localizeMatchPlayerName translates WST bracket placeholders and keeps real names', () => {
+  assert.equal(localizeMatchPlayerName('Winner of Match 7'), '第7场胜者')
+  assert.equal(localizeMatchPlayerName('Loser of Match 3'), '第3场负者')
+  assert.equal(localizeMatchPlayerName('Winner Semi One'), '半决赛1胜者')
+  assert.equal(localizeMatchPlayerName('Winner Semi Two'), '半决赛2胜者')
+  assert.equal(localizeMatchPlayerName('TBC'), '待定')
+  assert.equal(localizeMatchPlayerName('Mark Selby'), 'Mark Selby')
+  assert.equal(localizeMatchPlayerName(''), '')
+})
+
+test('buildSaiXunDetailRounds shows Chinese placeholder names in schedule and list highlight', () => {
+  const [round] = buildSaiXunDetailRounds([{
+    id: 1,
+    round_name: 'Group Final',
+    round_order: 0,
+    status: 0,
+    start_time: '2026-11-13T11:00:00+08:00',
+    home_player_name: 'Winner of Match 7',
+    away_player_name: 'Winner of Match 8'
+  }], '2026-11-12T12:00:00+08:00')
+  assert.equal(round.roundName, '小组决赛')
+  assert.equal(round.matches[0].homePlayerName, '第7场胜者')
+  assert.equal(round.matches[0].awayPlayerName, '第8场胜者')
+
+  const card = normalizeSaiXunCard({
+    status: 0,
+    current_round_text: 'Final',
+    latest_result_text: 'Winner Semi One - Winner Semi Two'
+  }, '2026-11-12T12:00:00+08:00')
+  assert.equal(card.highlight.primary, '半决赛1胜者 vs 半决赛2胜者')
+})
+
+test('official events without a cover fall back to the WST default cover', () => {
+  assert.equal(OFFICIAL_DEFAULT_EVENT_COVER, 'https://cdn.zhuifen.cn/static/images/wst-default-event-cover.png')
+
+  const official = normalizeSaiXunCard({ id: 47, status: 0, source_type: 'official', cover_image: '' })
+  assert.equal(official.hasCover, true)
+  assert.equal(official.coverImage, OFFICIAL_DEFAULT_EVENT_COVER)
+
+  const mirrored = 'https://cdn.zhuifen.cn/wst/tournaments/cover.jpg'
+  assert.equal(normalizeSaiXunCard({ source_type: 'official', cover_image: mirrored }).coverImage, mirrored)
+
+  const platform = normalizeSaiXunCard({ id: 9, status: 0, source_type: 'platform', cover_image: '' })
+  assert.equal(platform.hasCover, false)
+  assert.equal(platform.coverImage, DEFAULT_EVENT_COVER)
+})
+
+test('match status filter counts, hides single-status rounds and falls back to all', () => {
+  const now = '2026-11-12T12:00:00+08:00'
+  const [round] = buildSaiXunDetailRounds([
+    { id: 1, round_name: 'Group Semi Finals', status: 2, home_score: 4, away_score: 3, winner_side: 1, start_time: '2026-11-10T05:00:00+08:00' },
+    { id: 2, round_name: 'Group Semi Finals', status: 2, home_score: 1, away_score: 4, winner_side: 2, start_time: '2026-11-10T06:00:00+08:00' },
+    { id: 3, round_name: 'Group Semi Finals', status: 1, home_score: 2, away_score: 1, start_time: '2026-11-12T11:00:00+08:00' },
+    { id: 4, round_name: 'Group Semi Finals', status: 0, start_time: '2026-11-13T05:00:00+08:00' },
+    { id: 5, round_name: 'Group Semi Finals', status: 3, start_time: '2026-11-13T06:00:00+08:00' }
+  ], now)
+
+  const options = buildSaiXunMatchFilterOptions(round)
+  assert.deepEqual(options.map(({ key, label, count }) => `${key}:${label}:${count}`), [
+    'all:全部:5',
+    'live:进行中:1',
+    'upcoming:未开始:1',
+    'ended:已结束:3'
+  ])
+
+  const upcomingDays = filterSaiXunRoundDays(round, 'upcoming')
+  assert.deepEqual(upcomingDays.map((day) => day.matches.map((match) => match.id)), [[4]])
+  // 已取消的场次归入已结束，没有剩余比赛的比赛日不再展示
+  const endedDays = filterSaiXunRoundDays(round, 'ended')
+  assert.deepEqual(endedDays.map((day) => day.matches.map((match) => match.id)), [[1, 2], [5]])
+  assert.equal(filterSaiXunRoundDays(round, SAIXUN_MATCH_FILTER_ALL), round.days)
+
+  assert.equal(resolveSaiXunMatchFilterKey(options, 'ended'), 'ended')
+
+  const [finishedRound] = buildSaiXunDetailRounds([
+    { id: 6, round_name: 'Final', status: 2, home_score: 10, away_score: 8, winner_side: 1, start_time: '2026-11-10T05:00:00+08:00' }
+  ], now)
+  const finishedOptions = buildSaiXunMatchFilterOptions(finishedRound)
+  assert.deepEqual(finishedOptions, [])
+  assert.equal(resolveSaiXunMatchFilterKey(finishedOptions, 'upcoming'), SAIXUN_MATCH_FILTER_ALL)
+  assert.deepEqual(buildSaiXunMatchFilterOptions(null), [])
 })
 
 test('formatBestOfText follows the Chinese frame format convention', () => {

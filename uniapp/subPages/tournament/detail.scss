@@ -280,6 +280,39 @@
 	}
 }
 
+.match-filters {
+	display: flex;
+	gap: 8rpx;
+	margin-top: 12rpx;
+	padding-right: 24rpx;
+}
+
+.match-filter {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	height: 48rpx;
+	padding: 0 18rpx;
+	border-radius: 999rpx;
+	box-sizing: border-box;
+}
+
+.match-filter-text {
+	font-size: 22rpx;
+	color: var(--sx-text-secondary);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.match-filter--active {
+	background: var(--sx-brand-tint);
+
+	.match-filter-text {
+		font-weight: 600;
+		color: var(--sx-text);
+	}
+}
+
 .round-summary {
 	display: flex;
 	gap: 20rpx;

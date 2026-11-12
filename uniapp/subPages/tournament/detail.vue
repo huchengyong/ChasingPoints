@@ -87,14 +87,25 @@
 								</view>
 							</view>
 						</scroll-view>
+						<view v-if="matchFilterOptions.length" class="match-filters">
+							<view
+								v-for="option in matchFilterOptions"
+								:key="option.key"
+								class="match-filter"
+								:class="{ 'match-filter--active': option.key === activeMatchFilterKey }"
+								@tap="selectMatchFilter(option.key)"
+							>
+								<text class="match-filter-text">{{ option.label }} {{ option.count }}</text>
+							</view>
+						</view>
 					</view>
 
 					<view class="round-summary">
-						<text>{{ activeRound.matchCount }} 场比赛</text>
+						<text>{{ visibleMatchCount }} 场比赛</text>
 						<text v-if="activeRound.metaText">{{ activeRound.metaText }}</text>
 					</view>
 
-					<view v-for="day in activeRound.days" :key="day.key" class="day-group">
+					<view v-for="day in visibleDays" :key="day.key" class="day-group">
 						<text class="day-label">{{ day.label }}</text>
 						<view
 							v-for="match in day.matches"
@@ -171,16 +182,19 @@ import { usePublicReadStore } from '@/store/publicRead.js'
 import { pickEventNewsViewPayload } from '@/utils/event-news-response.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import {
-	DEFAULT_EVENT_COVER,
+	SAIXUN_MATCH_FILTER_ALL,
 	buildEventLocationText,
 	buildEventRegionText,
 	buildSaiXunDetailRounds,
+	buildSaiXunMatchFilterOptions,
+	filterSaiXunRoundDays,
 	formatEventDateRange,
 	formatEventTimeRange,
 	localizeCountryName,
 	normalizeSaiXunCard,
 	resolveSaiXunChampion,
-	resolveSaiXunFocusRoundKey
+	resolveSaiXunFocusRoundKey,
+	resolveSaiXunMatchFilterKey
 } from '@/utils/saixun.js'
 import {
 	ASYNC_PAGE_STATUS,
@@ -221,6 +235,12 @@ const activeRound = computed(() => {
 		|| rounds.find((round) => round.key === eventView.value.focusRoundKey)
 		|| null
 })
+// 比赛状态筛选跨轮次保留；当前轮次没有该状态时按「全部」展示
+const selectedMatchFilterKey = ref(SAIXUN_MATCH_FILTER_ALL)
+const matchFilterOptions = computed(() => buildSaiXunMatchFilterOptions(activeRound.value))
+const activeMatchFilterKey = computed(() => resolveSaiXunMatchFilterKey(matchFilterOptions.value, selectedMatchFilterKey.value))
+const visibleDays = computed(() => filterSaiXunRoundDays(activeRound.value, activeMatchFilterKey.value))
+const visibleMatchCount = computed(() => visibleDays.value.reduce((total, day) => total + day.matches.length, 0))
 
 let eventViewRefreshTimer = null
 
@@ -253,7 +273,6 @@ const normalizeEventView = ({ eventNews, tournament, matches }, now = Date.now()
 		showTime: Boolean(mergedEvent.start_time || mergedEvent.end_time),
 		locationText: buildEventLocationText(mergedEvent),
 		regionText: buildEventRegionText(mergedEvent),
-		coverImage: mergedEvent.cover_image || DEFAULT_EVENT_COVER,
 		rounds,
 		focusRoundKey: resolveSaiXunFocusRoundKey(rounds),
 		champion: resolveSaiXunChampion(rounds)
@@ -283,6 +302,12 @@ const selectRound = (key) => {
 	keepRoundTabsInView()
 	selectedRoundKey.value = key
 	syncRoundTabIntoView()
+}
+
+const selectMatchFilter = (key) => {
+	if (key === activeMatchFilterKey.value) return
+	keepRoundTabsInView()
+	selectedMatchFilterKey.value = key
 }
 
 const stopEventViewRefreshTimer = () => {
