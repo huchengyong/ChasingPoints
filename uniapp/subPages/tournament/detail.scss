@@ -223,102 +223,53 @@
 	color: var(--sx-text-muted);
 }
 
-.round-tabs-bar {
+.schedule-tabs-bar {
 	position: sticky;
 	top: var(--window-top, 0);
 	z-index: 10;
 	margin: 12rpx -24rpx 0;
-	padding: 12rpx 0 12rpx 24rpx;
+	padding: 12rpx 24rpx;
 	background: var(--sx-page);
 }
 
-.round-tabs {
-	width: 100%;
-	white-space: nowrap;
-}
-
-.round-tabs-track {
-	display: inline-flex;
-	gap: 12rpx;
-	padding-right: 24rpx;
-}
-
-.round-tab {
-	flex-shrink: 0;
+.schedule-tabs {
 	display: flex;
-	align-items: center;
-	height: 60rpx;
-	padding: 0 24rpx;
+	padding: 6rpx;
 	border-radius: 999rpx;
 	background: var(--sx-card);
 	border: 1rpx solid var(--sx-border);
-	box-sizing: border-box;
 }
 
-.round-tab-live {
-	width: 10rpx;
-	height: 10rpx;
-	margin-right: 8rpx;
-	border-radius: 50%;
-	background: var(--sx-success);
+.schedule-tab {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8rpx;
+	height: 60rpx;
+	border-radius: 999rpx;
 }
 
-.round-tab-text {
-	font-size: 24rpx;
+.schedule-tab-text {
+	font-size: 26rpx;
 	font-weight: 500;
 	color: var(--sx-text-secondary);
-	white-space: nowrap;
 }
 
-.round-tab--active {
-	background: var(--sx-brand);
-	border-color: var(--sx-brand);
+.schedule-tab-count {
+	font-size: 22rpx;
+	font-variant-numeric: tabular-nums;
+	color: var(--sx-text-muted);
+}
 
-	.round-tab-text {
+.schedule-tab--active {
+	background: var(--sx-brand);
+
+	.schedule-tab-text,
+	.schedule-tab-count {
 		font-weight: 600;
 		color: #ffffff;
 	}
-}
-
-.match-filters {
-	display: flex;
-	gap: 8rpx;
-	margin-top: 12rpx;
-	padding-right: 24rpx;
-}
-
-.match-filter {
-	flex-shrink: 0;
-	display: flex;
-	align-items: center;
-	height: 48rpx;
-	padding: 0 18rpx;
-	border-radius: 999rpx;
-	box-sizing: border-box;
-}
-
-.match-filter-text {
-	font-size: 22rpx;
-	color: var(--sx-text-secondary);
-	font-variant-numeric: tabular-nums;
-	white-space: nowrap;
-}
-
-.match-filter--active {
-	background: var(--sx-brand-tint);
-
-	.match-filter-text {
-		font-weight: 600;
-		color: var(--sx-text);
-	}
-}
-
-.round-summary {
-	display: flex;
-	gap: 20rpx;
-	padding: 8rpx 4rpx 0;
-	font-size: 22rpx;
-	color: var(--sx-text-muted);
 }
 
 .day-group {
@@ -365,6 +316,18 @@
 	font-weight: 600;
 	font-variant-numeric: tabular-nums;
 	color: var(--sx-text-secondary);
+}
+
+.match-round {
+	height: 36rpx;
+	padding: 0 12rpx;
+	border-radius: 8rpx;
+	background: var(--sx-brand-tint);
+	font-size: 20rpx;
+	font-weight: 600;
+	line-height: 36rpx;
+	color: var(--sx-text);
+	white-space: nowrap;
 }
 
 .match-format {
@@ -469,6 +432,13 @@
 	font-size: 24rpx;
 	line-height: 1.55;
 	color: var(--sx-text-secondary);
+}
+
+.schedule-more {
+	padding: 24rpx 0 8rpx;
+	text-align: center;
+	font-size: 22rpx;
+	color: var(--sx-text-muted);
 }
 
 .source-note {

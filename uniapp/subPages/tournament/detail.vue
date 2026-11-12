@@ -64,45 +64,20 @@
 				</view>
 
 				<template v-if="eventView.rounds.length">
-					<view id="round-tabs-anchor"></view>
-					<view class="round-tabs-bar">
-						<scroll-view
-							scroll-x
-							class="round-tabs"
-							:scroll-into-view="roundTabIntoView"
-							scroll-with-animation
-							:show-scrollbar="false"
-						>
-							<view class="round-tabs-track">
-								<view
-									v-for="(round, index) in eventView.rounds"
-									:id="'round-tab-' + index"
-									:key="round.key"
-									class="round-tab"
-									:class="{ 'round-tab--active': activeRound && round.key === activeRound.key }"
-									@tap="selectRound(round.key)"
-								>
-									<view v-if="round.hasLive" class="round-tab-live"></view>
-									<text class="round-tab-text">{{ round.roundName }}</text>
-								</view>
-							</view>
-						</scroll-view>
-						<view v-if="matchFilterOptions.length" class="match-filters">
+					<view id="schedule-tabs-anchor"></view>
+					<view class="schedule-tabs-bar">
+						<view class="schedule-tabs">
 							<view
-								v-for="option in matchFilterOptions"
-								:key="option.key"
-								class="match-filter"
-								:class="{ 'match-filter--active': option.key === activeMatchFilterKey }"
-								@tap="selectMatchFilter(option.key)"
+								v-for="tab in eventView.scheduleTabs"
+								:key="tab.key"
+								class="schedule-tab"
+								:class="{ 'schedule-tab--active': tab.key === activeScheduleTab.key }"
+								@tap="selectScheduleTab(tab.key)"
 							>
-								<text class="match-filter-text">{{ option.label }} {{ option.count }}</text>
+								<text class="schedule-tab-text">{{ tab.label }}</text>
+								<text class="schedule-tab-count">{{ tab.matches.length }}</text>
 							</view>
 						</view>
-					</view>
-
-					<view class="round-summary">
-						<text>{{ visibleMatchCount }} 场比赛</text>
-						<text v-if="activeRound.metaText">{{ activeRound.metaText }}</text>
 					</view>
 
 					<view v-for="day in visibleDays" :key="day.key" class="day-group">
@@ -115,7 +90,8 @@
 						>
 							<view class="match-head">
 								<text class="match-time">{{ match.clockText }}</text>
-								<text v-if="match.metaText && !activeRound.metaText" class="match-format">{{ match.metaText }}</text>
+								<text class="match-round">{{ match.roundName }}</text>
+								<text v-if="match.metaText" class="match-format">{{ match.metaText }}</text>
 								<view v-if="match.isLive" class="status-badge status-badge--live">
 									<view class="status-dot"></view>
 									<text>进行中</text>
@@ -150,6 +126,13 @@
 							</view>
 						</view>
 					</view>
+
+					<view v-if="!activeScheduleTab.matches.length" class="schedule-empty">
+						<text class="schedule-empty-text">{{ activeScheduleTab.key === 'ended' ? '还没有已结束的比赛' : '本赛事的比赛已全部结束' }}</text>
+					</view>
+					<view v-else-if="hasMoreScheduleMatches" class="schedule-more">
+						<text>上拉加载更多</text>
+					</view>
 				</template>
 
 				<view v-else class="schedule-empty">
@@ -176,25 +159,24 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref } from 'vue'
-import { onHide, onLoad, onPullDownRefresh, onShow, onUnload } from '@dcloudio/uni-app'
+import { computed, ref } from 'vue'
+import { onHide, onLoad, onPullDownRefresh, onReachBottom, onShow, onUnload } from '@dcloudio/uni-app'
 import { usePublicReadStore } from '@/store/publicRead.js'
 import { pickEventNewsViewPayload } from '@/utils/event-news-response.js'
 import { usePageTheme } from '@/utils/page-theme.js'
 import {
-	SAIXUN_MATCH_FILTER_ALL,
+	SAIXUN_SCHEDULE_PAGE_SIZE,
 	buildEventLocationText,
 	buildEventRegionText,
 	buildSaiXunDetailRounds,
-	buildSaiXunMatchFilterOptions,
-	filterSaiXunRoundDays,
+	buildSaiXunScheduleDays,
+	buildSaiXunScheduleTabs,
 	formatEventDateRange,
 	formatEventTimeRange,
 	localizeCountryName,
 	normalizeSaiXunCard,
 	resolveSaiXunChampion,
-	resolveSaiXunFocusRoundKey,
-	resolveSaiXunMatchFilterKey
+	resolveSaiXunScheduleTabKey
 } from '@/utils/saixun.js'
 import {
 	ASYNC_PAGE_STATUS,
@@ -214,8 +196,8 @@ const loading = ref(true)
 const eventNewsId = ref(0)
 const eventView = ref(null)
 const rawEventPayload = ref(null)
-const selectedRoundKey = ref('')
-const roundTabIntoView = ref('')
+const selectedScheduleTabKey = ref('')
+const scheduleRenderLimit = ref(SAIXUN_SCHEDULE_PAGE_SIZE)
 const eventDetailState = ref(createAsyncPageState({ data: null }))
 const eventDetailPageError = computed(() => (
 	eventDetailState.value.status === ASYNC_PAGE_STATUS.ERROR
@@ -228,19 +210,14 @@ const eventDetailRefreshError = computed(() => (
 		: null
 ))
 const mutedIconColor = computed(() => (isDarkMode.value ? '#9F926E' : '#9A8C67'))
-// 定时重渲染或刷新后保留用户手动选择的轮次；该轮次消失时回到默认焦点轮次
-const activeRound = computed(() => {
-	const rounds = eventView.value?.rounds || []
-	return rounds.find((round) => round.key === selectedRoundKey.value)
-		|| rounds.find((round) => round.key === eventView.value.focusRoundKey)
-		|| null
+// 定时重渲染或刷新后保留用户手动选择的栏目；比赛状态随时间变化，场次会在两栏之间移动
+const activeScheduleTab = computed(() => {
+	const tabs = eventView.value?.scheduleTabs || []
+	const key = resolveSaiXunScheduleTabKey(tabs, selectedScheduleTabKey.value)
+	return tabs.find((tab) => tab.key === key) || { key, matches: [] }
 })
-// 比赛状态筛选跨轮次保留；当前轮次没有该状态时按「全部」展示
-const selectedMatchFilterKey = ref(SAIXUN_MATCH_FILTER_ALL)
-const matchFilterOptions = computed(() => buildSaiXunMatchFilterOptions(activeRound.value))
-const activeMatchFilterKey = computed(() => resolveSaiXunMatchFilterKey(matchFilterOptions.value, selectedMatchFilterKey.value))
-const visibleDays = computed(() => filterSaiXunRoundDays(activeRound.value, activeMatchFilterKey.value))
-const visibleMatchCount = computed(() => visibleDays.value.reduce((total, day) => total + day.matches.length, 0))
+const visibleDays = computed(() => buildSaiXunScheduleDays(activeScheduleTab.value.matches, scheduleRenderLimit.value))
+const hasMoreScheduleMatches = computed(() => activeScheduleTab.value.matches.length > scheduleRenderLimit.value)
 
 let eventViewRefreshTimer = null
 
@@ -274,21 +251,16 @@ const normalizeEventView = ({ eventNews, tournament, matches }, now = Date.now()
 		locationText: buildEventLocationText(mergedEvent),
 		regionText: buildEventRegionText(mergedEvent),
 		rounds,
-		focusRoundKey: resolveSaiXunFocusRoundKey(rounds),
+		scheduleTabs: buildSaiXunScheduleTabs(rounds),
 		champion: resolveSaiXunChampion(rounds)
 	}
 }
 
-const syncRoundTabIntoView = () => {
-	const index = (eventView.value?.rounds || []).findIndex((round) => round.key === activeRound.value?.key)
-	roundTabIntoView.value = index >= 0 ? `round-tab-${index}` : ''
-}
-
-// 切换轮次时若轮次栏已吸顶，把页面滚回轮次栏原位，避免新内容较短时停在页面底部。
-// 锚点是轮次栏前的非吸顶元素，吸顶元素自身的 top 恒为 0，无法判断是否已滚过。
-const keepRoundTabsInView = () => {
+// 切换栏目时若栏目栏已吸顶，把页面滚回栏目栏原位，避免新内容较短时停在页面底部。
+// 锚点是栏目栏前的非吸顶元素，吸顶元素自身的 top 恒为 0，无法判断是否已滚过。
+const keepScheduleTabsInView = () => {
 	const query = uni.createSelectorQuery()
-	query.select('#round-tabs-anchor').boundingClientRect()
+	query.select('#schedule-tabs-anchor').boundingClientRect()
 	query.selectViewport().scrollOffset()
 	query.exec((results) => {
 		const [anchorRect, viewport] = results || []
@@ -297,17 +269,11 @@ const keepRoundTabsInView = () => {
 	})
 }
 
-const selectRound = (key) => {
-	if (key === activeRound.value?.key) return
-	keepRoundTabsInView()
-	selectedRoundKey.value = key
-	syncRoundTabIntoView()
-}
-
-const selectMatchFilter = (key) => {
-	if (key === activeMatchFilterKey.value) return
-	keepRoundTabsInView()
-	selectedMatchFilterKey.value = key
+const selectScheduleTab = (key) => {
+	if (key === activeScheduleTab.value.key) return
+	keepScheduleTabsInView()
+	selectedScheduleTabKey.value = key
+	scheduleRenderLimit.value = SAIXUN_SCHEDULE_PAGE_SIZE
 }
 
 const stopEventViewRefreshTimer = () => {
@@ -362,7 +328,6 @@ const fetchDetail = async ({ force = false } = {}) => {
 			data: payload,
 			isEmpty: () => false
 		})
-		nextTick(syncRoundTabIntoView)
 	} catch (e) {
 		if (eventDetailState.value.requestId !== pageRequest.requestId) return
 		eventDetailState.value = rejectAsyncPageLoad(eventDetailState.value, pageRequest, e)
@@ -410,6 +375,10 @@ onHide(() => {
 
 onUnload(() => {
 	stopEventViewRefreshTimer()
+})
+
+onReachBottom(() => {
+	if (hasMoreScheduleMatches.value) scheduleRenderLimit.value += SAIXUN_SCHEDULE_PAGE_SIZE
 })
 
 onPullDownRefresh(async () => {

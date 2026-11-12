@@ -79,7 +79,7 @@ test('filter change resets pagination to page 1', () => {
   assert.match(pageSource, /hasMore\.value\s*=\s*false/)
 })
 
-test('detail page offers round tabs and forced pull-down refresh', () => {
+test('detail page offers ended / upcoming schedule tabs and forced pull-down refresh', () => {
   const detailSource = readFileSync(new URL('../subPages/tournament/detail.vue', import.meta.url), 'utf8')
   const pagesConfig = readPagesJson()
   const tournamentPkg = pagesConfig.subPackages.find((pkg) => pkg.root === 'subPages/tournament')
@@ -88,18 +88,12 @@ test('detail page offers round tabs and forced pull-down refresh', () => {
   assert.equal(detailConfig.style.enablePullDownRefresh, true)
   assert.match(detailSource, /onPullDownRefresh\(async \(\) => \{\s*await fetchDetail\(\{ force: true \}\)\s*uni\.stopPullDownRefresh\(\)/)
   assert.match(detailSource, /publicReadStore\.loadEventNewsView\(\{ event_id: eventNewsId\.value \}, \{ force \}\)/)
-  assert.match(detailSource, /v-for="\(round, index\) in eventView\.rounds"[\s\S]*@tap="selectRound\(round\.key\)"/)
+  // 轮次切换已移除，改为吸顶的状态栏目，每场比赛自带阶段名
+  assert.doesNotMatch(detailSource, /round-tab|selectRound/)
+  assert.match(detailSource, /<view class="schedule-tabs-bar">[\s\S]*v-for="tab in eventView\.scheduleTabs"[\s\S]*@tap="selectScheduleTab\(tab\.key\)"/)
   assert.match(detailSource, /v-for="day in visibleDays"/)
-  assert.match(detailSource, /filterSaiXunRoundDays\(activeRound\.value, activeMatchFilterKey\.value\)/)
-})
-
-test('detail page offers match status filters inside the sticky round bar', () => {
-  const detailSource = readFileSync(new URL('../subPages/tournament/detail.vue', import.meta.url), 'utf8')
-  const stickyBar = detailSource.match(/<view class="round-tabs-bar">[\s\S]*?<view class="round-summary">/)?.[0] || ''
-
-  assert.match(stickyBar, /v-if="matchFilterOptions\.length" class="match-filters"/)
-  assert.match(stickyBar, /@tap="selectMatchFilter\(option\.key\)"/)
-  assert.match(detailSource, /resolveSaiXunMatchFilterKey\(matchFilterOptions\.value, selectedMatchFilterKey\.value\)/)
+  assert.match(detailSource, /<text class="match-round">\{\{ match\.roundName \}\}<\/text>/)
+  assert.match(detailSource, /onReachBottom\(\(\) => \{\s*if \(hasMoreScheduleMatches\.value\) scheduleRenderLimit\.value \+= SAIXUN_SCHEDULE_PAGE_SIZE/)
   assert.doesNotMatch(detailSource, /DEFAULT_EVENT_COVER/)
 })
 

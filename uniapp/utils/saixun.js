@@ -638,13 +638,25 @@ const normalizeSaiXunMatch = (match = {}, now = Date.now()) => {
 
 const getMatchStartValue = (match) => match.startAt?.getTime() ?? Number.POSITIVE_INFINITY
 
-// 轮次内按开赛时间排列，便于按比赛日分组浏览
+// 按开赛时间正序；没有开赛时间的排在最后
 const compareSaiXunMatches = (left, right) => {
   const leftTime = getMatchStartValue(left)
   const rightTime = getMatchStartValue(right)
   if (leftTime !== rightTime) return leftTime - rightTime
   if (left.matchOrder !== right.matchOrder) return left.matchOrder - right.matchOrder
   return Number(left.id || 0) - Number(right.id || 0)
+}
+
+// 按开赛时间倒序（最近结束的在前）；没有开赛时间的仍排在最后
+const compareEndedSaiXunMatches = (left, right) => {
+  const leftTime = getMatchStartValue(left)
+  const rightTime = getMatchStartValue(right)
+  if (leftTime !== rightTime) {
+    if (!Number.isFinite(leftTime)) return 1
+    if (!Number.isFinite(rightTime)) return -1
+    return rightTime - leftTime
+  }
+  return compareSaiXunMatches(right, left)
 }
 
 const compareSaiXunRounds = (left, right) => {
@@ -665,11 +677,6 @@ const groupMatchesByDay = (matches) => {
   return days
 }
 
-const resolveRoundMetaText = (matches) => {
-  const formats = new Set(matches.map((match) => match.metaText).filter(Boolean))
-  return formats.size === 1 ? Array.from(formats)[0] : ''
-}
-
 // 按轮次先后（含 round_order 相同的保留赛）返回全部轮次；全部为占位对阵的轮次没有可看信息，不展示
 export const buildSaiXunDetailRounds = (matches = [], now = Date.now()) => {
   const roundMap = new Map()
@@ -688,74 +695,36 @@ export const buildSaiXunDetailRounds = (matches = [], now = Date.now()) => {
 
   return Array.from(roundMap.values())
     .filter((round) => round.matches.some((match) => !match.isPlaceholder))
-    .map((round) => {
-      const sortedMatches = [...round.matches].sort(compareSaiXunMatches)
-      return {
-        ...round,
-        matches: sortedMatches,
-        matchCount: sortedMatches.length,
-        hasLive: sortedMatches.some((match) => match.isLive),
-        metaText: resolveRoundMetaText(sortedMatches),
-        days: groupMatchesByDay(sortedMatches)
-      }
-    })
+    .map((round) => ({ ...round, matches: [...round.matches].sort(compareSaiXunMatches) }))
     .sort(compareSaiXunRounds)
 }
 
-// 默认展示最值得看的轮次：有直播的最新轮次 → 下一轮待赛 → 最后一轮（通常是决赛）
-export const resolveSaiXunFocusRoundKey = (rounds = []) => {
-  if (!rounds.length) return ''
+export const SAIXUN_SCHEDULE_PAGE_SIZE = 30
 
-  const liveRound = [...rounds].reverse().find((round) => round.hasLive)
-  if (liveRound) return liveRound.key
+// 已取消的场次不会再打，与已结束放在一起
+const isEndedSaiXunMatch = (match) => match.status === 2 || match.status === 3
 
-  const upcomingRound = rounds.find((round) => round.matches.some((match) => match.status === 0 && !match.isPlaceholder))
-  if (upcomingRound) return upcomingRound.key
-
-  return rounds[rounds.length - 1].key
+// 赛程按状态分两栏，每场自带轮次名：进行中的场次还没打完，与未开始的一起放在「即将开始」并按时间正序；
+// 「已结束」按时间倒序，最近结束的在前
+export const buildSaiXunScheduleTabs = (rounds = []) => {
+  const matches = rounds.flatMap((round) => round.matches)
+  return [
+    { key: 'ended', label: '已结束', matches: matches.filter(isEndedSaiXunMatch).sort(compareEndedSaiXunMatches) },
+    { key: 'upcoming', label: '即将开始', matches: matches.filter((match) => !isEndedSaiXunMatch(match)).sort(compareSaiXunMatches) }
+  ]
 }
 
-export const SAIXUN_MATCH_FILTER_ALL = 'all'
-const SAIXUN_MATCH_FILTERS = Object.freeze([
-  { key: 'live', label: '进行中' },
-  { key: 'upcoming', label: '未开始' },
-  { key: 'ended', label: '已结束' }
-])
-
-// 已取消的场次不会再打，归入「已结束」
-const resolveMatchFilterKey = (match) => {
-  if (match.status === 1) return 'live'
-  if (match.status === 0) return 'upcoming'
-  return 'ended'
+// 尊重用户手动选择；没选过时有待进行的场次就看「即将开始」，否则看「已结束」
+export const resolveSaiXunScheduleTabKey = (tabs = [], selectedKey = '') => {
+  if (tabs.some((tab) => tab.key === selectedKey)) return selectedKey
+  const upcomingTab = tabs.find((tab) => tab.key === 'upcoming')
+  return upcomingTab?.matches.length ? 'upcoming' : 'ended'
 }
 
-// 轮次内只有一种状态时筛选没有意义，返回空数组由页面隐藏筛选栏；数量为 0 的状态不展示
-export const buildSaiXunMatchFilterOptions = (round) => {
-  const matches = round?.matches || []
-  const counts = matches.reduce((result, match) => {
-    const key = resolveMatchFilterKey(match)
-    result[key] = (result[key] || 0) + 1
-    return result
-  }, {})
-  const statusOptions = SAIXUN_MATCH_FILTERS
-    .filter((option) => counts[option.key] > 0)
-    .map((option) => ({ ...option, count: counts[option.key] }))
-  if (statusOptions.length < 2) return []
-  return [{ key: SAIXUN_MATCH_FILTER_ALL, label: '全部', count: matches.length }, ...statusOptions]
-}
-
-// 所选状态在当前轮次不存在（切换轮次或比赛状态变化后）时回到「全部」
-export const resolveSaiXunMatchFilterKey = (options = [], key) => (
-  options.some((option) => option.key === key) ? key : SAIXUN_MATCH_FILTER_ALL
+// 大型赛事一栏可达数百场，按 limit 分批渲染，避免小程序一次 setData 过大
+export const buildSaiXunScheduleDays = (matches = [], limit = SAIXUN_SCHEDULE_PAGE_SIZE) => (
+  groupMatchesByDay(matches.slice(0, limit))
 )
-
-export const filterSaiXunRoundDays = (round, key) => {
-  const days = round?.days || []
-  if (key === SAIXUN_MATCH_FILTER_ALL) return days
-  return days
-    .map((day) => ({ ...day, matches: day.matches.filter((match) => resolveMatchFilterKey(match) === key) }))
-    .filter((day) => day.matches.length > 0)
-}
 
 export const resolveSaiXunChampion = (rounds = []) => {
   const finalRound = rounds.find((round) => round.roundName === '决赛')
