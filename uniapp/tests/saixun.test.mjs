@@ -4,20 +4,25 @@ import assert from 'node:assert/strict'
 import {
   DEFAULT_EVENT_COVER,
   DEFAULT_PLAYER_AVATAR,
+  OFFICIAL_DEFAULT_EVENT_COVER,
   OFFICIAL_PLAYER_AVATAR_PLACEHOLDER,
+  SAIXUN_SCHEDULE_PAGE_SIZE,
   buildEventRegionText,
   buildSaiXunDetailRounds,
   buildSaiXunHeroStats,
   buildSaiXunListSections,
+  buildSaiXunScheduleDays,
+  buildSaiXunScheduleTabs,
   formatBestOfText,
   formatEventCountdownText,
   formatEventDateRange,
   formatEventTimeRange,
+  localizeMatchPlayerName,
   localizeTournamentTitle,
   normalizeSaiXunCard,
   resolvePlayerFlag,
   resolveSaiXunChampion,
-  resolveSaiXunFocusRoundKey,
+  resolveSaiXunScheduleTabKey,
   sanitizeFlagEmoji,
   standardizeRoundText
 } from '../utils/saixun.js'
@@ -172,7 +177,6 @@ test('buildSaiXunDetailRounds orders rounds chronologically and hides all-placeh
   assert.equal(rounds[0].matches[0].homeScore, 10)
   assert.equal(rounds[0].matches[0].awayScore, 8)
   assert.equal(rounds[0].matches[0].metaText, '19局10胜')
-  assert.equal(rounds[0].metaText, '19局10胜')
   assert.equal(rounds[0].matches[0].homeResultText, '胜')
   assert.equal(rounds[0].matches[0].awayResultText, '败')
   assert.equal(rounds[0].matches[0].homePlayerFirstName, 'Neil')
@@ -186,7 +190,6 @@ test('buildSaiXunDetailRounds orders rounds chronologically and hides all-placeh
   assert.equal(rounds[0].matches[0].awayPlayerCountryCode, 'gb-eng')
   assert.deepEqual(rounds[0].matches[0].awayPlayerFlag, { type: 'image', value: '/static/flags/eng.png' })
   assert.equal(rounds.some((round) => round.roundName === '决赛'), false)
-  assert.equal(resolveSaiXunFocusRoundKey(rounds), rounds[1].key)
   assert.equal(resolveSaiXunChampion(rounds), null)
 })
 
@@ -289,8 +292,7 @@ test('buildSaiXunDetailRounds marks stale overdue matches as completed instead o
   assert.equal(liveMatch.awayResultText, '')
   assert.equal(staleMatch.homeResultText, '')
   assert.equal(staleMatch.awayResultText, '')
-  assert.equal(rounds[0].hasLive, true)
-  assert.deepEqual(rounds[0].days.map((day) => [day.label, day.matches.length]), [
+  assert.deepEqual(buildSaiXunScheduleDays(rounds[0].matches).map((day) => [day.label, day.matches.length]), [
     ['4月3日 周五 · 昨天', 1],
     ['4月4日 周六 · 今天', 1]
   ])
@@ -404,6 +406,132 @@ test('standardizeRoundText localizes WST round names', () => {
   assert.equal(standardizeRoundText('小组赛'), '小组赛')
 })
 
+// 以下写法均取自生产 WST 同步数据（2026-11-12 全量核对）
+test('standardizeRoundText localizes group knockout, league and pre-qualifier rounds', () => {
+  assert.equal(standardizeRoundText('Group Semi Finals'), '小组半决赛')
+  assert.equal(standardizeRoundText('Group Final'), '小组决赛')
+  assert.equal(standardizeRoundText('Semi-Finals'), '半决赛')
+  assert.equal(standardizeRoundText('Semi Final'), '半决赛')
+  assert.equal(standardizeRoundText('Quarter Final'), '四分之一决赛')
+  assert.equal(standardizeRoundText('League Phase'), '联赛阶段')
+  assert.equal(standardizeRoundText('League Phase (STAGE ONE)'), '联赛阶段（第一阶段）')
+  assert.equal(standardizeRoundText('Pre-Qualifier'), '预资格赛')
+  assert.equal(standardizeRoundText('Pre-Qualifier Round'), '预资格赛')
+  assert.equal(standardizeRoundText('Wildcard Round'), '外卡赛')
+  assert.equal(standardizeRoundText('Round 1 (held over)'), '第1轮（保留赛）')
+  assert.equal(standardizeRoundText('Round 1/Heldover'), '第1轮（保留赛）')
+  assert.equal(standardizeRoundText('Group 3'), '第3组')
+})
+
+test('localizeMatchPlayerName translates WST bracket placeholders and keeps real names', () => {
+  assert.equal(localizeMatchPlayerName('Winner of Match 7'), '第7场胜者')
+  assert.equal(localizeMatchPlayerName('Loser of Match 3'), '第3场负者')
+  assert.equal(localizeMatchPlayerName('Winner Semi One'), '半决赛1胜者')
+  assert.equal(localizeMatchPlayerName('Winner Semi Two'), '半决赛2胜者')
+  assert.equal(localizeMatchPlayerName('TBC'), '待定')
+  assert.equal(localizeMatchPlayerName('Mark Selby'), 'Mark Selby')
+  assert.equal(localizeMatchPlayerName(''), '')
+})
+
+test('buildSaiXunDetailRounds shows Chinese placeholder names in schedule and list highlight', () => {
+  const [round] = buildSaiXunDetailRounds([{
+    id: 1,
+    round_name: 'Group Final',
+    round_order: 0,
+    status: 0,
+    start_time: '2026-11-13T11:00:00+08:00',
+    home_player_name: 'Winner of Match 7',
+    away_player_name: 'Winner of Match 8'
+  }], '2026-11-12T12:00:00+08:00')
+  assert.equal(round.roundName, '小组决赛')
+  assert.equal(round.matches[0].homePlayerName, '第7场胜者')
+  assert.equal(round.matches[0].awayPlayerName, '第8场胜者')
+
+  const card = normalizeSaiXunCard({
+    status: 0,
+    current_round_text: 'Final',
+    latest_result_text: 'Winner Semi One - Winner Semi Two'
+  }, '2026-11-12T12:00:00+08:00')
+  assert.equal(card.highlight.primary, '半决赛1胜者 vs 半决赛2胜者')
+})
+
+test('official events without a cover fall back to the WST default cover', () => {
+  assert.equal(OFFICIAL_DEFAULT_EVENT_COVER, 'https://cdn.zhuifen.cn/static/images/wst-default-event-cover.png')
+
+  const official = normalizeSaiXunCard({ id: 47, status: 0, source_type: 'official', cover_image: '' })
+  assert.equal(official.hasCover, true)
+  assert.equal(official.coverImage, OFFICIAL_DEFAULT_EVENT_COVER)
+
+  const mirrored = 'https://cdn.zhuifen.cn/wst/tournaments/cover.jpg'
+  assert.equal(normalizeSaiXunCard({ source_type: 'official', cover_image: mirrored }).coverImage, mirrored)
+
+  const platform = normalizeSaiXunCard({ id: 9, status: 0, source_type: 'platform', cover_image: '' })
+  assert.equal(platform.hasCover, false)
+  assert.equal(platform.coverImage, DEFAULT_EVENT_COVER)
+})
+
+test('schedule splits all rounds into ended (latest first) and upcoming (soonest first, live included)', () => {
+  const now = '2026-11-12T12:00:00+08:00'
+  const rounds = buildSaiXunDetailRounds([
+    { id: 1, round_name: 'Group Semi Finals', status: 2, home_score: 4, away_score: 3, winner_side: 1, start_time: '2026-11-10T05:00:00+08:00' },
+    { id: 2, round_name: 'Group Final', status: 2, home_score: 2, away_score: 6, winner_side: 2, start_time: '2026-11-10T11:00:00+08:00' },
+    { id: 3, round_name: 'Group Semi Finals', status: 1, home_score: 2, away_score: 1, start_time: '2026-11-12T11:00:00+08:00' },
+    { id: 4, round_name: 'Group Semi Finals', status: 0, start_time: '2026-11-13T05:00:00+08:00' },
+    { id: 5, round_name: 'Group Semi Finals', status: 3, start_time: '2026-11-11T06:00:00+08:00' },
+    { id: 6, round_name: 'Final', status: 0, start_time: '2026-11-16T05:00:00+08:00', home_player_name: 'Winner Semi One', away_player_name: 'Winner Semi Two' },
+    { id: 7, round_name: 'Semi-Finals', status: 0, start_time: '' },
+    { id: 8, round_name: 'Group Final', status: 2, home_score: 6, away_score: 0, winner_side: 1, start_time: '' }
+  ], now)
+
+  const tabs = buildSaiXunScheduleTabs(rounds)
+  assert.deepEqual(tabs.map((tab) => [tab.key, tab.label, tab.matches.map((match) => match.id)]), [
+    // 已取消的场次与已结束放在一起；没有开赛时间的排在最后
+    ['ended', '已结束', [5, 2, 1, 8]],
+    // 进行中的场次还没打完，排在「即将开始」最前
+    ['upcoming', '即将开始', [3, 4, 6, 7]]
+  ])
+  // 每场自带中文阶段名，列表不再需要轮次切换
+  assert.deepEqual(tabs[1].matches.map((match) => match.roundName), ['小组半决赛', '小组半决赛', '决赛', '半决赛'])
+  assert.deepEqual(buildSaiXunScheduleDays(tabs[0].matches).map((day) => [day.label, day.matches.map((match) => match.id)]), [
+    ['11月11日 周三 · 昨天', [5]],
+    ['11月10日 周二', [2, 1]],
+    ['时间待定', [8]]
+  ])
+})
+
+test('schedule tab defaults to upcoming while matches remain and keeps a manual choice', () => {
+  const now = '2026-11-12T12:00:00+08:00'
+  const mixed = buildSaiXunScheduleTabs(buildSaiXunDetailRounds([
+    { id: 1, round_name: 'Final', status: 2, home_score: 10, away_score: 8, winner_side: 1, start_time: '2026-11-10T05:00:00+08:00' },
+    { id: 2, round_name: 'Final', status: 0, start_time: '2026-11-13T05:00:00+08:00' }
+  ], now))
+  assert.equal(resolveSaiXunScheduleTabKey(mixed, ''), 'upcoming')
+  assert.equal(resolveSaiXunScheduleTabKey(mixed, 'ended'), 'ended')
+
+  const finished = buildSaiXunScheduleTabs(buildSaiXunDetailRounds([
+    { id: 1, round_name: 'Final', status: 2, home_score: 10, away_score: 8, winner_side: 1, start_time: '2026-11-10T05:00:00+08:00' }
+  ], now))
+  assert.equal(resolveSaiXunScheduleTabKey(finished, ''), 'ended')
+  // 手动选的栏目即使已空也保留，页面展示空态
+  assert.equal(resolveSaiXunScheduleTabKey(finished, 'upcoming'), 'upcoming')
+  assert.equal(resolveSaiXunScheduleTabKey([], ''), 'ended')
+})
+
+test('schedule days render in batches for large tournaments', () => {
+  const matches = buildSaiXunDetailRounds(Array.from({ length: 70 }, (_, index) => ({
+    id: index + 1,
+    round_name: 'Round 1',
+    status: 0,
+    start_time: `2026-11-${String(13 + Math.floor(index / 20)).padStart(2, '0')}T10:00:00+08:00`
+  })), '2026-11-12T12:00:00+08:00')[0].matches
+
+  const count = (days) => days.reduce((total, day) => total + day.matches.length, 0)
+  assert.equal(SAIXUN_SCHEDULE_PAGE_SIZE, 30)
+  assert.equal(count(buildSaiXunScheduleDays(matches)), 30)
+  assert.equal(count(buildSaiXunScheduleDays(matches, 60)), 60)
+  assert.equal(count(buildSaiXunScheduleDays(matches, 90)), 70)
+})
+
 test('formatBestOfText follows the Chinese frame format convention', () => {
   assert.equal(formatBestOfText(9), '9局5胜')
   assert.equal(formatBestOfText(35), '35局18胜')
@@ -502,27 +630,6 @@ test('buildSaiXunListSections groups adjacent items by status and finished month
     ['已取消', '', [7]]
   ])
   assert.equal(new Set(sections.map((section) => section.key)).size, sections.length)
-})
-
-test('detail rounds focus the live round first, then the next scheduled round, then the last round', () => {
-  const finishedMatch = { status: 2, home_score: 4, away_score: 1, winner_side: 1, start_time: '2026-09-20T17:00:00+08:00' }
-  const twoRounds = (secondRoundStatus) => buildSaiXunDetailRounds([
-    { id: 1, round_name: 'Round 1', round_order: 10, match_order: 1, ...finishedMatch },
-    { id: 2, round_name: 'Round 2', round_order: 20, match_order: 1, status: secondRoundStatus, start_time: '2026-09-22T17:00:00+08:00' }
-  ], '2026-09-21T12:00:00+08:00')
-
-  const upcomingRounds = twoRounds(0)
-  assert.equal(resolveSaiXunFocusRoundKey(upcomingRounds), upcomingRounds[1].key)
-
-  const liveRounds = buildSaiXunDetailRounds([
-    { id: 1, round_name: 'Round 1', round_order: 10, match_order: 1, status: 1, start_time: '2026-09-21T11:00:00+08:00' },
-    { id: 2, round_name: 'Round 2', round_order: 20, match_order: 1, status: 0, start_time: '2026-09-22T17:00:00+08:00' }
-  ], '2026-09-21T12:00:00+08:00')
-  assert.equal(resolveSaiXunFocusRoundKey(liveRounds), liveRounds[0].key)
-
-  const finishedRounds = twoRounds(2)
-  assert.equal(resolveSaiXunFocusRoundKey(finishedRounds), finishedRounds[1].key)
-  assert.equal(resolveSaiXunFocusRoundKey([]), '')
 })
 
 test('held-over rounds sharing round_order stay in schedule order', () => {

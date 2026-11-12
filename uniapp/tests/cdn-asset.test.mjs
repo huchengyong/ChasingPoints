@@ -19,6 +19,7 @@ test('resolveCdnAssetUrl maps rank, achievement, avatar frame, gear and default 
   assert.equal(resolveCdnAssetUrl('/static/images/achievements/wins_1.png'), 'https://cdn.zhuifen.cn/static/images/achievements/wins_1.png')
   assert.equal(resolveCdnAssetUrl('/static/images/avatar-frames/frame_king.png'), 'https://cdn.zhuifen.cn/static/images/avatar-frames/frame_king.png')
   assert.equal(resolveCdnAssetUrl('/static/images/default-event-cover.png'), 'https://cdn.zhuifen.cn/static/images/default-event-cover.png')
+  assert.equal(resolveCdnAssetUrl('/static/images/wst-default-event-cover.png'), 'https://cdn.zhuifen.cn/static/images/wst-default-event-cover.png')
   assert.equal(resolveCdnAssetUrl('/static/images/gear/gear-cue-pool-default.png'), 'https://cdn.zhuifen.cn/static/images/gear/gear-cue-pool-default.png')
 })
 
