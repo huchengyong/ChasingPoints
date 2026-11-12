@@ -124,6 +124,18 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: admin.AdminGetEventNewsMatchesHandler(serverCtx),
 			},
 			{
+				// 更新赛讯球员中文名
+				Method:  http.MethodPost,
+				Path:    "/player/update",
+				Handler: admin.AdminUpdateEventNewsPlayerHandler(serverCtx),
+			},
+			{
+				// 获取赛讯球员列表（维护中文名）
+				Method:  http.MethodGet,
+				Path:    "/players",
+				Handler: admin.AdminGetEventNewsPlayersHandler(serverCtx),
+			},
+			{
 				// 发布或下线赛事情报
 				Method:  http.MethodPost,
 				Path:    "/publish",

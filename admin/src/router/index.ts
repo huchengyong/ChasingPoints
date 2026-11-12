@@ -61,6 +61,12 @@ const routes = [
         meta: { title: '赛事情报', icon: 'Calendar' }
       },
       {
+        path: 'event-news-players',
+        name: 'EventNewsPlayers',
+        component: () => import('@/views/event-news/players.vue'),
+        meta: { title: '赛讯球员', icon: 'User' }
+      },
+      {
         path: 'venues',
         name: 'Venues',
         redirect: '/venues/review',

@@ -192,3 +192,42 @@ export const updateEventNewsMatch = (data: EventNewsMatchUpdatePayload): Promise
 export const deleteEventNewsMatch = (data: EventNewsMatchDeletePayload): Promise<WriteResult> => {
   return request.post('/api/admin/event-news/match/delete', data)
 }
+
+export interface EventNewsPlayerItem {
+  id: number
+  source_type: string
+  source_player_id: string
+  display_name: string
+  name_zh: string
+  country_code: string
+  avatar: string
+  updated_at: string
+}
+
+export interface EventNewsPlayerListParams {
+  page?: number
+  page_size?: number
+  keyword?: string
+  missing_zh?: number
+}
+
+export interface EventNewsPlayerListResult {
+  code: number
+  success: boolean
+  message: string
+  total: number
+  list: EventNewsPlayerItem[]
+}
+
+export interface EventNewsPlayerUpdatePayload {
+  player_id: number
+  name_zh: string
+}
+
+export const getEventNewsPlayers = (params: EventNewsPlayerListParams = {}): Promise<EventNewsPlayerListResult> => {
+  return request.get('/api/admin/event-news/players', { params })
+}
+
+export const updateEventNewsPlayer = (data: EventNewsPlayerUpdatePayload): Promise<WriteResult> => {
+  return request.post('/api/admin/event-news/player/update', data)
+}

@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +11,8 @@ import (
 	"chasing_points/internal/testsupport"
 	"chasing_points/internal/types"
 
+	"github.com/alicebob/miniredis/v2"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -447,5 +450,89 @@ func TestAdminEventNewsListFiltersAndRejectsNonAdmin(t *testing.T) {
 	}
 	if rejectedResp.Success || rejectedResp.Code != 401 {
 		t.Fatalf("expected non-admin to be rejected, got %#v", rejectedResp)
+	}
+}
+
+func TestAdminEventNewsPlayersListFiltersAndUpdatesChineseName(t *testing.T) {
+	svcCtx := newEventNewsAdminTestSvc(t)
+	mr := miniredis.RunT(t)
+	svcCtx.Redis = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = svcCtx.Redis.Close() })
+
+	seed := func(sourceID, displayName, nameZh string) *model.Player {
+		player := &model.Player{SourceType: "official", SourcePlayerId: sourceID, DisplayName: displayName, NameZh: nameZh}
+		if err := svcCtx.PlayerModel.Create(player); err != nil {
+			t.Fatalf("seed player: %v", err)
+		}
+		return player
+	}
+	selby := seed("p-selby", "Mark Selby", "")
+	seed("p-zhao", "Zhao Xintong", "赵心童")
+	seed("p-percent", "100% Player", "")
+
+	listLogic := NewAdminGetEventNewsPlayersLogic(adminTestCtx(-100), svcCtx)
+	list := func(req *types.AdminEventNewsPlayerListReq) *types.AdminEventNewsPlayerListResp {
+		t.Helper()
+		resp, err := listLogic.AdminGetEventNewsPlayers(req)
+		if err != nil || !resp.Success {
+			t.Fatalf("list players: %#v err=%v", resp, err)
+		}
+		return resp
+	}
+
+	if resp := list(&types.AdminEventNewsPlayerListReq{Page: 1, PageSize: 500}); resp.Total != 3 || len(resp.List) != 3 {
+		t.Fatalf("expected all three players with clamped page size, got %#v", resp)
+	}
+	if resp := list(&types.AdminEventNewsPlayerListReq{Page: 1, PageSize: 20, MissingZh: 1}); resp.Total != 2 {
+		t.Fatalf("expected two players missing Chinese names, got %#v", resp)
+	}
+	if resp := list(&types.AdminEventNewsPlayerListReq{Page: 1, PageSize: 20, Keyword: "心童"}); resp.Total != 1 || resp.List[0].DisplayName != "Zhao Xintong" {
+		t.Fatalf("expected keyword to match Chinese name, got %#v", resp)
+	}
+	// % 按字面匹配，不能当通配符列出全部球员
+	if resp := list(&types.AdminEventNewsPlayerListReq{Page: 1, PageSize: 20, Keyword: "%"}); resp.Total != 1 || resp.List[0].DisplayName != "100% Player" {
+		t.Fatalf("expected escaped wildcard keyword, got %#v", resp)
+	}
+
+	updateLogic := NewAdminUpdateEventNewsPlayerLogic(adminTestCtx(-100), svcCtx)
+	for _, tc := range []struct {
+		name string
+		req  *types.AdminEventNewsPlayerUpdateReq
+		code int
+	}{
+		{"missing id", &types.AdminEventNewsPlayerUpdateReq{NameZh: "塞尔比"}, 400},
+		{"too long", &types.AdminEventNewsPlayerUpdateReq{PlayerId: selby.Id, NameZh: strings.Repeat("塞", 33)}, 400},
+		{"control char", &types.AdminEventNewsPlayerUpdateReq{PlayerId: selby.Id, NameZh: "塞尔\n比"}, 400},
+		{"not found", &types.AdminEventNewsPlayerUpdateReq{PlayerId: 9999, NameZh: "塞尔比"}, 404},
+	} {
+		resp, err := updateLogic.AdminUpdateEventNewsPlayer(tc.req)
+		if err != nil || resp.Success || resp.Code != tc.code {
+			t.Fatalf("%s: expected code %d, got %#v err=%v", tc.name, tc.code, resp, err)
+		}
+	}
+
+	resp, err := updateLogic.AdminUpdateEventNewsPlayer(&types.AdminEventNewsPlayerUpdateReq{PlayerId: selby.Id, NameZh: "  马克·塞尔比 "})
+	if err != nil || !resp.Success {
+		t.Fatalf("update Chinese name: %#v err=%v", resp, err)
+	}
+	updated, err := svcCtx.PlayerModel.FindById(selby.Id)
+	if err != nil || updated.NameZh != "马克·塞尔比" || updated.DisplayName != "Mark Selby" {
+		t.Fatalf("expected trimmed Chinese name with other fields untouched, got %#v err=%v", updated, err)
+	}
+	if version, _ := mr.Get("eventnews:version"); version != "1" {
+		t.Fatalf("expected event news cache version bump after rename, got %q", version)
+	}
+
+	resp, err = updateLogic.AdminUpdateEventNewsPlayer(&types.AdminEventNewsPlayerUpdateReq{PlayerId: selby.Id, NameZh: ""})
+	if err != nil || !resp.Success {
+		t.Fatalf("clear Chinese name: %#v err=%v", resp, err)
+	}
+	if cleared, _ := svcCtx.PlayerModel.FindById(selby.Id); cleared.NameZh != "" {
+		t.Fatalf("expected Chinese name cleared, got %#v", cleared)
+	}
+
+	nonAdminResp, err := NewAdminUpdateEventNewsPlayerLogic(context.Background(), svcCtx).AdminUpdateEventNewsPlayer(&types.AdminEventNewsPlayerUpdateReq{PlayerId: selby.Id, NameZh: "塞尔比"})
+	if err != nil || nonAdminResp.Code != 401 {
+		t.Fatalf("expected unauthenticated update rejected, got %#v err=%v", nonAdminResp, err)
 	}
 }

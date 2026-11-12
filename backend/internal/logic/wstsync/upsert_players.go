@@ -55,6 +55,8 @@ func UpsertPlayers(db *gorm.DB, now time.Time, records []PlayerUpsertRecord) err
 					player.Id = current.Id
 					player.CreatedAt = current.CreatedAt
 					player.DeletedAt = current.DeletedAt
+					// 中文名由管理后台维护，WST 不提供，整行 Save 时必须保留
+					player.NameZh = current.NameZh
 				}
 
 				if player.Id == 0 {

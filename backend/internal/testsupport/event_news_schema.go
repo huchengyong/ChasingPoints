@@ -109,6 +109,7 @@ type playerSchema struct {
 	FirstName      string         `gorm:"size:64;not null;default:''"`
 	LastName       string         `gorm:"size:64;not null;default:''"`
 	DisplayName    string         `gorm:"size:128;not null;default:''"`
+	NameZh         string         `gorm:"column:name_zh;size:64;not null;default:''"`
 	Avatar         string         `gorm:"size:512;not null;default:''"`
 	CountryCode    string         `gorm:"size:32;not null;default:''"`
 	FlagEmoji      string         `gorm:"size:16;not null;default:''"`

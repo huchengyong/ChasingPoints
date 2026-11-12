@@ -665,9 +665,55 @@ test('resolveSaiXunChampion reads the finished final from detail rounds', () => 
 
   assert.deepEqual(resolveSaiXunChampion(rounds), {
     name: 'Wu Yize',
+    subName: '',
     avatar: 'https://cdn.example.com/wst/players/wu.png',
     flag: { type: 'emoji', value: '🇨🇳' },
     opponentName: 'Yuan Sijun',
     scoreText: '10-5'
+  })
+})
+
+test('players with a Chinese name show it first and keep the English name as a sub line', () => {
+  const rounds = buildSaiXunDetailRounds([{
+    id: 1,
+    round_name: 'Final',
+    status: 2,
+    home_score: 10,
+    away_score: 8,
+    winner_side: 1,
+    start_time: '2026-11-16T05:00:00+08:00',
+    home_player_name: 'Zhao Xintong',
+    home_player_name_zh: ' 赵心童 ',
+    away_player_name: 'Mark Selby',
+    away_player_name_zh: ''
+  }, {
+    id: 2,
+    round_name: 'Semi-Finals',
+    status: 0,
+    start_time: '2026-11-15T05:00:00+08:00',
+    home_player_name: 'Winner of Match 12',
+    away_player_name: 'Neil Robertson',
+    away_player_name_zh: 'Neil Robertson'
+  }], '2026-11-17T12:00:00+08:00')
+
+  const final = rounds.find((round) => round.roundName === '决赛').matches[0]
+  assert.equal(final.homePlayerName, '赵心童')
+  assert.equal(final.homePlayerSubName, 'Zhao Xintong')
+  // 没有中文名时只显示英文名，不重复副名
+  assert.equal(final.awayPlayerName, 'Mark Selby')
+  assert.equal(final.awayPlayerSubName, '')
+
+  const semi = rounds.find((round) => round.roundName === '半决赛').matches[0]
+  assert.equal(semi.homePlayerName, '第12场胜者')
+  assert.equal(semi.homePlayerSubName, '')
+  assert.equal(semi.awayPlayerSubName, '')
+
+  assert.deepEqual(resolveSaiXunChampion(rounds), {
+    name: '赵心童',
+    subName: 'Zhao Xintong',
+    avatar: final.homePlayerAvatar,
+    flag: final.homePlayerFlag,
+    opponentName: 'Mark Selby',
+    scoreText: '10-8'
   })
 })

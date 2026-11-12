@@ -53,6 +53,7 @@
 						<text v-else-if="eventView.champion.flag.type === 'emoji'" class="flag-emoji">{{ eventView.champion.flag.value }}</text>
 						<text class="champion-name">{{ eventView.champion.name }}</text>
 					</view>
+					<text v-if="eventView.champion.subName" class="champion-sub-name">{{ eventView.champion.subName }}</text>
 					<text class="champion-desc">决赛 {{ eventView.champion.scoreText }} 胜 {{ eventView.champion.opponentName }}</text>
 				</view>
 			</view>
@@ -109,7 +110,10 @@
 								</view>
 								<image v-if="match.homePlayerFlag.type === 'image'" class="flag-img" :src="match.homePlayerFlag.value" mode="aspectFit"></image>
 								<text v-else-if="match.homePlayerFlag.type === 'emoji'" class="flag-emoji">{{ match.homePlayerFlag.value }}</text>
-								<text class="player-name">{{ match.homePlayerName }}</text>
+								<view class="player-names">
+									<text class="player-name">{{ match.homePlayerName }}</text>
+									<text v-if="match.homePlayerSubName" class="player-sub-name">{{ match.homePlayerSubName }}</text>
+								</view>
 								<text v-if="match.showScore" class="player-score">{{ match.homeScore }}</text>
 							</view>
 							<view
@@ -121,7 +125,10 @@
 								</view>
 								<image v-if="match.awayPlayerFlag.type === 'image'" class="flag-img" :src="match.awayPlayerFlag.value" mode="aspectFit"></image>
 								<text v-else-if="match.awayPlayerFlag.type === 'emoji'" class="flag-emoji">{{ match.awayPlayerFlag.value }}</text>
-								<text class="player-name">{{ match.awayPlayerName }}</text>
+								<view class="player-names">
+									<text class="player-name">{{ match.awayPlayerName }}</text>
+									<text v-if="match.awayPlayerSubName" class="player-sub-name">{{ match.awayPlayerSubName }}</text>
+								</view>
 								<text v-if="match.showScore" class="player-score">{{ match.awayScore }}</text>
 							</view>
 						</view>

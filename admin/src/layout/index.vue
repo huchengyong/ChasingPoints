@@ -86,6 +86,7 @@ const menuList = [
   { path: '/matches', title: '对局管理', icon: 'Trophy' },
   { path: '/feedback', title: '投诉举报', icon: 'WarningFilled' },
   { path: '/event-news', title: '赛事情报', icon: 'Calendar' },
+  { path: '/event-news-players', title: '赛讯球员', icon: 'User' },
   {
     path: '/venues',
     title: '球馆管理',
