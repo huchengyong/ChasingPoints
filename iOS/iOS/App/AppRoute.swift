@@ -9,6 +9,8 @@ enum AppRoute: Hashable {
     case matchReport(matchId: Int64)
     case ranking
     case spectatorLobby
+    case liveMatch(matchId: Int64)
+    case publicMatchDetail(matchId: Int64)
     case rankExplain
     case notificationSettings
     case opponentRecord
@@ -49,6 +51,8 @@ enum AppRoute: Hashable {
         case .matchReport: "对局详情"
         case .ranking: "排行榜"
         case .spectatorLobby: "观赛大厅"
+        case .liveMatch: "对局"
+        case .publicMatchDetail: "对局详情"
         case .rankExplain: "段位说明"
         case .notificationSettings: "通知管理"
         case .opponentRecord: "过往对手"
@@ -100,6 +104,8 @@ struct AppRouteDestination: View {
             MatchHistoryView(session: session)
         case .matchReport(let matchId):
             MatchReportView(session: session, matchId: matchId)
+        case .spectatorLobby:
+            SpectatorLobbyView(session: session)
         case .venueList:
             VenueListView(session: session)
         case .venueDetail(let id):
