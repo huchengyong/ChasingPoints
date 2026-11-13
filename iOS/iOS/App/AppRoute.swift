@@ -9,19 +9,19 @@ enum AppRoute: Hashable {
     case matchReport(matchId: Int64)
     case ranking
     case spectatorLobby
-    case rankExplain
+    case rankExplain(gameType: Int)
     case notificationSettings
     case opponentRecord
     case h2hRecord(opponentId: Int64)
     case memberCenter
     case reputation
-    case statsDetail
+    case statsDetail(gameType: Int)
     case performance
     case matchReplay(matchId: Int64)
     case challengeCompose
-    case challenges
+    case challenges(showHistory: Bool)
     case feedback
-    case achievementWall
+    case achievementWall(gameType: Int)
     case achievementDetail(achievementId: Int64)
     case friendList
     case friendHomepage(userId: Int64)
