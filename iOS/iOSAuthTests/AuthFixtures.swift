@@ -50,8 +50,10 @@ enum AuthFixtures {
     }
 
     /// `POST /api/user/profile` 成功：HTTP 200 + success + 完整 user_info。
-    static func updateProfileResponse(nickname: String = "新昵称") -> [String: Any] {
-        ["success": true, "message": "更新成功", "user_info": userInfo(nickname: nickname)]
+    static func updateProfileResponse(nickname: String = "新昵称", avatar: String = "") -> [String: Any] {
+        var user = userInfo(nickname: nickname)
+        user["avatar"] = avatar
+        return ["success": true, "message": "更新成功", "user_info": user]
     }
 
     /// `POST /api/user/profile` 业务失败：HTTP 200 + success:false。

@@ -1,126 +1,97 @@
 import SwiftUI
 
+/// 「我的」主页，对应小程序 `pages/user/index`。
 struct MyPage: View {
     @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var navigator: AppNavigator
     @Environment(\.colorScheme) private var colorScheme
+    @StateObject private var model: MyPageModel
+    @State private var isQRCodePresented = false
+
+    init(session: SessionStore, model: MyPageModel? = nil) {
+        _model = StateObject(wrappedValue: model ?? MyPageModel(session: session))
+    }
 
     private var palette: AppPalette { AppTheme.palette(for: colorScheme) }
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(spacing: 0) {
                 if session.isRestoring {
                     ProgressView("正在恢复登录状态")
                         .frame(maxWidth: .infinity)
                         .padding(24)
-                } else if let user = session.user {
-                    ProfileCard(user: user)
+                } else if session.identity != nil {
+                    memberContent
                 } else {
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("登录追分")
-                            .font(.title3.bold())
-                            .foregroundStyle(palette.textPrimary)
-                        Text("登录后查看个人资料与对局记录")
-                            .font(.subheadline)
-                            .foregroundStyle(palette.textSecondary)
-                        NavigationLink(value: AppRoute.login) {
-                            Text("去登录")
-                                .fontWeight(.semibold)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .foregroundStyle(.white)
-                                .background(AppTheme.primary, in: RoundedRectangle(cornerRadius: 10))
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20)
-                    .background(palette.card, in: RoundedRectangle(cornerRadius: 16))
+                    guestContent
                 }
 
                 if let restoreError = session.restoreError {
                     HStack {
                         Text(restoreError)
-                            .font(.subheadline)
+                            .font(.system(size: 14))
                             .foregroundStyle(palette.textSecondary)
-                        Spacer()
+                        Spacer(minLength: 8)
                         Button("重试") {
                             Task { await session.retryRestore() }
                         }
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(palette.brandStrong)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 12)
                 }
-
-                VStack(spacing: 0) {
-                    if session.user != nil {
-                        NavigationLink(value: AppRoute.editNickname) {
-                            SettingsRow(title: "编辑昵称", symbol: "pencil")
-                        }
-                        Divider().padding(.leading, 56)
-                        NavigationLink(value: AppRoute.matchHistory) {
-                            SettingsRow(title: "对局记录", symbol: "list.bullet.rectangle")
-                        }
-                        Divider().padding(.leading, 56)
-                    }
-                    NavigationLink(value: AppRoute.settings) {
-                        SettingsRow(title: "设置", symbol: "gearshape")
-                    }
-                }
-                .background(palette.card, in: RoundedRectangle(cornerRadius: 16))
             }
-            .padding(20)
+            .padding(.horizontal, 12)
+            .padding(.top, 12)
+            .padding(.bottom, 24)
         }
         .background(palette.page.ignoresSafeArea())
         .navigationTitle("我的")
-    }
-}
-
-private struct ProfileCard: View {
-    @Environment(\.colorScheme) private var colorScheme
-    let user: UserInfo
-
-    private var palette: AppPalette { AppTheme.palette(for: colorScheme) }
-
-    var body: some View {
-        HStack(spacing: 14) {
-            ProfileAvatar(urlString: user.avatar)
-            VStack(alignment: .leading, spacing: 6) {
-                Text(user.nickname.isEmpty ? "追分用户" : user.nickname)
-                    .font(.title3.bold())
-                    .foregroundStyle(palette.textPrimary)
-                Text(user.phone.isEmpty ? "未绑定手机号" : user.phone)
-                    .font(.subheadline)
-                    .foregroundStyle(palette.textSecondary)
-            }
-            Spacer(minLength: 0)
+        .task { await model.onAppear() }
+        .refreshable { await model.refresh() }
+        .onChange(of: session.identity) { _, _ in
+            Task { await model.onIdentityChanged() }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(20)
-        .background(palette.card, in: RoundedRectangle(cornerRadius: 16))
-    }
-}
-
-/// 远程头像使用系统 AsyncImage：空值、无效地址与加载失败均保留底层占位图，不阻塞资料卡。
-private struct ProfileAvatar: View {
-    let urlString: String
-
-    var body: some View {
-        ZStack {
-            Circle().fill(AppTheme.primary.opacity(0.14))
-            Image(systemName: "person.crop.circle.fill")
-                .resizable()
-                .scaledToFit()
-                .foregroundStyle(AppTheme.primary)
-                .padding(8)
-            if !urlString.isEmpty, let url = URL(string: urlString) {
-                AsyncImage(url: url) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
-                    Color.clear
-                }
+        .sheet(isPresented: $isQRCodePresented) {
+            MatchQRCodeSheet(session: session)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if model.floatRewardVisible {
+                MyFloatRewardBar(
+                    entry: model.compactRewardEntry,
+                    onOpen: { navigator.open(.venueSubmit) },
+                    onSnooze: { model.snoozeFloatReward() }
+                )
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
             }
         }
-        .frame(width: 64, height: 64)
-        .clipShape(Circle())
-        .accessibilityHidden(true)
+    }
+
+    private var guestContent: some View {
+        VStack(spacing: 12) {
+            MyGuestCard()
+            MyGuestLinksCard()
+            MyGuestSettingsCard()
+        }
+    }
+
+    private var memberContent: some View {
+        VStack(spacing: 0) {
+            MyProfileHeaderSection(model: model) { isQRCodePresented = true }
+            MyRankCardSection(model: model)
+            MyCareerSection(model: model)
+                .padding(.top, 20)
+            MyShortcutSection(model: model)
+                .padding(.top, 12)
+            if model.compactRewardEntry.inline {
+                MyRewardEntryCard(entry: model.compactRewardEntry)
+                    .padding(.top, 12)
+            }
+            MyServiceListSection(model: model)
+                .padding(.top, 12)
+        }
     }
 }

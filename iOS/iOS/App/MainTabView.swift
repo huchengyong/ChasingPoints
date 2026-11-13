@@ -53,7 +53,7 @@ struct MainTabView: View {
             .tag(MainTab.messages)
 
             NavigationStack(path: pathBinding(for: .me)) {
-                MyPage()
+                MyPage(session: session)
                     .navigationDestination(for: AppRoute.self) { AppRouteDestination(route: $0) }
             }
             .tabItem {

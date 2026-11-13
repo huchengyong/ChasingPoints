@@ -4,24 +4,25 @@ import SwiftUI
 enum AppRoute: Hashable {
     case login
     case settings
+    case editProfile
     case editNickname
     case matchHistory
     case matchReport(matchId: Int64)
     case ranking
     case spectatorLobby
-    case rankExplain
+    case rankExplain(gameType: Int)
     case notificationSettings
     case opponentRecord
     case h2hRecord(opponentId: Int64)
     case memberCenter
     case reputation
-    case statsDetail
+    case statsDetail(gameType: Int)
     case performance
     case matchReplay(matchId: Int64)
     case challengeCompose
-    case challenges
+    case challenges(showHistory: Bool)
     case feedback
-    case achievementWall
+    case achievementWall(gameType: Int)
     case achievementDetail(achievementId: Int64)
     case friendList
     case friendHomepage(userId: Int64)
@@ -33,6 +34,7 @@ enum AppRoute: Hashable {
     case venueDetail(id: Int64)
     case venueSubmit
     case rulesIndex
+    case ruleDetail(category: String)
     case glossary
     case seasonIndex
     case seasonHistory
@@ -43,7 +45,8 @@ enum AppRoute: Hashable {
         switch self {
         case .login: "登录"
         case .settings: "设置"
-        case .editNickname: "编辑资料"
+        case .editProfile: "编辑资料"
+        case .editNickname: "编辑昵称"
         case .matchHistory: "对局记录"
         case .matchReport: "对局详情"
         case .ranking: "排行榜"
@@ -72,6 +75,7 @@ enum AppRoute: Hashable {
         case .venueDetail: "球馆详情"
         case .venueSubmit: "上传球馆"
         case .rulesIndex: "规则百科"
+        case .ruleDetail: "规则详情"
         case .glossary: "术语词典"
         case .seasonIndex: "赛季"
         case .seasonHistory: "历届赛季"
@@ -91,13 +95,29 @@ struct AppRouteDestination: View {
         case .login:
             LoginView()
         case .settings:
-            SettingsView()
+            SettingsView(session: session)
+        case .editProfile:
+            ProfileEditView(session: session)
         case .editNickname:
             NicknameEditView()
+        case .notificationSettings:
+            NotificationSettingsView(session: session)
         case .matchHistory:
             MatchHistoryView(session: session)
         case .matchReport(let matchId):
             MatchReportView(session: session, matchId: matchId)
+        case .venueList:
+            VenueListView(session: session)
+        case .venueDetail(let id):
+            VenueDetailView(session: session, venueId: id)
+        case .venueSubmit:
+            VenueSubmitView(session: session)
+        case .rulesIndex:
+            RulesIndexView(session: session)
+        case .ruleDetail(let category):
+            RuleDetailView(session: session, category: category)
+        case .glossary:
+            GlossaryView(session: session)
         default:
             MigrationPlaceholderView(title: route.title)
         }

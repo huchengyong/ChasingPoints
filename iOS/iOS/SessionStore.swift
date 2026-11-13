@@ -75,7 +75,7 @@ struct KeychainCredentialStore: CredentialStoring {
 
 private struct SendSMSRequest: Encodable {
     let phone: String
-    let scene = "login"
+    let scene: String
 }
 
 private struct SendSMSResponse: Decodable {
@@ -108,6 +108,22 @@ private struct UserInfoResponse: Decodable {
 
 private struct UpdateProfileRequest: Encodable {
     let nickname: String
+}
+
+private struct UpdateAvatarRequest: Encodable {
+    let nickname: String
+    let avatar: String
+}
+
+private struct DeleteAccountRequest: Encodable {
+    let confirmText: String
+    let verifyType: String
+    let smsCode: String
+}
+
+private struct DeleteAccountResponse: Decodable {
+    let success: Bool
+    let message: String?
 }
 
 private struct UpdateProfileResponse: Decodable {
@@ -172,8 +188,11 @@ final class SessionStore: ObservableObject {
         return nil
     }
 
-    func sendSMS(phone: String) async throws {
-        let _: SendSMSResponse = try await api.post("/api/auth/send-sms", body: SendSMSRequest(phone: phone))
+    func sendSMS(phone: String, scene: String = "login") async throws {
+        let _: SendSMSResponse = try await api.post(
+            "/api/auth/send-sms",
+            body: SendSMSRequest(phone: phone, scene: scene)
+        )
     }
 
     /// 只提交 `nickname`，成功且返回匹配当前身份的完整资料后才回写共享会话。
@@ -197,6 +216,46 @@ final class SessionStore: ObservableObject {
             user = updated
         } catch {
             // 退出或切号后的迟到响应不能作为当前身份的反馈。
+            if authGeneration != generation { throw SessionError.changed }
+            throw error
+        }
+    }
+
+    /// 提交当前昵称与新头像地址，成功且返回匹配当前身份的完整资料后回写共享会话。
+    func updateAvatar(_ avatarURL: String) async throws {
+        guard let currentUser = user, currentUser.status == 1 else { throw SessionError.signedOut }
+        let generation = authGeneration
+        let body = UpdateAvatarRequest(nickname: currentUser.nickname, avatar: avatarURL)
+
+        do {
+            let response: UpdateProfileResponse = try await authorizedPost("/api/user/profile", body: body)
+            guard authGeneration == generation else { throw SessionError.changed }
+            guard let updated = response.userInfo, updated.id == currentUser.id, updated.status == 1 else {
+                throw SessionError.invalidResponse
+            }
+            user = updated
+        } catch {
+            if authGeneration != generation { throw SessionError.changed }
+            throw error
+        }
+    }
+
+    /// 注销账号（短信复核）。成功后清理本机会话，不产生被动失效提示。
+    func deleteAccount(smsCode: String) async throws {
+        guard user != nil, credentials != nil else { throw SessionError.signedOut }
+        let generation = authGeneration
+        let body = DeleteAccountRequest(confirmText: "注销账号", verifyType: "sms", smsCode: smsCode)
+
+        do {
+            let response: DeleteAccountResponse = try await authorizedPost(
+                "/api/user/account/delete", body: body
+            )
+            guard authGeneration == generation else { throw SessionError.changed }
+            guard response.success else {
+                throw APIError(message: response.message ?? "注销失败，请重试", kind: .business)
+            }
+            logout()
+        } catch {
             if authGeneration != generation { throw SessionError.changed }
             throw error
         }
