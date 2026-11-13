@@ -13,7 +13,7 @@ import (
 
 type VenueRepository interface {
 	FindById(id int64) (*model.Venue, error)
-	ApplyGeocodeResult(venueId int64, result *Result, attempts int, autoPublish bool) error
+	ApplyGeocodeResult(venueId int64, result *Result, attempts int, publish bool) error
 	MarkGeocodeFailure(venueId int64, geoStatus int, attempts int, message string) error
 }
 
@@ -184,7 +184,8 @@ func (w *Worker) processTask(ctx context.Context, task model.VenueGeocodeTask, n
 	}
 
 	attempts := task.Attempts + 1
-	if err := w.venueRepo.ApplyGeocodeResult(task.VenueId, result, attempts, w.autoPublish); err != nil {
+	// 精度不够（只到道路、区县等）时只写坐标，球馆保持待审核。
+	if err := w.venueRepo.ApplyGeocodeResult(task.VenueId, result, attempts, w.autoPublish && result.Precise); err != nil {
 		return err
 	}
 	if err := w.taskRepo.MarkSuccess(task.Id); err != nil {
@@ -267,8 +268,8 @@ func (r *venueModelRepo) FindById(id int64) (*model.Venue, error) {
 	return r.model.FindById(id)
 }
 
-func (r *venueModelRepo) ApplyGeocodeResult(venueId int64, result *Result, attempts int, autoPublish bool) error {
-	return r.model.ApplyGeocodeResultWithTx(nil, venueId, result.Longitude, result.Latitude, result.Score, result.Level, result.Source, attempts, autoPublish)
+func (r *venueModelRepo) ApplyGeocodeResult(venueId int64, result *Result, attempts int, publish bool) error {
+	return r.model.ApplyGeocodeResultWithTx(nil, venueId, result.Longitude, result.Latitude, result.Score, result.Level, result.Source, attempts, publish)
 }
 
 func (r *venueModelRepo) MarkGeocodeFailure(venueId int64, geoStatus int, attempts int, message string) error {

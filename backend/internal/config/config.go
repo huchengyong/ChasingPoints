@@ -68,12 +68,15 @@ type Config struct {
 
 	// 球馆地理解析配置
 	Geocode struct {
-		WorkerEnabled    bool `json:",env=GEOCODE_WORKER_ENABLED,default=true"`
-		PollIntervalMs   int  `json:",env=GEOCODE_POLL_INTERVAL_MS,default=3000"`
-		RequestTimeoutMs int  `json:",env=GEOCODE_REQUEST_TIMEOUT_MS,default=5000"`
-		MaxAttempts      int  `json:",env=GEOCODE_MAX_ATTEMPTS,default=5"`
-		BatchSize        int  `json:",env=GEOCODE_BATCH_SIZE,default=5"`
-		AutoPublish      bool `json:",env=GEOCODE_AUTO_PUBLISH,default=true"`
+		WorkerEnabled    bool   `json:",env=GEOCODE_WORKER_ENABLED,default=true"`
+		PollIntervalMs   int    `json:",env=GEOCODE_POLL_INTERVAL_MS,default=3000"`
+		RequestTimeoutMs int    `json:",env=GEOCODE_REQUEST_TIMEOUT_MS,default=5000"`
+		MaxAttempts      int    `json:",env=GEOCODE_MAX_ATTEMPTS,default=5"`
+		BatchSize        int    `json:",env=GEOCODE_BATCH_SIZE,default=5"`
+		AutoPublish      bool   `json:",env=GEOCODE_AUTO_PUBLISH,default=true"`
+		Provider         string `json:",env=GEOCODE_PROVIDER,default=amap"`
+		AmapKey          string `json:",env=AMAP_WEB_SERVICE_KEY,optional"`
+		AmapSigningKey   string `json:",env=AMAP_WEB_SERVICE_SIGNING_KEY,optional"`
 	}
 
 	WSTSync WSTSyncConfig

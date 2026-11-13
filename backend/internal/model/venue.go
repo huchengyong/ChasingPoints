@@ -398,12 +398,8 @@ func (m *VenueModel) MarkGeocodeFailureWithTx(tx *gorm.DB, venueId int64, geoSta
 	return m.db.Model(&Venue{}).Where("id = ?", venueId).Updates(updates).Error
 }
 
-func (m *VenueModel) ApplyGeocodeResultWithTx(tx *gorm.DB, venueId int64, longitude, latitude float64, score int, level, source string, attempts int, autoPublish bool) error {
+func (m *VenueModel) ApplyGeocodeResultWithTx(tx *gorm.DB, venueId int64, longitude, latitude float64, score int, level, source string, attempts int, publish bool) error {
 	now := time.Now()
-	status := VenueStatusHidden
-	if autoPublish {
-		status = VenueStatusPublished
-	}
 
 	updates := map[string]interface{}{
 		"longitude":      longitude,
@@ -415,7 +411,10 @@ func (m *VenueModel) ApplyGeocodeResultWithTx(tx *gorm.DB, venueId int64, longit
 		"geo_attempts":   attempts,
 		"geo_error":      "",
 		"geo_updated_at": &now,
-		"status":         status,
+	}
+	// 不满足自动发布条件时不写 status：球馆保持原状态，新建球馆仍是待审核，交给后台人工审核。
+	if publish {
+		updates["status"] = VenueStatusPublished
 	}
 	if tx != nil {
 		return tx.Model(&Venue{}).Where("id = ?", venueId).Updates(updates).Error

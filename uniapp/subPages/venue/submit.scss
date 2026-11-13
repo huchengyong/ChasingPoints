@@ -319,6 +319,22 @@
 	word-break: break-all;
 }
 
+.location-actions {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	gap: 20rpx;
+}
+
+.location-action {
+	font-size: 24rpx;
+	color: #7c5b12;
+}
+
+.location-action.is-muted {
+	color: #9A8C67;
+}
+
 .notice-card {
 	margin-bottom: 20rpx;
 	padding: 24rpx 28rpx;
@@ -464,6 +480,14 @@
 	.notice-text,
 	.location-placeholder {
 		color: #f7e7a8;
+	}
+
+	.location-action {
+		color: #f7e7a8;
+	}
+
+	.location-action.is-muted {
+		color: #9f926e;
 	}
 
 	.submit-bar {

@@ -99,6 +99,7 @@ func (c *ApihzClient) Geocode(ctx context.Context, account model.GeocodeAccount,
 		Level:     payload.Level,
 		RawCode:   payload.Code,
 		Source:    "apihz",
+		Precise:   true,
 	}, nil
 }
 

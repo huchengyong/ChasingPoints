@@ -8,6 +8,10 @@ test('WeChat manifest declares the getLocation private API', () => {
   assert.match(manifestSource, /"requiredPrivateInfos"\s*:\s*\[[\s\S]*?"getLocation"[\s\S]*?\]/)
 })
 
+test('WeChat manifest declares the chooseLocation private API', () => {
+  assert.match(manifestSource, /"requiredPrivateInfos"\s*:\s*\[[\s\S]*?"chooseLocation"[\s\S]*?\]/)
+})
+
 test('WeChat manifest describes why user location is requested', () => {
   assert.match(manifestSource, /"scope\.userLocation"\s*:\s*\{[\s\S]*?"desc"\s*:\s*"[^"]+"/)
 })

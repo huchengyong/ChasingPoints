@@ -47,6 +47,30 @@
 				<text class="field-hint">选择省、市、区后，审核和定位都会更准确。</text>
 			</view>
 
+			<!-- #ifdef MP-WEIXIN -->
+			<view class="form-group">
+				<view class="label-row">
+					<text class="form-label">地图位置</text>
+					<text class="label-optional">可选</text>
+				</view>
+				<view v-if="form.location" class="location-picker">
+					<view class="location-copy">
+						<text class="location-title">{{ form.location.name || '已选位置' }}</text>
+						<text v-if="form.location.address" class="location-subtitle">{{ form.location.address }}</text>
+					</view>
+					<view class="location-actions">
+						<text class="location-action" @tap="handleChooseLocation">重新选择</text>
+						<text class="location-action is-muted" @tap="handleClearLocation">清除</text>
+					</view>
+				</view>
+				<view v-else class="form-input form-picker is-placeholder" @tap="handleChooseLocation">
+					<text class="picker-value">在地图上选点</text>
+					<text class="picker-arrow">›</text>
+				</view>
+				<text class="field-hint">选点后位置更准确，附近球友能更快找到。</text>
+			</view>
+			<!-- #endif -->
+
 			<view class="form-group" :class="getFieldClass('address')">
 				<view class="label-row">
 					<text class="form-label">详细地址</text>
@@ -82,8 +106,10 @@ import { usePageTheme } from '@/utils/page-theme.js'
 import {
 	buildVenueRegionSelection,
 	buildVenueSubmitPayload,
+	normalizePickedLocation,
 	resolveVenueSubmitCopy,
-	resolveVenueSubmitIntro
+	resolveVenueSubmitIntro,
+	stripRegionPrefix
 } from '@/utils/venue-submit.js'
 
 const { isDarkMode } = usePageTheme()
@@ -112,7 +138,8 @@ const form = ref({
 	areaIds: [],
 	city: '',
 	district: '',
-	address: ''
+	address: '',
+	location: null
 })
 
 const submitting = ref(false)
@@ -269,6 +296,47 @@ const handleAreaConfirm = async (event) => {
 
 	applyAreaSelection(selection)
 }
+
+// #ifdef MP-WEIXIN
+const handleChooseLocation = () => {
+	if (submitting.value) return
+
+	const options = {
+		success: (res) => {
+			const picked = normalizePickedLocation(res)
+			if (!picked) {
+				uni.showToast({ title: '没有获取到位置，请重新选点', icon: 'none' })
+				return
+			}
+
+			const regionNames = form.value.regionText.split(' ').filter(Boolean)
+			if (!form.value.name.trim()) form.value.name = picked.name
+			if (!form.value.address.trim() && regionNames.length > 0) {
+				form.value.address = stripRegionPrefix(picked.address, regionNames)
+			}
+			form.value.location = picked
+		},
+		fail: (err) => {
+			const errMsg = err?.errMsg || ''
+			if (errMsg.includes('cancel')) return
+			uni.showToast({ title: '选点失败，请稍后重试', icon: 'none' })
+		}
+	}
+
+	const current = form.value.location
+	if (current) {
+		options.latitude = current.latitude
+		options.longitude = current.longitude
+	}
+
+	uni.chooseLocation(options)
+}
+
+const handleClearLocation = () => {
+	if (submitting.value) return
+	form.value.location = null
+}
+// #endif
 
 const handleSubmit = async () => {
 	if (submitting.value) return

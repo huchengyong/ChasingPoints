@@ -2,6 +2,7 @@ package svc
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"chasing_points/internal/sms"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/zeromicro/go-zero/core/logx"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -27,7 +29,6 @@ const (
 	defaultDBMaxOpenConns = 100
 	defaultQuotaPrefix    = "geo:quota"
 	defaultQuotaTTL       = 70 * time.Second
-	defaultGeocodeSource  = "apihz"
 	defaultGeocodeLocker  = "chasing_points-api"
 )
 
@@ -410,7 +411,11 @@ func newServiceModels(db *gorm.DB) serviceModels {
 }
 
 func newGeocodeDependencies(c config.Config, rdb *redis.Client, models serviceModels) geocodeDependencies {
-	client := geocode.NewApihzClient("", time.Duration(c.Geocode.RequestTimeoutMs)*time.Millisecond)
+	client, provider, err := newGeocodeClient(c)
+	if err != nil {
+		logx.Error(err)
+		return geocodeDependencies{}
+	}
 	quotaLimiter := geocode.NewRedisQuotaLimiter(rdb, defaultQuotaPrefix, defaultQuotaTTL)
 	accountSelector := geocode.NewAccountSelector(quotaLimiter)
 	worker := geocode.NewWorker(
@@ -420,7 +425,7 @@ func newGeocodeDependencies(c config.Config, rdb *redis.Client, models serviceMo
 		geocode.NewAccountRepo(models.GeocodeAccountModel),
 		accountSelector,
 		client,
-		defaultGeocodeSource,
+		provider,
 		defaultGeocodeLocker,
 		c.Geocode.BatchSize,
 		time.Duration(c.Geocode.PollIntervalMs)*time.Millisecond,
@@ -430,6 +435,24 @@ func newGeocodeDependencies(c config.Config, rdb *redis.Client, models serviceMo
 	return geocodeDependencies{
 		Client: client,
 		Worker: worker,
+	}
+}
+
+// newGeocodeClient 按配置选择地理编码服务；返回的 provider 也用于筛选账号行。
+func newGeocodeClient(c config.Config) (geocode.Geocoder, string, error) {
+	provider := strings.TrimSpace(c.Geocode.Provider)
+	timeout := time.Duration(c.Geocode.RequestTimeoutMs) * time.Millisecond
+	switch provider {
+	case "amap":
+		key := strings.TrimSpace(c.Geocode.AmapKey)
+		if key == "" {
+			return nil, provider, fmt.Errorf("geocode provider amap requires AMAP_WEB_SERVICE_KEY; geocode worker disabled")
+		}
+		return geocode.NewAmapClient("", key, strings.TrimSpace(c.Geocode.AmapSigningKey), timeout), provider, nil
+	case "apihz":
+		return geocode.NewApihzClient("", timeout), provider, nil
+	default:
+		return nil, provider, fmt.Errorf("unknown geocode provider %q; geocode worker disabled", provider)
 	}
 }
 
