@@ -2,11 +2,13 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"regexp"
 
 	"chasing_points/internal/sms"
 	"chasing_points/internal/svc"
 	"chasing_points/internal/types"
+	"chasing_points/internal/utils"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -48,6 +50,15 @@ func (l *SendSmsLogic) SendSms(req *types.SendSmsReq) (resp *types.SendSmsResp, 
 			Success: false,
 			Message: err.Error(),
 		}, nil
+	}
+
+	// 手机号与来源 IP 的发送额度
+	if err := l.svcCtx.CodeManager.ReserveSendQuota(l.ctx, req.Phone, utils.GetClientIP(l.ctx)); err != nil {
+		if errors.Is(err, sms.ErrSendLimited) {
+			return &types.SendSmsResp{Success: false, Message: err.Error()}, nil
+		}
+		l.Logger.Errorf("检查验证码发送额度失败: %v", err)
+		return &types.SendSmsResp{Success: false, Message: "系统错误，请稍后重试"}, nil
 	}
 
 	// 生成验证码
