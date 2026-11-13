@@ -173,16 +173,19 @@ func amapSignature(params map[string]string, secret string) string {
 }
 
 // classifyAmapError 把高德错误码映射到 worker 的处理方式：鉴权失败停用账号，参数问题不重试，
-// 其余（配额、频率、服务端繁忙）冷却后重试。
+// 其余（配额、频率、服务端繁忙）冷却后重试。3xxxx（如 30001、32200）是"服务响应失败，先检查参数"，
+// 属于当前这条地址本身的问题，按参数问题处理，不冷却账号。
 func classifyAmapError(infocode string) string {
 	switch infocode {
 	case "10001", "10002", "10005", "10006", "10007", "10008", "10009", "10012", "10013", "10026", "10041":
 		return ErrorKindAuth
 	case "20000", "20001", "20002", "20011", "20012":
 		return ErrorKindInvalidResponse
-	default:
-		return ErrorKindTemporary
 	}
+	if len(infocode) == 5 && infocode[0] == '3' {
+		return ErrorKindInvalidResponse
+	}
+	return ErrorKindTemporary
 }
 
 func isPreciseAmapLevel(level string) bool {

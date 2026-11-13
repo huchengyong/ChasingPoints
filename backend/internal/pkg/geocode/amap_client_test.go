@@ -168,6 +168,8 @@ func TestAmapClientErrorClassification(t *testing.T) {
 		{infocode: "10044", kind: ErrorKindTemporary},
 		{infocode: "10016", kind: ErrorKindTemporary},
 		{infocode: "20000", kind: ErrorKindInvalidResponse},
+		{infocode: "30001", kind: ErrorKindInvalidResponse},
+		{infocode: "32200", kind: ErrorKindInvalidResponse},
 	}
 
 	for _, test := range tests {
