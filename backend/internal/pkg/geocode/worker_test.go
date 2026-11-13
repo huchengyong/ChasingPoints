@@ -15,6 +15,7 @@ type fakeVenueRepository struct {
 	successVenueID  int64
 	successAttempts int
 	successSource   string
+	successPublish  bool
 	failureVenueID  int64
 	failureAttempts int
 	failureStatus   int
@@ -31,10 +32,11 @@ func (f *fakeVenueRepository) FindById(id int64) (*model.Venue, error) {
 	return nil, nil
 }
 
-func (f *fakeVenueRepository) ApplyGeocodeResult(venueId int64, result *Result, attempts int, autoPublish bool) error {
+func (f *fakeVenueRepository) ApplyGeocodeResult(venueId int64, result *Result, attempts int, publish bool) error {
 	f.successVenueID = venueId
 	f.successAttempts = attempts
 	f.successSource = result.Source
+	f.successPublish = publish
 	return nil
 }
 
@@ -172,7 +174,7 @@ func TestWorkerProcessTaskPublishesVenueOnSuccess(t *testing.T) {
 			account: &model.GeocodeAccount{Id: 7, Status: model.GeocodeAccountStatusEnabled, Provider: "apihz"},
 		},
 		geocoder: &fakeGeocoder{
-			result: &Result{Longitude: 121.496, Latitude: 31.14238, Score: 75, Level: "乡镇街道", Source: "apihz"},
+			result: &Result{Longitude: 121.496, Latitude: 31.14238, Score: 75, Level: "乡镇街道", Source: "apihz", Precise: true},
 		},
 		autoPublish: true,
 	}
@@ -338,5 +340,50 @@ func TestWorkerProcessTaskReturnsErrorWhenVenueLookupFails(t *testing.T) {
 	task := model.VenueGeocodeTask{Id: 3, VenueId: 9, Attempts: 0, MaxAttempts: 5}
 	if err := worker.processTask(context.Background(), task, now); err == nil {
 		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestWorkerProcessTaskPublishesOnlyWhenPrecise(t *testing.T) {
+	tests := []struct {
+		name        string
+		autoPublish bool
+		precise     bool
+		wantPublish bool
+	}{
+		{name: "自动发布且坐标精确", autoPublish: true, precise: true, wantPublish: true},
+		{name: "自动发布但坐标不精确", autoPublish: true, precise: false, wantPublish: false},
+		{name: "关闭自动发布", autoPublish: false, precise: true, wantPublish: false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			now := time.Date(2026, 3, 14, 9, 15, 0, 0, time.UTC)
+			worker := &Worker{
+				venueRepo: &fakeVenueRepository{
+					venue: &model.Venue{Id: 9, FullAddress: "上海市浦东新区东明路"},
+				},
+				taskRepo: &fakeTaskRepository{},
+				accountRepo: &fakeAccountRepository{
+					accounts: []model.GeocodeAccount{{Id: 7, Status: model.GeocodeAccountStatusEnabled, Provider: "amap"}},
+				},
+				selector: &fakeAccountSelector{
+					account: &model.GeocodeAccount{Id: 7, Status: model.GeocodeAccountStatusEnabled, Provider: "amap"},
+				},
+				geocoder: &fakeGeocoder{
+					result: &Result{Longitude: 121.496, Latitude: 31.14238, Level: "区县", Source: "amap", Precise: test.precise},
+				},
+				autoPublish: test.autoPublish,
+			}
+
+			task := model.VenueGeocodeTask{Id: 3, VenueId: 9, Attempts: 1, MaxAttempts: 5}
+			if err := worker.processTask(context.Background(), task, now); err != nil {
+				t.Fatalf("expected nil error, got %v", err)
+			}
+
+			venueRepo := worker.venueRepo.(*fakeVenueRepository)
+			if venueRepo.successPublish != test.wantPublish {
+				t.Fatalf("expected publish %v, got %v", test.wantPublish, venueRepo.successPublish)
+			}
+		})
 	}
 }

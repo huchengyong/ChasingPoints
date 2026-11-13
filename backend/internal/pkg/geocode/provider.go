@@ -28,6 +28,8 @@ type Result struct {
 	Level     string
 	RawCode   int
 	Source    string
+	// Precise 表示坐标精确到门牌或兴趣点级别，可以直接自动发布。
+	Precise bool
 }
 
 type Geocoder interface {
