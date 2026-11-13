@@ -182,11 +182,15 @@ private struct ResponseStatus: Decodable {
 }
 
 enum AppConfiguration {
+    static let cdnBaseURL = "https://cdn.zhuifen.cn"
+
     #if DEBUG
     static let apiBaseURL = URL(string: "https://api-zhuifen.kekemate.cn")!
+    static let wsBaseURL = URL(string: "wss://api-zhuifen.kekemate.cn")!
     static let credentialService = "ChasingPoints.Session.development"
     #else
     static let apiBaseURL = URL(string: "https://api.zhuifen.cn")!
+    static let wsBaseURL = URL(string: "wss://ws.zhuifen.cn")!
     static let credentialService = "ChasingPoints.Session.production"
     #endif
 }

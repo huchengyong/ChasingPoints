@@ -295,6 +295,30 @@ final class SessionStore: ObservableObject {
         guard generation == authGeneration else { throw SessionError.changed }
     }
 
+    /// 需要登录的写请求：请求体按 snake_case 编码后走 authorizedRequest。
+    func authorizedPost<Body: Encodable, Response: Decodable>(_ path: String, body: Body) async throws -> Response {
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        return try await authorizedRequest(path, method: .post, body: encoder.encode(body))
+    }
+
+    /// 访客也能访问的接口：有凭据时走 authorizedRequest（带 token、同样的刷新与失效规则），
+    /// 没有凭据时不带 Authorization 直接请求。
+    func optionalAuthRequest<Response: Decodable>(
+        _ path: String,
+        method: HTTPMethod = .get,
+        body: Data? = nil
+    ) async throws -> Response {
+        guard credentials != nil else {
+            let generation = authGeneration
+            let value: Response = try await api.request(path, method: method, body: body, bearerToken: nil)
+            // 访客结果不带个性化字段，登录后的页面不能复用。
+            guard generation == authGeneration else { throw SessionError.changed }
+            return value
+        }
+        return try await authorizedRequest(path, method: method, body: body)
+    }
+
     private func refresh(_ old: Credentials, generation: Int) async throws -> Credentials {
         if let refreshTask { return try await refreshTask.value }
 
