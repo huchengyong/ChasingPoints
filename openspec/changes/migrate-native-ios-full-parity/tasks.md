@@ -3,7 +3,7 @@
 ## 1. 骨架与基础设施
 
 - [x] 1.1 R1a：主题语义色、运行配置与合规开关、`authorizedPost` / `optionalAuthRequest`、`ResourceLoader`、`APIQuery`、CDN 资源与默认头像、会员身份规则及测试
-- [ ] 1.2 R1b：`AppRoute` / `AppNavigator`、五个主 Tab、共享 UI 组件、Toast、「我的」页搬家、快照测试支架
+- [x] 1.2 R1b：`AppRoute` / `AppNavigator`、五个主 Tab、共享 UI 组件、Toast、「我的」页搬家、快照测试支架
 - [ ] 1.3 更新 `iOS/AGENTS.md` 的关键入口（目录结构、路由、读取模型、快照用法）
 
 ## 2. 「我的」及其子页面

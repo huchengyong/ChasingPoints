@@ -113,7 +113,6 @@ final class ResourceLoader<Value>: ObservableObject {
         requestToken += 1
         let token = requestToken
         let requestOwner = session.identity
-        isStale = false
 
         if isFirstLoad {
             phase = .loading
@@ -127,6 +126,8 @@ final class ResourceLoader<Value>: ObservableObject {
             phase = .loaded(value)
             isRefreshing = false
             refreshError = nil
+            // 只有刷新成功才算补上过期数据；失败或取消时保留标记，下次出现继续重读。
+            isStale = false
         } catch {
             guard token == requestToken, session.identity == requestOwner else { return }
             isRefreshing = false

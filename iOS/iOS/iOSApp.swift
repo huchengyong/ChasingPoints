@@ -22,10 +22,14 @@ struct iOSApp: App {
 
 private struct ApplicationRootView: View {
     @StateObject private var session = SessionStore()
+    @StateObject private var navigator = AppNavigator()
+    @StateObject private var toast = ToastCenter()
 
     var body: some View {
         ContentView()
             .environmentObject(session)
+            .environmentObject(navigator)
+            .environmentObject(toast)
             .task { await session.restore() }
     }
 }

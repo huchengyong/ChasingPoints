@@ -1,7 +1,7 @@
 {
   "images": [
     {
-      "filename": "match_light.png",
+      "filename": "message_light.png",
       "idiom": "universal",
       "scale": "3x"
     },
@@ -12,7 +12,7 @@
           "value": "dark"
         }
       ],
-      "filename": "match_dark.png",
+      "filename": "message_dark.png",
       "idiom": "universal",
       "scale": "3x"
     }

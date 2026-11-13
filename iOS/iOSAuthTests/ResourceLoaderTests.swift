@@ -145,6 +145,29 @@ final class ResourceLoaderTests: XCTestCase {
         XCTAssertEqual(loader.phase, .loaded(2))
     }
 
+    func testInvalidateKeepsStaleWhenReloadFailsSoNextAppearanceRetries() async throws {
+        let server = MockHTTPServer()
+        let session = await makeLoaderSession(server)
+        server.stub("GET", "/api/resource", resourceStub(1))
+        let loader = makeLoader(session)
+        await loader.loadIfNeeded()
+
+        loader.invalidate()
+        server.stub("GET", "/api/resource", .raw("service down", status: 503))
+        await loader.loadIfNeeded()
+
+        XCTAssertEqual(loader.phase, .loaded(1), "刷新失败时旧数据保持不变")
+        XCTAssertEqual(loader.value, 1)
+        XCTAssertEqual(loader.refreshError, "服务暂时不可用，请稍后重试")
+
+        server.stub("GET", "/api/resource", resourceStub(2))
+        await loader.loadIfNeeded()
+
+        XCTAssertEqual(loader.phase, .loaded(2), "失败后过期标记仍在，下次出现应重新读取")
+        XCTAssertNil(loader.refreshError)
+        XCTAssertEqual(server.requestCount("/api/resource"), 3)
+    }
+
     func testCancelledFirstLoadReturnsToIdleWithoutError() async throws {
         let server = MockHTTPServer()
         let session = await makeLoaderSession(server)
