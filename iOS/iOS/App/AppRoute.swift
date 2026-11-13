@@ -4,6 +4,7 @@ import SwiftUI
 enum AppRoute: Hashable {
     case login
     case settings
+    case editProfile
     case editNickname
     case matchHistory
     case matchReport(matchId: Int64)
@@ -44,7 +45,8 @@ enum AppRoute: Hashable {
         switch self {
         case .login: "登录"
         case .settings: "设置"
-        case .editNickname: "编辑资料"
+        case .editProfile: "编辑资料"
+        case .editNickname: "编辑昵称"
         case .matchHistory: "对局记录"
         case .matchReport: "对局详情"
         case .ranking: "排行榜"
@@ -93,9 +95,13 @@ struct AppRouteDestination: View {
         case .login:
             LoginView()
         case .settings:
-            SettingsView()
+            SettingsView(session: session)
+        case .editProfile:
+            ProfileEditView(session: session)
         case .editNickname:
             NicknameEditView()
+        case .notificationSettings:
+            NotificationSettingsView(session: session)
         case .matchHistory:
             MatchHistoryView(session: session)
         case .matchReport(let matchId):

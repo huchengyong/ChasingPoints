@@ -400,7 +400,7 @@ private struct PlayerColumn: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(palette.textPrimary)
                 .lineLimit(1)
-            Text("\(score)")
+            Text("\(String(score))")
                 .font(.system(size: 34, weight: .bold).monospacedDigit())
                 .foregroundStyle(palette.textPrimary)
             Text(caption)

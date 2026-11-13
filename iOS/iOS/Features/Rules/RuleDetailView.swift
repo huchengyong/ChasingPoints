@@ -89,7 +89,7 @@ struct RuleDetailView: View {
                 model.toggle(item.id)
             } label: {
                 HStack(spacing: 10) {
-                    Text("\(index + 1)")
+                    Text("\(String(index + 1))")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(palette.brandStrong)
                         .frame(width: 24, height: 24)

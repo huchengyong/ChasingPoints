@@ -237,7 +237,7 @@ struct VenueDetailView: View {
                     .foregroundStyle(palette.textPrimary)
                 Spacer(minLength: 8)
                 if venue.checkinCount > 0 {
-                    Text("\(venue.checkinCount)人到访")
+                    Text("\(String(venue.checkinCount))人到访")
                         .font(.system(size: 12))
                         .foregroundStyle(palette.textMuted)
                 }

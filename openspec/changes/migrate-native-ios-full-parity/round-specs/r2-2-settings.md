@@ -23,9 +23,15 @@
 - 写请求用 `session.authorizedPost`（请求体 snake_case）。可选字段用 Swift 可选类型，`nil` 不会被编码进请求体——`UpdateUserPrivacyReq` 正是靠「只带其中一个字段」来区分改哪一项。
 - 所有异步结果都要绑定发起时的 `session.identity`：退出或切号后到达的结果不得改动界面状态、不得弹提示。
 - rpx 换算大致 `pt ≈ rpx / 2`。
+- 快照测试的固定做法：页面的 `init` 接受一个可选的页面模型（`init(..., model: XxxModel? = nil)`，内部 `_model = StateObject(wrappedValue: model ?? XxxModel(...))`）；测试里先创建模型、`await` 它读完数据，再传给页面渲染。不要指望页面内的 `.task` 在快照里把网络请求跑完，也不要为此改 `SnapshotSupport.swift` / `MockHTTPServer.swift` 或写探针测试排查（参照 `MyPageSnapshotTests.swift`）。
+- 遇到与任务无关的疑难，最多尝试两种办法；不行就换一种实现继续，并在交付说明里写明。
 - bash 工具跑 xcodebuild 时超时设为 600000 毫秒，输出必须用 grep 过滤。
 
 ## 任务
+
+### 0. 修正一个全局显示问题（数字被加了千分位）
+
+「我的」页段位卡现在把排位分显示成 `排位分 1,320`（带千分位）。原因是 SwiftUI 的 `Text("排位分 \(score)")` 会按系统区域格式化整数；小程序显示的是 `排位分 1320`。把 `iOS/iOS/` 下所有把**整数**直接插进 `Text("...\(n)...")` 的地方改成先 `String(n)` 再拼（或 `Text(verbatim:)`）。已知位置：`Features/Profile/MyPageSections.swift`（排位分）、`Features/Venue/VenueListView.swift`（`N人签到`）、`Features/Venue/VenueDetailView.swift`（`N人到访`）、`Features/Rules/RuleDetailView.swift`（序号）、`MatchHistoryViews.swift`（两处比分）、`MatchReportView.swift`（`Text("\(score)")`）。这是本轮唯一允许改动这些文件的地方，每处只改这一行。检查方法：`grep -rn 'Text("[^"]*\\(' iOS/iOS --include='*.swift'` 逐条确认插值的是字符串还是整数。加一个回归测试不现实的地方不用强求，但要在 `MyPageSnapshotTests` 的夹具里保持四位数排位分，方便人工看快照。本轮新写的页面同样遵守这条规则。
 
 ### 1. 会话层（修改 `iOS/iOS/SessionStore.swift`）
 

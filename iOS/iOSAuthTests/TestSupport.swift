@@ -54,6 +54,19 @@ func makeSessionStore(_ server: MockHTTPServer, credentialStore: CredentialStori
     return SessionStore(api: client, credentialStore: credentialStore)
 }
 
+/// 已恢复的登录会话；默认用户与 `AuthFixtures.userInfo()` 一致。
+@MainActor
+func makeRestoredAccountSession(
+    _ server: MockHTTPServer,
+    user: [String: Any] = AuthFixtures.userInfo()
+) async -> SessionStore {
+    server.stub("GET", "/api/user/info", .json(AuthFixtures.userInfoResponse(user)))
+    let store = InMemoryCredentialStore(credentials: AuthFixtures.credentials())
+    let session = makeSessionStore(server, credentialStore: store)
+    await session.restore()
+    return session
+}
+
 @MainActor
 func waitUntil(
     timeout: TimeInterval = 3,

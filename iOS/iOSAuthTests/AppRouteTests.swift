@@ -7,7 +7,8 @@ final class AppRouteTests: XCTestCase {
         let expected: [(AppRoute, String)] = [
             (.login, "登录"),
             (.settings, "设置"),
-            (.editNickname, "编辑资料"),
+            (.editProfile, "编辑资料"),
+            (.editNickname, "编辑昵称"),
             (.matchHistory, "对局记录"),
             (.matchReport(matchId: 1), "对局详情"),
             (.ranking, "排行榜"),
