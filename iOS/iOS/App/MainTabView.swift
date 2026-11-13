@@ -23,7 +23,7 @@ struct MainTabView: View {
             .tag(MainTab.home)
 
             NavigationStack(path: pathBinding(for: .news)) {
-                MigrationPlaceholderView(title: "赛讯")
+                NewsHomeView(session: session)
                     .navigationDestination(for: AppRoute.self) { AppRouteDestination(route: $0) }
             }
             .tabItem {

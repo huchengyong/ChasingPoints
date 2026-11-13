@@ -122,6 +122,8 @@ struct AppRouteDestination: View {
             RuleDetailView(session: session, category: category)
         case .glossary:
             GlossaryView(session: session)
+        case .tournamentDetail(let id):
+            NewsDetailView(session: session, eventId: id)
         default:
             MigrationPlaceholderView(title: route.title)
         }
