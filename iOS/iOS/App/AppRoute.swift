@@ -33,6 +33,7 @@ enum AppRoute: Hashable {
     case venueDetail(id: Int64)
     case venueSubmit
     case rulesIndex
+    case ruleDetail(category: String)
     case glossary
     case seasonIndex
     case seasonHistory
@@ -72,6 +73,7 @@ enum AppRoute: Hashable {
         case .venueDetail: "球馆详情"
         case .venueSubmit: "上传球馆"
         case .rulesIndex: "规则百科"
+        case .ruleDetail: "规则详情"
         case .glossary: "术语词典"
         case .seasonIndex: "赛季"
         case .seasonHistory: "历届赛季"
@@ -98,6 +100,12 @@ struct AppRouteDestination: View {
             MatchHistoryView(session: session)
         case .matchReport(let matchId):
             MatchReportView(session: session, matchId: matchId)
+        case .rulesIndex:
+            RulesIndexView(session: session)
+        case .ruleDetail(let category):
+            RuleDetailView(session: session, category: category)
+        case .glossary:
+            GlossaryView(session: session)
         default:
             MigrationPlaceholderView(title: route.title)
         }

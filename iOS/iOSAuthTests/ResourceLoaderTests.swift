@@ -168,6 +168,40 @@ final class ResourceLoaderTests: XCTestCase {
         XCTAssertEqual(server.requestCount("/api/resource"), 3)
     }
 
+    func testFirstLoadServerFailureCarriesCategoryAndRetryClearsIt() async throws {
+        let server = MockHTTPServer()
+        let session = await makeLoaderSession(server)
+        server.stub("GET", "/api/resource", .raw("service down", status: 503))
+        let loader = makeLoader(session)
+
+        await loader.loadIfNeeded()
+
+        XCTAssertEqual(loader.phase, .failed("服务暂时不可用，请稍后重试"))
+        XCTAssertEqual(loader.failure?.category, .server)
+
+        server.stub("GET", "/api/resource", resourceStub(9))
+        await loader.retry()
+
+        XCTAssertEqual(loader.phase, .loaded(9))
+        XCTAssertNil(loader.failure)
+    }
+
+    func testRefreshFailureOnlySetsRefreshError() async throws {
+        let server = MockHTTPServer()
+        let session = await makeLoaderSession(server)
+        server.stub("GET", "/api/resource", resourceStub(1))
+        let loader = makeLoader(session)
+        await loader.loadIfNeeded()
+        XCTAssertNil(loader.failure)
+
+        server.stub("GET", "/api/resource", .raw("service down", status: 503))
+        await loader.refresh()
+
+        XCTAssertEqual(loader.phase, .loaded(1))
+        XCTAssertEqual(loader.refreshError, "服务暂时不可用，请稍后重试")
+        XCTAssertNil(loader.failure, "刷新失败只记 refreshError")
+    }
+
     func testCancelledFirstLoadReturnsToIdleWithoutError() async throws {
         let server = MockHTTPServer()
         let session = await makeLoaderSession(server)
