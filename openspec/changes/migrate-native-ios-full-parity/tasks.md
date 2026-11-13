@@ -4,11 +4,11 @@
 
 - [x] 1.1 R1a：主题语义色、运行配置与合规开关、`authorizedPost` / `optionalAuthRequest`、`ResourceLoader`、`APIQuery`、CDN 资源与默认头像、会员身份规则及测试
 - [x] 1.2 R1b：`AppRoute` / `AppNavigator`、五个主 Tab、共享 UI 组件、Toast、「我的」页搬家、快照测试支架
-- [ ] 1.3 更新 `iOS/AGENTS.md` 的关键入口（目录结构、路由、读取模型、快照用法）
+- [x] 1.3 更新 `iOS/AGENTS.md` 的关键入口（目录结构、路由、读取模型、快照用法）
 
 ## 2. 「我的」及其子页面
 
-- [ ] 2.1 「我的」主页：资料头部、段位卡、生涯数据、快捷入口、服务列表、我的匹配二维码（`pages/user/index`）
+- [x] 2.1 「我的」主页：资料头部、段位卡、生涯数据、快捷入口、服务列表、我的匹配二维码（`pages/user/index`）
 - [ ] 2.2 编辑资料（头像上传、昵称等）与设置（通知管理、隐私、黑名单入口、账号注销、数据导出）（`subPages/user/editProfile`、`settings`、`notification`）
 - [ ] 2.3 段位说明、信誉明细（`rankExplain`、`reputation`）
 - [ ] 2.4 竞技分析、表现分析（`statsDetail`、`performance`）
@@ -23,8 +23,8 @@
 - [ ] 3.1 首页：开局卡、约球卡、正在进行、赛事、排行榜、附近球房（`pages/index/index`）
 - [ ] 3.2 排行榜（`pages/ranking/index`）
 - [ ] 3.3 观赛大厅（`pages/match/index`）
-- [ ] 3.4 球馆：列表、详情、上传（定位、地图选点）（`subPages/venue/*`）
-- [ ] 3.5 规则百科、规则详情、术语词典（`subPages/rules/*`）
+- [x] 3.4 球馆：列表、详情、上传（定位、地图选点）（`subPages/venue/*`）
+- [x] 3.5 规则百科、规则详情、术语词典（`subPages/rules/*`）
 
 ## 4. 赛讯
 

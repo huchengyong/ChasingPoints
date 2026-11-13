@@ -12,10 +12,10 @@ final class AppRouteTests: XCTestCase {
             (.matchReport(matchId: 1), "对局详情"),
             (.ranking, "排行榜"),
             (.spectatorLobby, "观赛大厅"),
-            (.rankExplain, "段位说明"),
+            (.rankExplain(gameType: 3), "段位说明"),
             (.memberCenter, "VIP中心"),
-            (.statsDetail, "竞技分析"),
-            (.achievementWall, "荣誉墙"),
+            (.statsDetail(gameType: 2), "竞技分析"),
+            (.achievementWall(gameType: 3), "荣誉墙"),
             (.friendHomepage(userId: 1), "好友主页"),
             (.venueDetail(id: 1), "球馆详情"),
             (.seasonHistory, "历届赛季"),
@@ -35,6 +35,11 @@ final class AppRouteTests: XCTestCase {
         XCTAssertNotEqual(AppRoute.tournamentDetail(id: 1), AppRoute.tournamentDetail(id: 2))
         XCTAssertNotEqual(AppRoute.venueDetail(id: 1), AppRoute.venueDetail(id: 2))
         XCTAssertNotEqual(AppRoute.matchReplay(matchId: 1), AppRoute.matchReplay(matchId: 2))
+        XCTAssertNotEqual(AppRoute.rankExplain(gameType: 1), AppRoute.rankExplain(gameType: 2))
+        XCTAssertNotEqual(AppRoute.statsDetail(gameType: 1), AppRoute.statsDetail(gameType: 2))
+        XCTAssertNotEqual(AppRoute.achievementWall(gameType: 1), AppRoute.achievementWall(gameType: 2))
+        XCTAssertNotEqual(AppRoute.challenges(showHistory: true), AppRoute.challenges(showHistory: false))
+        XCTAssertEqual(AppRoute.challenges(showHistory: true), AppRoute.challenges(showHistory: true))
         XCTAssertEqual(AppRoute.matchReport(matchId: 3), AppRoute.matchReport(matchId: 3))
     }
 }

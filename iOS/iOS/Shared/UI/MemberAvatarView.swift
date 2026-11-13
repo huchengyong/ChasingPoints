@@ -66,7 +66,7 @@ struct MemberAvatarView: View {
                 if showBadge && identity.showBadge {
                     Text(identity.badgeText)
                         .font(.system(size: metrics.badgeFontSize, weight: .heavy))
-                        .foregroundStyle(badgeTextColor(identity.tier))
+                        .foregroundStyle(badgeTextColor(identity.tier, palette: palette))
                         .padding(.horizontal, metrics.badgePaddingX)
                         .frame(height: metrics.badgeHeight)
                         .background(badgeBackground(identity.tier, palette: palette))
@@ -85,7 +85,6 @@ struct MemberAvatarView: View {
 
     // 会员档位色，与小程序 .member-avatar-badge--standard/advanced/premium 对应。
     private enum BadgeColor {
-        static let standardText = Color(hex: 0xC69200)
         static let standardBorder = Color(hex: 0xE0AE12, opacity: 0.55)
         static let standardTint = Color(hex: 0xE0AE12, opacity: 0.14)
 
@@ -100,11 +99,12 @@ struct MemberAvatarView: View {
         static let premiumEnd = Color(hex: 0x6B4A07)
     }
 
-    private func badgeTextColor(_ tier: String) -> Color {
+    private func badgeTextColor(_ tier: String, palette: AppPalette) -> Color {
         switch tier {
         case "advanced": BadgeColor.advancedText
         case "premium": BadgeColor.premiumText
-        default: BadgeColor.standardText
+        // 标准档随主题变化，与小程序 --ui-brand-strong 一致。
+        default: palette.brandStrong
         }
     }
 

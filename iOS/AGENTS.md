@@ -9,6 +9,10 @@
 | Tab 与“我的”导航 | [iOS/ContentView.swift](iOS/ContentView.swift) |
 | 会话、Keychain 与认证请求 | [iOS/SessionStore.swift](iOS/SessionStore.swift) |
 | HTTP 解析、错误反馈与构建环境 | [iOS/APIClient.swift](iOS/APIClient.swift) 中的 `APIClient` / `AppConfiguration` |
+| 路由、主 Tab 与导航栈 | [iOS/App/](iOS/App/)：`AppRoute`（与小程序页面对应，未迁移的落到占位页）、`AppNavigator`、`MainTabView` |
+| 读取模型与失败提示 | [iOS/Shared/ResourceLoader.swift](iOS/Shared/ResourceLoader.swift)、[iOS/PagedHistoryList.swift](iOS/PagedHistoryList.swift)、[iOS/Shared/LoadFailure.swift](iOS/Shared/LoadFailure.swift) |
+| 共享 UI 组件 | [iOS/Shared/UI/](iOS/Shared/UI/)（状态页、头像、按钮样式、卡片、Toast） |
+| 业务模块 | [iOS/Features/](iOS/Features/)，每个模块一个目录：接口门面、规则、页面模型、页面 |
 | 主题与外观偏好 | [iOS/AppTheme.swift](iOS/AppTheme.swift)、[iOS/SettingsView.swift](iOS/SettingsView.swift) |
 | 构建与测试配置 | [iOS.xcodeproj/project.pbxproj](iOS.xcodeproj/project.pbxproj)、[共享 scheme](iOS.xcodeproj/xcshareddata/xcschemes/iOS.xcscheme) |
 | 可控测试与夹具 | [iOSAuthTests/](iOSAuthTests/) |
@@ -21,6 +25,13 @@
 - `SessionStore.user` 是共享资料来源；写入响应经会话层校验后发布，不公开任意 setter。草稿与异步结果绑定身份/认证代次，退出或切号后旧结果不能更改新用户资料、提示和导航。
 - 普通 Tab 切换、设置/编辑页进出复用会话资料，不在 `onAppear` 新增无条件资料 GET。需要新增读取入口时补去重、迟到响应及保存后不被旧读取回滚的测试。
 - 具体业务行为见 [认证规格](../openspec/specs/native-ios-auth-integration/spec.md) 与 [资料规格](../openspec/specs/native-ios-profile-basics/spec.md)，接口字段仍以 [backend/chasing_points.api](../backend/chasing_points.api) 为准。
+
+## 页面迁移约定
+- 页面与小程序一一对应，业务规则以小程序对应页面和 `uniapp/utils` 为准；迁移规则时把 `uniapp/tests` 里的用例一并迁成 XCTest。合规开关 [iOS/Shared/AppFlags.swift](iOS/Shared/AppFlags.swift) 与小程序 `utils/compliance-mode.js` 同值。
+- 页面跳转走 `AppRoute`（`NavigationLink(value:)` 或 `AppNavigator.open`）；新页面在 `AppRouteDestination` 里登记，不在页面里直接构造其他模块的视图。
+- 需要登录的读取用 `authorizedRequest` / `authorizedPost`，访客可读接口用 `optionalAuthRequest`，查询串用 `APIQuery.path`。读取结果绑定发起时的 `session.identity`，只采纳最新一次请求。
+- 页面的 `init` 接受可选的页面模型（默认自建），便于测试注入已读好数据的模型。
+- 把整数拼进文案时先转成字符串：`Text("排位分 \(score)")` 会按系统区域加千分位。
 
 ## 主题、环境与测试隔离
 - 品牌与状态语义遵循 [DESIGN.md](../DESIGN.md)；颜色走 `AppTheme`，外观偏好沿用 `theme_mode` / `ThemeMode`，布局、导航与可访问性使用原生能力。
@@ -45,5 +56,7 @@ xcodebuild build -project iOS.xcodeproj -scheme iOS -configuration Debug \
 xcodebuild build -project iOS.xcodeproj -scheme iOS -configuration Release \
   -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO
 ```
+
+查看界面：测试里的 `renderSnapshot`（[iOSAuthTests/SnapshotSupport.swift](iOSAuthTests/SnapshotSupport.swift)）会把页面按夹具数据渲染成 PNG；运行测试时在命令前加 `TEST_RUNNER_SNAPSHOT_DIR=<输出目录>` 才会落盘。快照只断言能渲染，不做像素比对，也不替代真机验收。
 
 认证与资料改动运行现有 XCTest 并核对上述构建/隔离配置；UI、恢复与真实后端行为另做人工验收。验收记录模板与既有证据见 [docs/testing/](../docs/testing/)，历史通过不代表本次已执行。
