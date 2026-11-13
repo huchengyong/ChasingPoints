@@ -5,6 +5,7 @@ import (
 	"math"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	mysqlDriver "github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
@@ -373,11 +374,23 @@ func (m *VenueModel) GetCheckinCount(venueId int64) (int64, error) {
 	return count, err
 }
 
+// geocodeErrorMaxRunes 对应 venues.geo_error 与 venue_geocode_tasks.last_error 的 VARCHAR(255)，按字符计。
+const geocodeErrorMaxRunes = 255
+
+// geocodeErrorMessage 截断错误信息，避免超长写入失败导致任务状态和重试次数没有更新。
+func geocodeErrorMessage(message string) string {
+	message = strings.TrimSpace(message)
+	if utf8.RuneCountInString(message) <= geocodeErrorMaxRunes {
+		return message
+	}
+	return string([]rune(message)[:geocodeErrorMaxRunes])
+}
+
 func (m *VenueModel) MarkGeocodeFailureWithTx(tx *gorm.DB, venueId int64, geoStatus int, attempts int, message string) error {
 	updates := map[string]interface{}{
 		"geo_status":   geoStatus,
 		"geo_attempts": attempts,
-		"geo_error":    strings.TrimSpace(message),
+		"geo_error":    geocodeErrorMessage(message),
 	}
 	if tx != nil {
 		return tx.Model(&Venue{}).Where("id = ?", venueId).Updates(updates).Error
@@ -515,7 +528,7 @@ func (m *VenueGeocodeTaskModel) ReleaseClaim(taskId int64, nextRetryAt time.Time
 	return m.db.Model(&VenueGeocodeTask{}).Where("id = ?", taskId).Updates(map[string]interface{}{
 		"status":        VenueGeocodeTaskStatusRetry,
 		"next_retry_at": &nextRetryAt,
-		"last_error":    strings.TrimSpace(message),
+		"last_error":    geocodeErrorMessage(message),
 		"locked_at":     nil,
 		"locked_by":     "",
 	}).Error
@@ -537,7 +550,7 @@ func (m *VenueGeocodeTaskModel) MarkRetry(taskId int64, attempts int, nextRetryA
 		"status":        VenueGeocodeTaskStatusRetry,
 		"attempts":      attempts,
 		"next_retry_at": &nextRetryAt,
-		"last_error":    strings.TrimSpace(message),
+		"last_error":    geocodeErrorMessage(message),
 		"locked_at":     nil,
 		"locked_by":     "",
 	}).Error
@@ -547,7 +560,7 @@ func (m *VenueGeocodeTaskModel) MarkDead(taskId int64, attempts int, message str
 	return m.db.Model(&VenueGeocodeTask{}).Where("id = ?", taskId).Updates(map[string]interface{}{
 		"status":     VenueGeocodeTaskStatusDead,
 		"attempts":   attempts,
-		"last_error": strings.TrimSpace(message),
+		"last_error": geocodeErrorMessage(message),
 		"locked_at":  nil,
 		"locked_by":  "",
 	}).Error

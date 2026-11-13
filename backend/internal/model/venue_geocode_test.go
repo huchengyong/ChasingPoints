@@ -1,7 +1,9 @@
 package model
 
 import (
+	"strings"
 	"testing"
+	"unicode/utf8"
 
 	mysqlDriver "github.com/go-sql-driver/mysql"
 )
@@ -57,5 +59,22 @@ func TestIsDuplicateVenueFullAddressErrorRejectsOtherErrors(t *testing.T) {
 
 	if IsDuplicateVenueFullAddressError(err) {
 		t.Fatal("expected non-full-address duplicate to be ignored")
+	}
+}
+
+func TestGeocodeErrorMessageTruncatesToColumnLength(t *testing.T) {
+	long := strings.Repeat("超", 300)
+	got := geocodeErrorMessage("  " + long + "  ")
+	if n := utf8.RuneCountInString(got); n != geocodeErrorMaxRunes {
+		t.Fatalf("expected %d runes, got %d", geocodeErrorMaxRunes, n)
+	}
+	if !utf8.ValidString(got) {
+		t.Fatal("expected truncated message to stay valid UTF-8")
+	}
+}
+
+func TestGeocodeErrorMessageKeepsShortMessage(t *testing.T) {
+	if got := geocodeErrorMessage("  timeout  "); got != "timeout" {
+		t.Fatalf("expected trimmed message, got %q", got)
 	}
 }

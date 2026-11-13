@@ -2,6 +2,7 @@ package geocode
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -110,5 +111,31 @@ func jsonResponse(body string) *http.Response {
 			"Content-Type": []string{"application/json"},
 		},
 		Body: io.NopCloser(strings.NewReader(body)),
+	}
+}
+
+func TestApihzClientGeocodeTransportErrorOmitsKey(t *testing.T) {
+	client := NewApihzClient("https://example.com/geocode", 2*time.Second)
+	client.httpClient.Transport = roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		return nil, errors.New("dial tcp: i/o timeout")
+	})
+	account := model.GeocodeAccount{
+		ProviderAppID: "1001",
+		ProviderKey:   "secret-key-value",
+	}
+
+	_, err := client.Geocode(context.Background(), account, "上海市浦东新区世纪大道100号")
+	providerErr, ok := err.(*ProviderError)
+	if !ok {
+		t.Fatalf("expected ProviderError, got %T (%v)", err, err)
+	}
+	if providerErr.Kind != ErrorKindTemporary {
+		t.Fatalf("expected temporary error kind, got %s", providerErr.Kind)
+	}
+	if strings.Contains(err.Error(), "secret-key-value") || strings.Contains(err.Error(), "example.com") {
+		t.Fatalf("expected error without request URL, got %q", err.Error())
+	}
+	if !strings.Contains(err.Error(), "i/o timeout") {
+		t.Fatalf("expected underlying cause in error, got %q", err.Error())
 	}
 }

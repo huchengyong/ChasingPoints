@@ -3,6 +3,7 @@ package geocode
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -61,12 +62,12 @@ func (c *ApihzClient) Geocode(ctx context.Context, account model.GeocodeAccount,
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, queryURL.String(), nil)
 	if err != nil {
-		return nil, NewProviderError(ErrorKindTemporary, err.Error())
+		return nil, NewProviderError(ErrorKindTemporary, requestErrorMessage(err))
 	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, NewProviderError(ErrorKindTemporary, err.Error())
+		return nil, NewProviderError(ErrorKindTemporary, requestErrorMessage(err))
 	}
 	defer resp.Body.Close()
 
@@ -99,6 +100,15 @@ func (c *ApihzClient) Geocode(ctx context.Context, account model.GeocodeAccount,
 		RawCode:   payload.Code,
 		Source:    "apihz",
 	}, nil
+}
+
+// requestErrorMessage 去掉 *url.Error 携带的请求地址：地址的 query 里有账号 key，不能进日志和数据库。
+func requestErrorMessage(err error) string {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		return urlErr.Op + ": " + urlErr.Err.Error()
+	}
+	return err.Error()
 }
 
 func classifyApihzError(httpStatus, responseCode int, message string) string {
