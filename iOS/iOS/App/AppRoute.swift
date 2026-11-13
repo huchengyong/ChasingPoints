@@ -100,6 +100,12 @@ struct AppRouteDestination: View {
             MatchHistoryView(session: session)
         case .matchReport(let matchId):
             MatchReportView(session: session, matchId: matchId)
+        case .venueList:
+            VenueListView(session: session)
+        case .venueDetail(let id):
+            VenueDetailView(session: session, venueId: id)
+        case .venueSubmit:
+            VenueSubmitView(session: session)
         case .rulesIndex:
             RulesIndexView(session: session)
         case .ruleDetail(let category):
