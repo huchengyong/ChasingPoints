@@ -4,8 +4,10 @@ import assert from 'node:assert/strict'
 import {
   buildVenueRegionSelection,
   buildVenueSubmitPayload,
+  normalizePickedLocation,
   resolveVenueSubmitCopy,
-  resolveVenueSubmitIntro
+  resolveVenueSubmitIntro,
+  stripRegionPrefix
 } from '../utils/venue-submit.js'
 
 test('buildVenueSubmitPayload only keeps basic venue fields', () => {
@@ -27,6 +29,72 @@ test('buildVenueSubmitPayload only keeps basic venue fields', () => {
     district: '南山区',
     address: '科苑路 8 号'
   })
+})
+
+test('buildVenueSubmitPayload adds picked coordinates when location is valid', () => {
+  const payload = buildVenueSubmitPayload({
+    name: '星轨台球',
+    city: '上海市',
+    district: '浦东新区',
+    address: '世纪大道 100 号',
+    location: { latitude: '31.234583', longitude: 121.507572, name: '星轨台球', address: '上海市浦东新区世纪大道100号' }
+  })
+
+  assert.deepEqual(payload, {
+    name: '星轨台球',
+    city: '上海市',
+    district: '浦东新区',
+    address: '世纪大道 100 号',
+    latitude: 31.234583,
+    longitude: 121.507572
+  })
+})
+
+test('buildVenueSubmitPayload drops invalid picked coordinates', () => {
+  const base = {
+    name: '星轨台球',
+    city: '上海市',
+    district: '浦东新区',
+    address: '世纪大道 100 号'
+  }
+  const expected = { ...base }
+
+  assert.deepEqual(buildVenueSubmitPayload({ ...base, location: null }), expected)
+  assert.deepEqual(buildVenueSubmitPayload({ ...base, location: { latitude: 0, longitude: 0 } }), expected)
+  assert.deepEqual(buildVenueSubmitPayload({ ...base, location: { latitude: 'abc', longitude: 'abc' } }), expected)
+})
+
+test('normalizePickedLocation only keeps finite non-zero coordinates', () => {
+  assert.deepEqual(
+    normalizePickedLocation({ name: ' 星轨台球 ', address: ' 世纪大道100号 ', latitude: '31.234583', longitude: 121.507572 }),
+    { latitude: 31.234583, longitude: 121.507572, name: '星轨台球', address: '世纪大道100号' }
+  )
+  assert.equal(normalizePickedLocation(null), null)
+  assert.equal(normalizePickedLocation({ latitude: 0, longitude: 121.5 }), null)
+  assert.equal(normalizePickedLocation({ latitude: 31.2, longitude: 0 }), null)
+  assert.equal(normalizePickedLocation({ latitude: 'abc', longitude: 121.5 }), null)
+})
+
+test('stripRegionPrefix removes the leading region names once each', () => {
+  assert.equal(
+    stripRegionPrefix('上海市浦东新区世纪大道100号', ['上海市', '上海市', '浦东新区']),
+    '世纪大道100号'
+  )
+  assert.equal(
+    stripRegionPrefix('广东省深圳市南山区科苑路8号', ['广东省', '深圳市', '南山区']),
+    '科苑路8号'
+  )
+  assert.equal(stripRegionPrefix('科苑路8号', ['广东省', '深圳市', '南山区']), '科苑路8号')
+})
+
+test('stripRegionPrefix prefers longer region names for municipalities', () => {
+  const shanghai = ['上海', '上海市', '浦东新区']
+  const beijing = ['北京', '北京市', '朝阳区']
+
+  assert.equal(stripRegionPrefix('上海市浦东新区世纪大道100号', shanghai), '世纪大道100号')
+  assert.equal(stripRegionPrefix('北京市朝阳区建国路88号', beijing), '建国路88号')
+  assert.equal(stripRegionPrefix('浦东新区世纪大道100号', shanghai), '世纪大道100号')
+  assert.equal(stripRegionPrefix('上海市浦东新区世纪大道100号', []), '上海市浦东新区世纪大道100号')
 })
 
 test('resolveVenueSubmitCopy only promises VIP while the venue reward is claimable', () => {

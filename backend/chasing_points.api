@@ -3509,6 +3509,9 @@ type CreateVenueReq {
 	Address  string `json:"address"`
 	City     string `json:"city"`
 	District string `json:"district,optional"`
+	// 小程序地图选点，GCJ-02；不传或 0 表示未选点
+	Latitude  float64 `json:"latitude,optional"`
+	Longitude float64 `json:"longitude,optional"`
 }
 
 type CreateVenueResp {

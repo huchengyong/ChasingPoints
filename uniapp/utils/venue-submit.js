@@ -20,12 +20,54 @@ export const buildVenueRegionSelection = (areaPath = []) => {
   }
 }
 
-export const buildVenueSubmitPayload = (form = {}) => ({
-  name: trimValue(form.name),
-  city: trimValue(form.city),
-  district: trimValue(form.district),
-  address: trimValue(form.address)
-})
+export const normalizePickedLocation = (result = {}) => {
+  const latitude = Number(result?.latitude)
+  const longitude = Number(result?.longitude)
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude === 0 || longitude === 0) {
+    return null
+  }
+
+  return {
+    latitude,
+    longitude,
+    name: trimValue(result.name),
+    address: trimValue(result.address)
+  }
+}
+
+// 直辖市省级名称不带「市」（如「上海」「上海市」），按长度从长到短匹配才能先去掉完整名称。
+export const stripRegionPrefix = (address, regionNames = []) => {
+  let rest = trimValue(address)
+  if (!Array.isArray(regionNames)) return rest
+
+  const candidates = [...new Set(regionNames.map(trimValue))]
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length)
+
+  while (candidates.length) {
+    const prefix = candidates.find(name => rest.startsWith(name))
+    if (!prefix) break
+    rest = rest.slice(prefix.length)
+    candidates.splice(candidates.indexOf(prefix), 1)
+  }
+
+  return rest.trim()
+}
+
+export const buildVenueSubmitPayload = (form = {}) => {
+  const payload = {
+    name: trimValue(form.name),
+    city: trimValue(form.city),
+    district: trimValue(form.district),
+    address: trimValue(form.address)
+  }
+  const location = normalizePickedLocation(form.location)
+  if (location) {
+    payload.latitude = location.latitude
+    payload.longitude = location.longitude
+  }
+  return payload
+}
 
 // 球馆页只有在常玩球馆奖励可领取时才提VIP，否则只说明普通审核流程。
 export const resolveVenueSubmitIntro = (rewardStatus = {}) => {

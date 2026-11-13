@@ -988,10 +988,12 @@ type CreateTournamentResp struct {
 }
 
 type CreateVenueReq struct {
-	Name     string `json:"name"`
-	Address  string `json:"address"`
-	City     string `json:"city"`
-	District string `json:"district,optional"`
+	Name      string  `json:"name"`
+	Address   string  `json:"address"`
+	City      string  `json:"city"`
+	District  string  `json:"district,optional"`
+	Latitude  float64 `json:"latitude,optional"`
+	Longitude float64 `json:"longitude,optional"`
 }
 
 type CreateVenueResp struct {

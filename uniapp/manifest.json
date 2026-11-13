@@ -131,7 +131,7 @@
         "setting" : {
             "urlCheck" : false
         },
-        "requiredPrivateInfos" : [ "getLocation" ],
+        "requiredPrivateInfos" : [ "getLocation", "chooseLocation" ],
         "permission" : {
             "scope.userLocation" : {
                 "desc" : "用于获取当前位置并展示附近球房"

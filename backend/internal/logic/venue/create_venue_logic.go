@@ -3,7 +3,9 @@ package venue
 import (
 	"context"
 	"errors"
+	"math"
 	"strings"
+	"time"
 
 	"chasing_points/internal/model"
 	"chasing_points/internal/svc"
@@ -41,7 +43,7 @@ func (l *CreateVenueLogic) CreateVenue(req *types.CreateVenueReq) (resp *types.C
 	}
 
 	maxAttempts := l.svcCtx.Config.Geocode.MaxAttempts
-	venue, task, err := buildVenueAndTaskFromReq(userIdInt, req, maxAttempts)
+	venue, task, err := buildVenueAndTaskFromReq(userIdInt, req, maxAttempts, l.svcCtx.Config.Geocode.AutoPublish, time.Now())
 	if err != nil {
 		return &types.CreateVenueResp{Success: false, Message: err.Error()}, nil
 	}
@@ -58,6 +60,9 @@ func (l *CreateVenueLogic) CreateVenue(req *types.CreateVenueReq) (resp *types.C
 	if err = l.svcCtx.DB.Transaction(func(tx *gorm.DB) error {
 		if err := l.svcCtx.VenueModel.CreateWithTx(tx, venue); err != nil {
 			return err
+		}
+		if task == nil {
+			return nil
 		}
 		task.VenueId = venue.Id
 		if err := l.svcCtx.VenueGeocodeTaskModel.CreateWithTx(tx, task); err != nil {
@@ -91,10 +96,28 @@ func validateCreateVenueReq(req *types.CreateVenueReq) error {
 	if strings.TrimSpace(req.Address) == "" {
 		return errors.New("请输入详细地址")
 	}
+	if _, err := validateCreateVenueLocation(req.Latitude, req.Longitude); err != nil {
+		return err
+	}
 	return nil
 }
 
-func buildVenueAndTaskFromReq(userId int64, req *types.CreateVenueReq, maxAttempts int) (*model.Venue, *model.VenueGeocodeTask, error) {
+// validateCreateVenueLocation 判断小程序是否地图选点以及坐标是否可用。
+func validateCreateVenueLocation(latitude, longitude float64) (bool, error) {
+	if latitude == 0 && longitude == 0 {
+		return false, nil
+	}
+	if latitude == 0 || longitude == 0 {
+		return false, errors.New("位置信息不完整，请重新选点")
+	}
+	if math.IsNaN(latitude) || math.IsNaN(longitude) || math.IsInf(latitude, 0) || math.IsInf(longitude, 0) ||
+		latitude < 3.8 || latitude > 53.6 || longitude < 73.4 || longitude > 135.1 {
+		return false, errors.New("选点不在服务范围内，请重新选点")
+	}
+	return true, nil
+}
+
+func buildVenueAndTaskFromReq(userId int64, req *types.CreateVenueReq, maxAttempts int, autoPublish bool, now time.Time) (*model.Venue, *model.VenueGeocodeTask, error) {
 	if err := validateCreateVenueReq(req); err != nil {
 		return nil, nil, err
 	}
@@ -120,6 +143,24 @@ func buildVenueAndTaskFromReq(userId int64, req *types.CreateVenueReq, maxAttemp
 		OwnerUserId:   userId,
 		Status:        model.VenueStatusPending, // 用户提交的球馆默认为待审核状态
 		GeoStatus:     model.VenueGeoStatusPending,
+	}
+
+	hasLocation, err := validateCreateVenueLocation(req.Latitude, req.Longitude)
+	if err != nil {
+		return nil, nil, err
+	}
+	if hasLocation {
+		// 用户在地图上亲手选的点按最高精度处理，不再走后台地址解析。
+		venue.Latitude = req.Latitude
+		venue.Longitude = req.Longitude
+		venue.GeoStatus = model.VenueGeoStatusSuccess
+		venue.GeoSource = "user_pick"
+		venue.GeoLevel = "用户选点"
+		venue.GeoUpdatedAt = &now
+		if autoPublish {
+			venue.Status = model.VenueStatusPublished
+		}
+		return venue, nil, nil
 	}
 
 	task := &model.VenueGeocodeTask{
