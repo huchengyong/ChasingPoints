@@ -10,9 +10,10 @@
 
 - [x] 2.1 「我的」主页：资料头部、段位卡、生涯数据、快捷入口、服务列表、我的匹配二维码（`pages/user/index`）
 - [x] 2.2 编辑资料（头像上传、昵称等）与设置（通知管理、隐私、黑名单入口、账号注销、数据导出）（`subPages/user/editProfile`、`settings`、`notification`）
-- [ ] 2.3 段位说明、信誉明细（`rankExplain`、`reputation`）
-- [ ] 2.4 竞技分析、表现分析（`statsDetail`、`performance`）
+- [x] 2.3 段位说明、信誉明细（`rankExplain`、`reputation`）
+- [x] 2.4 竞技分析、表现分析（`statsDetail`、`performance`）
 - [ ] 2.5 对局记录对齐小程序（筛选等差异）、过往对手、交锋记录（`matchHistory`、`opponentRecord`、`h2hRecord`）
+  - 过往对手、交锋记录已完成；对局记录对齐并入 2.9 那一轮。「查看对方战绩」（带目标用户的过往对手）还没有入口，随好友主页一起做。
 - [ ] 2.6 荣誉墙与成就详情（`subPages/achievement/*`）
 - [ ] 2.7 赛季、赛季报告、历届赛季（`subPages/season/*`）
 - [ ] 2.8 装备：我的装备、添加、详情、TA 的装备（`subPages/gear/*`）
@@ -21,8 +22,8 @@
 ## 3. 首页及其入口
 
 - [ ] 3.1 首页：开局卡、约球卡、正在进行、赛事、排行榜、附近球房（`pages/index/index`）
-- [ ] 3.2 排行榜（`pages/ranking/index`）
-- [ ] 3.3 观赛大厅（`pages/match/index`）
+- [x] 3.2 排行榜（`pages/ranking/index`）
+- [x] 3.3 观赛大厅（`pages/match/index`）
 - [x] 3.4 球馆：列表、详情、上传（定位、地图选点）（`subPages/venue/*`）
 - [x] 3.5 规则百科、规则详情、术语词典（`subPages/rules/*`）
 
@@ -41,8 +42,9 @@
 
 ## 6. 对局核心
 
-- [ ] 6.1 实时通道：WebSocket 客户端、票据、重连、会话失效处理（`utils/websocket*.js`）
-- [ ] 6.2 计分规则与视图模型迁移（中八、九球、斯诺克、赛制、结束倒计时）及对应测试（`utils/match-*.js`、`snooker-*.js`、`pool-match-format.js`、`finish-countdown.js`）
+- [x] 6.1 实时通道：WebSocket 客户端、票据、重连、会话失效处理（`utils/websocket*.js`）
+  - 客户端已迁移并有测试；接入应用生命周期与页面放在 5.1（用户通道）和 6.4（对局通道）。
+- [x] 6.2 计分规则与视图模型迁移（中八、九球、斯诺克、赛制、结束倒计时）及对应测试（`utils/match-*.js`、`snooker-*.js`、`pool-match-format.js`、`finish-countdown.js`）
 - [ ] 6.3 扫码、选择球友、确认对局（相机权限、匹配码与裁判码）（`quick-scan`、`opponentSelector`、`scanConfirm`）
 - [ ] 6.4 实时计分页：选手视角（`subPages/match/playing`）
 - [ ] 6.5 实时计分页：裁判视角与观赛视角

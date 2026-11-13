@@ -248,9 +248,15 @@ private struct OpponentCardRow: View {
                     .font(.system(size: 13))
                     .foregroundStyle(palette.textSecondary)
 
-                HStack(spacing: 6) {
-                    chip(card.recordText)
-                    chip(card.lastMatchText)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 6) {
+                        chip(card.recordText)
+                        chip(card.lastMatchText)
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        chip(card.recordText)
+                        chip(card.lastMatchText)
+                    }
                 }
             }
 
@@ -281,6 +287,9 @@ private struct OpponentCardRow: View {
         Text(text)
             .font(.system(size: 11))
             .foregroundStyle(palette.textSecondary)
+            // 胶囊内文字必须单行；放不下时由外层整体换行。
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(palette.subtle, in: RoundedRectangle(cornerRadius: 6))

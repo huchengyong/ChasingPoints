@@ -25,7 +25,7 @@ enum AppRoute: Hashable {
     case memberCenter
     case reputation
     case statsDetail(gameType: Int)
-    case performance
+    case performance(gameType: Int)
     case matchReplay(matchId: Int64)
     case challengeCompose
     case challenges(showHistory: Bool)
@@ -116,6 +116,10 @@ struct AppRouteDestination: View {
             ReputationView(session: session)
         case .opponentRecord:
             OpponentRecordView(session: session)
+        case .statsDetail(let gameType):
+            StatsDetailView(session: session, gameType: gameType)
+        case .performance(let gameType):
+            PerformanceView(session: session, gameType: gameType)
         case .h2hRecord(let opponentId, let targetUserId, let targetName, let targetAvatar, let opponentName):
             H2HRecordView(
                 session: session,

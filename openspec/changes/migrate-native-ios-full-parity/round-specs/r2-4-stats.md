@@ -2,6 +2,11 @@
 
 本轮迁移两个页面。
 
+## 先修正上一轮的两处遗留（改完再做本轮任务）
+
+1. `iOS/iOS/Features/Opponents/` 的对手卡：统计胶囊「总交锋 7 胜 5 负」被折成两行。胶囊里的文字必须单行显示（`lineLimit(1)` + `fixedSize(horizontal: true, vertical: false)`，两个胶囊放不下时整体换到下一行，而不是在胶囊内部折行）。
+2. 上一轮要求的空态 / 失败态快照没有做。在 `SubPageSnapshotTests.swift` 里补齐：`reputation-empty`（没有流水）、`opponent-record-empty`、`h2h-record-error`（概览接口 503）。
+
 ## 本轮要读的小程序源码
 
 - `uniapp/subPages/user/statsDetail.vue`（1150 行，+ 同目录 scss）、`uniapp/utils/stats-detail.js`、`uniapp/tests/stats-detail.test.mjs`、`uniapp/api/stats.js`：竞技分析。主接口 `GET /api/stats/overview`（`GetStatsOverviewReq/Resp` 及其嵌套类型）。
