@@ -214,8 +214,71 @@ final class ResourceLoaderTests: XCTestCase {
         XCTAssertEqual(loader.phase, .loaded(2), "先发的请求后返回时不得覆盖较新的结果")
     }
 
-    private func makeLoader(_ session: SessionStore) -> ResourceLoader<Int> {
-        ResourceLoader(session: session) {
+    func testLoadIfNeededSkipsRefreshWithinMaxAge() async throws {
+        let server = MockHTTPServer()
+        let session = await makeLoaderSession(server)
+        server.stub("GET", "/api/resource", resourceStub(1))
+        var now = Date(timeIntervalSince1970: 1_700_000_000)
+        let loader = makeLoader(session, now: { now })
+
+        await loader.loadIfNeeded(maxAge: 60)
+        now = now.addingTimeInterval(59)
+        await loader.loadIfNeeded(maxAge: 60)
+
+        XCTAssertEqual(server.requestCount("/api/resource"), 1, "未超过 maxAge 时不得重读")
+        XCTAssertEqual(loader.phase, .loaded(1))
+    }
+
+    func testLoadIfNeededRefreshesAfterMaxAgeKeepingOldValueVisible() async throws {
+        let server = MockHTTPServer()
+        let session = await makeLoaderSession(server)
+        server.stub("GET", "/api/resource", resourceStub(1))
+        var now = Date(timeIntervalSince1970: 1_700_000_000)
+        let loader = makeLoader(session, now: { now })
+        await loader.loadIfNeeded(maxAge: 60)
+
+        let gate = DispatchSemaphore(value: 0)
+        server.stub("GET", "/api/resource") { _ in
+            _ = gate.wait(timeout: .now() + 5)
+            return resourceStub(2)
+        }
+        now = now.addingTimeInterval(61)
+        let reload = Task { await loader.loadIfNeeded(maxAge: 60) }
+        await waitUntil { server.requestCount("/api/resource") == 2 }
+
+        XCTAssertEqual(loader.phase, .loaded(1), "刷新期间旧数据仍可见")
+        XCTAssertTrue(loader.isRefreshing)
+
+        gate.signal()
+        await reload.value
+        XCTAssertEqual(loader.phase, .loaded(2))
+
+        now = now.addingTimeInterval(30)
+        await loader.loadIfNeeded(maxAge: 60)
+        XCTAssertEqual(server.requestCount("/api/resource"), 2, "刷新成功后重新计算新鲜度")
+    }
+
+    func testLoadIfNeededWithoutMaxAgeNeverReloadsByTime() async throws {
+        let server = MockHTTPServer()
+        let session = await makeLoaderSession(server)
+        server.stub("GET", "/api/resource", resourceStub(1))
+        var now = Date(timeIntervalSince1970: 1_700_000_000)
+        let loader = makeLoader(session, now: { now })
+        await loader.loadIfNeeded()
+
+        now = now.addingTimeInterval(10 * 24 * 60 * 60)
+        await loader.loadIfNeeded()
+        await loader.loadIfNeeded(maxAge: nil)
+
+        XCTAssertEqual(server.requestCount("/api/resource"), 1, "不传 maxAge 时行为与按需加载一致")
+        XCTAssertEqual(loader.phase, .loaded(1))
+    }
+
+    private func makeLoader(
+        _ session: SessionStore,
+        now: @escaping () -> Date = Date.init
+    ) -> ResourceLoader<Int> {
+        ResourceLoader(session: session, now: now) {
             let response: ResourceValue = try await session.authorizedRequest("/api/resource")
             return response.value
         }

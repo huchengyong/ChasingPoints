@@ -28,15 +28,24 @@ final class ResourceLoader<Value>: ObservableObject {
 
     private let session: SessionStore
     private let access: Access
+    private let now: () -> Date
     private let load: () async throws -> Value
     private var owner: SessionIdentity?
     private var requestToken = 0
     /// 写操作成功后置位，下次出现时以刷新方式重读。
     private var isStale = false
+    /// 最近一次成功采纳结果的时刻，供按时间判断新鲜度使用。
+    private var lastLoadedAt: Date?
 
-    init(session: SessionStore, access: Access = .signedIn, load: @escaping () async throws -> Value) {
+    init(
+        session: SessionStore,
+        access: Access = .signedIn,
+        now: @escaping () -> Date = Date.init,
+        load: @escaping () async throws -> Value
+    ) {
         self.session = session
         self.access = access
+        self.now = now
         self.load = load
     }
 
@@ -65,15 +74,18 @@ final class ResourceLoader<Value>: ObservableObject {
         isRefreshing = false
         refreshError = nil
         isStale = false
+        lastLoadedAt = nil
     }
 
-    func loadIfNeeded() async {
+    /// 传 `maxAge` 时，已加载的数据超过该时长也会以刷新方式重读（旧数据保留到新结果返回）。
+    func loadIfNeeded(maxAge: TimeInterval? = nil) async {
         syncIdentity()
         guard canRequest else { return }
         switch phase {
         case .idle:
             await fetch(isFirstLoad: true)
-        case .loaded where isStale:
+        case .loaded:
+            guard isStale || isExpired(maxAge: maxAge) else { return }
             await fetch(isFirstLoad: false)
         default:
             return
@@ -109,6 +121,12 @@ final class ResourceLoader<Value>: ObservableObject {
         access == .anyone || owner != nil
     }
 
+    /// 未传 `maxAge` 或还没有成功记录时都不算过期。
+    private func isExpired(maxAge: TimeInterval?) -> Bool {
+        guard let maxAge, let lastLoadedAt else { return false }
+        return now().timeIntervalSince(lastLoadedAt) > maxAge
+    }
+
     private func fetch(isFirstLoad: Bool) async {
         requestToken += 1
         let token = requestToken
@@ -126,6 +144,7 @@ final class ResourceLoader<Value>: ObservableObject {
             phase = .loaded(value)
             isRefreshing = false
             refreshError = nil
+            lastLoadedAt = now()
             // 只有刷新成功才算补上过期数据；失败或取消时保留标记，下次出现继续重读。
             isStale = false
         } catch {
