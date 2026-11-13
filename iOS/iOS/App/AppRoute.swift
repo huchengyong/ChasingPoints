@@ -13,7 +13,13 @@ enum AppRoute: Hashable {
     case rankExplain(gameType: Int)
     case notificationSettings
     case opponentRecord
-    case h2hRecord(opponentId: Int64)
+    case h2hRecord(
+        opponentId: Int64,
+        targetUserId: Int64,
+        targetName: String,
+        targetAvatar: String,
+        opponentName: String
+    )
     case memberCenter
     case reputation
     case statsDetail(gameType: Int)
@@ -102,6 +108,19 @@ struct AppRouteDestination: View {
             NicknameEditView()
         case .notificationSettings:
             NotificationSettingsView(session: session)
+        case .reputation:
+            ReputationView(session: session)
+        case .opponentRecord:
+            OpponentRecordView(session: session)
+        case .h2hRecord(let opponentId, let targetUserId, let targetName, let targetAvatar, let opponentName):
+            H2HRecordView(
+                session: session,
+                targetUserId: targetUserId,
+                targetName: targetName,
+                targetAvatar: targetAvatar,
+                opponentId: opponentId,
+                opponentName: opponentName
+            )
         case .matchHistory:
             MatchHistoryView(session: session)
         case .matchReport(let matchId):
