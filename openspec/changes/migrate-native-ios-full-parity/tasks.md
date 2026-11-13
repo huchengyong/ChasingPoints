@@ -9,7 +9,7 @@
 ## 2. 「我的」及其子页面
 
 - [x] 2.1 「我的」主页：资料头部、段位卡、生涯数据、快捷入口、服务列表、我的匹配二维码（`pages/user/index`）
-- [ ] 2.2 编辑资料（头像上传、昵称等）与设置（通知管理、隐私、黑名单入口、账号注销、数据导出）（`subPages/user/editProfile`、`settings`、`notification`）
+- [x] 2.2 编辑资料（头像上传、昵称等）与设置（通知管理、隐私、黑名单入口、账号注销、数据导出）（`subPages/user/editProfile`、`settings`、`notification`）
 - [ ] 2.3 段位说明、信誉明细（`rankExplain`、`reputation`）
 - [ ] 2.4 竞技分析、表现分析（`statsDetail`、`performance`）
 - [ ] 2.5 对局记录对齐小程序（筛选等差异）、过往对手、交锋记录（`matchHistory`、`opponentRecord`、`h2hRecord`）

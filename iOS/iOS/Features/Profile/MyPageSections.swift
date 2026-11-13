@@ -21,7 +21,7 @@ struct MyProfileHeaderSection: View {
         HStack(spacing: 10) {
             HStack(spacing: 10) {
                 Button {
-                    navigator.open(.editNickname)
+                    navigator.open(.editProfile)
                 } label: {
                     MemberAvatarView(
                         avatar: user?.avatar ?? "",
@@ -38,7 +38,7 @@ struct MyProfileHeaderSection: View {
 
                 VStack(alignment: .leading, spacing: 6) {
                     Button {
-                        navigator.open(.editNickname)
+                        navigator.open(.editProfile)
                     } label: {
                         Text(nickname.isEmpty ? "用户" : nickname)
                             .font(.system(size: 19, weight: .heavy))
@@ -216,7 +216,7 @@ struct MyRankCardSection: View {
                             .lineLimit(1)
                             .foregroundStyle(Color.white)
                         if card.ranked {
-                            Text("排位分 \(card.score)")
+                            Text("排位分 \(String(card.score))")
                                 .font(.system(size: 12))
                                 .foregroundStyle(Color.white.opacity(0.8))
                         }

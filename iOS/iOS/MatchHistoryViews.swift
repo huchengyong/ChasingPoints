@@ -206,7 +206,7 @@ private struct ParticipantHistoryRow: View {
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 6) {
                 OutcomeBadge(outcome: outcome)
-                Text("\(item.myScore) - \(item.opponentScore)")
+                Text("\(String(item.myScore)) - \(String(item.opponentScore))")
                     .font(.system(size: 15, weight: .semibold).monospacedDigit())
                     .foregroundStyle(palette.textPrimary)
             }
@@ -253,7 +253,7 @@ private struct RefereeHistoryRow: View {
                 Text(statusText)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(palette.textSecondary)
-                Text("\(item.player1Score) - \(item.player2Score)")
+                Text("\(String(item.player1Score)) - \(String(item.player2Score))")
                     .font(.system(size: 15, weight: .semibold).monospacedDigit())
                     .foregroundStyle(palette.textPrimary)
             }

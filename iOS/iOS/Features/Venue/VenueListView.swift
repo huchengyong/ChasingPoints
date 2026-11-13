@@ -200,7 +200,7 @@ struct VenueListView: View {
                             .foregroundStyle(palette.brandStrong)
                     }
                     if item.checkinCount > 0 {
-                        Text("\(item.checkinCount)人签到")
+                        Text("\(String(item.checkinCount))人签到")
                             .font(.system(size: 12))
                             .foregroundStyle(palette.textMuted)
                     }

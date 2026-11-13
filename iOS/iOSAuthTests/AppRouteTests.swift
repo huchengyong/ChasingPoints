@@ -7,7 +7,8 @@ final class AppRouteTests: XCTestCase {
         let expected: [(AppRoute, String)] = [
             (.login, "登录"),
             (.settings, "设置"),
-            (.editNickname, "编辑资料"),
+            (.editProfile, "编辑资料"),
+            (.editNickname, "编辑昵称"),
             (.matchHistory, "对局记录"),
             (.matchReport(matchId: 1), "对局详情"),
             (.ranking, "排行榜"),
@@ -29,7 +30,14 @@ final class AppRouteTests: XCTestCase {
 
     func testParameterizedRoutesCompareByIdentifier() {
         XCTAssertNotEqual(AppRoute.matchReport(matchId: 1), AppRoute.matchReport(matchId: 2))
-        XCTAssertNotEqual(AppRoute.h2hRecord(opponentId: 1), AppRoute.h2hRecord(opponentId: 2))
+        XCTAssertNotEqual(
+            AppRoute.h2hRecord(opponentId: 1, targetUserId: 0, targetName: "", targetAvatar: "", opponentName: "甲"),
+            AppRoute.h2hRecord(opponentId: 2, targetUserId: 0, targetName: "", targetAvatar: "", opponentName: "甲")
+        )
+        XCTAssertNotEqual(
+            AppRoute.h2hRecord(opponentId: 1, targetUserId: 0, targetName: "", targetAvatar: "", opponentName: "甲"),
+            AppRoute.h2hRecord(opponentId: 1, targetUserId: 52, targetName: "球友 B", targetAvatar: "", opponentName: "甲")
+        )
         XCTAssertNotEqual(AppRoute.achievementDetail(achievementId: 1), AppRoute.achievementDetail(achievementId: 2))
         XCTAssertNotEqual(AppRoute.friendHomepage(userId: 1), AppRoute.friendHomepage(userId: 2))
         XCTAssertNotEqual(AppRoute.tournamentDetail(id: 1), AppRoute.tournamentDetail(id: 2))

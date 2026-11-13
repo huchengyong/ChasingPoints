@@ -4,6 +4,7 @@ import SwiftUI
 enum AppRoute: Hashable {
     case login
     case settings
+    case editProfile
     case editNickname
     case matchHistory
     case matchReport(matchId: Int64)
@@ -14,7 +15,13 @@ enum AppRoute: Hashable {
     case rankExplain(gameType: Int)
     case notificationSettings
     case opponentRecord
-    case h2hRecord(opponentId: Int64)
+    case h2hRecord(
+        opponentId: Int64,
+        targetUserId: Int64,
+        targetName: String,
+        targetAvatar: String,
+        opponentName: String
+    )
     case memberCenter
     case reputation
     case statsDetail(gameType: Int)
@@ -46,7 +53,8 @@ enum AppRoute: Hashable {
         switch self {
         case .login: "登录"
         case .settings: "设置"
-        case .editNickname: "编辑资料"
+        case .editProfile: "编辑资料"
+        case .editNickname: "编辑昵称"
         case .matchHistory: "对局记录"
         case .matchReport: "对局详情"
         case .ranking: "排行榜"
@@ -97,9 +105,26 @@ struct AppRouteDestination: View {
         case .login:
             LoginView()
         case .settings:
-            SettingsView()
+            SettingsView(session: session)
+        case .editProfile:
+            ProfileEditView(session: session)
         case .editNickname:
             NicknameEditView()
+        case .notificationSettings:
+            NotificationSettingsView(session: session)
+        case .reputation:
+            ReputationView(session: session)
+        case .opponentRecord:
+            OpponentRecordView(session: session)
+        case .h2hRecord(let opponentId, let targetUserId, let targetName, let targetAvatar, let opponentName):
+            H2HRecordView(
+                session: session,
+                targetUserId: targetUserId,
+                targetName: targetName,
+                targetAvatar: targetAvatar,
+                opponentId: opponentId,
+                opponentName: opponentName
+            )
         case .matchHistory:
             MatchHistoryView(session: session)
         case .matchReport(let matchId):
