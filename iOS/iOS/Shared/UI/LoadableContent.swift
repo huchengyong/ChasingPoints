@@ -5,21 +5,25 @@ struct LoadableContent<Value, Content: View>: View {
     @EnvironmentObject private var session: SessionStore
     @EnvironmentObject private var navigator: AppNavigator
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dismiss) private var dismiss
     @ObservedObject private var loader: ResourceLoader<Value>
 
     private let requiresLogin: Bool
     private let loginPrompt: String
+    private let resource: String
     private let content: (Value) -> Content
 
     init(
         loader: ResourceLoader<Value>,
         requiresLogin: Bool = true,
         loginPrompt: String = "登录后查看",
+        resource: String = "内容",
         @ViewBuilder content: @escaping (Value) -> Content
     ) {
         _loader = ObservedObject(wrappedValue: loader)
         self.requiresLogin = requiresLogin
         self.loginPrompt = loginPrompt
+        self.resource = resource
         self.content = content
     }
 
@@ -35,13 +39,18 @@ struct LoadableContent<Value, Content: View>: View {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 case .failed(let message):
+                    let feedback = loader.failure?.feedback(resource: resource)
                     StateMessageView(
                         icon: "exclamationmark.triangle",
-                        title: "加载失败",
-                        detail: message,
-                        actionTitle: "重试"
+                        title: feedback?.title ?? "加载失败",
+                        detail: feedback?.description ?? message,
+                        actionTitle: feedback?.actionText ?? "重试"
                     ) {
-                        Task { await loader.retry() }
+                        if let feedback, !feedback.retryable {
+                            dismiss()
+                        } else {
+                            Task { await loader.retry() }
+                        }
                     }
                 case .loaded(let value):
                     VStack(spacing: 0) {

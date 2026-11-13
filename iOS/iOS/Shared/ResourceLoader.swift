@@ -25,6 +25,8 @@ final class ResourceLoader<Value>: ObservableObject {
     @Published private(set) var isRefreshing = false
     /// 已有数据时刷新失败的提示；数据保持不变。
     @Published private(set) var refreshError: String?
+    /// 首次加载失败的分类提示；开始新读取、读取成功或身份变化时清空。
+    @Published private(set) var failure: LoadFailure?
 
     private let session: SessionStore
     private let access: Access
@@ -73,6 +75,7 @@ final class ResourceLoader<Value>: ObservableObject {
         phase = .idle
         isRefreshing = false
         refreshError = nil
+        failure = nil
         isStale = false
         lastLoadedAt = nil
     }
@@ -137,6 +140,7 @@ final class ResourceLoader<Value>: ObservableObject {
         } else {
             isRefreshing = true
         }
+        failure = nil
 
         do {
             let value = try await load()
@@ -144,6 +148,7 @@ final class ResourceLoader<Value>: ObservableObject {
             phase = .loaded(value)
             isRefreshing = false
             refreshError = nil
+            failure = nil
             lastLoadedAt = now()
             // 只有刷新成功才算补上过期数据；失败或取消时保留标记，下次出现继续重读。
             isStale = false
@@ -158,6 +163,7 @@ final class ResourceLoader<Value>: ObservableObject {
             let message = error.localizedDescription
             if isFirstLoad {
                 phase = .failed(message)
+                failure = LoadFailure(error)
             } else {
                 refreshError = message
             }
