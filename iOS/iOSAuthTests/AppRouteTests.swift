@@ -21,6 +21,9 @@ final class AppRouteTests: XCTestCase {
             (.venueDetail(id: 1), "球馆详情"),
             (.seasonHistory, "历届赛季"),
             (.gearIndex, "我的装备"),
+            (.scanConfirm, "确认对局"),
+            (.opponentSelector, "选择球友"),
+            (.liveMatch(matchId: 1), "对局"),
         ]
 
         for (route, title) in expected {
@@ -42,5 +45,7 @@ final class AppRouteTests: XCTestCase {
         XCTAssertNotEqual(AppRoute.challenges(showHistory: true), AppRoute.challenges(showHistory: false))
         XCTAssertEqual(AppRoute.challenges(showHistory: true), AppRoute.challenges(showHistory: true))
         XCTAssertEqual(AppRoute.matchReport(matchId: 3), AppRoute.matchReport(matchId: 3))
+        XCTAssertNotEqual(AppRoute.liveMatch(matchId: 1), AppRoute.liveMatch(matchId: 2))
+        XCTAssertEqual(AppRoute.liveMatch(matchId: 3), AppRoute.liveMatch(matchId: 3))
     }
 }

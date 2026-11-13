@@ -6,6 +6,7 @@ struct MainTabView: View {
     @EnvironmentObject private var navigator: AppNavigator
     @EnvironmentObject private var toast: ToastCenter
     @Environment(\.colorScheme) private var colorScheme
+    @State private var pendingScanOutcome: ScanOutcome?
 
     private var palette: AppPalette { AppTheme.palette(for: colorScheme) }
 
@@ -66,16 +67,18 @@ struct MainTabView: View {
         .tint(AppTheme.primary)
         .toolbarBackground(palette.card, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
-        .sheet(isPresented: $navigator.isScanPresented) {
-            NavigationStack {
-                MigrationPlaceholderView(title: "扫码")
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("关闭") { navigator.isScanPresented = false }
-                        }
-                    }
+        .fullScreenCover(isPresented: $navigator.isScanPresented) {
+            QRScannerView { outcome in
+                pendingScanOutcome = outcome
+                navigator.isScanPresented = false
             }
         }
+        .onChange(of: navigator.isScanPresented) { _, isPresented in
+            guard !isPresented, let outcome = pendingScanOutcome else { return }
+            pendingScanOutcome = nil
+            Task { await handleScan(outcome) }
+        }
+        .task { QuickScanFlow.shared.bind(session: session) }
         .alert("登录状态已失效", isPresented: sessionExpiredBinding) {
             Button("重新登录") {
                 session.acknowledgeSessionExpired()
@@ -95,6 +98,29 @@ struct MainTabView: View {
             }
         }
         .toastOverlay(toast)
+    }
+
+    /// 相机回调先落到状态再关页，避免 sheet 关闭与回调时序互相覆盖。
+    @MainActor
+    private func handleScan(_ outcome: ScanOutcome) async {
+        guard let result = try? await QuickScanFlow.shared.start(scan: { outcome }) else {
+            return
+        }
+        switch result {
+        case .login:
+            navigator.openLogin()
+        case .confirm:
+            navigator.open(.scanConfirm)
+        case .error(let message):
+            toast.show(message ?? "扫码失败")
+        case .mismatch:
+            toast.show("请扫描指定对手的匹配码")
+        case .spectate:
+            // 观赛详情尚未迁移：关闭扫码页即可。
+            break
+        case .busy, .cancelled, .stale:
+            break
+        }
     }
 
     private var selectedTabBinding: Binding<MainTab> {

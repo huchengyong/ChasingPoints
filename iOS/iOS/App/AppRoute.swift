@@ -39,6 +39,9 @@ enum AppRoute: Hashable {
     case seasonIndex
     case seasonHistory
     case gearIndex
+    case scanConfirm
+    case opponentSelector
+    case liveMatch(matchId: Int64)
 
     /// 导航栏标题，取自 pages.json 的 navigationBarTitleText。
     var title: String {
@@ -80,6 +83,9 @@ enum AppRoute: Hashable {
         case .seasonIndex: "赛季"
         case .seasonHistory: "历届赛季"
         case .gearIndex: "我的装备"
+        case .scanConfirm: "确认对局"
+        case .opponentSelector: "选择球友"
+        case .liveMatch: "对局"
         }
     }
 }
@@ -118,6 +124,10 @@ struct AppRouteDestination: View {
             RuleDetailView(session: session, category: category)
         case .glossary:
             GlossaryView(session: session)
+        case .scanConfirm:
+            ScanConfirmView(session: session)
+        case .opponentSelector:
+            OpponentSelectorView(session: session)
         default:
             MigrationPlaceholderView(title: route.title)
         }
