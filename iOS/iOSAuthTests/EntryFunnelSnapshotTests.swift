@@ -13,7 +13,10 @@ final class EntryFunnelSnapshotTests: XCTestCase {
 
         for scheme in [ColorScheme.light, .dark] {
             let image = try renderSnapshot("welcome", colorScheme: scheme, size: pageSize) {
-                WelcomeView(agreement: agreement)
+                NavigationStack {
+                    WelcomeView(agreement: agreement)
+                        .toolbar(.hidden, for: .navigationBar)
+                }
             }
             XCTAssertEqual(image.size, pageSize)
         }
@@ -27,7 +30,10 @@ final class EntryFunnelSnapshotTests: XCTestCase {
 
         for scheme in [ColorScheme.light, .dark] {
             let image = try renderSnapshot("welcome-agreement-sheet", colorScheme: scheme, size: pageSize) {
-                WelcomeView(agreement: agreement)
+                NavigationStack {
+                    WelcomeView(agreement: agreement)
+                        .toolbar(.hidden, for: .navigationBar)
+                }
             }
             XCTAssertEqual(image.size, pageSize)
         }
