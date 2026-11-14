@@ -34,7 +34,7 @@ enum AppRoute: Hashable {
     case statsDetail(gameType: Int)
     case performance(gameType: Int)
     case matchReplay(matchId: Int64)
-    case challengeCompose
+    case challengeCompose(target: ChallengeComposeTarget?)
     case challengeWaiting(challengeId: Int64)
     case challenges(tab: ChallengeTab)
     case feedback
@@ -200,6 +200,12 @@ struct AppRouteDestination: View {
             ScanConfirmView(session: session)
         case .opponentSelector:
             OpponentSelectorView(session: session)
+        case .challengeCompose(let target):
+            ChallengeComposeDestination(session: session, target: target)
+        case .challengeWaiting(let challengeId):
+            ChallengeWaitingDestination(session: session, challengeId: challengeId)
+        case .challenges(let tab):
+            ChallengesDestination(session: session, initialTab: tab)
         default:
             MigrationPlaceholderView(title: route.title)
         }
@@ -222,5 +228,35 @@ private struct FriendRequestsDestination: View {
 
     var body: some View {
         FriendRequestsView(session: session, activity: activity)
+    }
+}
+
+private struct ChallengeComposeDestination: View {
+    let session: SessionStore
+    let target: ChallengeComposeTarget?
+    @EnvironmentObject private var activity: ActivityStore
+
+    var body: some View {
+        ChallengeComposeView(session: session, activity: activity, target: target)
+    }
+}
+
+private struct ChallengeWaitingDestination: View {
+    let session: SessionStore
+    let challengeId: Int64
+    @EnvironmentObject private var activity: ActivityStore
+
+    var body: some View {
+        ChallengeWaitingView(session: session, activity: activity, challengeId: challengeId)
+    }
+}
+
+private struct ChallengesDestination: View {
+    let session: SessionStore
+    let initialTab: ChallengeTab
+    @EnvironmentObject private var activity: ActivityStore
+
+    var body: some View {
+        ChallengesView(session: session, activity: activity, initialTab: initialTab)
     }
 }
