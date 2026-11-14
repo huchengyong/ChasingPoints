@@ -96,7 +96,11 @@ struct OpponentSelectorView: View {
 
     private func opponentRow(_ opponent: OpponentCandidate) -> some View {
         Button {
-            navigator.open(.challengeCompose)
+            navigator.open(.challengeCompose(target: ChallengeComposeTarget(
+                userId: opponent.userId,
+                nickname: opponent.name,
+                avatar: opponent.avatar
+            )))
         } label: {
             HStack(spacing: 10) {
                 AvatarView(avatar: opponent.avatar, userId: opponent.userId, size: 46)

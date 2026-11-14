@@ -98,7 +98,10 @@ struct FriendListView: View {
                 emptyRow
             case .loaded:
                 ForEach(model.items) { friend in
-                    NavigationLink(value: FriendRules.homepageRoute(friend)) {
+                    // List 里的 NavigationLink 会自带系统箭头并收窄行宽，改用按钮保留卡片内自绘箭头。
+                    Button {
+                        navigator.open(FriendRules.homepageRoute(friend))
+                    } label: {
                         friendRow(friend)
                     }
                     .buttonStyle(.plain)
