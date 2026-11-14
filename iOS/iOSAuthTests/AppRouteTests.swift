@@ -11,6 +11,7 @@ final class AppRouteTests: XCTestCase {
             (.editNickname, "编辑昵称"),
             (.matchHistory, "对局记录"),
             (.matchReport(matchId: 1), "对局详情"),
+            (.matchDetail(matchId: 1, source: nil, perspectiveUserId: nil), "对局详情"),
             (.ranking, "排行榜"),
             (.spectatorLobby, "观赛大厅"),
             (.rankExplain(gameType: 3), "段位说明"),
@@ -66,6 +67,18 @@ final class AppRouteTests: XCTestCase {
         XCTAssertNotEqual(AppRoute.challenges(tab: .history), AppRoute.challenges(tab: .received))
         XCTAssertEqual(AppRoute.challenges(tab: .history), AppRoute.challenges(tab: .history))
         XCTAssertEqual(AppRoute.matchReport(matchId: 3), AppRoute.matchReport(matchId: 3))
+        XCTAssertNotEqual(
+            AppRoute.matchDetail(matchId: 1, source: nil, perspectiveUserId: nil),
+            AppRoute.matchDetail(matchId: 2, source: nil, perspectiveUserId: nil)
+        )
+        XCTAssertNotEqual(
+            AppRoute.matchDetail(matchId: 1, source: "history", perspectiveUserId: 12),
+            AppRoute.matchDetail(matchId: 1, source: nil, perspectiveUserId: 12)
+        )
+        XCTAssertEqual(
+            AppRoute.matchDetail(matchId: 1, source: "history", perspectiveUserId: 12),
+            AppRoute.matchDetail(matchId: 1, source: "history", perspectiveUserId: 12)
+        )
         XCTAssertNotEqual(AppRoute.liveMatch(matchId: 1), AppRoute.liveMatch(matchId: 2))
         XCTAssertEqual(AppRoute.liveMatch(matchId: 3), AppRoute.liveMatch(matchId: 3))
         XCTAssertNotEqual(AppRoute.shareResult(matchId: 1), AppRoute.shareResult(matchId: 2))

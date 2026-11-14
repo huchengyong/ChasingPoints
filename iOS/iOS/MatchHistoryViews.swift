@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MatchReportRoute: Hashable {
     let matchId: Int64
+    var fromHistory = false
 }
 
 enum HistorySection: Hashable {
@@ -64,7 +65,7 @@ struct MatchHistoryView: View {
                             emptyTitle: "暂无对局记录",
                             emptyHint: "快去发起一场PK吧！"
                         ) { item in
-                            NavigationLink(value: MatchReportRoute(matchId: item.id)) {
+                            NavigationLink(value: MatchReportRoute(matchId: item.id, fromHistory: true)) {
                                 ParticipantHistoryRow(item: item)
                             }
                         }
@@ -87,7 +88,7 @@ struct MatchHistoryView: View {
                             ) { item in
                                 // 已取消的执裁记录没有可读战报，只展示状态。
                                 if item.status == 2 {
-                                    NavigationLink(value: MatchReportRoute(matchId: item.id)) {
+                                    NavigationLink(value: MatchReportRoute(matchId: item.id, fromHistory: true)) {
                                         RefereeHistoryRow(item: item, isNavigable: true)
                                     }
                                 } else {
@@ -103,7 +104,7 @@ struct MatchHistoryView: View {
         .navigationTitle("对局记录")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: MatchReportRoute.self) { route in
-            MatchReportView(session: session, matchId: route.matchId)
+            MatchReportView(session: session, matchId: route.matchId, fromHistory: route.fromHistory)
         }
         .task { await loadOngoingMatch() }
         .onChange(of: session.identity) { _, _ in

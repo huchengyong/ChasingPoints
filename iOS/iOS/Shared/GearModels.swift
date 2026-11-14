@@ -83,6 +83,32 @@ struct GearUserResponse: Decodable, Equatable {
     let defaults: [GearDefaultInfo]
 }
 
+/// 一方选手的本场用杆。
+struct GearMatchSide: Decodable, Equatable {
+    let userId: Int64
+    let recorded: Bool
+    let source: String?
+    let cue: GearItemInfo?
+    let tipProduct: GearProductInfo?
+    let chalkProduct: GearProductInfo?
+    let breakCue: GearItemInfo?
+}
+
+/// `GetGearMatchResp`：本场用杆视图，`editable` 与 `editDeadline` 决定能否修改。
+struct GearMatchResponse: Decodable, Equatable {
+    let success: Bool
+    let message: String
+    let reason: String?
+    let matchId: Int64?
+    let gameType: Int?
+    let supportsBreak: Bool?
+    let me: GearMatchSide?
+    let hasOpponent: Bool?
+    let opponent: GearMatchSide?
+    let editable: Bool?
+    let editDeadline: String?
+}
+
 /// 登记、删除、设主力共用的成功响应。
 struct GearCommonResponse: Decodable, Equatable {
     let success: Bool

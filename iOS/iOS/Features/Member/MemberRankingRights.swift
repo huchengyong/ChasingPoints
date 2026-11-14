@@ -21,6 +21,14 @@ struct RankingRightsSummary: Equatable {
     let recordedAchievementsText: String
 }
 
+/// 排位权益说明需要读取的对局字段；战报与赛果页都从 `MatchReport` 取。
+struct MatchRankingRightsInput: Equatable {
+    var matchMode: String? = nil
+    var rankRulesVersion: Int? = nil
+    var achievements: [String: Int]? = nil
+    var myRankDetails: [MatchRankDetail]? = nil
+}
+
 enum MemberRankingRights {
     private static let definitions: [(key: String, label: String)] = [
         ("break_clear", "炸清"),
@@ -39,7 +47,16 @@ enum MemberRankingRights {
         }
     }
 
-    static func summary(match: MatchReport) -> RankingRightsSummary {
+    static func summary(match report: MatchReport) -> RankingRightsSummary {
+        summary(MatchRankingRightsInput(
+            matchMode: report.matchMode,
+            rankRulesVersion: report.rankRulesVersion,
+            achievements: report.achievements,
+            myRankDetails: report.myRankDetails
+        ))
+    }
+
+    static func summary(_ match: MatchRankingRightsInput) -> RankingRightsSummary {
         let records = achievementRecords(match.achievements)
         let recordText = formatRecords(records)
 

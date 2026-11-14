@@ -17,6 +17,7 @@ enum AppRoute: Hashable {
     case matchReport(matchId: Int64)
     case shareResult(matchId: Int64)
     case linkEntry(url: String)
+    case matchDetail(matchId: Int64, source: String?, perspectiveUserId: Int64?)
     case ranking
     case spectatorLobby
     case liveMatch(matchId: Int64)
@@ -79,6 +80,7 @@ enum AppRoute: Hashable {
         case .matchReport: "对局详情"
         case .shareResult: "战绩海报"
         case .linkEntry: "追分邀请"
+        case .matchDetail: "对局详情"
         case .ranking: "排行榜"
         case .spectatorLobby: "观赛大厅"
         case .liveMatch: "对局"
@@ -173,6 +175,17 @@ struct AppRouteDestination: View {
             ShareResultView(session: session, matchId: matchId)
         case .linkEntry(let url):
             LinkEntryDestination(session: session, url: url)
+        case .matchDetail(let matchId, let source, let perspectiveUserId):
+            MatchDetailView(
+                session: session,
+                matchId: matchId,
+                source: source,
+                perspectiveUserId: perspectiveUserId
+            )
+        case .publicMatchDetail(let matchId):
+            MatchDetailView(session: session, matchId: matchId, mode: "spectate")
+        case .matchReplay(let matchId):
+            MatchReplayView(session: session, matchId: matchId)
         case .ranking:
             RankingView(session: session)
         case .spectatorLobby:

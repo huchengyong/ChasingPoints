@@ -75,6 +75,7 @@ struct LiveMatchSnapshot: Decodable, Equatable {
     var refereeName: String?
     var refereeAvatar: String?
     var refereeJoinedAt: String?
+    var refereeDurationSeconds: Int64?
     var completedByUserId: Int64?
     var completionSource: String?
     var canScore: Bool?
@@ -109,6 +110,11 @@ struct LiveMatchSnapshot: Decodable, Equatable {
     var opponentVipLevel: Int?
     var myRankLevel: Int?
     var opponentRankLevel: Int?
+    // 公开详情没有 my_* 字段，左右两侧等级只可能来自固定选手字段。
+    var player1VipLevel: Int?
+    var player2VipLevel: Int?
+    var player1RankLevel: Int?
+    var player2RankLevel: Int?
     var myWinRate: Double?
     var opponentWinRate: Double?
     var myMaxScore: Int?
@@ -149,7 +155,11 @@ struct LiveMatchSnapshot: Decodable, Equatable {
     var snookerFrameEndReason: String?
     var durationSeconds: Int64?
     var matchTime: String?
+    var createdAt: String?
     var result: Int?
+    // 详情页的局记录与九球追分得分构成；公开详情与参与者详情都会返回。
+    var rounds: [MatchRoundRecord]?
+    var scoreBreakdown: ChasingScoreBreakdown?
     // 比分推送专用
     var roundNumber: Int?
     var actionType: String?

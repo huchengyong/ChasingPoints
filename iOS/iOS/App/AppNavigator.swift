@@ -20,6 +20,8 @@ enum MainTab: Int, CaseIterable, Hashable {
 final class AppNavigator: ObservableObject {
     @Published private(set) var selectedTab: MainTab = .home
     @Published var isScanPresented = false
+    /// 赛果页「再来一局」带入的上下文，扫码流程取走后立即清空。
+    @Published var pendingRematch: ScanRematch?
     @Published private var paths: [MainTab: NavigationPath] = [:]
 
     func path(for tab: MainTab) -> NavigationPath {
@@ -85,5 +87,6 @@ final class AppNavigator: ObservableObject {
     func reset() {
         paths = [:]
         isScanPresented = false
+        pendingRematch = nil
     }
 }

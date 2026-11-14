@@ -92,7 +92,12 @@ struct MainTabView: View {
             }
         }
         .onChange(of: navigator.isScanPresented) { _, isPresented in
-            guard !isPresented, let outcome = pendingScanOutcome else { return }
+            guard !isPresented else { return }
+            guard let outcome = pendingScanOutcome else {
+                // 取消扫码时丢弃「再来一局」上下文，下一次普通扫码不受影响。
+                navigator.pendingRematch = nil
+                return
+            }
             pendingScanOutcome = nil
             Task { await handleScan(outcome) }
         }
@@ -128,7 +133,10 @@ struct MainTabView: View {
     /// 相机回调先落到状态再关页，避免 sheet 关闭与回调时序互相覆盖。
     @MainActor
     private func handleScan(_ outcome: ScanOutcome) async {
-        guard let result = try? await quickScan.start(scan: { outcome }) else {
+        // 「再来一局」的上下文只对这一次扫码有效，取走后清空，避免影响下一次普通扫码。
+        let rematch = navigator.pendingRematch
+        navigator.pendingRematch = nil
+        guard let result = try? await quickScan.start(rematch: rematch, scan: { outcome }) else {
             return
         }
         switch result {

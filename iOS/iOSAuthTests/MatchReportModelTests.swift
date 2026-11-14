@@ -91,17 +91,19 @@ final class MatchReportModelTests: XCTestCase {
         XCTAssertEqual(model.reward, .hidden)
     }
 
-    func testPendingRewardIsReportedWithoutPolling() async throws {
+    func testPendingRewardRetriesThreeTimesThenStops() async throws {
         let server = MockHTTPServer()
         let session = await makeRestoredSession(server)
         server.stub("GET", "/api/match/detail", .json(MatchHistoryFixtures.playerDetail()))
         server.stub("GET", "/api/match/reward-summary", .json(MatchHistoryFixtures.rewardSummary(status: "pending")))
-        let model = MatchReportModel(session: session, matchId: 101)
+        let model = MatchReportModel(session: session, matchId: 101, retryDelay: {})
 
         await model.load()
 
         XCTAssertEqual(model.reward, .pending)
-        XCTAssertEqual(server.requestCount("/api/match/reward-summary"), 1, "历史战报只读取一次，不轮询")
+        XCTAssertEqual(model.rewardMessage, MatchResultPage.rewardMessageFallback)
+        XCTAssertEqual(server.requestCount("/api/match/reward-summary"), 3, "pending 最多读取三次数，不无限轮询")
+        XCTAssertFalse(model.rewardShouldRetry)
     }
 
     func testLateDetailAfterLogoutIsDiscarded() async throws {

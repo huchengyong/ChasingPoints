@@ -444,7 +444,11 @@ struct H2HRecordView: View {
     @ViewBuilder
     private func matchCard(_ card: H2HMatchCard) -> some View {
         if card.id != 0 {
-            NavigationLink(value: AppRoute.matchReport(matchId: card.id)) {
+            NavigationLink(value: AppRoute.matchDetail(
+                matchId: card.id,
+                source: "history",
+                perspectiveUserId: model.subjectUserId
+            )) {
                 H2HMatchCardRow(card: card)
             }
             .buttonStyle(.plain)
