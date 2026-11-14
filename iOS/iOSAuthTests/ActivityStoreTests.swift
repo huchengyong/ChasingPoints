@@ -172,9 +172,14 @@ final class ActivityStoreTests: XCTestCase {
     func testMarkDirtyDuringReadSurvivesResponseAndRefreshIfDirtyReloads() async {
         let server = MockHTTPServer()
         let gate = DispatchSemaphore(value: 0)
+        let calls = LockedCounter()
         server.stub("GET", "/api/user/bootstrap") { _ in
-            gate.wait()
-            return .json(self.bootstrap(unread: 2))
+            // 只有第一次请求卡在闸门；补读直接返回不同的未读数，验证第二次结果确实被采纳。
+            if calls.next() == 1 {
+                _ = gate.wait(timeout: .now() + 5)
+                return .json(self.bootstrap(unread: 2))
+            }
+            return .json(self.bootstrap(unread: 5))
         }
         let (activity, _) = await makeActivity(server)
 
@@ -191,13 +196,14 @@ final class ActivityStoreTests: XCTestCase {
 
         await activity.refreshIfDirty()
         XCTAssertEqual(server.requestCount("/api/user/bootstrap"), requestsAfterResponse + 1)
+        XCTAssertEqual(activity.unreadCount, 5)
     }
 
     func testIdentityChangeClearsStateAndDropsLateResponse() async {
         let server = MockHTTPServer()
         let gate = DispatchSemaphore(value: 0)
         server.stub("GET", "/api/user/bootstrap") { _ in
-            gate.wait()
+            _ = gate.wait(timeout: .now() + 5)
             return .json(self.bootstrap(
                 match: ActivityFixtures.currentMatch(),
                 unread: 8,

@@ -23,6 +23,23 @@ final class AchievementSnapshotTests: XCTestCase {
         }
     }
 
+    func testFriendHonorWallSnapshot() async throws {
+        let server = MockHTTPServer()
+        let session = await makeRestoredAccountSession(server)
+        stubNotifications(server)
+        server.stub("GET", "/api/achievement/honor-wall", .json(AchievementFixtures.friendHonorWall()))
+        let model = HonorWallModel(session: session, gameType: 3, userId: 2)
+        await model.loadIfNeeded()
+        XCTAssertFalse(model.isSelf)
+
+        for scheme in [ColorScheme.light, .dark] {
+            let image = try renderSnapshot("honor-wall-friend", colorScheme: scheme, size: pageSize) {
+                page(session) { HonorWallView(session: session, gameType: 3, userId: 2, model: model) }
+            }
+            XCTAssertEqual(image.size, pageSize)
+        }
+    }
+
     func testHonorWallEmptySnapshot() async throws {
         let server = MockHTTPServer()
         let session = await makeRestoredAccountSession(server)

@@ -181,7 +181,15 @@ final class MessageCenterTests: XCTestCase {
         XCTAssertEqual(route("/subPages/social/friendList"), .friendList)
         XCTAssertEqual(route("/subPages/social/challenges"), .challenges(tab: .received))
         XCTAssertEqual(route("/subPages/achievement/index?game_type=5"), .achievementWall(gameType: 5))
-        XCTAssertEqual(route("/subPages/season/report"), .seasonIndex)
+        XCTAssertEqual(route("/subPages/season/report?game_type=5"), .seasonIndex, "缺少赛季 ID 时退回赛季页")
+        XCTAssertEqual(
+            route("/subPages/season/report?id=12&game_type=5"),
+            .seasonReport(seasonId: 12, gameType: 5)
+        )
+        XCTAssertEqual(
+            route("/subPages/season/report?id=12"),
+            .seasonReport(seasonId: 12, gameType: 0)
+        )
         XCTAssertEqual(route("/subPages/match/matchResult?from=push", extra: ["match_id": 9]), .matchReport(matchId: 9))
     }
 

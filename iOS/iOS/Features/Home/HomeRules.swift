@@ -139,117 +139,27 @@ enum HomeRules {
         userId: Int64,
         serverTime: String
     ) -> HomeChallengeCard? {
-        guard let challenge else { return nil }
-        let status = challenge.status
-        let viewerId = max(userId, 0)
-        let waitingUserId = max(challenge.waitingUserId ?? 0, 0)
-        let isSender = challenge.fromUserId == viewerId
-
-        let title: String
-        var needsAction = false
-        switch status {
-        case 6:
-            title = "对局进行中"
-        case 1:
-            if waitingUserId == viewerId {
-                title = "你已进入，等待对方"
-            } else if waitingUserId > 0 {
-                title = "对方已进入，等你开始"
-                needsAction = true
-            } else {
-                title = "已约好，待进入"
-            }
-        case 0:
-            title = isSender ? "等待对方回应" : "收到约球邀请"
-            needsAction = !isSender
-        default:
+        guard let card = ChallengeRules.quickCard(challenge, userId: userId, serverTime: serverTime) else {
             return nil
         }
-
-        let matchId = status == 6 ? max(challenge.matchId ?? 0, 0) : 0
-        let opponentName = trimmed(isSender ? challenge.toNickname : challenge.fromNickname)
-        let gameTypeLabel = GameTypeCatalog.label(for: challenge.gameType)
-        let modeText = challenge.matchMode == "practice" ? "练习" : "排位"
-        let schedule = challengeSchedule(challenge, serverTime: serverTime)
-        let subText = [
-            opponentName.isEmpty ? "球友" : opponentName,
-            gameTypeLabel,
-            modeText,
-            schedule,
-        ]
-        .filter { !$0.isEmpty }
-        .joined(separator: " · ")
-
         return HomeChallengeCard(
-            challengeId: challenge.id,
-            matchId: matchId,
-            title: title,
-            needsAction: needsAction,
-            subText: subText,
-            actionLabel: matchId > 0 ? "继续比赛" : "进入"
+            challengeId: card.challengeId,
+            matchId: card.matchId,
+            title: card.title,
+            needsAction: card.needsAction,
+            subText: card.subText,
+            actionLabel: card.actionLabel
         )
     }
 
     /// `今天16点—17点`；日期按服务端时间换算。
     static func challengeSchedule(_ challenge: ChallengeInfo, serverTime: String) -> String {
-        guard let scheduledDate = challenge.scheduledDate, !scheduledDate.isEmpty else { return "" }
-        let day = challengeDayLabel(scheduledDate, serverTime: serverTime)
-        guard let startHour = challenge.startHour, let endHour = challenge.endHour else { return day }
-        return "\(day)\(startHour)点—\(endHour)点"
+        ChallengeRules.schedule(challenge, serverTime: serverTime)
     }
 
     /// 相对日期文案：今天 / 明天 / 昨天 / 月日（跨年带年份）。
     static func challengeDayLabel(_ scheduledDate: String, serverTime: String) -> String {
-        let target = dateParts(scheduledDate)
-        guard let target, let now = serverTimeParts(serverTime) else {
-            return String(scheduledDate.prefix(10))
-        }
-        let sameYear = target.year == now.year
-        let dayDiff = daysBetween(now, target)
-        if dayDiff == 0 { return "今天" }
-        if dayDiff == 1 { return "明天" }
-        if dayDiff == -1 { return "昨天" }
-        if sameYear { return "\(target.month)月\(target.day)日" }
-        return "\(target.year)年\(target.month)月\(target.day)日"
-    }
-
-    private struct DayParts: Equatable {
-        let year: Int
-        let month: Int
-        let day: Int
-        let hour: Int
-        let minute: Int
-    }
-
-    private static func dateParts(_ value: String) -> DayParts? {
-        let pieces = value.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: "-")
-        guard pieces.count == 3,
-              let year = Int(pieces[0]),
-              let month = Int(pieces[1]),
-              let day = Int(pieces[2]) else { return nil }
-        return DayParts(year: year, month: month, day: day, hour: 0, minute: 0)
-    }
-
-    private static func serverTimeParts(_ value: String) -> DayParts? {
-        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "T", with: " ")
-        let pieces = normalized.split(separator: " ")
-        guard pieces.count == 2, let date = dateParts(String(pieces[0])) else { return nil }
-        let timePieces = pieces[1].split(separator: ":")
-        guard timePieces.count >= 2, let hour = Int(timePieces[0]), let minute = Int(timePieces[1]) else {
-            return nil
-        }
-        return DayParts(year: date.year, month: date.month, day: date.day, hour: hour, minute: minute)
-    }
-
-    private static func daysBetween(_ start: DayParts, _ end: DayParts) -> Int {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .current
-        guard let startDate = calendar.date(from: DateComponents(year: start.year, month: start.month, day: start.day)),
-              let endDate = calendar.date(from: DateComponents(year: end.year, month: end.month, day: end.day)) else {
-            return 0
-        }
-        return calendar.dateComponents([.day], from: startDate, to: endDate).day ?? 0
+        ChallengeRules.dayLabel(scheduledDate, serverTime: serverTime)
     }
 
     // MARK: - 排行榜
@@ -293,8 +203,8 @@ enum HomeRules {
     }
 
     /// 附近球房空态；奖励活动是否可领取决定是否引导领取 VIP。
-    static func venueEmptyAction(rewardClaimable: Bool) -> HomeVenueEmptyAction {
-        rewardClaimable
+    static func venueEmptyAction(_ rewardStatus: FavoriteVenueRewardStatus?) -> HomeVenueEmptyAction {
+        FavoriteVenueReward.isClaimable(rewardStatus)
             ? HomeVenueEmptyAction(
                 text: "添加球馆领取VIP",
                 desc: "你可以提交常玩球馆，审核通过后VIP会自动到账。"

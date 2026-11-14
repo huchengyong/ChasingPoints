@@ -5,6 +5,7 @@ import Foundation
 
 struct MatchListItem: Decodable, Identifiable, Equatable {
     let id: Int64
+    let opponentId: Int64
     let gameType: Int
     let gameTypeName: String
     let opponentName: String
@@ -17,8 +18,10 @@ struct MatchListItem: Decodable, Identifiable, Equatable {
 
 struct RefereeHistoryItem: Decodable, Identifiable, Equatable {
     let id: Int64
+    let player1Id: Int64
     let player1Name: String
     let player1Avatar: String
+    let player2Id: Int64
     let player2Name: String
     let player2Avatar: String
     let player1Score: Int
@@ -26,7 +29,53 @@ struct RefereeHistoryItem: Decodable, Identifiable, Equatable {
     let gameType: Int
     let gameTypeName: String
     let status: Int
+    let statusText: String
     let endTime: String?
+    let refereeDurationSeconds: Int64
+}
+
+/// `GET /api/match/current` 的窄解码结果，只用于执裁记录页的继续执裁入口。
+struct RefereeOngoingMatch: Decodable, Equatable {
+    let id: Int64
+    let viewerRole: String?
+    let gameType: Int
+    let player1Id: Int64
+    let player1Name: String
+    let player1Avatar: String
+    let player2Id: Int64
+    let player2Name: String
+    let player2Avatar: String
+    let myScore: Int
+    let opponentScore: Int
+
+    var isRefereeView: Bool { viewerRole == "referee" }
+}
+
+/// 执裁记录页的「继续执裁」卡片数据；只采纳裁判视角。
+struct OngoingRefereeMatch: Equatable {
+    let matchId: Int64
+    let player1Id: Int64
+    let player1Name: String
+    let player1Avatar: String
+    let player2Id: Int64
+    let player2Name: String
+    let player2Avatar: String
+    let player1Score: Int
+    let player2Score: Int
+
+    init?(ref: RefereeOngoingMatch?) {
+        guard let ref, ref.isRefereeView else { return nil }
+        matchId = ref.id
+        player1Id = ref.player1Id
+        player1Name = ref.player1Name
+        player1Avatar = ref.player1Avatar
+        player2Id = ref.player2Id
+        player2Name = ref.player2Name
+        player2Avatar = ref.player2Avatar
+        // 裁判视角下服务端的 my_score / opponent_score 就是两名选手的比分。
+        player1Score = ref.myScore
+        player2Score = ref.opponentScore
+    }
 }
 
 struct MatchRankDetail: Decodable, Equatable {
@@ -47,7 +96,12 @@ struct MatchReport: Decodable, Equatable {
     let gameType: Int
     let status: Int
     let viewerRole: String?
+    /// `practice` / `ranked`；旧版服务端不返回。
     let matchMode: String?
+    /// 排位规则版本，2 表示高光不计分。
+    let rankRulesVersion: Int?
+    /// 本场记录的特殊战绩次数。
+    let achievements: [String: Int]?
     let visibility: String?
     let myName: String
     let myAvatar: String
@@ -89,8 +143,6 @@ struct MatchReport: Decodable, Equatable {
     let opponentRankLevel: Int?
     let myMaxScore: Int?
     let opponentMaxScore: Int?
-    let achievements: [String: Int]?
-    let rankRulesVersion: Int?
     let scoreBreakdown: ChasingScoreBreakdown?
 
     var isRefereeView: Bool { viewerRole == "referee" }

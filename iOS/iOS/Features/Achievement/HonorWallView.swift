@@ -12,8 +12,8 @@ struct HonorWallView: View {
     @StateObject private var rolloverPresenter: SeasonRolloverPresenter
     @State private var isTitleSelectorPresented = false
 
-    init(session: SessionStore, gameType: Int, model: HonorWallModel? = nil) {
-        _model = StateObject(wrappedValue: model ?? HonorWallModel(session: session, gameType: gameType))
+    init(session: SessionStore, gameType: Int, userId: Int64 = 0, model: HonorWallModel? = nil) {
+        _model = StateObject(wrappedValue: model ?? HonorWallModel(session: session, gameType: gameType, userId: userId))
         _rolloverPresenter = StateObject(wrappedValue: SeasonRolloverPresenter(session: session))
     }
 

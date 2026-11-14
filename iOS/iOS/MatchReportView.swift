@@ -193,12 +193,7 @@ private struct MatchResultContent: View {
         return ChasingScore.resolveView(report.scoreBreakdown, swap: report.isPlayer1 == false, neutral: isReferee)
     }
     private var rankingRights: RankingRightsSummary {
-        MemberRankingRights.summary(MatchRankingRightsInput(
-            matchMode: report.matchMode,
-            rankRulesVersion: report.rankRulesVersion,
-            achievements: report.achievements,
-            myRankDetails: report.myRankDetails
-        ))
+        MemberRankingRights.summary(match: report)
     }
 
     var body: some View {

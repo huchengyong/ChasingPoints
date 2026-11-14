@@ -34,6 +34,7 @@
 - **数字显示不要带千分位**：SwiftUI 的 `Text("排位分 \(score)")` 会按系统区域把整数格式化成 `1,320`，小程序显示的是 `1320`。凡是把数字拼进文案，一律先转成字符串（`String(score)`）再拼，或用 `Text(verbatim:)`；规则函数返回的也应是已经拼好的 `String`。为含数字的文案写断言时用四位数以上的值。
 - rpx 换算大致 `pt ≈ rpx / 2`，字号用 `.font(.system(size:weight:))`；布局以小程序的模板和 scss 为依据，控件用原生形态。
 - 测试里用 `DispatchSemaphore` 做闸门时一律带超时（`gate.wait(timeout: .now() + 5)`），并确认每个会被闸门挡住的请求都会被放行；不要让请求卡到 `APIClient` 的 30 秒超时。自检时看一眼新增测试类的耗时，单个用例超过 2 秒要查明原因。
+- 给页面模型注入的 `sleep` / 定时闭包，在**快照测试**里必须真的挂起（例如 `{ _ in try await Task.sleep(for: .seconds(3600)) }`）：空实现 `{ _ in }` 会让页面 `.task` 里的定时循环在主线程上空转，卡死后面所有测试。只有直接调用模型方法、自己控制循环次数的单元测试才可以用可控的假睡眠。
 - 每个页面都要有快照测试（`renderSnapshot`，亮暗各一张），至少覆盖：有数据、空、失败三种状态。**快照里不要指望页面内的 `.task` 把网络请求跑完**（渲染窗口很快就销毁，请求会被取消）。固定做法：页面的 `init` 接受一个可选的页面模型（`init(session:, model: XxxModel? = nil)`，内部 `_model = StateObject(wrappedValue: model ?? XxxModel(session: session))`）；测试里先创建模型、`await` 它读完数据，再把模型传给页面渲染。不要为此去改 `SnapshotSupport.swift` 或 `MockHTTPServer.swift`，也不要写探针测试排查。
 - 遇到与任务无关的疑难（工具行为、测试框架怪癖），最多尝试两种办法；不行就换一种不依赖它的实现继续完成任务，并在交付说明里写明，不要在同一个问题上反复排查。
 

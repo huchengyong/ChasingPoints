@@ -1,24 +1,27 @@
 import Foundation
 
-/// 战报里的一项特殊战绩记录。
-struct AchievementRecord: Equatable {
+/// 单场特殊战绩。
+struct AchievementRecord: Equatable, Identifiable {
     let key: String
     let label: String
     let count: Int
+
+    var id: String { key }
 }
 
-/// 战报「排位权益」说明卡；文案随规则版本与命中情况变化。
+/// 战报里的排位权益说明，迁移小程序 `utils/member-ranking-rights.js`。
 struct RankingRightsSummary: Equatable {
     let badgeText: String
     let title: String
     let description: String
+    /// slate / blue / emerald / gold。
     let tone: String
     let countedInRanking: Bool
     let capped: Bool
     let recordedAchievementsText: String
 }
 
-/// `MatchDetailData` 里排位权益说明需要读取的字段。
+/// 排位权益说明需要读取的对局字段；战报与赛果页都从 `MatchReport` 取。
 struct MatchRankingRightsInput: Equatable {
     var matchMode: String? = nil
     var rankRulesVersion: Int? = nil
@@ -26,9 +29,7 @@ struct MatchRankingRightsInput: Equatable {
     var myRankDetails: [MatchRankDetail]? = nil
 }
 
-/// 逐条对应小程序 `utils/member-ranking-rights.js`。
 enum MemberRankingRights {
-    /// 顺序与小程序一致；只有计数大于 0 的项出现在文案里。
     private static let definitions: [(key: String, label: String)] = [
         ("break_clear", "炸清"),
         ("continue_clear", "接清"),
@@ -40,16 +41,24 @@ enum MemberRankingRights {
     ]
 
     static func achievementRecords(_ achievements: [String: Int]?) -> [AchievementRecord] {
-        let values = achievements ?? [:]
-        return definitions.compactMap { item in
-            let count = max(0, values[item.key] ?? 0)
+        definitions.compactMap { item in
+            let count = max(0, achievements?[item.key] ?? 0)
             return count > 0 ? AchievementRecord(key: item.key, label: item.label, count: count) : nil
         }
     }
 
+    static func summary(match report: MatchReport) -> RankingRightsSummary {
+        summary(MatchRankingRightsInput(
+            matchMode: report.matchMode,
+            rankRulesVersion: report.rankRulesVersion,
+            achievements: report.achievements,
+            myRankDetails: report.myRankDetails
+        ))
+    }
+
     static func summary(_ match: MatchRankingRightsInput) -> RankingRightsSummary {
         let records = achievementRecords(match.achievements)
-        let recordText = records.map { "\($0.label)x\(String($0.count))" }.joined(separator: "、")
+        let recordText = formatRecords(records)
 
         if match.matchMode == "practice" {
             return RankingRightsSummary(
@@ -89,13 +98,13 @@ enum MemberRankingRights {
 
         let details = match.myRankDetails ?? []
         let countedScore = details
-            .filter { isAchievementRankDetail($0) }
+            .filter(isAchievementRankDetail)
             .reduce(0) { $0 + max(0, $1.value) }
         let capReduction = details
-            .filter { $0.label.contains("每日封顶") }
+            .filter(isDailyCapDetail)
             .reduce(0) { $0 + abs(min(0, $1.value)) }
 
-        if records.isEmpty {
+        guard !records.isEmpty else {
             return RankingRightsSummary(
                 badgeText: "无高光排位分",
                 title: "本场没有可计入排位的特殊战绩",
@@ -137,5 +146,13 @@ enum MemberRankingRights {
         detail.label.contains("VIP特殊战绩分")
             || detail.label.contains("成就奖励")
             || detail.label.contains("特殊战绩")
+    }
+
+    private static func isDailyCapDetail(_ detail: MatchRankDetail) -> Bool {
+        detail.label.contains("每日封顶")
+    }
+
+    private static func formatRecords(_ records: [AchievementRecord]) -> String {
+        records.map { "\($0.label)x\(String($0.count))" }.joined(separator: "、")
     }
 }

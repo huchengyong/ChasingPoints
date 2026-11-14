@@ -8,8 +8,13 @@ struct OpponentRecordView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var model: OpponentRecordModel
 
-    init(session: SessionStore, model: OpponentRecordModel? = nil) {
-        _model = StateObject(wrappedValue: model ?? OpponentRecordModel(session: session))
+    init(session: SessionStore, target: OpponentRecordTarget? = nil, model: OpponentRecordModel? = nil) {
+        _model = StateObject(wrappedValue: model ?? OpponentRecordModel(
+            session: session,
+            targetUserId: target?.userId ?? 0,
+            targetName: target?.name ?? "",
+            targetAvatar: target?.avatar ?? ""
+        ))
     }
 
     private var palette: AppPalette { AppTheme.palette(for: colorScheme) }

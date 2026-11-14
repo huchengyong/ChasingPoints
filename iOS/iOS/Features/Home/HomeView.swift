@@ -224,7 +224,7 @@ struct HomeView: View {
                 }
                 .buttonStyle(.plain)
 
-                NavigationLink(value: AppRoute.challengeCompose) {
+                NavigationLink(value: AppRoute.challengeCompose(target: nil)) {
                     playButtonLabel("约球", ghost: true)
                         .frame(width: 88)
                 }

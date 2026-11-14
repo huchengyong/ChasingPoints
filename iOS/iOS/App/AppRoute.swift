@@ -21,7 +21,7 @@ enum AppRoute: Hashable {
     case publicMatchDetail(matchId: Int64)
     case rankExplain(gameType: Int)
     case notificationSettings
-    case opponentRecord
+    case opponentRecord(target: OpponentRecordTarget?)
     case h2hRecord(
         opponentId: Int64,
         targetUserId: Int64,
@@ -35,17 +35,19 @@ enum AppRoute: Hashable {
     case performance(gameType: Int)
     case matchReplay(matchId: Int64)
     case shareResult(matchId: Int64)
-    case challengeCompose
+    case challengeCompose(target: ChallengeComposeTarget?)
     case challengeWaiting(challengeId: Int64)
     case challenges(tab: ChallengeTab)
     case feedback
     case achievementWall(gameType: Int)
     case achievementDetail(achievementId: Int64)
     case friendList
-    case friendHomepage(userId: Int64)
+    case friendHomepage(target: FriendHomepageTarget)
     case addFriend
     case friendRequests
     case blacklist
+    case friendHonorWall(userId: Int64)
+    case friendPkReport(userId: Int64)
     case tournamentDetail(id: Int64)
     case venueList
     case venueDetail(id: Int64)
@@ -57,6 +59,9 @@ enum AppRoute: Hashable {
     case seasonHistory(gameType: Int)
     case seasonReport(seasonId: Int64, gameType: Int)
     case gearIndex
+    case gearAdd(category: String, pickToken: String?)
+    case gearItem(id: Int64)
+    case gearFriend(userId: Int64, name: String)
     case scanConfirm
     case opponentSelector
 
@@ -94,6 +99,8 @@ enum AppRoute: Hashable {
         case .addFriend: "添加好友"
         case .friendRequests: "好友申请"
         case .blacklist: "黑名单"
+        case .friendHonorWall: "荣誉墙"
+        case .friendPkReport: "PK报表"
         case .tournamentDetail: "赛事详情"
         case .venueList: "附近球馆"
         case .venueDetail: "球馆详情"
@@ -105,6 +112,9 @@ enum AppRoute: Hashable {
         case .seasonHistory: "历届赛季"
         case .seasonReport: "赛季报告"
         case .gearIndex: "我的装备"
+        case .gearAdd: "添加装备"
+        case .gearItem: "装备详情"
+        case .gearFriend: "TA 的装备"
         case .scanConfirm: "确认对局"
         case .opponentSelector: "选择球友"
         }
@@ -114,6 +124,7 @@ enum AppRoute: Hashable {
 /// 路由 → 页面。已迁移的返回真实页面，其余返回占位页。
 struct AppRouteDestination: View {
     @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var gearStore: GearStore
 
     let route: AppRoute
 
@@ -129,10 +140,12 @@ struct AppRouteDestination: View {
             NicknameEditView()
         case .notificationSettings:
             NotificationSettingsView(session: session)
+        case .memberCenter:
+            MemberCenterView(session: session)
         case .reputation:
             ReputationView(session: session)
-        case .opponentRecord:
-            OpponentRecordView(session: session)
+        case .opponentRecord(let target):
+            OpponentRecordView(session: session, target: target)
         case .statsDetail(let gameType):
             StatsDetailView(session: session, gameType: gameType)
         case .performance(let gameType):
@@ -186,12 +199,89 @@ struct AppRouteDestination: View {
             AchievementDetailView(session: session, achievementId: achievementId)
         case .tournamentDetail(let id):
             NewsDetailView(session: session, eventId: id)
+        case .gearIndex:
+            GearIndexView(session: session, store: gearStore)
+        case .gearAdd(let category, let pickToken):
+            GearAddView(session: session, store: gearStore, category: category, pickToken: pickToken)
+        case .gearItem(let id):
+            GearItemView(session: session, store: gearStore, itemId: id)
+        case .gearFriend(let userId, let name):
+            GearFriendView(session: session, userId: userId, name: name)
+        case .friendList:
+            FriendListDestination(session: session)
+        case .friendHomepage(let target):
+            FriendHomepageView(session: session, target: target)
+        case .addFriend:
+            AddFriendView(session: session)
+        case .friendRequests:
+            FriendRequestsDestination(session: session)
+        case .blacklist:
+            BlacklistView(session: session)
+        case .friendHonorWall(let userId):
+            HonorWallView(session: session, gameType: 3, userId: userId)
+        case .friendPkReport:
+            MigrationPlaceholderView(title: route.title)
         case .scanConfirm:
             ScanConfirmView(session: session)
         case .opponentSelector:
             OpponentSelectorView(session: session)
+        case .challengeCompose(let target):
+            ChallengeComposeDestination(session: session, target: target)
+        case .challengeWaiting(let challengeId):
+            ChallengeWaitingDestination(session: session, challengeId: challengeId)
+        case .challenges(let tab):
+            ChallengesDestination(session: session, initialTab: tab)
         default:
             MigrationPlaceholderView(title: route.title)
         }
+    }
+}
+
+/// 好友列表/申请页的模型需要共享 `ActivityStore`，单独取环境，避免所有路由都依赖它。
+private struct FriendListDestination: View {
+    let session: SessionStore
+    @EnvironmentObject private var activity: ActivityStore
+
+    var body: some View {
+        FriendListView(session: session, activity: activity)
+    }
+}
+
+private struct FriendRequestsDestination: View {
+    let session: SessionStore
+    @EnvironmentObject private var activity: ActivityStore
+
+    var body: some View {
+        FriendRequestsView(session: session, activity: activity)
+    }
+}
+
+private struct ChallengeComposeDestination: View {
+    let session: SessionStore
+    let target: ChallengeComposeTarget?
+    @EnvironmentObject private var activity: ActivityStore
+
+    var body: some View {
+        ChallengeComposeView(session: session, activity: activity, target: target)
+    }
+}
+
+private struct ChallengeWaitingDestination: View {
+    let session: SessionStore
+    let challengeId: Int64
+    @EnvironmentObject private var activity: ActivityStore
+
+    var body: some View {
+        ChallengeWaitingView(session: session, activity: activity, challengeId: challengeId)
+    }
+}
+
+private struct ChallengesDestination: View {
+    let session: SessionStore
+    let initialTab: ChallengeTab
+    @EnvironmentObject private var activity: ActivityStore
+
+    var body: some View {
+        ChallengesView(session: session, activity: activity, initialTab: initialTab)
     }
 }

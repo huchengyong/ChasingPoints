@@ -31,6 +31,16 @@ struct MatchHistoryAPI {
     func rewardSummary(matchId: Int64) async throws -> MatchRewardSummary {
         try await session.authorizedRequest("/api/match/reward-summary?match_id=\(matchId)")
     }
+
+    /// 当前进行中的对局；没有时服务端返回 `match: null`。
+    func currentMatch() async throws -> RefereeOngoingMatch? {
+        let response: CurrentMatchResponse = try await session.authorizedRequest("/api/match/current")
+        return response.match
+    }
+}
+
+private struct CurrentMatchResponse: Decodable {
+    let match: RefereeOngoingMatch?
 }
 
 private struct PagedResponse<Item: Decodable>: Decodable {
