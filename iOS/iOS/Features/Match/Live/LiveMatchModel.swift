@@ -10,6 +10,15 @@ struct LiveMatchRoundWinGroup: Identifiable, Equatable {
     var id: Int { actor }
 }
 
+struct LiveMatchJiuqiuGroup: Identifiable, Equatable {
+    let actor: Int
+    let label: String
+    let foulScoringLabel: String
+    let options: [ScoringActionOption]
+
+    var id: Int { actor }
+}
+
 struct LiveMatchMenuOption: Identifiable, Equatable {
     enum Kind: Equatable {
         case settings
@@ -66,6 +75,9 @@ final class LiveMatchModel: ObservableObject {
     private var finishActionBusy = false
     private var pendingFinishAction: SnookerFrameAction?
     private var hasNavigatedToResult = false
+    private var choiceHandler: ((Int) -> Void)?
+    private var pendingConcessionScope: String?
+    private var pendingAwardWinner: Int?
 
     // MARK: - 页面状态
 
@@ -105,7 +117,7 @@ final class LiveMatchModel: ObservableObject {
     @Published private(set) var isSyncing = false
     @Published private(set) var isConnected = false
 
-    // 赛制（本轮只展示/编辑中八、美九；斯诺克字段留给下一轮）
+    // 赛制（中八、美九与斯诺克共用同一套编辑交互）
     @Published private(set) var matchFormat = ""
     @Published private(set) var targetWins = 0
     @Published private(set) var canChangeMatchFormat = false
@@ -115,8 +127,36 @@ final class LiveMatchModel: ObservableObject {
     @Published private(set) var isFormatSaving = false
     @Published private(set) var formatError = ""
     @Published private(set) var snookerRulesVersion = 0
-    @Published private(set) var snookerFormat = "free"
+    @Published private(set) var snookerFormat = SnookerMatchFormat.free
     @Published private(set) var snookerTargetWins = 0
+    @Published private(set) var canChangeSnookerFormat = false
+    @Published private(set) var isSnookerFormatEditorShown = false
+    @Published private(set) var draftSnookerFormat = SnookerMatchFormat.free
+    @Published private(set) var draftSnookerTargetWins = 3
+    @Published private(set) var isSnookerFormatSaving = false
+    @Published private(set) var snookerFormatError = ""
+
+    // 斯诺克 V1：红球与清彩进度由服务端下发。
+    @Published private(set) var snookerRedBallCount = 0
+    @Published private(set) var snookerClearanceStarted = false
+    @Published private(set) var snookerClearedColors: [Int] = []
+    @Published private(set) var snookerExpectedClearanceScore = 0
+    @Published private(set) var snookerClearanceCompleted = false
+    @Published private(set) var snookerScoringActor = 1
+    @Published private(set) var snookerFoulingActor = 1
+
+    // 斯诺克 V2：服务端权威局面与犯规编辑器草稿。
+    @Published private(set) var snookerV2State = SnookerV2State()
+    @Published private(set) var isSnookerFoulEditorShown = false
+    @Published private(set) var snookerFoulPenalty = 4
+    @Published private(set) var snookerFoulBallOnValue = 2
+    @Published private(set) var snookerFoulRedsRemoved = 0
+    @Published private(set) var snookerFoulResolution = "incoming_plays"
+    @Published private(set) var snookerFoulAndMiss = false
+    @Published private(set) var snookerMissSequenceEligible = false
+    @Published private(set) var snookerFreeBallAwarded = false
+    @Published private(set) var snookerFoulCueBallInHand = false
+    @Published private(set) var choice: LiveMatchChoice?
 
     // 结束确认
     @Published private(set) var nowValue: Date
@@ -267,6 +307,146 @@ final class LiveMatchModel: ObservableObject {
                 )
             )
         }
+    }
+
+    var jiuqiuWinOptions: [ScoringActionOption] {
+        MatchScoringTarget.buildJiuqiuWinOptions(viewerRole: viewerRole, uiActor: 2)
+    }
+
+    var jiuqiuNormalOption: ScoringActionOption { jiuqiuWinOptions[0] }
+    var jiuqiuGoldOptions: ArraySlice<ScoringActionOption> { jiuqiuWinOptions.dropFirst() }
+
+    var refereeJiuqiuGroups: [LiveMatchJiuqiuGroup] {
+        [1, 2].map { actor in
+            LiveMatchJiuqiuGroup(
+                actor: actor,
+                label: MatchScoringTarget.resolveScoringParticipantLabel(viewerRole: "referee", uiActor: actor),
+                foulScoringLabel: MatchScoringTarget.resolveScoringParticipantLabel(
+                    viewerRole: "referee",
+                    uiActor: actor == 1 ? 2 : 1
+                ),
+                options: MatchScoringTarget.buildJiuqiuWinOptions(viewerRole: "referee", uiActor: actor)
+            )
+        }
+    }
+
+    // MARK: - 斯诺克派生
+
+    var viewerFixedActor: Int { isReferee ? 0 : (isPlayer1 ? 1 : 2) }
+
+    var snookerFormatLabel: String {
+        SnookerMatchFormat.label(snookerFormat, targetWins: snookerTargetWins)
+    }
+
+    var snookerFormatHint: String {
+        SnookerMatchFormat.hint(snookerFormat, targetWins: snookerTargetWins)
+    }
+
+    var draftSnookerFormatHint: String {
+        SnookerMatchFormat.hint(draftSnookerFormat, targetWins: draftSnookerTargetWins)
+    }
+
+    var canStartNextSnookerFrameValue: Bool {
+        SnookerMatchFormat.canStartNextSnookerFrame(
+            format: snookerFormat,
+            targetWins: snookerTargetWins,
+            myScore: myScore,
+            opponentScore: opponentScore
+        )
+    }
+
+    var snookerRedBallText: String {
+        "红球 \(String(snookerRedBallCount))/15"
+    }
+
+    var snookerRedBallRemaining: Int { max(15 - snookerRedBallCount, 0) }
+
+    var isSnookerRedDisabled: Bool {
+        gameType == 1 && (snookerRedBallCount >= 15 || !currentFrameStarted)
+    }
+
+    private var snookerClearedColorNames: [String] {
+        snookerClearedColors.compactMap(Self.snookerColorName)
+    }
+
+    var snookerNextClearanceColorName: String {
+        Self.snookerColorName(snookerExpectedClearanceScore)
+    }
+
+    var snookerRedHintText: String {
+        if !currentFrameStarted {
+            return "当前局已结束，可开始下一局，或直接结束整场比赛"
+        }
+        if snookerClearanceCompleted {
+            return "清彩阶段已完成，请确认本局胜方"
+        }
+        if snookerClearanceStarted {
+            let clearedText = snookerClearedColorNames.isEmpty ? "" : "，已完成：\(snookerClearedColorNames.joined(separator: "、"))"
+            let nextText = snookerNextClearanceColorName.isEmpty ? "" : "，下一颗：\(snookerNextClearanceColorName)"
+            return "已进入清彩阶段，彩球需按顺序计分\(clearedText)\(nextText)"
+        }
+        if isSnookerRedDisabled { return "本局红球已打完，请先记录最后一颗红球后的彩球" }
+        if snookerRedBallRemaining <= 2 { return "本局红球还剩 \(String(snookerRedBallRemaining)) 颗" }
+        return "斯诺克最多打完15套红球"
+    }
+
+    func isSnookerScoreDisabled(_ score: Int) -> Bool {
+        guard gameType == 1 else { return false }
+        if !currentFrameStarted { return true }
+        if score == 1 { return isSnookerRedDisabled }
+        if !snookerClearanceStarted { return false }
+        if snookerExpectedClearanceScore > 0 {
+            return score != snookerExpectedClearanceScore
+        }
+        return false
+    }
+
+    var snookerScoreTitle: String {
+        isReferee
+            ? "给\(MatchScoringTarget.resolveScoringParticipantLabel(viewerRole: "referee", uiActor: snookerScoringActor))计分"
+            : "给对手计分"
+    }
+
+    var snookerFoulTitle: String {
+        if isReferee {
+            let foulingLabel = MatchScoringTarget.resolveScoringParticipantLabel(
+                viewerRole: "referee",
+                uiActor: snookerFoulingActor
+            )
+            let scoringLabel = MatchScoringTarget.resolveScoringParticipantLabel(
+                viewerRole: "referee",
+                uiActor: snookerFoulingActor == 1 ? 2 : 1
+            )
+            return "\(foulingLabel)犯规，给\(scoringLabel)加分"
+        }
+        return "对手犯规，给我方加分"
+    }
+
+    var snookerV2PhaseLabel: String { SnookerV2.phaseLabel(snookerV2State) }
+    var snookerV2BallOnLabel: String { SnookerV2.ballOnLabel(snookerV2State) }
+    var snookerV2StrikerLabel: String { snookerActorLabel(snookerV2State.striker) }
+    var snookerV2PotOptions: [SnookerBall] { SnookerV2.potOptions(snookerV2State) }
+    var snookerColorOptions: [SnookerBall] { Array(SnookerV2.balls.dropFirst()) }
+    var snookerFoulResolutions: [(value: String, label: String)] {
+        [
+            ("incoming_plays", "非犯规方从现状击球"),
+            ("offender_plays_from_left", "犯规方从现状继续"),
+            ("offender_replays_original", "复原球位，由犯规方重打"),
+        ]
+    }
+
+    var canRespondToSnookerConcession: Bool {
+        let pendingActor = snookerV2State.pendingConcessionActor
+        return pendingActor > 0 && (isReferee || viewerFixedActor == (pendingActor == 1 ? 2 : 1))
+    }
+
+    func canStartRespottedBlack(_ actor: Int) -> Bool {
+        canScore && snookerV2State.respottedBlackPending && snookerV2State.pendingConcessionActor == 0
+            && (actor == 1 || actor == 2)
+    }
+
+    var isSnookerV2ScorePanelVisible: Bool {
+        currentFrameStarted && snookerV2State.pendingConcessionActor == 0
     }
 
     var isChallengeMatchFinishSlider: Bool {
@@ -541,6 +721,10 @@ final class LiveMatchModel: ObservableObject {
             canChangeMatchFormat = value
             if !value { isFormatEditorShown = false }
         }
+        if let value = snapshot.canChangeSnookerFormat {
+            canChangeSnookerFormat = value
+            if !value { isSnookerFormatEditorShown = false }
+        }
     }
 
     private func applyScores(_ snapshot: LiveMatchSnapshot) {
@@ -608,6 +792,13 @@ final class LiveMatchModel: ObservableObject {
     }
 
     private func applySnookerRoundState(_ snapshot: LiveMatchSnapshot) {
+        // V1 的红球/清彩字段每次快照都要覆盖；它们与规则版本无关。
+        snookerRedBallCount = snapshot.redBallCount ?? 0
+        snookerClearanceStarted = snapshot.snookerClearanceStarted == true
+        snookerClearedColors = snapshot.snookerClearedColors ?? []
+        snookerExpectedClearanceScore = snapshot.snookerExpectedClearanceScore ?? 0
+        snookerClearanceCompleted = snapshot.snookerClearanceCompleted == true
+
         guard let version = snapshot.snookerRulesVersion else { return }
         snookerRulesVersion = version
         let legacy = snapshot.bestOfFrames ?? 0
@@ -617,6 +808,45 @@ final class LiveMatchModel: ObservableObject {
         ))
         snookerFormat = state.format
         snookerTargetWins = state.targetWins
+        if let value = snapshot.canChangeSnookerFormat {
+            canChangeSnookerFormat = value
+            if !value { isSnookerFormatEditorShown = false }
+        }
+
+        snookerV2State = SnookerV2.normalizeState(SnookerV2SnapshotInput(
+            snookerRulesVersion: snapshot.snookerRulesVersion,
+            bestOfFrames: snapshot.bestOfFrames,
+            startingActor: snapshot.startingActor,
+            snookerPhase: snapshot.snookerPhase,
+            snookerBallOn: snapshot.snookerBallOn,
+            snookerStriker: snapshot.snookerStriker,
+            snookerVisitNo: snapshot.snookerVisitNo,
+            snookerCurrentBreak: snapshot.snookerCurrentBreak,
+            snookerRedsRemaining: snapshot.snookerRedsRemaining,
+            snookerFreeBallAvailable: snapshot.snookerFreeBallAvailable,
+            snookerCueBallInHand: snapshot.snookerCueBallInHand,
+            snookerMissWarningActive: snapshot.snookerMissWarningActive,
+            snookerRespottedBlackPending: snapshot.snookerRespottedBlackPending,
+            snookerPendingConcessionActor: snapshot.snookerPendingConcessionActor,
+            snookerPendingConcessionScope: snapshot.snookerPendingConcessionScope,
+            snookerFrameEndReason: snapshot.snookerFrameEndReason,
+            currentFrameStarted: snapshot.currentFrameStarted,
+            status: snapshot.status
+        ))
+        if snookerRulesVersion == 2 {
+            let hideEditor = !snookerV2State.currentFrameStarted
+                || snookerV2State.pendingConcessionActor > 0
+                || ["ended", "respotted_black_pending"].contains(snookerV2State.phase)
+            if hideEditor {
+                isSnookerFoulEditorShown = false
+            } else if !isSnookerFoulEditorShown {
+                // 裁判正在编辑时保留草稿，避免推送把刚选的罚分冲回默认值。
+                let target = SnookerV2.ballOnValue(snookerV2State)
+                snookerFoulBallOnValue = target >= 2 ? target : 2
+                snookerFoulPenalty = SnookerV2.minimumPenalty(snookerV2State, ballOnValue: snookerFoulBallOnValue)
+                snookerFoulRedsRemoved = 0
+            }
+        }
     }
 
     private func applyPoolMatchFormatState(_ snapshot: LiveMatchSnapshot) {
@@ -862,7 +1092,7 @@ final class LiveMatchModel: ObservableObject {
         }
     }
 
-    private func snookerActorLabel(_ actor: Int) -> String {
+    func snookerActorLabel(_ actor: Int) -> String {
         guard actor == 1 || actor == 2 else { return "待确定" }
         if isReferee { return actor == 1 ? "选手1" : "选手2" }
         let myActor = isPlayer1 ? 1 : 2
@@ -884,6 +1114,7 @@ final class LiveMatchModel: ObservableObject {
         payload: [String: MatchActionValue],
         successMessage: String?,
         failureMessage: String,
+        businessFailureMessage: String? = nil,
         success: ((LiveMatchWriteResponse) -> Void)? = nil
     ) async -> LiveMatchWriteResponse? {
         guard !writeInFlight else { return nil }
@@ -907,12 +1138,12 @@ final class LiveMatchModel: ObservableObject {
                 success?(response)
             } else {
                 applyWriteResponse(response)
-                toast(response.message ?? failureMessage)
+                toast(response.message ?? businessFailureMessage ?? failureMessage)
             }
             return response
         } catch {
             guard session.identity == identity else { return nil }
-            toast(Self.failureMessage(error, fallback: failureMessage))
+            toast(Self.writeFailureMessage(error, businessFallback: businessFailureMessage, networkFallback: failureMessage))
             return nil
         }
     }
@@ -969,8 +1200,518 @@ final class LiveMatchModel: ObservableObject {
                 foulingActor: actor,
                 score: 1
             ),
-            failureMessage: "操作失败"
+            failureMessage: "操作失败",
+            businessFailureMessage: "比分已更新，请重试"
         )
+    }
+
+    // MARK: - 斯诺克 V1
+
+    func selectSnookerScoringActor(_ actor: Int) {
+        snookerScoringActor = actor == 1 ? 1 : 2
+    }
+
+    func selectSnookerFoulingActor(_ actor: Int) {
+        snookerFoulingActor = actor == 1 ? 1 : 2
+    }
+
+    func addSnookerScore(_ score: Int) async {
+        guard ensure(canScore, "当前只有裁判可以记分") else { return }
+        guard currentFrameStarted else {
+            toast("请先开始下一局")
+            return
+        }
+        if score == 1 && isSnookerRedDisabled {
+            toast("本局红球已打完，请改为彩球计分")
+            return
+        }
+        if score > 1 && isSnookerScoreDisabled(score) {
+            toast(snookerNextClearanceColorName.isEmpty
+                ? "\(Self.snookerColorName(score))当前不可计分"
+                : "请先记 \(snookerNextClearanceColorName)")
+            return
+        }
+        let uiActor = isReferee ? snookerScoringActor : 2
+        await send(
+            "/api/match/score",
+            payload: actionPayload([
+                "actor": .int(MatchScoringTarget.resolveMatchApiActor(
+                    viewerRole: viewerRole,
+                    isPlayer1: isPlayer1,
+                    uiActor: uiActor
+                )),
+                "score": .int(score),
+            ]),
+            successMessage: MatchScoringTarget.resolveScoreFeedback(
+                viewerRole: viewerRole,
+                uiActor: uiActor,
+                score: score
+            ),
+            failureMessage: "操作失败",
+            businessFailureMessage: "比分已更新，请重试"
+        )
+    }
+
+    func foulByScore(_ score: Int) async {
+        guard ensure(canScore, "当前只有裁判可以记分") else { return }
+        let uiActor = isReferee ? snookerFoulingActor : 2
+        await send(
+            "/api/match/foul",
+            payload: actionPayload([
+                "actor": .int(MatchScoringTarget.resolveMatchApiActor(
+                    viewerRole: viewerRole,
+                    isPlayer1: isPlayer1,
+                    uiActor: uiActor
+                )),
+                "score": .int(score),
+            ]),
+            successMessage: MatchScoringTarget.resolveFoulFeedback(
+                viewerRole: viewerRole,
+                foulingActor: uiActor,
+                score: score
+            ),
+            failureMessage: "操作失败",
+            businessFailureMessage: "比分已更新，请重试"
+        )
+    }
+
+    // MARK: - 斯诺克 V2
+
+    private func submitSnookerV2Stroke(_ fields: [String: MatchActionValue], successMessage: String) async -> Bool {
+        guard ensure(canScore, "当前只有裁判可以记分") else { return false }
+        guard isSnookerV2 else { return false }
+        let response = await send(
+            "/api/match/snooker/stroke",
+            payload: actionPayload(fields),
+            successMessage: successMessage,
+            failureMessage: "操作失败",
+            businessFailureMessage: "局面已更新，请重试"
+        ) { [weak self] response in
+            if response.snapshot?.status == 2 { self?.navigateToResultOnce() }
+        }
+        return response?.success == true
+    }
+
+    private func submitSnookerV2FrameAction(_ fields: [String: MatchActionValue], successMessage: String) async -> Bool {
+        guard ensure(canScore, "当前只有裁判可以处理局动作") else { return false }
+        guard isSnookerV2 else { return false }
+        let response = await send(
+            "/api/match/snooker/frame-action",
+            payload: actionPayload(fields),
+            successMessage: successMessage,
+            failureMessage: "操作失败",
+            businessFailureMessage: "局面已更新，请重试"
+        ) { [weak self] response in
+            if response.snapshot?.status == 2 { self?.navigateToResultOnce() }
+        }
+        return response?.success == true
+    }
+
+    private func potFields(_ payload: SnookerV2PotPayload) -> [String: MatchActionValue] {
+        [
+            "actor": .int(payload.actor),
+            "outcome": .string(payload.outcome),
+            "ball_on_value": .int(payload.ballOnValue),
+            "potted_reds": .int(payload.pottedReds),
+            "ball_on_potted": .bool(payload.ballOnPotted),
+            "free_ball_value": .int(payload.freeBallValue),
+            "free_ball_potted": .bool(payload.freeBallPotted),
+        ]
+    }
+
+    private func noScoreFields(_ payload: SnookerV2NoScorePayload) -> [String: MatchActionValue] {
+        var fields: [String: MatchActionValue] = [
+            "actor": .int(payload.actor),
+            "outcome": .string(payload.outcome),
+            "ball_on_value": .int(payload.ballOnValue),
+        ]
+        if let freeBallValue = payload.freeBallValue {
+            fields["free_ball_value"] = .int(freeBallValue)
+        }
+        return fields
+    }
+
+    private func foulFields(_ payload: SnookerV2FoulPayload) -> [String: MatchActionValue] {
+        [
+            "actor": .int(payload.actor),
+            "outcome": .string(payload.outcome),
+            "ball_on_value": .int(payload.ballOnValue),
+            "penalty": .int(payload.penalty),
+            "reds_removed": .int(payload.redsRemoved),
+            "foul_resolution": .string(payload.foulResolution),
+            "free_ball_awarded": .bool(payload.freeBallAwarded),
+            "foul_and_miss": .bool(payload.foulAndMiss),
+            "miss_sequence_eligible": .bool(payload.missSequenceEligible),
+            "cue_ball_in_hand": .bool(payload.cueBallInHand),
+        ]
+    }
+
+    func potSnookerV2Ball(_ ball: SnookerBall) async {
+        let actor = snookerV2State.striker
+        guard actor != 0 else { return }
+        if ball.value == 1 {
+            // 单击红球默认进 1 颗；一杆多颗另走单独入口。
+            await submitSnookerV2Stroke(
+                potFields(SnookerV2.potPayload(state: snookerV2State, actor: actor, pottedReds: 1)),
+                successMessage: "已记录1颗红球"
+            )
+            return
+        }
+        await submitSnookerV2Stroke(
+            potFields(SnookerV2.potPayload(
+                state: snookerV2State,
+                actor: actor,
+                ballOnValue: ball.value,
+                ballOnPotted: true
+            )),
+            successMessage: "已记录\(ball.label) \(String(ball.value))分"
+        )
+    }
+
+    func startSnookerV2MultiRed() {
+        let actor = snookerV2State.striker
+        guard actor != 0 else { return }
+        chooseSnookerCount(
+            minimum: 2,
+            maximum: max(0, snookerV2State.redsRemaining),
+            label: { "\(String($0)) 颗红球入袋（\(String($0))分）" }
+        ) { [weak self] count in
+            guard let self, let count else { return }
+            Task {
+                await self.submitSnookerV2Stroke(
+                    self.potFields(SnookerV2.potPayload(state: self.snookerV2State, actor: actor, pottedReds: count)),
+                    successMessage: "已记录\(String(count))颗红球"
+                )
+            }
+        }
+    }
+
+    func startSnookerV2FreeBall() {
+        let state = snookerV2State
+        guard state.freeBallAvailable, state.striker != 0 else { return }
+        if state.ballOn == "color_choice" {
+            presentChoice(options: snookerColorOptions.map { "本杆以\($0.label)为目标球" }) { [weak self] index in
+                guard let self, self.snookerColorOptions.indices.contains(index) else { return }
+                self.continueFreeBall(ballOnValue: self.snookerColorOptions[index].value)
+            }
+            return
+        }
+        continueFreeBall(ballOnValue: SnookerV2.ballOnValue(state))
+    }
+
+    private func continueFreeBall(ballOnValue: Int) {
+        let state = snookerV2State
+        let freeOptions = SnookerV2.freeBallOptions(state, ballOnValue: ballOnValue)
+        guard !freeOptions.isEmpty else { return }
+        presentChoice(options: freeOptions.map { "指定\($0.label)为自由球" }) { [weak self] index in
+            guard let self, freeOptions.indices.contains(index) else { return }
+            let freeBallValue = freeOptions[index].value
+            if state.ballOn == "red" {
+                self.presentFreeBallResultForRed(
+                    ballOnValue: ballOnValue,
+                    freeBallValue: freeBallValue
+                )
+            } else {
+                self.presentFreeBallResultForColor(
+                    ballOnValue: ballOnValue,
+                    freeBallValue: freeBallValue
+                )
+            }
+        }
+    }
+
+    private func presentFreeBallResultForRed(ballOnValue: Int, freeBallValue: Int) {
+        presentChoice(options: ["自由球入袋", "自由球未入袋"]) { [weak self] index in
+            guard let self else { return }
+            let freeBallPotted = index == 0
+            self.chooseSnookerCount(
+                minimum: 0,
+                maximum: self.snookerV2State.redsRemaining,
+                label: { $0 == 0 ? "没有真实红球入袋" : "\(String($0)) 颗真实红球入袋" }
+            ) { [weak self] pottedReds in
+                guard let self, let pottedReds else { return }
+                if !freeBallPotted && pottedReds == 0 {
+                    Task {
+                        await self.submitSnookerV2Stroke(
+                            self.noScoreFields(SnookerV2.noScorePayload(
+                                state: self.snookerV2State,
+                                actor: self.snookerV2State.striker,
+                                ballOnValue: ballOnValue,
+                                freeBallValue: freeBallValue
+                            )),
+                            successMessage: "自由球击球未进，上手已结束"
+                        )
+                    }
+                    return
+                }
+                Task {
+                    await self.submitSnookerV2Stroke(
+                        self.potFields(SnookerV2.potPayload(
+                            state: self.snookerV2State,
+                            actor: self.snookerV2State.striker,
+                            ballOnValue: ballOnValue,
+                            pottedReds: pottedReds,
+                            freeBallValue: freeBallValue,
+                            freeBallPotted: freeBallPotted
+                        )),
+                        successMessage: "自由球结果已记录"
+                    )
+                }
+            }
+        }
+    }
+
+    private func presentFreeBallResultForColor(ballOnValue: Int, freeBallValue: Int) {
+        presentChoice(options: [
+            "仅自由球入袋",
+            "仅真实目标球入袋",
+            "自由球与真实目标球同时入袋",
+            "均未入袋",
+        ]) { [weak self] index in
+            guard let self else { return }
+            if index == 3 {
+                Task {
+                    await self.submitSnookerV2Stroke(
+                        self.noScoreFields(SnookerV2.noScorePayload(
+                            state: self.snookerV2State,
+                            actor: self.snookerV2State.striker,
+                            ballOnValue: ballOnValue,
+                            freeBallValue: freeBallValue
+                        )),
+                        successMessage: "自由球击球未进，上手已结束"
+                    )
+                }
+                return
+            }
+            Task {
+                await self.submitSnookerV2Stroke(
+                    self.potFields(SnookerV2.potPayload(
+                        state: self.snookerV2State,
+                        actor: self.snookerV2State.striker,
+                        ballOnValue: ballOnValue,
+                        freeBallValue: freeBallValue,
+                        freeBallPotted: index != 1,
+                        ballOnPotted: index != 0
+                    )),
+                    successMessage: "自由球结果已记录"
+                )
+            }
+        }
+    }
+
+    func snookerV2NoScore() {
+        let state = snookerV2State
+        guard state.striker != 0 else { return }
+        if state.ballOn == "color_choice" {
+            presentChoice(options: snookerColorOptions.map { "本杆以\($0.label)为目标球" }) { [weak self] index in
+                guard let self, self.snookerColorOptions.indices.contains(index) else { return }
+                self.submitSnookerV2NoScore(ballOnValue: self.snookerColorOptions[index].value)
+            }
+            return
+        }
+        submitSnookerV2NoScore(ballOnValue: SnookerV2.ballOnValue(state))
+    }
+
+    private func submitSnookerV2NoScore(ballOnValue: Int) {
+        Task {
+            await submitSnookerV2Stroke(
+                noScoreFields(SnookerV2.noScorePayload(
+                    state: snookerV2State,
+                    actor: snookerV2State.striker,
+                    ballOnValue: ballOnValue
+                )),
+                successMessage: "上手已结束"
+            )
+        }
+    }
+
+    func toggleSnookerFoulEditor() {
+        guard currentFrameStarted, snookerV2State.pendingConcessionActor == 0 else { return }
+        isSnookerFoulEditorShown.toggle()
+    }
+
+    func setSnookerFoulPenalty(_ value: Int) {
+        snookerFoulPenalty = value
+    }
+
+    func selectSnookerFoulBallOnValue(_ value: Int) {
+        snookerFoulBallOnValue = value
+    }
+
+    func adjustSnookerFoulReds(_ change: Int) {
+        snookerFoulRedsRemoved = min(
+            max(0, snookerV2State.redsRemaining),
+            max(0, snookerFoulRedsRemoved + change)
+        )
+    }
+
+    func selectSnookerFoulResolution(_ value: String) {
+        snookerFoulResolution = value
+    }
+
+    func toggleSnookerFoulAndMiss() { snookerFoulAndMiss.toggle() }
+    func toggleSnookerMissSequenceEligible() { snookerMissSequenceEligible.toggle() }
+    func toggleSnookerFreeBallAwarded() { snookerFreeBallAwarded.toggle() }
+    func toggleSnookerFoulCueBallInHand() { snookerFoulCueBallInHand.toggle() }
+
+    func submitSnookerV2Foul() async {
+        let minimum = SnookerV2.minimumPenalty(snookerV2State, ballOnValue: snookerFoulBallOnValue)
+        guard snookerFoulPenalty >= minimum else {
+            toast("当前目标球至少罚\(String(minimum))分")
+            return
+        }
+        let submitted = await submitSnookerV2Stroke(
+            foulFields(SnookerV2.foulPayload(
+                state: snookerV2State,
+                actor: snookerV2State.striker,
+                penalty: snookerFoulPenalty,
+                ballOnValue: snookerFoulBallOnValue,
+                redsRemoved: snookerFoulRedsRemoved,
+                resolution: snookerFoulResolution,
+                freeBallAwarded: snookerFreeBallAwarded,
+                foulAndMiss: snookerFoulAndMiss,
+                missSequenceEligible: snookerMissSequenceEligible,
+                cueBallInHand: snookerFoulCueBallInHand
+            )),
+            successMessage: "已记录犯规\(String(snookerFoulPenalty))分"
+        )
+        guard submitted else { return }
+        isSnookerFoulEditorShown = false
+        snookerFoulAndMiss = false
+        snookerMissSequenceEligible = false
+        snookerFreeBallAwarded = false
+        snookerFoulCueBallInHand = false
+    }
+
+    func startRespottedBlack(_ actor: Int) async {
+        guard canStartRespottedBlack(actor) else { return }
+        await submitSnookerV2FrameAction(
+            ["actor": .int(actor), "action": .string("start_respotted_black")],
+            successMessage: "\(snookerActorLabel(actor))先打重置黑球"
+        )
+    }
+
+    func offerSnookerConcession(scope: String) {
+        let actor = viewerFixedActor
+        guard actor != 0 else { return }
+        pendingConcessionScope = scope
+        confirm = LiveMatchConfirm(
+            kind: .offerSnookerConcession,
+            title: scope == "match" ? "认输整场比赛" : "提出本局认输",
+            message: scope == "match"
+                ? "对方接受后，本场比赛将立即结束。"
+                : "仅在需要对手犯规罚分才能反超时允许认输本局。",
+            confirmTitle: "确认提出",
+            cancelTitle: "取消"
+        )
+    }
+
+    func respondToSnookerConcession(accept: Bool) async {
+        let pendingActor = snookerV2State.pendingConcessionActor
+        guard pendingActor == 1 || pendingActor == 2 else { return }
+        let actor = pendingActor == 1 ? 2 : 1
+        await submitSnookerV2FrameAction(
+            [
+                "actor": .int(actor),
+                "action": .string(accept ? "accept_concession" : "reject_concession"),
+            ],
+            successMessage: accept ? "已接受认输" : "已拒绝认输"
+        )
+    }
+
+    func awardSnookerFrame(winner: Int) {
+        guard isReferee, winner == 1 || winner == 2 else { return }
+        pendingAwardWinner = winner
+        confirm = LiveMatchConfirm(
+            kind: .awardSnookerFrame,
+            title: "判给\(snookerActorLabel(winner))本局",
+            message: "仅用于裁判依规则作出的判局决定，确认后会立即结束当前局。",
+            confirmTitle: "确认判局",
+            cancelTitle: "取消"
+        )
+    }
+
+    func recordRefereeAcceptedConcession() {
+        guard isReferee else { return }
+        presentChoice(options: ["选手1认输", "选手2认输"]) { [weak self] actorIndex in
+            guard let self, actorIndex == 0 || actorIndex == 1 else { return }
+            self.presentChoice(options: ["认输本局", "认输整场比赛"]) { [weak self] scopeIndex in
+                guard let self, scopeIndex == 0 || scopeIndex == 1 else { return }
+                let concedingActor = actorIndex == 0 ? 1 : 2
+                let scope = scopeIndex == 0 ? "frame" : "match"
+                Task {
+                    let offered = await self.submitSnookerV2FrameAction(
+                        [
+                            "actor": .int(concedingActor),
+                            "action": .string("offer_concession"),
+                            "scope": .string(scope),
+                        ],
+                        successMessage: "已记录认输提议"
+                    )
+                    guard offered else { return }
+                    await self.submitSnookerV2FrameAction(
+                        [
+                            "actor": .int(concedingActor == 1 ? 2 : 1),
+                            "action": .string("accept_concession"),
+                        ],
+                        successMessage: "已记录双方接受认输"
+                    )
+                }
+            }
+        }
+    }
+
+    // MARK: - 弹层选择
+
+    private func presentChoice(title: String = "", options: [String], handler: @escaping (Int) -> Void) {
+        choiceHandler = handler
+        choice = LiveMatchChoice(
+            title: title,
+            options: options.map { LiveMatchChoice.Option(title: $0) }
+        )
+    }
+
+    func selectChoice(_ index: Int) {
+        let handler = choiceHandler
+        choice = nil
+        choiceHandler = nil
+        guard index >= 0 else { return }
+        handler?(index)
+    }
+
+    func cancelChoice() {
+        choice = nil
+        choiceHandler = nil
+    }
+
+    private func chooseSnookerCount(
+        minimum: Int,
+        maximum: Int,
+        label: @escaping (Int) -> String,
+        completion: @escaping (Int?) -> Void
+    ) {
+        let pages = SnookerV2.countPages(minimum: minimum, maximum: maximum)
+        guard let firstPage = pages.first else {
+            completion(nil)
+            return
+        }
+        let selectValue: ([Int]) -> Void = { [weak self] values in
+            guard let self else { return }
+            self.presentChoice(options: values.map(label)) { index in
+                completion(values.indices.contains(index) ? values[index] : nil)
+            }
+        }
+        guard pages.count > 1 else {
+            selectValue(firstPage)
+            return
+        }
+        presentChoice(options: pages.map { "\(String($0[0]))–\(String($0[$0.count - 1])) 颗" }) { index in
+            guard pages.indices.contains(index) else {
+                completion(nil)
+                return
+            }
+            selectValue(pages[index])
+        }
     }
 
     func undo() async {
@@ -1141,6 +1882,63 @@ final class LiveMatchModel: ObservableObject {
         } catch {
             guard session.identity == identity else { return }
             formatError = Self.failureMessage(error, fallback: "赛制保存失败，请重试")
+        }
+    }
+
+    // MARK: - 斯诺克赛制
+
+    func toggleSnookerFormatEditor() {
+        guard canChangeSnookerFormat, !isSnookerFormatSaving else { return }
+        isSnookerFormatEditorShown.toggle()
+        guard isSnookerFormatEditorShown else { return }
+        draftSnookerFormat = snookerFormat == SnookerMatchFormat.raceTo
+            ? SnookerMatchFormat.raceTo
+            : SnookerMatchFormat.free
+        draftSnookerTargetWins = snookerTargetWins > 0 ? snookerTargetWins : 3
+        snookerFormatError = ""
+    }
+
+    func selectSnookerFormatMode(_ format: String) {
+        draftSnookerFormat = format == SnookerMatchFormat.raceTo
+            ? SnookerMatchFormat.raceTo
+            : SnookerMatchFormat.free
+        snookerFormatError = ""
+    }
+
+    func setDraftSnookerTargetWins(_ value: Int) {
+        draftSnookerTargetWins = min(max(value, 1), SnookerMatchFormat.maxTargetWins)
+    }
+
+    func saveSnookerFormat() async {
+        guard canChangeSnookerFormat, !isSnookerFormatSaving else { return }
+        isSnookerFormatSaving = true
+        snookerFormatError = ""
+        let identity = session.identity
+        let target = draftSnookerFormat == SnookerMatchFormat.raceTo ? draftSnookerTargetWins : 0
+        defer { isSnookerFormatSaving = false }
+
+        do {
+            let response = try await api.updateSnookerFormat(
+                matchId: matchId,
+                format: draftSnookerFormat,
+                targetWins: target,
+                baseRevision: serverRevision
+            )
+            guard session.identity == identity else { return }
+            if let snapshot = response.snapshot {
+                applySnapshot(snapshot)
+            } else if response.success != true {
+                await load(showLoading: false)
+            }
+            guard response.success == true else {
+                snookerFormatError = response.message ?? "赛制保存失败，请重试"
+                return
+            }
+            isSnookerFormatEditorShown = false
+            toast("赛制已更新")
+        } catch {
+            guard session.identity == identity else { return }
+            snookerFormatError = Self.failureMessage(error, fallback: "赛制保存失败，请重试")
         }
     }
 
@@ -1461,8 +2259,7 @@ final class LiveMatchModel: ObservableObject {
             // 放弃对局与中式八球/美式九球的结束入口是同一动作。
             finishMatch()
         case .concedeMatch:
-            // 斯诺克认输需要走认输/接受流程，等下一轮面板一起迁移，这里不能误用结束接口。
-            toast("该球种的计分面板正在迁移")
+            offerSnookerConcession(scope: "match")
         }
     }
 
@@ -1477,6 +2274,35 @@ final class LiveMatchModel: ObservableObject {
             Task { await submitFinish(.request) }
         case .nextRound:
             Task { await executeNextRound() }
+        case .offerSnookerConcession:
+            guard let scope = pendingConcessionScope else { return }
+            pendingConcessionScope = nil
+            let actor = viewerFixedActor
+            guard actor != 0 else { return }
+            Task {
+                await submitSnookerV2FrameAction(
+                    [
+                        "actor": .int(actor),
+                        "action": .string("offer_concession"),
+                        "scope": .string(scope),
+                    ],
+                    successMessage: "认输提议已发送"
+                )
+            }
+        case .awardSnookerFrame:
+            guard let winner = pendingAwardWinner else { return }
+            pendingAwardWinner = nil
+            Task {
+                await submitSnookerV2FrameAction(
+                    [
+                        "actor": .int(winner),
+                        "action": .string("award_frame"),
+                        "winner": .int(winner),
+                        "reason": .string("裁判判局"),
+                    ],
+                    successMessage: "已判给\(snookerActorLabel(winner))"
+                )
+            }
         case .back:
             shouldDismiss = true
         }
@@ -1485,6 +2311,8 @@ final class LiveMatchModel: ObservableObject {
     func cancelConfirm() {
         confirm = nil
         pendingFinishAction = nil
+        pendingConcessionScope = nil
+        pendingAwardWinner = nil
     }
 
     // MARK: - 页面可见性 / 身份
@@ -1574,6 +2402,35 @@ final class LiveMatchModel: ObservableObject {
         canChangeMatchFormat = false
         isFormatEditorShown = false
         formatError = ""
+        snookerRulesVersion = 0
+        snookerFormat = SnookerMatchFormat.free
+        snookerTargetWins = 0
+        canChangeSnookerFormat = false
+        isSnookerFormatEditorShown = false
+        draftSnookerFormat = SnookerMatchFormat.free
+        draftSnookerTargetWins = 3
+        snookerFormatError = ""
+        snookerRedBallCount = 0
+        snookerClearanceStarted = false
+        snookerClearedColors = []
+        snookerExpectedClearanceScore = 0
+        snookerClearanceCompleted = false
+        snookerScoringActor = 1
+        snookerFoulingActor = 1
+        snookerV2State = SnookerV2State()
+        isSnookerFoulEditorShown = false
+        snookerFoulPenalty = 4
+        snookerFoulBallOnValue = 2
+        snookerFoulRedsRemoved = 0
+        snookerFoulResolution = "incoming_plays"
+        snookerFoulAndMiss = false
+        snookerMissSequenceEligible = false
+        snookerFreeBallAwarded = false
+        snookerFoulCueBallInHand = false
+        choice = nil
+        choiceHandler = nil
+        pendingConcessionScope = nil
+        pendingAwardWinner = nil
         closeRefereeQRCode()
     }
 
@@ -1660,11 +2517,39 @@ final class LiveMatchModel: ObservableObject {
         return value
     }
 
+    static func snookerColorName(_ score: Int) -> String {
+        switch score {
+        case 2: "黄球"
+        case 3: "绿球"
+        case 4: "咖啡球"
+        case 5: "蓝球"
+        case 6: "粉球"
+        case 7: "黑球"
+        default: ""
+        }
+    }
+
     /// 业务失败（HTTP 200 + success:false）沿用服务端文案；网络/服务异常用页面兜底。
     private static func failureMessage(_ error: Error, fallback: String) -> String {
         guard let apiError = error as? APIError, apiError.kind == .business, !apiError.message.isEmpty else {
             return fallback
         }
         return apiError.message
+    }
+
+    /// 请求层把 `success:false` 转成 APIError 时，服务端没给文案会填通用兜底；
+    /// 这种情况下页面用自己的业务提示，避免把冲突误报成网络错误。
+    private static func writeFailureMessage(
+        _ error: Error,
+        businessFallback: String?,
+        networkFallback: String
+    ) -> String {
+        guard let apiError = error as? APIError, apiError.kind == .business else {
+            return failureMessage(error, fallback: networkFallback)
+        }
+        if apiError.message == APIClient.genericBusinessMessage, let businessFallback {
+            return businessFallback
+        }
+        return failureMessage(error, fallback: networkFallback)
     }
 }

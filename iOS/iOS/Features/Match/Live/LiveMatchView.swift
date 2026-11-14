@@ -89,6 +89,21 @@ struct LiveMatchView: View {
         } message: { confirm in
             Text(confirm.message)
         }
+        .confirmationDialog(
+            model.choice?.title ?? "",
+            isPresented: Binding(
+                get: { model.choice != nil },
+                set: { if !$0 { model.cancelChoice() } }
+            ),
+            titleVisibility: model.choice?.title.isEmpty == false ? .visible : .hidden
+        ) {
+            if let choice = model.choice {
+                ForEach(choice.options.indices, id: \.self) { index in
+                    Button(choice.options[index].title) { model.selectChoice(index) }
+                }
+                Button("取消", role: .cancel) { model.cancelChoice() }
+            }
+        }
     }
 
     // MARK: - 顶部
@@ -162,6 +177,9 @@ struct LiveMatchView: View {
             ScrollView {
                 VStack(spacing: 12) {
                     scoreboard
+                    if model.gameType == 1 && model.isSnookerV2 {
+                        snookerFormatOverview
+                    }
                     if model.isPoolFormatVisible {
                         poolFormatOverview
                     }
@@ -359,6 +377,75 @@ struct LiveMatchView: View {
         .background(palette.subtle, in: RoundedRectangle(cornerRadius: 12))
     }
 
+    private var snookerFormatOverview: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("对局赛制")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(palette.textSecondary)
+                Spacer()
+                Button {
+                    model.toggleSnookerFormatEditor()
+                } label: {
+                    HStack(spacing: 2) {
+                        Text(model.snookerFormatLabel)
+                            .font(.system(size: 13, weight: .semibold))
+                        if model.canChangeSnookerFormat {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                    }
+                    .foregroundStyle(palette.brandStrong)
+                }
+                .buttonStyle(.plain)
+                .disabled(!model.canChangeSnookerFormat)
+            }
+            Text(model.snookerFormatHint)
+                .font(.system(size: 11))
+                .foregroundStyle(palette.textMuted)
+            if model.isSnookerFormatEditorShown {
+                snookerFormatEditor
+            }
+        }
+        .padding(14)
+        .background(palette.card, in: RoundedRectangle(cornerRadius: 16))
+        .overlay { RoundedRectangle(cornerRadius: 16).stroke(palette.border) }
+    }
+
+    private var snookerFormatEditor: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                formatModeButton("自由局数", format: SnookerMatchFormat.free, isSnooker: true)
+                formatModeButton("抢 N 局制", format: SnookerMatchFormat.raceTo, isSnooker: true)
+            }
+            if model.draftSnookerFormat == SnookerMatchFormat.raceTo {
+                Stepper(
+                    "抢 \(String(model.draftSnookerTargetWins)) 局制",
+                    value: Binding(
+                        get: { model.draftSnookerTargetWins },
+                        set: { model.setDraftSnookerTargetWins($0) }
+                    ),
+                    in: 1...SnookerMatchFormat.maxTargetWins
+                )
+                .font(.system(size: 13))
+                .foregroundStyle(palette.textPrimary)
+            }
+            Text(model.draftSnookerFormatHint)
+                .font(.system(size: 11))
+                .foregroundStyle(palette.textMuted)
+            if !model.snookerFormatError.isEmpty {
+                Text(model.snookerFormatError)
+                    .font(.system(size: 11))
+                    .foregroundStyle(AppTheme.danger)
+            }
+            Button(model.isSnookerFormatSaving ? "保存中..." : "保存赛制") {
+                Task { await model.saveSnookerFormat() }
+            }
+            .buttonStyle(.appPrimary)
+            .disabled(model.isSnookerFormatSaving)
+        }
+    }
+
     private var poolFormatOverview: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -428,10 +515,16 @@ struct LiveMatchView: View {
         }
     }
 
-    private func formatModeButton(_ title: String, format: String) -> some View {
-        let active = model.draftMatchFormat == format
+    private func formatModeButton(_ title: String, format: String, isSnooker: Bool = false) -> some View {
+        let active = isSnooker
+            ? model.draftSnookerFormat == format
+            : model.draftMatchFormat == format
         return Button(title) {
-            model.selectFormatMode(format)
+            if isSnooker {
+                model.selectSnookerFormatMode(format)
+            } else {
+                model.selectFormatMode(format)
+            }
         }
         .font(.system(size: 13, weight: .semibold))
         .foregroundStyle(active ? .white : palette.textSecondary)
@@ -467,12 +560,12 @@ struct LiveMatchView: View {
                     } else {
                         actionGrid(model.roundWinActionOptions, winnerActor: 2)
                     }
-                } else {
-                    Text("该球种的计分面板正在迁移")
-                        .font(.system(size: 13))
-                        .foregroundStyle(palette.textMuted)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
+                } else if model.gameType == 1 && model.isSnookerV2 {
+                    snookerV2Panel
+                } else if model.gameType == 1 {
+                    snookerV1Panel
+                } else if model.gameType == 2 {
+                    jiuqiuPanel
                 }
             }
             .padding(14)
@@ -520,11 +613,522 @@ struct LiveMatchView: View {
         }
     }
 
+    // MARK: - 九球追分
+
+    private var jiuqiuPanel: some View {
+        Group {
+            if model.isReferee {
+                HStack(alignment: .top, spacing: 8) {
+                    ForEach(model.refereeJiuqiuGroups) { group in
+                        VStack(spacing: 6) {
+                            Text("记到\(group.label)")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(group.actor == 1 ? palette.brandStrong : palette.textSecondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            actionTile(
+                                title: group.options[0].title,
+                                desc: group.options[0].desc
+                            ) {
+                                Task {
+                                    await model.addRoundWin(
+                                        winType: group.options[0].type,
+                                        score: group.options[0].score,
+                                        winnerActor: group.actor
+                                    )
+                                }
+                            }
+                            HStack(spacing: 6) {
+                                ForEach(Array(group.options.dropFirst()), id: \.type) { option in
+                                    actionTile(title: option.title, desc: option.desc, compact: true) {
+                                        Task {
+                                            await model.addRoundWin(
+                                                winType: option.type,
+                                                score: option.score,
+                                                winnerActor: group.actor
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            actionTile(
+                                title: "\(group.label)犯规",
+                                desc: "\(group.foulScoringLabel) +1 分",
+                                compact: true
+                            ) {
+                                Task { await model.foul(actor: group.actor) }
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+            } else {
+                HStack(alignment: .top, spacing: 8) {
+                    VStack(spacing: 6) {
+                        Text("记到对手")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(palette.textSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        actionTile(
+                            title: model.jiuqiuNormalOption.title,
+                            desc: model.jiuqiuNormalOption.desc
+                        ) {
+                            Task {
+                                await model.addRoundWin(
+                                    winType: model.jiuqiuNormalOption.type,
+                                    score: model.jiuqiuNormalOption.score,
+                                    winnerActor: 2
+                                )
+                            }
+                        }
+                        HStack(spacing: 6) {
+                            ForEach(Array(model.jiuqiuGoldOptions), id: \.type) { option in
+                                actionTile(title: option.title, desc: option.desc, compact: true) {
+                                    Task {
+                                        await model.addRoundWin(
+                                            winType: option.type,
+                                            score: option.score,
+                                            winnerActor: 2
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    VStack(spacing: 6) {
+                        Text("记到我方")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(palette.brandStrong)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        actionTile(title: "对手犯规", desc: "我方 +1 分") {
+                            Task { await model.foul(actor: 2) }
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        }
+    }
+
+    // MARK: - 斯诺克 V1
+
+    private var snookerV1Panel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top) {
+                    Text(model.snookerScoreTitle)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(palette.brandStrong)
+                    Spacer(minLength: 4)
+                    if model.isReferee {
+                        HStack(spacing: 4) {
+                            ForEach([1, 2], id: \.self) { actor in
+                                participantButton(
+                                    title: MatchScoringTarget.resolveScoringParticipantLabel(
+                                        viewerRole: "referee",
+                                        uiActor: actor
+                                    ),
+                                    active: model.snookerScoringActor == actor
+                                ) {
+                                    model.selectSnookerScoringActor(actor)
+                                }
+                            }
+                        }
+                    }
+                }
+                Text(model.snookerRedBallText)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(model.isSnookerRedDisabled ? palette.textMuted : AppTheme.warning)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                    ForEach(SnookerV2.balls) { ball in
+                        let disabled = model.isSnookerScoreDisabled(ball.value)
+                        Button {
+                            Task { await model.addSnookerScore(ball.value) }
+                        } label: {
+                            VStack(spacing: 3) {
+                                Text(ball.label)
+                                    .font(.system(size: 13, weight: .semibold))
+                                Text("\(String(ball.value)) 分")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(palette.textMuted)
+                            }
+                            .foregroundStyle(disabled ? palette.textMuted : palette.textPrimary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(
+                                ball.value == 1 ? AppTheme.danger.opacity(0.12) : palette.subtle,
+                                in: RoundedRectangle(cornerRadius: 10)
+                            )
+                            .overlay { RoundedRectangle(cornerRadius: 10).stroke(palette.border) }
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(disabled)
+                    }
+                }
+                Text(model.snookerRedHintText)
+                    .font(.system(size: 11))
+                    .foregroundStyle(palette.textMuted)
+            }
+
+            Divider().overlay(palette.border)
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top) {
+                    Text(model.snookerFoulTitle)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(palette.textSecondary)
+                    Spacer(minLength: 4)
+                    if model.isReferee {
+                        HStack(spacing: 4) {
+                            ForEach([1, 2], id: \.self) { actor in
+                                participantButton(
+                                    title: "\(MatchScoringTarget.resolveScoringParticipantLabel(viewerRole: "referee", uiActor: actor))犯规",
+                                    active: model.snookerFoulingActor == actor
+                                ) {
+                                    model.selectSnookerFoulingActor(actor)
+                                }
+                            }
+                        }
+                    }
+                }
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                    ForEach([4, 5, 6, 7], id: \.self) { score in
+                        Button {
+                            Task { await model.foulByScore(score) }
+                        } label: {
+                            VStack(spacing: 3) {
+                                Text("犯规 \(String(score)) 分")
+                                    .font(.system(size: 13, weight: .semibold))
+                                Text("犯规 \(String(score)) 分")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(palette.textMuted)
+                            }
+                            .foregroundStyle(palette.textPrimary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(palette.subtle, in: RoundedRectangle(cornerRadius: 10))
+                            .overlay { RoundedRectangle(cornerRadius: 10).stroke(palette.border) }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - 斯诺克 V2
+
+    private var snookerV2Panel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            snookerV2Status
+
+            if model.snookerV2State.respottedBlackPending
+                && model.snookerV2State.pendingConcessionActor == 0 {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("选择重置黑球先打方")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(palette.textSecondary)
+                    HStack(spacing: 8) {
+                        ForEach([1, 2], id: \.self) { actor in
+                            compactAction("\(model.snookerActorLabel(actor))先打") {
+                                Task { await model.startRespottedBlack(actor) }
+                            }
+                        }
+                    }
+                }
+            } else if model.isSnookerV2ScorePanelVisible {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("记录本杆结果")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(palette.textSecondary)
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                        ForEach(model.snookerV2PotOptions) { ball in
+                            Button {
+                                Task { await model.potSnookerV2Ball(ball) }
+                            } label: {
+                                VStack(spacing: 3) {
+                                    Text(ball.label)
+                                        .font(.system(size: 13, weight: .semibold))
+                                    Text("\(String(ball.value)) 分")
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(palette.textMuted)
+                                }
+                                .foregroundStyle(palette.textPrimary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(
+                                    ball.value == 1 ? AppTheme.danger.opacity(0.12) : palette.subtle,
+                                    in: RoundedRectangle(cornerRadius: 10)
+                                )
+                                .overlay { RoundedRectangle(cornerRadius: 10).stroke(palette.border) }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    if model.snookerV2State.ballOn == "red" && model.snookerV2State.redsRemaining >= 2 {
+                        compactAction("一杆多颗红球") { model.startSnookerV2MultiRed() }
+                    }
+                    if model.snookerV2State.freeBallAvailable {
+                        compactAction("记录自由球", highlighted: true) { model.startSnookerV2FreeBall() }
+                    }
+                    compactAction("合法未进球 / 上手结束") { model.snookerV2NoScore() }
+                    compactAction("记录犯规", danger: true) { model.toggleSnookerFoulEditor() }
+                }
+            }
+
+            if model.isSnookerFoulEditorShown && model.isSnookerV2ScorePanelVisible {
+                snookerFoulEditor
+            }
+
+            if model.snookerV2State.pendingConcessionActor > 0 {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("\(model.snookerActorLabel(model.snookerV2State.pendingConcessionActor))提出\(model.snookerV2State.pendingConcessionScope == "match" ? "整场" : "本局")认输")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(palette.textPrimary)
+                    if model.canRespondToSnookerConcession {
+                        HStack(spacing: 8) {
+                            compactAction("拒绝") {
+                                Task { await model.respondToSnookerConcession(accept: false) }
+                            }
+                            compactAction("接受", danger: true) {
+                                Task { await model.respondToSnookerConcession(accept: true) }
+                            }
+                        }
+                    }
+                }
+            } else if model.currentFrameStarted && !model.snookerV2State.respottedBlackPending {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("局与比赛决定")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(palette.textSecondary)
+                    if model.isReferee {
+                        HStack(spacing: 8) {
+                            compactAction("判给选手1") { model.awardSnookerFrame(winner: 1) }
+                            compactAction("判给选手2") { model.awardSnookerFrame(winner: 2) }
+                        }
+                        compactAction("记录双方已接受的认输", danger: true) {
+                            model.recordRefereeAcceptedConcession()
+                        }
+                    } else {
+                        HStack(spacing: 8) {
+                            compactAction("提出本局认输") { model.offerSnookerConcession(scope: "frame") }
+                            compactAction("认输整场比赛", danger: true) { model.offerSnookerConcession(scope: "match") }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var snookerV2Status: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(model.snookerV2PhaseLabel)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(palette.textPrimary)
+            HStack {
+                Text("当前击球：\(model.snookerV2StrikerLabel)")
+                Spacer(minLength: 4)
+                Text("目标球：\(model.snookerV2BallOnLabel)")
+            }
+            HStack {
+                Text("红球剩余 \(String(model.snookerV2State.redsRemaining))")
+                Spacer(minLength: 4)
+                Text("第 \(String(model.snookerV2State.visitNo)) 次上手 · 单杆 \(String(model.snookerV2State.currentBreak))")
+            }
+            if model.snookerV2State.freeBallAvailable {
+                Text("裁判已宣告自由球")
+                    .foregroundStyle(palette.brandStrong)
+            }
+            if model.snookerV2State.cueBallInHand {
+                Text("母球为D区手中球")
+                    .foregroundStyle(palette.brandStrong)
+            }
+            if model.snookerV2State.missWarningActive {
+                Text("连续 Miss 警告：再次符合条件的失败将判负本局")
+                    .foregroundStyle(AppTheme.danger)
+            }
+        }
+        .font(.system(size: 11))
+        .foregroundStyle(palette.textSecondary)
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(palette.subtle, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var snookerFoulEditor: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("犯规裁判决定")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(palette.textSecondary)
+            if model.snookerV2State.ballOn == "color_choice" {
+                Text("本杆目标彩球")
+                    .font(.system(size: 11))
+                    .foregroundStyle(palette.textMuted)
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                    ForEach(model.snookerColorOptions) { ball in
+                        chip(ball.label, active: model.snookerFoulBallOnValue == ball.value) {
+                            model.selectSnookerFoulBallOnValue(ball.value)
+                        }
+                    }
+                }
+            }
+            Text("罚分")
+                .font(.system(size: 11))
+                .foregroundStyle(palette.textMuted)
+            HStack(spacing: 6) {
+                ForEach([4, 5, 6, 7], id: \.self) { value in
+                    chip("\(String(value)) 分", active: model.snookerFoulPenalty == value) {
+                        model.setSnookerFoulPenalty(value)
+                    }
+                }
+            }
+            HStack {
+                Text("犯规杆离台红球")
+                    .font(.system(size: 11))
+                    .foregroundStyle(palette.textMuted)
+                Spacer()
+                Button("−") { model.adjustSnookerFoulReds(-1) }
+                    .buttonStyle(.plain)
+                    .frame(width: 34, height: 34)
+                    .background(palette.subtle, in: RoundedRectangle(cornerRadius: 8))
+                Text(String(model.snookerFoulRedsRemoved))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(palette.textPrimary)
+                    .frame(minWidth: 24)
+                Button("＋") { model.adjustSnookerFoulReds(1) }
+                    .buttonStyle(.plain)
+                    .frame(width: 34, height: 34)
+                    .background(palette.subtle, in: RoundedRectangle(cornerRadius: 8))
+            }
+            Text("犯规后选择")
+                .font(.system(size: 11))
+                .foregroundStyle(palette.textMuted)
+            ForEach(model.snookerFoulResolutions.indices, id: \.self) { index in
+                let item = model.snookerFoulResolutions[index]
+                chip(item.label, active: model.snookerFoulResolution == item.value) {
+                    model.selectSnookerFoulResolution(item.value)
+                }
+            }
+            toggler("Foul and a Miss", active: model.snookerFoulAndMiss) {
+                model.toggleSnookerFoulAndMiss()
+            }
+            if model.snookerFoulResolution == "offender_replays_original" && model.snookerFoulAndMiss {
+                toggler("具备整球直线条件", active: model.snookerMissSequenceEligible) {
+                    model.toggleSnookerMissSequenceEligible()
+                }
+            }
+            if model.snookerFoulResolution == "incoming_plays" {
+                toggler("宣告自由球", active: model.snookerFreeBallAwarded) {
+                    model.toggleSnookerFreeBallAwarded()
+                }
+            }
+            if model.snookerFoulResolution != "offender_replays_original" {
+                toggler("母球D区手中球", active: model.snookerFoulCueBallInHand) {
+                    model.toggleSnookerFoulCueBallInHand()
+                }
+            }
+            HStack(spacing: 8) {
+                compactAction("取消") { model.toggleSnookerFoulEditor() }
+                compactAction("确认犯规", danger: true) {
+                    Task { await model.submitSnookerV2Foul() }
+                }
+            }
+        }
+        .padding(10)
+        .background(palette.subtle, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func participantButton(title: String, active: Bool, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(active ? .white : palette.textSecondary)
+            .padding(.horizontal, 8)
+            .frame(height: 28)
+            .background(active ? AppTheme.primary : palette.subtle, in: RoundedRectangle(cornerRadius: 8))
+            .buttonStyle(.plain)
+    }
+
+    private func chip(_ title: String, active: Bool, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(active ? .white : palette.textSecondary)
+            .frame(maxWidth: .infinity)
+            .frame(height: 32)
+            .background(active ? AppTheme.primary : palette.subtle, in: RoundedRectangle(cornerRadius: 8))
+            .overlay { RoundedRectangle(cornerRadius: 8).stroke(palette.border) }
+            .buttonStyle(.plain)
+    }
+
+    private func toggler(_ title: String, active: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Text(title)
+                    .font(.system(size: 12))
+                Spacer()
+                Image(systemName: active ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(active ? palette.brandStrong : palette.textMuted)
+            }
+            .foregroundStyle(palette.textPrimary)
+            .padding(.horizontal, 10)
+            .frame(height: 34)
+            .background(active ? palette.brandTint : palette.subtle, in: RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func compactAction(
+        _ title: String,
+        danger: Bool = false,
+        highlighted: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(danger ? AppTheme.danger : (highlighted ? palette.brandStrong : palette.textPrimary))
+                .frame(maxWidth: .infinity)
+                .frame(height: 38)
+                .background(
+                    danger ? AppTheme.danger.opacity(0.12) : (highlighted ? palette.brandTint : palette.subtle),
+                    in: RoundedRectangle(cornerRadius: 10)
+                )
+                .overlay { RoundedRectangle(cornerRadius: 10).stroke(palette.border) }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func actionTile(
+        title: String,
+        desc: String,
+        compact: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(spacing: 2) {
+                Text(title)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(palette.textPrimary)
+                Text(desc)
+                    .font(.system(size: 9))
+                    .foregroundStyle(palette.textMuted)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, compact ? 7 : 9)
+            .background(palette.subtle, in: RoundedRectangle(cornerRadius: 10))
+            .overlay { RoundedRectangle(cornerRadius: 10).stroke(palette.border) }
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - 底部
 
     private var footer: some View {
         VStack(spacing: 8) {
-            if model.gameType == 1 && model.viewerUi.showActionPanel && (!model.isSnookerV2 || !model.currentFrameStarted) {
+            if model.gameType == 1 && model.viewerUi.showActionPanel
+                && (!model.isSnookerV2 || (!model.currentFrameStarted && model.canStartNextSnookerFrameValue)) {
                 Button("开始下一局") { model.requestNextRound() }
                     .buttonStyle(.appSecondary)
             }

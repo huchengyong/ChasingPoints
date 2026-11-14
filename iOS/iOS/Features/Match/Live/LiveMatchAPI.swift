@@ -7,6 +7,13 @@ private struct UpdateMatchFormatRequest: Encodable {
     let baseRevision: Int64
 }
 
+private struct UpdateSnookerFormatRequest: Encodable {
+    let matchId: Int64
+    let snookerFormat: String
+    let snookerTargetWins: Int
+    let baseRevision: Int64
+}
+
 /// 实时计分页的读写入口；写请求统一由模型附加 `client_action_id` 与 `base_revision`。
 @MainActor
 struct LiveMatchAPI {
@@ -45,6 +52,18 @@ struct LiveMatchAPI {
                 matchId: matchId,
                 matchFormat: format,
                 targetWins: targetWins,
+                baseRevision: baseRevision
+            )
+        )
+    }
+
+    func updateSnookerFormat(matchId: Int64, format: String, targetWins: Int, baseRevision: Int64) async throws -> LiveMatchWriteResponse {
+        try await session.authorizedPost(
+            "/api/match/snooker/format",
+            body: UpdateSnookerFormatRequest(
+                matchId: matchId,
+                snookerFormat: format,
+                snookerTargetWins: targetWins,
                 baseRevision: baseRevision
             )
         )
