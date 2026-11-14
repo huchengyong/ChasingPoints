@@ -7,7 +7,7 @@ struct MatchScanOpponent: Equatable {
 }
 
 /// 裁判入场的凭据；`joinToken` 是服务端签发的一次性凭证，不进日志与打印。
-struct RefereeJoin: Equatable, CustomStringConvertible {
+struct RefereeJoin: Encodable, Equatable, CustomStringConvertible {
     let matchId: Int64
     let joinToken: String
 

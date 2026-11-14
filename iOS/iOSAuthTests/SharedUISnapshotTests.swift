@@ -24,7 +24,7 @@ final class SharedUISnapshotTests: XCTestCase {
 
         for scheme in [ColorScheme.light, .dark] {
             let image = try renderSnapshot("main-tabs-guest", colorScheme: scheme, size: size) {
-                MainTabView()
+                MainTabView(session: session)
                     .environmentObject(session)
                     .environmentObject(activity)
                     .environmentObject(navigator)
@@ -51,7 +51,7 @@ final class SharedUISnapshotTests: XCTestCase {
 
         for scheme in [ColorScheme.light, .dark] {
             let image = try renderSnapshot("my-page-signed-in", colorScheme: scheme, size: size) {
-                MainTabView()
+                MainTabView(session: session)
                     .environmentObject(session)
                     .environmentObject(activity)
                     .environmentObject(navigator)

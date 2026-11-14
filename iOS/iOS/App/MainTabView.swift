@@ -8,6 +8,13 @@ struct MainTabView: View {
     @EnvironmentObject private var activity: ActivityStore
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.scenePhase) private var scenePhase
+    @State private var pendingScanOutcome: ScanOutcome?
+    @StateObject private var quickScan: QuickScanFlow
+
+    /// `@StateObject` 初始化时读不到环境里的会话，所以由调用方传入。
+    init(session: SessionStore) {
+        _quickScan = StateObject(wrappedValue: QuickScanFlow(session: session))
+    }
 
     private var palette: AppPalette { AppTheme.palette(for: colorScheme) }
 
@@ -77,15 +84,17 @@ struct MainTabView: View {
         .tint(AppTheme.primary)
         .toolbarBackground(palette.card, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
-        .sheet(isPresented: $navigator.isScanPresented) {
-            NavigationStack {
-                MigrationPlaceholderView(title: "扫码")
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("关闭") { navigator.isScanPresented = false }
-                        }
-                    }
+        .environmentObject(quickScan)
+        .fullScreenCover(isPresented: $navigator.isScanPresented) {
+            QRScannerView { outcome in
+                pendingScanOutcome = outcome
+                navigator.isScanPresented = false
             }
+        }
+        .onChange(of: navigator.isScanPresented) { _, isPresented in
+            guard !isPresented, let outcome = pendingScanOutcome else { return }
+            pendingScanOutcome = nil
+            Task { await handleScan(outcome) }
         }
         .alert("登录状态已失效", isPresented: sessionExpiredBinding) {
             Button("重新登录") {
@@ -113,6 +122,28 @@ struct MainTabView: View {
             if phase == .active {
                 Task { await activity.refreshIfNeeded() }
             }
+        }
+    }
+
+    /// 相机回调先落到状态再关页，避免 sheet 关闭与回调时序互相覆盖。
+    @MainActor
+    private func handleScan(_ outcome: ScanOutcome) async {
+        guard let result = try? await quickScan.start(scan: { outcome }) else {
+            return
+        }
+        switch result {
+        case .login:
+            navigator.openLogin()
+        case .confirm:
+            navigator.open(.scanConfirm)
+        case .error(let message):
+            toast.show(message ?? "扫码失败")
+        case .mismatch:
+            toast.show("请扫描指定对手的匹配码")
+        case .spectate(let matchId):
+            navigator.open(.liveMatch(matchId: matchId))
+        case .busy, .cancelled, .stale:
+            break
         }
     }
 

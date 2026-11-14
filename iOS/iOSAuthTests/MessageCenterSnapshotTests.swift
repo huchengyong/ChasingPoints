@@ -126,7 +126,7 @@ final class MessageCenterSnapshotTests: XCTestCase {
 
         for scheme in [ColorScheme.light, .dark] {
             let image = try renderSnapshot("main-tabs-badge-count", colorScheme: scheme, size: size) {
-                MainTabView()
+                MainTabView(session: session)
                     .environmentObject(session)
                     .environmentObject(activity)
                     .environmentObject(navigator)
@@ -147,7 +147,7 @@ final class MessageCenterSnapshotTests: XCTestCase {
 
         for scheme in [ColorScheme.light, .dark] {
             let image = try renderSnapshot("main-tabs-badge-dot", colorScheme: scheme, size: size) {
-                MainTabView()
+                MainTabView(session: session)
                     .environmentObject(session)
                     .environmentObject(activity)
                     .environmentObject(navigator)
