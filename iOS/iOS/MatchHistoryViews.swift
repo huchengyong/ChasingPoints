@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MatchReportRoute: Hashable {
     let matchId: Int64
+    var fromHistory = false
 }
 
 private enum HistorySection: Hashable {
@@ -50,7 +51,7 @@ struct MatchHistoryView: View {
                             emptyTitle: "暂无对局记录",
                             emptyHint: "完成一场对局后会出现在这里"
                         ) { item in
-                            NavigationLink(value: MatchReportRoute(matchId: item.id)) {
+                            NavigationLink(value: MatchReportRoute(matchId: item.id, fromHistory: true)) {
                                 ParticipantHistoryRow(item: item)
                             }
                         }
@@ -62,7 +63,7 @@ struct MatchHistoryView: View {
                         ) { item in
                             // 已取消的执裁记录没有可读战报，只展示状态。
                             if item.status == 2 {
-                                NavigationLink(value: MatchReportRoute(matchId: item.id)) {
+                                NavigationLink(value: MatchReportRoute(matchId: item.id, fromHistory: true)) {
                                     RefereeHistoryRow(item: item, isNavigable: true)
                                 }
                             } else {
@@ -77,7 +78,7 @@ struct MatchHistoryView: View {
         .navigationTitle("对局记录")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: MatchReportRoute.self) { route in
-            MatchReportView(session: session, matchId: route.matchId)
+            MatchReportView(session: session, matchId: route.matchId, fromHistory: route.fromHistory)
         }
         .onChange(of: session.identity) { _, _ in
             // 退出、切号或会话失效后清空两个分栏，旧账号的在途结果不再采纳。

@@ -152,6 +152,7 @@ struct ReplaySummary: Decodable, Equatable {
 
 /// `GetMemberMatchReplayResp` 里复盘页实际读取的字段。
 struct MatchReplayResponse: Decodable, Equatable {
+    var success: Bool = true
     var gameType: Int = 0
     var locked: Bool = false
     var viewerActor: Int? = nil

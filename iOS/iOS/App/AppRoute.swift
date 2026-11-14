@@ -34,6 +34,7 @@ enum AppRoute: Hashable {
     case statsDetail(gameType: Int)
     case performance(gameType: Int)
     case matchReplay(matchId: Int64)
+    case shareResult(matchId: Int64)
     case challengeCompose
     case challengeWaiting(challengeId: Int64)
     case challenges(tab: ChallengeTab)
@@ -81,6 +82,7 @@ enum AppRoute: Hashable {
         case .statsDetail: "竞技分析"
         case .performance: "表现分析"
         case .matchReplay: "单场复盘"
+        case .shareResult: "战绩海报"
         case .challengeCompose: "发起约球"
         case .challengeWaiting: "等待对手"
         case .challenges: "约球"
@@ -148,6 +150,10 @@ struct AppRouteDestination: View {
             MatchHistoryView(session: session)
         case .matchReport(let matchId):
             MatchReportView(session: session, matchId: matchId)
+        case .publicMatchDetail(let matchId):
+            MatchDetailView(session: session, matchId: matchId, isSpectate: true)
+        case .matchReplay(let matchId):
+            MatchReplayView(session: session, matchId: matchId)
         case .ranking:
             RankingView(session: session)
         case .spectatorLobby:
