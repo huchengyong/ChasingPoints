@@ -5,6 +5,7 @@
 //  Created by WiseSearch on 2026/9/22.
 //
 
+import Combine
 import SwiftUI
 
 @main
@@ -20,48 +21,47 @@ struct iOSApp: App {
     }
 }
 
-private struct ApplicationRootView: View {
-    @StateObject private var session: SessionStore
-    @StateObject private var activity: ActivityStore
-    @StateObject private var realtime: AppRealtime
-    @StateObject private var navigator = AppNavigator()
-    @StateObject private var toast = ToastCenter()
-    @Environment(\.scenePhase) private var scenePhase
-
-    private let networkMonitor: NetworkStatusMonitor
+/// 只构造一次的应用对象；视图结构体被重新初始化时不会重复读 Keychain。
+private final class AppDependencies: ObservableObject {
+    let session: SessionStore
+    let activity: ActivityStore
+    let realtime: AppRealtime
 
     init() {
         let session = SessionStore()
         let activity = ActivityStore(session: session)
-        _session = StateObject(wrappedValue: session)
-        _activity = StateObject(wrappedValue: activity)
-        _realtime = StateObject(wrappedValue: AppRealtime(session: session, activity: activity))
-        networkMonitor = NWPathNetworkMonitor()
+        self.session = session
+        self.activity = activity
+        self.realtime = AppRealtime(session: session, activity: activity)
     }
+}
+
+private struct ApplicationRootView: View {
+    @StateObject private var dependencies = AppDependencies()
+    @StateObject private var navigator = AppNavigator()
+    @StateObject private var toast = ToastCenter()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ContentView()
-            .environmentObject(session)
-            .environmentObject(activity)
-            .environmentObject(realtime)
+            .environmentObject(dependencies.session)
+            .environmentObject(dependencies.activity)
+            .environmentObject(dependencies.realtime)
             .environmentObject(navigator)
             .environmentObject(toast)
-            .task { await session.restore() }
+            .task { await dependencies.session.restore() }
             .onAppear {
-                networkMonitor.onStatusChange = { online in
-                    realtime.setNetworkOnline(online)
-                }
-                networkMonitor.start()
-                realtime.setForeground(scenePhase == .active)
+                dependencies.realtime.startNetworkMonitoring()
+                dependencies.realtime.setForeground(scenePhase == .active)
             }
             .onChange(of: scenePhase) { _, phase in
-                realtime.setForeground(phase == .active)
+                dependencies.realtime.setForeground(phase == .active)
             }
-            .onChange(of: session.identity) { _, _ in
-                activity.syncIdentity()
+            .onChange(of: dependencies.session.identity) { _, _ in
+                dependencies.activity.syncIdentity()
                 Task {
-                    await realtime.handleIdentityChange()
-                    await activity.refreshIfNeeded()
+                    await dependencies.realtime.handleIdentityChange()
+                    await dependencies.activity.refreshIfNeeded()
                 }
             }
     }

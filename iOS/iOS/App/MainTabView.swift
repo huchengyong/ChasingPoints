@@ -29,7 +29,7 @@ struct MainTabView: View {
     var body: some View {
         TabView(selection: selectedTabBinding) {
             NavigationStack(path: pathBinding(for: .home)) {
-                MigrationPlaceholderView(title: "追分")
+                HomeView(session: session)
                     .navigationDestination(for: AppRoute.self) { AppRouteDestination(route: $0) }
             }
             .tabItem {

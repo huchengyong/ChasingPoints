@@ -30,13 +30,17 @@ struct VenueAPI {
         return VenuePage(items: response.list, total: Int(response.total))
     }
 
-    /// 附近球馆：小程序固定 radius 10000、limit 20，返回后不再分页。
-    func nearby(_ coordinate: Coordinate) async throws -> VenuePage {
+    /// 附近球馆：列表页固定 radius 10000、limit 20；首页预览传 5km / 3 条。
+    func nearby(
+        _ coordinate: Coordinate,
+        radius: Int = nearbyRadius,
+        limit: Int = nearbyLimit
+    ) async throws -> VenuePage {
         let path = APIQuery.path("/api/venue/nearby", [
             "latitude": coordinate.latitude,
             "longitude": coordinate.longitude,
-            "radius": Self.nearbyRadius,
-            "limit": Self.nearbyLimit,
+            "radius": radius,
+            "limit": limit,
         ])
         let response: VenueListResponse = try await session.optionalAuthRequest(path)
         return VenuePage(items: response.list, total: Int(response.total))

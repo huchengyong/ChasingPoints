@@ -190,4 +190,49 @@ final class AppRealtimeTests: XCTestCase {
         try? await Task.sleep(nanoseconds: 150_000_000)
         XCTAssertEqual(server.requestCount("/api/user/bootstrap"), 1, "同一段连接只通知一次会话失效")
     }
+
+    // MARK: - 网络监听
+
+    func testNetworkMonitorStartsOnlyOnce() async {
+        let server = MockHTTPServer()
+        server.stub("GET", "/api/user/bootstrap", .json(bootstrap()))
+        let harness = await makeHarness(server)
+        let monitor = FakeNetworkMonitor()
+
+        harness.realtime.startNetworkMonitoring(monitor)
+        harness.realtime.startNetworkMonitoring(monitor)
+
+        XCTAssertEqual(monitor.startCount, 1, "根视图重建不得重复启动监听")
+    }
+
+    func testNetworkStatusChangePausesAndResumesConnection() async {
+        let server = MockHTTPServer()
+        server.stub("GET", "/api/user/bootstrap", .json(bootstrap()))
+        let harness = await makeHarness(server)
+        await harness.realtime.handleIdentityChange()
+        let monitor = FakeNetworkMonitor()
+        harness.realtime.startNetworkMonitoring(monitor)
+
+        monitor.emit(false)
+        XCTAssertFalse(harness.user.isConnected)
+        XCTAssertEqual(harness.transport.sockets[0].closeCount, 1)
+
+        monitor.emit(true)
+        await waitUntil { harness.transport.sockets.count == 2 && harness.user.isConnected }
+    }
+}
+
+/// 网络状态监听替身：由测试手动触发在线 / 离线。
+@MainActor
+private final class FakeNetworkMonitor: NetworkStatusMonitor {
+    var onStatusChange: ((Bool) -> Void)?
+    private(set) var startCount = 0
+
+    func start() {
+        startCount += 1
+    }
+
+    func emit(_ online: Bool) {
+        onStatusChange?(online)
+    }
 }
