@@ -385,7 +385,7 @@ struct MyShortcutSection: View {
                 navigator.open(.matchHistory)
             }
             shortcut("过往对手", symbol: "person.2") {
-                navigator.open(.opponentRecord)
+                navigator.open(.opponentRecord(target: nil))
             }
             shortcut("荣誉墙", symbol: "medal") {
                 navigator.open(.achievementWall(gameType: model.currentRankGameType))

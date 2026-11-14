@@ -265,20 +265,34 @@ final class HomeRulesTests: XCTestCase {
     }
 
     func testVenueEmptyActionMentionsMemberRewardOnlyWhenClaimable() {
-        XCTAssertEqual(
-            HomeRules.venueEmptyAction(rewardClaimable: true),
-            HomeVenueEmptyAction(
-                text: "添加球馆领取VIP",
-                desc: "你可以提交常玩球馆，审核通过后VIP会自动到账。"
-            )
+        let claimable = FavoriteVenueRewardStatus(
+            success: true, enabled: true, popupEnabled: true, rewardDays: 30,
+            newUserWindowDays: 7, status: "not_started", memberExpiresAt: nil,
+            submittedVenueId: nil, submittedVenueName: nil, rejectReason: nil
         )
-        XCTAssertEqual(
-            HomeRules.venueEmptyAction(rewardClaimable: false),
-            HomeVenueEmptyAction(
-                text: "添加附近球馆",
-                desc: "你可以提交常去球馆，审核通过后会展示给附近球友。"
-            )
+        let disabled = FavoriteVenueRewardStatus(
+            success: true, enabled: false, popupEnabled: true, rewardDays: 30,
+            newUserWindowDays: 7, status: "not_started", memberExpiresAt: nil,
+            submittedVenueId: nil, submittedVenueName: nil, rejectReason: nil
         )
+        let granted = FavoriteVenueRewardStatus(
+            success: true, enabled: true, popupEnabled: true, rewardDays: 30,
+            newUserWindowDays: 7, status: "reward_granted", memberExpiresAt: nil,
+            submittedVenueId: nil, submittedVenueName: nil, rejectReason: nil
+        )
+        let claimableAction = HomeVenueEmptyAction(
+            text: "添加球馆领取VIP",
+            desc: "你可以提交常玩球馆，审核通过后VIP会自动到账。"
+        )
+        let defaultAction = HomeVenueEmptyAction(
+            text: "添加附近球馆",
+            desc: "你可以提交常去球馆，审核通过后会展示给附近球友。"
+        )
+
+        XCTAssertEqual(HomeRules.venueEmptyAction(claimable), claimableAction)
+        XCTAssertEqual(HomeRules.venueEmptyAction(disabled), defaultAction)
+        XCTAssertEqual(HomeRules.venueEmptyAction(granted), defaultAction)
+        XCTAssertEqual(HomeRules.venueEmptyAction(nil), defaultAction)
     }
 
     func testNearbyRelocatesOnlyFirstTimeAfterIntervalOrForced() {

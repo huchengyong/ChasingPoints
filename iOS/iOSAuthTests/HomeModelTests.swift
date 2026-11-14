@@ -146,6 +146,58 @@ final class HomeModelTests: XCTestCase {
 
     // MARK: - 附近球房
 
+    func testVenueEmptyActionUsesFavoriteVenueRewardWhenSignedIn() async {
+        let server = MockHTTPServer()
+        stubAll(server)
+        server.stub("GET", "/api/user/overview", .json(ProfileFixtures.overview(
+            favoriteVenueReward: ProfileFixtures.favoriteVenueRewardJSON()
+        )))
+        let home = await makeHome(server, signedIn: true)
+
+        await home.model.onAppear()
+
+        XCTAssertEqual(home.model.venueEmptyAction.text, "添加球馆领取VIP")
+        XCTAssertEqual(home.model.venueEmptyAction.desc, "你可以提交常玩球馆，审核通过后VIP会自动到账。")
+    }
+
+    func testVenueEmptyActionFallsBackWhenRewardReadFails() async {
+        let server = MockHTTPServer()
+        stubAll(server)
+        server.stub("GET", "/api/user/overview", .raw("down", status: 500))
+        let home = await makeHome(server, signedIn: true)
+
+        await home.model.onAppear()
+
+        XCTAssertEqual(home.model.venueEmptyAction.text, "添加附近球馆")
+    }
+
+    func testVenueEmptyActionFallsBackWhenSignedOutWithoutOverviewRequest() async {
+        let server = MockHTTPServer()
+        stubAll(server)
+        let home = await makeHome(server)
+
+        await home.model.onAppear()
+
+        XCTAssertEqual(home.model.venueEmptyAction.text, "添加附近球馆")
+        XCTAssertEqual(server.requestCount("/api/user/overview"), 0)
+    }
+
+    func testVenueEmptyActionClearsAfterLogout() async {
+        let server = MockHTTPServer()
+        stubAll(server)
+        server.stub("GET", "/api/user/overview", .json(ProfileFixtures.overview(
+            favoriteVenueReward: ProfileFixtures.favoriteVenueRewardJSON()
+        )))
+        let home = await makeHome(server, signedIn: true)
+        await home.model.onAppear()
+        XCTAssertEqual(home.model.venueEmptyAction.text, "添加球馆领取VIP")
+
+        home.session.logout()
+        await home.model.onIdentityChanged()
+
+        XCTAssertEqual(home.model.venueEmptyAction.text, "添加附近球馆")
+    }
+
     func testNearbyRelocatesOnlyAfterThreeMinutes() async {
         let server = MockHTTPServer()
         stubAll(server)

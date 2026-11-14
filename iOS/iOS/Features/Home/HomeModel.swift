@@ -25,10 +25,13 @@ final class HomeModel: ObservableObject {
     @Published private(set) var nearbyLocationIssue: HomeLocationIssue?
 
     @Published private(set) var isRefreshing = false
+    /// 已登录时的常玩球馆奖励状态；读取失败或未登录保持 nil（按不可领取处理）。
+    @Published private(set) var favoriteVenueReward: FavoriteVenueRewardStatus?
 
     private let session: SessionStore
     private let location: LocationProviding
     private let api: HomeAPI
+    private let profileAPI: ProfileAPI
     private let now: () -> Date
 
     private var owner: SessionIdentity?
@@ -36,6 +39,7 @@ final class HomeModel: ObservableObject {
     private var eventToken = 0
     private var liveToken = 0
     private var nearbyToken = 0
+    private var rewardToken = 0
 
     private var leaderboardLoadedAt: Date?
     private var eventLoadedAt: Date?
@@ -50,6 +54,7 @@ final class HomeModel: ObservableObject {
         self.session = session
         self.location = location ?? SystemLocationProvider()
         self.api = HomeAPI(session: session)
+        self.profileAPI = ProfileAPI(session: session)
         self.now = now
         self.owner = session.identity
     }
@@ -63,7 +68,8 @@ final class HomeModel: ObservableObject {
         async let event: Void = loadEventNews(force: false)
         async let live: Void = loadLiveMatches(force: false)
         async let nearby: Void = loadNearby(force: false)
-        _ = await (leaderboard, event, live, nearby)
+        async let reward: Void = loadFavoriteVenueReward()
+        _ = await (leaderboard, event, live, nearby, reward)
     }
 
     /// 下拉刷新：全部强制重读。
@@ -75,7 +81,8 @@ final class HomeModel: ObservableObject {
         async let event: Void = loadEventNews(force: true)
         async let live: Void = loadLiveMatches(force: true)
         async let nearby: Void = loadNearby(force: true)
-        _ = await (leaderboard, event, live, nearby)
+        async let reward: Void = loadFavoriteVenueReward()
+        _ = await (leaderboard, event, live, nearby, reward)
         isRefreshing = false
     }
 
@@ -88,7 +95,11 @@ final class HomeModel: ObservableObject {
         leaderboardTopThree = []
         myRanking = nil
         leaderboardLoadedAt = nil
-        await loadLeaderboard(force: true)
+        rewardToken += 1
+        favoriteVenueReward = nil
+        async let leaderboard: Void = loadLeaderboard(force: true)
+        async let reward: Void = loadFavoriteVenueReward()
+        _ = await (leaderboard, reward)
     }
 
     func retryLeaderboard() async { await loadLeaderboard(force: true) }
@@ -138,7 +149,9 @@ final class HomeModel: ObservableObject {
         }
     }
 
-    var venueEmptyAction: HomeVenueEmptyAction { HomeRules.venueEmptyAction(rewardClaimable: false) }
+    var venueEmptyAction: HomeVenueEmptyAction {
+        HomeRules.venueEmptyAction(favoriteVenueReward)
+    }
 
     // MARK: - 读取
 
@@ -223,6 +236,27 @@ final class HomeModel: ObservableObject {
             }
             // 失败时保留上一次的列表，只在区块内提示。
             livePhase = .failed(LoadFailure(error))
+        }
+    }
+
+    /// 常玩球馆奖励独立读取：只影响空态文案，失败不改变其它区块。
+    private func loadFavoriteVenueReward() async {
+        guard session.identity != nil else {
+            rewardToken += 1
+            favoriteVenueReward = nil
+            return
+        }
+        rewardToken += 1
+        let token = rewardToken
+        let requestOwner = session.identity
+
+        do {
+            let overview = try await profileAPI.overview()
+            guard token == rewardToken, session.identity == requestOwner else { return }
+            favoriteVenueReward = overview.availableFavoriteVenueReward
+        } catch {
+            guard token == rewardToken, session.identity == requestOwner else { return }
+            favoriteVenueReward = nil
         }
     }
 

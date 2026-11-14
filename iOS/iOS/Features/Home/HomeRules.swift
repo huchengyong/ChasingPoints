@@ -293,8 +293,8 @@ enum HomeRules {
     }
 
     /// 附近球房空态；奖励活动是否可领取决定是否引导领取 VIP。
-    static func venueEmptyAction(rewardClaimable: Bool) -> HomeVenueEmptyAction {
-        rewardClaimable
+    static func venueEmptyAction(_ rewardStatus: FavoriteVenueRewardStatus?) -> HomeVenueEmptyAction {
+        FavoriteVenueReward.isClaimable(rewardStatus)
             ? HomeVenueEmptyAction(
                 text: "添加球馆领取VIP",
                 desc: "你可以提交常玩球馆，审核通过后VIP会自动到账。"
