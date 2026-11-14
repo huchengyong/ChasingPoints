@@ -211,6 +211,23 @@ final class QuickScanFlowTests: XCTestCase {
         XCTAssertNil(flow.takeHandoff(identity: session.identity), "身份不符的取用必须清掉凭证")
     }
 
+    func testFlowsBoundToDifferentSessionsDoNotShareHandoffs() async {
+        let sessionA = await makeRestoredAccountSession(MockHTTPServer(), user: AuthFixtures.userInfo(id: 1))
+        let sessionB = await makeRestoredAccountSession(MockHTTPServer(), user: AuthFixtures.userInfo(id: 2))
+        let flowA = QuickScanFlow(session: sessionA)
+        let flowB = QuickScanFlow(session: sessionB)
+        let opponent = MatchScanOpponent(id: 9, nickname: "对手乙", avatar: "")
+
+        XCTAssertTrue(flowA.handoffResolved(
+            identity: sessionA.identity,
+            inviteToken: "token.a",
+            opponent: opponent
+        ))
+        XCTAssertNil(flowB.takeHandoff(identity: sessionB.identity), "A 的交接不能从绑定 B 的实例取到")
+        XCTAssertNil(flowB.takeHandoff(identity: sessionA.identity))
+        XCTAssertEqual(flowA.takeHandoff(identity: sessionA.identity)?.inviteToken, "token.a")
+    }
+
     func testNewScanReplacesUntakenHandoff() async throws {
         let server = MockHTTPServer()
         let session = await makeRestoredAccountSession(server)

@@ -51,7 +51,13 @@ struct QRScannerView: View {
                     action: openSettings
                 )
             case .unsupported:
-                unsupportedBlock
+                stateBlock(
+                    title: "当前端暂不支持扫码",
+                    detail: "请使用支持相机的设备扫码。",
+                    actionTitle: "关闭",
+                    showsManualInput: true,
+                    action: { onResult(.cancelled) }
+                )
             }
         }
         .task { await prepare() }
@@ -91,32 +97,21 @@ struct QRScannerView: View {
         .padding(.top, 12)
     }
 
-    private var unsupportedBlock: some View {
-        stateBlock(
-            title: "当前端暂不支持扫码",
-            detail: "请使用支持相机的设备扫码。",
-            actionTitle: "关闭",
-            action: { onResult(.cancelled) }
-        )
-        .overlay(alignment: .bottom) {
-            #if DEBUG
-            manualInput
-                .padding(.horizontal, 24)
-                .padding(.bottom, 48)
-            #endif
-        }
-    }
-
     #if DEBUG
     /// 模拟器没有相机：允许手动粘贴二维码内容，便于联调。
     private var manualInput: some View {
         VStack(spacing: 12) {
             TextField("粘贴二维码内容", text: $manualCode)
+                .textFieldStyle(.plain)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
+                .foregroundStyle(.white)
                 .padding(12)
                 .background(.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 12))
-                .foregroundStyle(.white)
+                .background {
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(.white.opacity(0.35), lineWidth: 1)
+                }
 
             Button("确认") {
                 let value = manualCode.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -132,9 +127,10 @@ struct QRScannerView: View {
         title: String,
         detail: String,
         actionTitle: String,
+        showsManualInput: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
             Image(systemName: "camera.fill")
                 .font(.system(size: 40))
                 .foregroundStyle(.white.opacity(0.6))
@@ -149,11 +145,17 @@ struct QRScannerView: View {
                 .foregroundStyle(.white.opacity(0.72))
                 .multilineTextAlignment(.center)
 
+            #if DEBUG
+            if showsManualInput {
+                manualInput
+            }
+            #endif
+
             Button(actionTitle, action: action)
                 .buttonStyle(.appPill)
-                .padding(.top, 4)
         }
         .padding(24)
+        .frame(maxWidth: .infinity)
     }
 
     private func prepare() async {

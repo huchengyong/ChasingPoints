@@ -3,6 +3,7 @@ import SwiftUI
 /// 扫码确认页：开局选择球种 / 对局类型，或预览裁判码后确认执裁。
 struct ScanConfirmView: View {
     @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var quickScan: QuickScanFlow
     @EnvironmentObject private var navigator: AppNavigator
     @EnvironmentObject private var toast: ToastCenter
     @Environment(\.colorScheme) private var colorScheme
@@ -10,11 +11,12 @@ struct ScanConfirmView: View {
     @StateObject private var model: ScanConfirmModel
     @State private var isRescanPresented = false
 
+    /// 注入的模型（测试 / 快照）已经带好交接，首次出现时不再从流程里取。
+    private let usesInjectedModel: Bool
+
     init(session: SessionStore, model: ScanConfirmModel? = nil) {
-        _model = StateObject(wrappedValue: model ?? ScanConfirmModel(
-            session: session,
-            handoff: QuickScanFlow.shared.takeHandoff(identity: session.identity)
-        ))
+        usesInjectedModel = model != nil
+        _model = StateObject(wrappedValue: model ?? ScanConfirmModel(session: session, handoff: nil))
     }
 
     private var palette: AppPalette { AppTheme.palette(for: colorScheme) }
@@ -29,7 +31,9 @@ struct ScanConfirmView: View {
         .navigationTitle(model.navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            QuickScanFlow.shared.bind(session: session)
+            if !usesInjectedModel {
+                model.apply(handoff: quickScan.takeHandoff(identity: session.identity))
+            }
             await model.loadIfNeeded()
         }
         .onChange(of: session.identity) { _, _ in
@@ -316,12 +320,12 @@ struct ScanConfirmView: View {
 
     /// 重新扫码拿到新的交接后就地重载，避免重复压栈。
     private func handleRescan(_ outcome: ScanOutcome) async {
-        guard let result = try? await QuickScanFlow.shared.start(rematch: model.rematch, scan: { outcome }) else {
+        guard let result = try? await quickScan.start(rematch: model.rematch, scan: { outcome }) else {
             return
         }
         switch result {
         case .confirm:
-            model.apply(handoff: QuickScanFlow.shared.takeHandoff(identity: session.identity))
+            model.apply(handoff: quickScan.takeHandoff(identity: session.identity))
             await model.loadIfNeeded()
         case .login:
             navigator.openLogin()
@@ -329,7 +333,9 @@ struct ScanConfirmView: View {
             toast.show(message ?? "扫码失败")
         case .mismatch:
             toast.show("请扫描指定对手的匹配码")
-        case .busy, .cancelled, .stale, .spectate:
+        case .spectate(let matchId):
+            navigator.open(.liveMatch(matchId: matchId))
+        case .busy, .cancelled, .stale:
             break
         }
     }

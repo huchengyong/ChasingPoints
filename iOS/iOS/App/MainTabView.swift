@@ -7,6 +7,12 @@ struct MainTabView: View {
     @EnvironmentObject private var toast: ToastCenter
     @Environment(\.colorScheme) private var colorScheme
     @State private var pendingScanOutcome: ScanOutcome?
+    @StateObject private var quickScan: QuickScanFlow
+
+    /// `@StateObject` 初始化时读不到环境里的会话，所以由调用方传入。
+    init(session: SessionStore) {
+        _quickScan = StateObject(wrappedValue: QuickScanFlow(session: session))
+    }
 
     private var palette: AppPalette { AppTheme.palette(for: colorScheme) }
 
@@ -67,6 +73,7 @@ struct MainTabView: View {
         .tint(AppTheme.primary)
         .toolbarBackground(palette.card, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
+        .environmentObject(quickScan)
         .fullScreenCover(isPresented: $navigator.isScanPresented) {
             QRScannerView { outcome in
                 pendingScanOutcome = outcome
@@ -78,7 +85,6 @@ struct MainTabView: View {
             pendingScanOutcome = nil
             Task { await handleScan(outcome) }
         }
-        .task { QuickScanFlow.shared.bind(session: session) }
         .alert("登录状态已失效", isPresented: sessionExpiredBinding) {
             Button("重新登录") {
                 session.acknowledgeSessionExpired()
@@ -103,7 +109,7 @@ struct MainTabView: View {
     /// 相机回调先落到状态再关页，避免 sheet 关闭与回调时序互相覆盖。
     @MainActor
     private func handleScan(_ outcome: ScanOutcome) async {
-        guard let result = try? await QuickScanFlow.shared.start(scan: { outcome }) else {
+        guard let result = try? await quickScan.start(scan: { outcome }) else {
             return
         }
         switch result {
@@ -115,9 +121,8 @@ struct MainTabView: View {
             toast.show(message ?? "扫码失败")
         case .mismatch:
             toast.show("请扫描指定对手的匹配码")
-        case .spectate:
-            // 观赛详情尚未迁移：关闭扫码页即可。
-            break
+        case .spectate(let matchId):
+            navigator.open(.liveMatch(matchId: matchId))
         case .busy, .cancelled, .stale:
             break
         }

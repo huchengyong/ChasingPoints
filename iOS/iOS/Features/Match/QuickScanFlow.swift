@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 /// 确认页的两种模式：扫码开局与扫码执裁。
@@ -57,10 +58,7 @@ struct ScanHandoff: Equatable, CustomStringConvertible {
 
 /// 逐条对应小程序 `utils/quick-scan.js`：先扫后解析，再把凭证一次性交给确认页。
 @MainActor
-final class QuickScanFlow {
-    /// 与 `quick-scan-entry.js` 的模块级单例一致；应用启动时 `bind(session:)` 接上真实会话。
-    static let shared = QuickScanFlow()
-
+final class QuickScanFlow: ObservableObject {
     enum StartResult: Equatable {
         case busy
         case login
@@ -68,7 +66,7 @@ final class QuickScanFlow {
         case cancelled
         /// 需要轻提示；nil 表示默认「扫码失败」。
         case error(message: String?)
-        /// 观赛详情尚未在原生端开放，调用方只需关闭扫码页。
+        /// 扫到对局链接：直接进入该对局。
         case spectate(matchId: Int64)
         case mismatch
         case confirm(mode: ScanConfirmMode)
@@ -80,17 +78,18 @@ final class QuickScanFlow {
     // 凭证只在内存里交给确认页使用一次。
     private var handoff: ScanHandoff?
 
+    /// 生产入口：实例直接绑定会话，交接不会串到别的会话。
+    init(session: SessionStore, api: MatchStartAPI? = nil) {
+        self.currentIdentity = { session.identity }
+        self.api = api ?? MatchStartAPI(session: session)
+    }
+
     init(
         currentIdentity: @escaping () -> SessionIdentity? = { nil },
         api: MatchStartAPI? = nil
     ) {
         self.currentIdentity = currentIdentity
         self.api = api
-    }
-
-    func bind(session: SessionStore, api: MatchStartAPI? = nil) {
-        self.currentIdentity = { session.identity }
-        self.api = api ?? MatchStartAPI(session: session)
     }
 
     /// rematch：赛果页「再来一局」传入上一场上下文。`scan` 由相机视图提供，测试可直接注入结果。

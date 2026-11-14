@@ -75,6 +75,7 @@ final class ScanConfirmSnapshotTests: XCTestCase {
     ) async throws {
         let navigator = AppNavigator()
         let toast = ToastCenter()
+        let quickScan = QuickScanFlow(session: session)
         for scheme in [ColorScheme.light, .dark] {
             let image = try renderSnapshot(name, colorScheme: scheme, size: size) {
                 NavigationStack {
@@ -82,6 +83,7 @@ final class ScanConfirmSnapshotTests: XCTestCase {
                         .navigationDestination(for: AppRoute.self) { AppRouteDestination(route: $0) }
                 }
                 .environmentObject(session)
+                .environmentObject(quickScan)
                 .environmentObject(navigator)
                 .environmentObject(toast)
             }
