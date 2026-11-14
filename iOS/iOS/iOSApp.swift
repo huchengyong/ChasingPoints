@@ -26,6 +26,7 @@ private final class AppDependencies: ObservableObject {
     let session: SessionStore
     let activity: ActivityStore
     let realtime: AppRealtime
+    let gear: GearStore
 
     init() {
         let session = SessionStore()
@@ -33,6 +34,7 @@ private final class AppDependencies: ObservableObject {
         self.session = session
         self.activity = activity
         self.realtime = AppRealtime(session: session, activity: activity)
+        self.gear = GearStore(session: session)
     }
 }
 
@@ -47,6 +49,7 @@ private struct ApplicationRootView: View {
             .environmentObject(dependencies.session)
             .environmentObject(dependencies.activity)
             .environmentObject(dependencies.realtime)
+            .environmentObject(dependencies.gear)
             .environmentObject(navigator)
             .environmentObject(toast)
             .task { await dependencies.session.restore() }
@@ -59,6 +62,7 @@ private struct ApplicationRootView: View {
             }
             .onChange(of: dependencies.session.identity) { _, _ in
                 dependencies.activity.syncIdentity()
+                dependencies.gear.syncIdentity()
                 Task {
                     await dependencies.realtime.handleIdentityChange()
                     await dependencies.activity.refreshIfNeeded()

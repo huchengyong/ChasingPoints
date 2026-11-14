@@ -56,6 +56,9 @@ enum AppRoute: Hashable {
     case seasonHistory(gameType: Int)
     case seasonReport(seasonId: Int64, gameType: Int)
     case gearIndex
+    case gearAdd(category: String, pickToken: String?)
+    case gearItem(id: Int64)
+    case gearFriend(userId: Int64)
     case scanConfirm
     case opponentSelector
 
@@ -103,6 +106,9 @@ enum AppRoute: Hashable {
         case .seasonHistory: "历届赛季"
         case .seasonReport: "赛季报告"
         case .gearIndex: "我的装备"
+        case .gearAdd: "添加装备"
+        case .gearItem: "装备详情"
+        case .gearFriend: "TA 的装备"
         case .scanConfirm: "确认对局"
         case .opponentSelector: "选择球友"
         }
@@ -112,6 +118,7 @@ enum AppRoute: Hashable {
 /// 路由 → 页面。已迁移的返回真实页面，其余返回占位页。
 struct AppRouteDestination: View {
     @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var gearStore: GearStore
 
     let route: AppRoute
 
@@ -180,6 +187,14 @@ struct AppRouteDestination: View {
             AchievementDetailView(session: session, achievementId: achievementId)
         case .tournamentDetail(let id):
             NewsDetailView(session: session, eventId: id)
+        case .gearIndex:
+            GearIndexView(session: session, store: gearStore)
+        case .gearAdd(let category, let pickToken):
+            GearAddView(session: session, store: gearStore, category: category, pickToken: pickToken)
+        case .gearItem(let id):
+            GearItemView(session: session, store: gearStore, itemId: id)
+        case .gearFriend(let userId):
+            GearFriendView(session: session, userId: userId, name: "")
         case .scanConfirm:
             ScanConfirmView(session: session)
         case .opponentSelector:
