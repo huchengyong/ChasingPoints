@@ -6,13 +6,10 @@ final class HonorWallModelTests: XCTestCase {
     private let path = "/api/achievement/honor-wall"
     private let titlesPath = "/api/achievement/titles"
     private let equipPath = "/api/achievement/title/equip"
-    private let notificationsPath = "/api/notification/list"
-    private let readPath = "/api/notification/read"
 
     func testFirstLoadRequestsHonorWallWithGameTypeAndBearer() async {
         let server = MockHTTPServer()
         let session = await makeRestoredAccountSession(server)
-        stubNotifications(server)
         server.stub("GET", path, .json(AchievementFixtures.honorWall()))
         let model = HonorWallModel(session: session, gameType: 3)
 
@@ -51,7 +48,6 @@ final class HonorWallModelTests: XCTestCase {
     func testSecondAppearanceDoesNotRequestAgain() async {
         let server = MockHTTPServer()
         let session = await makeRestoredAccountSession(server)
-        stubNotifications(server)
         server.stub("GET", path, .json(AchievementFixtures.honorWall()))
         let model = HonorWallModel(session: session, gameType: 3)
 
@@ -64,7 +60,6 @@ final class HonorWallModelTests: XCTestCase {
     func testSwitchingGameTypeReloadsWithNewQueryAndKeepsContent() async {
         let server = MockHTTPServer()
         let session = await makeRestoredAccountSession(server)
-        stubNotifications(server)
         server.stub("GET", path) { request in
             let gameType = Int(request.query["game_type"] ?? "3") ?? 3
             return .json(AchievementFixtures.honorWall(nickname: "球种 \(String(gameType))"))
@@ -73,7 +68,6 @@ final class HonorWallModelTests: XCTestCase {
         await loadIfNeeded(model)
 
         await model.selectGameType(2)
-        await model.rolloverReadTask?.value
 
         XCTAssertEqual(model.currentGameType, 2)
         XCTAssertEqual(model.currentGameTypeLabel, "九球追分")
@@ -85,7 +79,6 @@ final class HonorWallModelTests: XCTestCase {
     func testSwitchingHistorySeasonAndLoadingMoreAppendHonors() async {
         let server = MockHTTPServer()
         let session = await makeRestoredAccountSession(server)
-        stubNotifications(server)
         let firstPage = AchievementFixtures.honorWall(history: [
             "total": 4,
             "honors": [
@@ -119,7 +112,6 @@ final class HonorWallModelTests: XCTestCase {
     func testEmptyHonorWallShowsEmptyStates() async {
         let server = MockHTTPServer()
         let session = await makeRestoredAccountSession(server)
-        stubNotifications(server)
         server.stub("GET", path, .json(AchievementFixtures.emptyHonorWall()))
         let model = HonorWallModel(session: session, gameType: 3)
 
@@ -144,7 +136,6 @@ final class HonorWallModelTests: XCTestCase {
     func testInitialFailureThenRetryLoadsContent() async {
         let server = MockHTTPServer()
         let session = await makeRestoredAccountSession(server)
-        stubNotifications(server)
         server.stub("GET", path, .raw("service down", status: 503))
         let model = HonorWallModel(session: session, gameType: 3)
 
@@ -157,7 +148,6 @@ final class HonorWallModelTests: XCTestCase {
 
         server.stub("GET", path, .json(AchievementFixtures.honorWall()))
         await model.retry()
-        await model.rolloverReadTask?.value
 
         XCTAssertTrue(model.hasLoaded)
         XCTAssertNil(model.failure)
@@ -167,7 +157,6 @@ final class HonorWallModelTests: XCTestCase {
     func testRefreshFailureKeepsContentAndShowsNotice() async {
         let server = MockHTTPServer()
         let session = await makeRestoredAccountSession(server)
-        stubNotifications(server)
         server.stub("GET", path, .json(AchievementFixtures.honorWall()))
         let model = HonorWallModel(session: session, gameType: 3)
         await loadIfNeeded(model)
@@ -197,7 +186,6 @@ final class HonorWallModelTests: XCTestCase {
     func testIdentityChangeClearsPageState() async {
         let server = MockHTTPServer()
         let session = await makeRestoredAccountSession(server)
-        stubNotifications(server)
         server.stub("GET", path, .json(AchievementFixtures.honorWall()))
         let model = HonorWallModel(session: session, gameType: 3)
         await loadIfNeeded(model)
@@ -215,7 +203,6 @@ final class HonorWallModelTests: XCTestCase {
     func testFriendWallKeepsSeasonTabPrivate() async {
         let server = MockHTTPServer()
         let session = await makeRestoredAccountSession(server)
-        stubNotifications(server)
         server.stub("GET", path, .json(AchievementFixtures.friendHonorWall()))
         let model = HonorWallModel(session: session, gameType: 3, userId: 2)
 
@@ -234,7 +221,6 @@ final class HonorWallModelTests: XCTestCase {
     func testTitleListLoadsAndEquippingTitleUpdatesWall() async {
         let server = MockHTTPServer()
         let session = await makeRestoredAccountSession(server)
-        stubNotifications(server)
         server.stub("GET", path, .json(AchievementFixtures.honorWall()))
         server.stub("GET", titlesPath, .json(AchievementFixtures.titles(AchievementFixtures.defaultTitles)))
         server.stub("POST", equipPath, .json(AchievementFixtures.common()))
@@ -262,7 +248,6 @@ final class HonorWallModelTests: XCTestCase {
     func testEquipFailureKeepsCurrentTitleAndKeepsPanelOpen() async {
         let server = MockHTTPServer()
         let session = await makeRestoredAccountSession(server)
-        stubNotifications(server)
         server.stub("GET", path, .json(AchievementFixtures.honorWall()))
         server.stub("GET", titlesPath, .json(AchievementFixtures.titles(AchievementFixtures.defaultTitles)))
         server.stub("POST", equipPath, .json(["success": false, "message": "称号不存在"]))
@@ -283,7 +268,6 @@ final class HonorWallModelTests: XCTestCase {
     func testEquipWithoutCurrentTitleShowsEmptyNameAndUnequipClearsWall() async {
         let server = MockHTTPServer()
         let session = await makeRestoredAccountSession(server)
-        stubNotifications(server)
         server.stub("GET", path, .json(AchievementFixtures.honorWall(equippedTitle: nil)))
         server.stub("GET", titlesPath, .json(AchievementFixtures.titles([
             AchievementFixtures.titleInfo(id: 3, titleName: "城市杯四强", source: "tournament", sourceType: "tournament"),
@@ -308,7 +292,6 @@ final class HonorWallModelTests: XCTestCase {
     func testTitleListFailureShowsRetryState() async {
         let server = MockHTTPServer()
         let session = await makeRestoredAccountSession(server)
-        stubNotifications(server)
         server.stub("GET", path, .json(AchievementFixtures.honorWall()))
         server.stub("GET", titlesPath, .raw("service down", status: 503))
         let model = HonorWallModel(session: session, gameType: 3)
@@ -321,56 +304,26 @@ final class HonorWallModelTests: XCTestCase {
         XCTAssertFalse(model.isTitleListLoading)
     }
 
-    func testLatestUnreadRolloverIsMarkedReadAfterSelfLoad() async {
+    func testLatestUnreadRolloverIsHandledByPresenterNotModel() async {
         let server = MockHTTPServer()
         let session = await makeRestoredAccountSession(server)
-        server.stub("GET", notificationsPath, .json(AchievementFixtures.notificationList([
-            AchievementFixtures.notification(id: 1, isRead: true, createdAt: "2026-07-01"),
-            AchievementFixtures.notification(id: 2, createdAt: "2026-07-03"),
+        server.stub("GET", "/api/notification/list", .json(AchievementFixtures.notificationList([
+            AchievementFixtures.notification(id: 2),
         ])))
-        server.stub("POST", readPath, .json(AchievementFixtures.common()))
         server.stub("GET", path, .json(AchievementFixtures.honorWall()))
         let model = HonorWallModel(session: session, gameType: 3)
 
-        await loadIfNeeded(model)
-        await waitUntil { server.requestCount(self.readPath) == 1 }
+        await model.loadIfNeeded()
 
-        let listRequest = server.requests(notificationsPath).first
-        XCTAssertEqual(listRequest?.query["page"], "1")
-        XCTAssertEqual(listRequest?.query["page_size"], "10")
-        XCTAssertEqual(listRequest?.query["type"], "season_rollover")
-        XCTAssertEqual(server.requests(readPath).first?.bodyJSON["notification_id"] as? Int64, 2)
-    }
-
-    func testFriendWallDoesNotMarkRolloverNotifications() async {
-        let server = MockHTTPServer()
-        let session = await makeRestoredAccountSession(server)
-        server.stub("GET", notificationsPath, .json(AchievementFixtures.notificationList([
-            AchievementFixtures.notification(id: 2),
-        ])))
-        server.stub("POST", readPath, .json(AchievementFixtures.common()))
-        server.stub("GET", path, .json(AchievementFixtures.friendHonorWall()))
-        let model = HonorWallModel(session: session, gameType: 3, userId: 2)
-
-        await loadIfNeeded(model)
-        // 好友墙不触发换季提醒，手动调用也只应被规则挡住。
-        await model.markLatestRolloverRead()
-
-        XCTAssertFalse(model.isSelf)
-        XCTAssertEqual(server.requestCount(notificationsPath), 0)
-        XCTAssertEqual(server.requestCount(readPath), 0)
+        // 换季提醒改由页面弹窗展示，模型加载不再旁路标已读。
+        XCTAssertTrue(model.hasLoaded)
+        XCTAssertEqual(server.requestCount("/api/notification/list"), 0)
+        XCTAssertEqual(server.requestCount("/api/notification/read"), 0)
     }
 
     // MARK: - 辅助
 
-    /// 等加载与换季已读旁路结束，避免在途任务落到下一个用例的替身服务器上。
     private func loadIfNeeded(_ model: HonorWallModel) async {
         await model.loadIfNeeded()
-        await model.rolloverReadTask?.value
-    }
-
-    private func stubNotifications(_ server: MockHTTPServer) {
-        server.stub("GET", notificationsPath, .json(AchievementFixtures.notificationList([])))
-        server.stub("POST", readPath, .json(AchievementFixtures.common()))
     }
 }

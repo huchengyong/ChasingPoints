@@ -104,5 +104,6 @@ final class AchievementSnapshotTests: XCTestCase {
         .environmentObject(session)
         .environmentObject(AppNavigator())
         .environmentObject(ToastCenter())
+        .environmentObject(ActivityStore(session: session))
     }
 }

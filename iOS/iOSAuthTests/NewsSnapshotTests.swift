@@ -235,7 +235,10 @@ final class NewsSnapshotTests: XCTestCase {
         let server = MockHTTPServer()
         let session = makeSessionStore(server, credentialStore: InMemoryCredentialStore(credentials: nil))
         stub(server)
-        let model = SaiXunDetailModel(session: session, eventId: 18, now: { self.now }, sleep: { _ in })
+        // 定时重算的睡眠必须真的挂起：不挂起的空实现会让页面里的 runAutoRefresh 在主线程上空转。
+        let model = SaiXunDetailModel(session: session, eventId: 18, now: { self.now }, sleep: { _ in
+            try await Task.sleep(for: .seconds(3600))
+        })
         await model.loadIfNeeded()
         return (session, model)
     }

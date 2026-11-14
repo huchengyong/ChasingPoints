@@ -22,8 +22,6 @@ final class HonorWallModel: ObservableObject {
     @Published private(set) var isTitleListLoaded = false
     @Published private(set) var isTitleListFailed = false
     @Published private(set) var isTitleSubmitting = false
-    /// 换季已读是加载后的旁路副作用，保留句柄让测试可以等它结束。
-    private(set) var rolloverReadTask: Task<Void, Never>?
 
     private let session: SessionStore
     private let api: AchievementAPI
@@ -196,19 +194,6 @@ final class HonorWallModel: ObservableObject {
         notice = nil
     }
 
-    /// 换季提醒：小程序在弹窗关闭后标记已读；原生本轮不展示弹窗，只完成已读这一步。
-    func markLatestRolloverRead() async {
-        guard isSelf, let requestOwner = session.identity else { return }
-        do {
-            let list = try await api.latestSeasonRolloverNotifications()
-            guard session.identity == requestOwner,
-                  let latest = HonorWallRules.latestUnreadSeasonRollover(list) else { return }
-            try await api.markNotificationRead(notificationId: latest.id)
-        } catch {
-            // 换季提醒不是页面主体内容，读取或标记失败都不打扰用户。
-        }
-    }
-
     // MARK: - 称号
 
     func prepareTitleSelector() async {
@@ -338,9 +323,6 @@ final class HonorWallModel: ObservableObject {
             isLoading = false
             isRefreshing = false
             isHistoryLoading = false
-            if isSelf && !appendHistory {
-                rolloverReadTask = Task { await self.markLatestRolloverRead() }
-            }
         } catch {
             guard token == requestToken,
                   session.identity == requestOwner,

@@ -4,12 +4,15 @@ import SwiftUI
 struct MyPage: View {
     @EnvironmentObject private var session: SessionStore
     @EnvironmentObject private var navigator: AppNavigator
+    @EnvironmentObject private var activity: ActivityStore
     @Environment(\.colorScheme) private var colorScheme
     @StateObject private var model: MyPageModel
+    @StateObject private var rolloverPresenter: SeasonRolloverPresenter
     @State private var isQRCodePresented = false
 
     init(session: SessionStore, model: MyPageModel? = nil) {
         _model = StateObject(wrappedValue: model ?? MyPageModel(session: session))
+        _rolloverPresenter = StateObject(wrappedValue: SeasonRolloverPresenter(session: session))
     }
 
     private var palette: AppPalette { AppTheme.palette(for: colorScheme) }
@@ -49,11 +52,19 @@ struct MyPage: View {
         }
         .background(palette.page.ignoresSafeArea())
         .navigationTitle("我的")
-        .task { await model.onAppear() }
+        .task {
+            await model.onAppear()
+            await presentSeasonRollover()
+        }
         .refreshable { await model.refresh() }
         .onChange(of: session.identity) { _, _ in
-            Task { await model.onIdentityChanged() }
+            Task {
+                await model.onIdentityChanged()
+                await presentSeasonRollover()
+            }
         }
+        .seasonRolloverAlert(rolloverPresenter)
+        .onDisappear { rolloverPresenter.respond(confirmed: false) }
         .sheet(isPresented: $isQRCodePresented) {
             MatchQRCodeSheet(session: session)
         }
@@ -68,6 +79,18 @@ struct MyPage: View {
                 .padding(.bottom, 12)
             }
         }
+    }
+
+    /// 换季提醒：优先用概览里缓存的未读通知，处理完清空缓存避免另一页重复弹出。
+    private func presentSeasonRollover() async {
+        await rolloverPresenter.present(
+            notification: activity.latestSeasonRollover,
+            onRead: {
+                activity.clearLatestSeasonRollover()
+                activity.decrementUnread()
+            },
+            onNavigate: { navigator.open($0) }
+        )
     }
 
     private var guestContent: some View {

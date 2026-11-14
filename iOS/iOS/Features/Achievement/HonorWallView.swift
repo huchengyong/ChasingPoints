@@ -5,13 +5,16 @@ struct HonorWallView: View {
     @EnvironmentObject private var session: SessionStore
     @EnvironmentObject private var navigator: AppNavigator
     @EnvironmentObject private var toast: ToastCenter
+    @EnvironmentObject private var activity: ActivityStore
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
     @StateObject private var model: HonorWallModel
+    @StateObject private var rolloverPresenter: SeasonRolloverPresenter
     @State private var isTitleSelectorPresented = false
 
     init(session: SessionStore, gameType: Int, model: HonorWallModel? = nil) {
         _model = StateObject(wrappedValue: model ?? HonorWallModel(session: session, gameType: gameType))
+        _rolloverPresenter = StateObject(wrappedValue: SeasonRolloverPresenter(session: session))
     }
 
     private var palette: AppPalette { AppTheme.palette(for: colorScheme) }
@@ -39,7 +42,15 @@ struct HonorWallView: View {
         .background(palette.page.ignoresSafeArea())
         .navigationTitle("荣誉墙")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await model.loadIfNeeded() }
+        .task {
+            await model.loadIfNeeded()
+            // 换季提醒只在本人荣誉墙弹出；关闭弹窗后才会标已读。
+            guard model.hasLoaded, model.isSelf else { return }
+            await rolloverPresenter.present {
+                activity.decrementUnread()
+                activity.clearLatestSeasonRollover()
+            }
+        }
         .onChange(of: session.identity) { _, _ in
             Task { await model.loadIfNeeded() }
         }
@@ -48,6 +59,8 @@ struct HonorWallView: View {
             toast.show(notice)
             model.clearNotice()
         }
+        .seasonRolloverAlert(rolloverPresenter)
+        .onDisappear { rolloverPresenter.respond(confirmed: false) }
         .sheet(isPresented: $isTitleSelectorPresented) {
             titleSelector
         }

@@ -67,6 +67,7 @@ final class MyPageSnapshotTests: XCTestCase {
                 )
             ),
         ])))
+        server.stub("GET", "/api/notification/list", .json(AchievementFixtures.notificationList([])))
 
         let session = makeSessionStore(
             server,
@@ -116,6 +117,7 @@ final class MyPageSnapshotTests: XCTestCase {
                 )
             }
         )))
+        server.stub("GET", "/api/notification/list", .json(AchievementFixtures.notificationList([])))
 
         let session = makeSessionStore(
             server,
@@ -172,6 +174,7 @@ final class MyPageSnapshotTests: XCTestCase {
         .environmentObject(session)
         .environmentObject(navigator)
         .environmentObject(toast)
+        .environmentObject(ActivityStore(session: session))
     }
 
     /// 页面自己创建模型时用 `.standard`，避免本机残留的偏好与稍后提醒影响快照。

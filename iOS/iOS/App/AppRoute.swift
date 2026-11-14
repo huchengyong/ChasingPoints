@@ -53,7 +53,8 @@ enum AppRoute: Hashable {
     case ruleDetail(category: String)
     case glossary
     case seasonIndex
-    case seasonHistory
+    case seasonHistory(gameType: Int)
+    case seasonReport(seasonId: Int64, gameType: Int)
     case gearIndex
     case scanConfirm
     case opponentSelector
@@ -100,6 +101,7 @@ enum AppRoute: Hashable {
         case .glossary: "术语词典"
         case .seasonIndex: "赛季"
         case .seasonHistory: "历届赛季"
+        case .seasonReport: "赛季报告"
         case .gearIndex: "我的装备"
         case .scanConfirm: "确认对局"
         case .opponentSelector: "选择球友"
@@ -164,6 +166,12 @@ struct AppRouteDestination: View {
             RuleDetailView(session: session, category: category)
         case .glossary:
             GlossaryView(session: session)
+        case .seasonIndex:
+            SeasonView(session: session)
+        case .seasonHistory(let gameType):
+            SeasonHistoryView(session: session, gameType: gameType)
+        case .seasonReport(let seasonId, let gameType):
+            SeasonReportView(session: session, seasonId: seasonId, gameType: gameType)
         case .achievementWall(let gameType):
             HonorWallView(session: session, gameType: gameType)
         case .achievementDetail(let achievementId):
