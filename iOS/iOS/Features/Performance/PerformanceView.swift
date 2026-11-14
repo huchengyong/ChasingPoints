@@ -195,6 +195,7 @@ struct PerformanceView: View {
                 .font(.system(size: 12))
                 .foregroundStyle(palette.textSecondary)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .appCard(padding: 16)
 
         VStack(alignment: .leading, spacing: 12) {
@@ -223,6 +224,7 @@ struct PerformanceView: View {
                     .padding(.top, 2)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .appCard(padding: 16)
     }
 

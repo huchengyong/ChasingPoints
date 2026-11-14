@@ -151,6 +151,10 @@ struct AppRouteDestination: View {
             RuleDetailView(session: session, category: category)
         case .glossary:
             GlossaryView(session: session)
+        case .achievementWall(let gameType):
+            HonorWallView(session: session, gameType: gameType)
+        case .achievementDetail(let achievementId):
+            AchievementDetailView(session: session, achievementId: achievementId)
         default:
             MigrationPlaceholderView(title: route.title)
         }
