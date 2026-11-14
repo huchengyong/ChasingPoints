@@ -15,13 +15,13 @@
 - [ ] 2.5 对局记录对齐小程序（筛选等差异）、过往对手、交锋记录（`matchHistory`、`opponentRecord`、`h2hRecord`）
   - 过往对手、交锋记录已完成；对局记录对齐并入 2.9 那一轮。「查看对方战绩」（带目标用户的过往对手）还没有入口，随好友主页一起做。
 - [x] 2.6 荣誉墙与成就详情（`subPages/achievement/*`）
-- [ ] 2.7 赛季、赛季报告、历届赛季（`subPages/season/*`）
+- [x] 2.7 赛季、赛季报告、历届赛季（`subPages/season/*`）
 - [ ] 2.8 装备：我的装备、添加、详情、TA 的装备（`subPages/gear/*`）
 - [ ] 2.9 VIP 中心（合规模式下只读权益，不含购买）（`memberCenter`）
 
 ## 3. 首页及其入口
 
-- [ ] 3.1 首页：开局卡、约球卡、正在进行、赛事、排行榜、附近球房（`pages/index/index`）
+- [x] 3.1 首页：开局卡、约球卡、正在进行、赛事、排行榜、附近球房（`pages/index/index`）
 - [x] 3.2 排行榜（`pages/ranking/index`）
 - [x] 3.3 观赛大厅（`pages/match/index`）
 - [x] 3.4 球馆：列表、详情、上传（定位、地图选点）（`subPages/venue/*`）

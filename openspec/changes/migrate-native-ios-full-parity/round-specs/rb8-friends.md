@@ -1,5 +1,19 @@
 # RB8：好友（好友列表、好友申请、添加好友、好友主页、黑名单）
 
+## 先修正一个测试缺陷（改完再做本轮任务）
+
+`iOS/iOSAuthTests/ActivityStoreTests.swift` 的 `testMarkDirtyDuringReadSurvivesResponseAndRefreshIfDirtyReloads` 每次要跑 30 秒：桩里的 `gate.wait()` 没有超时、只被 `signal()` 一次，`refreshIfDirty()` 发出的第二个请求也进了同一个桩，一直卡到 `APIClient` 的 30 秒请求超时才失败。断言只看了请求次数，所以测试通过了，但「补读成功」其实没有被验证。
+
+改法：用 `LockedCounter`（`TestSupport.swift` 里已有）区分第几次请求——只有第一次请求等闸门，第二次直接返回一个不同的未读数（例如 5）；在测试末尾补断言 `activity.unreadCount == 5`。同一文件里其他用 `DispatchSemaphore` 当闸门的测试也检查一遍，确保没有请求会卡到超时（`gate.wait(timeout: .now() + 5)` 这种带超时的写法可以保留）。改完后这个测试类的总耗时应在 1 秒以内，在交付说明里贴出 `ActivityStoreTests` 的耗时。
+
+## 再补一处首页与小程序的差异（同样先做）
+
+首页「附近球房」空态现在固定显示「添加附近球馆」。小程序 `uniapp/utils/home-index.js` 的 `resolveHomeVenueEmptyAction` 会在常玩球馆奖励可领取时（`isFavoriteVenueRewardClaimable`，原生已有 `FavoriteVenueReward.isClaimable`）显示「添加球馆领取VIP」和对应说明。改法：`HomeModel` 在已登录时读取常玩球馆奖励状态（复用 `ProfileAPI.overview()` 的 `availableFavoriteVenueReward`，与首页其他区块一样独立读取、失败不影响别的区块，失败或未登录时按不可领取处理），空态文案按该规则选择；把 `resolveHomeVenueEmptyAction` 迁成纯函数并搬运 `home-index.test.mjs` 里对应的用例。
+
+## 还有一处消息跳转要改（同样先做）
+
+`iOS/iOS/Features/Messages/MessageCenterRules.swift` 把通知目标 `/subPages/season/report` 映射成了 `.seasonIndex`（当时赛季报告页还没有路由）。现在已有 `case seasonReport(seasonId: Int64, gameType: Int)`：小程序 `uniapp/subPages/season/report.vue` 的 `onLoad` 用查询参数 `id` 作为赛季 ID（球种参数名以同一个 `onLoad` 为准，没有就按 0），从 target 里取出，映射到 `.seasonReport(...)`；赛季 ID 取不到或不大于 0 时退回 `.seasonIndex`。补对应的映射测试。
+
 ## 本轮要读的小程序源码
 
 - `uniapp/subPages/social/friendList.vue`、`friendRequests.vue`、`addFriend.vue`、`friendHomepage.vue`、`blacklist.vue`（含各自样式）
