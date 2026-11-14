@@ -1,5 +1,9 @@
 # RB9：约球（发起约球、等待对手、约球列表）
 
+## 先修正上一轮的一个界面问题（改完再做本轮任务）
+
+好友列表（`iOS/iOS/Features/Friends/FriendListView.swift`）每一行卡片里画了一个箭头，卡片外右侧又多出一个灰色箭头——这是 `List` 里的 `NavigationLink` 自动加的系统指示符，同时把卡片挤窄了（看 `friend-list-data` 快照）。去掉系统指示符（常用做法：行内容放在 `ZStack` 里，`NavigationLink(value:) { EmptyView() }.opacity(0)` 叠在下面；或改用 `Button { navigator.open(...) }` 加 `.buttonStyle(.plain)`），保留卡片里自绘的那一个，并让卡片左右撑满。`Features/Friends/` 里其他列表页（好友申请、黑名单、添加好友）同样检查一遍。改完自己导出快照看一眼。
+
 ## 本轮要读的小程序源码
 
 - `uniapp/subPages/match/challengeCompose.vue`、`challengeWaiting.vue`、`uniapp/subPages/social/challenges.vue`（863 行）及各自样式

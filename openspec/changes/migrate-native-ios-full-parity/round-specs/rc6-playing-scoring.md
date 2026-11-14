@@ -19,6 +19,10 @@
 5. 斯诺克局分摘要（`snooker-frame-summary`）。
 6. 文案、按钮禁用条件、二次确认弹窗（认输、判局等破坏性操作）逐条照搬。
 
+## 顺带核对一处文案
+
+裁判视角的快照里，「最近操作」显示的是「我方赢下本局」——对裁判来说「我方」不成立。对照 `playing.vue` 里最近操作文案的来源（服务端字段还是前端按视角拼接），确认选手 / 裁判 / 观赛三种视角下的文案与小程序一致；如果是快照夹具写错了就改夹具，如果是视角处理漏了就修代码并加测试。
+
 ## 测试
 
 行为用例搬运；`LiveMatchModel` 新增操作的请求体与状态应用；按钮可用性在典型局面下的断言（红球阶段、彩球阶段、清彩、自由球、重置黑球、局末）；认输 / 判局流程；裁判为双方记分；写操作进行中锁；推送与响应顺序收敛。快照：`live-nine-ball-player`、`live-nine-ball-referee`、`live-snooker-v1`、`live-snooker-v2-reds`、`live-snooker-v2-colors`、`live-snooker-v2-concession`、`live-snooker-v2-referee`、`live-snooker-format-editor`。

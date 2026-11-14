@@ -16,7 +16,7 @@
   - 过往对手、交锋记录已完成；对局记录对齐并入 2.9 那一轮。「查看对方战绩」（带目标用户的过往对手）还没有入口，随好友主页一起做。
 - [x] 2.6 荣誉墙与成就详情（`subPages/achievement/*`）
 - [x] 2.7 赛季、赛季报告、历届赛季（`subPages/season/*`）
-- [ ] 2.8 装备：我的装备、添加、详情、TA 的装备（`subPages/gear/*`）
+- [x] 2.8 装备：我的装备、添加、详情、TA 的装备（`subPages/gear/*`）
 - [ ] 2.9 VIP 中心（合规模式下只读权益，不含购买）（`memberCenter`）
 
 ## 3. 首页及其入口
@@ -31,14 +31,16 @@
 
 - [x] 4.1 赛讯 Tab：赛事资讯与赛程（`pages/tournament/index`）
 - [x] 4.2 赛事详情、对阵图（`subPages/tournament/detail`、`bracket`；`create` 受合规开关控制）
+  - 赛事详情已完成；小程序当前没有页面链接到对阵图与创建赛事（后者受合规开关控制），原生端暂不迁移。
 
 ## 5. 消息与社交
 
 - [x] 5.1 消息 Tab 与角标（通知列表、已读、删除；未读数 / 红点规则）（`pages/message/index`）
-- [ ] 5.2 好友：列表、申请、添加、好友主页、黑名单（`subPages/social/friendList`、`friendRequests`、`addFriend`、`friendHomepage`、`blacklist`）
+- [x] 5.2 好友：列表、申请、添加、好友主页、黑名单（`subPages/social/friendList`、`friendRequests`、`addFriend`、`friendHomepage`、`blacklist`）
 - [ ] 5.3 约球：发起、等待、约球列表（`challengeCompose`、`challengeWaiting`、`subPages/social/challenges`）
 - [ ] 5.4 PK 报表（`subPages/social/pkReport`）
 - [ ] 5.5 动态广场、发布、我的动态（受合规开关控制，优先级最低）（`feed`、`postCreate`、`myPosts`）
+  - 2026-11-14 核对：小程序当前没有任何页面链接到这三页（合规模式下入口全部隐藏，`buildFeedUrl` 只在页面内部使用），原生端暂不迁移；合规开关放开、小程序恢复入口时再做。
 
 ## 6. 对局核心
 
