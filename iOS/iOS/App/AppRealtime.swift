@@ -11,6 +11,7 @@ final class AppRealtime: ObservableObject {
     private var connectedIdentity: SessionIdentity?
     private var foreground = true
     private var online = true
+    private var networkMonitor: NetworkStatusMonitor?
 
     init(session: SessionStore, activity: ActivityStore, user: UserRealtime? = nil) {
         self.session = session
@@ -71,6 +72,18 @@ final class AppRealtime: ObservableObject {
         } else {
             connectedIdentity = nil
         }
+    }
+
+    /// 根视图只调用一次；监听器由本对象强引用，视图重建不会丢回调。重复调用无效。
+    func startNetworkMonitoring(_ monitor: NetworkStatusMonitor? = nil) {
+        guard networkMonitor == nil else { return }
+        // 默认参数在非隔离上下文求值，构造 NWPathNetworkMonitor 放到主线程这里。
+        let monitor = monitor ?? NWPathNetworkMonitor()
+        networkMonitor = monitor
+        monitor.onStatusChange = { [weak self] online in
+            self?.setNetworkOnline(online)
+        }
+        monitor.start()
     }
 
     private func connectIfPossible() async {
