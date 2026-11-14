@@ -93,7 +93,18 @@ enum ChallengeFixtures {
         ["success": true, "action": action, "match_id": matchId, "message": message]
     }
 
-    static func businessFailure(_ message: String) -> [String: Any] {
-        ["success": false, "message": message]
+    static func businessFailure(
+        _ message: String,
+        pendingChallengeId: Int64 = 0,
+        needConfirmCloseOwn: Bool = false,
+        typeConflict: Bool = false,
+        action: String? = nil
+    ) -> [String: Any] {
+        var value: [String: Any] = ["success": false, "message": message]
+        if pendingChallengeId > 0 { value["pending_challenge_id"] = pendingChallengeId }
+        if needConfirmCloseOwn { value["need_confirm_close_own"] = true }
+        if typeConflict { value["type_conflict"] = true }
+        if let action { value["action"] = action }
+        return value
     }
 }

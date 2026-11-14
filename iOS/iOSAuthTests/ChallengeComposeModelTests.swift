@@ -98,6 +98,21 @@ final class ChallengeComposeModelTests: XCTestCase {
         XCTAssertEqual(model.message.count, ChallengeComposeModel.maxMessageLength)
     }
 
+    func testReplaceOpponentKeepsFormFields() async {
+        let server = MockHTTPServer()
+        let (model, _, _) = await makeModel(server, target: nil)
+        model.gameType = 2
+        model.matchMode = "practice"
+        model.message = "保留附言"
+
+        model.replaceOpponent(ChallengeComposeTarget(userId: 31, nickname: "球友B", avatar: ""))
+
+        XCTAssertEqual(model.opponentName, "球友B")
+        XCTAssertEqual(model.gameType, 2)
+        XCTAssertEqual(model.matchMode, "practice")
+        XCTAssertEqual(model.message, "保留附言")
+    }
+
     func testSubmitWithoutOpponentFailsValidation() async {
         let server = MockHTTPServer()
         server.stub("GET", "/api/challenge/summary", .json(ChallengeFixtures.summary(serverTime: "2026-08-25 15:20:00")))
@@ -137,17 +152,18 @@ final class ChallengeComposeModelTests: XCTestCase {
     func testSubmitPendingConflictReturnsOwnPendingChallengeId() async {
         let server = MockHTTPServer()
         server.stub("GET", "/api/challenge/summary", .json(ChallengeFixtures.summary(serverTime: "2026-08-25 15:20:00")))
-        server.stub("POST", "/api/challenge/send", .json(ChallengeFixtures.businessFailure(ChallengeRules.pendingConflictMessage)))
-        let (model, _, _) = await makeModel(server, bootstrapJSON: bootstrap(currentChallenge: ChallengeFixtures.challenge(
-            id: 55, status: 0, fromUserId: 1, fromNickname: "测试用户", toUserId: 31, toNickname: "球友B"
+        server.stub("POST", "/api/challenge/send", .json(ChallengeFixtures.businessFailure(
+            "你发出的约球还在等待回应，请先处理",
+            pendingChallengeId: 55
         )))
+        let (model, _, _) = await makeModel(server)
         await model.onAppear()
 
         let outcome = await model.submit()
 
         XCTAssertEqual(
             outcome,
-            .pendingConflict(message: ChallengeRules.pendingConflictMessage, challengeId: 55)
+            .pendingConflict(message: "你发出的约球还在等待回应，请先处理", challengeId: 55)
         )
     }
 

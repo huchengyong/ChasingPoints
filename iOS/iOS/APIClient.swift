@@ -22,17 +22,34 @@ struct APIError: LocalizedError {
     let statusCode: Int?
     let reason: String?
     let kind: Kind
+    /// 原始响应体；业务失败的结构化字段（如约球的 `pending_challenge_id`）从这里解码。
+    let responseBody: Data?
 
-    init(message: String, statusCode: Int? = nil, reason: String? = nil, kind: Kind? = nil) {
+    init(
+        message: String,
+        statusCode: Int? = nil,
+        reason: String? = nil,
+        kind: Kind? = nil,
+        responseBody: Data? = nil
+    ) {
         self.message = message
         self.statusCode = statusCode
         self.reason = reason
         self.kind = kind ?? Self.inferKind(statusCode: statusCode, reason: reason)
+        self.responseBody = responseBody
     }
 
     var errorDescription: String? { message }
     var isUnauthorized: Bool { statusCode == 401 }
     var isSessionInvalid: Bool { reason == "SESSION_INVALID" }
+
+    /// 按接口的 snake_case 契约解码响应体里的结构化字段。
+    func decodeBody<T: Decodable>(_ type: T.Type = T.self) -> T? {
+        guard let responseBody else { return nil }
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return try? decoder.decode(T.self, from: responseBody)
+    }
 
     private static func inferKind(statusCode: Int?, reason: String?) -> Kind {
         if reason == "SESSION_INVALID" { return .sessionInvalid }
@@ -104,14 +121,16 @@ struct APIClient {
             throw APIError(
                 message: Self.failureMessage(status: status, data: data, statusCode: response.statusCode, path: url.path),
                 statusCode: response.statusCode,
-                reason: status?.reason
+                reason: status?.reason,
+                responseBody: data
             )
         }
         if let status, Self.isBusinessFailure(status) {
             throw APIError(
                 message: Self.failureMessage(status: status, data: data, statusCode: response.statusCode, path: url.path),
                 statusCode: response.statusCode,
-                reason: status.reason
+                reason: status.reason,
+                responseBody: data
             )
         }
 

@@ -38,6 +38,8 @@ enum AppRoute: Hashable {
     case challengeWaiting(challengeId: Int64)
     case challenges(tab: ChallengeTab)
     case feedback
+    case userAgreement
+    case privacyPolicy
     case achievementWall(gameType: Int)
     case achievementDetail(achievementId: Int64)
     case friendList
@@ -46,7 +48,7 @@ enum AppRoute: Hashable {
     case friendRequests
     case blacklist
     case friendHonorWall(userId: Int64)
-    case friendPkReport(userId: Int64)
+    case friendPkReport(target: FriendHomepageTarget)
     case gearFriend(userId: Int64)
     case tournamentDetail(id: Int64)
     case venueList
@@ -88,6 +90,8 @@ enum AppRoute: Hashable {
         case .challengeWaiting: "等待对手"
         case .challenges: "约球"
         case .feedback: "帮助、投诉与举报"
+        case .userAgreement: "用户协议"
+        case .privacyPolicy: "隐私政策"
         case .achievementWall: "荣誉墙"
         case .achievementDetail: "成就详情"
         case .friendList: "好友列表"
@@ -194,7 +198,15 @@ struct AppRouteDestination: View {
             FriendRequestsDestination(session: session)
         case .blacklist:
             BlacklistView(session: session)
-        case .friendHonorWall, .friendPkReport, .gearFriend:
+        case .feedback:
+            FeedbackView(session: session)
+        case .userAgreement:
+            AgreementView(document: AgreementContent.userAgreement)
+        case .privacyPolicy:
+            AgreementView(document: AgreementContent.privacyPolicy)
+        case .friendPkReport(let target):
+            PKReportView(session: session, target: target)
+        case .friendHonorWall, .gearFriend:
             MigrationPlaceholderView(title: route.title)
         case .scanConfirm:
             ScanConfirmView(session: session)

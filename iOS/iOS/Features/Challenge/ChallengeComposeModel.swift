@@ -118,6 +118,12 @@ final class ChallengeComposeModel: ObservableObject {
         endHour = hour
     }
 
+    /// 更换对手只替换目标，保留已选的球种、赛制、时间与附言。
+    func replaceOpponent(_ target: ChallengeComposeTarget) {
+        opponent = target
+        validationMessage = nil
+    }
+
     func submit() async -> SubmitOutcome {
         guard !isSubmitting else { return .discarded }
         guard let opponent, opponent.userId > 0 else {
@@ -157,16 +163,10 @@ final class ChallengeComposeModel: ObservableObject {
         } catch {
             guard isCurrent(identity, token) else { return .discarded }
             isSubmitting = false
-            let apiMessage = (error as? APIError)?.message ?? ""
-            if ChallengeRules.isPendingConflict(apiMessage) {
-                // 响应只保留文案，改从共享活动状态定位自己仍待回应的那条约球。
-                activity.markDirty()
-                await activity.refreshIfDirty()
-                guard isCurrent(identity, token) else { return .discarded }
-                let current = activity.currentChallenge
-                let pendingId = (current?.status == 0 && current?.fromUserId == identity.userId)
-                    ? current?.id
-                    : nil
+            let apiError = error as? APIError
+            let apiMessage = apiError?.message ?? ""
+            if let pendingId = apiError?.decodeBody(ChallengeFailureDetails.self)?.pendingChallengeId,
+               pendingId > 0 {
                 return .pendingConflict(message: apiMessage, challengeId: pendingId)
             }
             return .failure(apiMessage.isEmpty ? "发送失败" : apiMessage)

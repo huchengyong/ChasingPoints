@@ -343,30 +343,6 @@ enum ChallengeRules {
         )
     }
 
-    // MARK: - 业务失败文案
-
-    /// 请求层把 HTTP 2xx + success:false 转成业务错误，只保留文案；需继续处理的提示按文案识别。
-    static let pendingConflictMessage = "你发出的约球还在等待回应，请先处理"
-    static let needConfirmCloseOwnMessage = "接受后会自动关闭已发出的邀请"
-    static let typeConflictMessage = "你们发起的约球类型不同，不能直接匹配"
-    static let confirmEarlyMessage = "尚未到预约开始时间，确认提前进入？"
-
-    static func isPendingConflict(_ message: String) -> Bool {
-        trimmed(message) == pendingConflictMessage
-    }
-
-    static func isNeedConfirmCloseOwn(_ message: String) -> Bool {
-        trimmed(message) == needConfirmCloseOwnMessage
-    }
-
-    static func isTypeConflict(_ message: String) -> Bool {
-        trimmed(message) == typeConflictMessage
-    }
-
-    static func isConfirmEarly(_ message: String) -> Bool {
-        trimmed(message) == confirmEarlyMessage
-    }
-
     // MARK: - 私有
 
     private static let utcCalendar: Calendar = {

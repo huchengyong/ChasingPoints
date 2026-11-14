@@ -2,6 +2,7 @@ import SwiftUI
 
 struct LoginView: View {
     @EnvironmentObject var session: SessionStore
+    @EnvironmentObject var navigator: AppNavigator
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
 
@@ -168,10 +169,10 @@ struct LoginView: View {
                     .accessibilityValue(hasAgreed ? "已同意" : "未同意")
 
                     HStack(spacing: 4) {
-                        Link("《用户协议》", destination: URL(string: "https://www.zhuifen.cn/agreement")!)
+                        Button("《用户协议》") { navigator.open(.userAgreement) }
                         Text("和")
                             .foregroundStyle(palette.textSecondary)
-                        Link("《隐私政策》", destination: URL(string: "https://www.zhuifen.cn/privacy")!)
+                        Button("《隐私政策》") { navigator.open(.privacyPolicy) }
                     }
                     .font(.system(size: 13))
                     .tint(AppTheme.primary)
