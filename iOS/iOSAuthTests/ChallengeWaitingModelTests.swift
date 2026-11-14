@@ -113,7 +113,10 @@ final class ChallengeWaitingModelTests: XCTestCase {
 
     func testAcceptNeedsCloseOwnPrompt() async {
         let server = MockHTTPServer()
-        server.stub("POST", "/api/challenge/accept", .json(ChallengeFixtures.businessFailure(ChallengeRules.needConfirmCloseOwnMessage)))
+        server.stub("POST", "/api/challenge/accept", .json(ChallengeFixtures.businessFailure(
+            "接受后会自动关闭已发出的邀请",
+            needConfirmCloseOwn: true
+        )))
         let (model, _, _) = await makeModel(server)
 
         await model.accept()
@@ -125,12 +128,15 @@ final class ChallengeWaitingModelTests: XCTestCase {
 
     func testAcceptTypeConflictPrompt() async {
         let server = MockHTTPServer()
-        server.stub("POST", "/api/challenge/accept", .json(ChallengeFixtures.businessFailure(ChallengeRules.typeConflictMessage)))
+        server.stub("POST", "/api/challenge/accept", .json(ChallengeFixtures.businessFailure(
+            "你们发起的约球类型不同，不能直接匹配",
+            typeConflict: true
+        )))
         let (model, _, _) = await makeModel(server)
 
         await model.accept()
 
-        XCTAssertEqual(model.prompt, .typeConflict(message: ChallengeRules.typeConflictMessage))
+        XCTAssertEqual(model.prompt, .typeConflict(message: "你们发起的约球类型不同，不能直接匹配"))
     }
 
     func testAcceptSuccessMarksActivityDirtyAndRefreshes() async {
@@ -164,7 +170,10 @@ final class ChallengeWaitingModelTests: XCTestCase {
         let server = MockHTTPServer()
         server.stub("GET", "/api/challenge/summary", .json(ChallengeFixtures.summary(serverTime: "2026-08-25 12:00:00")))
         server.stub("GET", "/api/challenge/detail", .json(ChallengeFixtures.detail(ChallengeFixtures.challenge(id: 7, status: 1))))
-        server.stub("POST", "/api/challenge/enter", .json(ChallengeFixtures.businessFailure(ChallengeRules.confirmEarlyMessage)))
+        server.stub("POST", "/api/challenge/enter", .json(ChallengeFixtures.businessFailure(
+            "尚未到预约开始时间，确认提前进入？",
+            action: "confirm_early"
+        )))
         let (model, _, _) = await makeModel(server)
         await model.load()
 

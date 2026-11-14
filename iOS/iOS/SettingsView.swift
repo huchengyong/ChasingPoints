@@ -111,16 +111,16 @@ struct SettingsView: View {
             }
 
             SettingsDivider()
-            externalLinkRow(
+            navigationRow(
                 "隐私政策",
                 symbol: "hand.raised",
-                url: "https://www.zhuifen.cn/privacy"
+                route: .privacyPolicy
             )
             SettingsDivider()
-            externalLinkRow(
+            navigationRow(
                 "用户协议",
                 symbol: "doc.text",
-                url: "https://www.zhuifen.cn/agreement"
+                route: .userAgreement
             )
             SettingsDivider()
             navigationRow(
@@ -163,20 +163,6 @@ struct SettingsView: View {
         NavigationLink(value: route) {
             HStack(spacing: 8) {
                 SettingsLabel(symbol: symbol, title: title, subtitle: subtitle)
-                Spacer(minLength: 8)
-                SettingsChevron()
-            }
-            .padding(.horizontal, 12)
-            .frame(minHeight: 56)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func externalLinkRow(_ title: String, symbol: String, url: String) -> some View {
-        Link(destination: URL(string: url)!) {
-            HStack(spacing: 8) {
-                SettingsLabel(symbol: symbol, title: title)
                 Spacer(minLength: 8)
                 SettingsChevron()
             }

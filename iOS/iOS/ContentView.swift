@@ -10,13 +10,18 @@ struct ContentView: View {
         MainTabView(session: session)
             .preferredColorScheme(ThemeMode(rawValue: themeMode)?.colorScheme)
             .fullScreenCover(isPresented: $isWelcomePresented) {
-                WelcomeView(
-                    onOpenLogin: {
-                        isWelcomePresented = false
-                        navigator.openLogin()
-                    },
-                    onBrowse: { isWelcomePresented = false }
-                )
+                // 欢迎页里的协议链接在全屏层内推入应用内协议页，与小程序 navigateTo 一致。
+                NavigationStack {
+                    WelcomeView(
+                        onOpenLogin: {
+                            isWelcomePresented = false
+                            navigator.openLogin()
+                        },
+                        onBrowse: { isWelcomePresented = false }
+                    )
+                    .toolbar(.hidden, for: .navigationBar)
+                    .navigationDestination(for: AppRoute.self) { AppRouteDestination(route: $0) }
+                }
             }
             .task {
                 // 等启动恢复结束后再判断，已登录用户不会看到首次欢迎页。

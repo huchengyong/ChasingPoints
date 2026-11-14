@@ -243,10 +243,10 @@ struct LoginView: View {
             .frame(maxWidth: .infinity)
 
             HStack(spacing: 4) {
-                Link("《用户协议》", destination: LegalDocumentLink.userAgreement)
+                NavigationLink("《用户协议》", value: AppRoute.userAgreement)
                 Text("和")
                     .foregroundStyle(palette.textMuted)
-                Link("《隐私政策》", destination: LegalDocumentLink.privacyPolicy)
+                NavigationLink("《隐私政策》", value: AppRoute.privacyPolicy)
             }
             .font(.system(size: 11))
             .tint(palette.brandStrong)

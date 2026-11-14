@@ -19,7 +19,7 @@ final class AppRouteTests: XCTestCase {
             (.achievementWall(gameType: 3), "荣誉墙"),
             (.friendHomepage(target: Self.target(1)), "好友主页"),
             (.friendHonorWall(userId: 1), "荣誉墙"),
-            (.friendPkReport(userId: 1), "PK报表"),
+            (.friendPkReport(target: Self.target(1)), "PK报表"),
             (.gearFriend(userId: 1, name: "球友甲"), "TA 的装备"),
             (.opponentRecord(target: nil), "过往对手"),
             (.venueDetail(id: 1), "球馆详情"),
@@ -29,6 +29,9 @@ final class AppRouteTests: XCTestCase {
             (.gearIndex, "我的装备"),
             (.scanConfirm, "确认对局"),
             (.opponentSelector, "选择球友"),
+            (.feedback, "帮助、投诉与举报"),
+            (.userAgreement, "用户协议"),
+            (.privacyPolicy, "隐私政策"),
             (.liveMatch(matchId: 1), "对局"),
         ]
 
@@ -64,7 +67,7 @@ final class AppRouteTests: XCTestCase {
         XCTAssertNotEqual(AppRoute.liveMatch(matchId: 1), AppRoute.liveMatch(matchId: 2))
         XCTAssertEqual(AppRoute.liveMatch(matchId: 3), AppRoute.liveMatch(matchId: 3))
         XCTAssertNotEqual(AppRoute.friendHonorWall(userId: 1), AppRoute.friendHonorWall(userId: 2))
-        XCTAssertNotEqual(AppRoute.friendPkReport(userId: 1), AppRoute.friendPkReport(userId: 2))
+        XCTAssertNotEqual(AppRoute.friendPkReport(target: Self.target(1)), AppRoute.friendPkReport(target: Self.target(2)))
         XCTAssertNotEqual(
             AppRoute.gearFriend(userId: 1, name: "球友甲"),
             AppRoute.gearFriend(userId: 2, name: "球友甲")

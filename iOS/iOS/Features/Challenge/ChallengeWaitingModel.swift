@@ -219,10 +219,12 @@ final class ChallengeWaitingModel: ObservableObject {
             await load()
         } catch {
             guard isCurrentAction(owner) else { return }
-            let message = (error as? APIError)?.message ?? ""
-            if ChallengeRules.isNeedConfirmCloseOwn(message) {
+            let apiError = error as? APIError
+            let message = apiError?.message ?? ""
+            let failure = apiError?.decodeBody(ChallengeFailureDetails.self)
+            if failure?.needConfirmCloseOwn == true {
                 prompt = .closeOwn
-            } else if ChallengeRules.isTypeConflict(message) {
+            } else if failure?.typeConflict == true {
                 prompt = .typeConflict(message: message)
             } else {
                 feedback = message.isEmpty ? "接受失败" : message
@@ -320,8 +322,9 @@ final class ChallengeWaitingModel: ObservableObject {
             }
         } catch {
             guard isCurrentAction(owner) else { return }
-            let message = (error as? APIError)?.message ?? ""
-            if ChallengeRules.isConfirmEarly(message) {
+            let apiError = error as? APIError
+            let message = apiError?.message ?? ""
+            if apiError?.decodeBody(ChallengeFailureDetails.self)?.action == "confirm_early" {
                 prompt = .confirmEarly(schedule: scheduleLabel)
             } else {
                 feedback = message.isEmpty ? "进入失败" : message

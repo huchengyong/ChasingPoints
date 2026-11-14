@@ -199,14 +199,6 @@ final class ChallengeRulesTests: XCTestCase {
         XCTAssertTrue(ChallengeRules.isTerminal(terminal))
         XCTAssertFalse(ChallengeRules.isTerminal(pending))
     }
-
-    func testBusinessFailureMessagesAreRecognized() {
-        XCTAssertTrue(ChallengeRules.isPendingConflict(ChallengeRules.pendingConflictMessage))
-        XCTAssertTrue(ChallengeRules.isNeedConfirmCloseOwn(ChallengeRules.needConfirmCloseOwnMessage))
-        XCTAssertTrue(ChallengeRules.isTypeConflict(ChallengeRules.typeConflictMessage))
-        XCTAssertTrue(ChallengeRules.isConfirmEarly(ChallengeRules.confirmEarlyMessage))
-        XCTAssertFalse(ChallengeRules.isPendingConflict("其他失败"))
-    }
 }
 
 private extension ChallengeInfo {

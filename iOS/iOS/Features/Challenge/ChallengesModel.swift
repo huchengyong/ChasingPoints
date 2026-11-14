@@ -256,10 +256,12 @@ final class ChallengesModel: ObservableObject {
             await reload()
         } catch {
             guard session.identity == owner else { return }
-            let message = (error as? APIError)?.message ?? ""
-            if ChallengeRules.isNeedConfirmCloseOwn(message) {
+            let apiError = error as? APIError
+            let message = apiError?.message ?? ""
+            let failure = apiError?.decodeBody(ChallengeFailureDetails.self)
+            if failure?.needConfirmCloseOwn == true {
                 prompt = .closeOwn(item)
-            } else if ChallengeRules.isTypeConflict(message) {
+            } else if failure?.typeConflict == true {
                 prompt = .typeConflict(message: message)
             } else {
                 feedback = message.isEmpty ? "接受失败" : message

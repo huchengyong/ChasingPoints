@@ -120,7 +120,7 @@ struct FriendHomepageView: View {
             }
 
             VStack(spacing: 8) {
-                NavigationLink(value: AppRoute.friendPkReport(userId: model.target.userId)) {
+                NavigationLink(value: AppRoute.friendPkReport(target: model.target)) {
                     Text("PK 报表")
                 }
                 .buttonStyle(.appPrimary)

@@ -6,9 +6,15 @@ struct OpponentSelectorView: View {
     @EnvironmentObject private var navigator: AppNavigator
     @Environment(\.colorScheme) private var colorScheme
     @StateObject private var model: OpponentSelectorModel
+    private let onSelect: ((OpponentCandidate) -> Void)?
 
-    init(session: SessionStore, model: OpponentSelectorModel? = nil) {
+    init(
+        session: SessionStore,
+        model: OpponentSelectorModel? = nil,
+        onSelect: ((OpponentCandidate) -> Void)? = nil
+    ) {
         _model = StateObject(wrappedValue: model ?? OpponentSelectorModel(session: session))
+        self.onSelect = onSelect
     }
 
     private var palette: AppPalette { AppTheme.palette(for: colorScheme) }
@@ -96,11 +102,15 @@ struct OpponentSelectorView: View {
 
     private func opponentRow(_ opponent: OpponentCandidate) -> some View {
         Button {
-            navigator.open(.challengeCompose(target: ChallengeComposeTarget(
-                userId: opponent.userId,
-                nickname: opponent.name,
-                avatar: opponent.avatar
-            )))
+            if let onSelect {
+                onSelect(opponent)
+            } else {
+                navigator.open(.challengeCompose(target: ChallengeComposeTarget(
+                    userId: opponent.userId,
+                    nickname: opponent.name,
+                    avatar: opponent.avatar
+                )))
+            }
         } label: {
             HStack(spacing: 10) {
                 AvatarView(avatar: opponent.avatar, userId: opponent.userId, size: 46)

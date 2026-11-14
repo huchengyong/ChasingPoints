@@ -105,14 +105,44 @@ final class ChallengeAPITests: XCTestCase {
 
     func testBusinessFailureSurfacesMessageOnly() async throws {
         let server = MockHTTPServer()
-        server.stub("POST", "/api/challenge/accept", .json(ChallengeFixtures.businessFailure(ChallengeRules.typeConflictMessage)))
+        server.stub("POST", "/api/challenge/accept", .json(ChallengeFixtures.businessFailure(
+            "你们发起的约球类型不同，不能直接匹配",
+            typeConflict: true
+        )))
         let (api, _) = await makeAPI(server)
 
         do {
             _ = try await api.accept(challengeId: 7)
             XCTFail("业务失败应当抛错")
         } catch {
-            XCTAssertEqual((error as? APIError)?.message, ChallengeRules.typeConflictMessage)
+            let apiError = try XCTUnwrap(error as? APIError)
+            XCTAssertEqual(apiError.message, "你们发起的约球类型不同，不能直接匹配")
+            XCTAssertEqual(apiError.decodeBody(ChallengeFailureDetails.self)?.typeConflict, true)
+        }
+    }
+
+    func testBusinessFailureBodyCarriesStructuredFields() async throws {
+        let server = MockHTTPServer()
+        server.stub("POST", "/api/challenge/send", .json(ChallengeFixtures.businessFailure(
+            "你发出的约球还在等待回应，请先处理",
+            pendingChallengeId: 55
+        )))
+        let (api, _) = await makeAPI(server)
+
+        do {
+            _ = try await api.send(SendChallengeBody(
+                toUserId: 29,
+                gameType: 3,
+                matchMode: "ranked",
+                message: "",
+                scheduledDate: "2026-10-12",
+                startHour: 20,
+                endHour: 22
+            ))
+            XCTFail("业务失败应当抛错")
+        } catch {
+            let details = try XCTUnwrap((error as? APIError)?.decodeBody(ChallengeFailureDetails.self))
+            XCTAssertEqual(details.pendingChallengeId, 55)
         }
     }
 }

@@ -194,7 +194,7 @@ final class ChallengesModelTests: XCTestCase {
         let attempts = LockedCounter()
         server.stub("POST", "/api/challenge/accept") { _ in
             attempts.next() == 1
-                ? .json(ChallengeFixtures.businessFailure(ChallengeRules.needConfirmCloseOwnMessage))
+                ? .json(ChallengeFixtures.businessFailure("接受后会自动关闭已发出的邀请", needConfirmCloseOwn: true))
                 : .json(ChallengeFixtures.acceptResponse(challengeId: 7))
         }
         await model.onAppear()
@@ -214,13 +214,16 @@ final class ChallengesModelTests: XCTestCase {
         let server = MockHTTPServer()
         let (model, _, _) = await makeModel(server)
         server.stub("GET", "/api/challenge/pending", .json(ChallengeFixtures.pendingList([received(id: 7)])))
-        server.stub("POST", "/api/challenge/accept", .json(ChallengeFixtures.businessFailure(ChallengeRules.typeConflictMessage)))
+        server.stub("POST", "/api/challenge/accept", .json(ChallengeFixtures.businessFailure(
+            "你们发起的约球类型不同，不能直接匹配",
+            typeConflict: true
+        )))
         await model.onAppear()
         let item = try! XCTUnwrap(model.items.first)
 
         await model.accept(item)
 
-        XCTAssertEqual(model.prompt, .typeConflict(message: ChallengeRules.typeConflictMessage))
+        XCTAssertEqual(model.prompt, .typeConflict(message: "你们发起的约球类型不同，不能直接匹配"))
         XCTAssertNil(model.navigation)
     }
 

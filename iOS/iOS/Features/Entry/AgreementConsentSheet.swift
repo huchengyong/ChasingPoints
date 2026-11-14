@@ -1,11 +1,5 @@
 import SwiftUI
 
-/// 小程序里没有原生协议页路由，沿用现有外链。
-enum LegalDocumentLink {
-    static let userAgreement = URL(string: "https://www.zhuifen.cn/agreement")!
-    static let privacyPolicy = URL(string: "https://www.zhuifen.cn/privacy")!
-}
-
 /// 未勾选协议时点主按钮弹出的底部确认层，对应 `agreementConsentSheet.vue`。
 struct AgreementConsentSheet: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -39,10 +33,10 @@ struct AgreementConsentSheet: View {
                     .padding(.top, 8)
 
                 HStack(spacing: 5) {
-                    Link("用户协议", destination: LegalDocumentLink.userAgreement)
+                    NavigationLink("用户协议", value: AppRoute.userAgreement)
                     Text("和")
                         .foregroundStyle(palette.textMuted)
-                    Link("隐私政策", destination: LegalDocumentLink.privacyPolicy)
+                    NavigationLink("隐私政策", value: AppRoute.privacyPolicy)
                 }
                 .font(.system(size: 13))
                 .tint(palette.brandStrong)

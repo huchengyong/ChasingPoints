@@ -9,6 +9,7 @@ struct ChallengeComposeView: View {
 
     @StateObject private var model: ChallengeComposeModel
     @State private var pendingConflict: PendingConflict?
+    @State private var isSelectingOpponent = false
 
     private struct PendingConflict: Identifiable {
         let message: String
@@ -37,6 +38,16 @@ struct ChallengeComposeView: View {
         .navigationTitle("发起约球")
         .navigationBarTitleDisplayMode(.inline)
         .task { await model.onAppear() }
+        .navigationDestination(isPresented: $isSelectingOpponent) {
+            OpponentSelectorView(session: session) { candidate in
+                model.replaceOpponent(ChallengeComposeTarget(
+                    userId: candidate.userId,
+                    nickname: candidate.name,
+                    avatar: candidate.avatar
+                ))
+                isSelectingOpponent = false
+            }
+        }
         .alert(item: $pendingConflict) { item in
             Alert(
                 title: Text("约球未发送"),
@@ -67,7 +78,7 @@ struct ChallengeComposeView: View {
                 }
                 Spacer(minLength: 8)
                 Button("更换") {
-                    navigator.open(.opponentSelector)
+                    isSelectingOpponent = true
                 }
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(palette.brandStrong)
@@ -76,7 +87,7 @@ struct ChallengeComposeView: View {
             .appCard()
         } else {
             Button {
-                navigator.open(.opponentSelector)
+                isSelectingOpponent = true
             } label: {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("选择球友")
@@ -227,9 +238,10 @@ struct ChallengeComposeView: View {
 
     private func submit() async {
         switch await model.submit() {
-        case .success(let challengeId):
+        case .success:
             toast.show("约球已发送")
-            navigator.open(.challengeWaiting(challengeId: challengeId))
+            navigator.select(.home, isSignedIn: session.identity != nil)
+            navigator.popToRoot(.home)
         case .pendingConflict(let message, let challengeId):
             if let challengeId {
                 pendingConflict = PendingConflict(message: message, challengeId: challengeId)

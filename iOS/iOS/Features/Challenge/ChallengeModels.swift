@@ -98,6 +98,14 @@ struct ChallengeHistoryResponse: Decodable, Equatable {
     let nextBeforeId: Int64?
 }
 
+/// 约球业务失败响应体里的结构化字段；请求层抛出 `APIError` 后从这里取值，不按文案匹配。
+struct ChallengeFailureDetails: Decodable, Equatable {
+    let pendingChallengeId: Int64?
+    let needConfirmCloseOwn: Bool?
+    let typeConflict: Bool?
+    let action: String?
+}
+
 // MARK: - 规则返回值
 
 /// `challenge-entry.js` 的 `buildChallengePayload` 结果。
