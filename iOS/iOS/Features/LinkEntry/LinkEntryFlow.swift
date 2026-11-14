@@ -168,6 +168,21 @@ enum LinkEntryRouting {
         case .home, .invite, .match: .linkEntry(url: url)
         }
     }
+
+    /// 小程序对局链接是 `redirectTo(buildSpectateRoute(...))`，即观战详情而非实时对局页。
+    static func landing(for result: EntryLinkResult) -> LinkEntryLanding {
+        switch result {
+        case .invite(let code): .invite(code: code)
+        case .match(let matchId): .publicMatch(matchId: matchId)
+        case .home, .other: .home
+        }
+    }
+}
+
+enum LinkEntryLanding: Equatable {
+    case invite(code: String)
+    case publicMatch(matchId: Int64)
+    case home
 }
 
 /// 承接页的展示规则，对应 `linkEntry.vue` 里的剩余有效期计算。

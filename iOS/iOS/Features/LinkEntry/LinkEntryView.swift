@@ -179,14 +179,14 @@ struct LinkEntryView: View {
     }
 
     private func start() async {
-        switch EntryLink.parse(url) {
+        switch LinkEntryRouting.landing(for: EntryLink.parse(url)) {
         case .invite(let code):
             await model.begin(code: code)
             consumeConfirmation()
-        case .match(let matchId):
+        case .publicMatch(let matchId):
             navigator.popToRoot(navigator.selectedTab)
-            navigator.open(.liveMatch(matchId: matchId))
-        case .home, .other:
+            navigator.open(.publicMatchDetail(matchId: matchId))
+        case .home:
             goHome()
         }
     }

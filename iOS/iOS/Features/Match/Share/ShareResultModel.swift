@@ -19,7 +19,8 @@ final class ShareResultModel: ObservableObject {
 
     private let session: SessionStore
     private let api: ShareResultAPI
-    private let render: (SharePosterPayload) -> UIImage?
+    private let loadImage: (URL) async -> UIImage?
+    private let render: (SharePosterPayload, SharePosterAssets) -> UIImage?
     private var requestToken = 0
 
     convenience init(session: SessionStore, matchId: Int64) {
@@ -27,9 +28,10 @@ final class ShareResultModel: ObservableObject {
             session: session,
             matchId: matchId,
             api: ShareResultAPI(session: session),
-            render: { payload in
+            loadImage: { url in await SharePosterImageDownloader.load(url) },
+            render: { payload, assets in
                 let qr = QRCodeImage.make(content: payload.qrURL, size: 120)
-                return ShareResultPoster.render(payload, qrImage: qr)
+                return ShareResultPoster.render(payload, qrImage: qr, assets: assets)
             }
         )
     }
@@ -38,11 +40,13 @@ final class ShareResultModel: ObservableObject {
         session: SessionStore,
         matchId: Int64,
         api: ShareResultAPI,
-        render: @escaping (SharePosterPayload) -> UIImage?
+        loadImage: @escaping (URL) async -> UIImage?,
+        render: @escaping (SharePosterPayload, SharePosterAssets) -> UIImage?
     ) {
         self.session = session
         self.matchId = matchId
         self.api = api
+        self.loadImage = loadImage
         self.render = render
     }
 
@@ -55,20 +59,45 @@ final class ShareResultModel: ObservableObject {
         posterImage = nil
         payload = nil
 
+        let payload: SharePosterPayload
         do {
             let data = try await api.matchShareData(matchId: matchId)
             guard token == requestToken, session.identity == requestOwner else { return }
-            apply(ShareResultRules.payload(from: data))
+            payload = ShareResultRules.payload(from: data)
         } catch {
             guard token == requestToken, session.identity == requestOwner else { return }
-            apply(ShareResultRules.fallbackPayload())
+            payload = ShareResultRules.fallbackPayload()
         }
-    }
 
-    private func apply(_ payload: SharePosterPayload) {
-        let image = render(payload)
+        // 会员模板需要远程头像与头像框；下载期间身份变化就丢弃这次结果。
+        let assets = await loadAssets(for: payload)
+        guard token == requestToken, session.identity == requestOwner else { return }
+
+        let image = render(payload, assets)
         self.payload = payload
         posterImage = image
         phase = image == nil ? .failed : .ready
+    }
+
+    private func loadAssets(for payload: SharePosterPayload) async -> SharePosterAssets {
+        guard payload.isMember else { return .empty }
+        // 下载失败退回本地默认头像；头像框失败就不画，海报照常生成。
+        let fallbackAvatar = UIImage(named: "DefaultAvatar01")
+        // 三张图并行下载，弱网下最多等一张的超时，而不是三张累加。
+        async let myAvatar = download(payload.myAvatar)
+        async let opponentAvatar = download(payload.opponentAvatar)
+        async let frame = download(payload.myIdentity.frameURL?.absoluteString ?? "")
+        return SharePosterAssets(
+            myAvatar: await myAvatar ?? fallbackAvatar,
+            opponentAvatar: await opponentAvatar ?? fallbackAvatar,
+            frame: await frame
+        )
+    }
+
+    private func download(_ value: String) async -> UIImage? {
+        // 与 AvatarView 一致：只有 http(s) 地址才下载，本地资源名和相对路径直接跳过。
+        guard value.hasPrefix("http://") || value.hasPrefix("https://"),
+              let url = URL(string: value) else { return nil }
+        return await loadImage(url)
     }
 }

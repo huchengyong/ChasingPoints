@@ -1,34 +1,63 @@
 import SwiftUI
 
-/// 战绩海报，版式、文案与配色复刻 `posterGenerator.js` 的 `drawMatchPoster` 标准模板。
+/// 战绩海报，版式、文案与配色复刻 `posterGenerator.js` 的 `drawMatchPoster`。
+/// 分享者是有效会员时用 `MEMBER_POSTER_THEMES` 配色与头像行，否则保持标准模板。
 struct ShareResultPoster: View {
     let payload: SharePosterPayload
     let qrImage: UIImage?
+    let assets: SharePosterAssets
+
+    init(payload: SharePosterPayload, qrImage: UIImage?, assets: SharePosterAssets = .empty) {
+        self.payload = payload
+        self.qrImage = qrImage
+        self.assets = assets
+    }
+
+    private var theme: SharePosterTheme? {
+        payload.isMember ? SharePosterTheme.resolve(payload.myIdentity.tier) : nil
+    }
+
+    /// 会员模板在头部多出的高度，卡片下方所有内容整体下移。
+    private var dy: CGFloat { payload.headerExtra }
+
+    private var backgroundColors: [Color] {
+        guard let theme else { return [Color(hex: 0x0F172A), Color(hex: 0x111827)] }
+        return [Color(hex: theme.backgroundTop), Color(hex: theme.backgroundBottom)]
+    }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            LinearGradient(
-                colors: [Color(hex: 0x0F172A), Color(hex: 0x111827)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            LinearGradient(colors: backgroundColors, startPoint: .topLeading, endPoint: .bottomTrailing)
 
             Circle()
-                .fill(Color(hex: 0x3B82F6, opacity: 0.12))
+                .fill(theme.map { Color(hex: $0.glowPrimary, opacity: $0.glowPrimaryOpacity) }
+                    ?? Color(hex: 0x3B82F6, opacity: 0.12))
                 .frame(width: 360, height: 360)
                 .position(x: 640, y: 110)
             Circle()
-                .fill(Color(hex: 0x10B981, opacity: 0.10))
+                .fill(theme.map { Color(hex: $0.glowSecondary, opacity: $0.glowSecondaryOpacity) }
+                    ?? Color(hex: 0x10B981, opacity: 0.10))
                 .frame(width: 280, height: 280)
                 .position(x: 80, y: 220)
 
-            centered(ShareResultRules.headerTitle, size: 30, color: Color(hex: 0xCBD5E1), y: 84)
-            centered(payload.gameTypeName, size: 24, color: Color(hex: 0x94A3B8), y: 126)
+            centered(
+                ShareResultRules.headerTitle,
+                size: 30,
+                color: theme.map { Color(hex: $0.title) } ?? Color(hex: 0xCBD5E1),
+                y: 84
+            )
+            centered(
+                payload.gameTypeName,
+                size: 24,
+                color: theme.map { Color(hex: $0.subtitle) } ?? Color(hex: 0x94A3B8),
+                y: 126
+            )
 
             RoundedRectangle(cornerRadius: 32)
-                .fill(Color(hex: 0x0F172A, opacity: 0.72))
-                .frame(width: 670, height: 300)
-                .position(x: 375, y: 320)
+                .fill(theme.map { Color(hex: $0.card, opacity: $0.cardOpacity) }
+                    ?? Color(hex: 0x0F172A, opacity: 0.72))
+                .frame(width: 670, height: 300 + dy)
+                .position(x: 375, y: 320 + dy / 2)
 
             ZStack {
                 RoundedRectangle(cornerRadius: 24).fill(Color.white.opacity(0.08))
@@ -40,38 +69,43 @@ struct ShareResultPoster: View {
             .position(x: 126, y: 218)
 
             ZStack {
-                RoundedRectangle(cornerRadius: 24).fill(Color(hex: 0x3B82F6, opacity: 0.14))
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(theme.map { Color(hex: $0.chipBackground, opacity: $0.chipBackgroundOpacity) }
+                        ?? Color(hex: 0x3B82F6, opacity: 0.14))
                 Text(payload.rankChangeLabel)
                     .font(.system(size: 24))
-                    .foregroundStyle(Color(hex: 0x93C5FD))
+                    .foregroundStyle(theme.map { Color(hex: $0.chipText) } ?? Color(hex: 0x93C5FD))
             }
             .frame(width: 112, height: 48)
             .position(x: 614, y: 218)
 
-            if let badge = payload.opponentBadge {
-                badgeView(badge, scale: 0.85)
-                    .position(x: 594, y: 264)
-            }
+            memberHeader
 
-            centered(payload.myName, size: 28, color: Color(hex: 0xF8FAFC), x: 156, y: 306)
-            centered(payload.opponentName, size: 28, color: Color(hex: 0xF8FAFC), x: 594, y: 306)
+            centered(payload.myName, size: 28, color: Color(hex: 0xF8FAFC), x: 156, y: 306 + dy)
+            centered(payload.opponentName, size: 28, color: Color(hex: 0xF8FAFC), x: 594, y: 306 + dy)
 
-            centered(ShareResultRules.scoreText(payload.myScore), size: 86, color: Color(hex: 0xF8FAFC), x: 172, y: 392)
-            centered(":", size: 42, color: Color(hex: 0x64748B), x: 375, y: 382)
+            centered(
+                ShareResultRules.scoreText(payload.myScore),
+                size: 86,
+                color: Color(hex: 0xF8FAFC),
+                x: 172,
+                y: 392 + dy
+            )
+            centered(":", size: 42, color: Color(hex: 0x64748B), x: 375, y: 382 + dy)
             centered(
                 ShareResultRules.scoreText(payload.opponentScore),
                 size: 86,
                 color: Color(hex: 0xF8FAFC),
                 x: 578,
-                y: 392
+                y: 392 + dy
             )
 
-            centered(ShareResultRules.myScoreLabel, size: 22, color: Color(hex: 0x94A3B8), x: 100, y: 438)
-            centered(ShareResultRules.opponentScoreLabel, size: 22, color: Color(hex: 0x94A3B8), x: 514, y: 438)
+            centered(ShareResultRules.myScoreLabel, size: 22, color: Color(hex: 0x94A3B8), x: 100, y: 438 + dy)
+            centered(ShareResultRules.opponentScoreLabel, size: 22, color: Color(hex: 0x94A3B8), x: 514, y: 438 + dy)
 
             Path { path in
-                path.move(to: CGPoint(x: 70, y: 438))
-                path.addLine(to: CGPoint(x: 680, y: 438))
+                path.move(to: CGPoint(x: 70, y: 438 + dy))
+                path.addLine(to: CGPoint(x: 680, y: 438 + dy))
             }
             .stroke(Color.white.opacity(0.08), lineWidth: 1)
 
@@ -80,7 +114,7 @@ struct ShareResultPoster: View {
                 size: 22,
                 color: Color(hex: 0xCBD5E1),
                 width: 590,
-                baseline: 510
+                baseline: 510 + dy
             )
 
             baselineText(
@@ -89,13 +123,13 @@ struct ShareResultPoster: View {
                 color: Color(hex: 0xCBD5E1),
                 width: 590,
                 alignment: .trailing,
-                baseline: 510
+                baseline: 510 + dy
             )
 
             sectionHeader(
                 ShareResultRules.highlightsTitle,
                 subtitle: ShareResultRules.highlightsSubtitle(gameTypeName: payload.gameTypeName),
-                y: 572
+                y: 572 + dy
             )
             highlightCards
 
@@ -103,11 +137,70 @@ struct ShareResultPoster: View {
             statCards
 
             qrBlock
-            centered(ShareResultRules.brand, size: 30, color: Color(hex: 0x60A5FA), y: payload.height - 92)
-            centered(ShareResultRules.footnote, size: 20, color: Color(hex: 0x64748B), y: payload.height - 54)
+            centered(
+                ShareResultRules.brand,
+                size: 30,
+                color: theme.map { Color(hex: $0.brand) } ?? Color(hex: 0x60A5FA),
+                y: payload.height - 92
+            )
+            centered(
+                ShareResultRules.footnote,
+                size: 20,
+                color: theme.map { Color(hex: $0.footnote) } ?? Color(hex: 0x64748B),
+                y: payload.height - 54
+            )
         }
         .frame(width: 750, height: payload.height, alignment: .topLeading)
         .clipped()
+    }
+
+    /// 会员模板：分享者头像 + 段位头像框 + VIP 标识；对手是会员时同样标出 VIP 标识。
+    @ViewBuilder
+    private var memberHeader: some View {
+        if payload.isMember {
+            avatarView(assets.myAvatar, name: payload.myName)
+                .position(x: 156, y: 322)
+            if let frame = assets.frame {
+                let size = (ShareResultRules.memberAvatarRadius * 2 * 156 / 96).rounded()
+                Image(uiImage: frame)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: size, height: size)
+                    .position(x: 156, y: 322)
+            }
+            badgeView(
+                SharePosterBadge(text: payload.myIdentity.badgeText, tier: payload.myIdentity.tier),
+                scale: 1
+            )
+            .position(x: 156, y: 372)
+            avatarView(assets.opponentAvatar, name: payload.opponentName)
+                .position(x: 594, y: 322)
+            if let badge = payload.opponentBadge {
+                badgeView(badge, scale: 1)
+                    .position(x: 594, y: 372)
+            }
+        } else if let badge = payload.opponentBadge {
+            badgeView(badge, scale: 0.85)
+                .position(x: 594, y: 264)
+        }
+    }
+
+    /// 头像读不到时画名字首字的占位圆，海报仍然完整。
+    private func avatarView(_ image: UIImage?, name: String) -> some View {
+        ZStack {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Circle().fill(Color.white.opacity(0.14))
+                Text(String(name.prefix(1)))
+                    .font(.system(size: 44))
+                    .foregroundStyle(Color(hex: 0xF8FAFC))
+            }
+        }
+        .frame(width: ShareResultRules.memberAvatarRadius * 2, height: ShareResultRules.memberAvatarRadius * 2)
+        .clipShape(Circle())
     }
 
     private var resultColor: Color {
@@ -124,17 +217,17 @@ struct ShareResultPoster: View {
             RoundedRectangle(cornerRadius: 24)
                 .fill(Color.white.opacity(0.05))
                 .frame(width: 630, height: 146)
-                .position(x: 375, y: 701)
+                .position(x: 375, y: 701 + dy)
             Text(ShareResultRules.emptyHighlights)
                 .font(.system(size: 24))
                 .foregroundStyle(Color(hex: 0x94A3B8))
-                .position(x: 375, y: 710)
+                .position(x: 375, y: 710 + dy)
         } else {
             ForEach(Array(payload.highlights.enumerated()), id: \.offset) { index, card in
                 SharePosterCardView(card: card)
                     .position(
                         x: 60 + CGFloat(index % 2) * (305 + 20) + 152.5,
-                        y: 628 + CGFloat(index / 2) * 170 + 73
+                        y: 628 + dy + CGFloat(index / 2) * 170 + 73
                     )
             }
         }
@@ -243,10 +336,95 @@ struct ShareResultPoster: View {
 
     /// 渲染到相册 / 分享用的位图；scale 2 按 750pt 画布输出 1500px 宽。
     @MainActor
-    static func render(_ payload: SharePosterPayload, qrImage: UIImage?, scale: CGFloat = 2) -> UIImage? {
-        let renderer = ImageRenderer(content: ShareResultPoster(payload: payload, qrImage: qrImage))
+    static func render(
+        _ payload: SharePosterPayload,
+        qrImage: UIImage?,
+        assets: SharePosterAssets = .empty,
+        scale: CGFloat = 2
+    ) -> UIImage? {
+        let renderer = ImageRenderer(
+            content: ShareResultPoster(payload: payload, qrImage: qrImage, assets: assets)
+        )
         renderer.scale = scale
         return renderer.uiImage
+    }
+}
+
+/// 会员模板配色，逐项照搬 `posterGenerator.js` 的 `MEMBER_POSTER_THEMES`。
+struct SharePosterTheme: Equatable {
+    let backgroundTop: UInt32
+    let backgroundBottom: UInt32
+    let card: UInt32
+    let cardOpacity: Double
+    let glowPrimary: UInt32
+    let glowPrimaryOpacity: Double
+    let glowSecondary: UInt32
+    let glowSecondaryOpacity: Double
+    let title: UInt32
+    let subtitle: UInt32
+    let chipBackground: UInt32
+    let chipBackgroundOpacity: Double
+    let chipText: UInt32
+    let brand: UInt32
+    let footnote: UInt32
+
+    static func resolve(_ tier: String?) -> SharePosterTheme {
+        switch tier {
+        case "advanced":
+            SharePosterTheme(
+                backgroundTop: 0x2E2209,
+                backgroundBottom: 0x141109,
+                card: 0x241A08,
+                cardOpacity: 0.78,
+                glowPrimary: 0xF0C542,
+                glowPrimaryOpacity: 0.20,
+                glowSecondary: 0xE0AE12,
+                glowSecondaryOpacity: 0.10,
+                title: 0xF5CF5A,
+                subtitle: 0xE2D3A5,
+                chipBackground: 0xF0C542,
+                chipBackgroundOpacity: 0.20,
+                chipText: 0xF5CF5A,
+                brand: 0xF5CF5A,
+                footnote: 0xA89A74
+            )
+        case "premium":
+            SharePosterTheme(
+                backgroundTop: 0x3C2B08,
+                backgroundBottom: 0x8F6507,
+                card: 0x140E04,
+                cardOpacity: 0.72,
+                glowPrimary: 0xFDE9A6,
+                glowPrimaryOpacity: 0.18,
+                glowSecondary: 0xFDE9A6,
+                glowSecondaryOpacity: 0.10,
+                title: 0xFDE9A6,
+                subtitle: 0xF0DEB0,
+                chipBackground: 0xFDE9A6,
+                chipBackgroundOpacity: 0.20,
+                chipText: 0xFDE9A6,
+                brand: 0xFDE9A6,
+                footnote: 0xD9C48A
+            )
+        default:
+            SharePosterTheme(
+                backgroundTop: 0x1E180D,
+                backgroundBottom: 0x141109,
+                card: 0x1E180D,
+                cardOpacity: 0.78,
+                glowPrimary: 0xE0AE12,
+                glowPrimaryOpacity: 0.14,
+                glowSecondary: 0xE0AE12,
+                glowSecondaryOpacity: 0.08,
+                title: 0xF0C542,
+                subtitle: 0xD7C89B,
+                chipBackground: 0xE0AE12,
+                chipBackgroundOpacity: 0.16,
+                chipText: 0xF0C542,
+                brand: 0xF0C542,
+                footnote: 0x9F926E
+            )
+        }
     }
 }
 

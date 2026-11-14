@@ -188,12 +188,6 @@ final class EntryFunnelRulesTests: XCTestCase {
         XCTAssertEqual(EntryFunnelRules.loginButtonText(isLogging: true, isSlow: false), "正在安全登录…")
         XCTAssertEqual(EntryFunnelRules.loginButtonText(isLogging: true, isSlow: true), "网络稍慢，正在继续…")
     }
-
-    func testPostLoginNavigationReturnsBackOnlyWhenAnotherPageRemains() {
-        XCTAssertEqual(EntryFunnelRules.postLoginNavigation(pageCount: 2), .back)
-        XCTAssertEqual(EntryFunnelRules.postLoginNavigation(pageCount: 1), .home)
-        XCTAssertEqual(EntryFunnelRules.postLoginNavigation(pageCount: 0), .home)
-    }
 }
 
 @MainActor

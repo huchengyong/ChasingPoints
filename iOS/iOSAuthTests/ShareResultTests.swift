@@ -61,8 +61,66 @@ final class ShareResultTests: XCTestCase {
         XCTAssertEqual(payload.highlights.map(\.label), ["亮点1", "亮点2", "亮点3", "亮点4"])
         XCTAssertEqual(payload.stats.map(\.label), ["数据1", "数据2", "数据3", "数据4", "数据5", "数据6"])
         XCTAssertEqual(payload.opponentBadge, SharePosterBadge(text: "VIP3", tier: "advanced"))
+        XCTAssertFalse(payload.isMember)
+        XCTAssertEqual(payload.headerExtra, 0)
         XCTAssertEqual(payload.myScore, 7)
         XCTAssertEqual(payload.opponentScore, 5)
+    }
+
+    func testPayloadSwitchesToMemberTemplateWhenSharerIsMember() {
+        let data = makeShareData(myVipLevel: 3, opponentVipLevel: 1, myRankLevel: 4)
+
+        let payload = ShareResultRules.payload(from: data)
+
+        XCTAssertTrue(payload.isMember)
+        XCTAssertEqual(payload.myIdentity.badgeText, "VIP3")
+        XCTAssertEqual(payload.myIdentity.tier, "advanced")
+        XCTAssertEqual(payload.myIdentity.frameURL?.lastPathComponent, "frame_platinum.png")
+        XCTAssertEqual(payload.headerExtra, ShareResultRules.memberHeaderExtra)
+        XCTAssertEqual(payload.opponentBadge, SharePosterBadge(text: "VIP1", tier: "standard"))
+        XCTAssertEqual(payload.height, ShareResultRules.posterHeight(highlightCount: 1, statCount: 1) + 124)
+    }
+
+    func testMemberPosterThemesCopyEveryTierPalette() {
+        let standard = SharePosterTheme.resolve("standard")
+        XCTAssertEqual(standard.backgroundTop, 0x1E180D)
+        XCTAssertEqual(standard.backgroundBottom, 0x141109)
+        XCTAssertEqual(standard.card, 0x1E180D)
+        XCTAssertEqual(standard.cardOpacity, 0.78)
+        XCTAssertEqual(standard.glowPrimary, 0xE0AE12)
+        XCTAssertEqual(standard.glowPrimaryOpacity, 0.14)
+        XCTAssertEqual(standard.glowSecondaryOpacity, 0.08)
+        XCTAssertEqual(standard.title, 0xF0C542)
+        XCTAssertEqual(standard.subtitle, 0xD7C89B)
+        XCTAssertEqual(standard.chipBackgroundOpacity, 0.16)
+        XCTAssertEqual(standard.brand, 0xF0C542)
+        XCTAssertEqual(standard.footnote, 0x9F926E)
+
+        let advanced = SharePosterTheme.resolve("advanced")
+        XCTAssertEqual(advanced.backgroundTop, 0x2E2209)
+        XCTAssertEqual(advanced.card, 0x241A08)
+        XCTAssertEqual(advanced.glowPrimary, 0xF0C542)
+        XCTAssertEqual(advanced.glowPrimaryOpacity, 0.20)
+        XCTAssertEqual(advanced.glowSecondary, 0xE0AE12)
+        XCTAssertEqual(advanced.glowSecondaryOpacity, 0.10)
+        XCTAssertEqual(advanced.title, 0xF5CF5A)
+        XCTAssertEqual(advanced.subtitle, 0xE2D3A5)
+        XCTAssertEqual(advanced.footnote, 0xA89A74)
+
+        let premium = SharePosterTheme.resolve("premium")
+        XCTAssertEqual(premium.backgroundTop, 0x3C2B08)
+        XCTAssertEqual(premium.backgroundBottom, 0x8F6507)
+        XCTAssertEqual(premium.card, 0x140E04)
+        XCTAssertEqual(premium.cardOpacity, 0.72)
+        XCTAssertEqual(premium.glowPrimary, 0xFDE9A6)
+        XCTAssertEqual(premium.glowPrimaryOpacity, 0.18)
+        XCTAssertEqual(premium.title, 0xFDE9A6)
+        XCTAssertEqual(premium.subtitle, 0xF0DEB0)
+        XCTAssertEqual(premium.footnote, 0xD9C48A)
+
+        // 非会员没有主题配色，回落到标准模板。
+        XCTAssertEqual(SharePosterTheme.resolve(""), SharePosterTheme.resolve("standard"))
+        XCTAssertEqual(SharePosterTheme.resolve(nil), SharePosterTheme.resolve("standard"))
     }
 
     func testPayloadNormalizesEmptyCardFieldsAndKeepsTone() {
@@ -126,7 +184,8 @@ final class ShareResultTests: XCTestCase {
             session: session,
             matchId: 42,
             api: ShareResultAPI(session: session),
-            render: { payload in
+            loadImage: { _ in nil },
+            render: { payload, _ in
                 rendered = payload
                 return Self.pixel
             }
@@ -151,7 +210,8 @@ final class ShareResultTests: XCTestCase {
             session: session,
             matchId: 42,
             api: ShareResultAPI(session: session),
-            render: { _ in Self.pixel }
+            loadImage: { _ in nil },
+            render: { _, _ in Self.pixel }
         )
 
         await model.load()
@@ -170,7 +230,8 @@ final class ShareResultTests: XCTestCase {
             session: session,
             matchId: 42,
             api: ShareResultAPI(session: session),
-            render: { _ in Self.pixel }
+            loadImage: { _ in nil },
+            render: { _, _ in Self.pixel }
         )
 
         await model.load()
@@ -187,7 +248,8 @@ final class ShareResultTests: XCTestCase {
             session: session,
             matchId: 42,
             api: ShareResultAPI(session: session),
-            render: { _ in nil }
+            loadImage: { _ in nil },
+            render: { _, _ in nil }
         )
 
         await model.load()
@@ -195,6 +257,106 @@ final class ShareResultTests: XCTestCase {
         XCTAssertEqual(model.phase, .failed)
         XCTAssertNotNil(model.payload)
         XCTAssertNil(model.posterImage)
+    }
+
+    // MARK: - 会员模板图片
+
+    func testMemberPosterDownloadsAvatarFrameAndOpponentAvatar() async {
+        let server = MockHTTPServer()
+        let session = await makeRestoredAccountSession(server)
+        server.stub("GET", "/api/share/match", .json(["success": true, "data": shareJSON(
+            myAvatar: "https://img.example/me.png",
+            myVipLevel: 3,
+            myRankLevel: 3,
+            opponentAvatar: "https://img.example/op.png"
+        )]))
+        var requested: [String] = []
+        var assets: SharePosterAssets?
+        let model = ShareResultModel(
+            session: session,
+            matchId: 42,
+            api: ShareResultAPI(session: session),
+            loadImage: { url in
+                requested.append(url.absoluteString)
+                return Self.pixel
+            },
+            render: { _, loaded in
+                assets = loaded
+                return Self.pixel
+            }
+        )
+
+        await model.load()
+
+        XCTAssertEqual(model.phase, .ready)
+        XCTAssertEqual(requested, [
+            "https://img.example/me.png",
+            "https://img.example/op.png",
+            "https://cdn.zhuifen.cn/static/images/avatar-frames/frame_gold.png",
+        ])
+        XCTAssertNotNil(assets?.myAvatar)
+        XCTAssertNotNil(assets?.opponentAvatar)
+        XCTAssertNotNil(assets?.frame)
+    }
+
+    func testMemberPosterStillRendersWhenImagesCannotBeDownloaded() async {
+        let server = MockHTTPServer()
+        let session = await makeRestoredAccountSession(server)
+        server.stub("GET", "/api/share/match", .json(["success": true, "data": shareJSON(
+            myAvatar: "https://img.example/me.png",
+            myVipLevel: 5,
+            myRankLevel: 2,
+            opponentAvatar: "https://img.example/op.png"
+        )]))
+        var assets: SharePosterAssets?
+        let model = ShareResultModel(
+            session: session,
+            matchId: 42,
+            api: ShareResultAPI(session: session),
+            loadImage: { _ in nil },
+            render: { _, loaded in
+                assets = loaded
+                return Self.pixel
+            }
+        )
+
+        await model.load()
+
+        XCTAssertEqual(model.phase, .ready)
+        XCTAssertNotNil(model.posterImage)
+        // 头像退回默认头像，头像框缺失就不画；海报照常生成。
+        XCTAssertNotNil(assets?.myAvatar)
+        XCTAssertNotNil(assets?.opponentAvatar)
+        XCTAssertNil(assets?.frame)
+    }
+
+    func testNonMemberPosterSkipsRemoteImages() async {
+        let server = MockHTTPServer()
+        let session = await makeRestoredAccountSession(server)
+        server.stub("GET", "/api/share/match", .json(["success": true, "data": shareJSON()]))
+        var requested: [String] = []
+        var assets: SharePosterAssets?
+        let model = ShareResultModel(
+            session: session,
+            matchId: 42,
+            api: ShareResultAPI(session: session),
+            loadImage: { url in
+                requested.append(url.absoluteString)
+                return Self.pixel
+            },
+            render: { _, loaded in
+                assets = loaded
+                return Self.pixel
+            }
+        )
+
+        await model.load()
+
+        XCTAssertEqual(model.phase, .ready)
+        XCTAssertTrue(requested.isEmpty)
+        XCTAssertNil(assets?.myAvatar)
+        XCTAssertNil(assets?.opponentAvatar)
+        XCTAssertNil(assets?.frame)
     }
 
     // MARK: - 位图
@@ -221,10 +383,13 @@ final class ShareResultTests: XCTestCase {
         gameType: Int = 3,
         gameTypeName: String = "中式八球",
         myName: String = "我",
+        myAvatar: String = "",
         opponentName: String = "对手",
         myScore: Int = 7,
         opponentScore: Int = 5,
+        myVipLevel: Int? = nil,
         opponentVipLevel: Int? = nil,
+        myRankLevel: Int? = nil,
         opponentRankLevel: Int? = nil,
         result: String = "胜利",
         matchTime: String = "2026/11/10 20:00",
@@ -239,14 +404,14 @@ final class ShareResultTests: XCTestCase {
             gameType: gameType,
             gameTypeName: gameTypeName,
             myName: myName,
-            myAvatar: "",
+            myAvatar: myAvatar,
             myScore: myScore,
             opponentName: opponentName,
             opponentAvatar: "",
             opponentScore: opponentScore,
-            myVipLevel: nil,
+            myVipLevel: myVipLevel,
             opponentVipLevel: opponentVipLevel,
-            myRankLevel: nil,
+            myRankLevel: myRankLevel,
             opponentRankLevel: opponentRankLevel,
             result: result,
             matchTime: matchTime,
@@ -260,8 +425,12 @@ final class ShareResultTests: XCTestCase {
 
     private func shareJSON(
         myName: String = "我",
+        myAvatar: String = "",
         myScore: Int = 7,
+        myVipLevel: Int = 0,
+        myRankLevel: Int = 0,
         opponentName: String = "对手",
+        opponentAvatar: String = "",
         opponentScore: Int = 5,
         opponentVipLevel: Int = 0
     ) -> [String: Any] {
@@ -270,14 +439,14 @@ final class ShareResultTests: XCTestCase {
             "game_type": 3,
             "game_type_name": "中式八球",
             "my_name": myName,
-            "my_avatar": "",
+            "my_avatar": myAvatar,
             "my_score": myScore,
             "opponent_name": opponentName,
-            "opponent_avatar": "",
+            "opponent_avatar": opponentAvatar,
             "opponent_score": opponentScore,
-            "my_vip_level": 0,
+            "my_vip_level": myVipLevel,
             "opponent_vip_level": opponentVipLevel,
-            "my_rank_level": 0,
+            "my_rank_level": myRankLevel,
             "opponent_rank_level": 0,
             "result": "胜利",
             "match_time": "2026/11/10 20:00",

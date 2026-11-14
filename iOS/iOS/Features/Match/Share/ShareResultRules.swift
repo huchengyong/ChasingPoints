@@ -13,7 +13,6 @@ struct SharePosterCard: Equatable {
     let tone: String?
 }
 
-/// 海报只实现标准模板所需的字段；会员模板依赖远程头像与头像框，本轮不迁移。
 struct SharePosterPayload: Equatable {
     let gameTypeName: String
     let resultText: String
@@ -25,16 +24,31 @@ struct SharePosterPayload: Equatable {
     let matchTime: String
     let highlights: [SharePosterCard]
     let stats: [SharePosterCard]
+    let myIdentity: MemberIdentity
+    let myAvatar: String
+    let opponentAvatar: String
     let opponentBadge: SharePosterBadge?
     let qrURL: String
     let qrCaption: String
 
-    var statsTop: CGFloat { ShareResultRules.statsTop(highlightCount: highlights.count) }
-    var height: CGFloat { ShareResultRules.posterHeight(highlightCount: highlights.count, statCount: stats.count) }
+    var isMember: Bool { myIdentity.showBadge }
+    var headerExtra: CGFloat { isMember ? ShareResultRules.memberHeaderExtra : 0 }
+    var statsTop: CGFloat { ShareResultRules.statsTop(highlightCount: highlights.count, headerExtra: headerExtra) }
+    var height: CGFloat {
+        ShareResultRules.posterHeight(
+            highlightCount: highlights.count,
+            statCount: stats.count,
+            headerExtra: headerExtra
+        )
+    }
 }
 
-/// 战绩海报的布局与文案，逐条对应 `uniapp/utils/posterGenerator.js` 的 `drawMatchPoster` 标准模板。
+/// 战绩海报的布局与文案，逐条对应 `uniapp/utils/posterGenerator.js` 的 `drawMatchPoster`。
 enum ShareResultRules {
+    /// 会员模板在头部多出的高度，卡片下方所有内容整体下移。
+    static let memberHeaderExtra: CGFloat = 124
+    /// 分享者头像半径；对应 `POSTER_AVATAR_RADIUS`。
+    static let memberAvatarRadius: CGFloat = 44
     static let headerTitle = "追分 · 对局战报"
     static let defaultResult = "已完赛"
     static let practiceLabel = "练习赛"
@@ -88,6 +102,10 @@ enum ShareResultRules {
         let gameTypeName = data.gameTypeName.isEmpty
             ? GameTypeCatalog.label(for: data.gameType)
             : data.gameTypeName
+        let myIdentity = MemberIdentity.resolve(
+            vipLevel: data.myVipLevel ?? 0,
+            rankLevel: data.myRankLevel ?? 0
+        )
         let opponent = MemberIdentity.resolve(
             vipLevel: data.opponentVipLevel ?? 0,
             rankLevel: data.opponentRankLevel ?? 0
@@ -104,6 +122,9 @@ enum ShareResultRules {
             matchTime: data.matchTime,
             highlights: cards(from: data.summaryHighlights, limit: 4),
             stats: cards(from: data.summaryStats, limit: 6),
+            myIdentity: myIdentity,
+            myAvatar: data.myAvatar,
+            opponentAvatar: data.opponentAvatar,
             opponentBadge: opponent.showBadge
                 ? SharePosterBadge(text: opponent.badgeText, tier: opponent.tier)
                 : nil,
@@ -128,21 +149,26 @@ enum ShareResultRules {
             matchTime: formatter.string(from: date),
             highlights: [],
             stats: [],
+            myIdentity: MemberIdentity.resolve(vipLevel: 0, rankLevel: 0),
+            myAvatar: "",
+            opponentAvatar: "",
             opponentBadge: nil,
             qrURL: EntryLink.buildLink(.home),
             qrCaption: homeQrCaption
         )
     }
 
-    static func statsTop(highlightCount: Int) -> CGFloat {
+    static func statsTop(highlightCount: Int, headerExtra: CGFloat = 0) -> CGFloat {
         let rows = max((highlightCount + 1) / 2, 1)
-        return 572 + 56 + CGFloat(rows * 170) + 20
+        return 572 + headerExtra + 56 + CGFloat(rows * 170) + 20
     }
 
-    static func posterHeight(highlightCount: Int, statCount: Int) -> CGFloat {
+    static func posterHeight(highlightCount: Int, statCount: Int, headerExtra: CGFloat = 0) -> CGFloat {
         let statRows = (statCount + 1) / 2
-        let statsEnd = statsTop(highlightCount: highlightCount) + 56 + CGFloat(statRows * 170)
-        return max(1320, statsEnd + 240)
+        let statsEnd = statsTop(highlightCount: highlightCount, headerExtra: headerExtra)
+            + 56
+            + CGFloat(statRows * 170)
+        return max(1320 + headerExtra, statsEnd + 240)
     }
 
     private static func cards(from items: [MatchSummaryItem]?, limit: Int) -> [SharePosterCard] {

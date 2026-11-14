@@ -148,11 +148,6 @@ enum EntryFunnelRules {
         return masked.isEmpty ? "验证码已发送，请注意查收" : "验证码已发送至 \(masked)"
     }
 
-    /// 登录成功后：从其他页面进入的返回上一页，直接打开登录页的回首页。
-    static func postLoginNavigation(pageCount: Int) -> PostLoginNavigation {
-        pageCount > 1 ? .back : .home
-    }
-
     static func resolveEntryFunnelAgreementState(storedAgreement: Bool, sessionActive: Bool) -> Bool {
         guard sessionActive else { return false }
         return storedAgreement
@@ -164,11 +159,6 @@ enum EntryFunnelRules {
     ) -> Bool {
         !visibleRoutes.contains { $0 != current }
     }
-}
-
-enum PostLoginNavigation: Equatable {
-    case back
-    case home
 }
 
 /// 入口漏斗内的页面，对应小程序中 `ENTRY_FUNNEL_ROUTES` 的两条路由。

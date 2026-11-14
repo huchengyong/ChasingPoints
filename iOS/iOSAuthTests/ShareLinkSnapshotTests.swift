@@ -32,6 +32,24 @@ final class ShareLinkSnapshotTests: XCTestCase {
                 ShareResultPoster(payload: payload(for: .lose), qrImage: nil)
             }
             XCTAssertEqual(lose.size.width, 750)
+
+            let memberPayload = payload(for: .member)
+            let member = try renderSnapshot(
+                "share-result-poster-member",
+                colorScheme: scheme,
+                size: CGSize(width: 750, height: memberPayload.height)
+            ) {
+                ShareResultPoster(
+                    payload: memberPayload,
+                    qrImage: QRCodeImage.make(content: EntryLink.base, size: 108),
+                    assets: SharePosterAssets(
+                        myAvatar: Self.solidImage(color: .systemTeal),
+                        opponentAvatar: Self.solidImage(color: .systemIndigo),
+                        frame: Self.frameImage()
+                    )
+                )
+            }
+            XCTAssertEqual(member.size.width, 750)
         }
     }
 
@@ -93,9 +111,27 @@ final class ShareLinkSnapshotTests: XCTestCase {
 
     // MARK: - 支撑
 
+    /// 快照不联网：会员模板需要的头像与头像框用本地生成的图片代替。
+    private static func solidImage(color: UIColor) -> UIImage {
+        UIGraphicsImageRenderer(size: CGSize(width: 88, height: 88)).image { context in
+            color.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 88, height: 88))
+        }
+    }
+
+    private static func frameImage() -> UIImage {
+        UIGraphicsImageRenderer(size: CGSize(width: 143, height: 143)).image { context in
+            UIColor(red: 0.88, green: 0.65, blue: 0.13, alpha: 1).setStroke()
+            let path = UIBezierPath(ovalIn: CGRect(x: 8, y: 8, width: 127, height: 127))
+            path.lineWidth = 10
+            path.stroke()
+        }
+    }
+
     private enum ResultKind {
         case win
         case lose
+        case member
     }
 
     private func payload(for kind: ResultKind) -> SharePosterPayload {
@@ -136,6 +172,29 @@ final class ShareLinkSnapshotTests: XCTestCase {
                     item("成功率", value: "71%", tone: "slate"),
                 ]
             )
+        case .member:
+            data = shareData(
+                myName: "阿豪",
+                myAvatar: "https://img.example/me.png",
+                myScore: 9,
+                opponentName: "阿杰",
+                opponentAvatar: "https://img.example/op.png",
+                opponentScore: 4,
+                myVipLevel: 3,
+                opponentVipLevel: 5,
+                myRankLevel: 3,
+                opponentRankLevel: 6,
+                result: "胜利",
+                rankChange: 3,
+                highlights: [
+                    item("连下三局", value: "3", desc: "从 3:4 追到 6:4", tone: "gold"),
+                    item("清台", value: "1", desc: "关键第八局", tone: "purple"),
+                ],
+                stats: [
+                    item("进球数", value: "41"),
+                    item("成功率", value: "86%", tone: "cyan"),
+                ]
+            )
         }
         return ShareResultRules.payload(from: data)
     }
@@ -173,10 +232,15 @@ final class ShareLinkSnapshotTests: XCTestCase {
 
     private func shareData(
         myName: String = "我",
+        myAvatar: String = "",
         myScore: Int = 7,
         opponentName: String = "对手",
+        opponentAvatar: String = "",
         opponentScore: Int = 5,
+        myVipLevel: Int? = nil,
         opponentVipLevel: Int? = nil,
+        myRankLevel: Int? = nil,
+        opponentRankLevel: Int? = nil,
         result: String = "胜利",
         rankChange: Int = 0,
         highlights: [MatchSummaryItem]? = nil,
@@ -187,15 +251,15 @@ final class ShareLinkSnapshotTests: XCTestCase {
             gameType: 3,
             gameTypeName: "中式八球",
             myName: myName,
-            myAvatar: "",
+            myAvatar: myAvatar,
             myScore: myScore,
             opponentName: opponentName,
-            opponentAvatar: "",
+            opponentAvatar: opponentAvatar,
             opponentScore: opponentScore,
-            myVipLevel: nil,
+            myVipLevel: myVipLevel,
             opponentVipLevel: opponentVipLevel,
-            myRankLevel: nil,
-            opponentRankLevel: nil,
+            myRankLevel: myRankLevel,
+            opponentRankLevel: opponentRankLevel,
             result: result,
             matchTime: "2026/11/10 20:00",
             rankChange: rankChange,

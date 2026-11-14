@@ -243,6 +243,20 @@ final class LinkEntryFlowTests: XCTestCase {
         XCTAssertNil(LinkEntryRouting.route(for: "not a link"))
     }
 
+    /// 小程序对局链接走 buildSpectateRoute → matchDetail?mode=spectate，原生落点是观战详情。
+    func testMatchLinkOpensSpectateDetailWhileInviteStillExchanges() {
+        XCTAssertEqual(
+            LinkEntryRouting.landing(for: EntryLink.parse("https://www.zhuifen.cn/go/?m=42")),
+            .publicMatch(matchId: 42)
+        )
+        XCTAssertEqual(
+            LinkEntryRouting.landing(for: EntryLink.parse("https://www.zhuifen.cn/go/?j=Ab3dEf6hIj9k")),
+            .invite(code: "Ab3dEf6hIj9k")
+        )
+        XCTAssertEqual(LinkEntryRouting.landing(for: EntryLink.parse(EntryLink.base)), .home)
+        XCTAssertEqual(LinkEntryRouting.landing(for: .other), .home)
+    }
+
     func testRemainingTextRoundsUpAndHidesExpiredOrInvalidValues() {
         let now = Date(timeIntervalSince1970: 1_893_455_730) // 2029-12-31T23:55:30Z
 
