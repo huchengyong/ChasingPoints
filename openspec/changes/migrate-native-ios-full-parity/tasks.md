@@ -38,9 +38,10 @@
 - [x] 5.1 消息 Tab 与角标（通知列表、已读、删除；未读数 / 红点规则）（`pages/message/index`）
 - [x] 5.2 好友：列表、申请、添加、好友主页、黑名单（`subPages/social/friendList`、`friendRequests`、`addFriend`、`friendHomepage`、`blacklist`）
 - [x] 5.3 约球：发起、等待、约球列表（`challengeCompose`、`challengeWaiting`、`subPages/social/challenges`）
-- [ ] 5.4 PK 报表（`subPages/social/pkReport`）
+- [x] 5.4 PK 报表（`subPages/social/pkReport`）
 - [ ] 5.5 动态广场、发布、我的动态（受合规开关控制，优先级最低）（`feed`、`postCreate`、`myPosts`）
   - 2026-11-14 核对：小程序当前没有任何页面链接到这三页（合规模式下入口全部隐藏，`buildFeedUrl` 只在页面内部使用），原生端暂不迁移；合规开关放开、小程序恢复入口时再做。
+  - 2026-11-15 复核：`subPages/tournament/create`、`bracket` 与 `pages/social/index` 同样没有任何入口（只有接口封装），一并不迁移。
 
 ## 6. 对局核心
 
@@ -55,8 +56,10 @@
 
 ## 7. 收尾
 
-- [ ] 7.1 欢迎页与登录流程对齐（协议同意、未登录引导）（`pages/welcome`、`pages/login`）
-- [ ] 7.2 帮助与反馈、用户协议、隐私政策应用内页面（`subPages/help/feedback`、`subPages/agreement/*`）
-- [ ] 7.3 权限说明、隐私清单与工程配置核对（相机、定位、相册）
+- [x] 7.1 欢迎页与登录流程对齐（协议同意、未登录引导）（`pages/welcome`、`pages/login`）
+- [x] 7.2 帮助与反馈、用户协议、隐私政策应用内页面（`subPages/help/feedback`、`subPages/agreement/*`）
+  - 欢迎页、协议确认弹层、登录页、设置页的协议链接都改为打开应用内协议页。
+- [x] 7.3 权限说明、隐私清单与工程配置核对（相机、定位、相册）
+  - 相机、定位、相册（仅添加）用途说明已在工程配置；`PrivacyInfo.xcprivacy` 声明不跟踪、UserDefaults 原因 CA92.1。收集数据类型（手机号、昵称、用户 ID、头像照片、对局数据、用户内容、反馈工单）是草稿，提交审核前需要产品确认，定位是否算「收集」取决于后端是否留存查询坐标。
 - [ ] 7.4 全量回归：Debug/Release 构建、全部测试、三种主题下的快照走查，记录到 `docs/testing/native-ios-full-parity.md`
 - [ ] 7.5 真实后端只读联调与真机验收（需用户授权后执行，结果与模拟响应分开记录）
