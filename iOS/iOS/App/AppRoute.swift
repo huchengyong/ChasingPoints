@@ -7,7 +7,7 @@ enum ChallengeTab: Hashable {
     case history
 }
 
-/// 应用内页面路由，与小程序 pages.json 的页面一一对应；未迁移的页面先落到占位页。
+/// 应用内页面路由，与小程序 pages.json 的页面一一对应。
 enum AppRoute: Hashable {
     case login
     case settings
@@ -129,7 +129,7 @@ enum AppRoute: Hashable {
     }
 }
 
-/// 路由 → 页面。已迁移的返回真实页面，其余返回占位页。
+/// 路由 → 页面。switch 不留 default，新增路由时编译器会要求在这里登记页面。
 struct AppRouteDestination: View {
     @EnvironmentObject private var session: SessionStore
     @EnvironmentObject private var gearStore: GearStore
@@ -256,8 +256,6 @@ struct AppRouteDestination: View {
             ChallengeWaitingDestination(session: session, challengeId: challengeId)
         case .challenges(let tab):
             ChallengesDestination(session: session, initialTab: tab)
-        default:
-            MigrationPlaceholderView(title: route.title)
         }
     }
 }

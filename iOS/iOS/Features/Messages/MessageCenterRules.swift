@@ -46,7 +46,7 @@ enum MessageCenterRules {
     }
 
     /// 通知点击后的跳转，逐条对应 `pages/message/index.vue` 的 `navigateByNotification`。
-    /// `data` 解析失败时返回 nil（不跳转）；目标页未迁移的落到已有占位路由。
+    /// `data` 解析失败时返回 nil（不跳转）。
     static func notificationRoute(type: String, data rawData: String) -> AppRoute? {
         guard let data = parseNotificationData(rawData) else { return nil }
         let target = (data["target"] as? String) ?? (data["url"] as? String) ?? ""
