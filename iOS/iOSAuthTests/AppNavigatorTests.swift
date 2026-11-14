@@ -54,7 +54,7 @@ final class AppNavigatorTests: XCTestCase {
     func testSelectingSelectedTabPopsToRoot() {
         let navigator = AppNavigator()
         navigator.select(.messages, isSignedIn: true)
-        navigator.open(.challenges(showHistory: false))
+        navigator.open(.challenges(tab: .received))
         XCTAssertEqual(navigator.path(for: .messages).count, 1)
 
         navigator.select(.messages, isSignedIn: true)

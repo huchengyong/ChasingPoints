@@ -18,6 +18,7 @@ final class SharedUISnapshotTests: XCTestCase {
     func testMainTabsGuestSnapshot() throws {
         let server = MockHTTPServer()
         let session = makeSessionStore(server, credentialStore: InMemoryCredentialStore(credentials: nil))
+        let activity = ActivityStore(session: session)
         let navigator = AppNavigator()
         let toast = ToastCenter()
 
@@ -25,6 +26,7 @@ final class SharedUISnapshotTests: XCTestCase {
             let image = try renderSnapshot("main-tabs-guest", colorScheme: scheme, size: size) {
                 MainTabView()
                     .environmentObject(session)
+                    .environmentObject(activity)
                     .environmentObject(navigator)
                     .environmentObject(toast)
             }
@@ -42,6 +44,7 @@ final class SharedUISnapshotTests: XCTestCase {
         await session.restore()
         XCTAssertNotNil(session.identity)
 
+        let activity = ActivityStore(session: session)
         let navigator = AppNavigator()
         navigator.select(.me, isSignedIn: true)
         let toast = ToastCenter()
@@ -50,6 +53,7 @@ final class SharedUISnapshotTests: XCTestCase {
             let image = try renderSnapshot("my-page-signed-in", colorScheme: scheme, size: size) {
                 MainTabView()
                     .environmentObject(session)
+                    .environmentObject(activity)
                     .environmentObject(navigator)
                     .environmentObject(toast)
             }
