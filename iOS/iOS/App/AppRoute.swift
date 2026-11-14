@@ -60,7 +60,7 @@ enum AppRoute: Hashable {
     case gearIndex
     case gearAdd(category: String, pickToken: String?)
     case gearItem(id: Int64)
-    case gearFriend(userId: Int64)
+    case gearFriend(userId: Int64, name: String)
     case scanConfirm
     case opponentSelector
 
@@ -138,6 +138,8 @@ struct AppRouteDestination: View {
             NicknameEditView()
         case .notificationSettings:
             NotificationSettingsView(session: session)
+        case .memberCenter:
+            MemberCenterView(session: session)
         case .reputation:
             ReputationView(session: session)
         case .opponentRecord(let target):
@@ -197,8 +199,8 @@ struct AppRouteDestination: View {
             GearAddView(session: session, store: gearStore, category: category, pickToken: pickToken)
         case .gearItem(let id):
             GearItemView(session: session, store: gearStore, itemId: id)
-        case .gearFriend(let userId):
-            GearFriendView(session: session, userId: userId, name: "")
+        case .gearFriend(let userId, let name):
+            GearFriendView(session: session, userId: userId, name: name)
         case .friendList:
             FriendListDestination(session: session)
         case .friendHomepage(let target):
@@ -209,7 +211,9 @@ struct AppRouteDestination: View {
             FriendRequestsDestination(session: session)
         case .blacklist:
             BlacklistView(session: session)
-        case .friendHonorWall, .friendPkReport:
+        case .friendHonorWall(let userId):
+            HonorWallView(session: session, gameType: 3, userId: userId)
+        case .friendPkReport:
             MigrationPlaceholderView(title: route.title)
         case .scanConfirm:
             ScanConfirmView(session: session)

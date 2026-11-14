@@ -75,6 +75,7 @@ private struct MatchReportContent: View {
             if !isReferee {
                 rankCard
                 rewardCard
+                rankingRightsCard
             }
             if report.refereeBound == true, (report.refereeUserId ?? 0) > 0 {
                 refereeCard
@@ -301,6 +302,40 @@ private struct MatchReportContent: View {
                     }
                 }
             }
+        }
+    }
+
+    /// 排位权益说明，迁移自小程序 `utils/member-ranking-rights.js`，放在本场亮点之后。
+    private var rankingRightsCard: some View {
+        let summary = MemberRankingRights.summary(match: report)
+        let tone = rankingToneColor(summary.tone)
+        return ReportSection(title: "排位权益") {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Text(summary.badgeText)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(tone, in: Capsule())
+                    Text(summary.title)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(palette.textPrimary)
+                }
+                Text(summary.description)
+                    .font(.system(size: 12))
+                    .foregroundStyle(palette.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func rankingToneColor(_ tone: String) -> Color {
+        switch tone {
+        case "emerald": palette.success
+        case "gold": palette.brandStrong
+        case "blue": palette.info
+        default: palette.textMuted
         }
     }
 

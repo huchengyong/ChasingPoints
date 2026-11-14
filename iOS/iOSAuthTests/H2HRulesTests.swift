@@ -301,6 +301,7 @@ final class H2HRulesTests: XCTestCase {
     ) -> MatchListItem {
         MatchListItem(
             id: id,
+            opponentId: 2,
             gameType: 3,
             gameTypeName: "中八",
             opponentName: "阿杰",

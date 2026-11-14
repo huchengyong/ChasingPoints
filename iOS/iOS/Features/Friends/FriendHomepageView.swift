@@ -130,7 +130,7 @@ struct FriendHomepageView: View {
                 }
                 .buttonStyle(.appSecondary)
 
-                NavigationLink(value: AppRoute.gearFriend(userId: model.target.userId)) {
+                NavigationLink(value: AppRoute.gearFriend(userId: model.target.userId, name: model.target.name)) {
                     Text("TA 的装备")
                 }
                 .buttonStyle(.appSecondary)

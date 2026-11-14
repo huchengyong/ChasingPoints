@@ -1,17 +1,13 @@
 import SwiftUI
 
-/// 装备图的底板固定用浅色：球杆、皮头素材多为深色，暗色底板下会糊成一片。
-enum GearStyle {
-    static let imageBoard = Color(hex: 0xF8F5EE)
-}
-
 /// 装备图：优先目录图，加载失败回退按类别的默认图。
 struct GearImageView: View {
     let source: GearImageSource
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ZStack {
-            GearStyle.imageBoard
+            AppTheme.palette(for: colorScheme).subtle
             let urls = GearDisplayRules.image(for: source)
             if let src = urls.src {
                 AsyncImage(url: src) { phase in
