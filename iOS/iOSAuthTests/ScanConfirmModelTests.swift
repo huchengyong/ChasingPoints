@@ -326,6 +326,50 @@ final class ScanConfirmModelTests: XCTestCase {
         XCTAssertNil(model.rematch)
     }
 
+    /// 回归：页面每次重新出现都会跑 `.task`，第二次不能把已经填好的确认页清成“扫码失效”。
+    func testTakingTheInitialHandoffTwiceKeepsTheFormAndConsumesTheFlowOnlyOnce() async throws {
+        let session = await makeRestoredAccountSession(MockHTTPServer())
+        let identity = try XCTUnwrap(session.identity)
+        let flow = QuickScanFlow(currentIdentity: { session.identity })
+        let opponent = MatchScanOpponent(id: 9, nickname: "对手乙", avatar: "")
+        XCTAssertTrue(flow.handoffResolved(identity: identity, inviteToken: MatchStartFixtures.inviteToken, opponent: opponent))
+        let model = makeModel(session, handoff: nil)
+
+        let first = model.takeInitialHandoff(from: flow, identity: identity)
+        XCTAssertEqual(first?.opponent?.nickname, "对手乙")
+        model.apply(handoff: first)
+        XCTAssertEqual(model.stage, .ready)
+        XCTAssertEqual(model.opponent.nickname, "对手乙")
+
+        XCTAssertNil(model.takeInitialHandoff(from: flow, identity: identity), "交接只能取一次")
+        XCTAssertEqual(model.stage, .ready)
+        XCTAssertEqual(model.opponent.nickname, "对手乙")
+    }
+
+    func testRescanHandoffReplacesTheOpponent() async throws {
+        let session = await makeRestoredAccountSession(MockHTTPServer())
+        let identity = try XCTUnwrap(session.identity)
+        let flow = QuickScanFlow(currentIdentity: { session.identity })
+        let model = makeModel(session, handoff: nil)
+
+        flow.handoffResolved(
+            identity: identity,
+            inviteToken: MatchStartFixtures.inviteToken,
+            opponent: MatchScanOpponent(id: 9, nickname: "对手乙", avatar: "")
+        )
+        model.apply(handoff: model.takeInitialHandoff(from: flow, identity: identity))
+
+        flow.handoffResolved(
+            identity: identity,
+            inviteToken: MatchStartFixtures.inviteToken,
+            opponent: MatchScanOpponent(id: 10, nickname: "对手丙", avatar: "")
+        )
+        model.apply(handoff: flow.takeHandoff(identity: identity))
+
+        XCTAssertEqual(model.stage, .ready)
+        XCTAssertEqual(model.opponent.nickname, "对手丙")
+    }
+
     func testRefereeModePreviewsTheMatchFirstAndJoinsOnlyAfterConfirmation() async throws {
         let server = MockHTTPServer()
         let session = await makeRestoredAccountSession(server)

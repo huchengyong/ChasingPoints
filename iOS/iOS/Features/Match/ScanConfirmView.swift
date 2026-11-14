@@ -31,8 +31,9 @@ struct ScanConfirmView: View {
         .navigationTitle(model.navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            if !usesInjectedModel {
-                model.apply(handoff: quickScan.takeHandoff(identity: session.identity))
+            if !usesInjectedModel,
+               let handoff = model.takeInitialHandoff(from: quickScan, identity: session.identity) {
+                model.apply(handoff: handoff)
             }
             await model.loadIfNeeded()
         }

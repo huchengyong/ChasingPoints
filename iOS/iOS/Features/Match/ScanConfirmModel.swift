@@ -41,6 +41,8 @@ final class ScanConfirmModel: ObservableObject {
     private var inviteToken = ""
     private var refereeJoin: RefereeJoin?
     private var didLoadRefereePreview = false
+    /// 页面每次重新出现都会跑 `.task`，但交接只能取一次；否则第二次的 nil 会把已填好的表单清空。
+    private var didTakeInitialHandoff = false
 
     /// 重新扫码时保留原始 rematch 上下文。
     private(set) var rematch: ScanRematch?
@@ -186,6 +188,13 @@ final class ScanConfirmModel: ObservableObject {
 
     func consumeToast() {
         toastMessage = nil
+    }
+
+    /// 页面首次出现时取一次扫码交接；重复触发直接返回 nil，调用方不得把 nil 当成“扫码失效”。
+    func takeInitialHandoff(from flow: QuickScanFlow, identity: SessionIdentity?) -> ScanHandoff? {
+        guard !didTakeInitialHandoff else { return nil }
+        didTakeInitialHandoff = true
+        return flow.takeHandoff(identity: identity)
     }
 
     /// 重新扫码拿到新的交接后就地重载，避免重复压栈。
