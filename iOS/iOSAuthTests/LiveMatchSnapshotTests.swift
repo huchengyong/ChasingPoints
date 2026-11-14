@@ -22,13 +22,85 @@ final class LiveMatchSnapshotTests: XCTestCase {
             canFinish: true,
             refereeBound: true
         ))
-        try await render("live-eight-ball-referee", server: server)
+        let model = try await render("live-eight-ball-referee", server: server)
+        XCTAssertEqual(model.lastAction?.description, "选手1赢下本局", "裁判视角最近操作由服务端按角色生成")
     }
 
     func testAmericanNinePlayerSnapshot() async throws {
         let server = MockHTTPServer()
         stubDetail(server, detailJSON(gameType: 4, viewerRole: "player1"))
         try await render("live-american-nine-player", server: server)
+    }
+
+    func testNineBallPlayerSnapshot() async throws {
+        let server = MockHTTPServer()
+        stubDetail(server, detailJSON(gameType: 2, viewerRole: "player1"))
+        try await render("live-nine-ball-player", server: server)
+    }
+
+    func testNineBallRefereeSnapshot() async throws {
+        let server = MockHTTPServer()
+        stubDetail(server, detailJSON(gameType: 2, viewerRole: "referee", refereeBound: true))
+        let model = try await render("live-nine-ball-referee", server: server)
+        XCTAssertEqual(model.refereeJiuqiuGroups.map(\.label), ["选手1", "选手2"])
+    }
+
+    func testSnookerV1Snapshot() async throws {
+        let server = MockHTTPServer()
+        stubDetail(server, detailJSON(gameType: 1, extra: snookerV1Extra()))
+        try await render("live-snooker-v1", server: server)
+    }
+
+    func testSnookerV2RedsSnapshot() async throws {
+        let server = MockHTTPServer()
+        stubDetail(server, detailJSON(gameType: 1, extra: snookerV2Extra()))
+        try await render("live-snooker-v2-reds", server: server)
+    }
+
+    func testSnookerV2ColorsSnapshot() async throws {
+        let server = MockHTTPServer()
+        stubDetail(server, detailJSON(gameType: 1, extra: snookerV2Extra(
+            ballOn: "blue",
+            phase: "colors",
+            redsRemaining: 0,
+            freeBallAvailable: true
+        )))
+        try await render("live-snooker-v2-colors", server: server)
+    }
+
+    func testSnookerV2ConcessionSnapshot() async throws {
+        let server = MockHTTPServer()
+        stubDetail(server, detailJSON(
+            gameType: 1,
+            viewerRole: "player2",
+            isPlayer1: false,
+            extra: snookerV2Extra(pendingConcessionActor: 1, pendingConcessionScope: "frame")
+        ))
+        try await render("live-snooker-v2-concession", server: server)
+    }
+
+    func testSnookerV2RefereeSnapshot() async throws {
+        let server = MockHTTPServer()
+        stubDetail(server, detailJSON(gameType: 1, viewerRole: "referee", refereeBound: true, extra: snookerV2Extra()))
+        let session = await makeRestoredAccountSession(server)
+        let model = LiveMatchModel(session: session, matchId: 88)
+        await model.start()
+        model.toggleSnookerFoulEditor()
+        XCTAssertTrue(model.isSnookerFoulEditorShown)
+
+        try await render(name: "live-snooker-v2-referee", session: session, model: model)
+    }
+
+    func testSnookerFormatEditorSnapshot() async throws {
+        let server = MockHTTPServer()
+        stubDetail(server, detailJSON(gameType: 1, extra: snookerV2Extra()))
+        let session = await makeRestoredAccountSession(server)
+        let model = LiveMatchModel(session: session, matchId: 88)
+        await model.start()
+        model.toggleSnookerFormatEditor()
+        XCTAssertTrue(model.isSnookerFormatEditorShown)
+
+        try await render(name: "live-snooker-format-editor", session: session, model: model)
     }
 
     func testSpectatorSnapshot() async throws {
@@ -87,15 +159,17 @@ final class LiveMatchSnapshotTests: XCTestCase {
 
     // MARK: - 渲染
 
+    @discardableResult
     private func render(
         _ name: String,
         server: MockHTTPServer,
         entry: LiveMatchEntry = .automatic
-    ) async throws {
+    ) async throws -> LiveMatchModel {
         let session = await makeRestoredAccountSession(server)
         let model = LiveMatchModel(session: session, matchId: 88, entry: entry)
         await model.start()
         try await render(name: name, session: session, model: model)
+        return model
     }
 
     private func render(name: String, session: SessionStore, model: LiveMatchModel) async throws {
@@ -125,6 +199,9 @@ final class LiveMatchSnapshotTests: XCTestCase {
     private func detailJSON(
         gameType: Int = 3,
         viewerRole: String = "player1",
+        isPlayer1: Bool = true,
+        myScore: Int = 3,
+        opponentScore: Int = 1,
         canScore: Bool = true,
         canUndo: Bool = true,
         canFinish: Bool = true,
@@ -135,8 +212,13 @@ final class LiveMatchSnapshotTests: XCTestCase {
         finishState: String = "none",
         finishRequestedBy: Int64 = 0,
         remainingSeconds: Int? = nil,
-        refereeBound: Bool = false
+        refereeBound: Bool = false,
+        extra: [String: Any] = [:]
     ) -> [String: Any] {
+        // 后端「最近操作」按 viewerRole 生成：裁判与观战看到的是选手1/选手2。
+        let lastActionDescription = (viewerRole == "player1" || viewerRole == "player2")
+            ? "我方赢下本局"
+            : "选手1赢下本局"
         var json: [String: Any] = [
             "id": 88,
             "challenge_id": 0,
@@ -144,7 +226,7 @@ final class LiveMatchSnapshotTests: XCTestCase {
             "match_mode": "ranked",
             "status": 1,
             "server_revision": 7,
-            "is_player1": true,
+            "is_player1": isPlayer1,
             "viewer_role": viewerRole,
             "referee_bound": refereeBound,
             "referee_name": refereeBound ? "裁判小李" : "",
@@ -157,8 +239,8 @@ final class LiveMatchSnapshotTests: XCTestCase {
             "can_withdraw_finish": canWithdrawFinish,
             "finish_state": finishState,
             "finish_requested_by": finishRequestedBy,
-            "my_score": 3,
-            "opponent_score": 1,
+            "my_score": myScore,
+            "opponent_score": opponentScore,
             "current_frame_started": true,
             "current_frame_my_score": 1,
             "current_frame_opponent_score": 0,
@@ -171,12 +253,67 @@ final class LiveMatchSnapshotTests: XCTestCase {
             "my_win_rate": 55,
             "opponent_win_rate": 45,
             "duration_seconds": 1280,
-            "last_action": ["description": "我方赢下本局"],
+            "last_action": ["description": lastActionDescription],
         ]
         if let remainingSeconds {
             json["finish_request_remaining_seconds"] = remainingSeconds
         }
+        json.merge(extra) { _, new in new }
         return json
+    }
+
+    private func snookerV1Extra() -> [String: Any] {
+        [
+            "snooker_rules_version": 1,
+            "snooker_format": "race_to",
+            "snooker_target_wins": 3,
+            "best_of_frames": 5,
+            "can_change_snooker_format": false,
+            "red_ball_count": 8,
+            "snooker_clearance_started": false,
+            "snooker_cleared_colors": [],
+            "snooker_expected_clearance_score": 0,
+            "snooker_clearance_completed": false,
+        ]
+    }
+
+    private func snookerV2Extra(
+        ballOn: String = "red",
+        phase: String = "reds",
+        striker: Int = 1,
+        redsRemaining: Int = 9,
+        freeBallAvailable: Bool = false,
+        cueBallInHand: Bool = false,
+        missWarning: Bool = false,
+        respottedBlackPending: Bool = false,
+        pendingConcessionActor: Int = 0,
+        pendingConcessionScope: String = ""
+    ) -> [String: Any] {
+        [
+            "snooker_rules_version": 2,
+            "snooker_format": "race_to",
+            "snooker_target_wins": 3,
+            "best_of_frames": 5,
+            "can_change_snooker_format": true,
+            "starting_actor": 1,
+            "snooker_phase": phase,
+            "snooker_ball_on": ballOn,
+            "snooker_striker": striker,
+            "snooker_visit_no": 3,
+            "snooker_current_break": 12,
+            "snooker_reds_remaining": redsRemaining,
+            "snooker_free_ball_available": freeBallAvailable,
+            "snooker_cue_ball_in_hand": cueBallInHand,
+            "snooker_miss_warning_active": missWarning,
+            "snooker_respotted_black_pending": respottedBlackPending,
+            "snooker_pending_concession_actor": pendingConcessionActor,
+            "snooker_pending_concession_scope": pendingConcessionScope,
+            "red_ball_count": 0,
+            "snooker_clearance_started": phase == "colors",
+            "snooker_cleared_colors": phase == "colors" ? [2, 3, 4] : [],
+            "snooker_expected_clearance_score": phase == "colors" ? 5 : 0,
+            "snooker_clearance_completed": false,
+        ]
     }
 
     private func publicDetailJSON() -> [String: Any] {

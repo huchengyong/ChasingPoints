@@ -160,6 +160,8 @@ struct APIClient {
         }
     }
 
+    static let genericBusinessMessage = "请求失败，请稍后重试"
+
     private static func genericMessage(for statusCode: Int) -> String {
         switch statusCode {
         case 401: "登录状态已失效，请重新登录"
@@ -167,7 +169,7 @@ struct APIClient {
         case 404: "请求的资源不存在"
         case 429: "操作过于频繁，请稍后重试"
         case 500...599: "服务暂时不可用，请稍后重试"
-        default: "请求失败，请稍后重试"
+        default: genericBusinessMessage
         }
     }
 }

@@ -18,7 +18,20 @@ enum LiveMatchConfirmKind: Equatable {
     case finishMatch
     case requestFinish
     case nextRound
+    case offerSnookerConcession
+    case awardSnookerFrame
     case back
+}
+
+/// 与小程序 `uni.showActionSheet` 对应的单选弹层；选项按下标回传。
+struct LiveMatchChoice: Equatable, Identifiable {
+    struct Option: Equatable {
+        let title: String
+    }
+
+    let id = UUID()
+    let title: String
+    let options: [Option]
 }
 
 /// 与小程序 `uni.showModal` 对应的确认弹层。
