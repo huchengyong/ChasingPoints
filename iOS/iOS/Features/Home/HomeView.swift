@@ -437,7 +437,7 @@ struct HomeView: View {
             userId: identity?.userId ?? 0,
             isLoggedIn: identity != nil
         ) {
-        case .report: return .matchReport(matchId: card.id)
+        case .report: return .matchDetail(matchId: card.id, source: nil, perspectiveUserId: nil)
         case .publicDetail: return .publicMatchDetail(matchId: card.id)
         case .live: return .liveMatch(matchId: card.id)
         case nil: return nil

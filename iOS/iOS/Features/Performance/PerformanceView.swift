@@ -306,7 +306,7 @@ struct PerformanceView: View {
             VStack(spacing: 10) {
                 ForEach(model.notableViews) { item in
                     Button {
-                        navigator.open(.matchReport(matchId: item.matchId))
+                        navigator.open(.matchDetail(matchId: item.matchId, source: nil, perspectiveUserId: nil))
                     } label: {
                         HStack(spacing: 10) {
                             VStack(alignment: .leading, spacing: 3) {

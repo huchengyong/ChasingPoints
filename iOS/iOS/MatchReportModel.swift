@@ -10,7 +10,7 @@ final class MatchReportModel: ObservableObject {
     enum Phase: Equatable {
         case loading
         case loaded(MatchReport)
-        case failed(String)
+        case failed(LoadFailure)
     }
 
     @Published private(set) var phase: Phase = .loading
@@ -51,7 +51,7 @@ final class MatchReportModel: ObservableObject {
             guard token == requestToken, session.identity == identity else { return }
             // 页面离开导致的取消保持加载态，页面再次出现时会重新读取。
             if let apiError = error as? APIError, apiError.kind == .canceled { return }
-            phase = .failed(error.localizedDescription)
+            phase = .failed(LoadFailure(error))
             return
         }
         guard token == requestToken, session.identity == identity else { return }

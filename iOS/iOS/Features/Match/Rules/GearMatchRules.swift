@@ -67,8 +67,8 @@ enum GearMatchRules {
             rows.append(GearMatchRow(
                 key: "cue",
                 label: "球杆",
-                title: GearDisplay.itemTitle(cue),
-                subtitle: GearDisplay.itemSubtitle(cue),
+                title: GearDisplayRules.itemTitle(cue),
+                subtitle: GearDisplayRules.itemSubtitle(cue),
                 subject: .item(cue)
             ))
         }
@@ -76,7 +76,7 @@ enum GearMatchRules {
             rows.append(GearMatchRow(
                 key: "tip",
                 label: "皮头",
-                title: GearDisplay.productTitle(tip),
+                title: GearDisplayRules.productTitle(tip),
                 subtitle: "",
                 subject: .product(tip)
             ))
@@ -85,7 +85,7 @@ enum GearMatchRules {
             rows.append(GearMatchRow(
                 key: "chalk",
                 label: "巧克",
-                title: GearDisplay.productTitle(chalk),
+                title: GearDisplayRules.productTitle(chalk),
                 subtitle: "",
                 subject: .product(chalk)
             ))
@@ -94,8 +94,8 @@ enum GearMatchRules {
             rows.append(GearMatchRow(
                 key: "break",
                 label: "冲杆",
-                title: GearDisplay.itemTitle(breakCue),
-                subtitle: GearDisplay.itemSubtitle(breakCue),
+                title: GearDisplayRules.itemTitle(breakCue),
+                subtitle: GearDisplayRules.itemSubtitle(breakCue),
                 subject: .item(breakCue)
             ))
         }
@@ -151,14 +151,14 @@ enum GearMatchRules {
 
     /// 补记历史对局：未删除的球杆都可选，已退役的也可以。
     static func cueOptions(_ items: [GearItemInfo]) -> [GearItemInfo] {
-        items.filter { $0.category == GearCategory.cue && $0.status != GearItemStatus.deleted }
+        items.filter { $0.category == GearCategory.cue.rawValue && $0.status != GearItemStatus.deleted.rawValue }
     }
 
     static func breakOptions(_ items: [GearItemInfo]) -> [GearItemInfo] {
         items.filter {
-            $0.category == GearCategory.breakJump
-                && $0.status != GearItemStatus.deleted
-                && ($0.roles ?? []).contains("break")
+            $0.category == GearCategory.breakJump.rawValue
+                && $0.status != GearItemStatus.deleted.rawValue
+                && $0.roles.contains("break")
         }
     }
 }

@@ -32,14 +32,20 @@ struct MatchReportView: View {
                             .foregroundStyle(palette.textSecondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                case .failed(let message):
-                    MatchHistoryStateMessage(
+                case .failed(let failure):
+                    let feedback = failure.feedback(resource: "战报")
+                    StateMessageView(
                         icon: "exclamationmark.triangle",
-                        title: "战报加载失败",
-                        detail: message,
-                        actionTitle: "重试",
-                        action: { Task { await model.load() } }
-                    )
+                        title: feedback.title,
+                        detail: feedback.description,
+                        actionTitle: feedback.actionText
+                    ) {
+                        if feedback.retryable {
+                            Task { await model.load() }
+                        } else {
+                            dismiss()
+                        }
+                    }
                 case .loaded(let report):
                     ScrollView {
                         MatchResultContent(

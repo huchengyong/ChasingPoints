@@ -353,6 +353,117 @@ final class MatchDetailRulesTests: XCTestCase {
         XCTAssertEqual([view.leftLabel, view.rightLabel], ["选手1", "选手2"])
         XCTAssertEqual([view.leftScore, view.rightScore], [16, 13])
     }
+
+    // MARK: - 实时推送合并
+
+    func testScorePushUpdatesScoresAndRoundButKeepsTheLoadedRounds() throws {
+        let loaded = try snapshot([
+            "rounds": [["round_number": 1, "winner": 1]],
+            "referee_name": "裁判小王",
+            "total_rounds": 7,
+        ])
+        let next = MatchDetailRules.mergePush(
+            try snapshot(["my_score": 20, "opponent_score": 15, "current_round": 6]),
+            into: loaded
+        )
+
+        XCTAssertEqual([next.player1Score, next.player2Score], [20, 15])
+        XCTAssertEqual(next.currentRound, 6)
+        XCTAssertEqual(next.rounds?.map(\.roundNumber), [1])
+        // 比分推送不带整场信息，不能据此清掉局记录或裁判。
+        XCTAssertEqual(next.refereeName, "裁判小王")
+        XCTAssertEqual(next.totalRounds, 7)
+    }
+
+    func testSyncPushReplacesRoundsAndRefereeFromTheSnapshot() throws {
+        let loaded = try snapshot([
+            "rounds": [["round_number": 1, "winner": 1]],
+            "referee_name": "旧裁判",
+        ])
+        let next = MatchDetailRules.mergePush(
+            try snapshot([
+                "player1_score": 4,
+                "player2_score": 2,
+                "total_rounds": 9,
+                "referee_bound": true,
+                "referee_name": "新裁判",
+                "rounds": [
+                    ["round_number": 1, "winner": 1],
+                    ["round_number": 2, "winner": 2],
+                ],
+            ]),
+            into: loaded,
+            isSync: true
+        )
+
+        XCTAssertEqual([next.player1Score, next.player2Score], [4, 2])
+        XCTAssertEqual(next.totalRounds, 9)
+        XCTAssertTrue(next.refereeBound ?? false)
+        XCTAssertEqual(next.refereeName, "新裁判")
+        XCTAssertEqual(next.rounds?.map(\.roundNumber), [1, 2])
+    }
+
+    func testSyncPushKeepsTheLoadedRoundsWhenTheSnapshotOmitsThem() throws {
+        let loaded = try snapshot(["rounds": [["round_number": 1, "winner": 1]]])
+        let next = MatchDetailRules.mergePush(try snapshot(["rounds": []]), into: loaded, isSync: true)
+
+        XCTAssertEqual(next.rounds?.map(\.roundNumber), [1])
+    }
+
+    // MARK: - 本场用杆与再约一场
+
+    func testGearCardNeedsAFinishedMatchViewedByAParticipant() throws {
+        let finishedPlayer = MatchDetailRules.normalize(try snapshot([
+            "status": 2, "is_player1": true, "viewer_role": "player1",
+        ]))
+        XCTAssertTrue(MatchDetailRules.shouldShowMatchGear(finishedPlayer, isSpectate: false))
+        // 观战时即使服务端给了选手身份也不请求用杆。
+        XCTAssertFalse(MatchDetailRules.shouldShowMatchGear(finishedPlayer, isSpectate: true))
+
+        let liveMatch = MatchDetailRules.normalize(try snapshot([
+            "status": 1, "is_player1": true, "viewer_role": "player1",
+        ]))
+        XCTAssertFalse(MatchDetailRules.shouldShowMatchGear(liveMatch, isSpectate: false))
+
+        let referee = MatchDetailRules.normalize(try snapshot([
+            "status": 2, "is_player1": true, "viewer_role": "referee",
+        ]))
+        XCTAssertFalse(MatchDetailRules.shouldShowMatchGear(referee, isSpectate: false))
+    }
+
+    func testRematchNeedsAnOpponentAndAParticipantViewer() throws {
+        let participant = MatchDetailRules.normalize(try snapshot([
+            "status": 2, "is_player1": true, "viewer_role": "player1",
+            "opponent_id": 2, "opponent_name": "对手", "opponent_avatar": "a.png",
+            "game_type": 2, "match_mode": "practice",
+        ]))
+        let target = try XCTUnwrap(MatchDetailRules.rematchTarget(participant))
+        XCTAssertEqual(target.userId, 2)
+        XCTAssertEqual(target.nickname, "对手")
+        XCTAssertEqual(target.avatar, "a.png")
+        XCTAssertEqual(target.gameType, 2)
+        XCTAssertEqual(target.matchMode, "practice")
+
+        // 裁判、旁观、以及没有平台对手的扫码对局都不显示。
+        let referee = MatchDetailRules.normalize(try snapshot([
+            "status": 2, "is_player1": true, "viewer_role": "referee", "opponent_id": 2,
+        ]))
+        XCTAssertNil(MatchDetailRules.rematchTarget(referee))
+        let guest = MatchDetailRules.normalize(try snapshot([
+            "status": 2, "player1_id": 1, "player2_id": 2, "opponent_id": 2,
+        ]))
+        XCTAssertNil(MatchDetailRules.rematchTarget(guest))
+        let noOpponent = MatchDetailRules.normalize(try snapshot([
+            "status": 2, "is_player1": true, "viewer_role": "player2", "opponent_id": 0,
+        ]))
+        XCTAssertNil(MatchDetailRules.rematchTarget(noOpponent))
+
+        // 比赛类型缺省按排位赛发起。
+        let ranked = MatchDetailRules.normalize(try snapshot([
+            "status": 2, "is_player1": true, "viewer_role": "player1", "opponent_id": 2,
+        ]))
+        XCTAssertEqual(MatchDetailRules.rematchTarget(ranked)?.matchMode, "ranked")
+    }
 }
 
 private func snapshot(_ json: [String: Any]) throws -> LiveMatchSnapshot {

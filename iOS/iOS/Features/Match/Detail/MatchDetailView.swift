@@ -1,20 +1,31 @@
 import SwiftUI
 
-/// 对局公开详情（小程序 `matchDetail`）：固定选手1 / 选手2 的中性视角，只读公开接口。
+/// 对局详情（小程序 `matchDetail`）：固定选手1 / 选手2 的中性视角；观战入口读公开接口并显示徽标。
 struct MatchDetailView: View {
     @EnvironmentObject private var session: SessionStore
     @EnvironmentObject private var navigator: AppNavigator
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var model: MatchDetailModel
-    private let isSpectate: Bool
+    private let gearModel: MatchGearCardModel?
 
-    init(session: SessionStore, matchId: Int64, isSpectate: Bool, model: MatchDetailModel? = nil) {
+    init(
+        session: SessionStore,
+        matchId: Int64,
+        mode: String = "",
+        source: String? = nil,
+        perspectiveUserId: Int64? = nil,
+        model: MatchDetailModel? = nil,
+        gearModel: MatchGearCardModel? = nil
+    ) {
         _model = StateObject(wrappedValue: model ?? MatchDetailModel(
             session: session,
             matchId: matchId,
-            isSpectate: isSpectate
+            mode: mode,
+            source: source ?? "",
+            perspectiveUserId: perspectiveUserId ?? 0
         ))
-        self.isSpectate = isSpectate
+        self.gearModel = gearModel
     }
 
     private var palette: AppPalette { AppTheme.palette(for: colorScheme) }
@@ -30,14 +41,8 @@ struct MatchDetailView: View {
                         .foregroundStyle(palette.textSecondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            case .failed(let message):
-                MatchHistoryStateMessage(
-                    icon: "exclamationmark.triangle",
-                    title: "对局详情加载失败",
-                    detail: message,
-                    actionTitle: "重试",
-                    action: { Task { await model.load() } }
-                )
+            case .failed(let failure):
+                failureView(failure)
             case .loaded(let data):
                 content(data)
             }
@@ -50,20 +55,41 @@ struct MatchDetailView: View {
                 loginHint
             }
         }
-        .task { await model.load() }
+        .task { await model.start() }
+        .onDisappear { model.stop() }
+        .onChange(of: session.identity) { _, _ in
+            // 退出或切号后按新身份重新读取，公开详情与参与者详情不能混用。
+            Task { await model.load() }
+        }
+    }
+
+    private func failureView(_ failure: LoadFailure) -> some View {
+        let feedback = failure.feedback(resource: "对局")
+        return StateMessageView(
+            icon: "exclamationmark.triangle",
+            title: feedback.title,
+            detail: feedback.description,
+            actionTitle: feedback.actionText
+        ) {
+            if feedback.retryable {
+                Task { await model.load() }
+            } else {
+                dismiss()
+            }
+        }
     }
 
     private var navigationTitle: String {
         if let data = model.viewData, data.matchData.viewerRole == "referee" {
             return "执裁详情"
         }
-        return isSpectate ? "观战" : "对局详情"
+        return model.isSpectate ? "观战" : "对局详情"
     }
 
     private func content(_ data: MatchDetailViewData) -> some View {
         ScrollView {
             VStack(spacing: 14) {
-                if isSpectate {
+                if model.isSpectate {
                     HStack(spacing: 6) {
                         Image(systemName: "eye.fill")
                         Text("观战模式")
@@ -85,13 +111,22 @@ struct MatchDetailView: View {
                 let canReplay = MatchReplayEntry.canOpenMatchReplay(
                     status: data.matchData.status,
                     viewerRole: data.matchData.viewerRole,
-                    perspectiveUserId: session.identity?.userId ?? 0,
+                    source: model.source,
+                    perspectiveUserId: model.perspectiveUserId,
                     currentUserId: session.identity?.userId ?? 0
                 )
                 let showH2H = data.matchData.status == 2 && data.matchData.viewerRole != "referee"
-                if canReplay || showH2H || data.matchData.status == 1 {
-                    entryRow(data, canReplay: canReplay, showH2H: showH2H)
+                let rematch = MatchDetailRules.rematchTarget(data)
+                if canReplay || showH2H || rematch != nil {
+                    entryRow(canReplay: canReplay, showH2H: showH2H, rematch: rematch)
                 }
+
+                MatchGearCardView(
+                    session: session,
+                    matchId: model.matchId,
+                    enabled: MatchDetailRules.shouldShowMatchGear(data, isSpectate: model.isSpectate),
+                    model: gearModel
+                )
 
                 if data.matchData.gameType == 2, let score = data.scoreBreakdown {
                     ChasingScoreCard(view: score, showEvents: true)
@@ -245,14 +280,12 @@ struct MatchDetailView: View {
 
     // MARK: - 入口
 
-    private func entryRow(_ data: MatchDetailViewData, canReplay: Bool, showH2H: Bool) -> some View {
+    private func entryRow(
+        canReplay: Bool,
+        showH2H: Bool,
+        rematch: ChallengeComposeTarget?
+    ) -> some View {
         VStack(spacing: 8) {
-            if data.matchData.status == 1 {
-                Button("进入实时对局") {
-                    navigator.open(.liveMatch(matchId: model.matchId))
-                }
-                .buttonStyle(.appPrimary)
-            }
             if canReplay {
                 Button("单场复盘") {
                     navigator.open(.matchReplay(matchId: model.matchId))
@@ -260,13 +293,18 @@ struct MatchDetailView: View {
                 .buttonStyle(.appSecondary)
             }
             if showH2H {
-                Button("查看双方交锋记录") { openH2H(data) }
+                Button("查看双方交锋记录") { openH2H() }
+                    .buttonStyle(.appSecondary)
+            }
+            if let rematch {
+                Button("再约一场") { navigator.open(.challengeCompose(target: rematch)) }
                     .buttonStyle(.appSecondary)
             }
         }
     }
 
-    private func openH2H(_ data: MatchDetailViewData) {
+    private func openH2H() {
+        guard let data = model.viewData else { return }
         let player1Id = data.player1UserId
         let player2Id = data.player2UserId
         guard player1Id > 0, player2Id > 0 else {

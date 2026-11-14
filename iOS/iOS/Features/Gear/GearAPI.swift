@@ -75,4 +75,12 @@ struct GearAPI {
     func userGear(userId: Int64) async throws -> GearUserResponse {
         try await session.authorizedRequest(APIQuery.path("/api/gear/user", ["user_id": userId]))
     }
+
+    func match(matchId: Int64) async throws -> GearMatchResponse {
+        try await session.authorizedRequest(APIQuery.path("/api/gear/match", ["match_id": matchId]))
+    }
+
+    func updateMatch(_ payload: GearMatchPayload) async throws -> GearMatchResponse {
+        try await session.authorizedPost("/api/gear/match/update", body: payload)
+    }
 }

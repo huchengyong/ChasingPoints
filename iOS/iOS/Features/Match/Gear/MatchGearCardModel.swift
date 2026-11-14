@@ -77,7 +77,7 @@ final class MatchGearCardModel: ObservableObject {
             } else if GearMatchRules.isHiddenResponse(response) {
                 phase = .hidden
             } else {
-                phase = .failed(response.message ?? "本场用杆加载失败")
+                phase = .failed(response.message.isEmpty ? "本场用杆加载失败" : response.message)
             }
         } catch {
             // 页面离开或切号会取消读取，此时保留原状态。
@@ -98,7 +98,6 @@ final class MatchGearCardModel: ObservableObject {
             draft: GearMatchRules.draft(from: data.me),
             itemsLoading: true
         )
-        Task { await loadItems() }
     }
 
     func closeEditor() {
@@ -133,10 +132,14 @@ final class MatchGearCardModel: ObservableObject {
     }
 
     func clearPart(tip: Bool) {
+        setPart(nil, tip: tip)
+    }
+
+    func setPart(_ product: GearProductInfo?, tip: Bool) {
         if tip {
-            editor.draft.tipProduct = nil
+            editor.draft.tipProduct = product
         } else {
-            editor.draft.chalkProduct = nil
+            editor.draft.chalkProduct = product
         }
     }
 
@@ -148,14 +151,14 @@ final class MatchGearCardModel: ObservableObject {
         let payload = GearMatchRules.payload(
             matchId: matchId,
             draft: editor.draft,
-            supportsBreak: data.supportsBreak
+            supportsBreak: data.supportsBreak == true
         )
         do {
             let result = try await api.updateMatch(payload)
             guard identity == session.identity else { return nil }
             guard result.success else {
                 editor.saving = false
-                return result.message ?? "保存失败"
+                return result.message.isEmpty ? "保存失败" : result.message
             }
             closeEditor()
             if result.me != nil {

@@ -46,6 +46,12 @@ struct MatchDetailMatch: Equatable {
     let refereeDurationSeconds: Int64
     let completedByUserId: Int64
     let completionSource: String
+    /// 「再约一场」预填：参与者详情带对手与比赛类型，观战 / 公开详情缺省为空。
+    let opponentId: Int64
+    let opponentName: String
+    let opponentAvatar: String
+    let matchMode: String
+    let isPlayer1: Bool
 }
 
 struct MatchDetailViewData: Equatable {
@@ -68,6 +74,32 @@ enum MatchDetailRules {
 
     static func shouldShowSpectateBadge(mode: String = "") -> Bool {
         mode == "spectate"
+    }
+
+    /// 「再约一场」：本人是选手且对手是平台用户；裁判与旁观不显示。
+    /// 扫码对局同样可用，所以不看来源，只看详情里的参与者身份。
+    static func rematchTarget(_ data: MatchDetailViewData) -> ChallengeComposeTarget? {
+        let match = data.matchData
+        guard match.viewerRole != "referee" else { return nil }
+        let isParticipant = match.isPlayer1 || match.viewerRole == "player1" || match.viewerRole == "player2"
+        guard isParticipant, match.opponentId > 0 else { return nil }
+        return ChallengeComposeTarget(
+            userId: match.opponentId,
+            nickname: match.opponentName,
+            avatar: match.opponentAvatar,
+            gameType: match.gameType,
+            matchMode: match.matchMode == "practice" ? "practice" : "ranked"
+        )
+    }
+
+    /// 本场用杆：只有已完成对局的选手有，观战与裁判视角不请求。
+    static func shouldShowMatchGear(_ data: MatchDetailViewData, isSpectate: Bool) -> Bool {
+        GearMatchRules.shouldShowMatchGear(
+            status: data.matchData.status,
+            viewerRole: data.matchData.viewerRole,
+            isPlayer1: data.matchData.isPlayer1,
+            isSpectate: isSpectate
+        )
     }
 
     /// 只标注四个九球胜法；普胜、斯诺克取值和缺失都留空。
@@ -97,6 +129,32 @@ enum MatchDetailRules {
                 resultText: perspectiveWinner == 1 ? "胜" : "负"
             )
         }
+    }
+
+    /// 实时推送合并：比分保持选手1 / 选手2 固定视角，展示时仍按 `perspectiveUserId` 换边。
+    /// `sync` 是整场快照，还能覆盖局记录与裁判信息；普通比分推送只带分数与当前局。
+    static func mergePush(
+        _ incoming: LiveMatchSnapshot,
+        into current: LiveMatchSnapshot,
+        isSync: Bool = false
+    ) -> LiveMatchSnapshot {
+        var next = current
+        // 推送顶层的 my_score / opponent_score 同样是选手1视角，按 player1 / player2 还原。
+        if let value = incoming.player1Score ?? incoming.myScore { next.player1Score = value }
+        if let value = incoming.player2Score ?? incoming.opponentScore { next.player2Score = value }
+        if let value = incoming.currentRound { next.currentRound = value }
+        guard isSync else { return next }
+        if let value = incoming.totalRounds { next.totalRounds = value }
+        if let value = incoming.rounds, !value.isEmpty { next.rounds = value }
+        if let value = incoming.refereeBound { next.refereeBound = value }
+        if let value = incoming.refereeUserId { next.refereeUserId = value }
+        if let value = incoming.refereeName { next.refereeName = value }
+        if let value = incoming.refereeAvatar { next.refereeAvatar = value }
+        if let value = incoming.refereeJoinedAt { next.refereeJoinedAt = value }
+        if let value = incoming.refereeDurationSeconds { next.refereeDurationSeconds = value }
+        if let value = incoming.completedByUserId { next.completedByUserId = value }
+        if let value = incoming.completionSource { next.completionSource = value }
+        return next
     }
 
     static func normalize(
@@ -140,7 +198,12 @@ enum MatchDetailRules {
             refereeJoinedAt: match.refereeJoinedAt ?? "",
             refereeDurationSeconds: match.refereeDurationSeconds ?? 0,
             completedByUserId: match.completedByUserId ?? 0,
-            completionSource: (match.completionSource?.isEmpty == false) ? match.completionSource! : "unknown"
+            completionSource: (match.completionSource?.isEmpty == false) ? match.completionSource! : "unknown",
+            opponentId: match.opponentId ?? 0,
+            opponentName: match.opponentName ?? "",
+            opponentAvatar: match.opponentAvatar ?? "",
+            matchMode: match.matchMode ?? "",
+            isPlayer1: match.isPlayer1 ?? false
         )
 
         let player1Info = MatchDetailSide(

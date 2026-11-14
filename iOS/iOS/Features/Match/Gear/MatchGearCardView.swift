@@ -41,7 +41,7 @@ struct MatchGearCardView: View {
                 card {
                     HStack(alignment: .top, spacing: 10) {
                         sideColumn(label: "我", side: data.me, mine: true)
-                        if data.hasOpponent {
+                        if data.hasOpponent == true {
                             sideColumn(label: "对手", side: data.opponent, mine: false)
                         }
                     }
@@ -53,10 +53,14 @@ struct MatchGearCardView: View {
                 }
             }
         }
-        .task(id: model.matchId) { await model.load() }
+        .task(id: model.matchId) {
+            // 已注入且读过数据的模型不再重复请求；未读或失败仍按需读取。
+            if case .ready = model.phase { return }
+            await model.load()
+        }
         .onDisappear { model.cancel() }
         .sheet(isPresented: editorBinding) {
-            editorSheet
+            MatchGearEditorSheet(model: model)
         }
     }
 
@@ -138,9 +142,22 @@ struct MatchGearCardView: View {
             }
         )
     }
+}
 
-    private var editorSheet: some View {
-        NavigationStack {
+/// 修改本场用杆弹层：皮头 / 巧克走 `gearAdd` 的挑选模式，结果由 `GearStore` 回传；sheet 自带导航栈。
+struct MatchGearEditorSheet: View {
+    @EnvironmentObject private var gearStore: GearStore
+    @EnvironmentObject private var toast: ToastCenter
+    @Environment(\.colorScheme) private var colorScheme
+    @ObservedObject var model: MatchGearCardModel
+
+    @State private var path = NavigationPath()
+    @State private var pickToken: String?
+
+    private var palette: AppPalette { AppTheme.palette(for: colorScheme) }
+
+    var body: some View {
+        NavigationStack(path: $path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     if model.editor.itemsLoading {
@@ -170,10 +187,10 @@ struct MatchGearCardView: View {
                         }
 
                         section("皮头")
-                        partRow(title: "皮头", product: model.editor.draft.tipProduct, tip: true)
+                        partRow(title: "皮头", product: model.editor.draft.tipProduct, category: .tip)
 
                         section("巧克")
-                        partRow(title: "巧克", product: model.editor.draft.chalkProduct, tip: false)
+                        partRow(title: "巧克", product: model.editor.draft.chalkProduct, category: .chalk)
 
                         if model.responseSupportsBreak {
                             section("冲杆")
@@ -191,8 +208,13 @@ struct MatchGearCardView: View {
                 .padding(16)
             }
             .background(palette.page)
+            // 装备列表在弹层出现后读取；已读过的（含快照预读）不重复请求。
+            .task {
+                if model.editor.items.isEmpty { await model.loadItems() }
+            }
             .navigationTitle("修改本场用杆")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(for: AppRoute.self) { AppRouteDestination(route: $0) }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { model.closeEditor() }
@@ -215,6 +237,9 @@ struct MatchGearCardView: View {
             }
         }
         .presentationDetents([.large])
+        .onChange(of: model.editor.visible) { _, visible in
+            if !visible { cancelPick() }
+        }
     }
 
     private func section(_ title: String) -> some View {
@@ -242,11 +267,11 @@ struct MatchGearCardView: View {
             HStack(spacing: 8) {
                 GearThumb(subject: .item(item))
                     .frame(width: 44, height: 44)
-                Text(GearDisplay.itemTitle(item))
+                Text(GearDisplayRules.itemTitle(item))
                     .font(.system(size: 13))
                     .foregroundStyle(palette.textPrimary)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                if item.status == GearItemStatus.retired {
+                if item.status == GearItemStatus.retired.rawValue {
                     Text("已退役")
                         .font(.system(size: 10))
                         .foregroundStyle(palette.textMuted)
@@ -263,14 +288,17 @@ struct MatchGearCardView: View {
         active ? palette.brandTint : palette.subtle
     }
 
-    private func partRow(title: String, product: GearProductInfo?, tip: Bool) -> some View {
+    private func partRow(title: String, product: GearProductInfo?, category: GearCategory) -> some View {
         HStack(spacing: 6) {
-            Text(product == nil ? "未设置" : GearDisplay.productTitle(product))
+            Text(product == nil ? "未设置" : GearDisplayRules.productTitle(product))
                 .font(.system(size: 13))
                 .foregroundStyle(product == nil ? palette.textMuted : palette.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            Button(product == nil ? "选择" : "更换") { pickPart(category) }
+                .font(.system(size: 13))
+                .foregroundStyle(palette.brandStrong)
             if product != nil {
-                Button("清除") { model.clearPart(tip: tip) }
+                Button("清除") { model.clearPart(tip: category == .tip) }
                     .font(.system(size: 13))
                     .foregroundStyle(palette.textMuted)
             }
@@ -279,7 +307,32 @@ struct MatchGearCardView: View {
         .padding(.vertical, 10)
         .background(palette.subtle, in: RoundedRectangle(cornerRadius: 9))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title)\(product == nil ? "未设置" : GearDisplay.productTitle(product))")
+        .accessibilityLabel("\(title)\(product == nil ? "未设置" : GearDisplayRules.productTitle(product))")
+    }
+
+    private func errorLine(_ text: String) -> some View {
+        HStack {
+            Text(text)
+                .font(.system(size: 13))
+                .foregroundStyle(palette.textMuted)
+            Spacer()
+        }
+    }
+
+    /// 目录挑选页通过带 token 的回调回传，选中后只改草稿，保存时再提交。
+    private func pickPart(_ category: GearCategory) {
+        let token = UUID().uuidString
+        pickToken = token
+        let tip = category == .tip
+        gearStore.beginPick(token: token) { product in
+            model.setPart(product, tip: tip)
+        }
+        path.append(AppRoute.gearAdd(category: category.rawValue, pickToken: token))
+    }
+
+    private func cancelPick() {
+        if let pickToken { gearStore.cancelPick(token: pickToken) }
+        pickToken = nil
     }
 
     private func save() async {
@@ -297,9 +350,9 @@ private struct GearThumb: View {
     let subject: GearMatchRow.Subject
 
     var body: some View {
-        let image: GearImage = switch subject {
-        case .item(let item): GearDisplay.image(item)
-        case .product(let product): GearDisplay.image(product)
+        let image: GearImageURLs = switch subject {
+        case .item(let item): GearDisplayRules.image(for: GearImageSource(item: item))
+        case .product(let product): GearDisplayRules.image(for: GearImageSource(product: product))
         }
         RemoteImage(url: image.src, contentMode: .fit) {
             RemoteImage(url: image.fallback, contentMode: .fit) {

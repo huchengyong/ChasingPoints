@@ -76,8 +76,7 @@ final class GearMatchRulesTests: XCTestCase {
         XCTAssertFalse(GearMatchRules.canEdit(data, now: deadline), "到点即不可改")
         XCTAssertFalse(GearMatchRules.canEdit(data, now: deadline.addingTimeInterval(1)))
 
-        var notEditable = data
-        notEditable.editable = false
+        let notEditable = response(editable: false, deadline: deadlineText)
         XCTAssertFalse(GearMatchRules.canEdit(notEditable, now: deadline.addingTimeInterval(-1)))
         XCTAssertFalse(GearMatchRules.canEdit(response(success: false), now: Date(timeIntervalSince1970: 0)))
         XCTAssertFalse(GearMatchRules.canEdit(nil))
@@ -105,9 +104,7 @@ final class GearMatchRulesTests: XCTestCase {
         let empty = GearMatchRules.draft(from: side())
         XCTAssertEqual(empty, GearMatchDraft(cueItemId: 0, tipProduct: nil, chalkProduct: nil, breakItemId: 0))
 
-        var other = item(id: 9, category: "cue")
-        other.tipProduct = product(id: 15)
-        other.chalkProduct = nil
+        let other = item(id: 9, category: "cue", tip: product(id: 15))
         let switched = GearMatchRules.applyCue(other, to: draft)
         XCTAssertEqual(switched.cueItemId, 9)
         XCTAssertEqual(switched.tipProduct?.id, 15)
@@ -165,10 +162,7 @@ final class GearMatchRulesTests: XCTestCase {
     func testFirstReadReturnsItsResponseAndCarriesTheMatchId() async throws {
         let loader = GearMatchLoader(
             request: { matchId in
-                var response = GearMatchResponse()
-                response.success = true
-                response.matchId = matchId
-                return response
+                self.response(matchId: matchId)
             },
             readIdentity: { GearMatchLoader.Identity(userId: 1, generation: 1) }
         )
@@ -286,25 +280,42 @@ final class GearMatchRulesTests: XCTestCase {
         brand: String = "",
         model: String = "",
         cueStyle: String? = nil,
-        roles: [String]? = nil
+        roles: [String]? = nil,
+        tip: GearProductInfo? = nil,
+        chalk: GearProductInfo? = nil
     ) -> GearItemInfo {
-        var item = GearItemInfo()
-        item.id = id
-        item.category = category
-        item.status = status
-        item.brandName = brand
-        item.modelName = model
-        item.cueStyle = cueStyle
-        item.roles = roles
-        return item
+        GearItemInfo(
+            id: id,
+            category: category,
+            status: status,
+            unlisted: false,
+            house: false,
+            brandName: brand,
+            modelName: model,
+            cueStyle: cueStyle,
+            roles: roles ?? [],
+            product: nil,
+            tipProduct: tip,
+            chalkProduct: chalk,
+            createdAt: "2026-01-01 00:00:00"
+        )
     }
 
     private func product(id: Int64, brand: String = "", name: String = "") -> GearProductInfo {
-        var product = GearProductInfo()
-        product.id = id
-        product.brandName = brand
-        product.name = name
-        return product
+        GearProductInfo(
+            id: id,
+            category: "tip",
+            brandId: 0,
+            brandName: brand,
+            name: name,
+            house: false,
+            cueStyle: nil,
+            roles: [],
+            lengthMm: nil,
+            weightG: nil,
+            tipDiameterMm: nil,
+            imagePath: nil
+        )
     }
 
     private func side(
@@ -314,31 +325,38 @@ final class GearMatchRulesTests: XCTestCase {
         chalkProduct: GearProductInfo? = nil,
         breakCue: GearItemInfo? = nil
     ) -> GearMatchSide {
-        var side = GearMatchSide()
-        side.recorded = recorded
-        side.cue = cue
-        side.tipProduct = tipProduct
-        side.chalkProduct = chalkProduct
-        side.breakCue = breakCue
-        return side
+        GearMatchSide(
+            userId: 0,
+            recorded: recorded,
+            source: nil,
+            cue: cue,
+            tipProduct: tipProduct,
+            chalkProduct: chalkProduct,
+            breakCue: breakCue
+        )
     }
 
     private func response(
         success: Bool = true,
-        message: String? = nil,
+        message: String = "",
         reason: String? = nil,
         matchId: Int64 = 0,
         editable: Bool = false,
         deadline: String? = nil
     ) -> GearMatchResponse {
-        var response = GearMatchResponse()
-        response.success = success
-        response.message = message
-        response.reason = reason
-        response.matchId = matchId
-        response.editable = editable
-        response.editDeadline = deadline
-        return response
+        GearMatchResponse(
+            success: success,
+            message: message,
+            reason: reason,
+            matchId: matchId,
+            gameType: nil,
+            supportsBreak: nil,
+            me: nil,
+            hasOpponent: nil,
+            opponent: nil,
+            editable: editable,
+            editDeadline: deadline
+        )
     }
 }
 
