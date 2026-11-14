@@ -51,8 +51,10 @@
 - [x] 6.3 扫码、选择球友、确认对局（相机权限、匹配码与裁判码）（`quick-scan`、`opponentSelector`、`scanConfirm`）
 - [x] 6.4 实时计分页：选手视角（`subPages/match/playing`）
 - [x] 6.5 实时计分页：裁判视角与观赛视角
-- [ ] 6.6 赛果、对局详情对齐、单场复盘、本场装备（`matchResult`、`matchDetail`、`matchReplay`、`matchGearCard`）
-- [ ] 6.7 战绩海报与系统分享、邀请链接入口（`shareResult`、`linkEntry`）
+- [x] 6.6 赛果、对局详情对齐、单场复盘、本场装备（`matchResult`、`matchDetail`、`matchReplay`、`matchGearCard`）
+  - 对局详情按小程序区分观战（`.publicMatchDetail`）、交锋记录（`source=history` + 视角用户）与参与者三种进入方式；进行中连对局通道。
+- [x] 6.7 战绩海报与系统分享、邀请链接入口（`shareResult`、`linkEntry`）
+  - 标准 / 会员两套海报模板；`onOpenURL` 与网页续接已处理，Universal Links 的关联域名待工程与服务器配置。
 
 ## 7. 收尾
 
@@ -61,5 +63,5 @@
   - 欢迎页、协议确认弹层、登录页、设置页的协议链接都改为打开应用内协议页。
 - [x] 7.3 权限说明、隐私清单与工程配置核对（相机、定位、相册）
   - 相机、定位、相册（仅添加）用途说明已在工程配置；`PrivacyInfo.xcprivacy` 声明不跟踪、UserDefaults 原因 CA92.1。收集数据类型（手机号、昵称、用户 ID、头像照片、对局数据、用户内容、反馈工单）是草稿，提交审核前需要产品确认，定位是否算「收集」取决于后端是否留存查询坐标。
-- [ ] 7.4 全量回归：Debug/Release 构建、全部测试、三种主题下的快照走查，记录到 `docs/testing/native-ios-full-parity.md`
+- [x] 7.4 全量回归：Debug/Release 构建、全部测试、三种主题下的快照走查，记录到 `docs/testing/native-ios-full-parity.md`
 - [ ] 7.5 真实后端只读联调与真机验收（需用户授权后执行，结果与模拟响应分开记录）
