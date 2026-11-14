@@ -1,5 +1,13 @@
 # RB10：帮助与反馈、用户协议与隐私政策、PK 报表
 
+## 先修正上一轮约球的三处偏差（改完再做本轮任务）
+
+1. **业务失败要保留完整响应体**。现在 HTTP 2xx + `success:false`（以及 4xx）时 `APIClient` 只把 `message` 放进 `APIError`，后端一起返回的结构化字段（发起约球时的 `pending_challenge_id`、`need_confirm_close_own`、`type_conflict`、`action` 等）全丢了，约球页只好靠匹配文案判断分支——后端改一个字就会走错。小程序的请求层是带着完整响应数据的（`createRequestError({ data })`）。
+   - 给 `APIError` 加 `let responseBody: Data?`（`init` 增加带默认值 `nil` 的参数，现有调用不用改），`APIClient` 在业务失败和非 2xx 时都把原始响应体放进去（`description` / 日志里不要打印它）；再加一个便捷方法 `func decodeBody<T: Decodable>(_ type: T.Type) -> T?`（snake_case 解码，失败返回 nil）。
+   - `iOS/iOS/Features/Challenge/` 里所有「按后端文案判断分支」的地方改为解码这些字段，分支规则逐条对照 `uniapp/subPages/match/challengeCompose.vue`（约 272–312 行）及其他约球页面的失败处理；删掉 `ChallengeRules` 里为匹配文案而存的常量。补测试：业务失败带 `pending_challenge_id` 时走「查看已有约球」分支、只有 `message` 时提示文案；`APIClientTests` 补一条：业务失败的 `APIError.responseBody` 等于原始响应、`decodeBody` 能取到字段。
+2. **发起成功后的去向**：小程序发送成功后提示「约球已发送」并回到首页 Tab（`uni.switchTab` 到首页，约 304–309 行），首页约球卡会显示等待状态。原生现在直接进等待页——这是我上一轮规格写错了，按小程序改：Toast「约球已发送」→ 回到首页 Tab 根页面（`navigator.select(.home, ...)` + `popToRoot`），并 `ActivityStore.markDirty()` 触发补读。更新相应测试。
+3. **更换对手要保留已填内容**：发起页「更换」去选择球友后，选完现在会新建一个发起页，已选的球种、时段、附言丢失；小程序是回到原发起页并保留。改为：选择球友页通过回调（或发起页模型上的选择交接，任选其一，但不要新建发起页）把选中的对手交回原发起页，原发起页保留其他字段只更新对手。为此允许最小改动 `iOS/iOS/Features/Match/OpponentSelectorView.swift` / `OpponentSelectorModel.swift`（只加回传选中对手所需的参数与调用，不动其他逻辑）。补测试。
+
 ## 本轮要读的小程序源码
 
 - `uniapp/subPages/help/feedback.vue`、`uniapp/utils/feedback-ticket.js` + 测试、`uniapp/api/feedback.js`；契约 `CreateFeedbackTicketReq/Resp`（`POST /api/feedback/create` 访客可用、`POST /api/user/feedback/create` 登录用户——两者的选择规则看 `api/feedback.js` 与页面）

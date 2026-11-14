@@ -12,12 +12,12 @@
 - [x] 2.2 编辑资料（头像上传、昵称等）与设置（通知管理、隐私、黑名单入口、账号注销、数据导出）（`subPages/user/editProfile`、`settings`、`notification`）
 - [x] 2.3 段位说明、信誉明细（`rankExplain`、`reputation`）
 - [x] 2.4 竞技分析、表现分析（`statsDetail`、`performance`）
-- [ ] 2.5 对局记录对齐小程序（筛选等差异）、过往对手、交锋记录（`matchHistory`、`opponentRecord`、`h2hRecord`）
+- [x] 2.5 对局记录对齐小程序（筛选等差异）、过往对手、交锋记录（`matchHistory`、`opponentRecord`、`h2hRecord`）
   - 过往对手、交锋记录已完成；对局记录对齐并入 2.9 那一轮。「查看对方战绩」（带目标用户的过往对手）还没有入口，随好友主页一起做。
 - [x] 2.6 荣誉墙与成就详情（`subPages/achievement/*`）
 - [x] 2.7 赛季、赛季报告、历届赛季（`subPages/season/*`）
 - [x] 2.8 装备：我的装备、添加、详情、TA 的装备（`subPages/gear/*`）
-- [ ] 2.9 VIP 中心（合规模式下只读权益，不含购买）（`memberCenter`）
+- [x] 2.9 VIP 中心（合规模式下只读权益，不含购买）（`memberCenter`）
 
 ## 3. 首页及其入口
 
@@ -37,7 +37,7 @@
 
 - [x] 5.1 消息 Tab 与角标（通知列表、已读、删除；未读数 / 红点规则）（`pages/message/index`）
 - [x] 5.2 好友：列表、申请、添加、好友主页、黑名单（`subPages/social/friendList`、`friendRequests`、`addFriend`、`friendHomepage`、`blacklist`）
-- [ ] 5.3 约球：发起、等待、约球列表（`challengeCompose`、`challengeWaiting`、`subPages/social/challenges`）
+- [x] 5.3 约球：发起、等待、约球列表（`challengeCompose`、`challengeWaiting`、`subPages/social/challenges`）
 - [ ] 5.4 PK 报表（`subPages/social/pkReport`）
 - [ ] 5.5 动态广场、发布、我的动态（受合规开关控制，优先级最低）（`feed`、`postCreate`、`myPosts`）
   - 2026-11-14 核对：小程序当前没有任何页面链接到这三页（合规模式下入口全部隐藏，`buildFeedUrl` 只在页面内部使用），原生端暂不迁移；合规开关放开、小程序恢复入口时再做。
@@ -48,8 +48,8 @@
   - 客户端已迁移并有测试；接入应用生命周期与页面放在 5.1（用户通道）和 6.4（对局通道）。
 - [x] 6.2 计分规则与视图模型迁移（中八、九球、斯诺克、赛制、结束倒计时）及对应测试（`utils/match-*.js`、`snooker-*.js`、`pool-match-format.js`、`finish-countdown.js`）
 - [x] 6.3 扫码、选择球友、确认对局（相机权限、匹配码与裁判码）（`quick-scan`、`opponentSelector`、`scanConfirm`）
-- [ ] 6.4 实时计分页：选手视角（`subPages/match/playing`）
-- [ ] 6.5 实时计分页：裁判视角与观赛视角
+- [x] 6.4 实时计分页：选手视角（`subPages/match/playing`）
+- [x] 6.5 实时计分页：裁判视角与观赛视角
 - [ ] 6.6 赛果、对局详情对齐、单场复盘、本场装备（`matchResult`、`matchDetail`、`matchReplay`、`matchGearCard`）
 - [ ] 6.7 战绩海报与系统分享、邀请链接入口（`shareResult`、`linkEntry`）
 

@@ -2,6 +2,10 @@
 
 原生 iOS 只提供手机号验证码登录（平台差异：不接微信、华为登录）。本轮把首次启动的欢迎页迁过来，并让现有登录页 `iOS/iOS/LoginView.swift` 在界面、协议勾选、提示文案上与小程序的手机号登录模式对齐。认证链路（`SessionStore.sendSMS` / `login`、Keychain、刷新）**不改**——它有既有规格 `openspec/specs/native-ios-auth-integration/spec.md` 和一整套测试保护。
 
+## 先补一处测试缺口（改完再做本轮任务）
+
+`iOS/iOSAuthTests/MatchHistorySnapshotTests.swift` 的 `match-history-with-referee-banner` 快照里，执裁列表还在加载（只拍到顶部「继续执裁」条和一个转圈）——测试没有先把列表读完再渲染。按通用约束的做法：让 `MatchHistoryView` 能注入已读好数据的两个分栏列表模型（`init` 增加可选参数，默认仍自建），测试里先 `await` 两个分栏读完再渲染。改完导出快照确认列表行可见。
+
 ## 本轮要读的小程序源码
 
 - `uniapp/pages/welcome/index.vue`（+ `index.scss`）：首次启动欢迎页
