@@ -6,6 +6,7 @@
 //
 
 import Combine
+import Foundation
 import SwiftUI
 
 @main
@@ -68,5 +69,18 @@ private struct ApplicationRootView: View {
                     await dependencies.activity.refreshIfNeeded()
                 }
             }
+            .onOpenURL { url in
+                openEntryLink(url.absoluteString)
+            }
+            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                guard let url = activity.webpageURL else { return }
+                openEntryLink(url.absoluteString)
+            }
+    }
+
+    /// 只有入口链接会改变页面；其他链接交给系统默认处理。
+    private func openEntryLink(_ url: String) {
+        guard let route = LinkEntryRouting.route(for: url) else { return }
+        navigator.open(route)
     }
 }

@@ -33,6 +33,8 @@ final class AppRouteTests: XCTestCase {
             (.userAgreement, "用户协议"),
             (.privacyPolicy, "隐私政策"),
             (.liveMatch(matchId: 1), "对局"),
+            (.shareResult(matchId: 1), "战绩海报"),
+            (.linkEntry(url: EntryLink.base), "追分邀请"),
         ]
 
         for (route, title) in expected {
@@ -66,6 +68,11 @@ final class AppRouteTests: XCTestCase {
         XCTAssertEqual(AppRoute.matchReport(matchId: 3), AppRoute.matchReport(matchId: 3))
         XCTAssertNotEqual(AppRoute.liveMatch(matchId: 1), AppRoute.liveMatch(matchId: 2))
         XCTAssertEqual(AppRoute.liveMatch(matchId: 3), AppRoute.liveMatch(matchId: 3))
+        XCTAssertNotEqual(AppRoute.shareResult(matchId: 1), AppRoute.shareResult(matchId: 2))
+        XCTAssertNotEqual(
+            AppRoute.linkEntry(url: EntryLink.base),
+            AppRoute.linkEntry(url: "\(EntryLink.base)?m=42")
+        )
         XCTAssertNotEqual(AppRoute.friendHonorWall(userId: 1), AppRoute.friendHonorWall(userId: 2))
         XCTAssertNotEqual(AppRoute.friendPkReport(target: Self.target(1)), AppRoute.friendPkReport(target: Self.target(2)))
         XCTAssertNotEqual(

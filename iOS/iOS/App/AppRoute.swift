@@ -15,6 +15,8 @@ enum AppRoute: Hashable {
     case editNickname
     case matchHistory
     case matchReport(matchId: Int64)
+    case shareResult(matchId: Int64)
+    case linkEntry(url: String)
     case ranking
     case spectatorLobby
     case liveMatch(matchId: Int64)
@@ -75,6 +77,8 @@ enum AppRoute: Hashable {
         case .editNickname: "编辑昵称"
         case .matchHistory: "对局记录"
         case .matchReport: "对局详情"
+        case .shareResult: "战绩海报"
+        case .linkEntry: "追分邀请"
         case .ranking: "排行榜"
         case .spectatorLobby: "观赛大厅"
         case .liveMatch: "对局"
@@ -165,6 +169,10 @@ struct AppRouteDestination: View {
             MatchHistoryView(session: session)
         case .matchReport(let matchId):
             MatchReportView(session: session, matchId: matchId)
+        case .shareResult(let matchId):
+            ShareResultView(session: session, matchId: matchId)
+        case .linkEntry(let url):
+            LinkEntryDestination(session: session, url: url)
         case .ranking:
             RankingView(session: session)
         case .spectatorLobby:
@@ -238,6 +246,17 @@ struct AppRouteDestination: View {
         default:
             MigrationPlaceholderView(title: route.title)
         }
+    }
+}
+
+/// 承接页需要扫码流程里的凭证交接，单独取环境，避免所有路由都依赖它。
+private struct LinkEntryDestination: View {
+    let session: SessionStore
+    let url: String
+    @EnvironmentObject private var quickScan: QuickScanFlow
+
+    var body: some View {
+        LinkEntryView(session: session, url: url, quickScan: quickScan)
     }
 }
 
