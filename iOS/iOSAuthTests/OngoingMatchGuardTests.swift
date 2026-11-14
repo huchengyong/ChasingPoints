@@ -30,7 +30,7 @@ final class OngoingMatchGuardTests: XCTestCase {
             response: MatchStartFixtures.startResponse(
                 action: "resume_existing",
                 matchId: 28,
-                ongoingMatch: CurrentMatchInfo(
+                ongoingMatch: OngoingMatchRef(
                     id: 28,
                     gameType: 3,
                     opponentName: "球友B",
@@ -60,7 +60,7 @@ final class OngoingMatchGuardTests: XCTestCase {
                 blockReason: "self_ongoing",
                 message: "你还有一场中式八球未结束，请先结束之前的对局",
                 matchId: 38,
-                ongoingMatch: CurrentMatchInfo(
+                ongoingMatch: OngoingMatchRef(
                     id: 38,
                     gameType: 3,
                     opponentName: "球友D",
@@ -138,7 +138,7 @@ final class OngoingMatchGuardTests: XCTestCase {
 
         XCTAssertEqual(
             OngoingMatchGuard.normalizeMatchPayload(
-                CurrentMatchInfo(matchId: 7),
+                OngoingMatchRef(matchId: 7),
                 fallback: GuardedMatchFallback(
                     gameType: 4,
                     opponentName: "球友G",

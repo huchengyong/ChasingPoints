@@ -2,6 +2,12 @@
 
 实时计分页 `uniapp/subPages/match/playing.vue` 有 2800 行，分两轮迁移。本轮做与球种无关的骨架和「按局计胜」的球种（中式八球、美式九球）；下一轮做九球追分和斯诺克的计分面板。
 
+## 先修正上一轮的一个缺陷（改完再做本轮任务）
+
+`iOS/iOS/Features/Match/ScanConfirmView.swift` 在 `.task` 里执行 `model.apply(handoff: quickScan.takeHandoff(...))`。`.task` 会在页面每次重新出现时重跑——切到别的 Tab 再切回来、重新扫码的 `fullScreenCover` 关闭时都会——而交接只能取一次，第二次取到 `nil`，`apply(handoff: nil)` 把已经填好的确认页清成「扫码信息已失效」。
+
+改法：交接只在页面第一次出现时取一次。在 `ScanConfirmModel` 里加一个「是否已经尝试过取交接」的标记（例如 `func takeInitialHandoff(from flow: QuickScanFlow, identity:)`，第二次调用直接返回），`.task` 改为调用它；重新扫码成功后的 `apply(handoff:)` 路径不受影响。补回归测试：模型取到交接后，再次触发「页面出现」的入口，状态保持不变、`QuickScanFlow` 不被再次消费；重新扫码得到新交接后状态更新为新对手。
+
 ## 本轮要读的小程序源码
 
 - `uniapp/subPages/match/playing.vue` **全文**（模板 1–599 行，脚本 601–2816 行，样式在其后）。先通读脚本，弄清：页面状态、`loadMatchInfo`、`applyMatchSnapshot` / `applyWriteResponse` / 修订号（`updateServerRevision`、`shouldApplyIncomingRevision`）、各个 WebSocket 消息处理函数、`applyViewerCapabilities`（选手 / 裁判 / 观赛者各自能做什么）、结束流程（`handleRequestFinish`、`handleConfirmFinish`、`handleDisputeFinish`、`handleWithdrawFinish`、`handleFinishMatch`、倒计时 watch、滑动确认）、`handleBack` / `showMenu`、裁判二维码弹层。

@@ -2,6 +2,12 @@
 
 本轮迁移首页（`uniapp/pages/index/index.vue`），替换 `MainTabView` 里首页 Tab 的占位根页面。
 
+## 先修正上一轮的一个生命周期问题（改完再做本轮任务）
+
+`iOS/iOS/iOSApp.swift` 的 `ApplicationRootView` 把 `networkMonitor` 存成结构体上的普通 `let`，在 `onAppear` 里设置回调并 `start()`。SwiftUI 视图结构体可能被重新初始化：那时旧的监听器随旧结构体释放（`deinit` 里 `cancel()`），新创建的监听器却不会再被 `start()`（`onAppear` 只触发一次），网络状态变化从此不再传给 `AppRealtime`。另外 `init()` 里在 `StateObject` 的自动闭包之外 eager 地 `SessionStore()`，每次重新初始化都会多读一次 Keychain。
+
+改法：把网络监听的所有权交给 `AppRealtime`——给它加 `func startNetworkMonitoring(_ monitor: NetworkStatusMonitor = NWPathNetworkMonitor())`（重复调用无效，监听器由 `AppRealtime` 强引用），根视图在 `onAppear` 里调用它；删掉 `ApplicationRootView` 上的 `networkMonitor` 属性。`init()` 保持用 `StateObject` 构造三个对象，但把对象的创建放进一个只执行一次的工厂里（例如一个 `private final class AppDependencies { let session; let activity; let realtime }`，用 `@StateObject private var dependencies = AppDependencies()` 持有，再从它取出三个对象注入环境）。测试宿主分支（`CHASING_POINTS_AUTH_TEST_HOST`）保持不变。补测试：`startNetworkMonitoring` 调用两次只 `start()` 一次；监听器回调离线 / 在线会传到 `UserRealtime`。
+
 ## 本轮要读的小程序源码
 
 - `uniapp/pages/index/index.vue`（773 行）+ `index.scss`

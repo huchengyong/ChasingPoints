@@ -115,20 +115,3 @@ struct AchievementCommonResponse: Decodable, Equatable {
     let success: Bool
     let message: String
 }
-
-struct NotificationInfo: Decodable, Equatable, Identifiable {
-    let id: Int64
-    let type: String
-    let title: String
-    let content: String
-    let data: String
-    let isRead: Bool
-    let createdAt: String
-}
-
-struct NotificationListResponse: Decodable, Equatable {
-    let success: Bool
-    let total: Int64
-    let unreadCount: Int
-    let list: [NotificationInfo]
-}

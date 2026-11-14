@@ -17,18 +17,18 @@ struct StartMatchResponse: Decodable, Equatable {
     let blockReason: String?
     let message: String?
     let matchId: Int64?
-    let match: CurrentMatchInfo?
-    let ongoingMatch: CurrentMatchInfo?
+    let match: OngoingMatchRef?
+    let ongoingMatch: OngoingMatchRef?
 }
 
 /// `GetCurrentMatchResp`。
 struct GetCurrentMatchResponse: Decodable, Equatable {
     let success: Bool
-    let match: CurrentMatchInfo?
+    let match: OngoingMatchRef?
 }
 
-/// `CurrentMatchInfo` 的窄解码：进行中引导与跳转只用到这些字段，全部可选以兼容缺失值。
-struct CurrentMatchInfo: Decodable, Equatable {
+/// 进行中对局的窄解码（`CurrentMatchInfo` 的子集）：进行中引导与跳转只用到这些字段，全部可选以兼容缺失值。
+struct OngoingMatchRef: Decodable, Equatable {
     var id: Int64? = nil
     var matchId: Int64? = nil
     var gameType: Int? = nil
@@ -67,7 +67,7 @@ struct JoinMatchRefereeResponse: Decodable, Equatable {
     let success: Bool
     let message: String?
     let matchId: Int64?
-    let match: CurrentMatchInfo?
+    let match: OngoingMatchRef?
 }
 
 /// `OpponentCandidate`：选择球友页展示的候选对手。

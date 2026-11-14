@@ -37,7 +37,7 @@ struct MessageCenterAPI {
     }
 }
 
-struct NotificationListResponse: Decodable {
+struct NotificationListResponse: Decodable, Equatable {
     let success: Bool
     let total: Int64
     let unreadCount: Int

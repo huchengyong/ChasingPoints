@@ -36,7 +36,7 @@ enum StartMatchGuardOutcome: Equatable {
 /// 原生端前台提醒与进行中页面尚未迁移，只迁移确认页实际使用的分支。
 enum OngoingMatchGuard {
     static func normalizeMatchPayload(
-        _ match: CurrentMatchInfo? = nil,
+        _ match: OngoingMatchRef? = nil,
         fallback: GuardedMatchFallback = GuardedMatchFallback()
     ) -> GuardedMatch {
         GuardedMatch(
@@ -71,17 +71,17 @@ enum OngoingMatchGuard {
 
         switch response.action {
         case "created":
-            let match = response.match ?? CurrentMatchInfo(matchId: response.matchId)
+            let match = response.match ?? OngoingMatchRef(matchId: response.matchId)
             return .navigate(normalizeMatchPayload(match, fallback: scannedFallback))
         case "resume_existing":
             var fallback = scannedFallback
             fallback.matchId = response.matchId ?? 0
-            let match = response.ongoingMatch ?? CurrentMatchInfo(matchId: response.matchId)
+            let match = response.ongoingMatch ?? OngoingMatchRef(matchId: response.matchId)
             return .resume(normalizeMatchPayload(match, fallback: fallback))
         case "blocked" where response.blockReason == "self_ongoing":
             var fallback = scannedFallback
             fallback.matchId = response.matchId ?? 0
-            let match = response.ongoingMatch ?? CurrentMatchInfo(matchId: response.matchId)
+            let match = response.ongoingMatch ?? OngoingMatchRef(matchId: response.matchId)
             return .promptSelfOngoing(
                 message: firstNonEmpty(response.message, "你还有未结束的对局，请先处理"),
                 match: normalizeMatchPayload(match, fallback: fallback)

@@ -12,8 +12,8 @@ enum MatchStartFixtures {
         blockReason: String? = nil,
         message: String? = nil,
         matchId: Int64? = 55,
-        match: CurrentMatchInfo? = nil,
-        ongoingMatch: CurrentMatchInfo? = nil
+        match: OngoingMatchRef? = nil,
+        ongoingMatch: OngoingMatchRef? = nil
     ) -> StartMatchResponse {
         StartMatchResponse(
             success: success,

@@ -57,7 +57,6 @@ enum AppRoute: Hashable {
     case gearIndex
     case scanConfirm
     case opponentSelector
-    case liveMatch(matchId: Int64)
 
     /// 导航栏标题，取自 pages.json 的 navigationBarTitleText。
     var title: String {
@@ -104,7 +103,6 @@ enum AppRoute: Hashable {
         case .gearIndex: "我的装备"
         case .scanConfirm: "确认对局"
         case .opponentSelector: "选择球友"
-        case .liveMatch: "对局"
         }
     }
 }

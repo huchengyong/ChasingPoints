@@ -24,6 +24,7 @@
 
 - App target 默认 MainActor 隔离、Swift 5 语言模式；测试类标 `@MainActor`。
 - JSON 解码统一 `convertFromSnakeCase`；模型字段以 `backend/chasing_points.api` 为准：标了 `optional` 的字段用可选类型，数组按非可选解码。拿不准某个字段在失败 / 空数据时返回什么，就去读 `backend/internal/logic/` 里对应的实现，不要猜。
+- **类型与路由不得重名**：有多条开发线在并行。新建任何顶层类型（struct / enum / class）或 `AppRoute` case 之前，先 `grep -rnw "<名字>" iOS/iOS iOS/iOSAuthTests` 确认不存在；已存在就直接复用，不要再定义一份。与 `backend/chasing_points.api` 同名的模型（如 `CurrentMatchInfo`、`ChallengeInfo`、`NotificationInfo`、`NotificationListResponse`）全仓只能有一份，统一放在 `iOS/iOS/App/ActivityModels.swift` 或 `iOS/iOS/Shared/` 下；只取其中几个字段的窄解码类型必须起带用途的名字（例如 `OngoingMatchRef`），不能沿用 `.api` 里的名字。
 - 需要登录的读取用 `session.authorizedRequest`，写请求用 `session.authorizedPost`（请求体 snake_case，`nil` 字段不会被编码）；访客可读接口用 `session.optionalAuthRequest`；带参数的 GET 用 `APIQuery.path`（nil 值跳过）。页面不自建 URLSession。
 - 单资源读取用 `ResourceLoader`（按需传 `maxAge`），分页用 `PagedHistoryList`；失败提示用 `LoadFailure.feedback(resource:)`，界面状态用 `LoadableContent` / `StateMessageView`。
 - 所有异步结果都要绑定发起时的 `session.identity`，并且只采纳最新一次请求：退出、切号或被新请求取代后到达的结果不得改动状态、不得弹提示。

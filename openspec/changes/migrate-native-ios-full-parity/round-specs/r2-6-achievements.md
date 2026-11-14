@@ -1,5 +1,9 @@
 # R2.6：荣誉墙、成就详情
 
+## 先修正上一轮的一处遗留（改完再做本轮任务）
+
+`iOS/iOS/Features/Performance/PerformanceView.swift` 的锁定态：「N月表现分预览」卡和「完整分析包含」卡没有撑满内容宽度（比上面的会员权益卡窄，居中悬在页面中间）。这两张卡要和页面里其他卡片一样左右撑满（`frame(maxWidth: .infinity, alignment: .leading)`），与小程序 `performance.vue` 的锁定态布局一致。改完看 `performance-locked` 快照确认。
+
 ## 本轮要读的小程序源码
 
 - `uniapp/subPages/achievement/index.vue`（945 行，+ 同目录 scss）、`detail.vue`（+ scss）

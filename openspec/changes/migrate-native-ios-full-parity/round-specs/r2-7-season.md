@@ -1,5 +1,16 @@
 # R2.7：赛季、赛季报告、历届赛季
 
+## 先修正上一轮的一个行为问题（改完再做本轮任务）
+
+荣誉墙现在加载后直接把最新一条未读的「换季结果」通知（`season_rollover`）标为已读，但没有展示任何提示——用户会永远看不到这次换季结果。小程序的做法（`uniapp/utils/honor-wall.js` 的 `presentLatestSeasonRollover` 与 `buildSeasonRolloverModal`）是：**先弹窗展示，用户关闭弹窗后才标已读**，点弹窗的确认按钮跳到赛季报告。小程序在两处调用它：`pages/user/index.vue`（「我的」页加载完成后）和 `subPages/achievement/index.vue`（荣誉墙）。
+
+要求：
+
+1. 新建 `iOS/iOS/Features/Season/SeasonRolloverPresenter.swift`：`@MainActor final class SeasonRolloverPresenter: ObservableObject`，按 `presentLatestSeasonRollover` 的流程实现——同一时刻只展示一次（对应 `rolloverPresentationPromise`）；没有传入通知时自己读 `GET /api/notification/list?type=season_rollover&page=1&page_size=10` 找最新未读；用 `HonorWallRules.seasonRollover(...)`（已迁的 `buildSeasonRolloverModal`）得到标题、正文、按钮文案；**弹窗关闭后**才调 `POST /api/notification/read`；确认且有报告时导航到本轮新增的赛季报告路由。发布一个 `@Published var alert: SeasonRolloverAlert?` 供视图用 `.alert` 展示。
+2. 荣誉墙：删掉现在「加载后直接标已读」的代码，改用这个 presenter。
+3. 「我的」页（`iOS/iOS/Features/Profile/MyPage.swift` / `MyPageModel.swift`）：概览读取完成后调用 presenter（对应小程序 `loadHomepageData().finally(showLatestSeasonRollover)`）；通知来源优先用 `ActivityStore.latestSeasonRollover`（如果当前代码里已有 `ActivityStore`），没有则让 presenter 自己读。标已读后调用 `ActivityStore.clearLatestSeasonRollover()` 与 `decrementUnread()`（如存在）。这是本轮唯一允许修改 `Features/Profile/` 的地方。
+4. 测试：没有未读换季通知时不弹；有时弹出且此时**尚未**调用已读接口；关闭后调用一次已读接口；确认跳转赛季报告；并发触发只弹一次；身份变化后迟到的结果不弹。
+
 ## 本轮要读的小程序源码
 
 - `uniapp/subPages/season/index.vue`（761 行）、`report.vue`（539 行，自定义导航栏）、`history.vue`（350 行）及各自 scss
