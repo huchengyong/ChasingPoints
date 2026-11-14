@@ -69,7 +69,13 @@ enum MessageCenterRules {
             case "/subPages/achievement/index":
                 return .achievementWall(gameType: queryInt(target, key: "game_type") ?? 0)
             case "/subPages/season/report":
-                return .seasonIndex
+                // 与 report.vue 的 onLoad 一致：id 为赛季 ID，game_type 缺省按 0。
+                let seasonId = queryInt(target, key: "id") ?? 0
+                guard seasonId > 0 else { return .seasonIndex }
+                return .seasonReport(
+                    seasonId: Int64(seasonId),
+                    gameType: queryInt(target, key: "game_type") ?? 0
+                )
             default:
                 return nil
             }

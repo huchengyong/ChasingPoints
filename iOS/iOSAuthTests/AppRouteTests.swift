@@ -17,7 +17,11 @@ final class AppRouteTests: XCTestCase {
             (.memberCenter, "VIP中心"),
             (.statsDetail(gameType: 2), "竞技分析"),
             (.achievementWall(gameType: 3), "荣誉墙"),
-            (.friendHomepage(userId: 1), "好友主页"),
+            (.friendHomepage(target: Self.target(1)), "好友主页"),
+            (.friendHonorWall(userId: 1), "荣誉墙"),
+            (.friendPkReport(userId: 1), "PK报表"),
+            (.gearFriend(userId: 1), "TA 的装备"),
+            (.opponentRecord(target: nil), "过往对手"),
             (.venueDetail(id: 1), "球馆详情"),
             (.seasonIndex, "赛季"),
             (.seasonHistory(gameType: 3), "历届赛季"),
@@ -44,7 +48,7 @@ final class AppRouteTests: XCTestCase {
             AppRoute.h2hRecord(opponentId: 1, targetUserId: 52, targetName: "球友 B", targetAvatar: "", opponentName: "甲")
         )
         XCTAssertNotEqual(AppRoute.achievementDetail(achievementId: 1), AppRoute.achievementDetail(achievementId: 2))
-        XCTAssertNotEqual(AppRoute.friendHomepage(userId: 1), AppRoute.friendHomepage(userId: 2))
+        XCTAssertNotEqual(AppRoute.friendHomepage(target: Self.target(1)), AppRoute.friendHomepage(target: Self.target(2)))
         XCTAssertNotEqual(AppRoute.tournamentDetail(id: 1), AppRoute.tournamentDetail(id: 2))
         XCTAssertNotEqual(AppRoute.venueDetail(id: 1), AppRoute.venueDetail(id: 2))
         XCTAssertNotEqual(AppRoute.matchReplay(matchId: 1), AppRoute.matchReplay(matchId: 2))
@@ -59,5 +63,27 @@ final class AppRouteTests: XCTestCase {
         XCTAssertEqual(AppRoute.matchReport(matchId: 3), AppRoute.matchReport(matchId: 3))
         XCTAssertNotEqual(AppRoute.liveMatch(matchId: 1), AppRoute.liveMatch(matchId: 2))
         XCTAssertEqual(AppRoute.liveMatch(matchId: 3), AppRoute.liveMatch(matchId: 3))
+        XCTAssertNotEqual(AppRoute.friendHonorWall(userId: 1), AppRoute.friendHonorWall(userId: 2))
+        XCTAssertNotEqual(AppRoute.friendPkReport(userId: 1), AppRoute.friendPkReport(userId: 2))
+        XCTAssertNotEqual(AppRoute.gearFriend(userId: 1), AppRoute.gearFriend(userId: 2))
+        XCTAssertNotEqual(
+            AppRoute.opponentRecord(target: nil),
+            AppRoute.opponentRecord(target: OpponentRecordTarget(userId: 1, name: "球友", avatar: ""))
+        )
+        XCTAssertEqual(
+            AppRoute.opponentRecord(target: OpponentRecordTarget(userId: 1, name: "球友", avatar: "")),
+            AppRoute.opponentRecord(target: OpponentRecordTarget(userId: 1, name: "球友", avatar: ""))
+        )
+    }
+
+    private static func target(_ userId: Int64) -> FriendHomepageTarget {
+        FriendHomepageTarget(
+            userId: userId,
+            name: "球友",
+            avatar: "",
+            rankName: "",
+            vipLevel: 0,
+            rankLevel: 0
+        )
     }
 }

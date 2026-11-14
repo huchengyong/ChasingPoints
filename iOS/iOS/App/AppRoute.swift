@@ -21,7 +21,7 @@ enum AppRoute: Hashable {
     case publicMatchDetail(matchId: Int64)
     case rankExplain(gameType: Int)
     case notificationSettings
-    case opponentRecord
+    case opponentRecord(target: OpponentRecordTarget?)
     case h2hRecord(
         opponentId: Int64,
         targetUserId: Int64,
@@ -41,10 +41,13 @@ enum AppRoute: Hashable {
     case achievementWall(gameType: Int)
     case achievementDetail(achievementId: Int64)
     case friendList
-    case friendHomepage(userId: Int64)
+    case friendHomepage(target: FriendHomepageTarget)
     case addFriend
     case friendRequests
     case blacklist
+    case friendHonorWall(userId: Int64)
+    case friendPkReport(userId: Int64)
+    case gearFriend(userId: Int64)
     case tournamentDetail(id: Int64)
     case venueList
     case venueDetail(id: Int64)
@@ -92,6 +95,9 @@ enum AppRoute: Hashable {
         case .addFriend: "添加好友"
         case .friendRequests: "好友申请"
         case .blacklist: "黑名单"
+        case .friendHonorWall: "荣誉墙"
+        case .friendPkReport: "PK报表"
+        case .gearFriend: "TA 的装备"
         case .tournamentDetail: "赛事详情"
         case .venueList: "附近球馆"
         case .venueDetail: "球馆详情"
@@ -129,8 +135,8 @@ struct AppRouteDestination: View {
             NotificationSettingsView(session: session)
         case .reputation:
             ReputationView(session: session)
-        case .opponentRecord:
-            OpponentRecordView(session: session)
+        case .opponentRecord(let target):
+            OpponentRecordView(session: session, target: target)
         case .statsDetail(let gameType):
             StatsDetailView(session: session, gameType: gameType)
         case .performance(let gameType):
@@ -178,6 +184,18 @@ struct AppRouteDestination: View {
             AchievementDetailView(session: session, achievementId: achievementId)
         case .tournamentDetail(let id):
             NewsDetailView(session: session, eventId: id)
+        case .friendList:
+            FriendListDestination(session: session)
+        case .friendHomepage(let target):
+            FriendHomepageView(session: session, target: target)
+        case .addFriend:
+            AddFriendView(session: session)
+        case .friendRequests:
+            FriendRequestsDestination(session: session)
+        case .blacklist:
+            BlacklistView(session: session)
+        case .friendHonorWall, .friendPkReport, .gearFriend:
+            MigrationPlaceholderView(title: route.title)
         case .scanConfirm:
             ScanConfirmView(session: session)
         case .opponentSelector:
@@ -185,5 +203,24 @@ struct AppRouteDestination: View {
         default:
             MigrationPlaceholderView(title: route.title)
         }
+    }
+}
+
+/// 好友列表/申请页的模型需要共享 `ActivityStore`，单独取环境，避免所有路由都依赖它。
+private struct FriendListDestination: View {
+    let session: SessionStore
+    @EnvironmentObject private var activity: ActivityStore
+
+    var body: some View {
+        FriendListView(session: session, activity: activity)
+    }
+}
+
+private struct FriendRequestsDestination: View {
+    let session: SessionStore
+    @EnvironmentObject private var activity: ActivityStore
+
+    var body: some View {
+        FriendRequestsView(session: session, activity: activity)
     }
 }
