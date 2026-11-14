@@ -24,14 +24,16 @@ struct MatchHistoryView: View {
     init(
         session: SessionStore,
         section: HistorySection = .participant,
-        ongoingMatch: OngoingRefereeMatch? = nil
+        ongoingMatch: OngoingRefereeMatch? = nil,
+        participantList: PagedHistoryList<MatchListItem>? = nil,
+        refereeList: PagedHistoryList<RefereeHistoryItem>? = nil
     ) {
         let api = MatchHistoryAPI(session: session)
         self.api = api
-        _participant = StateObject(wrappedValue: PagedHistoryList(session: session) { page in
+        _participant = StateObject(wrappedValue: participantList ?? PagedHistoryList(session: session) { page in
             try await api.participantPage(page: page)
         })
-        _referee = StateObject(wrappedValue: PagedHistoryList(session: session) { page in
+        _referee = StateObject(wrappedValue: refereeList ?? PagedHistoryList(session: session) { page in
             try await api.refereePage(page: page)
         })
         _section = State(initialValue: section)

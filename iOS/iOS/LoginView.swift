@@ -7,208 +7,307 @@ struct LoginView: View {
 
     @State private var phone = ""
     @State private var code = ""
-    @State private var hasAgreed = false
     @State private var isSending = false
-    @State private var isLoggingIn = false
     @State private var resendAfter: Date?
-    @State private var feedback: String?
+    @State private var message: String?
     @State private var isError = false
+    @StateObject private var agreement: EntryAgreementModel
+    @StateObject private var feedback: AuthFeedbackModel
     @FocusState private var focusedField: Field?
 
     private enum Field {
         case phone, code
     }
 
-    private let danger = Color(red: 239.0 / 255, green: 68.0 / 255, blue: 68.0 / 255)
+    private let danger = AppTheme.danger
 
-    private var isPhoneValid: Bool {
-        phone.range(of: #"^1[3-9][0-9]{9}$"#, options: .regularExpression) != nil
+    init(
+        agreement: EntryAgreementModel? = nil,
+        feedback: AuthFeedbackModel? = nil,
+        initialError: String? = nil
+    ) {
+        _agreement = StateObject(wrappedValue: agreement ?? EntryAgreementModel())
+        _feedback = StateObject(wrappedValue: feedback ?? AuthFeedbackModel())
+        _message = State(initialValue: initialError)
+        _isError = State(initialValue: initialError != nil)
     }
 
-    private var isCodeValid: Bool {
-        code.count == 6 && code.allSatisfy { "0123456789".contains($0) }
+    private var isBusy: Bool { isSending || feedback.isAuthenticating }
+    private var phoneError: String { EntryFunnelRules.phoneError(phone) }
+    private var codeError: String { EntryFunnelRules.codeError(code) }
+    private var canSubmit: Bool {
+        EntryFunnelRules.canAttemptLogin(phone: phone, code: code, isLogging: feedback.isAuthenticating)
     }
-
-    private var isBusy: Bool { isSending || isLoggingIn }
 
     var body: some View {
         let palette = AppTheme.palette(for: colorScheme)
 
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 10) {
-                    Image("BrandLogo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 42, height: 42)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .accessibilityHidden(true)
+        ZStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    brandRow(palette)
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("追分竞技")
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundStyle(palette.textPrimary)
-                        Text("ZHUIFEN")
-                            .font(.system(size: 11, weight: .semibold))
-                            .tracking(4)
-                            .foregroundStyle(AppTheme.primary)
+                    Text("手机号登录")
+                        .font(.system(size: 25, weight: .heavy))
+                        .foregroundStyle(palette.textPrimary)
+                        .padding(.top, 28)
+                    Text("未注册手机号验证后将自动创建账号")
+                        .font(.system(size: 12.5))
+                        .foregroundStyle(palette.textSecondary)
+                        .padding(.top, 7)
+
+                    phoneField(palette)
+                        .padding(.top, 26)
+
+                    codeField(palette)
+                        .padding(.top, 13)
+
+                    agreementBlock(palette)
+                        .padding(.top, 2)
+
+                    loginButton(palette)
+                        .padding(.top, 8)
+
+                    if feedback.feedback.visible {
+                        authenticationFeedback(palette)
+                            .padding(.top, 9)
+                    }
+
+                    if let message {
+                        Text(message)
+                            .font(.system(size: 12))
+                            .foregroundStyle(isError ? danger : palette.textSecondary)
+                            .padding(.top, 12)
+                            .accessibilityAddTraits(.updatesFrequently)
                     }
                 }
-                .padding(.bottom, 64)
+                .frame(maxWidth: 440)
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 16)
+                .frame(maxWidth: .infinity)
+            }
+            .scrollDismissesKeyboard(.interactively)
 
-                Text("手机号登录")
-                    .font(.system(size: 30, weight: .bold))
+            if agreement.isSheetPresented {
+                AgreementConsentSheet(
+                    onClose: { agreement.closeSheet() },
+                    onAgree: handleAgreementAccepted
+                )
+            }
+        }
+        .background(palette.page)
+        .animation(.easeInOut(duration: 0.2), value: agreement.isSheetPresented)
+        .task(id: feedback.isAuthenticating) {
+            guard feedback.isAuthenticating else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(200))
+                feedback.tick()
+            }
+        }
+        .onDisappear {
+            agreement.deactivate(current: .login, remaining: [])
+        }
+    }
+
+    private func brandRow(_ palette: AppPalette) -> some View {
+        HStack(spacing: 10) {
+            Image("BrandLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 42, height: 42)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("追分竞技")
+                    .font(.system(size: 18, weight: .heavy))
                     .foregroundStyle(palette.textPrimary)
-                Text("未注册手机号验证后将自动创建账号")
-                    .font(.system(size: 14))
-                    .foregroundStyle(palette.textSecondary)
-                    .padding(.top, 10)
-                    .padding(.bottom, 32)
+                Text("ZHUIFEN")
+                    .font(.system(size: 11, weight: .semibold))
+                    .tracking(3)
+                    .foregroundStyle(palette.textMuted)
+            }
+        }
+    }
 
-                Text("手机号")
-                    .font(.system(size: 14, weight: .medium))
+    private func phoneField(_ palette: AppPalette) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("手机号")
+                .font(.system(size: 12.5, weight: .bold))
+                .foregroundStyle(palette.textSecondary)
+
+            HStack(spacing: 11) {
+                Text("+86")
+                    .font(.system(size: 13.5, weight: .bold))
                     .foregroundStyle(palette.textPrimary)
-
-                HStack(spacing: 14) {
-                    Text("+86")
-                        .foregroundStyle(palette.textPrimary)
-                    Rectangle()
-                        .fill(palette.border)
-                        .frame(width: 1, height: 22)
-                    TextField("请输入手机号", text: $phone)
-                        .keyboardType(.phonePad)
-                        .textContentType(.telephoneNumber)
-                        .foregroundStyle(palette.textPrimary)
-                        .focused($focusedField, equals: .phone)
-                        .disabled(isBusy)
-                        .onChange(of: phone) { _, value in
-                            phone = String(value.filter { "0123456789".contains($0) }.prefix(11))
-                            feedback = nil
-                        }
-                }
-                .font(.system(size: 16))
-                .padding(.horizontal, 16)
-                .frame(height: 54)
-                .background(palette.subtle, in: RoundedRectangle(cornerRadius: 12))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(!phone.isEmpty && !isPhoneValid ? danger : palette.border)
-                }
-                .padding(.top, 10)
-
-                if !phone.isEmpty && !isPhoneValid {
-                    Text("请输入正确的手机号")
-                        .font(.system(size: 12))
-                        .foregroundStyle(danger)
-                        .padding(.top, 6)
-                }
-
-                Text("短信验证码")
-                    .font(.system(size: 14, weight: .medium))
+                Rectangle()
+                    .fill(palette.border)
+                    .frame(width: 1, height: 22)
+                TextField("请输入手机号", text: $phone)
+                    .keyboardType(.phonePad)
+                    .textContentType(.telephoneNumber)
                     .foregroundStyle(palette.textPrimary)
-                    .padding(.top, 24)
-
-                HStack(spacing: 8) {
-                    TextField("请输入6位验证码", text: $code)
-                        .keyboardType(.numberPad)
-                        .textContentType(.oneTimeCode)
-                        .foregroundStyle(palette.textPrimary)
-                        .focused($focusedField, equals: .code)
-                        .disabled(isBusy)
-                        .onChange(of: code) { _, value in
-                            code = String(value.filter { "0123456789".contains($0) }.prefix(6))
-                            feedback = nil
-                        }
-
-                    TimelineView(.periodic(from: .now, by: 1)) { context in
-                        let remaining = secondsUntilResend(at: context.date)
-
-                        Button {
-                            focusedField = nil
-                            Task { await sendCode() }
-                        } label: {
-                            Text(remaining > 0 ? "\(remaining)s 后重试" : isSending ? "发送中..." : "获取验证码")
-                                .font(.system(size: 14, weight: .semibold))
-                                .fixedSize()
-                        }
-                        .foregroundStyle(AppTheme.primary)
-                        .disabled(!isPhoneValid || remaining > 0 || isBusy)
-                        .opacity(!isPhoneValid || remaining > 0 || isBusy ? 0.5 : 1)
-                    }
-                }
-                .font(.system(size: 16))
-                .padding(.horizontal, 16)
-                .frame(height: 54)
-                .background(palette.subtle, in: RoundedRectangle(cornerRadius: 12))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(!code.isEmpty && !isCodeValid ? danger : palette.border)
-                }
-                .padding(.top, 10)
-
-                if !code.isEmpty && !isCodeValid {
-                    Text("请输入6位验证码")
-                        .font(.system(size: 12))
-                        .foregroundStyle(danger)
-                        .padding(.top, 6)
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Button {
-                        hasAgreed.toggle()
-                        feedback = nil
-                    } label: {
-                        Label("我已阅读并同意", systemImage: hasAgreed ? "checkmark.square.fill" : "square")
-                            .font(.system(size: 13))
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(hasAgreed ? AppTheme.primary : palette.textSecondary)
+                    .focused($focusedField, equals: .phone)
                     .disabled(isBusy)
-                    .accessibilityLabel("我已阅读并同意用户协议和隐私政策")
-                    .accessibilityValue(hasAgreed ? "已同意" : "未同意")
-
-                    HStack(spacing: 4) {
-                        Link("《用户协议》", destination: URL(string: "https://www.zhuifen.cn/agreement")!)
-                        Text("和")
-                            .foregroundStyle(palette.textSecondary)
-                        Link("《隐私政策》", destination: URL(string: "https://www.zhuifen.cn/privacy")!)
+                    .onChange(of: phone) { _, value in
+                        phone = String(value.filter { "0123456789".contains($0) }.prefix(11))
+                        message = nil
                     }
-                    .font(.system(size: 13))
-                    .tint(AppTheme.primary)
-                }
-                .padding(.top, 28)
+            }
+            .font(.system(size: 14))
+            .padding(.horizontal, 12)
+            .frame(height: 48)
+            .background(palette.subtle, in: RoundedRectangle(cornerRadius: 12))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(phoneError.isEmpty ? palette.border : danger)
+            }
 
-                Button {
-                    focusedField = nil
-                    Task { await logIn() }
-                } label: {
-                    Text(isLoggingIn ? "正在安全登录…" : "登录 / 注册")
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                }
-                .foregroundStyle(.white)
-                .background(AppTheme.primary, in: RoundedRectangle(cornerRadius: 12))
-                .disabled(!isPhoneValid || !isCodeValid || isBusy)
-                .opacity(!isPhoneValid || !isCodeValid || isBusy ? 0.55 : 1)
-                .padding(.top, 28)
+            if !phoneError.isEmpty {
+                Text(phoneError)
+                    .font(.system(size: 11))
+                    .foregroundStyle(danger)
+                    .padding(.leading, 3)
+            }
+        }
+    }
 
-                if let feedback {
-                    Text(feedback)
-                        .font(.system(size: 13))
-                        .foregroundStyle(isError ? danger : palette.textSecondary)
-                        .padding(.top, 14)
-                        .accessibilityAddTraits(.updatesFrequently)
+    private func codeField(_ palette: AppPalette) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("短信验证码")
+                .font(.system(size: 12.5, weight: .bold))
+                .foregroundStyle(palette.textSecondary)
+
+            HStack(spacing: 8) {
+                TextField("请输入6位验证码", text: $code)
+                    .keyboardType(.numberPad)
+                    .textContentType(.oneTimeCode)
+                    .foregroundStyle(palette.textPrimary)
+                    .focused($focusedField, equals: .code)
+                    .disabled(isBusy)
+                    .onChange(of: code) { _, value in
+                        code = String(value.filter { "0123456789".contains($0) }.prefix(6))
+                        message = nil
+                    }
+
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    let remaining = secondsUntilResend(at: context.date)
+                    let canSend = EntryFunnelRules.canRequestSMS(
+                        phone: phone,
+                        countdown: remaining,
+                        isSending: isBusy
+                    )
+
+                    Button {
+                        focusedField = nil
+                        Task { await sendCode() }
+                    } label: {
+                        Text(sendCodeText(remaining))
+                            .font(.system(size: 11.5, weight: .bold))
+                            .fixedSize()
+                    }
+                    .foregroundStyle(palette.brandStrong)
+                    .padding(.horizontal, 10)
+                    .frame(height: 32)
+                    .background(palette.brandTint, in: RoundedRectangle(cornerRadius: 9))
+                    .disabled(!canSend)
+                    .opacity(canSend ? 1 : 0.48)
                 }
             }
-            .frame(maxWidth: 440)
-            .padding(.horizontal, 24)
-            .padding(.top, 40)
-            .padding(.bottom, 32)
-            .frame(maxWidth: .infinity)
+            .font(.system(size: 14))
+            .padding(.horizontal, 12)
+            .frame(height: 48)
+            .background(palette.subtle, in: RoundedRectangle(cornerRadius: 12))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(codeError.isEmpty ? palette.border : danger)
+            }
+
+            if !codeError.isEmpty {
+                Text(codeError)
+                    .font(.system(size: 11))
+                    .foregroundStyle(danger)
+                    .padding(.leading, 3)
+            }
         }
-        .scrollDismissesKeyboard(.interactively)
-        .background(palette.page)
+    }
+
+    private func agreementBlock(_ palette: AppPalette) -> some View {
+        VStack(spacing: 0) {
+            AgreementConsentRow(
+                hasAgreed: agreement.hasAgreed,
+                isDisabled: feedback.isAuthenticating,
+                onToggle: { agreement.toggle() }
+            )
+            .frame(maxWidth: .infinity)
+
+            HStack(spacing: 4) {
+                Link("《用户协议》", destination: LegalDocumentLink.userAgreement)
+                Text("和")
+                    .foregroundStyle(palette.textMuted)
+                Link("《隐私政策》", destination: LegalDocumentLink.privacyPolicy)
+            }
+            .font(.system(size: 11))
+            .tint(palette.brandStrong)
+            .padding(.vertical, 12)
+            .disabled(feedback.isAuthenticating)
+            .opacity(feedback.isAuthenticating ? 0.45 : 1)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func loginButton(_ palette: AppPalette) -> some View {
+        Button {
+            focusedField = nil
+            handleSubmit()
+        } label: {
+            Text(feedback.buttonText)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .background(
+                    LinearGradient(
+                        colors: [palette.gradientStart, palette.gradientEnd],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 9)
+                )
+                .shadow(color: palette.brandStrong.opacity(0.18), radius: 14, y: 7)
+        }
+        .buttonStyle(.plain)
+        .disabled(!canSubmit)
+        .opacity(canSubmit ? 1 : 0.45)
+    }
+
+    private func authenticationFeedback(_ palette: AppPalette) -> some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(AppTheme.primary)
+                .frame(width: 8, height: 8)
+                .accessibilityHidden(true)
+            Text(feedback.feedback.message)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(palette.brandStrong)
+                .accessibilityAddTraits(.updatesFrequently)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(feedback.isSlow ? palette.brandTint : palette.subtle, in: RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(palette.brandStrong.opacity(feedback.isSlow ? 0.5 : 0.24))
+        }
+    }
+
+    private func sendCodeText(_ remaining: Int) -> String {
+        if remaining > 0 {
+            return "\(String(remaining))s 后重试"
+        }
+        return isSending ? "发送中..." : "获取验证码"
     }
 
     private func secondsUntilResend(at date: Date) -> Int {
@@ -216,43 +315,67 @@ struct LoginView: View {
         return max(0, Int(ceil(resendAfter.timeIntervalSince(date))))
     }
 
+    private func handleSubmit() {
+        switch EntryFunnelRules.loginSubmitGate(
+            phone: phone,
+            code: code,
+            isAgreed: agreement.hasAgreed,
+            isLogging: feedback.isAuthenticating
+        ) {
+        case .blocked:
+            break
+        case .showAgreementSheet:
+            agreement.requestConsent()
+        case .submit:
+            Task { await logIn() }
+        }
+    }
+
+    private func handleAgreementAccepted() {
+        agreement.accept()
+        Task { await logIn() }
+    }
+
     @MainActor
     private func sendCode() async {
-        guard isPhoneValid, secondsUntilResend(at: .now) == 0, !isBusy else { return }
+        guard EntryFunnelRules.isPhoneValid(phone), secondsUntilResend(at: .now) == 0, !isBusy else { return }
         let requestedPhone = phone
         isSending = true
-        feedback = nil
+        message = nil
         defer { isSending = false }
 
         do {
             try await session.sendSMS(phone: requestedPhone)
             resendAfter = Date().addingTimeInterval(60)
-            feedback = "验证码已发送，请注意查收"
+            message = EntryFunnelRules.smsFeedback(phone: requestedPhone)
             isError = false
         } catch {
-            feedback = error.localizedDescription
+            message = EntryFunnelRules.authErrorMessage(error, fallback: "发送失败，请重试")
             isError = true
         }
     }
 
     @MainActor
     private func logIn() async {
-        guard isPhoneValid, isCodeValid, !isBusy else { return }
-        guard hasAgreed else {
-            feedback = "请先阅读并同意用户协议和隐私政策"
-            isError = true
+        guard EntryFunnelRules.canAttemptLogin(phone: phone, code: code, isLogging: feedback.isAuthenticating) else {
+            return
+        }
+        guard agreement.hasAgreed else {
+            agreement.requestConsent()
             return
         }
 
-        isLoggingIn = true
-        feedback = nil
-        defer { isLoggingIn = false }
+        message = nil
+        isError = false
+        feedback.begin()
+        defer { feedback.end() }
 
         do {
             try await session.login(phone: phone, code: code)
+            agreement.markWelcomeViewed()
             dismiss()
         } catch {
-            feedback = error.localizedDescription
+            message = EntryFunnelRules.authErrorMessage(error, fallback: "登录失败，请重试")
             isError = true
         }
     }
