@@ -46,8 +46,8 @@ final class AppRouteTests: XCTestCase {
         XCTAssertNotEqual(AppRoute.rankExplain(gameType: 1), AppRoute.rankExplain(gameType: 2))
         XCTAssertNotEqual(AppRoute.statsDetail(gameType: 1), AppRoute.statsDetail(gameType: 2))
         XCTAssertNotEqual(AppRoute.achievementWall(gameType: 1), AppRoute.achievementWall(gameType: 2))
-        XCTAssertNotEqual(AppRoute.challenges(showHistory: true), AppRoute.challenges(showHistory: false))
-        XCTAssertEqual(AppRoute.challenges(showHistory: true), AppRoute.challenges(showHistory: true))
+        XCTAssertNotEqual(AppRoute.challenges(tab: .history), AppRoute.challenges(tab: .received))
+        XCTAssertEqual(AppRoute.challenges(tab: .history), AppRoute.challenges(tab: .history))
         XCTAssertEqual(AppRoute.matchReport(matchId: 3), AppRoute.matchReport(matchId: 3))
     }
 }

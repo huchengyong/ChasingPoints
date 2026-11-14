@@ -131,7 +131,7 @@ final class H2HRecordModel: ObservableObject {
     }
 
     var primaryActionRoute: AppRoute {
-        .challenges(showHistory: false)
+        .challenges(tab: .received)
     }
 
     // MARK: - 读取

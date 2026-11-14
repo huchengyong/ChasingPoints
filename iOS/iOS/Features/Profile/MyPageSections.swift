@@ -459,7 +459,7 @@ struct MyServiceListSection: View {
 
     private var items: [MyListRowItem] {
         [
-            MyListRowItem(symbol: "list.bullet", title: "约球记录", route: .challenges(showHistory: true)),
+            MyListRowItem(symbol: "list.bullet", title: "约球记录", route: .challenges(tab: .history)),
             MyListRowItem(
                 symbol: "crown",
                 title: "VIP中心",

@@ -1,5 +1,12 @@
 import SwiftUI
 
+/// 约球页的三个分栏，对应 `challenges?tab=received|sent|history`。
+enum ChallengeTab: Hashable {
+    case received
+    case sent
+    case history
+}
+
 /// 应用内页面路由，与小程序 pages.json 的页面一一对应；未迁移的页面先落到占位页。
 enum AppRoute: Hashable {
     case login
@@ -28,7 +35,8 @@ enum AppRoute: Hashable {
     case performance
     case matchReplay(matchId: Int64)
     case challengeCompose
-    case challenges(showHistory: Bool)
+    case challengeWaiting(challengeId: Int64)
+    case challenges(tab: ChallengeTab)
     case feedback
     case achievementWall(gameType: Int)
     case achievementDetail(achievementId: Int64)
@@ -71,6 +79,7 @@ enum AppRoute: Hashable {
         case .performance: "表现分析"
         case .matchReplay: "单场复盘"
         case .challengeCompose: "发起约球"
+        case .challengeWaiting: "等待对手"
         case .challenges: "约球"
         case .feedback: "帮助、投诉与举报"
         case .achievementWall: "荣誉墙"

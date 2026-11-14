@@ -5,9 +5,19 @@ struct MainTabView: View {
     @EnvironmentObject private var session: SessionStore
     @EnvironmentObject private var navigator: AppNavigator
     @EnvironmentObject private var toast: ToastCenter
+    @EnvironmentObject private var activity: ActivityStore
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
 
     private var palette: AppPalette { AppTheme.palette(for: colorScheme) }
+
+    private var messageBadge: Text? {
+        switch activity.messageBadge {
+        case .none: nil
+        case .dot: Text("")
+        case .text(let value): Text(value)
+        }
+    }
 
     var body: some View {
         TabView(selection: selectedTabBinding) {
@@ -42,7 +52,7 @@ struct MainTabView: View {
                 .tag(MainTab.scan)
 
             NavigationStack(path: pathBinding(for: .messages)) {
-                MigrationPlaceholderView(title: "消息")
+                MessageCenterView(session: session, activity: activity)
                     .navigationDestination(for: AppRoute.self) { AppRouteDestination(route: $0) }
             }
             .tabItem {
@@ -50,6 +60,7 @@ struct MainTabView: View {
                     .renderingMode(.original)
                 Text(MainTab.messages.title)
             }
+            .badge(messageBadge)
             .tag(MainTab.messages)
 
             NavigationStack(path: pathBinding(for: .me)) {
@@ -95,6 +106,14 @@ struct MainTabView: View {
             }
         }
         .toastOverlay(toast)
+        .onAppear {
+            Task { await activity.refreshIfNeeded() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                Task { await activity.refreshIfNeeded() }
+            }
+        }
     }
 
     private var selectedTabBinding: Binding<MainTab> {
