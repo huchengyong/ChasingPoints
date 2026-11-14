@@ -152,6 +152,8 @@ struct AppRouteDestination: View {
             RankingView(session: session)
         case .spectatorLobby:
             SpectatorLobbyView(session: session)
+        case .liveMatch(let matchId):
+            LiveMatchView(session: session, matchId: matchId)
         case .venueList:
             VenueListView(session: session)
         case .venueDetail(let id):
