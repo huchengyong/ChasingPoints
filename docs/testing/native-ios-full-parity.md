@@ -86,7 +86,7 @@ TEST_RUNNER_SNAPSHOT_DIR=<输出目录> xcodebuild test -project iOS.xcodeproj -
 | --- | --- | --- |
 | 真机与真实后端只读联调（7.5） | 未执行 | 用户授权、专用开发账号；结果单独记录 |
 | Universal Links | 未配置 | Target 增加 Associated Domains `applinks:www.zhuifen.cn`；服务器发布 `/.well-known/apple-app-site-association`（`appID` 为 `<TeamID>.<bundle id>`，paths 覆盖 `/go/*`）；真机验证冷 / 热启动与从微信、Safari 打开 |
-| 隐私清单的收集数据类型 | 草稿 | 产品确认手机号、昵称、用户 ID、头像照片、对局数据、用户内容、反馈工单是否齐全；附近球馆查询的坐标若后端留存，需要补「位置」 |
+| 隐私清单的收集数据类型 | 已确认 | 手机号、昵称、用户 ID、头像照片、精确位置（附近球馆与上传球馆的坐标）、对局数据、用户内容、反馈工单；均关联用户、不用于跟踪 |
 | 相册写入、系统分享面板、相机扫码 | 未在真机验证 | 真机人工验收 |
 
 ## 7. 迁移中发现的小程序 / 后端问题（只报告，未修改）
