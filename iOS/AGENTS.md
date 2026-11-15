@@ -44,6 +44,7 @@
 - 网络测试注入 `MockHTTPServer` / `MockURLProtocol`；Keychain 测试使用独立 service 并清理自身数据，不访问真实短信/账号。当前 MockURLProtocol 持有共享替身，测试保持串行执行。
 - 快照测试先让页面模型读完数据再传给页面渲染；给页面定时循环注入的 `sleep` 必须真正挂起，空实现会让主线程空转、卡住后续测试。
 - 不通过读取/复制真实 Keychain、伪造 JWT 或修改正常启动路径来补测试条件。真实账号联调须另行授权并与模拟响应结果分开记录。
+- 真实后端只读验收用 `iOSAuthTests/LiveBackendAcceptanceTests`：只有通过 `TEST_RUNNER_LIVE_*` 提供测试环境地址与专用账号 token 时才运行，否则整类跳过；该文件只允许 GET，token 不得写入源码、日志或文档。运行方式见 [docs/testing/native-ios-full-parity.md](../docs/testing/native-ios-full-parity.md)。
 
 ## 验证命令
 在 `iOS/` 执行，需要 Xcode 与可用 iOS Simulator runtime；模拟器实际运行版本与最低部署目标分别记录。
