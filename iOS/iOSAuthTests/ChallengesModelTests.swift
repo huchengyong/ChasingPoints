@@ -311,6 +311,52 @@ final class ChallengesModelTests: XCTestCase {
         XCTAssertEqual(model.items.map(\.id), [10], "读取期间发生的写入后，旧响应不得覆盖新数据")
     }
 
+    // MARK: - 请求取消
+
+    func testCanceledHistoryLoadDoesNotShowFailureAndCanReload() async {
+        let server = MockHTTPServer()
+        let (model, _, _) = await makeModel(server, tab: .history)
+        server.stub("GET", "/api/challenge/history", .failure(.cancelled))
+
+        await model.switchTab(.history)
+
+        XCTAssertNil(model.historyFailure, "取消不是失败")
+        XCTAssertNil(model.historyRefreshError, "取消不写刷新提示")
+        XCTAssertFalse(model.historyLoading, "取消后必须复位加载标记")
+        XCTAssertEqual(model.phase, .empty)
+
+        server.stub("GET", "/api/challenge/history", .json(ChallengeFixtures.historyList([
+            sent(id: 11, status: 2),
+        ])))
+        await model.switchTab(.history)
+
+        XCTAssertNil(model.historyFailure)
+        XCTAssertEqual(model.items.map(\.id), [11], "取消后重新读取应正常加载")
+        XCTAssertEqual(model.phase, .loaded)
+    }
+
+    func testCanceledActiveLoadDoesNotShowFailureAndCanReload() async {
+        let server = MockHTTPServer()
+        let (model, _, _) = await makeModel(server)
+        server.stub("GET", "/api/challenge/pending", .failure(.cancelled))
+
+        await model.onAppear()
+
+        XCTAssertNil(model.activeFailure, "取消不是失败")
+        XCTAssertNil(model.activeRefreshError, "取消不写刷新提示")
+        XCTAssertFalse(model.activeLoading, "取消后必须复位加载标记")
+        XCTAssertEqual(model.phase, .empty)
+
+        server.stub("GET", "/api/challenge/pending", .json(ChallengeFixtures.pendingList([
+            received(id: 1),
+        ])))
+        await model.retry()
+
+        XCTAssertNil(model.activeFailure)
+        XCTAssertEqual(model.items.map(\.id), [1], "取消后重新读取应正常加载")
+        XCTAssertEqual(model.phase, .loaded)
+    }
+
     // MARK: - 辅助
 
     private func receivedInfo(id: Int64) -> ChallengeInfo? {

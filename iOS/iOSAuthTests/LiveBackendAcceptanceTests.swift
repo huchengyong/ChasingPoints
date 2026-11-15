@@ -113,7 +113,8 @@ final class LiveBackendAcceptanceTests: XCTestCase {
     ) throws {
         for scheme in [ColorScheme.light, .dark] {
             let suffix = scheme == .dark ? "dark" : "light"
-            let image = try renderSnapshot("live-\(name)-\(suffix)", colorScheme: scheme, size: pageSize) {
+            // renderSnapshot 自己会追加 -light / -dark，名字里不再拼后缀。
+            let image = try renderSnapshot("live-\(name)", colorScheme: scheme, size: pageSize) {
                 NavigationStack {
                     content()
                         .navigationDestination(for: AppRoute.self) { AppRouteDestination(route: $0) }
@@ -175,6 +176,34 @@ final class LiveBackendAcceptanceTests: XCTestCase {
         case .idle, .loading:
             XCTFail("\(resource)未完成加载", file: file, line: line)
         }
+    }
+
+    /// 非好友目标：允许正常数据或服务端业务提示；不允许网络/权限失败与解码失败。
+    private func assertNonFriendOutcome(
+        _ failure: LoadFailure?,
+        hasData: Bool,
+        resource: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        guard let failure else {
+            XCTAssertTrue(hasData, "\(resource)既没有数据也没有失败", file: file, line: line)
+            return
+        }
+        // 非好友时服务端可能给业务提示，也可能直接 403（如好友荣誉墙）；两者都是页面应正常展示的状态。
+        XCTAssertTrue(
+            [.business, .permission].contains(failure.category),
+            "\(resource)返回意外的失败：\(describe(failure, resource: resource))",
+            file: file,
+            line: line
+        )
+        XCTAssertNotEqual(
+            failure.message,
+            "服务器响应格式错误",
+            "\(resource)是解码失败，不是可展示的业务提示",
+            file: file,
+            line: line
+        )
     }
 
     private func describe(_ failure: LoadFailure, resource: String) -> String {
@@ -556,21 +585,26 @@ final class LiveBackendAcceptanceTests: XCTestCase {
             ChallengesView(session: session, activity: env.activity, initialTab: .received, model: challenges)
         }
 
-        guard let friend = friends.items.first else {
-            throw XCTSkip("好友列表为空，缺少好友 id，无法生成好友衍生页面")
-        }
+        // 测试库好友关系为 0：衍生页面统一以账号 B 为目标，按非好友的真实状态断言。
+        let viewerB = try await sessionB()
+        let bUserId = try XCTUnwrap(viewerB.identity?.userId, "账号 B 缺少用户 id")
+        let bName = viewerB.user?.nickname ?? "TA"
         let target = FriendHomepageTarget(
-            userId: friend.friendUserId,
-            name: friend.nickname,
-            avatar: friend.avatar,
-            rankName: friend.rankName,
-            vipLevel: friend.vipLevel,
-            rankLevel: friend.rankLevel
+            userId: bUserId,
+            name: bName,
+            avatar: viewerB.user?.avatar ?? "",
+            rankName: "",
+            vipLevel: 0,
+            rankLevel: 0
         )
 
         let homepage = FriendHomepageModel(session: session, target: target)
         await homepage.onAppear()
-        assertLoaded(homepage.loader, "好友主页")
+        assertNonFriendOutcome(
+            homepage.loader.failure,
+            hasData: homepage.data != nil,
+            resource: "好友主页"
+        )
         try render("friend-homepage", env: env) {
             FriendHomepageView(session: session, target: target, model: homepage)
         }
@@ -581,7 +615,7 @@ final class LiveBackendAcceptanceTests: XCTestCase {
         case .ready, .empty:
             break
         case .failed(let failure):
-            XCTFail("PK 战绩加载失败：\(describe(failure, resource: "PK 战绩"))")
+            assertNonFriendOutcome(failure, hasData: false, resource: "PK 战绩")
         case .loading:
             XCTFail("PK 战绩未完成加载")
         }
@@ -589,27 +623,39 @@ final class LiveBackendAcceptanceTests: XCTestCase {
 
         let h2h = H2HRecordModel(
             session: session,
-            targetUserId: target.userId,
-            targetName: target.name,
-            opponentId: friend.friendUserId,
-            opponentName: friend.nickname
+            targetUserId: bUserId,
+            targetName: bName,
+            opponentId: bUserId,
+            opponentName: bName
         )
         await h2h.onAppear()
-        if let failure = h2h.failure {
-            XCTFail("交手记录加载失败：\(describe(failure, resource: "交手记录"))")
-        } else {
-            XCTAssertTrue(h2h.statsLoaded || h2h.historyLoaded, "交手记录未加载到任何数据")
-        }
+        assertNonFriendOutcome(
+            h2h.failure,
+            hasData: h2h.statsLoaded || h2h.historyLoaded || h2h.isHidden || h2h.partialMessage != nil,
+            resource: "交手记录"
+        )
         try render("h2h-record", env: env) { H2HRecordView(session: session, model: h2h) }
 
-        let gearFriend = GearFriendModel(session: session, userId: friend.friendUserId, ownerName: friend.nickname)
+        let gearFriend = GearFriendModel(session: session, userId: bUserId, ownerName: bName)
         await gearFriend.load()
-        if let failure = gearFriend.failure {
-            XCTFail("好友装备加载失败：\(failure.title)：\(failure.description)")
-        }
         XCTAssertFalse(gearFriend.loading, "好友装备仍在加载")
+        if let failure = gearFriend.failure {
+            // 非好友时服务端给业务提示「仅好友可以查看」，页面展示它而不是网络/解析失败。
+            XCTAssertEqual(failure.title, "仅好友可以查看", "好友装备失败文案异常：\(failure.title)：\(failure.description)")
+        }
         try render("gear-friend", env: env) {
-            GearFriendView(session: session, userId: friend.friendUserId, name: friend.nickname, model: gearFriend)
+            GearFriendView(session: session, userId: bUserId, name: bName, model: gearFriend)
+        }
+
+        let friendHonor = HonorWallModel(session: session, gameType: 3, userId: bUserId)
+        await friendHonor.loadIfNeeded()
+        assertNonFriendOutcome(
+            friendHonor.failure,
+            hasData: friendHonor.hasLoaded,
+            resource: "好友荣誉墙"
+        )
+        try render("friend-honor-wall", env: env) {
+            HonorWallView(session: session, gameType: 3, userId: bUserId, model: friendHonor)
         }
     }
 
@@ -618,26 +664,36 @@ final class LiveBackendAcceptanceTests: XCTestCase {
     func testChallengeTabs() async throws {
         let session = try await sessionA()
         let env = makeEnv(session)
-        let model = ChallengesModel(session: session, activity: env.activity, initialTab: .received)
-        await model.onAppear()
-        XCTAssertFalse(model.activeLoading, "约球「收到」栏未完成加载")
+
+        // 每个分栏用一个新建且已读完的模型再渲染，避免视图 .task 与测试里的切换交错。
+        let received = ChallengesModel(session: session, activity: env.activity, initialTab: .received)
+        await received.onAppear()
+        XCTAssertFalse(received.activeLoading, "约球「收到」栏未完成加载")
+        if let failure = received.activeFailure {
+            XCTFail("约球「收到」栏加载失败：\(describe(failure, resource: "约球"))")
+        }
         try render("challenges-received", env: env) {
-            ChallengesView(session: session, activity: env.activity, initialTab: .received, model: model)
+            ChallengesView(session: session, activity: env.activity, initialTab: .received, model: received)
         }
 
-        await model.switchTab(.sent)
-        XCTAssertFalse(model.activeLoading, "约球「发出」栏未完成加载")
+        let sent = ChallengesModel(session: session, activity: env.activity, initialTab: .sent)
+        await sent.onAppear()
+        XCTAssertFalse(sent.activeLoading, "约球「发出」栏未完成加载")
+        if let failure = sent.activeFailure {
+            XCTFail("约球「发出」栏加载失败：\(describe(failure, resource: "约球"))")
+        }
         try render("challenges-sent", env: env) {
-            ChallengesView(session: session, activity: env.activity, initialTab: .sent, model: model)
+            ChallengesView(session: session, activity: env.activity, initialTab: .sent, model: sent)
         }
 
-        await model.switchTab(.history)
-        XCTAssertFalse(model.historyLoading, "约球「记录」栏未完成加载")
-        if let failure = model.historyFailure {
+        let history = ChallengesModel(session: session, activity: env.activity, initialTab: .history)
+        await history.onAppear()
+        XCTAssertFalse(history.historyLoading, "约球「记录」栏未完成加载")
+        if let failure = history.historyFailure {
             XCTFail("约球记录加载失败：\(describe(failure, resource: "约球记录"))")
         }
         try render("challenges-history", env: env) {
-            ChallengesView(session: session, activity: env.activity, initialTab: .history, model: model)
+            ChallengesView(session: session, activity: env.activity, initialTab: .history, model: history)
         }
     }
 
@@ -696,7 +752,10 @@ final class LiveBackendAcceptanceTests: XCTestCase {
         let add = GearAddModel(session: session, store: store, requestedCategory: "cue", isPick: false, pickToken: nil)
         await add.start()
         XCTAssertNil(add.listError, "装备目录加载失败：\(add.listError ?? "无错误文案")")
-        XCTAssertFalse(add.brands.isEmpty, "装备目录未返回品牌")
+        // 测试库没有已上架品牌：品牌为空是正常空状态，照常渲染空状态快照。
+        if add.brands.isEmpty {
+            XCTAssertTrue(add.products.isEmpty, "没有品牌时不应出现品牌下的商品")
+        }
         try render("gear-add", env: env) {
             GearAddView(session: session, store: store, category: "cue", pickToken: nil, model: add)
         }
@@ -711,8 +770,11 @@ final class LiveBackendAcceptanceTests: XCTestCase {
         let list = VenueListModel(session: session, location: location)
         await list.loadIfNeeded()
         switch list.phase {
-        case .loaded, .empty:
+        case .loaded:
             break
+        case .empty:
+            // 测试库附近没有球馆：这是空状态，不是失败。
+            XCTAssertTrue(list.items.isEmpty, "空状态下不应有球馆条目")
         case .failed(let failure):
             XCTFail("球馆列表加载失败：\(describe(failure, resource: "球馆列表"))")
         case .idle, .loading:

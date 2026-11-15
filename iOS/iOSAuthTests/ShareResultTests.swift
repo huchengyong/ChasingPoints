@@ -289,11 +289,13 @@ final class ShareResultTests: XCTestCase {
         await model.load()
 
         XCTAssertEqual(model.phase, .ready)
-        XCTAssertEqual(requested, [
+        // 三张图并行下载，只核对下载了哪些地址，不依赖先后顺序。
+        XCTAssertEqual(Set(requested), [
             "https://img.example/me.png",
             "https://img.example/op.png",
             "https://cdn.zhuifen.cn/static/images/avatar-frames/frame_gold.png",
         ])
+        XCTAssertEqual(requested.count, 3)
         XCTAssertNotNil(assets?.myAvatar)
         XCTAssertNotNil(assets?.opponentAvatar)
         XCTAssertNotNil(assets?.frame)

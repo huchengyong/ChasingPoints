@@ -65,9 +65,8 @@ struct MatchHistoryView: View {
                             emptyTitle: "暂无对局记录",
                             emptyHint: "快去发起一场PK吧！"
                         ) { item in
-                            NavigationLink(value: MatchReportRoute(matchId: item.id, fromHistory: true)) {
-                                ParticipantHistoryRow(item: item)
-                            }
+                            ParticipantHistoryRow(item: item)
+                                .background(HiddenRowLink(value: MatchReportRoute(matchId: item.id, fromHistory: true)))
                         }
                     case .referee:
                         VStack(spacing: 0) {
@@ -88,9 +87,8 @@ struct MatchHistoryView: View {
                             ) { item in
                                 // 已取消的执裁记录没有可读战报，只展示状态。
                                 if item.status == 2 {
-                                    NavigationLink(value: MatchReportRoute(matchId: item.id, fromHistory: true)) {
-                                        RefereeHistoryRow(item: item, isNavigable: true)
-                                    }
+                                    RefereeHistoryRow(item: item, isNavigable: true)
+                                        .background(HiddenRowLink(value: MatchReportRoute(matchId: item.id, fromHistory: true)))
                                 } else {
                                     RefereeHistoryRow(item: item, isNavigable: false)
                                 }
@@ -500,5 +498,15 @@ struct MatchHistoryStateMessage: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// List 里的 NavigationLink 会自带系统箭头；把链接垫在行下面并隐藏，只保留卡片内自绘的箭头，整行仍可点。
+private struct HiddenRowLink<Value: Hashable>: View {
+    let value: Value
+
+    var body: some View {
+        NavigationLink(value: value) { EmptyView() }
+            .opacity(0)
     }
 }

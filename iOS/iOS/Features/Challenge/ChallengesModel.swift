@@ -154,6 +154,8 @@ final class ChallengesModel: ObservableObject {
             historyLoadMoreError = nil
         } catch {
             guard session.identity == owner else { return }
+            // 页面离开导致的取消不是失败，不留下「加载更多失败」。
+            if let apiError = error as? APIError, apiError.kind == .canceled { return }
             historyLoadMoreError = errorMessage(error)
         }
     }
@@ -189,6 +191,8 @@ final class ChallengesModel: ObservableObject {
         } catch {
             guard token == activeToken, session.identity == owner else { return }
             activeLoading = false
+            // 页面离开导致的取消不是失败，不写失败态或刷新提示。
+            if let apiError = error as? APIError, apiError.kind == .canceled { return }
             if activeLoaded {
                 activeRefreshError = errorMessage(error)
             } else {
@@ -221,6 +225,11 @@ final class ChallengesModel: ObservableObject {
             historyDirty = historyDirtySeq > startDirtySeq
         } catch {
             guard token == historyToken, session.identity == owner else { return }
+            // 页面离开导致的取消不是失败；复位加载标记后交给下次进入重读。
+            if let apiError = error as? APIError, apiError.kind == .canceled {
+                historyLoading = false
+                return
+            }
             if historyLoaded {
                 historyRefreshError = errorMessage(error)
             } else {
