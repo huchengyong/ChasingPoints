@@ -5,6 +5,7 @@ import Foundation
 
 struct MatchListItem: Decodable, Identifiable, Equatable {
     let id: Int64
+    let opponentId: Int64
     let gameType: Int
     let gameTypeName: String
     let opponentName: String
@@ -17,8 +18,10 @@ struct MatchListItem: Decodable, Identifiable, Equatable {
 
 struct RefereeHistoryItem: Decodable, Identifiable, Equatable {
     let id: Int64
+    let player1Id: Int64
     let player1Name: String
     let player1Avatar: String
+    let player2Id: Int64
     let player2Name: String
     let player2Avatar: String
     let player1Score: Int
@@ -26,7 +29,53 @@ struct RefereeHistoryItem: Decodable, Identifiable, Equatable {
     let gameType: Int
     let gameTypeName: String
     let status: Int
+    let statusText: String
     let endTime: String?
+    let refereeDurationSeconds: Int64
+}
+
+/// `GET /api/match/current` 的窄解码结果，只用于执裁记录页的继续执裁入口。
+struct RefereeOngoingMatch: Decodable, Equatable {
+    let id: Int64
+    let viewerRole: String?
+    let gameType: Int
+    let player1Id: Int64
+    let player1Name: String
+    let player1Avatar: String
+    let player2Id: Int64
+    let player2Name: String
+    let player2Avatar: String
+    let myScore: Int
+    let opponentScore: Int
+
+    var isRefereeView: Bool { viewerRole == "referee" }
+}
+
+/// 执裁记录页的「继续执裁」卡片数据；只采纳裁判视角。
+struct OngoingRefereeMatch: Equatable {
+    let matchId: Int64
+    let player1Id: Int64
+    let player1Name: String
+    let player1Avatar: String
+    let player2Id: Int64
+    let player2Name: String
+    let player2Avatar: String
+    let player1Score: Int
+    let player2Score: Int
+
+    init?(ref: RefereeOngoingMatch?) {
+        guard let ref, ref.isRefereeView else { return nil }
+        matchId = ref.id
+        player1Id = ref.player1Id
+        player1Name = ref.player1Name
+        player1Avatar = ref.player1Avatar
+        player2Id = ref.player2Id
+        player2Name = ref.player2Name
+        player2Avatar = ref.player2Avatar
+        // 裁判视角下服务端的 my_score / opponent_score 就是两名选手的比分。
+        player1Score = ref.myScore
+        player2Score = ref.opponentScore
+    }
 }
 
 struct MatchRankDetail: Decodable, Equatable {
@@ -47,6 +96,13 @@ struct MatchReport: Decodable, Equatable {
     let gameType: Int
     let status: Int
     let viewerRole: String?
+    /// `practice` / `ranked`；旧版服务端不返回。
+    let matchMode: String?
+    /// 排位规则版本，2 表示高光不计分。
+    let rankRulesVersion: Int?
+    /// 本场记录的特殊战绩次数。
+    let achievements: [String: Int]?
+    let visibility: String?
     let myName: String
     let myAvatar: String
     let myScore: Int
@@ -74,6 +130,20 @@ struct MatchReport: Decodable, Equatable {
     /// 排位结算生效时刻（北京时间 RFC3339），仅走过异议期的比赛有值。
     let rankSettlementDueAt: String?
     let createdAt: String
+    // 赛果页、装备卡与「再来一局」用到的字段；旧版服务端不返回，全部可选。
+    let durationSeconds: Int64?
+    let isPlayer1: Bool?
+    let player1Id: Int64?
+    let player2Id: Int64?
+    let opponentId: Int64?
+    let completedByUserId: Int64?
+    let myVipLevel: Int?
+    let opponentVipLevel: Int?
+    let myRankLevel: Int?
+    let opponentRankLevel: Int?
+    let myMaxScore: Int?
+    let opponentMaxScore: Int?
+    let scoreBreakdown: ChasingScoreBreakdown?
 
     var isRefereeView: Bool { viewerRole == "referee" }
 
@@ -111,12 +181,34 @@ struct MatchRewardItem: Decodable, Identifiable, Equatable {
     let rewardTitleName: String?
 
     var id: Int64 { achievementId }
+
+    private enum CodingKeys: String, CodingKey {
+        case achievementId, achievementName, description, icon, rewardTitleName
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        achievementId = try c.decodeIfPresent(Int64.self, forKey: .achievementId) ?? 0
+        achievementName = try c.decodeIfPresent(String.self, forKey: .achievementName) ?? ""
+        description = try c.decodeIfPresent(String.self, forKey: .description) ?? ""
+        icon = try c.decodeIfPresent(String.self, forKey: .icon) ?? ""
+        rewardTitleName = try c.decodeIfPresent(String.self, forKey: .rewardTitleName)
+    }
+
+    /// 老数据缺少名称或描述时仍要能读，展示层用固定文案兜底。
+    var displayName: String { achievementName.isEmpty ? "新成就" : achievementName }
+
+    var displayDescription: String { description.isEmpty ? "这项成就已永久记录到荣誉墙" : description }
+
+    /// 静态资源路径换成 CDN 地址；不认识的路径交给占位图标。
+    var iconURL: URL? { CDNAsset.url(for: icon) }
 }
 
 /// `GET /api/match/reward-summary`：`pending` 表示仍在处理，`ready` 且列表为空表示本场无新解锁。
 struct MatchRewardSummary: Decodable, Equatable {
     let status: String
     let list: [MatchRewardItem]
+    let message: String?
 }
 
 enum MatchRewardState: Equatable {
@@ -191,6 +283,7 @@ enum MatchFormatting {
         case "referee": "裁判结算"
         case "player_direct": "选手直接完成"
         case "player_confirmed": "双方确认完成"
+        case "finish_timeout": "确认超时自动完成"
         default: "未知"
         }
     }

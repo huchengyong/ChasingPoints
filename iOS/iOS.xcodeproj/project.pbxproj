@@ -332,6 +332,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "追分";
+				INFOPLIST_KEY_NSCameraUsageDescription = "用于扫描对手的匹配二维码和裁判码。";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "用于查找你附近的球馆，以及上传球馆时在地图上定位。";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "用于把战绩海报保存到相册。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -365,6 +368,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "追分";
+				INFOPLIST_KEY_NSCameraUsageDescription = "用于扫描对手的匹配二维码和裁判码。";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "用于查找你附近的球馆，以及上传球馆时在地图上定位。";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "用于把战绩海报保存到相册。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

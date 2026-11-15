@@ -206,6 +206,49 @@ final class MatchHistoryModelTests: XCTestCase {
         XCTAssertEqual(MatchTimeFormatting.absolute("not-a-date"), "时间待同步")
         XCTAssertEqual(MatchTimeFormatting.relative("not-a-date"), "时间待同步")
     }
+
+    // MARK: - 进行中的执裁对局
+
+    func testOngoingRefereeMatchUsesServerScores() throws {
+        let ref = try decode(RefereeOngoingMatch.self, from: [
+            "id": 301,
+            "viewer_role": "referee",
+            "game_type": 3,
+            "player1_id": 11,
+            "player1_name": "选手甲",
+            "player1_avatar": "",
+            "player2_id": 12,
+            "player2_name": "选手乙",
+            "player2_avatar": "",
+            "my_score": 2,
+            "opponent_score": 1,
+        ])
+
+        let ongoing = try XCTUnwrap(OngoingRefereeMatch(ref: ref))
+        XCTAssertEqual(ongoing.matchId, 301)
+        XCTAssertEqual(ongoing.player1Name, "选手甲")
+        // 裁判视角下 my_score / opponent_score 就是两名选手的比分。
+        XCTAssertEqual(ongoing.player1Score, 2)
+        XCTAssertEqual(ongoing.player2Score, 1)
+    }
+
+    func testOngoingPlayerMatchHasNoRefereeCard() throws {
+        let ref = try decode(RefereeOngoingMatch.self, from: [
+            "id": 302,
+            "viewer_role": "player1",
+            "game_type": 3,
+            "player1_id": 11,
+            "player1_name": "选手甲",
+            "player1_avatar": "",
+            "player2_id": 12,
+            "player2_name": "选手乙",
+            "player2_avatar": "",
+            "my_score": 2,
+            "opponent_score": 1,
+        ])
+
+        XCTAssertNil(OngoingRefereeMatch(ref: ref))
+    }
 }
 
 /// 测试内用的分页解码形态，与 `MatchHistoryAPI` 的私有响应结构保持一致。

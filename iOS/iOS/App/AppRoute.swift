@@ -1,0 +1,321 @@
+import SwiftUI
+
+/// 约球页的三个分栏，对应 `challenges?tab=received|sent|history`。
+enum ChallengeTab: Hashable {
+    case received
+    case sent
+    case history
+}
+
+/// 应用内页面路由，与小程序 pages.json 的页面一一对应。
+enum AppRoute: Hashable {
+    case login
+    case settings
+    case editProfile
+    case editNickname
+    case matchHistory
+    case matchReport(matchId: Int64)
+    case shareResult(matchId: Int64)
+    case linkEntry(url: String)
+    case matchDetail(matchId: Int64, source: String?, perspectiveUserId: Int64?)
+    case ranking
+    case spectatorLobby
+    case liveMatch(matchId: Int64)
+    case publicMatchDetail(matchId: Int64)
+    case rankExplain(gameType: Int)
+    case notificationSettings
+    case opponentRecord(target: OpponentRecordTarget?)
+    case h2hRecord(
+        opponentId: Int64,
+        targetUserId: Int64,
+        targetName: String,
+        targetAvatar: String,
+        opponentName: String
+    )
+    case memberCenter
+    case reputation
+    case statsDetail(gameType: Int)
+    case performance(gameType: Int)
+    case matchReplay(matchId: Int64)
+    case challengeCompose(target: ChallengeComposeTarget?)
+    case challengeWaiting(challengeId: Int64)
+    case challenges(tab: ChallengeTab)
+    case feedback
+    case userAgreement
+    case privacyPolicy
+    case achievementWall(gameType: Int)
+    case achievementDetail(achievementId: Int64)
+    case friendList
+    case friendHomepage(target: FriendHomepageTarget)
+    case addFriend
+    case friendRequests
+    case blacklist
+    case friendHonorWall(userId: Int64)
+    case friendPkReport(target: FriendHomepageTarget)
+    case tournamentDetail(id: Int64)
+    case venueList
+    case venueDetail(id: Int64)
+    case venueSubmit
+    case rulesIndex
+    case ruleDetail(category: String)
+    case glossary
+    case seasonIndex
+    case seasonHistory(gameType: Int)
+    case seasonReport(seasonId: Int64, gameType: Int)
+    case gearIndex
+    case gearAdd(category: String, pickToken: String?)
+    case gearItem(id: Int64)
+    case gearFriend(userId: Int64, name: String)
+    case scanConfirm
+    case opponentSelector
+
+    /// 导航栏标题，取自 pages.json 的 navigationBarTitleText。
+    var title: String {
+        switch self {
+        case .login: "登录"
+        case .settings: "设置"
+        case .editProfile: "编辑资料"
+        case .editNickname: "编辑昵称"
+        case .matchHistory: "对局记录"
+        case .matchReport: "对局详情"
+        case .shareResult: "战绩海报"
+        case .linkEntry: "追分邀请"
+        case .matchDetail: "对局详情"
+        case .ranking: "排行榜"
+        case .spectatorLobby: "观赛大厅"
+        case .liveMatch: "对局"
+        case .publicMatchDetail: "对局详情"
+        case .rankExplain: "段位说明"
+        case .notificationSettings: "通知管理"
+        case .opponentRecord: "过往对手"
+        case .h2hRecord: "交锋记录"
+        case .memberCenter: "VIP中心"
+        case .reputation: "信誉明细"
+        case .statsDetail: "竞技分析"
+        case .performance: "表现分析"
+        case .matchReplay: "单场复盘"
+        case .challengeCompose: "发起约球"
+        case .challengeWaiting: "等待对手"
+        case .challenges: "约球"
+        case .feedback: "帮助、投诉与举报"
+        case .userAgreement: "用户协议"
+        case .privacyPolicy: "隐私政策"
+        case .achievementWall: "荣誉墙"
+        case .achievementDetail: "成就详情"
+        case .friendList: "好友列表"
+        case .friendHomepage: "好友主页"
+        case .addFriend: "添加好友"
+        case .friendRequests: "好友申请"
+        case .blacklist: "黑名单"
+        case .friendHonorWall: "荣誉墙"
+        case .friendPkReport: "PK报表"
+        case .tournamentDetail: "赛事详情"
+        case .venueList: "附近球馆"
+        case .venueDetail: "球馆详情"
+        case .venueSubmit: "上传球馆"
+        case .rulesIndex: "规则百科"
+        case .ruleDetail: "规则详情"
+        case .glossary: "术语词典"
+        case .seasonIndex: "赛季"
+        case .seasonHistory: "历届赛季"
+        case .seasonReport: "赛季报告"
+        case .gearIndex: "我的装备"
+        case .gearAdd: "添加装备"
+        case .gearItem: "装备详情"
+        case .gearFriend: "TA 的装备"
+        case .scanConfirm: "确认对局"
+        case .opponentSelector: "选择球友"
+        }
+    }
+}
+
+/// 路由 → 页面。switch 不留 default，新增路由时编译器会要求在这里登记页面。
+struct AppRouteDestination: View {
+    @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var gearStore: GearStore
+
+    let route: AppRoute
+
+    var body: some View {
+        switch route {
+        case .login:
+            LoginView()
+        case .settings:
+            SettingsView(session: session)
+        case .editProfile:
+            ProfileEditView(session: session)
+        case .editNickname:
+            NicknameEditView()
+        case .notificationSettings:
+            NotificationSettingsView(session: session)
+        case .memberCenter:
+            MemberCenterView(session: session)
+        case .reputation:
+            ReputationView(session: session)
+        case .opponentRecord(let target):
+            OpponentRecordView(session: session, target: target)
+        case .statsDetail(let gameType):
+            StatsDetailView(session: session, gameType: gameType)
+        case .performance(let gameType):
+            PerformanceView(session: session, gameType: gameType)
+        case .h2hRecord(let opponentId, let targetUserId, let targetName, let targetAvatar, let opponentName):
+            H2HRecordView(
+                session: session,
+                targetUserId: targetUserId,
+                targetName: targetName,
+                targetAvatar: targetAvatar,
+                opponentId: opponentId,
+                opponentName: opponentName
+            )
+        case .matchHistory:
+            MatchHistoryView(session: session)
+        case .matchReport(let matchId):
+            MatchReportView(session: session, matchId: matchId)
+        case .shareResult(let matchId):
+            ShareResultView(session: session, matchId: matchId)
+        case .linkEntry(let url):
+            LinkEntryDestination(session: session, url: url)
+        case .matchDetail(let matchId, let source, let perspectiveUserId):
+            MatchDetailView(
+                session: session,
+                matchId: matchId,
+                source: source,
+                perspectiveUserId: perspectiveUserId
+            )
+        case .publicMatchDetail(let matchId):
+            MatchDetailView(session: session, matchId: matchId, mode: "spectate")
+        case .matchReplay(let matchId):
+            MatchReplayView(session: session, matchId: matchId)
+        case .ranking:
+            RankingView(session: session)
+        case .spectatorLobby:
+            SpectatorLobbyView(session: session)
+        case .liveMatch(let matchId):
+            LiveMatchView(session: session, matchId: matchId)
+        case .venueList:
+            VenueListView(session: session)
+        case .venueDetail(let id):
+            VenueDetailView(session: session, venueId: id)
+        case .venueSubmit:
+            VenueSubmitView(session: session)
+        case .rankExplain(let gameType):
+            RankExplainView(session: session, gameType: gameType)
+        case .rulesIndex:
+            RulesIndexView(session: session)
+        case .ruleDetail(let category):
+            RuleDetailView(session: session, category: category)
+        case .glossary:
+            GlossaryView(session: session)
+        case .seasonIndex:
+            SeasonView(session: session)
+        case .seasonHistory(let gameType):
+            SeasonHistoryView(session: session, gameType: gameType)
+        case .seasonReport(let seasonId, let gameType):
+            SeasonReportView(session: session, seasonId: seasonId, gameType: gameType)
+        case .achievementWall(let gameType):
+            HonorWallView(session: session, gameType: gameType)
+        case .achievementDetail(let achievementId):
+            AchievementDetailView(session: session, achievementId: achievementId)
+        case .tournamentDetail(let id):
+            NewsDetailView(session: session, eventId: id)
+        case .gearIndex:
+            GearIndexView(session: session, store: gearStore)
+        case .gearAdd(let category, let pickToken):
+            GearAddView(session: session, store: gearStore, category: category, pickToken: pickToken)
+        case .gearItem(let id):
+            GearItemView(session: session, store: gearStore, itemId: id)
+        case .gearFriend(let userId, let name):
+            GearFriendView(session: session, userId: userId, name: name)
+        case .friendList:
+            FriendListDestination(session: session)
+        case .friendHomepage(let target):
+            FriendHomepageView(session: session, target: target)
+        case .addFriend:
+            AddFriendView(session: session)
+        case .friendRequests:
+            FriendRequestsDestination(session: session)
+        case .blacklist:
+            BlacklistView(session: session)
+        case .friendHonorWall(let userId):
+            HonorWallView(session: session, gameType: 3, userId: userId)
+        case .friendPkReport(let target):
+            PKReportView(session: session, target: target)
+        case .feedback:
+            FeedbackView(session: session)
+        case .userAgreement:
+            AgreementView(document: AgreementContent.userAgreement)
+        case .privacyPolicy:
+            AgreementView(document: AgreementContent.privacyPolicy)
+        case .scanConfirm:
+            ScanConfirmView(session: session)
+        case .opponentSelector:
+            OpponentSelectorView(session: session)
+        case .challengeCompose(let target):
+            ChallengeComposeDestination(session: session, target: target)
+        case .challengeWaiting(let challengeId):
+            ChallengeWaitingDestination(session: session, challengeId: challengeId)
+        case .challenges(let tab):
+            ChallengesDestination(session: session, initialTab: tab)
+        }
+    }
+}
+
+/// 承接页需要扫码流程里的凭证交接，单独取环境，避免所有路由都依赖它。
+private struct LinkEntryDestination: View {
+    let session: SessionStore
+    let url: String
+    @EnvironmentObject private var quickScan: QuickScanFlow
+
+    var body: some View {
+        LinkEntryView(session: session, url: url, quickScan: quickScan)
+    }
+}
+
+/// 好友列表/申请页的模型需要共享 `ActivityStore`，单独取环境，避免所有路由都依赖它。
+private struct FriendListDestination: View {
+    let session: SessionStore
+    @EnvironmentObject private var activity: ActivityStore
+
+    var body: some View {
+        FriendListView(session: session, activity: activity)
+    }
+}
+
+private struct FriendRequestsDestination: View {
+    let session: SessionStore
+    @EnvironmentObject private var activity: ActivityStore
+
+    var body: some View {
+        FriendRequestsView(session: session, activity: activity)
+    }
+}
+
+private struct ChallengeComposeDestination: View {
+    let session: SessionStore
+    let target: ChallengeComposeTarget?
+    @EnvironmentObject private var activity: ActivityStore
+
+    var body: some View {
+        ChallengeComposeView(session: session, activity: activity, target: target)
+    }
+}
+
+private struct ChallengeWaitingDestination: View {
+    let session: SessionStore
+    let challengeId: Int64
+    @EnvironmentObject private var activity: ActivityStore
+
+    var body: some View {
+        ChallengeWaitingView(session: session, activity: activity, challengeId: challengeId)
+    }
+}
+
+private struct ChallengesDestination: View {
+    let session: SessionStore
+    let initialTab: ChallengeTab
+    @EnvironmentObject private var activity: ActivityStore
+
+    var body: some View {
+        ChallengesView(session: session, activity: activity, initialTab: initialTab)
+    }
+}

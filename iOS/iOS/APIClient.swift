@@ -22,17 +22,34 @@ struct APIError: LocalizedError {
     let statusCode: Int?
     let reason: String?
     let kind: Kind
+    /// 原始响应体；业务失败的结构化字段（如约球的 `pending_challenge_id`）从这里解码。
+    let responseBody: Data?
 
-    init(message: String, statusCode: Int? = nil, reason: String? = nil, kind: Kind? = nil) {
+    init(
+        message: String,
+        statusCode: Int? = nil,
+        reason: String? = nil,
+        kind: Kind? = nil,
+        responseBody: Data? = nil
+    ) {
         self.message = message
         self.statusCode = statusCode
         self.reason = reason
         self.kind = kind ?? Self.inferKind(statusCode: statusCode, reason: reason)
+        self.responseBody = responseBody
     }
 
     var errorDescription: String? { message }
     var isUnauthorized: Bool { statusCode == 401 }
     var isSessionInvalid: Bool { reason == "SESSION_INVALID" }
+
+    /// 按接口的 snake_case 契约解码响应体里的结构化字段。
+    func decodeBody<T: Decodable>(_ type: T.Type = T.self) -> T? {
+        guard let responseBody else { return nil }
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return try? decoder.decode(T.self, from: responseBody)
+    }
 
     private static func inferKind(statusCode: Int?, reason: String?) -> Kind {
         if reason == "SESSION_INVALID" { return .sessionInvalid }
@@ -104,14 +121,16 @@ struct APIClient {
             throw APIError(
                 message: Self.failureMessage(status: status, data: data, statusCode: response.statusCode, path: url.path),
                 statusCode: response.statusCode,
-                reason: status?.reason
+                reason: status?.reason,
+                responseBody: data
             )
         }
         if let status, Self.isBusinessFailure(status) {
             throw APIError(
                 message: Self.failureMessage(status: status, data: data, statusCode: response.statusCode, path: url.path),
                 statusCode: response.statusCode,
-                reason: status.reason
+                reason: status.reason,
+                responseBody: data
             )
         }
 
@@ -160,6 +179,8 @@ struct APIClient {
         }
     }
 
+    static let genericBusinessMessage = "请求失败，请稍后重试"
+
     private static func genericMessage(for statusCode: Int) -> String {
         switch statusCode {
         case 401: "登录状态已失效，请重新登录"
@@ -167,7 +188,7 @@ struct APIClient {
         case 404: "请求的资源不存在"
         case 429: "操作过于频繁，请稍后重试"
         case 500...599: "服务暂时不可用，请稍后重试"
-        default: "请求失败，请稍后重试"
+        default: genericBusinessMessage
         }
     }
 }
@@ -182,11 +203,15 @@ private struct ResponseStatus: Decodable {
 }
 
 enum AppConfiguration {
+    static let cdnBaseURL = "https://cdn.zhuifen.cn"
+
     #if DEBUG
     static let apiBaseURL = URL(string: "https://api-zhuifen.kekemate.cn")!
+    static let wsBaseURL = URL(string: "wss://api-zhuifen.kekemate.cn")!
     static let credentialService = "ChasingPoints.Session.development"
     #else
     static let apiBaseURL = URL(string: "https://api.zhuifen.cn")!
+    static let wsBaseURL = URL(string: "wss://ws.zhuifen.cn")!
     static let credentialService = "ChasingPoints.Session.production"
     #endif
 }
