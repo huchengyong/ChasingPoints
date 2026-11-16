@@ -54,7 +54,7 @@
 - [x] 6.6 赛果、对局详情对齐、单场复盘、本场装备（`matchResult`、`matchDetail`、`matchReplay`、`matchGearCard`）
   - 对局详情按小程序区分观战（`.publicMatchDetail`）、交锋记录（`source=history` + 视角用户）与参与者三种进入方式；进行中连对局通道。
 - [x] 6.7 战绩海报与系统分享、邀请链接入口（`shareResult`、`linkEntry`）
-  - 标准 / 会员两套海报模板；`onOpenURL` 与网页续接已处理，Universal Links 的关联域名待工程与服务器配置。
+  - 标准 / 会员两套海报模板；`onOpenURL` 与网页续接已处理，Universal Links 已配置（2026-11-16）：签名团队 BBFNTFR58V、`applinks:www.zhuifen.cn`，官网已发布 `apple-app-site-association`；待真机验证。
 
 ## 7. 收尾
 

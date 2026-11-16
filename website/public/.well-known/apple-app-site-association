@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["BBFNTFR58V.ios.dianzaozao.zhuifen.iOS"],
+        "components": [
+          { "/": "/go" },
+          { "/": "/go/*" }
+        ]
+      }
+    ]
+  }
+}

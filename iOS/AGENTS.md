@@ -10,7 +10,7 @@
 | 会话、Keychain 与认证请求 | [iOS/SessionStore.swift](iOS/SessionStore.swift) |
 | HTTP 解析、错误反馈与构建环境 | [iOS/APIClient.swift](iOS/APIClient.swift) 中的 `APIClient` / `AppConfiguration` |
 | 路由、主 Tab 与导航栈 | [iOS/App/](iOS/App/)：`AppRoute`（与小程序页面对应，每个 case 都在 `AppRouteDestination` 登记）、`AppNavigator`、`MainTabView` |
-| 外部链接入口 | [iOS/iOSApp.swift](iOS/iOSApp.swift) 的 `onOpenURL` / Universal Links → [iOS/Features/LinkEntry/](iOS/Features/LinkEntry/)；关联域名需在工程与服务器上另行配置 |
+| 外部链接入口 | [iOS/iOSApp.swift](iOS/iOSApp.swift) 的 `onOpenURL` / Universal Links → [iOS/Features/LinkEntry/](iOS/Features/LinkEntry/)；关联域名 `applinks:www.zhuifen.cn` 在 [iOS/iOS.entitlements](iOS/iOS.entitlements)，对应的官网声明文件见 [website/AGENTS.md](../website/AGENTS.md) |
 | 隐私清单 | [iOS/PrivacyInfo.xcprivacy](iOS/PrivacyInfo.xcprivacy)：新增需声明原因的系统 API 或新的数据收集时同步更新 |
 | 读取模型与失败提示 | [iOS/Shared/ResourceLoader.swift](iOS/Shared/ResourceLoader.swift)、[iOS/PagedHistoryList.swift](iOS/PagedHistoryList.swift)、[iOS/Shared/LoadFailure.swift](iOS/Shared/LoadFailure.swift) |
 | 共享 UI 组件 | [iOS/Shared/UI/](iOS/Shared/UI/)（状态页、头像、按钮样式、卡片、Toast） |

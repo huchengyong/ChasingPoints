@@ -18,6 +18,7 @@
 - [data/download.ts](data/download.ts) 只开放微信小程序入口（小程序码图片 `public/qr-miniprogram.jpg`，落地页 `/go/`）；鸿蒙未上架时没有链接和二维码，也不消费旧的 `NUXT_PUBLIC_IOS_DOWNLOAD_URL` / `NUXT_PUBLIC_ANDROID_DOWNLOAD_URL`。
 - 正式下载开放时同时核对按钮、二维码资源及目标、文案与 [下载契约测试](tests/download-content.test.ts)，不在无关任务中把预告页替换为下载页。
 - `public/sitemap.xml`、`robots.txt` 是静态文件，域名或路由改变需一并核对，不会仅因 `NUXT_PUBLIC_SITE_URL` 改动自动同步。
+- `public/.well-known/apple-app-site-association` 是原生 iOS 的 Universal Links 声明（`appIDs` 为 `BBFNTFR58V.ios.dianzaozao.zhuifen.iOS`，路径 `/go`、`/go/*`），`/go/` 落地页路由改动时同步修改。生产服务器的宝塔面板会把 `.well-known` 下的文件按 `text/plain` 返回，因此另有 nginx 扩展配置 `extension/www.zhuifen.cn/apple-app-site-association.conf` 把它改为 `application/json`；发布后核对该地址返回 200 且类型为 `application/json`。
 
 ## UI 与工程约束
 - 品牌、布局与可访问性遵循 [DESIGN.md](../DESIGN.md)，颜色等语义 Token 消费 [assets/styles/main.css](assets/styles/main.css)。

@@ -14,7 +14,7 @@
 | 快照走查 | 通过（有限） | 170 个页面状态各导出亮 / 暗两张，共 340 张，已逐模块人工查看；快照只断言能渲染，不做像素比对 |
 | 真实后端只读验收 | 通过 | 测试环境、两个专用开发账号，11 个用例 10 过 1 跳过（测试库无球馆），见第 5 节 |
 | 真机 | 未执行 | 需要真机人工验收 |
-| Universal Links | 未配置 | 代码已处理 `onOpenURL` / 网页续接，关联域名需工程与服务器配置（见第 6 节） |
+| Universal Links | 已配置，待真机验证 | 签名团队改为 `BBFNTFR58V`，entitlements 声明 `applinks:www.zhuifen.cn`；官网 `/.well-known/apple-app-site-association` 已上线（200、`application/json`），苹果 CDN 已抓取 |
 
 ## 2. 页面对应
 
@@ -114,7 +114,7 @@ xcodebuild test -project iOS.xcodeproj -scheme iOS -configuration Debug \
 | 项目 | 状态 | 需要 |
 | --- | --- | --- |
 | 真机验收 | 未执行 | 真机安装 Debug 包，人工走查扫码、相机、相册、分享、定位与实时对局 |
-| Universal Links | 未配置 | Target 增加 Associated Domains `applinks:www.zhuifen.cn`；服务器发布 `/.well-known/apple-app-site-association`（`appID` 为 `<TeamID>.<bundle id>`，paths 覆盖 `/go/*`）；真机验证冷 / 热启动与从微信、Safari 打开 |
+| Universal Links | 待真机验证 | 开发者网站上该 App ID 需开启 Associated Domains（或由 Xcode 自动签名开启）；真机验证冷 / 热启动，从备忘录、短信、Safari 打开 `https://www.zhuifen.cn/go/...`（微信内置浏览器通常会拦截） |
 | 隐私清单的收集数据类型 | 已确认 | 手机号、昵称、用户 ID、头像照片、精确位置（附近球馆与上传球馆的坐标）、对局数据、用户内容、反馈工单；均关联用户、不用于跟踪 |
 | 相册写入、系统分享面板、相机扫码 | 未在真机验证 | 真机人工验收 |
 
